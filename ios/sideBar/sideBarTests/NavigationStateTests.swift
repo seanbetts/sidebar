@@ -4,44 +4,39 @@ import sideBarShared
 
 @MainActor
 final class NavigationStateTests: XCTestCase {
-    private var defaults: UserDefaults!
-    private var suiteName: String!
+    private var isolatedDefaults: TestIsolation.IsolatedUserDefaults!
 
     override func setUp() {
         super.setUp()
-        suiteName = "NavigationStateTests.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suiteName)
+        isolatedDefaults = TestIsolation.makeUserDefaults(prefix: "NavigationStateTests")
     }
 
     override func tearDown() {
-        if let suiteName {
-            defaults?.removePersistentDomain(forName: suiteName)
-        }
-        defaults = nil
-        suiteName = nil
+        isolatedDefaults?.tearDown()
+        isolatedDefaults = nil
         super.tearDown()
     }
 
     func testLastSectionReadsFromStorage() async {
-        defaults.set(AppSection.notes.rawValue, forKey: AppStorageKeys.lastSelectedSection)
+        isolatedDefaults.defaults.set(AppSection.notes.rawValue, forKey: AppStorageKeys.lastSelectedSection)
 
-        let state = NavigationState(userDefaults: defaults)
+        let state = NavigationState(userDefaults: isolatedDefaults.defaults)
 
         XCTAssertEqual(state.lastSection, .notes)
     }
 
     func testLastSectionFallsBackToChat() async {
-        defaults.set("invalid", forKey: AppStorageKeys.lastSelectedSection)
+        isolatedDefaults.defaults.set("invalid", forKey: AppStorageKeys.lastSelectedSection)
 
-        let state = NavigationState(userDefaults: defaults)
+        let state = NavigationState(userDefaults: isolatedDefaults.defaults)
 
         XCTAssertEqual(state.lastSection, .chat)
     }
 
     func testSidebarWidthPersists() async {
-        defaults.set(420.0, forKey: AppStorageKeys.sidebarWidth)
+        isolatedDefaults.defaults.set(420.0, forKey: AppStorageKeys.sidebarWidth)
 
-        let state = NavigationState(userDefaults: defaults)
+        let state = NavigationState(userDefaults: isolatedDefaults.defaults)
 
         XCTAssertEqual(state.sidebarWidth, 420.0)
     }

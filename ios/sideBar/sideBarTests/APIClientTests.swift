@@ -4,23 +4,23 @@ import sideBarShared
 
 final class APIClientTests: XCTestCase {
     private struct EmptyResponse: Decodable {}
-    private static let protocolIsolationLock = NSLock()
+    private var router: ScopedURLProtocolRouter!
 
     override func setUp() {
         super.setUp()
-        Self.protocolIsolationLock.lock()
+        router = ScopedURLProtocolRouter()
     }
 
     override func tearDown() {
-        URLProtocolMock.requestHandler = nil
-        Self.protocolIsolationLock.unlock()
+        router.invalidate()
+        router = nil
         super.tearDown()
     }
 
     func testInjectsAuthorizationHeader() async throws {
         let token = "token-123"
         let client = makeClient(token: token)
-        URLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer \(token)")
             let response = HTTPURLResponse(
                 url: request.url!,
@@ -36,7 +36,7 @@ final class APIClientTests: XCTestCase {
 
     func testDecodesApiErrorDetail() async {
         let client = makeClient(token: "token-123")
-        URLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 400,
@@ -64,7 +64,7 @@ final class APIClientTests: XCTestCase {
     func testRequestDataReturnsPayload() async throws {
         let client = makeClient(token: "token-123")
         let expected = Data([0x01, 0x02, 0x03])
-        URLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -110,7 +110,7 @@ final class APIClientTests: XCTestCase {
         let requestCount = Counter()
 
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: router.baseURL,
             accessTokenProvider: { tokenBox.token },
             refreshAuthIfNeeded: {
                 refreshCalls.value += 1
@@ -119,12 +119,10 @@ final class APIClientTests: XCTestCase {
             }
         )
 
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [URLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = router.makeSession()
         let client = APIClient(config: config, session: session)
 
-        URLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             requestCount.value += 1
             if requestCount.value == 1 {
                 XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer token-1")
@@ -159,7 +157,7 @@ final class APIClientTests: XCTestCase {
         let requestCount = Counter()
 
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: router.baseURL,
             accessTokenProvider: { tokenBox.token },
             refreshAuthIfNeeded: {
                 refreshCalls.value += 1
@@ -168,12 +166,10 @@ final class APIClientTests: XCTestCase {
             }
         )
 
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [URLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = router.makeSession()
         let client = APIClient(config: config, session: session)
 
-        URLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             requestCount.value += 1
             let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
             return (response, Data("{\"detail\":\"Unauthorized\"}".utf8))
@@ -203,7 +199,7 @@ final class APIClientTests: XCTestCase {
         let requestCount = Counter()
 
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: router.baseURL,
             accessTokenProvider: { tokenBox.token },
             refreshAuthIfNeeded: {
                 refreshCalls.value += 1
@@ -212,12 +208,10 @@ final class APIClientTests: XCTestCase {
             }
         )
 
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [URLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = router.makeSession()
         let client = APIClient(config: config, session: session)
 
-        URLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             requestCount.value += 1
             if requestCount.value == 1 {
                 XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
@@ -242,7 +236,7 @@ final class APIClientTests: XCTestCase {
         let unauthorizedBarrier = TwoRequestBarrier()
 
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: router.baseURL,
             accessTokenProvider: { tokenBox.get() },
             refreshAuthIfNeeded: {
                 _ = refreshCalls.increment()
@@ -251,12 +245,10 @@ final class APIClientTests: XCTestCase {
             }
         )
 
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [URLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = router.makeSession()
         let client = APIClient(config: config, session: session)
 
-        URLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             _ = requestCount.increment()
             let authHeader = request.value(forHTTPHeaderField: "Authorization")
             if authHeader == "Bearer token-1" {
@@ -286,17 +278,6 @@ final class APIClientTests: XCTestCase {
         let unauthorizedCount = SynchronizedCounter()
         let nextRefreshedToken = SynchronizedStringBox("wave-0-new")
 
-        let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { tokenBox.get() },
-            refreshAuthIfNeeded: {
-                _ = refreshCalls.increment()
-                usleep(UInt32.random(in: 1_000...6_000))
-                tokenBox.set(nextRefreshedToken.get())
-                return true
-            }
-        )
-
         let waves = 5
         let requestsPerWave = 10
 
@@ -305,12 +286,22 @@ final class APIClientTests: XCTestCase {
             let newToken = "wave-\(wave)-new"
             tokenBox.set(oldToken)
             nextRefreshedToken.set(newToken)
-            let configuration = URLSessionConfiguration.ephemeral
-            configuration.protocolClasses = [URLProtocolMock.self]
-            let session = URLSession(configuration: configuration)
+            let router = ScopedURLProtocolRouter()
+            defer { router.invalidate() }
+            let config = APIClientConfig(
+                baseUrl: router.baseURL,
+                accessTokenProvider: { tokenBox.get() },
+                refreshAuthIfNeeded: {
+                    _ = refreshCalls.increment()
+                    usleep(UInt32.random(in: 1_000...6_000))
+                    tokenBox.set(nextRefreshedToken.get())
+                    return true
+                }
+            )
+            let session = router.makeSession()
             let client = APIClient(config: config, session: session)
 
-            URLProtocolMock.requestHandler = { request in
+            router.setHandler { request in
                 _ = requestCount.increment()
                 let authHeader = request.value(forHTTPHeaderField: "Authorization")
                 if authHeader == "Bearer \(oldToken)" {
@@ -355,14 +346,44 @@ final class APIClientTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(requestCount.value(), waves * requestsPerWave)
     }
 
-    private func makeClient(token: String) -> APIClient {
+    func testScopedRoutersRouteConcurrentClientsIndependently() async throws {
+        let leftRouter = ScopedURLProtocolRouter()
+        let rightRouter = ScopedURLProtocolRouter()
+        defer {
+            leftRouter.invalidate()
+            rightRouter.invalidate()
+        }
+
+        let leftClient = makeClient(token: "left-token", router: leftRouter)
+        let rightClient = makeClient(token: "right-token", router: rightRouter)
+
+        leftRouter.setHandler { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer left-token")
+            XCTAssertEqual(request.url?.absoluteString.contains(leftRouter.baseURL.absoluteString), true)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{}".utf8))
+        }
+        rightRouter.setHandler { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer right-token")
+            XCTAssertEqual(request.url?.absoluteString.contains(rightRouter.baseURL.absoluteString), true)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data("{}".utf8))
+        }
+
+        async let left: EmptyResponse = leftClient.request("left")
+        async let right: EmptyResponse = rightClient.request("right")
+        _ = try await (left, right)
+    }
+
+    private func makeClient(token: String, router: ScopedURLProtocolRouter? = nil) -> APIClient {
+        guard let resolvedRouter = router ?? self.router else {
+            fatalError("Expected scoped router to be configured before creating APIClient")
+        }
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: resolvedRouter.baseURL,
             accessTokenProvider: { token }
         )
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [URLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = resolvedRouter.makeSession()
         return APIClient(config: config, session: session)
     }
 }
@@ -445,35 +466,5 @@ private final class TwoRequestBarrier: @unchecked Sendable {
             return
         }
         condition.broadcast()
-    }
-}
-
-final class URLProtocolMock: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-
-    override static func canInit(with request: URLRequest) -> Bool {
-        true
-    }
-
-    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        guard let handler = URLProtocolMock.requestHandler else {
-            XCTFail("Request handler not set")
-            return
-        }
-        do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
-        }
-    }
-
-    override func stopLoading() {
     }
 }

@@ -4,14 +4,22 @@ import sideBarShared
 
 @MainActor
 final class WebsitesAPITests: XCTestCase {
+    private var router: ScopedURLProtocolRouter!
+
+    override func setUp() {
+        super.setUp()
+        router = ScopedURLProtocolRouter()
+    }
+
     override func tearDown() {
-        WebsitesURLProtocolMock.requestHandler = nil
+        router.invalidate()
+        router = nil
         super.tearDown()
     }
 
     func testSaveUsesPostAndDecodesResponse() async throws {
         let api = WebsitesAPI(client: makeClient())
-        WebsitesURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("websites/save") == true)
             let response = HTTPURLResponse(
@@ -34,7 +42,7 @@ final class WebsitesAPITests: XCTestCase {
 
     func testListDecodesReadingTimeField() async throws {
         let api = WebsitesAPI(client: makeClient())
-        WebsitesURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("websites") == true)
             let response = HTTPURLResponse(
@@ -69,7 +77,7 @@ final class WebsitesAPITests: XCTestCase {
 
     func testGetDecodesReadingTimeField() async throws {
         let api = WebsitesAPI(client: makeClient())
-        WebsitesURLProtocolMock.requestHandler = { request in
+        router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertTrue(request.url?.absoluteString.contains("websites/w1") == true)
             let response = HTTPURLResponse(
@@ -101,42 +109,10 @@ final class WebsitesAPITests: XCTestCase {
 
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
+            baseUrl: router.baseURL,
             accessTokenProvider: { nil }
         )
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [WebsitesURLProtocolMock.self]
-        let session = URLSession(configuration: configuration)
+        let session = router.makeSession()
         return APIClient(config: config, session: session)
-    }
-}
-
-final class WebsitesURLProtocolMock: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-
-    override static func canInit(with request: URLRequest) -> Bool {
-        true
-    }
-
-    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        guard let handler = WebsitesURLProtocolMock.requestHandler else {
-            XCTFail("Request handler not set")
-            return
-        }
-        do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
-        }
-    }
-
-    override func stopLoading() {
     }
 }
