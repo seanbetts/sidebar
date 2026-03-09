@@ -35,6 +35,41 @@ domain, favicon, full page content, and estimated reading time. If a
 publication date is detectable, that's saved and displayed too. You can rename
 the title any time after saving.
 
+## Supported Sites
+
+sideBar has custom parsers for a range of popular sites, which means you get
+cleaner content and richer extraction than a generic web fetch provides.
+
+**Enhanced extraction** — these sites get meaningfully more than a standard
+page save:
+
+- **YouTube**: full transcript extraction alongside the video title and
+  metadata. See [YouTube Support](#youtube-support) below.
+- **Twitter / X**: tweet content saved with the author name, handle, and
+  publication date.
+- **Substack**: full article content fetched via the Substack API, not just
+  the preview shown to non-subscribers.
+- **GitHub**: clean README extraction with badges, avatars, and decorative
+  elements stripped out.
+- **Harvard Business Review**: full article body reconstructed from
+  structured data, bypassing the HTML layout.
+- **Apple News**: redirect links are automatically unwrapped to fetch the
+  original publisher content.
+
+**Optimised reading** — these sites have noise stripped out for a cleaner
+reading and chat experience:
+
+- The Verge, Wired, Gizmodo, OpenAI, blog.google, Steam Community
+
+**Paywalled sites** — sideBar can save pages from paywalled publications, but
+if you are not a subscriber the content will be truncated to whatever the site
+makes available publicly. This applies to sites including the New York Times,
+Wall Street Journal, Financial Times, The Economist, and Bloomberg. sideBar
+will flag when a saved page appears to be paywalled.
+
+For sites not listed here, sideBar uses a general-purpose parser that works
+well across most publications and blogs.
+
 ## YouTube Support
 
 {/* TODO: screenshot — websites-youtube.png: A saved YouTube video showing transcript (iPad landscape) */}
@@ -51,34 +86,6 @@ questions about the video.
 
 If extraction fails, the page is still saved and you'll see an error status in
 the transcript field.
-
-## Supported Sites
-
-sideBar has custom parsers for a range of popular sites, which means you get
-cleaner content and richer extraction than a generic web fetch provides.
-
-**Enhanced extraction** — these sites get meaningfully more than a standard
-page save:
-
-- **YouTube**: full transcript extraction alongside the video title and
-  metadata. See [YouTube Support](#youtube-support) above.
-- **Twitter / X**: tweet content saved with the author name, handle, and
-  publication date.
-- **Substack**: full article content fetched via the Substack API, not just
-  the preview shown to non-subscribers.
-- **GitHub**: clean README extraction with badges, avatars, and decorative
-  elements stripped out.
-- **Harvard Business Review**: full article body reconstructed from
-  structured data, bypassing the HTML layout.
-
-**Paywalled sites** — sideBar can save pages from paywalled publications, but
-if you are not a subscriber the content will be truncated to whatever the site
-makes available publicly. This applies to sites including the New York Times,
-Wall Street Journal, Financial Times, The Economist, and Bloomberg. sideBar
-will flag when a saved page appears to be paywalled.
-
-For sites not listed here, sideBar uses a general-purpose parser that works
-well across most publications and blogs.
 
 ## Managing Your Web Pages
 
