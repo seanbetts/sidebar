@@ -96,7 +96,9 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.delegate = context.coordinator
         textView.textFormattingConfiguration = nil
         if shouldShowFormattingAccessory, let formattingBarConfiguration {
-            textView.formattingAccessoryView = makeFormattingBar(configuration: formattingBarConfiguration)
+            textView.formattingAccessoryView = makeFormattingAccessoryView(
+                configuration: formattingBarConfiguration
+            )
         }
         return textView
     }
@@ -179,12 +181,14 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             return false
         }
 
-        switch (textView.formattingAccessoryView as? UIKitNoteFormattingBar, configuration) {
-        case let (bar?, configuration?):
-            bar.apply(configuration: configuration)
+        switch (textView.formattingAccessoryView as? UIKitNoteFormattingAccessoryView, configuration) {
+        case let (accessoryView?, configuration?):
+            accessoryView.apply(configuration: configuration)
             return false
         case (nil, let configuration?):
-            textView.formattingAccessoryView = makeFormattingBar(configuration: configuration)
+            textView.formattingAccessoryView = makeFormattingAccessoryView(
+                configuration: configuration
+            )
             return true
         case (_?, nil):
             textView.formattingAccessoryView = nil
@@ -194,12 +198,12 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
     }
 
-    private func makeFormattingBar(
+    private func makeFormattingAccessoryView(
         configuration: NoteFormattingBarConfiguration
-    ) -> UIKitNoteFormattingBar {
-        let bar = UIKitNoteFormattingBar(configuration: configuration)
-        bar.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        return bar
+    ) -> UIKitNoteFormattingAccessoryView {
+        let accessoryView = UIKitNoteFormattingAccessoryView(configuration: configuration)
+        accessoryView.autoresizingMask = [.flexibleWidth]
+        return accessoryView
     }
 
     private var shouldShowFormattingAccessory: Bool {

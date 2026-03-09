@@ -44,9 +44,11 @@ extension ContentView {
     }
 
     static func compactPhoneSearchDockBottomPadding(
-        isSoftwareKeyboardVisible: Bool
+        isSoftwareKeyboardVisible: Bool,
+        bottomSafeAreaInset: CGFloat
     ) -> CGFloat {
-        isSoftwareKeyboardVisible ? DesignTokens.Spacing.sm : 72
+        guard !isSoftwareKeyboardVisible else { return DesignTokens.Spacing.sm }
+        return max(72, 48 + bottomSafeAreaInset)
     }
 
     static func shouldHandleCompactPhoneSearchDockBackgroundTap(
@@ -122,73 +124,79 @@ extension ContentView {
     }
 
     var compactView: some View {
-        TabView(selection: compactPhoneTabSelectionBinding()) {
-            if isPhoneIdiom {
-                ForEach(compactPhoneTabs, id: \.self) { tab in
-                    Group {
-                        switch tab {
-                        case .section(let section):
-                            phoneTabView(for: section)
-                        case .more:
-                            compactPhoneMoreView
+        GeometryReader { proxy in
+            TabView(selection: compactPhoneTabSelectionBinding()) {
+                if isPhoneIdiom {
+                    ForEach(compactPhoneTabs, id: \.self) { tab in
+                        Group {
+                            switch tab {
+                            case .section(let section):
+                                phoneTabView(for: section)
+                            case .more:
+                                compactPhoneMoreView
+                            }
                         }
-                    }
-                    .tag(tab)
-                    .tabItem {
-                        Label {
-                            Text(compactPhoneTabTitle(for: tab))
-                        } icon: {
-                            Image(systemName: compactPhoneTabIconName(for: tab))
-                                .symbolVariant(.none)
-                        }
-                    }
-                }
-            } else {
-                ForEach(phoneSections, id: \.self) { section in
-                    phoneTabView(for: section)
-                        .tag(CompactPhoneTab.section(section))
+                        .tag(tab)
                         .tabItem {
                             Label {
-                                Text(section.title)
+                                Text(compactPhoneTabTitle(for: tab))
                             } icon: {
-                                Image(systemName: phoneIconName(for: section))
+                                Image(systemName: compactPhoneTabIconName(for: tab))
                                     .symbolVariant(.none)
                             }
                         }
-                }
-            }
-        }
-        .tint(tabBarTint)
-        .modifier(CompactPhoneDockTapDismissModifier(
-            isEnabled: Self.shouldHandleCompactPhoneSearchDockBackgroundTap(
-                isSearchExplicitlyExpanded: isCompactPhoneSearchDockExplicitlyExpanded,
-                isCompactPhoneMoreRootVisible: isCompactPhoneMoreRootVisible
-            ),
-            onDismiss: dismissCompactPhoneSearchDock
-        ))
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if shouldShowCompactPhoneSearchDock {
-                HStack {
-                    if isCompactPhoneSearchDockExplicitlyExpanded {
-                        compactPhoneSearchDock
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Spacer(minLength: 0)
-                        compactPhoneSearchDock
+                    }
+                } else {
+                    ForEach(phoneSections, id: \.self) { section in
+                        phoneTabView(for: section)
+                            .tag(CompactPhoneTab.section(section))
+                            .tabItem {
+                                Label {
+                                    Text(section.title)
+                                } icon: {
+                                    Image(systemName: phoneIconName(for: section))
+                                        .symbolVariant(.none)
+                                }
+                            }
                     }
                 }
-                .padding(.horizontal, DesignTokens.Spacing.sm)
-                .padding(.bottom, Self.compactPhoneSearchDockBottomPadding(
-                    isSoftwareKeyboardVisible: isCompactPhoneSoftwareKeyboardVisible
-                ))
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            } else if shouldShowPhoneFloatingActionDock {
-                HStack {
-                    Spacer(minLength: 0)
-                    phoneFloatingActionDock
-                        .padding(.trailing, DesignTokens.Spacing.lg)
-                        .padding(.bottom, 72)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            .tint(tabBarTint)
+            .modifier(CompactPhoneDockTapDismissModifier(
+                isEnabled: Self.shouldHandleCompactPhoneSearchDockBackgroundTap(
+                    isSearchExplicitlyExpanded: isCompactPhoneSearchDockExplicitlyExpanded,
+                    isCompactPhoneMoreRootVisible: isCompactPhoneMoreRootVisible
+                ),
+                onDismiss: dismissCompactPhoneSearchDock
+            ))
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if shouldShowCompactPhoneSearchDock {
+                    HStack {
+                        if isCompactPhoneSearchDockExplicitlyExpanded {
+                            compactPhoneSearchDock
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Spacer(minLength: 0)
+                            compactPhoneSearchDock
+                        }
+                    }
+                    .padding(.horizontal, DesignTokens.Spacing.sm)
+                    .padding(.bottom, Self.compactPhoneSearchDockBottomPadding(
+                        isSoftwareKeyboardVisible: isCompactPhoneSoftwareKeyboardVisible,
+                        bottomSafeAreaInset: proxy.safeAreaInsets.bottom
+                    ))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if shouldShowPhoneFloatingActionDock {
+                    HStack {
+                        Spacer(minLength: 0)
+                        phoneFloatingActionDock
+                            .padding(.trailing, DesignTokens.Spacing.lg)
+                            .padding(.bottom, Self.compactPhoneSearchDockBottomPadding(
+                                isSoftwareKeyboardVisible: false,
+                                bottomSafeAreaInset: proxy.safeAreaInsets.bottom
+                            ))
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
             }
         }
@@ -489,5 +497,4 @@ extension ContentView {
         }
         handleNonChatSelection(.files)
     }
-
 }

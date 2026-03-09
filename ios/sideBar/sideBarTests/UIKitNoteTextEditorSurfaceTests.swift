@@ -24,7 +24,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         let textView = try mountTextView(viewModel: viewModel)
         XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
     }
-    func testKeyboardAccessoryPresentationExposesUIKitFormattingBarAccessory() throws {
+    func testKeyboardAccessoryPresentationWrapsFormattingBarInAccessoryHost() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalPlainTextPass("Hello"),
@@ -35,7 +35,84 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
             formattingBarConfiguration: .disabled,
             formattingBarPresentation: .keyboardAccessory
         )
-        XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
+        let accessoryView = try XCTUnwrap(textView.inputAccessoryView)
+
+        XCTAssertFalse(accessoryView is UIKitNoteFormattingBar)
+        XCTAssertNotNil(findEmbeddedFormattingBar(in: accessoryView))
+    }
+    func testKeyboardAccessoryHostKeepsFormattingBarCompactAndTrailingAligned() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarConfiguration: .disabled,
+            formattingBarPresentation: .keyboardAccessory
+        )
+        let accessoryView = try XCTUnwrap(textView.inputAccessoryView)
+
+        accessoryView.frame = CGRect(x: 0, y: 0, width: 390, height: 44)
+        accessoryView.setNeedsLayout()
+        accessoryView.layoutIfNeeded()
+
+        let embeddedBar = try XCTUnwrap(findEmbeddedFormattingBar(in: accessoryView))
+
+        XCTAssertLessThan(embeddedBar.frame.width, accessoryView.bounds.width)
+        XCTAssertEqual(embeddedBar.frame.maxX, accessoryView.bounds.maxX - 12, accuracy: 0.5)
+        XCTAssertEqual(embeddedBar.frame.width, embeddedBar.intrinsicContentSize.width, accuracy: 0.5)
+    }
+    func testKeyboardAccessoryHostAddsBottomInsetAboveKeyboard() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarConfiguration: .disabled,
+            formattingBarPresentation: .keyboardAccessory
+        )
+        let accessoryView = try XCTUnwrap(textView.inputAccessoryView)
+        let embeddedBar = try XCTUnwrap(findEmbeddedFormattingBar(in: accessoryView))
+        let fittedSize = accessoryView.systemLayoutSizeFitting(
+            CGSize(width: 390, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+
+        accessoryView.frame = CGRect(origin: .zero, size: fittedSize)
+        accessoryView.setNeedsLayout()
+        accessoryView.layoutIfNeeded()
+
+        XCTAssertGreaterThan(accessoryView.bounds.height, embeddedBar.intrinsicContentSize.height)
+        XCTAssertEqual(
+            embeddedBar.frame.maxY,
+            accessoryView.bounds.maxY - 8,
+            accuracy: 0.5
+        )
+    }
+    func testKeyboardAccessoryHostUsesRequestedWidthWhenFitting() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarConfiguration: .disabled,
+            formattingBarPresentation: .keyboardAccessory
+        )
+        let accessoryView = try XCTUnwrap(textView.inputAccessoryView)
+        let fittedSize = accessoryView.systemLayoutSizeFitting(
+            CGSize(width: 390, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+
+        XCTAssertEqual(fittedSize.width, 390, accuracy: 0.5)
+        XCTAssertEqual(fittedSize.height, 52, accuracy: 0.5)
     }
     func testFloatingTopTrailingPresentationOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
@@ -142,7 +219,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
             textView: textView
         )
         XCTAssertTrue(textView.isFirstResponder)
-        XCTAssertTrue(textView.inputAccessoryView is UIKitNoteFormattingBar)
+        XCTAssertNotNil(findEmbeddedFormattingBar(in: try XCTUnwrap(textView.inputAccessoryView)))
         XCTAssertEqual(textView.reloadInputViewsCallCount, 0)
         presentationState.presentation = .floatingTopTrailing
         controller.view.setNeedsLayout()
@@ -488,6 +565,20 @@ private func assertInsertionPointUTF16Offset(
     case .ranges:
         XCTFail("Expected insertion point selection", file: file, line: line)
     }
+}
+
+@available(iOS 26.0, *)
+private func findEmbeddedFormattingBar(in view: UIView) -> UIKitNoteFormattingBar? {
+    for subview in view.subviews {
+        if let bar = subview as? UIKitNoteFormattingBar {
+            return bar
+        }
+        if let nested = findEmbeddedFormattingBar(in: subview) {
+            return nested
+        }
+    }
+
+    return nil
 }
 
 private func canonicalPlainTextPass(_ plainText: String) -> String {

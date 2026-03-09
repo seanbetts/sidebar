@@ -71,6 +71,61 @@ final class UIKitNoteFormattingBar: UIView {
 
 @MainActor
 @available(iOS 26.0, *)
+final class UIKitNoteFormattingAccessoryView: UIView {
+    static let trailingPadding: CGFloat = 12
+    private static let leadingPadding: CGFloat = 12
+    private static let bottomPadding: CGFloat = 8
+
+    private let formattingBar: UIKitNoteFormattingBar
+
+    init(configuration: NoteFormattingBarConfiguration) {
+        self.formattingBar = UIKitNoteFormattingBar(configuration: configuration)
+        super.init(frame: .zero)
+        setUpViewHierarchy()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func apply(configuration: NoteFormattingBarConfiguration) {
+        formattingBar.apply(configuration: configuration)
+        invalidateIntrinsicContentSize()
+        setNeedsLayout()
+    }
+
+    override var intrinsicContentSize: CGSize {
+        CGSize(
+            width: UIView.noIntrinsicMetric,
+            height: formattingBar.intrinsicContentSize.height + Self.bottomPadding
+        )
+    }
+
+    override func systemLayoutSizeFitting(
+        _ targetSize: CGSize,
+        withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority,
+        verticalFittingPriority: UILayoutPriority
+    ) -> CGSize {
+        let fittedBarSize = formattingBar.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+        let resolvedWidth: CGFloat
+
+        if horizontalFittingPriority == .required,
+           targetSize.width > 0,
+           targetSize.width < UIView.layoutFittingExpandedSize.width {
+            resolvedWidth = targetSize.width
+        } else if bounds.width > 0 {
+            resolvedWidth = bounds.width
+        } else {
+            resolvedWidth = fittedBarSize.width + Self.leadingPadding + Self.trailingPadding
+        }
+
+        return CGSize(width: resolvedWidth, height: fittedBarSize.height + Self.bottomPadding)
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
 struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
     let configuration: NoteFormattingBarConfiguration
 
@@ -189,6 +244,25 @@ private extension UIKitNoteFormattingBar {
             )
             stackView.addArrangedSubview(button)
         }
+    }
+}
+
+@available(iOS 26.0, *)
+private extension UIKitNoteFormattingAccessoryView {
+    func setUpViewHierarchy() {
+        backgroundColor = .clear
+        autoresizingMask = [.flexibleWidth]
+        translatesAutoresizingMaskIntoConstraints = false
+
+        formattingBar.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(formattingBar)
+
+        NSLayoutConstraint.activate([
+            formattingBar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.trailingPadding),
+            formattingBar.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: Self.leadingPadding),
+            formattingBar.topAnchor.constraint(equalTo: topAnchor),
+            formattingBar.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.bottomPadding)
+        ])
     }
 }
 #endif

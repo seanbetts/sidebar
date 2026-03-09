@@ -108,15 +108,26 @@ final class CompactPhoneSearchDockTests: XCTestCase {
 
     func testCompactPhoneSearchDockBottomPaddingKeepsTabBarClearanceWhenKeyboardIsHidden() {
         let padding = ContentView.compactPhoneSearchDockBottomPadding(
-            isSoftwareKeyboardVisible: false
+            isSoftwareKeyboardVisible: false,
+            bottomSafeAreaInset: 0
         )
 
         XCTAssertEqual(padding, 72)
     }
 
+    func testCompactPhoneSearchDockBottomPaddingAddsOnlyExtraTabBarClearanceWhenBottomSafeAreaExists() {
+        let padding = ContentView.compactPhoneSearchDockBottomPadding(
+            isSoftwareKeyboardVisible: false,
+            bottomSafeAreaInset: 34
+        )
+
+        XCTAssertEqual(padding, 82)
+    }
+
     func testCompactPhoneSearchDockBottomPaddingAttachesToKeyboardWhenVisible() {
         let padding = ContentView.compactPhoneSearchDockBottomPadding(
-            isSoftwareKeyboardVisible: true
+            isSoftwareKeyboardVisible: true,
+            bottomSafeAreaInset: 34
         )
 
         XCTAssertEqual(padding, DesignTokens.Spacing.sm)
