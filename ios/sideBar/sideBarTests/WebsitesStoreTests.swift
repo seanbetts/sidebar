@@ -107,25 +107,25 @@ final class WebsitesStoreTests: XCTestCase {
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: 60)
         let api = MockWebsitesAPI(listResult: .success(response), getResult: .failure(MockError.forced))
-        api.archivedListDelay = 0.2
+        api.archivedListDelay = 0.12
 
         let store = WebsitesStore(
             api: api,
             cache: cache,
-            archivedRefreshWaitTimeoutNanoseconds: 100_000_000,
+            archivedRefreshWaitTimeoutNanoseconds: 50_000_000,
             archivedRefreshPollIntervalNanoseconds: 10_000_000
         )
 
         let firstRefresh = Task {
             await store.loadArchivedList(force: true)
         }
-        try? await Task.sleep(nanoseconds: 20_000_000)
+        try? await Task.sleep(nanoseconds: 10_000_000)
 
         let start = Date()
         await store.loadArchivedList()
         let elapsed = Date().timeIntervalSince(start)
 
-        XCTAssertLessThan(elapsed, 0.15)
+        XCTAssertLessThan(elapsed, 0.1)
         await firstRefresh.value
     }
 
