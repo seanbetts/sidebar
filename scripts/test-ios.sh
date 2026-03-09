@@ -7,8 +7,13 @@ if ! command -v xcodebuild >/dev/null 2>&1; then
 fi
 
 IOS_PROJECT="${IOS_PROJECT:-ios/sideBar/sideBar.xcodeproj}"
-IOS_SCHEME="${IOS_SCHEME:-sideBarMacTests}"
-if [[ -n "${IOS_DESTINATION:-}" ]]; then
+if [[ -n "${IOS_SCHEME+x}" ]]; then
+  IOS_SCHEME="${IOS_SCHEME}"
+else
+  IOS_SCHEME="sideBarMacTests"
+fi
+
+if [[ -n "${IOS_DESTINATION+x}" ]]; then
   IOS_DESTINATION="${IOS_DESTINATION}"
 elif [[ "${IOS_SCHEME}" == "sideBarMacTests" ]]; then
   IOS_DESTINATION="platform=macOS,arch=arm64"
@@ -16,7 +21,20 @@ else
   IOS_DESTINATION="platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
 fi
 IOS_DESTINATION_TIMEOUT="${IOS_DESTINATION_TIMEOUT:-120}"
-IOS_ENABLE_CODE_COVERAGE="${IOS_ENABLE_CODE_COVERAGE:-YES}"
+if [[ -n "${IOS_ENABLE_CODE_COVERAGE+x}" ]]; then
+  IOS_ENABLE_CODE_COVERAGE="${IOS_ENABLE_CODE_COVERAGE}"
+elif [[ "${IOS_SCHEME}" == "sideBarMacTests" ]]; then
+  IOS_ENABLE_CODE_COVERAGE="NO"
+else
+  IOS_ENABLE_CODE_COVERAGE="YES"
+fi
+if [[ -n "${IOS_TEST_PLAN+x}" ]]; then
+  IOS_TEST_PLAN="${IOS_TEST_PLAN}"
+elif [[ "${IOS_SCHEME}" == "sideBarMacTests" ]]; then
+  IOS_TEST_PLAN="AppleFast"
+else
+  IOS_TEST_PLAN=""
+fi
 IOS_RESULT_BUNDLE_PATH="${IOS_RESULT_BUNDLE_PATH:-}"
 IOS_DERIVED_DATA_PATH="${IOS_DERIVED_DATA_PATH:-}"
 IOS_CLEAN_DERIVED_DATA="${IOS_CLEAN_DERIVED_DATA:-NO}"
@@ -40,7 +58,11 @@ IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE="${IOS_COLLECT_SIMULATOR_DIAGNOSTIC
 IOS_SIMULATOR_DIAGNOSTICS_DIR="${IOS_SIMULATOR_DIAGNOSTICS_DIR:-}"
 IOS_TARGET_SIMULATOR_UDID=""
 
-echo "Running Apple tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
+if [[ -n "${IOS_TEST_PLAN}" ]]; then
+  echo "Running Apple tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION}, test plan ${IOS_TEST_PLAN})..."
+else
+  echo "Running Apple tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
+fi
 
 if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
   # CI runners occasionally inherit an http://github.com rewrite which breaks SwiftPM fetches.
@@ -63,6 +85,10 @@ XCODEBUILD_ARGS=(
   -destination-timeout "${IOS_DESTINATION_TIMEOUT}"
   -enableCodeCoverage "${IOS_ENABLE_CODE_COVERAGE}"
 )
+
+if [[ -n "${IOS_TEST_PLAN}" ]]; then
+  XCODEBUILD_ARGS+=(-testPlan "${IOS_TEST_PLAN}")
+fi
 
 if [[ -n "${IOS_RESULT_BUNDLE_PATH}" ]]; then
   mkdir -p "$(dirname "${IOS_RESULT_BUNDLE_PATH}")"

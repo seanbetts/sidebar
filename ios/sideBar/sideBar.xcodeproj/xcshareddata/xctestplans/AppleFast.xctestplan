@@ -1,0 +1,37 @@
+{
+  "configurations" : [
+    {
+      "id" : "9E878098-0E28-4FC5-91D5-3333BB5AFF87",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "skippedTests" : [
+        "AppEnvironmentAuthCacheScopeTests",
+        "AppEnvironmentDeepLinkTests",
+        "AppFontStyleTests",
+        "ExtensionUserMessageCatalogTests",
+        "NavigationStateTests",
+        "SafariExtensionMessageHandlerTests",
+        "ShareExtensionQueueContractTests",
+        "SupabaseAuthAdapterTests",
+        "TasksViewModelRealtimeTests",
+        "ThemeManagerTests"
+      ],
+      "target" : {
+        "containerPath" : "container:sideBar.xcodeproj",
+        "identifier" : "14C84A542F10562500FE0C16",
+        "name" : "sideBarTests"
+      }
+    }
+  ],
+  "version" : 1
+}

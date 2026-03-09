@@ -1,0 +1,25 @@
+{
+  "configurations" : [
+    {
+      "id" : "CBED3895-B4C4-4106-8DB9-CD40D58A3C3C",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:sideBar.xcodeproj",
+        "identifier" : "14C84A542F10562500FE0C16",
+        "name" : "sideBarTests"
+      }
+    }
+  ],
+  "version" : 1
+}

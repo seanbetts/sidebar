@@ -1,0 +1,25 @@
+{
+  "configurations" : [
+    {
+      "id" : "52CF565D-25FC-4B9A-A1F3-E0C666B2D7B1",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:sideBar.xcodeproj",
+        "identifier" : "A1B2C3E62F40000200ABCDEF",
+        "name" : "ShareExtensionTests"
+      }
+    }
+  ],
+  "version" : 1
+}
