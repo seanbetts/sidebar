@@ -253,7 +253,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         client.yield(event: .initialSession, session: nil)
 
         // Ensure the event has a chance to be processed before asserting state remains active.
-        try await Task.sleep(nanoseconds: 50_000_000)
+        await drainAuthEventLoop()
         XCTAssertEqual(adapter.authState, .active)
     }
 
@@ -394,9 +394,15 @@ final class SupabaseAuthAdapterTests: XCTestCase {
             if condition() {
                 return
             }
-            try await Task.sleep(nanoseconds: 30_000_000)
+            await Task.yield()
         }
         XCTFail("Timed out waiting for condition")
+    }
+
+    private func drainAuthEventLoop(iterations: Int = 16) async {
+        for _ in 0..<iterations {
+            await Task.yield()
+        }
     }
 
     private func makeUserDefaults() -> UserDefaults {

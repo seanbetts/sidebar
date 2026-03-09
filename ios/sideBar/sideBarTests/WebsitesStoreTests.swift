@@ -119,7 +119,9 @@ final class WebsitesStoreTests: XCTestCase {
         let firstRefresh = Task {
             await store.loadArchivedList(force: true)
         }
-        try? await Task.sleep(nanoseconds: 10_000_000)
+        try? await waitUntilWebsitesStoreCondition(timeoutSeconds: 1.0) {
+            await api.archivedListCallCount > 0
+        }
 
         let start = Date()
         await store.loadArchivedList()
@@ -364,6 +366,33 @@ final class WebsitesStoreTests: XCTestCase {
     }
 }
 
+@MainActor
+private func waitUntilWebsitesStoreCondition(
+    timeoutSeconds: TimeInterval,
+    condition: @escaping () async -> Bool
+) async throws {
+    let timeout = Date().addingTimeInterval(timeoutSeconds)
+    while Date() < timeout {
+        if await condition() {
+            return
+        }
+        await Task.yield()
+    }
+    XCTFail("Timed out waiting for websites store condition")
+}
+
+private actor ArchivedListCallCounter {
+    private var count = 0
+
+    func increment() {
+        count += 1
+    }
+
+    var current: Int {
+        count
+    }
+}
+
 private enum MockError: Error {
     case forced
 }
@@ -374,9 +403,17 @@ private struct TestNetworkStatus: NetworkStatusProviding {
 }
 
 private final class MockWebsitesAPI: WebsitesProviding {
+    private let archivedListCounter = ArchivedListCallCounter()
+
     let listResult: Result<WebsitesResponse, Error>
     let getResult: Result<WebsiteDetail, Error>
     var archivedListDelay: TimeInterval?
+
+    var archivedListCallCount: Int {
+        get async {
+            await archivedListCounter.current
+        }
+    }
 
     init(listResult: Result<WebsitesResponse, Error>, getResult: Result<WebsiteDetail, Error>) {
         self.listResult = listResult
@@ -390,6 +427,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse {
         _ = limit
         _ = offset
+        await archivedListCounter.increment()
         if let archivedListDelay {
             try? await Task.sleep(nanoseconds: UInt64(archivedListDelay * 1_000_000_000))
         }

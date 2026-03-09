@@ -298,11 +298,8 @@ final class IngestionViewModelTests: XCTestCase {
 
         await viewModel.loadMeta(fileId: file.id)
 
-        for _ in 0..<10 {
-            if viewModel.isOffline {
-                break
-            }
-            try? await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntilPolling(timeoutSeconds: 1.0) {
+            viewModel.isOffline
         }
 
         XCTAssertEqual(viewModel.activeMeta?.file.id, file.id)
@@ -493,11 +490,8 @@ final class IngestionViewModelTests: XCTestCase {
         await viewModel.load()
         viewModel.clearFailedUpload(fileId: "file-1")
 
-        for _ in 0..<10 {
-            if toastCenter.toast != nil {
-                break
-            }
-            try? await Task.sleep(nanoseconds: 50_000_000)
+        await waitUntilPolling(timeoutSeconds: 0.5) {
+            toastCenter.toast != nil
         }
 
         XCTAssertEqual(toastCenter.toast?.message, "Failed to clear failed upload")
@@ -558,11 +552,8 @@ final class IngestionViewModelTests: XCTestCase {
 
         viewModel.cancelIngestion(fileId: fileId)
 
-        for _ in 0..<10 {
-            if viewModel.items.contains(where: { $0.file.id == fileId }) == false {
-                break
-            }
-            try? await Task.sleep(nanoseconds: 50_000_000)
+        await waitUntilPolling(timeoutSeconds: 0.5) {
+            viewModel.items.contains(where: { $0.file.id == fileId }) == false
         }
 
         XCTAssertEqual(tracker.fileIds, [fileId])
@@ -594,11 +585,8 @@ final class IngestionViewModelTests: XCTestCase {
 
         viewModel.cancelIngestion(fileId: fileId)
 
-        for _ in 0..<10 {
-            if toastCenter.toast?.message == "Failed to cancel ingestion" {
-                break
-            }
-            try? await Task.sleep(nanoseconds: 50_000_000)
+        await waitUntilPolling(timeoutSeconds: 0.5) {
+            toastCenter.toast?.message == "Failed to cancel ingestion"
         }
 
         XCTAssertEqual(toastCenter.toast?.message, "Failed to cancel ingestion")
