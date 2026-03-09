@@ -63,6 +63,15 @@ sideBar can search and reference it during any conversation. You can also
 attach a specific file directly to a [chat](/manual/chat) message to upload
 it and give sideBar focused context on that file.
 
+## Skill-Generated Files
+
+Some skills save files to your library automatically. For example, the
+[Audio Transcription](/skills/store/audio-transcription) skill saves completed
+transcripts as markdown files in a **Transcripts** folder, and the YouTube
+skills save downloaded audio and transcripts to a **Videos** folder. These
+files behave exactly like any file you uploaded manually — they are indexed,
+viewable, and available to sideBar in conversation.
+
 ## File Actions
 
 Tap the menu on any file card to access these actions:
