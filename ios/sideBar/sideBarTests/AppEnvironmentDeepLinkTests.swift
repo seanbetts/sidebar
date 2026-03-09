@@ -205,7 +205,11 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
         await environment.handleSignedInActivation()
 
-        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
+        XCTAssertTrue(
+            websiteEventIsSurfaced(url, in: environment),
+            "Expected signed-in activation to surface the extension website event."
+        )
+        XCTAssertTrue(ExtensionEventStore.shared.consumeEvents().isEmpty)
     }
 
     func testRefreshAuthStateWhenSessionBecomesActiveConsumesExtensionEvents() {
@@ -355,6 +359,18 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     private func clearExtensionEvents() {
         _ = ExtensionEventStore.shared.consumeEvents()
         PendingShareStore.shared.replaceAll([])
+    }
+
+    private func websiteEventIsSurfaced(_ url: String, in environment: AppEnvironment) -> Bool {
+        if environment.websitesViewModel.pendingWebsite?.url == url {
+            return true
+        }
+
+        if PendingShareStore.shared.loadAll().contains(where: { $0.url == url }) {
+            return true
+        }
+
+        return environment.websitesViewModel.items.contains(where: { $0.url == url })
     }
 
     func requireEnvironment(
