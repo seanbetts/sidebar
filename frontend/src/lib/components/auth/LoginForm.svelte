@@ -175,9 +175,8 @@
 			</section>
 		</div>
 		<footer class="site-footer">
-			Made with ❤️ and <a href="https://openai.com/codex/" target="_blank" rel="noopener noreferrer"
-				>Codex</a
-			>
+			Made with <span class="heart">&hearts;</span> and
+			<a href="https://openai.com/codex/" target="_blank" rel="noopener noreferrer">Codex</a>
 		</footer>
 	</div>
 </div>
@@ -438,6 +437,10 @@
 		color: var(--color-muted-foreground);
 		text-decoration: underline;
 		text-underline-offset: 2px;
+	}
+
+	.heart {
+		color: var(--color-foreground);
 	}
 
 	@media (max-width: 900px) {
