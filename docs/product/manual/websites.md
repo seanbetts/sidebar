@@ -44,7 +44,7 @@ Twitter/X tweets with author and date. For others it means noise and chrome
 stripped out for a better reading experience across publications like The
 Verge, Wired, and HBR.
 
-For sites not listed here, sideBar uses a general-purpose parser that works
+For all other websites, sideBar uses a general-purpose parser that works
 well across most publications and blogs.
 
 Note that paywalled publications (such as the New York Times, Financial Times,
