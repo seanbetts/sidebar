@@ -13,6 +13,12 @@ current or real-time information — news, recent releases, live prices, today's
 weather outside your location — sideBar searches the web and incorporates the
 results into its response, citing its sources.
 
+## Actions
+
+| Action | Description |
+| --- | --- |
+| Search the web | Searches the live web and incorporates results and cited sources into the response |
+
 ## When sideBar uses it
 
 sideBar uses Web Search automatically when it detects your question needs
