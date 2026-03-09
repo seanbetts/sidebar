@@ -55,6 +55,12 @@
         ]
       },
       {
+        "group": "Store Skills",
+        "pages": [
+          "skills/store/audio-transcription"
+        ]
+      },
+      {
         "group": "FAQ",
         "pages": [
           "faq/general",
