@@ -56,6 +56,22 @@
 
 	let swipeStartSnapshot = $state<SwipeStartSnapshot | null>(null);
 
+	$effect(() => {
+		if (!pageContentRef) {
+			return;
+		}
+
+		pageContentRef.addEventListener('touchstart', handleWorkspaceTouchStart);
+		pageContentRef.addEventListener('touchend', handleWorkspaceTouchEnd);
+		pageContentRef.addEventListener('touchcancel', clearSwipeStart);
+
+		return () => {
+			pageContentRef?.removeEventListener('touchstart', handleWorkspaceTouchStart);
+			pageContentRef?.removeEventListener('touchend', handleWorkspaceTouchEnd);
+			pageContentRef?.removeEventListener('touchcancel', clearSwipeStart);
+		};
+	});
+
 	onMount(() => {
 		debugLayout =
 			typeof window !== 'undefined' &&
@@ -226,13 +242,7 @@
 			<Sidebar bind:isCollapsed={isSidebarCollapsed} />
 			<main class="main-content">
 				<SiteHeader />
-				<div
-					class="page-content"
-					bind:this={pageContentRef}
-					ontouchstart={handleWorkspaceTouchStart}
-					ontouchend={handleWorkspaceTouchEnd}
-					ontouchcancel={clearSwipeStart}
-				>
+				<div class="page-content" bind:this={pageContentRef}>
 					{@render children()}
 				</div>
 			</main>
