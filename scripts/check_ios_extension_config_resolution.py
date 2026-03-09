@@ -15,8 +15,20 @@ BASE_XCCONFIG_PATH = REPO_ROOT / "ios/sideBar/Config/SideBar.xcconfig"
 
 TARGETS = (
     "sideBar Safari Extension",
+    "sideBar Safari Extension (macOS)",
     "sideBar Safari Extension (macOS) Extension",
 )
+
+PLATFORM_EXPECTATIONS_BY_TARGET = {
+    "sideBar Safari Extension (macOS)": {
+        "SDKROOT": "macosx",
+        "SUPPORTED_PLATFORMS": "macosx",
+    },
+    "sideBar Safari Extension (macOS) Extension": {
+        "SDKROOT": "macosx",
+        "SUPPORTED_PLATFORMS": "macosx",
+    },
+}
 
 SENTINEL_VALUES = {
     "API_BASE_URL": "https://config-resolution.example.invalid/api/v1",
@@ -44,6 +56,19 @@ def emit(message: str = "") -> None:
 def normalize_value(value: str) -> str:
     """Normalize escaped xcconfig values for stable comparison."""
     return value.strip().strip('"').replace("\\/", "/")
+
+
+def normalize_sdkroot_value(value: str) -> str:
+    """Collapse resolved SDKROOT paths to stable platform identifiers."""
+    normalized = normalize_value(value)
+    lowered = normalized.lower()
+    if "macosx.platform" in lowered:
+        return "macosx"
+    if "iphoneos.platform" in lowered:
+        return "iphoneos"
+    if "iphonesimulator.platform" in lowered:
+        return "iphonesimulator"
+    return normalized
 
 
 def has_relative_local_include(xcconfig_text: str) -> bool:
@@ -127,6 +152,24 @@ def evaluate_setting_expectations(
     return errors
 
 
+def evaluate_platform_expectations(
+    *,
+    target: str,
+    settings: dict[str, str],
+    expectations: dict[str, str],
+) -> list[str]:
+    """Return validation errors for expected platform build settings."""
+    normalized_settings = dict(settings)
+    if "SDKROOT" in normalized_settings:
+        normalized_settings["SDKROOT"] = normalize_sdkroot_value(normalized_settings["SDKROOT"])
+
+    return evaluate_setting_expectations(
+        target=target,
+        settings=normalized_settings,
+        expectations=expectations,
+    )
+
+
 def write_temp_xcconfig_pair(base_text: str, directory: Path) -> Path:
     """Write SideBar.xcconfig + SideBar.local.xcconfig in a temp directory."""
     base_path = directory / "SideBar.xcconfig"
@@ -177,6 +220,15 @@ def validate_extension_config_resolution(
                     expectations=SETTING_EXPECTATIONS,
                 )
             )
+            platform_expectations = PLATFORM_EXPECTATIONS_BY_TARGET.get(target)
+            if platform_expectations:
+                errors.extend(
+                    evaluate_platform_expectations(
+                        target=target,
+                        settings=settings,
+                        expectations=platform_expectations,
+                    )
+                )
 
     return errors
 

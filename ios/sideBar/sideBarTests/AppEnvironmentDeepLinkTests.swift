@@ -196,6 +196,18 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
     }
 
+    func testHandleSignedInActivationConsumesExtensionEvents() async {
+        let environment = requireEnvironment()
+        environment.authState = .active
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+
+        ExtensionEventStore.shared.recordWebsiteSaved(url: url)
+
+        await environment.handleSignedInActivation()
+
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
+    }
+
     func testRefreshAuthStateWhenSessionBecomesActiveConsumesExtensionEvents() {
         let previousSharedEnvironment = AppEnvironment.shared
         defer { AppEnvironment.shared = previousSharedEnvironment }

@@ -74,34 +74,9 @@ extension ContentView {
                     }
                 }
                 backgroundedAt = nil
-                // Refresh session on activation for both iOS and macOS.
-                if environment.authState != .signedOut {
-                    Task {
-                        if environment.authState == .stale {
-                            await environment.container.authSession.refreshSession()
-                        } else {
-                            await environment.container.authSession.refreshSessionIfStale()
-                        }
-                    }
-                }
-
-                #if os(iOS)
                 Task {
-                    if environment.authState == .active {
-                        await environment.consumeExtensionEvents()
-                        await environment.consumeWidgetCompletions()
-                        await environment.consumeWidgetQuickSave()
-                    }
-                    environment.consumeWidgetAddTask()
-                    environment.consumeWidgetAddNote()
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    if environment.authState == .active {
-                        await environment.consumeExtensionEvents()
-                        await environment.websitesViewModel.load(force: true)
-                    }
+                    await environment.handleSignedInActivation()
                 }
-                environment.runOfflineMaintenance()
-                #endif
             }
         })
         #if os(iOS)

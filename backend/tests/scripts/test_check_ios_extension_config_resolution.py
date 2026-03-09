@@ -20,6 +20,7 @@ evaluate_setting_expectations = CONFIG_CHECK_MODULE.evaluate_setting_expectation
 has_relative_local_include = CONFIG_CHECK_MODULE.has_relative_local_include
 main = CONFIG_CHECK_MODULE.main
 parse_build_settings = CONFIG_CHECK_MODULE.parse_build_settings
+evaluate_platform_expectations = CONFIG_CHECK_MODULE.evaluate_platform_expectations
 validate_extension_config_resolution = CONFIG_CHECK_MODULE.validate_extension_config_resolution
 
 
@@ -93,6 +94,26 @@ def test_validate_extension_config_resolution_uses_temp_local_override(
     )
 
     assert errors == []
+
+
+def test_evaluate_platform_expectations_reports_non_macos_safari_target_settings() -> None:
+    """macOS Safari targets should fail validation when configured for iPhone SDK/platforms."""
+    errors = evaluate_platform_expectations(
+        target="sideBar Safari Extension (macOS) Extension",
+        settings={
+            "SDKROOT": "iphoneos",
+            "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator",
+        },
+        expectations={
+            "SDKROOT": "macosx",
+            "SUPPORTED_PLATFORMS": "macosx",
+        },
+    )
+
+    assert errors == [
+        "sideBar Safari Extension (macOS) Extension: build setting 'SDKROOT' expected 'macosx' but got 'iphoneos'",
+        "sideBar Safari Extension (macOS) Extension: build setting 'SUPPORTED_PLATFORMS' expected 'macosx' but got 'iphoneos iphonesimulator'",
+    ]
 
 
 def test_main_returns_failure_when_required_files_missing(monkeypatch, tmp_path: Path) -> None:

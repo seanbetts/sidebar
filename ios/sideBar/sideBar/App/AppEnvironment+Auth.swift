@@ -138,6 +138,36 @@ extension AppEnvironment {
         refreshAuthState()
     }
 
+    /// Handles signed-in foreground activation work shared by iOS and macOS.
+    public func handleSignedInActivation() async {
+        if authState != .signedOut {
+            if authState == .stale {
+                await container.authSession.refreshSession()
+            } else {
+                await container.authSession.refreshSessionIfStale()
+            }
+        }
+
+        if authState == .active {
+            await consumeExtensionEvents()
+        }
+
+        #if os(iOS)
+        if authState == .active {
+            await consumeWidgetCompletions()
+            await consumeWidgetQuickSave()
+        }
+        consumeWidgetAddTask()
+        consumeWidgetAddNote()
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        if authState == .active {
+            await consumeExtensionEvents()
+            await websitesViewModel.load(force: true)
+        }
+        runOfflineMaintenance()
+        #endif
+    }
+
     public func consumeExtensionEvents() async {
         guard authState == .active else { return }
         await consumePendingShares()
