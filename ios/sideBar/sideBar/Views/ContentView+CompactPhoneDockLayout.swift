@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 extension ContentView {
     static func shouldDisplayCompactPhoneSearchDock(
