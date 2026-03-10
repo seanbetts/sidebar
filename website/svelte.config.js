@@ -15,7 +15,7 @@ export default {
       $lib: './src/lib'
     },
     prerender: {
-      handleHttpError: ({ path, referrer, message }) => {
+      handleHttpError: ({ path, message }) => {
         // Ignore missing static assets during build — they will be added later
         if (path.startsWith('/favicon') || path === '/logo.svg' || path === '/apple-touch-icon.png') {
           return;
