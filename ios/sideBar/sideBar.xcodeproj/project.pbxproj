@@ -1193,11 +1193,11 @@
 				CODE_SIGN_ENTITLEMENTS = sideBarWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-					GENERATE_INFOPLIST_FILE = YES;
-					INFOPLIST_FILE = sideBarWidgets/Info.plist;
-					INFOPLIST_KEY_APP_GROUP_ID = "$(APP_GROUP_ID)";
-					INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
-					INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = sideBarWidgets/Info.plist;
+				INFOPLIST_KEY_APP_GROUP_ID = "$(APP_GROUP_ID)";
+				INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				"INFOPLIST_KEY_R2_ENDPOINT[arch=*]" = "$(R2_ENDPOINT)";
 				"INFOPLIST_KEY_R2_FAVICON_BUCKET[arch=*]" = "$(R2_FAVICON_BUCKET)";
 				"INFOPLIST_KEY_R2_FAVICON_PUBLIC_BASE_URL[arch=*]" = "$(R2_FAVICON_PUBLIC_BASE_URL)";
@@ -1234,11 +1234,11 @@
 				CODE_SIGN_ENTITLEMENTS = sideBarWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-					GENERATE_INFOPLIST_FILE = YES;
-					INFOPLIST_FILE = sideBarWidgets/Info.plist;
-					INFOPLIST_KEY_APP_GROUP_ID = "$(APP_GROUP_ID)";
-					INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
-					INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = sideBarWidgets/Info.plist;
+				INFOPLIST_KEY_APP_GROUP_ID = "$(APP_GROUP_ID)";
+				INFOPLIST_KEY_CFBundleDisplayName = sideBarWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				"INFOPLIST_KEY_R2_ENDPOINT[arch=*]" = "$(R2_ENDPOINT)";
 				"INFOPLIST_KEY_R2_FAVICON_BUCKET[arch=*]" = "$(R2_FAVICON_BUCKET)";
 				"INFOPLIST_KEY_R2_FAVICON_PUBLIC_BASE_URL[arch=*]" = "$(R2_FAVICON_PUBLIC_BASE_URL)";
@@ -1369,7 +1369,6 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
 				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1377,6 +1376,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
@@ -1385,9 +1385,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "ai.sidebar.sidebar.sideBar-Safari-Extension--macOS-.Extension";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				SUPPORTED_PLATFORMS = macosx;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -1411,7 +1411,6 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
 				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1419,6 +1418,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
@@ -1427,9 +1427,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "ai.sidebar.sidebar.sideBar-Safari-Extension--macOS-.Extension";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				SUPPORTED_PLATFORMS = macosx;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -1460,11 +1460,11 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
@@ -1475,8 +1475,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "ai.sidebar.sidebar.sideBar-Safari-Extension--macOS-";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				SUPPORTED_PLATFORMS = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1507,11 +1507,11 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
@@ -1522,8 +1522,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "ai.sidebar.sidebar.sideBar-Safari-Extension--macOS-";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				SUPPORTED_PLATFORMS = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;

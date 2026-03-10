@@ -4,7 +4,7 @@ import sideBarShared
 
 @MainActor
 final class SettingsAPITests: XCTestCase {
-    private var router: ScopedURLProtocolRouter!
+    var router: ScopedURLProtocolRouter!
 
     override func setUp() {
         super.setUp()
@@ -342,9 +342,7 @@ final class SettingsAPITests: XCTestCase {
                 httpVersion: nil,
                 headerFields: nil
             )!
-            let payload = """
-            {"user_id":"left","communication_style":null,"working_relationship":null,"name":null,"job_title":null,"employer":null,"date_of_birth":null,"gender":null,"pronouns":null,"location":null,"profile_image_url":null,"assistant_identity":null,"enabled_skills":[]}
-            """
+            let payload = makeMinimalSettingsPayload(userID: "left")
             return (response, Data(payload.utf8))
         }
         rightRouter.setHandler { request in
@@ -355,9 +353,7 @@ final class SettingsAPITests: XCTestCase {
                 httpVersion: nil,
                 headerFields: nil
             )!
-            let payload = """
-            {"user_id":"right","communication_style":null,"working_relationship":null,"name":null,"job_title":null,"employer":null,"date_of_birth":null,"gender":null,"pronouns":null,"location":null,"profile_image_url":null,"assistant_identity":null,"enabled_skills":[]}
-            """
+            let payload = makeMinimalSettingsPayload(userID: "right")
             return (response, Data(payload.utf8))
         }
 
@@ -369,7 +365,7 @@ final class SettingsAPITests: XCTestCase {
         XCTAssertEqual(results.1.userId, "right")
     }
 
-    private func makeClient(router: ScopedURLProtocolRouter? = nil) -> APIClient {
+    func makeClient(router: ScopedURLProtocolRouter? = nil) -> APIClient {
         guard let resolvedRouter = router ?? self.router else {
             fatalError("Expected scoped router to be configured before creating APIClient")
         }
@@ -387,118 +383,24 @@ final class SettingsAPITests: XCTestCase {
         }
         return resolvedRouter.makeSession()
     }
-}
 
-extension SettingsAPITests {
-    func testDisconnectProviderConsumerUsesPostWithSourceAndSkillID() async throws {
-        let api = SettingsAPI(client: makeClient())
-        router.setHandler { request in
-            XCTAssertEqual(request.httpMethod, "POST")
-            XCTAssertTrue(
-                request.url?.absoluteString.contains("settings/ai/provider-key/disconnect") == true
-            )
-            let bodyData = try XCTUnwrap(request.httpBodyData())
-            let body = try XCTUnwrap(
-                JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
-            )
-            XCTAssertEqual(body["provider"] as? String, "openai")
-            XCTAssertEqual(body["source"] as? String, "skill")
-            XCTAssertEqual(body["skill_id"] as? String, "audio-transcribe")
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            let payload = """
-            {
-              "provider": "openai",
-              "source": "skill",
-              "actions": {
-                "disabled_skill_ids": ["audio-transcribe"],
-                "detached_ai_provider": false,
-                "deleted_provider_key": false
-              },
-              "remaining_consumers": {
-                "ai_provider": true,
-                "skill_ids": []
-              },
-              "settings": {
-                "enabled_skills": ["notes"],
-                "installed_store_skills": ["audio-transcribe"],
-                "ai_primary_provider": "openai"
-              }
-            }
-            """
-            return (response, Data(payload.utf8))
+    private func makeMinimalSettingsPayload(userID: String) -> String {
+        """
+        {
+          "user_id": "\(userID)",
+          "communication_style": null,
+          "working_relationship": null,
+          "name": null,
+          "job_title": null,
+          "employer": null,
+          "date_of_birth": null,
+          "gender": null,
+          "pronouns": null,
+          "location": null,
+          "profile_image_url": null,
+          "assistant_identity": null,
+          "enabled_skills": []
         }
-
-        let result = try await api.disconnectProviderConsumer(
-            provider: "openai",
-            source: .skill,
-            skillId: "audio-transcribe"
-        )
-
-        XCTAssertEqual(result.provider, "openai")
-        XCTAssertEqual(result.source, .skill)
-        XCTAssertEqual(result.actions.disabledSkillIds, ["audio-transcribe"])
-        XCTAssertFalse(result.actions.deletedProviderKey)
-        XCTAssertTrue(result.remainingConsumers.aiProvider)
-    }
-
-    func testDisconnectProviderConsumerUsesAiProviderSourceWithoutSkillID() async throws {
-        let api = SettingsAPI(client: makeClient())
-        router.setHandler { request in
-            XCTAssertEqual(request.httpMethod, "POST")
-            XCTAssertTrue(
-                request.url?.absoluteString.contains("settings/ai/provider-key/disconnect") == true
-            )
-            let bodyData = try XCTUnwrap(request.httpBodyData())
-            let body = try XCTUnwrap(
-                JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
-            )
-            XCTAssertEqual(body["provider"] as? String, "openai")
-            XCTAssertEqual(body["source"] as? String, "ai_provider")
-            XCTAssertNil(body["skill_id"])
-
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            let payload = """
-            {
-              "provider": "openai",
-              "source": "ai_provider",
-              "actions": {
-                "disabled_skill_ids": [],
-                "detached_ai_provider": true,
-                "deleted_provider_key": false
-              },
-              "remaining_consumers": {
-                "ai_provider": false,
-                "skill_ids": ["audio-transcribe"]
-              },
-              "settings": {
-                "enabled_skills": ["audio-transcribe"],
-                "installed_store_skills": ["audio-transcribe"],
-                "ai_primary_provider": null
-              }
-            }
-            """
-            return (response, Data(payload.utf8))
-        }
-
-        let result = try await api.disconnectProviderConsumer(
-            provider: "openai",
-            source: .aiProvider,
-            skillId: nil
-        )
-
-        XCTAssertEqual(result.source, .aiProvider)
-        XCTAssertTrue(result.actions.detachedAIProvider)
-        XCTAssertEqual(result.remainingConsumers.skillIds, ["audio-transcribe"])
-        XCTAssertNil(result.settings.aiPrimaryProvider)
+        """
     }
 }

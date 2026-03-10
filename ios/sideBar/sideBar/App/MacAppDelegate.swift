@@ -8,6 +8,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     private static var queuedDeepLinks: [URL] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSWindow.allowsAutomaticWindowTabbing = false
         NSApplication.shared.registerForRemoteNotifications()
     }
 
