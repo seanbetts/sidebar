@@ -27,7 +27,12 @@ export default {
           return;
         }
         // Ignore pages linked from Nav/Footer that will be added in future tasks
-        if (path === '/about' || path === '/privacy') {
+        if (
+          path === '/about' ||
+          path === '/about/' ||
+          path === '/privacy' ||
+          path === '/privacy/'
+        ) {
           return;
         }
         throw new Error(message);

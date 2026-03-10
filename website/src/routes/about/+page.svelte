@@ -6,13 +6,13 @@
     '@type': 'AboutPage',
     name: 'About sideBar',
     url: 'https://trysidebar.ai/about',
-    description: 'The story behind sideBar — why it was built and where it is going.'
+    description: 'The story behind sideBar: why it was built and where it is going.'
   };
 </script>
 
 <Seo
   title="About"
-  description="The story behind sideBar — why it was built and where it is going."
+  description="The story behind sideBar: why it was built and where it is going."
   url="https://trysidebar.ai/about"
   {jsonLd}
 />
@@ -23,7 +23,7 @@
     <header class="page-header">
       <h1>About sideBar</h1>
       <p class="lead">
-        sideBar is an AI assistant built around how you actually work — not how an AI
+        sideBar is an AI assistant built around how you actually work, not how an AI
         company thinks you should.
       </p>
     </header>
@@ -110,13 +110,15 @@
     margin-bottom: 0;
   }
 
-  a {
+  .contact a,
+  .story a {
     color: var(--color-foreground);
     text-decoration: underline;
     text-underline-offset: 3px;
   }
 
-  a:hover {
+  .contact a:hover,
+  .story a:hover {
     color: var(--color-muted-foreground);
   }
 </style>
