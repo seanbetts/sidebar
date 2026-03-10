@@ -11,6 +11,7 @@ const pages = [
 ];
 
 export const GET: RequestHandler = () => {
+  // Build-time date — updates on every deployment
   const lastmod = new Date().toISOString().split('T')[0];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -29,8 +30,7 @@ ${pages
 
   return new Response(xml, {
     headers: {
-      'Content-Type': 'application/xml',
-      'Cache-Control': 'max-age=3600'
+      'Content-Type': 'application/xml'
     }
   });
 };
