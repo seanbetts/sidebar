@@ -17,7 +17,13 @@ export default {
     prerender: {
       handleHttpError: ({ path, message }) => {
         // Ignore missing static assets during build — they will be added later
-        if (path.startsWith('/favicon') || path === '/logo.svg' || path === '/apple-touch-icon.png') {
+        if (
+          path.startsWith('/favicon') ||
+          path === '/logo.svg' ||
+          path === '/apple-touch-icon.png' ||
+          path === '/logo-animated-light.gif' ||
+          path === '/logo-animated-dark.gif'
+        ) {
           return;
         }
         // Ignore pages linked from Nav/Footer that will be added in future tasks
