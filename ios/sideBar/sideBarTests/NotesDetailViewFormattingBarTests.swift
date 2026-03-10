@@ -144,7 +144,7 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
     }
 
     @available(iOS 26.0, *)
-    func testAttributedNoteEditorContainerReevaluatesPresentationWhenInputModeChanges() async {
+    func testAttributedNoteEditorContainerReevaluatesPresentationWhenInputModeChanges() async throws {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.enterEditMode()
         let environment = makeNotesDetailTestEnvironment()

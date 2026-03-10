@@ -76,6 +76,9 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        if let config = try? EnvironmentConfig.load() {
+            SentryBootstrap.startIfConfigured(config: config)
+        }
         #if DEBUG
         AppLaunchMetrics.shared.mark("didFinishLaunching")
         assertBackgroundTaskIdentifiersConfigured()

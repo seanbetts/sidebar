@@ -84,6 +84,48 @@ final class EnvironmentConfigLoadTests: XCTestCase {
         XCTAssertEqual(config.supabaseUrl.absoluteString, "https://project.supabase.co")
     }
 
+    func testLoadReadsOptionalSentryDsnFromEnvironment() throws {
+        let originalAPI = environmentValue(for: "API_BASE_URL")
+        let originalSupabaseURL = environmentValue(for: "SUPABASE_URL")
+        let originalSupabaseAnon = environmentValue(for: "SUPABASE_ANON_KEY")
+        let originalSentryDsn = environmentValue(for: "SENTRY_DSN")
+
+        setEnvironmentValue("https://api.example.com/api/v1", for: "API_BASE_URL")
+        setEnvironmentValue("https://project.supabase.co", for: "SUPABASE_URL")
+        setEnvironmentValue("anon-key", for: "SUPABASE_ANON_KEY")
+        setEnvironmentValue("https://example@sentry.io/123", for: "SENTRY_DSN")
+        defer {
+            setEnvironmentValue(originalAPI, for: "API_BASE_URL")
+            setEnvironmentValue(originalSupabaseURL, for: "SUPABASE_URL")
+            setEnvironmentValue(originalSupabaseAnon, for: "SUPABASE_ANON_KEY")
+            setEnvironmentValue(originalSentryDsn, for: "SENTRY_DSN")
+        }
+
+        let config = try EnvironmentConfig.load()
+        XCTAssertEqual(config.sentryDsn, "https://example@sentry.io/123")
+    }
+
+    func testLoadIgnoresUnresolvedSentryDsnPlaceholder() throws {
+        let originalAPI = environmentValue(for: "API_BASE_URL")
+        let originalSupabaseURL = environmentValue(for: "SUPABASE_URL")
+        let originalSupabaseAnon = environmentValue(for: "SUPABASE_ANON_KEY")
+        let originalSentryDsn = environmentValue(for: "SENTRY_DSN")
+
+        setEnvironmentValue("https://api.example.com/api/v1", for: "API_BASE_URL")
+        setEnvironmentValue("https://project.supabase.co", for: "SUPABASE_URL")
+        setEnvironmentValue("anon-key", for: "SUPABASE_ANON_KEY")
+        setEnvironmentValue("$(SENTRY_DSN)", for: "SENTRY_DSN")
+        defer {
+            setEnvironmentValue(originalAPI, for: "API_BASE_URL")
+            setEnvironmentValue(originalSupabaseURL, for: "SUPABASE_URL")
+            setEnvironmentValue(originalSupabaseAnon, for: "SUPABASE_ANON_KEY")
+            setEnvironmentValue(originalSentryDsn, for: "SENTRY_DSN")
+        }
+
+        let config = try EnvironmentConfig.load()
+        XCTAssertNil(config.sentryDsn)
+    }
+
     private func environmentValue(for key: String) -> String? {
         guard let cString = getenv(key) else { return nil }
         return String(cString: cString)

@@ -5,6 +5,7 @@ public struct EnvironmentConfig {
     public let apiBaseUrl: URL
     public let supabaseUrl: URL
     public let supabaseAnonKey: String
+    public let sentryDsn: String?
     public let r2Endpoint: URL?
     public let r2FaviconBucket: String?
     public let r2FaviconPublicBaseUrl: URL?
@@ -13,6 +14,7 @@ public struct EnvironmentConfig {
         apiBaseUrl: URL,
         supabaseUrl: URL,
         supabaseAnonKey: String,
+        sentryDsn: String? = nil,
         r2Endpoint: URL? = nil,
         r2FaviconBucket: String? = nil,
         r2FaviconPublicBaseUrl: URL? = nil
@@ -20,6 +22,7 @@ public struct EnvironmentConfig {
         self.apiBaseUrl = apiBaseUrl
         self.supabaseUrl = supabaseUrl
         self.supabaseAnonKey = supabaseAnonKey
+        self.sentryDsn = sentryDsn
         self.r2Endpoint = r2Endpoint
         self.r2FaviconBucket = r2FaviconBucket
         self.r2FaviconPublicBaseUrl = r2FaviconPublicBaseUrl
@@ -30,6 +33,7 @@ public struct EnvironmentConfig {
             apiBaseUrl: URL(string: "http://127.0.0.1:8001/api/v1")!,
             supabaseUrl: URL(string: "http://localhost")!,
             supabaseAnonKey: "test",
+            sentryDsn: nil,
             r2Endpoint: nil,
             r2FaviconBucket: nil,
             r2FaviconPublicBaseUrl: nil

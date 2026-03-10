@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import os
+import sideBarShared
 
 final class MacAppDelegate: NSObject, NSApplicationDelegate {
     private let logger = Logger(subsystem: "sideBar", category: "Push")
@@ -9,6 +10,9 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = false
+        if let config = try? EnvironmentConfig.load() {
+            SentryBootstrap.startIfConfigured(config: config)
+        }
         NSApplication.shared.registerForRemoteNotifications()
     }
 

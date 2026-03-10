@@ -63,7 +63,7 @@ public final class PendingShareStore {
     /// Process-wide shared pending-share store instance.
     public static let shared = PendingShareStore()
 
-    private static let log = OSLog(subsystem: "ai.sidebar.sidebar", category: "PendingShareStore")
+    static let log = OSLog(subsystem: "ai.sidebar.sidebar", category: "PendingShareStore")
 
     private let itemsKey = "pendingShareItems"
     private let directoryName = "pending-shares"
@@ -417,14 +417,14 @@ public final class PendingShareStore {
         return clean.isEmpty ? "shared_file" : clean
     }
 
-    private var defaults: UserDefaults? {
+    var defaults: UserDefaults? {
         if let userDefaults { return userDefaults }
         guard allowAppGroupFallback else { return nil }
         guard let suiteName = AppGroupConfiguration.appGroupId else { return nil }
         return UserDefaults(suiteName: suiteName)
     }
 
-    private var rootDirectory: URL? {
+    var rootDirectory: URL? {
         if let baseDirectory { return baseDirectory }
         guard allowAppGroupFallback else { return nil }
         guard let suiteName = AppGroupConfiguration.appGroupId else { return nil }

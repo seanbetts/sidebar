@@ -49,6 +49,7 @@ Runtime values come from `.xcconfig` and are exposed via Info.plist build settin
 - `KEYCHAIN_ACCESS_GROUP`
 - `KEYCHAIN_SERVICE`
 - `ASSOCIATED_DOMAINS` (for example `webcredentials:app.trysidebar.ai`)
+- `SENTRY_DSN` (optional; enables the main app target's Sentry SDK in Release builds)
 - `R2_ENDPOINT`
 - `R2_BUCKET`
 - `R2_FAVICON_BUCKET`
@@ -57,6 +58,8 @@ Runtime values come from `.xcconfig` and are exposed via Info.plist build settin
 Notes:
 - Non-production runtime paths fail fast when required configuration is missing or invalid.
 - Non-production builds do not silently fall back to production API endpoints.
+- The Apple Sentry integration is main-app-only in phase 1. Share extension, widgets, and Safari targets are intentionally excluded.
+- Sentry starts only in Release builds and is skipped in Debug/XCTest runs.
 
 ## Architecture Summary
 
@@ -182,7 +185,26 @@ Runners only need to be active when you want CI to process pushes to `dev`.
 - Script: `ios/sideBar/ci_scripts/ci_post_clone.sh`
 - It generates `SideBar.local.xcconfig` from environment variables.
 - Missing required values fail the build early.
+- Optional Sentry variables for release/TestFlight:
+  - `SENTRY_DSN` to enable SDK initialization inside the shipped app.
+  - `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` to enable dSYM upload.
+  - `SENTRY_CLI_VERSION` to pin the best-effort `sentry-cli` install used by the upload build phase.
 - Xcode Cloud handles `main` branch builds for distribution.
+
+## Apple Sentry Operations
+
+- Runtime bootstrap lives in `ios/sideBar/sideBar/App/SentryBootstrap.swift` and is invoked from both app delegates.
+- The main app target runs `ios/sideBar/ci_scripts/upload_sentry_dsyms.sh` during Release builds.
+- The upload script skips Debug/simulator builds and no-ops unless `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are present.
+- If those Sentry upload variables are set, missing `sentry-cli` is treated as a release misconfiguration and fails the build.
+- Local archives can satisfy the upload step by either installing `sentry-cli` on `PATH` or setting `SENTRY_CLI_PATH`.
+
+Manual smoke test:
+
+1. Set `SENTRY_DSN` for the release/TestFlight build path.
+2. Archive a Release build with dSYM upload variables present.
+3. Install the build and trigger a short-lived smoke event from a temporary branch or targeted test code path.
+4. Confirm the event appears in Sentry with a symbolicated release/build tag before removing the smoke path.
 
 ## Extension Reliability Expectations
 

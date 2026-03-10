@@ -11,6 +11,7 @@
 		1413DE4E2F2B514C002495EE /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		1413DE4F2F2B514C002495EE /* sideBarShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1413DE702F2B53B3002495EE /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
+		A1F0C0013020000100ABC001 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = A1F0C0033020000100ABC001 /* Sentry */; };
 		142516B72F1EB96B0072E4F9 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1448E6CA2F27A6420066EE47 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6C92F27A6420066EE47 /* WidgetKit.framework */; };
 		1448E6CC2F27A6420066EE47 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6CB2F27A6420066EE47 /* SwiftUI.framework */; };
@@ -339,6 +340,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1F0C0013020000100ABC001 /* Sentry in Frameworks */,
 				14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */,
 				14F1A0B82F31000000BEEF03 /* Markdown in Frameworks */,
 				1413DE4E2F2B514C002495EE /* sideBarShared.framework in Frameworks */,
@@ -598,6 +600,7 @@
 				14C84A462F10562300FE0C16 /* Resources */,
 				142516BC2F1EB96B0072E4F9 /* Embed Foundation Extensions */,
 				1413DE532F2B514C002495EE /* Embed Frameworks */,
+				A1F0C0103020000100ABC001 /* Upload Sentry dSYMs */,
 			);
 			buildRules = (
 			);
@@ -620,6 +623,7 @@
 				14DFA3382F116F2C001DAF5B /* Supabase */,
 				14F1A0A12F21000000BEEF02 /* MarkdownUI */,
 				14F1A0B92F31000000BEEF03 /* Markdown */,
+				A1F0C0033020000100ABC001 /* Sentry */,
 			);
 			productName = sideBar;
 			productReference = 14C84A482F10562300FE0C16 /* sideBar.app */;
@@ -760,6 +764,7 @@
 				14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				14F1A0BA2F31000000BEEF03 /* XCRemoteSwiftPackageReference "swift-markdown" */,
 				14F1A0A02F21000000BEEF02 /* XCRemoteSwiftPackageReference "MarkdownUI" */,
+				A1F0C0023020000100ABC001 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 14C84A492F10562300FE0C16 /* Products */;
@@ -888,6 +893,22 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "OUTPUT=\"${DERIVED_FILE_DIR}/swiftlint.output\"\nSWIFTLINT=\"\"\nif command -v swiftlint > /dev/null; then\n  SWIFTLINT=\"swiftlint\"\nelif [ -x \"/opt/homebrew/bin/swiftlint\" ]; then\n  SWIFTLINT=\"/opt/homebrew/bin/swiftlint\"\nelif [ -x \"/usr/local/bin/swiftlint\" ]; then\n  SWIFTLINT=\"/usr/local/bin/swiftlint\"\nfi\nif [ -n \"${SWIFTLINT}\" ]; then\n  \"${SWIFTLINT}\" lint --config \"${SRCROOT}/.swiftlint.yml\" \"${SRCROOT}/sideBar\" \"${SRCROOT}/sideBarTests\"\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\ntouch \"${OUTPUT}\"\n";
+		};
+		A1F0C0103020000100ABC001 /* Upload Sentry dSYMs */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/ci_scripts/upload_sentry_dsyms.sh",
+			);
+			name = "Upload Sentry dSYMs";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/sentry-dsym-upload.output",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n\"${SRCROOT}/ci_scripts/upload_sentry_dsyms.sh\"\ntouch \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -2121,6 +2142,14 @@
 				minimumVersion = 0.5.0;
 			};
 		};
+		A1F0C0023020000100ABC001 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.57.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -2163,6 +2192,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 14F1A0BA2F31000000BEEF03 /* XCRemoteSwiftPackageReference "swift-markdown" */;
 			productName = Markdown;
+		};
+		A1F0C0033020000100ABC001 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1F0C0023020000100ABC001 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
 		};
 /* End XCSwiftPackageProductDependency section */
 

@@ -20,6 +20,7 @@ public extension EnvironmentConfig {
         let apiBaseUrlString = try loadString(key: "API_BASE_URL")
         let supabaseUrlString = try loadString(key: "SUPABASE_URL")
         let supabaseAnonKey = try loadString(key: "SUPABASE_ANON_KEY")
+        let sentryDsn = loadOptionalString(key: "SENTRY_DSN")
         let r2EndpointString = loadOptionalString(key: "R2_ENDPOINT")
         let r2FaviconBucket = loadOptionalString(key: "R2_FAVICON_BUCKET")
         let r2FaviconPublicBaseUrlString = loadOptionalString(
@@ -46,6 +47,7 @@ public extension EnvironmentConfig {
             apiBaseUrl: apiBaseUrl,
             supabaseUrl: supabaseUrl,
             supabaseAnonKey: supabaseAnonKey,
+            sentryDsn: sentryDsn,
             r2Endpoint: r2Endpoint,
             r2FaviconBucket: r2FaviconBucket,
             r2FaviconPublicBaseUrl: r2FaviconPublicBaseUrl
