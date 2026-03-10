@@ -330,7 +330,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         storage: AppEnvironmentStorage,
         websitesAPI: (any WebsitesProviding)? = nil
     ) -> AppEnvironment {
-        let authSession = MutableAuthSession(authState: .signedOut)
+        let authSession = PlaceholderAuthSession(authState: .signedOut)
         let container = ServiceContainer(
             config: .fallbackForTesting(),
             authSession: authSession,

@@ -342,7 +342,7 @@ final class SettingsAPITests: XCTestCase {
                 httpVersion: nil,
                 headerFields: nil
             )!
-            let payload = makeMinimalSettingsPayload(userID: "left")
+            let payload = self.makeMinimalSettingsPayload(userID: "left")
             return (response, Data(payload.utf8))
         }
         rightRouter.setHandler { request in
@@ -353,7 +353,7 @@ final class SettingsAPITests: XCTestCase {
                 httpVersion: nil,
                 headerFields: nil
             )!
-            let payload = makeMinimalSettingsPayload(userID: "right")
+            let payload = self.makeMinimalSettingsPayload(userID: "right")
             return (response, Data(payload.utf8))
         }
 
