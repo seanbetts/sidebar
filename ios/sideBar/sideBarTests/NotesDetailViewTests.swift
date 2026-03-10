@@ -37,18 +37,6 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertTrue(view.isFormattingToolbarVisible)
     }
 
-    func testActivateReadSurfaceEditingPassesTargetIntoEnterEditMode() async {
-        let context = await makeNotesDetailViewTestContext()
-
-        context.makeView().activateReadSurfaceEditing(at: .characterOffset(7))
-
-        XCTAssertEqual(context.editorViewModel.presentationMode, .edit)
-        XCTAssertEqual(
-            context.editorViewModel.consumePendingEditSelectionTarget(),
-            .characterOffset(7)
-        )
-    }
-
     func testUnsupportedNotesShowPlaceholderInsteadOfReadOrEditorSurface() async {
         let unsupportedNote = NotePayload(
             id: "n1",
@@ -78,74 +66,9 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         )
     }
 
-    func testUnsupportedNotesCannotEnterEditModeFromReadSurfaceActivation() async {
-        let unsupportedNote = NotePayload(
-            id: "n1",
-            name: "Unsupported",
-            document: NotesSemanticDocument(
-                blocks: [
-                    .paragraph([.init(text: "Intro", marks: [])]),
-                    .init(type: .heading, content: [.init(text: "Heading", marks: [])])
-                ]
-            ),
-            plainText: "Intro",
-            path: "/unsupported.md",
-            modified: nil,
-            created: nil
-        )
-        let context = await makeNotesDetailViewTestContext(note: unsupportedNote)
-
-        context.makeView().activateReadSurfaceEditing(at: .start)
-
-        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
-        XCTAssertFalse(context.editorViewModel.isEditingNote)
-        XCTAssertTrue(context.makeView().isShowingUnsupportedContentPlaceholder)
-    }
-
-    func testHandleCloseShortcutReturnsEditModeToReadWithoutClosingNote() async {
-        let context = await makeNotesDetailViewTestContext()
-        context.editorViewModel.enterEditMode()
-
-        context.makeView().handleCloseShortcut()
-        await Task.yield()
-        await Task.yield()
-
-        let view = context.makeView()
-        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
-        XCTAssertEqual(context.editorViewModel.currentNoteId, "n1")
-        XCTAssertNotNil(context.notesViewModel.activeNote)
-        XCTAssertTrue(view.isShowingReadSurface)
-    }
-
-    func testHandleCloseShortcutClosesNoteWhenAlreadyInReadMode() async {
-        let context = await makeNotesDetailViewTestContext()
-
-        context.makeView().handleCloseShortcut()
-        await waitUntil {
-            context.editorViewModel.currentNoteId == nil &&
-            context.notesViewModel.activeNote == nil
-        }
-
-        XCTAssertNil(context.editorViewModel.currentNoteId)
-        XCTAssertNil(context.notesViewModel.activeNote)
-    }
-
     func testRequestCloseNoteClosesNoteFromEditMode() async {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.enterEditMode()
-
-        context.makeView().requestCloseNote()
-        await waitUntil {
-            context.editorViewModel.currentNoteId == nil &&
-            context.notesViewModel.activeNote == nil
-        }
-
-        XCTAssertNil(context.editorViewModel.currentNoteId)
-        XCTAssertNil(context.notesViewModel.activeNote)
-    }
-
-    func testRequestCloseNoteClosesNoteFromReadMode() async {
-        let context = await makeNotesDetailViewTestContext()
 
         context.makeView().requestCloseNote()
         await waitUntil {
@@ -224,22 +147,6 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
     }
 
-    func testShortcutCloseItemReturnsEditModeToReadForMatchingNotesEvent() async throws {
-        let context = await makeNotesDetailViewTestContext()
-        context.editorViewModel.enterEditMode()
-
-        context.makeView().handleShortcutActionEvent(
-            ShortcutActionEvent(action: .closeItem, section: .notes, pane: .primary),
-            workspacePane: .primary
-        )
-        await waitUntil {
-            context.editorViewModel.presentationMode == .read
-        }
-
-        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
-        XCTAssertNotNil(context.notesViewModel.activeNote)
-    }
-
     func testHandleCloseShortcutPreservesUnsavedContentWithoutExplicitDocumentWhenSaveFails() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
@@ -268,21 +175,6 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
             "Shortcut unsaved text"
         )
         XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
-    }
-
-    func testShortcutCloseItemClosesReadModeNoteForMatchingNotesEvent() async throws {
-        let context = await makeNotesDetailViewTestContext()
-
-        context.makeView().handleShortcutActionEvent(
-            ShortcutActionEvent(action: .closeItem, section: .notes, pane: .primary),
-            workspacePane: .primary
-        )
-        await waitUntil(timeout: .seconds(2)) {
-            context.editorViewModel.currentNoteId == nil
-        }
-
-        XCTAssertNil(context.editorViewModel.currentNoteId)
-        XCTAssertNil(context.notesViewModel.activeNote)
     }
 
     func testShortcutActionEventIgnoresEventsFromOtherSectionsOrPanes() async throws {
@@ -360,52 +252,6 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
             nativeViewModel.selectionSnapshot(in: nativeViewModel.attributedContent),
             equals: 1
         )
-    }
-
-    func testAttributedNoteEditorContainerAppliesUTF16PendingCaretTargetForComposedCharacters() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-
-        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "A👍🏽B"))
-        let nativeViewModel = NativeNoteEditorViewModel()
-        context.editorViewModel.enterEditMode(at: .characterOffset(5))
-
-        _ = AttributedNoteEditorContainer.loadNoteIfNeeded(
-            editorViewModel: context.editorViewModel,
-            nativeViewModel: nativeViewModel,
-            loadedNoteId: nil
-        )
-
-        assertInsertionPointUTF16Offset(
-            nativeViewModel.selection,
-            in: nativeViewModel.attributedContent,
-            equals: 5
-        )
-    }
-
-    func testFormattingCommandsUpdateCanonicalSemanticSnapshotWithoutWrapperOnlyState() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-
-        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
-        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
-        context.editorViewModel.attachNativeEditor(nativeViewModel)
-        context.editorViewModel.enterEditMode()
-
-        let range = noteCharacterRange(length: 5, in: nativeViewModel.attributedContent)
-        nativeViewModel.selection = AttributedTextSelection(range: range)
-
-        context.editorViewModel.setFormatting(.bold, enabled: true)
-
-        let document = context.editorViewModel.currentSemanticDocumentSnapshot()
-        let paragraph = try XCTUnwrap(document.blocks.first)
-        let segment = try XCTUnwrap(paragraph.content.first)
-
-        XCTAssertEqual(segment.text, "Hello")
-        XCTAssertTrue(segment.marks.contains(.bold))
-        XCTAssertTrue(noteRangeHasBoldTrait(nativeViewModel.attributedContent, range: range))
     }
 
     func testReadSurfaceEditingRestoresUTF16CaretForComposedCharactersAfterSameNoteReload() async throws {

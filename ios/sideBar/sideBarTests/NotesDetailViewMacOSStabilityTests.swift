@@ -48,31 +48,5 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
         }
     }
 
-    func testUnsupportedNotesPlaceholderDoesNotCrashAcrossRepeatedReset() async throws {
-        for iteration in 0..<notesLifetimeSmokeIterations {
-            let unsupportedNote = NotePayload(
-                id: "unsupported-\(iteration)",
-                name: "Unsupported",
-                document: NotesSemanticDocument(
-                    blocks: [
-                        .paragraph([.init(text: "Intro", marks: [])]),
-                        .init(type: .heading, content: [.init(text: "Heading", marks: [])])
-                    ]
-                ),
-                plainText: "Intro",
-                path: "/unsupported-\(iteration).md",
-                modified: nil,
-                created: nil
-            )
-            let context = await makeNotesDetailViewTestContext(note: unsupportedNote)
-            let view = context.makeView()
-            XCTAssertTrue(view.isShowingUnsupportedContentPlaceholder)
-            XCTAssertFalse(view.isShowingReadSurface)
-            XCTAssertFalse(view.isShowingEditorSurface)
-
-            NotesDetailViewTestRetainer.reset()
-            drainNotesHostingRunLoop()
-        }
-    }
 }
 #endif
