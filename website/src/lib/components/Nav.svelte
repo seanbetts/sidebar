@@ -88,14 +88,14 @@
     gap: 1.5rem;
   }
 
-  .links a {
+  .links a:not(.cta) {
     font-size: 0.9rem;
     color: var(--color-muted-foreground);
     text-decoration: none;
     transition: color 0.15s;
   }
 
-  .links a:hover {
+  .links a:not(.cta):hover {
     color: var(--color-foreground);
   }
 
@@ -104,9 +104,10 @@
     border-radius: 999px;
     border: 1px solid var(--color-border);
     background: var(--color-primary);
-    color: var(--color-primary-foreground) !important;
-    font-size: 0.875rem !important;
+    color: var(--color-primary-foreground);
+    font-size: 0.875rem;
     font-weight: 500;
+    text-decoration: none;
   }
 
   .cta:hover {
