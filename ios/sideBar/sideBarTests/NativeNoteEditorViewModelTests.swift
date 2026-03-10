@@ -364,8 +364,6 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         )
         viewModel.handleContentChange(previous: initial)
 
-        try? await Task.sleep(nanoseconds: 10_000_000)
-
         let secondPrevious = viewModel.attributedContent
         viewModel.attributedContent = AttributedString("hello2")
         viewModel.selection = AttributedTextSelection(

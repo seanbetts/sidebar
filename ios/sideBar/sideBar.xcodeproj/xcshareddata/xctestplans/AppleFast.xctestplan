@@ -15,10 +15,7 @@
   "testTargets" : [
     {
       "skippedTests" : [
-        "ExtensionUserMessageCatalogTests",
-        "NotesDetailViewMountedMacOSTests",
-        "SafariExtensionMessageHandlerTests",
-        "ShareExtensionQueueContractTests"
+        "NotesDetailViewMountedMacOSTests"
       ],
       "target" : {
         "containerPath" : "container:sideBar.xcodeproj",

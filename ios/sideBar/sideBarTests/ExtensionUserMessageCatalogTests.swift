@@ -2,12 +2,19 @@ import XCTest
 import sideBarShared
 
 final class ExtensionUserMessageCatalogTests: XCTestCase {
-    private let suiteName = "ExtensionUserMessageCatalogTests"
+    private var suiteName: String!
+
+    override func setUp() {
+        super.setUp()
+        suiteName = "ExtensionUserMessageCatalogTests.\(UUID().uuidString)"
+    }
 
     override func tearDown() {
-        if let defaults = UserDefaults(suiteName: suiteName) {
+        if let suiteName,
+           let defaults = UserDefaults(suiteName: suiteName) {
             defaults.removePersistentDomain(forName: suiteName)
         }
+        suiteName = nil
         super.tearDown()
     }
 

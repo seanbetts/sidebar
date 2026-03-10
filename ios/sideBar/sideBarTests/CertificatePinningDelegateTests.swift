@@ -125,10 +125,19 @@ final class CertificatePinningDelegateTests: XCTestCase {
         XCTAssertFalse(registry.wasCancelled(host: "other.trysidebar.ai"))
     }
 
-    func testRegistryReturnsFalseAfterTTLExpires() {
-        let registry = CertPinCancellationRegistry(ttl: 0.05)  // 50ms TTL
+    func testRegistryReturnsFalseAfterInjectedTTLExpires() {
+        let clock = TestRegistryClock()
+        let registry = CertPinCancellationRegistry(ttl: 0.05, now: { clock.now })
         registry.record(host: "api.trysidebar.ai")
-        Thread.sleep(forTimeInterval: 0.1)
+        clock.advance(by: 0.1)
         XCTAssertFalse(registry.wasCancelled(host: "api.trysidebar.ai"))
+    }
+}
+
+private final class TestRegistryClock {
+    private(set) var now = Date()
+
+    func advance(by interval: TimeInterval) {
+        now.addTimeInterval(interval)
     }
 }

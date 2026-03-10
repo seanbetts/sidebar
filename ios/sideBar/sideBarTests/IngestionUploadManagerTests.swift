@@ -112,6 +112,8 @@ final class IngestionUploadManagerTests: XCTestCase {
         let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("stress-upload-\(UUID().uuidString)")
         try? Data("data".utf8).write(to: fileURL)
         defer { try? FileManager.default.removeItem(at: fileURL) }
+        let startQueue = DispatchQueue(label: "IngestionUploadManagerTests.start", qos: .userInitiated, attributes: .concurrent)
+        let cancelQueue = DispatchQueue(label: "IngestionUploadManagerTests.cancel", qos: .userInitiated, attributes: .concurrent)
 
         let runs = 4
         let uploadPairsPerRun = 60
@@ -125,8 +127,7 @@ final class IngestionUploadManagerTests: XCTestCase {
                 let uploadId = "stress-\(run)-\(uploadIndex)"
 
                 group.enter()
-                DispatchQueue.global().async {
-                    usleep(UInt32.random(in: 500...3_000))
+                let startBlock = {
                     manager.startUpload(
                         request: UploadRequest(
                             uploadId: uploadId,
@@ -142,10 +143,17 @@ final class IngestionUploadManagerTests: XCTestCase {
                 }
 
                 group.enter()
-                DispatchQueue.global().async {
-                    usleep(UInt32.random(in: 500...3_000))
+                let cancelBlock = {
                     manager.cancelUpload(uploadId: uploadId)
                     group.leave()
+                }
+
+                if (run + uploadIndex).isMultiple(of: 2) {
+                    startQueue.async(execute: startBlock)
+                    cancelQueue.async(execute: cancelBlock)
+                } else {
+                    cancelQueue.async(execute: cancelBlock)
+                    startQueue.async(execute: startBlock)
                 }
             }
 

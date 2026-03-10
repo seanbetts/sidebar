@@ -142,14 +142,16 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting())
         let executionOrder = SynchronizedIntArray()
         let operationCount = 8
+        let gate = RealtimeTransitionGate()
 
         for index in 0..<operationCount {
             _ = adapter.enqueueTransition {
-                usleep(UInt32.random(in: 1_000...5_000))
+                await gate.waitUntilOpen()
                 executionOrder.append(index)
             }
         }
 
+        await gate.open()
         await adapter.transitionTask?.value
         XCTAssertEqual(executionOrder.values(), Array(0..<operationCount))
     }
@@ -279,6 +281,31 @@ private struct MockAction: RealtimeActionDecoding {
             throw RealtimeActionDecodingError.missingOldRecord
         }
         return oldRecord
+    }
+}
+
+private actor RealtimeTransitionGate {
+    private var isOpen = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func waitUntilOpen() async {
+        if isOpen {
+            return
+        }
+
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    func open() {
+        guard !isOpen else { return }
+        isOpen = true
+        let continuations = waiters
+        waiters.removeAll()
+        for continuation in continuations {
+            continuation.resume()
+        }
     }
 }
 

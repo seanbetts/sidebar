@@ -273,15 +273,30 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     }
 
     func testHandleSignedInActivationConsumesWidgetQuickSave() async {
+        let url = URL(string: "https://example.com/articles/\(UUID().uuidString)")!
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveResponse(
+                    success: true,
+                    data: WebsiteSaveData(
+                        id: "website-1",
+                        title: "Saved",
+                        url: url.absoluteString,
+                        domain: "example.com"
+                    )
+                )
+            )
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
         let environment = requireEnvironment()
         environment.authState = .active
-        let url = URL(string: "https://example.com/articles/\(UUID().uuidString)")!
 
         storage.widgetDataManager.recordPendingQuickSave(url: url)
 
         await environment.handleSignedInActivation()
 
         XCTAssertEqual(environment.commandSelection, .websites)
+        XCTAssertEqual(websitesAPI.lastSavedURL, url.absoluteString)
         XCTAssertTrue(
             websiteEventIsSurfaced(url.absoluteString, in: environment),
             "Expected widget quick save to surface the queued website URL."
@@ -451,12 +466,16 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         return environment.websitesViewModel.items.contains(where: { $0.url == url })
     }
 
-    private func makeEnvironment(storage: AppEnvironmentStorage) -> AppEnvironment {
+    private func makeEnvironment(
+        storage: AppEnvironmentStorage,
+        websitesAPI: (any WebsitesProviding)? = nil
+    ) -> AppEnvironment {
         let authSession = MutableAuthSession(authState: .signedOut)
         let container = ServiceContainer(
             config: .fallbackForTesting(),
             authSession: authSession,
-            cacheClient: InMemoryCacheClient()
+            cacheClient: InMemoryCacheClient(),
+            websitesAPI: websitesAPI
         )
         let environment = AppEnvironment(container: container, storage: storage)
         retainedEnvironments.append(environment)

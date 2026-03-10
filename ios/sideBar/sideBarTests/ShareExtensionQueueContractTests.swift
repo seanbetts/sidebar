@@ -3,12 +3,25 @@ import XCTest
 @testable import sideBarShared
 
 final class ShareExtensionQueueContractTests: XCTestCase {
-    private let suiteName = "ShareExtensionQueueContractTests"
+    private var suiteName: String!
+    private var directoriesToRemove: [URL] = []
+
+    override func setUp() {
+        super.setUp()
+        suiteName = "ShareExtensionQueueContractTests.\(UUID().uuidString)"
+        directoriesToRemove = []
+    }
 
     override func tearDown() {
-        if let defaults = UserDefaults(suiteName: suiteName) {
+        if let suiteName,
+           let defaults = UserDefaults(suiteName: suiteName) {
             defaults.removePersistentDomain(forName: suiteName)
         }
+        for directory in directoriesToRemove {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        directoriesToRemove.removeAll()
+        suiteName = nil
         super.tearDown()
     }
 
@@ -52,6 +65,7 @@ final class ShareExtensionQueueContractTests: XCTestCase {
     private func makeStore() -> PendingShareStore {
         let defaults = UserDefaults(suiteName: suiteName)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        directoriesToRemove.append(directory)
         return PendingShareStore(baseDirectory: directory, userDefaults: defaults)
     }
 }

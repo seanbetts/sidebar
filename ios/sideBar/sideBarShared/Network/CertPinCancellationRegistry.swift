@@ -14,23 +14,25 @@ public final class CertPinCancellationRegistry {
     private let lock = NSLock()
     private var records: [String: Date] = [:]
     let ttl: TimeInterval  // internal for testing
+    private let now: () -> Date
 
-    init(ttl: TimeInterval = 5) {
+    init(ttl: TimeInterval = 5, now: @escaping () -> Date = Date.init) {
         self.ttl = ttl
+        self.now = now
     }
 
     /// Records that certificate pinning rejected the given host.
     public func record(host: String) {
         let normalizedHost = normalize(host)
         lock.lock()
-        records[normalizedHost] = Date()
+        records[normalizedHost] = now()
         lock.unlock()
     }
 
     /// Returns true if a pinning cancellation was recorded for `host` within the TTL window.
     public func wasCancelled(host: String) -> Bool {
         let normalizedHost = normalize(host)
-        let now = Date()
+        let now = now()
 
         lock.lock()
         defer { lock.unlock() }

@@ -23,7 +23,7 @@ public final class ServiceContainer {
     /// Ingestion API wrapper for upload and ingestion metadata operations.
     public let ingestionAPI: IngestionAPI
     /// Websites API wrapper for website list and sync operations.
-    public let websitesAPI: WebsitesAPI
+    public let websitesAPI: any WebsitesProviding
     /// Memories API wrapper for memory retrieval operations.
     public let memoriesAPI: MemoriesAPI
     /// Settings API wrapper for user settings operations.
@@ -42,7 +42,12 @@ public final class ServiceContainer {
     public let deviceTokensAPI: DeviceTokensAPI
 
     /// Builds a service container and initializes feature API wrappers from shared dependencies.
-    public init(config: EnvironmentConfig, authSession: AuthSession, cacheClient: CacheClient) {
+    public init(
+        config: EnvironmentConfig,
+        authSession: AuthSession,
+        cacheClient: CacheClient,
+        websitesAPI: (any WebsitesProviding)? = nil
+    ) {
         self.config = config
         self.authSession = authSession
         self.cacheClient = cacheClient
@@ -60,7 +65,7 @@ public final class ServiceContainer {
         self.notesAPI = NotesAPI(client: apiClient)
         self.filesAPI = FilesAPI(client: apiClient)
         self.ingestionAPI = IngestionAPI(client: apiClient)
-        self.websitesAPI = WebsitesAPI(client: apiClient)
+        self.websitesAPI = websitesAPI ?? WebsitesAPI(client: apiClient)
         self.memoriesAPI = MemoriesAPI(client: apiClient)
         self.settingsAPI = SettingsAPI(client: apiClient)
         self.skillsAPI = SkillsAPI(client: apiClient)
