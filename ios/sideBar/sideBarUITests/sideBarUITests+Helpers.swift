@@ -51,12 +51,7 @@ extension SideBarUITests {
     @MainActor
     func testStreamingReplyKeepsBottomAnchorVisible() throws {
         let config = try loadLaunchConfig()
-        let app = launchApp(with: config)
-        attemptLogin(
-            in: app,
-            email: config.credentials.email,
-            password: config.credentials.password
-        )
+        let app = try launchAuthenticatedApp(with: config)
 
         XCTAssertTrue(
             waitForSignedInHome(in: app, timeout: 45),
@@ -91,12 +86,7 @@ extension SideBarUITests {
     @MainActor
     func testIPadTasksWorkspaceDoesNotShowFloatingDock() throws {
         let config = try loadLaunchConfig()
-        let app = launchApp(with: config)
-        attemptLogin(
-            in: app,
-            email: config.credentials.email,
-            password: config.credentials.password
-        )
+        let app = try launchAuthenticatedApp(with: config)
 
         XCTAssertTrue(
             waitForSignedInHome(in: app, timeout: 45),

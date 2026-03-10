@@ -157,6 +157,9 @@ npm run coverage                          # With coverage
 # iOS
 ./scripts/test-ios.sh                     # default fast macOS AppleFast lane
 IOS_DESTINATION='platform=iOS Simulator,name=iPhone 15 Pro' ./scripts/test-ios.sh
+IOS_SCHEME=sideBarUI ./scripts/test-ios.sh                         # default curated UI smoke lane
+IOS_SCHEME=sideBarUI IOS_UI_SMOKE_ONLY=NO ./scripts/test-ios.sh    # broader UI regression lane
+IOS_SCHEME=sideBarExtensions ./scripts/test-ios.sh                 # extension lane
 
 # Deterministic CLI verification for the fast/default iOS lane
 xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar \
@@ -188,6 +191,29 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 - For release verification and CI-like confidence, prefer serial execution:
   - `-parallel-testing-enabled NO`
 - Use retry mode for local triage only; do not treat it as equivalent to a stable serial pass.
+
+### Apple Lane Routing
+
+| Lane | Scheme / Plan | Default scope | Blocking status | When to run |
+| --- | --- | --- | --- | --- |
+| Fast | `sideBarMacTests` / `AppleFast` | Deterministic unit and component coverage | Required | Pre-push, PR, local default |
+| Stateful | `sideBar` / `AppleStateful` | Persistence, globals, cross-store integration | Informational | When touching stateful app flows, scheduled regression |
+| UI smoke | `sideBarUI` / `AppleUI` | Curated smoke coverage with one real login and seeded auth for the rest | Informational | Release verification, scheduled smoke, local UI checks |
+| Extensions | `sideBarExtensions` / `AppleExtensions` | Share sheet, widgets, Safari extension surfaces | Informational | When touching extension code, scheduled regression |
+
+### Apple UI Smoke Policy
+
+- `IOS_SCHEME=sideBarUI ./scripts/test-ios.sh` now defaults to the curated smoke set.
+- The default smoke set keeps one interactive login proof, then boots the rest of the UI checks from seeded authenticated state.
+- To run broader UI coverage, use `IOS_UI_SMOKE_ONLY=NO` or pass explicit `IOS_ONLY_TESTING=...`.
+- Launch screenshot coverage is no longer part of the default UI smoke path.
+
+### Quarantine Ownership
+
+- A test may stay in a non-required lane, but it must not return to `AppleFast` until it is deterministic under serial local reruns.
+- Any quarantined Apple test needs three things documented in the owning change: failure mode, owning surface, and the lane where it still runs.
+- If a flaky test blocks `AppleFast`, move it out of the required lane first, then fix the harness; do not leave intermittent failures in pre-push.
+- The engineer touching the affected Apple surface owns the quarantine entry until the test is restored or deleted.
 
 ## CI/CD
 

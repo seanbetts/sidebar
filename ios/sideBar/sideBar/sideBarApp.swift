@@ -27,7 +27,8 @@ struct SideBarApp: App {
 
     init() {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
-        let forceInMemoryAuthStore = ProcessInfo.processInfo.environment[
+        let processEnvironment = ProcessInfo.processInfo.environment
+        let forceInMemoryAuthStore = processEnvironment[
             "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
         ] == "1"
         let useInMemoryAuthStore = isTestMode || forceInMemoryAuthStore
@@ -57,17 +58,22 @@ struct SideBarApp: App {
         logStep("Config load", configStart, configEnd)
 
         let authStart = CFAbsoluteTimeGetCurrent()
-        let stateStore: AuthStateStore = useInMemoryAuthStore
-            ? InMemoryAuthStateStore()
-            : KeychainAuthStateStore(
-                service: AppGroupConfiguration.keychainService,
-                accessGroup: AppGroupConfiguration.keychainAccessGroup
+        let authSession: AuthSession
+        if let seededSession = UITestAuthBootstrap.makeSeededSession(from: processEnvironment) {
+            authSession = seededSession
+        } else {
+            let stateStore: AuthStateStore = useInMemoryAuthStore
+                ? InMemoryAuthStateStore()
+                : KeychainAuthStateStore(
+                    service: AppGroupConfiguration.keychainService,
+                    accessGroup: AppGroupConfiguration.keychainAccessGroup
+                )
+            authSession = SupabaseAuthAdapter(
+                config: config,
+                stateStore: stateStore,
+                startAuthStateTask: !isTestMode
             )
-        let authSession = SupabaseAuthAdapter(
-            config: config,
-            stateStore: stateStore,
-            startAuthStateTask: !isTestMode
-        )
+        }
         let authEnd = CFAbsoluteTimeGetCurrent()
         logStep("Auth session", authStart, authEnd)
 

@@ -30,6 +30,12 @@ default_test_plan_for_scheme() {
   esac
 }
 
+default_ui_smoke_only_testing() {
+  cat <<'EOF'
+sideBarUITests/SideBarUITests/testLoginSuccessNavigatesToSignedInHome,sideBarUITests/SideBarUITests/testSendMessageInSeededConversationShowsStreamingReply,sideBarUITests/SideBarUITests/testCreateEditDeleteNoteInSeededAccount,sideBarUITests/SideBarUITests/testStreamingReplyKeepsBottomAnchorVisible,sideBarUITests/SideBarUITests/testIPadTasksWorkspaceDoesNotShowFloatingDock
+EOF
+}
+
 scheme_includes_ui_tests() {
   [[ "${1}" == "sideBarUI" ]]
 }
@@ -63,6 +69,7 @@ IOS_DERIVED_DATA_PATH="${IOS_DERIVED_DATA_PATH:-}"
 IOS_CLEAN_DERIVED_DATA="${IOS_CLEAN_DERIVED_DATA:-NO}"
 IOS_ONLY_TESTING="${IOS_ONLY_TESTING:-}"
 IOS_SKIP_TESTING="${IOS_SKIP_TESTING:-}"
+IOS_UI_SMOKE_ONLY="${IOS_UI_SMOKE_ONLY:-YES}"
 IOS_RETRY_TESTS_ON_FAILURE="${IOS_RETRY_TESTS_ON_FAILURE:-NO}"
 IOS_TEST_ITERATIONS="${IOS_TEST_ITERATIONS:-2}"
 IOS_SKIP_LAUNCH_UI_TESTS="${IOS_SKIP_LAUNCH_UI_TESTS:-YES}"
@@ -129,6 +136,11 @@ if [[ -n "${IOS_DERIVED_DATA_PATH}" ]]; then
   fi
   mkdir -p "${IOS_DERIVED_DATA_PATH}"
   XCODEBUILD_ARGS+=(-derivedDataPath "${IOS_DERIVED_DATA_PATH}")
+fi
+
+if [[ "${IOS_SCHEME}" == "sideBarUI" && -z "${IOS_ONLY_TESTING}" && "${IOS_UI_SMOKE_ONLY}" == "YES" ]]; then
+  IOS_ONLY_TESTING="$(default_ui_smoke_only_testing)"
+  echo "Defaulting sideBarUI to curated smoke coverage. Set IOS_UI_SMOKE_ONLY=NO or IOS_ONLY_TESTING to run a broader UI selection."
 fi
 
 if [[ -n "${IOS_ONLY_TESTING}" ]]; then

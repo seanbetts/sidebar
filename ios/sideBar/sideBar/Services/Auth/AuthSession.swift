@@ -28,13 +28,20 @@ public protocol AuthSession {
 public final class PlaceholderAuthSession: AuthSession {
     public private(set) var accessToken: String?
     public private(set) var userId: String?
-    public private(set) var authState: AuthState = .signedOut
+    public private(set) var authState: AuthState
 
     public var authorizationToken: String? {
         authState == .active ? accessToken : nil
     }
 
-    public init() {
+    public init(
+        accessToken: String? = nil,
+        userId: String? = nil,
+        authState: AuthState = .signedOut
+    ) {
+        self.accessToken = accessToken
+        self.userId = userId
+        self.authState = authState
     }
 
     public func signIn(email: String, password: String) async throws {

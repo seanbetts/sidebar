@@ -85,12 +85,7 @@ final class SideBarUITests: XCTestCase {
     @MainActor
     func testSendMessageInSeededConversationShowsStreamingReply() throws {
         let config = try loadLaunchConfig()
-        let app = launchApp(with: config)
-        attemptLogin(
-            in: app,
-            email: config.credentials.email,
-            password: config.credentials.password
-        )
+        let app = try launchAuthenticatedApp(with: config)
 
         XCTAssertTrue(
             waitForSignedInHome(in: app, timeout: 45),
@@ -120,12 +115,7 @@ final class SideBarUITests: XCTestCase {
     @MainActor
     func testCreateEditDeleteNoteInSeededAccount() throws {
         let config = try loadLaunchConfig()
-        let app = launchApp(with: config)
-        attemptLogin(
-            in: app,
-            email: config.credentials.email,
-            password: config.credentials.password
-        )
+        let app = try launchAuthenticatedApp(with: config)
 
         XCTAssertTrue(
             waitForSignedInHome(in: app, timeout: 45),
@@ -461,6 +451,8 @@ enum SideBarUITestConstants {
     static let uiTestApiBaseUrlKey = "SIDEBAR_UI_TEST_API_BASE_URL"
     static let uiTestSupabaseUrlKey = "SIDEBAR_UI_TEST_SUPABASE_URL"
     static let uiTestSupabaseAnonKey = "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY"
+    static let uiTestAccessTokenKey = "SIDEBAR_UI_TEST_ACCESS_TOKEN"
+    static let uiTestUserIdKey = "SIDEBAR_UI_TEST_USER_ID"
 }
 
 struct UITestCredentials {

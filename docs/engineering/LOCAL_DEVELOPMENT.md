@@ -92,7 +92,9 @@ Run iOS unit tests from the CLI:
 ```bash
 ./scripts/test-ios.sh
 xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' test            # fast/default unit lane
-xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarUI -destination 'platform=iOS Simulator,name=iPhone 15' test          # UI lane
+IOS_SCHEME=sideBarUI ./scripts/test-ios.sh                                                                                              # curated UI smoke lane
+IOS_SCHEME=sideBarUI IOS_UI_SMOKE_ONLY=NO ./scripts/test-ios.sh                                                                         # broader UI regression lane
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarUI -destination 'platform=iOS Simulator,name=iPhone 15' test          # direct full UI lane
 xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarExtensions -destination 'platform=iOS Simulator,name=iPhone 15' test  # extension lane
 ```
 
