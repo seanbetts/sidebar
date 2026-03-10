@@ -122,14 +122,18 @@ func makeNotesDetailViewTestContext(
 }
 
 @MainActor
-func makeNotesDetailTestEnvironment() -> AppEnvironment {
+func makeNotesDetailTestEnvironment(
+    retainInGlobalRetainer: Bool = true
+) -> AppEnvironment {
     let container = ServiceContainer(
         config: .fallbackForTesting(),
         authSession: NotesDetailViewTestAuthSession(),
         cacheClient: InMemoryCacheClient()
     )
     let environment = AppEnvironment(container: container)
-    NotesDetailViewTestRetainer.environments.append(environment)
+    if retainInGlobalRetainer {
+        NotesDetailViewTestRetainer.environments.append(environment)
+    }
     return environment
 }
 

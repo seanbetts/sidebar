@@ -325,6 +325,14 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
             textView.textStorage?.setAttributedString(attributedContent)
         }
     }
+
+    static func dismantleNSView(_ scrollView: NSScrollView, coordinator: ()) {
+        guard let textView = scrollView.documentView as? SelectableNoteReadTextView else {
+            return
+        }
+        textView.onActivateEditing = nil
+        scrollView.documentView = nil
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)

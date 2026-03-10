@@ -14,9 +14,6 @@
   },
   "testTargets" : [
     {
-      "skippedTests" : [
-        "NotesDetailViewMountedMacOSTests"
-      ],
       "target" : {
         "containerPath" : "container:sideBar.xcodeproj",
         "identifier" : "14C84A542F10562500FE0C16",
