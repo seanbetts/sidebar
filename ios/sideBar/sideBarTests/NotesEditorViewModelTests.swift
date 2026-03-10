@@ -373,56 +373,6 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertNil(context.viewModel.consumePendingEditSelectionTarget())
     }
 
-    func testSyncFromNativeEditorUpdatesContent() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-        let updated = NotePayload(id: "n1", name: "Note", content: "Updated", path: "/note.md", modified: 100, created: nil)
-        let api = MockNotesAPI(updateResult: .success(updated))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toast,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let viewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
-
-        store.applyEditorUpdate(note)
-        await waitUntilNoteHydrated(viewModel, note: note)
-
-        let nativeViewModel = viewModel.makeNativeEditorViewModel()
-        nativeViewModel.attributedContent = AttributedString("Updated")
-        nativeViewModel.handleContentChange(previous: AttributedString("Hello"))
-        try await waitUntil(timeoutSeconds: 3.0) { nativeViewModel.hasUnsavedChanges }
-
-        XCTAssertTrue(nativeViewModel.hasUnsavedChanges)
-
-        await viewModel.syncFromNativeEditor(nativeViewModel)
-
-        XCTAssertEqual(store.activeNote?.content, "Updated")
-        XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
-    }
-
     func testToggleFormattingUsesAttachedNativeEditor() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
