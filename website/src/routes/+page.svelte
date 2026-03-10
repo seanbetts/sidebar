@@ -65,10 +65,8 @@
 <section class="hero">
   <div class="hero-inner">
     <div class="hero-logo">
-      <picture>
-        <source srcset="/logo-animated-dark.gif" media="(prefers-color-scheme: dark)" />
-        <img src="/logo-animated-light.gif" alt="sideBar" width="96" height="96" />
-      </picture>
+      <img class="logo-light" src="/logo-animated-light.gif" alt="sideBar" width="96" height="96" />
+      <img class="logo-dark" src="/logo-animated-dark.gif" alt="" aria-hidden="true" width="96" height="96" />
     </div>
     <h1 class="hero-title">Your AI assistant,<br />built around how you work</h1>
     <p class="hero-subtitle">
@@ -89,7 +87,7 @@
       all of it and help you do more.
     </p>
     <div class="features-grid">
-      {#each features as feature}
+      {#each features as feature (feature.title)}
         <article class="feature-card">
           <h3 class="feature-title">{feature.title}</h3>
           <p class="feature-description">{feature.description}</p>
@@ -137,11 +135,11 @@
     gap: 1.25rem;
   }
 
-  .hero-logo img {
-    display: block;
-    width: 96px;
-    height: 96px;
-  }
+  .logo-light { display: block; }
+  .logo-dark { display: none; }
+
+  :global(.dark) .logo-light { display: none; }
+  :global(.dark) .logo-dark { display: block; }
 
   .hero-title {
     margin: 0;
@@ -237,7 +235,7 @@
 
   .feature-description {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     line-height: 1.6;
     color: var(--color-muted-foreground);
   }
@@ -272,5 +270,9 @@
     font-size: clamp(1.5rem, 3vw, 2rem);
     font-weight: 700;
     letter-spacing: -0.015em;
+  }
+
+  .bottom-cta .hero-cta {
+    border-color: var(--color-border);
   }
 </style>
