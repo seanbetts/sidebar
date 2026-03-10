@@ -18,7 +18,9 @@
   }: Props = $props();
 
   const fullTitle = title === 'sideBar' ? title : `${title} — sideBar`;
-  const jsonLdString = jsonLd ? JSON.stringify(Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : null;
+  const jsonLdString = jsonLd
+    ? JSON.stringify(Array.isArray(jsonLd) ? jsonLd : [jsonLd]).replace(/<\//g, '<\\/')
+    : null;
 </script>
 
 <svelte:head>
@@ -29,6 +31,8 @@
   <meta property="og:title" content={fullTitle} />
   <meta property="og:description" content={description} />
   <meta property="og:image" content={image} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta property="og:url" content={url} />
   <meta property="og:type" content={type} />
   <meta property="og:site_name" content="sideBar" />
