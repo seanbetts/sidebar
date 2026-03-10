@@ -83,6 +83,9 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var isServerReachable: Bool = true
     /// Sign-out event token used to trigger downstream reset observers.
     @Published public internal(set) var signOutEvent: UUID?
+    /// Tracks whether macOS settings should be presented as an in-window modal.
+    @Published public internal(set) var isMacSettingsPresented: Bool = false
+    var previousFocusedSectionBeforeMacSettings: AppSection?
     var isConsumingPendingShares: Bool = false
     var cancellables = Set<AnyCancellable>()
     var hasPendingForwardedObjectWillChange = false
@@ -250,6 +253,25 @@ public final class AppEnvironment: ObservableObject {
     public var focusedWorkspacePane: WorkspacePane? {
         get { navigation.focusedWorkspacePane }
         set { navigation.focusedWorkspacePane = newValue }
+    }
+
+    /// Presents the dedicated macOS settings modal without changing workspace selection.
+    public func presentMacSettings() {
+        guard authState != .signedOut else { return }
+        if !isMacSettingsPresented {
+            previousFocusedSectionBeforeMacSettings = focusedSection ?? activeSection
+        }
+        isMacSettingsPresented = true
+        focusedSection = .settings
+    }
+
+    /// Dismisses the dedicated macOS settings modal.
+    public func dismissMacSettings() {
+        isMacSettingsPresented = false
+        if focusedSection == .settings {
+            focusedSection = previousFocusedSectionBeforeMacSettings ?? activeSection
+        }
+        previousFocusedSectionBeforeMacSettings = nil
     }
 
     /// Indicates whether task-specific keyboard shortcuts should be active.

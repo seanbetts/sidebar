@@ -11,6 +11,11 @@ import Foundation
 import SwiftUI
 import os
 
+enum MacWindowConfiguration {
+    static let mainWindowID = "main"
+    static let mainWindowTitle = "sideBar"
+}
+
 @main
 struct SideBarApp: App {
     #if os(iOS)
@@ -83,26 +88,28 @@ struct SideBarApp: App {
         logStep("Startup total", launchStart, launchEnd)
     }
 
+    @ViewBuilder
+    private var rootContentView: some View {
+        ContentView()
+            .environmentObject(environment)
+            .onOpenURL { url in
+                environment.handleDeepLink(url)
+            }
+    }
+
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environmentObject(environment)
-                .onOpenURL { url in
-                    environment.handleDeepLink(url)
-                }
+        #if os(macOS)
+        Window(MacWindowConfiguration.mainWindowTitle, id: MacWindowConfiguration.mainWindowID) {
+            rootContentView
         }
-        #if os(macOS)
         .defaultSize(width: 1200, height: 820)
-        #endif
-        #if os(macOS)
         .commands {
             SidebarCommands(environment: environment)
+            CommandGroup(replacing: .newItem) {}
         }
-        #endif
-        #if os(macOS)
-        Settings {
-            SettingsView()
-                .environmentObject(environment)
+        #else
+        WindowGroup {
+            rootContentView
         }
         #endif
     }

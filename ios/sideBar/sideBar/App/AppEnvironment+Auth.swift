@@ -83,6 +83,7 @@ extension AppEnvironment {
     }
 
     private func resetSignedInData(clearNavigationState: Bool) {
+        dismissMacSettings()
         flushSignedInPersistence()
         chatStore.reset()
         notesStore.reset()

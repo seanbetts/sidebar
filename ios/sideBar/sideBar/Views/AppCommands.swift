@@ -9,72 +9,89 @@ struct SidebarCommands: Commands {
     }
 
     var body: some Commands {
-        CommandMenu("Navigate") {
-            ForEach(Array(AppSection.primaryNavigationSections.enumerated()), id: \.element) { index, section in
-                Button(section.title) {
-                    environment.commandSelection = section
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") {
+                environment.presentMacSettings()
+            }
+            .keyboardShortcut(",", modifiers: [.command])
+        }
+
+        if environment.isMacSettingsPresented {
+            CommandGroup(after: .appSettings) {
+                Button("Close Settings") {
+                    environment.dismissMacSettings()
                 }
-                .keyboardShortcut(
-                    KeyEquivalent(Character(String(index + 1))),
-                    modifiers: [.command]
-                )
+                .keyboardShortcut(.escape, modifiers: [])
             }
-        }
-
-        CommandGroup(after: .newItem) {
-            Button("Close Item") {
-                guard shouldHandleCloseItem else { return }
-                environment.emitShortcutAction(.closeItem)
+        } else {
+            CommandMenu("Navigate") {
+                ForEach(Array(AppSection.primaryNavigationSections.enumerated()), id: \.element) { index, section in
+                    Button(section.title) {
+                        environment.commandSelection = section
+                    }
+                    .keyboardShortcut(
+                        KeyEquivalent(Character(String(index + 1))),
+                        modifiers: [.command]
+                    )
+                }
             }
-            .keyboardShortcut(.escape, modifiers: [])
-        }
 
-        CommandMenu("Tasks") {
-            Button("Complete Task") {
-                environment.emitShortcutAction(.completeTask)
+            CommandGroup(after: .newItem) {
+                Button("Close Item") {
+                    guard shouldHandleCloseItem else { return }
+                    environment.emitShortcutAction(.closeItem)
+                }
+                .keyboardShortcut(.escape, modifiers: [])
             }
-            .keyboardShortcut(.return, modifiers: [.command])
 
-            Button("Edit Notes") {
-                environment.emitShortcutAction(.editTaskNotes)
+            CommandMenu("Tasks") {
+                Button("Complete Task") {
+                    environment.emitShortcutAction(.completeTask)
+                }
+                .keyboardShortcut(.return, modifiers: [.command])
+
+                Button("Edit Notes") {
+                    environment.emitShortcutAction(.editTaskNotes)
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+
+                Button("Move Task") {
+                    environment.emitShortcutAction(.moveTask)
+                }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+
+                Button("Set Due Date") {
+                    environment.emitShortcutAction(.setTaskDueDate)
+                }
+                .keyboardShortcut("d", modifiers: [.command])
+
+                Button("Edit Repeat") {
+                    environment.emitShortcutAction(.setTaskRepeat)
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+
+                Divider()
+
+                Button("Delete Task") {
+                    environment.emitShortcutAction(.deleteItem)
+                }
+                .keyboardShortcut(.delete, modifiers: [.command, .shift])
             }
-            .keyboardShortcut("n", modifiers: [.command, .shift])
 
-            Button("Move Task") {
-                environment.emitShortcutAction(.moveTask)
-            }
-            .keyboardShortcut("m", modifiers: [.command, .shift])
+            if #available(macOS 26.0, *) {
+                CommandMenu("Format") {
+                    Toggle("Bold", isOn: formattingBinding(.bold))
+                        .keyboardShortcut("b", modifiers: [.command])
+                        .disabled(!canFormatNotes)
 
-            Button("Set Due Date") {
-                environment.emitShortcutAction(.setTaskDueDate)
-            }
-            .keyboardShortcut("d", modifiers: [.command])
+                    Toggle("Italic", isOn: formattingBinding(.italic))
+                        .keyboardShortcut("i", modifiers: [.command])
+                        .disabled(!canFormatNotes)
 
-            Button("Edit Repeat") {
-                environment.emitShortcutAction(.setTaskRepeat)
-            }
-            .keyboardShortcut("r", modifiers: [.command, .shift])
-
-            Divider()
-
-            Button("Delete Task") {
-                environment.emitShortcutAction(.deleteItem)
-            }
-            .keyboardShortcut(.delete, modifiers: [.command, .shift])
-        }
-        if #available(macOS 26.0, *) {
-            CommandMenu("Format") {
-                Toggle("Bold", isOn: formattingBinding(.bold))
-                    .keyboardShortcut("b", modifiers: [.command])
-                    .disabled(!canFormatNotes)
-
-                Toggle("Italic", isOn: formattingBinding(.italic))
-                    .keyboardShortcut("i", modifiers: [.command])
-                    .disabled(!canFormatNotes)
-
-                Toggle("Underline", isOn: formattingBinding(.underline))
-                    .keyboardShortcut("u", modifiers: [.command])
-                    .disabled(!canFormatNotes)
+                    Toggle("Underline", isOn: formattingBinding(.underline))
+                        .keyboardShortcut("u", modifiers: [.command])
+                        .disabled(!canFormatNotes)
+                }
             }
         }
     }

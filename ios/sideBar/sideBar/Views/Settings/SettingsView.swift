@@ -9,18 +9,30 @@ import AppKit
 
 // MARK: - SettingsView
 
+public enum SettingsPresentationStyle: Equatable {
+    case standalone
+    case macModal
+}
+
 public struct SettingsView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @State private var savePillState: SettingsSavePillState?
     @State private var wasSaving = false
     @State private var savingDelayTask: Task<Void, Never>?
     @State private var hideSavedTask: Task<Void, Never>?
+    private let presentationStyle: SettingsPresentationStyle
+    private let onClose: (() -> Void)?
 
-    public init() {
+    public init(
+        presentationStyle: SettingsPresentationStyle = .standalone,
+        onClose: (() -> Void)? = nil
+    ) {
+        self.presentationStyle = presentationStyle
+        self.onClose = onClose
     }
 
     public var body: some View {
-        ZStack {
+        let content = ZStack {
             DesignTokens.Colors.settingsBackground
                 .ignoresSafeArea()
             #if os(macOS)
@@ -49,16 +61,64 @@ public struct SettingsView: View {
         }
         #endif
         .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: savePillState)
-        .onAppear {
-            updateSavePillState()
+            .onAppear {
+                updateSavePillState()
+            }
+            .onChange(of: saveStatusSignature) { _, _ in
+                updateSavePillState()
+            }
+            .onDisappear {
+                savingDelayTask?.cancel()
+                hideSavedTask?.cancel()
+            }
+
+        #if os(macOS)
+        switch presentationStyle {
+        case .standalone:
+            content
+        case .macModal:
+            VStack(spacing: 0) {
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    Button("Done") {
+                        onClose?()
+                    }
+
+                    Spacer()
+
+                    Button {
+                        onClose?()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Close settings")
+                }
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.vertical, DesignTokens.Spacing.md)
+
+                Divider()
+
+                content
+            }
+            .frame(maxWidth: 960, maxHeight: 760)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(.regularMaterial)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.18), radius: 32, y: 18)
+            .onExitCommand {
+                onClose?()
+            }
         }
-        .onChange(of: saveStatusSignature) { _, _ in
-            updateSavePillState()
-        }
-        .onDisappear {
-            savingDelayTask?.cancel()
-            hideSavedTask?.cancel()
-        }
+        #else
+        content
+        #endif
     }
 
     private var isSavingAnySettings: Bool {

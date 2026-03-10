@@ -361,6 +361,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     private func assertAuthAndNavigationStateCleared(_ environment: AppEnvironment) {
         XCTAssertEqual(environment.authState, .signedOut)
         XCTAssertFalse(environment.isAuthenticated)
+        XCTAssertFalse(environment.isMacSettingsPresented)
         XCTAssertNil(environment.commandSelection)
         XCTAssertNil(environment.activeSection)
         XCTAssertNil(environment.focusedSection)
@@ -441,6 +442,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     private func resetDeepLinkState(_ environment: AppEnvironment) {
         environment.authState = .signedOut
+        environment.isMacSettingsPresented = false
         environment.commandSelection = nil
         environment.focusedSection = nil
         environment.isTasksFocused = false
@@ -454,30 +456,6 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.websitesViewModel.pendingWebsite = nil
     }
 
-    func waitForShortcutActionEventToClear(
-        _ environment: AppEnvironment,
-        timeoutNanoseconds: UInt64 = 500_000_000,
-        pollNanoseconds: UInt64 = 10_000_000,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) async {
-        let deadline = DispatchTime.now().uptimeNanoseconds + timeoutNanoseconds
-
-        while DispatchTime.now().uptimeNanoseconds < deadline {
-            if environment.shortcutActionEvent == nil {
-                return
-            }
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: pollNanoseconds)
-        }
-
-        XCTAssertNil(
-            environment.shortcutActionEvent,
-            "Expected shortcut action event to clear after broadcast.",
-            file: file,
-            line: line
-        )
-    }
 }
 
 private struct SignOutPayload: Codable, Equatable {

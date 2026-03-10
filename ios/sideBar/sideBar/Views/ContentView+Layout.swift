@@ -47,12 +47,12 @@ extension ContentView {
             isLeftPanelExpanded: $isLeftPanelExpanded,
             isRightSidebarCollapsed: $isWorkspaceExpanded,
             shouldAnimateSidebar: hasCompletedInitialSetup,
-            onShowSettings: { isSettingsPresented = true },
+            onShowSettings: presentSettingsSurface,
             leftPanelContent: workspacePanelView(for:),
             header: {
                 SiteHeaderBar(
                     onSwapContent: swapPrimaryAndSecondary,
-                    onShowSettings: { isSettingsPresented = true },
+                    onShowSettings: presentSettingsSurface,
                     isLeftPanelExpanded: isLeftPanelExpanded,
                     shouldAnimateSidebar: hasCompletedInitialSetup
                 )
@@ -181,6 +181,14 @@ extension ContentView {
             )
             .phoneSheetGrabBarVisible()
         }
+    }
+
+    func presentSettingsSurface() {
+        #if os(macOS)
+        environment.presentMacSettings()
+        #else
+        isSettingsPresented = true
+        #endif
     }
 
     func dismissCompactPhoneSearchDock() {

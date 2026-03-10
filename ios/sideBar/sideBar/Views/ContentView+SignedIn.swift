@@ -41,9 +41,36 @@ extension ContentView {
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .onTapGesture {
                         environment.toastCenter.dismiss()
-                    }
+                }
             }
         })
+        #if os(macOS)
+        content = AnyView(content.overlay {
+            if environment.isMacSettingsPresented {
+                ZStack {
+                    Color.black.opacity(0.2)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            environment.dismissMacSettings()
+                        }
+
+                    SettingsView(
+                        presentationStyle: .macModal,
+                        onClose: { environment.dismissMacSettings() }
+                    )
+                        .environmentObject(environment)
+                        .padding(DesignTokens.Spacing.xl)
+                }
+                .transition(.opacity)
+            }
+        })
+        content = AnyView(content.onKeyPress(.escape) {
+            guard environment.isMacSettingsPresented else { return .ignored }
+            environment.dismissMacSettings()
+            return .handled
+        })
+        content = AnyView(content.animation(.easeInOut(duration: 0.2), value: environment.isMacSettingsPresented))
+        #endif
         content = AnyView(content.animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast))
         content = AnyView(content.onChange(of: scenePhase) { _, newValue in
             if newValue == .inactive || newValue == .background {
@@ -174,7 +201,6 @@ extension ContentView {
         })
         content = AnyView(content.onChange(of: environment.commandSelection) { _, newValue in
             guard let newValue else { return }
-            environment.focusedSection = newValue
             #if !os(macOS)
             if horizontalSizeClass == .compact {
                 environment.focusedWorkspacePane = .primary
@@ -182,12 +208,14 @@ extension ContentView {
             #endif
             if newValue == .settings {
                 #if os(macOS)
+                environment.presentMacSettings()
                 #else
                 isSettingsPresented = true
                 #endif
                 environment.commandSelection = nil
                 return
             }
+            environment.focusedSection = newValue
             if newValue != .chat {
                 handleNonChatSelection(newValue)
             } else {

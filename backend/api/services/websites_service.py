@@ -660,6 +660,7 @@ class WebsitesService:
                     Website.is_archived,
                     Website.updated_at,
                     Website.last_opened_at,
+                    Website.deleted_at,
                 )
             )
             .filter(Website.user_id == user_id)

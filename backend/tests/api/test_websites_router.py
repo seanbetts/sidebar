@@ -5,7 +5,9 @@ from datetime import UTC, datetime
 from api.config import settings
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from api.models.website import Website
+from api.schemas.filters import WebsiteFilters
 from api.routers.websites_helpers import website_summary
+from api.services.websites_service import WebsitesService
 from sqlalchemy import inspect
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm.attributes import NO_VALUE
@@ -353,3 +355,47 @@ def test_website_summary_does_not_lazy_load_deferred_content(test_db):
     assert summary["reading_time"] is None
     assert inspect(listed).attrs.content.loaded_value is NO_VALUE
     assert inspect(listed).attrs.reading_time.loaded_value is NO_VALUE
+
+
+def test_list_websites_preloads_deleted_at_for_summary(test_db):
+    active_website = Website(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        url="https://example.com/active",
+        url_full="https://example.com/active",
+        domain="example.com",
+        title="Active",
+        content="Active content",
+        metadata_={"pinned": False, "archived": False},
+        is_archived=False,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    archived_website = Website(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        url="https://example.com/archived",
+        url_full="https://example.com/archived",
+        domain="example.com",
+        title="Archived",
+        content="Archived content",
+        metadata_={"pinned": False, "archived": True},
+        is_archived=True,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add_all([active_website, archived_website])
+    test_db.commit()
+    test_db.expunge_all()
+
+    for filters in (WebsiteFilters(archived=False), WebsiteFilters(archived=True)):
+        listed = WebsitesService.list_websites(test_db, TEST_USER_ID, filters)
+        assert listed
+        site = listed[0]
+
+        assert inspect(site).attrs.deleted_at.loaded_value is not NO_VALUE
+
+        summary = website_summary(site)
+
+        assert summary["deleted_at"] is None
+        assert inspect(site).attrs.deleted_at.loaded_value is None

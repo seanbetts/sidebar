@@ -51,13 +51,6 @@ public struct SidebarRail: View {
 
             sectionButton(for: .skillsStore)
 
-            #if os(macOS)
-            SettingsLink {
-                ProfileAvatarView(size: 32)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Settings")
-            #else
             Button(
                 action: { onShowSettings?() },
                 label: {
@@ -66,7 +59,6 @@ public struct SidebarRail: View {
             )
             .buttonStyle(.plain)
             .accessibilityLabel("Settings")
-            #endif
         }
         .frame(width: 56)
         .frame(maxHeight: .infinity)
