@@ -39,6 +39,7 @@
 	.holding-page {
 		min-height: 100dvh;
 		display: flex;
+		flex-direction: column;
 		align-items: center;
 		justify-content: center;
 		padding: 1.5rem;
