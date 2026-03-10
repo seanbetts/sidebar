@@ -1,0 +1,26 @@
+# sideBar
+
+sideBar is an AI assistant for iPhone, iPad, Mac, and web browser. It gives
+users a single place to take notes, manage tasks, save websites, and work with
+files, with an AI that can read all of that content and help get things done.
+
+## Key capabilities
+
+- **Chat**: conversational AI that has access to all your content and context
+- **Notes**: full writing environment with folders, rich text, and Scratchpad
+- **Tasks**: to-do management with smart lists (Today, Upcoming, Completed)
+- **Websites**: read-it-later with offline access and AI integration
+- **Files**: document upload and indexing across PDFs, images, audio, video, and more
+- **Skills**: extensible capability system, required, standard, and store skills
+
+## AI provider support
+
+sideBar uses your own API key. Supported providers: Anthropic, OpenAI, Google.
+
+## Links
+
+- Homepage: https://trysidebar.ai
+- App: https://app.trysidebar.ai
+- Documentation: https://docs.trysidebar.ai
+- Support: support@trysidebar.ai
+- Privacy Policy: https://trysidebar.ai/privacy
