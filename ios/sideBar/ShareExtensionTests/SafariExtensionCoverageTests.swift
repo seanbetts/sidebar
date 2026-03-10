@@ -122,6 +122,8 @@ final class SafariExtensionCoverageTests: XCTestCase {
         XCTAssertTrue(export.contains("[safari_extension] begin_request: Received Safari extension request."))
         XCTAssertTrue(export.contains("action=save_url"))
         XCTAssertTrue(export.contains("url=https://example.com"))
+        XCTAssertTrue(export.contains("process_name="))
+        XCTAssertTrue(export.contains("bundle_path="))
     }
 
     func testSafariSaveResponsesMatchQueueAndErrorMapping() async {

@@ -43,7 +43,7 @@ public final class ExternalSurfaceDiagnosticsStore {
                 surface: surface,
                 stage: stage,
                 message: message,
-                metadata: sanitize(metadata)
+                metadata: sanitize(defaultMetadata().merging(metadata, uniquingKeysWith: { _, new in new }))
             )
         )
     }
@@ -116,5 +116,37 @@ public final class ExternalSurfaceDiagnosticsStore {
             guard !value.isEmpty else { return }
             result[item.key] = value
         }
+    }
+
+    private func defaultMetadata() -> [String: String] {
+        let mainBundle = Bundle.main
+        return [
+            "bundle_id": nonEmpty(
+                mainBundle.bundleIdentifier,
+                fallback: "unknown.bundle"
+            ),
+            "bundle_path": nonEmpty(
+                mainBundle.bundleURL.path,
+                fallback: "unknown.bundle_path"
+            ),
+            "app_version": nonEmpty(
+                mainBundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+                fallback: "0"
+            ),
+            "build_number": nonEmpty(
+                mainBundle.object(forInfoDictionaryKey: kCFBundleVersionKey as String) as? String,
+                fallback: "0"
+            ),
+            "process_name": nonEmpty(
+                ProcessInfo.processInfo.processName,
+                fallback: "unknown_process"
+            ),
+            "process_id": "\(ProcessInfo.processInfo.processIdentifier)"
+        ]
+    }
+
+    private func nonEmpty(_ value: String?, fallback: String) -> String {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? fallback : trimmed
     }
 }

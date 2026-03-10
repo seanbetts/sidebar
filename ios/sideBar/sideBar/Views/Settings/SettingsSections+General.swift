@@ -64,6 +64,9 @@ struct GeneralSettingsView: View {
                 Button("Copy External Surface Diagnostics") {
                     copyExternalSurfaceDiagnostics()
                 }
+                Button("Clear External Surface Diagnostics") {
+                    clearExternalSurfaceDiagnostics()
+                }
                 if let diagnosticsStatusMessage {
                     Text(diagnosticsStatusMessage)
                         .appFont(.caption)
@@ -148,5 +151,10 @@ struct GeneralSettingsView: View {
         #endif
 
         diagnosticsStatusMessage = "Copied recent external surface diagnostics."
+    }
+
+    private func clearExternalSurfaceDiagnostics() {
+        ExternalSurfaceDiagnosticsStore.shared.clear()
+        diagnosticsStatusMessage = "Cleared external surface diagnostics."
     }
 }

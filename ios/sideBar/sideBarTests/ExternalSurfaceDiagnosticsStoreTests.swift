@@ -1,0 +1,58 @@
+import XCTest
+import sideBarShared
+
+final class ExternalSurfaceDiagnosticsStoreTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        ExternalSurfaceDiagnosticsStore.shared.clear()
+    }
+
+    override func tearDown() {
+        ExternalSurfaceDiagnosticsStore.shared.clear()
+        super.tearDown()
+    }
+
+    func testRecordAddsBuildAndProcessMetadata() throws {
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "test_surface",
+            stage: "test_stage",
+            message: "Recorded test diagnostic."
+        )
+
+        let entry = try XCTUnwrap(ExternalSurfaceDiagnosticsStore.shared.recentEntries(limit: 1).first)
+        XCTAssertFalse((entry.metadata["process_name"] ?? "").isEmpty)
+        XCTAssertFalse((entry.metadata["bundle_path"] ?? "").isEmpty)
+        XCTAssertFalse((entry.metadata["bundle_id"] ?? "").isEmpty)
+        XCTAssertFalse((entry.metadata["app_version"] ?? "").isEmpty)
+        XCTAssertFalse((entry.metadata["build_number"] ?? "").isEmpty)
+    }
+
+    func testCanQueueURLItemsRecordsStorageAvailabilityDetails() {
+        let suiteName = "ExternalSurfaceDiagnosticsStoreTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)
+        defaults?.removePersistentDomain(forName: suiteName)
+        defer {
+            defaults?.removePersistentDomain(forName: suiteName)
+        }
+
+        let baseDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: baseDirectory)
+        }
+
+        let store = PendingShareStore(
+            baseDirectory: baseDirectory,
+            userDefaults: defaults,
+            allowAppGroupFallback: false
+        )
+
+        XCTAssertTrue(store.canQueueURLItems())
+
+        let export = ExternalSurfaceDiagnosticsStore.shared.exportText(limit: 10)
+        XCTAssertTrue(export.contains("[pending_share_store] storage_available:"))
+        XCTAssertTrue(export.contains("context=canQueueURLItems"))
+        XCTAssertTrue(export.contains("has_defaults=true"))
+        XCTAssertTrue(export.contains("has_root_directory=true"))
+    }
+}

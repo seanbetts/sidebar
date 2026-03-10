@@ -144,4 +144,18 @@ final class ShareExtensionCoverageTests: XCTestCase {
         )
         XCTAssertEqual(controller.mimeTypeForFilename("unknown.custom"), "application/octet-stream")
     }
+
+    func testProcessSharedContentRecordsEntryDiagnosticsBeforeProviderParsing() {
+        ExternalSurfaceDiagnosticsStore.shared.clear()
+        defer { ExternalSurfaceDiagnosticsStore.shared.clear() }
+
+        let controller = ShareViewController()
+        controller.loadViewIfNeeded()
+
+        controller.processSharedContent()
+
+        let export = ExternalSurfaceDiagnosticsStore.shared.exportText(limit: 10)
+        XCTAssertTrue(export.contains("[share_extension] begin_request: Began processing shared content."))
+        XCTAssertTrue(export.contains("item_provider_count=0"))
+    }
 }

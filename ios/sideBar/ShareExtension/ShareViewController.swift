@@ -31,7 +31,10 @@ final class ShareViewController: SharePlatformViewController {
     // MARK: - Content Processing
 
     func processSharedContent() {
-        guard let itemProviders = sharedItemProviders() else {
+        let itemProviders = sharedItemProviders()
+        recordEntryDiagnostics(itemProviderCount: itemProviders?.count ?? 0)
+
+        guard let itemProviders else {
             showError(ExtensionUserMessageCatalog.message(for: .invalidSharePayload))
             return
         }
@@ -51,6 +54,17 @@ final class ShareViewController: SharePlatformViewController {
         }
         let itemProviders = extensionItems.flatMap { $0.attachments ?? [] }
         return itemProviders.isEmpty ? nil : itemProviders
+    }
+
+    private func recordEntryDiagnostics(itemProviderCount: Int) {
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "share_extension",
+            stage: "begin_request",
+            message: "Began processing shared content.",
+            metadata: [
+                "item_provider_count": "\(itemProviderCount)"
+            ]
+        )
     }
 
     private func handlePreferredContent(from itemProviders: [NSItemProvider]) async -> Bool {
