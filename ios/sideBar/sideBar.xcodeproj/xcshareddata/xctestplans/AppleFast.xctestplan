@@ -19,6 +19,13 @@
         "identifier" : "14C84A542F10562500FE0C16",
         "name" : "sideBarTests"
       }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:sideBar.xcodeproj",
+        "identifier" : "A1B2C3E62F40000200ABCDEF",
+        "name" : "ShareExtensionTests"
+      }
     }
   ],
   "version" : 1

@@ -29,6 +29,7 @@ enum SentryBootstrap {
     private static let stateLock = NSLock()
     private static var hasStarted = false
 
+    @discardableResult
     static func startIfConfigured(
         config: EnvironmentConfig,
         isDebugBuild: Bool = defaultIsDebugBuild,

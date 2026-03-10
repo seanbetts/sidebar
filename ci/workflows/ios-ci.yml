@@ -56,7 +56,7 @@ jobs:
         include:
           - id: ipad
             label: "iPad Pro 13-inch (M5) iPadOS 26"
-            scheme: sideBar
+            scheme: sideBarUI
             destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
             runner_label: ios
             only_testing: sideBarUITests
