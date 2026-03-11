@@ -3,15 +3,7 @@
 	import { page } from '$app/stores';
 	import { getSupabaseClient } from '$lib/supabase';
 	import { Button } from '$lib/components/ui/button';
-	import {
-		MessageSquare,
-		FileText,
-		Globe,
-		Brain,
-		FolderOpen,
-		Cloud,
-		ListTodo
-	} from 'lucide-svelte';
+	import { MessageSquare, FileText, Globe, Brain, FolderOpen, ListTodo } from 'lucide-svelte';
 	import { MARKETING_COPY } from '$lib/constants/marketingCopy';
 	import { logError } from '$lib/utils/errorHandling';
 
@@ -71,73 +63,67 @@
 
 		<div class="login-grid">
 			<section class="login-hero">
-				<h1 class="login-hero-title">
-					<img src="/images/logo.svg" alt="sideBar" class="hero-logo" />
-					<span>Welcome to sideBar</span>
-				</h1>
-				<p class="login-tagline">Your AI-Powered Workspace</p>
-				<p class="login-description">{MARKETING_COPY.tagline}</p>
+				<p class="login-tagline">{MARKETING_COPY.tagline}</p>
 				<p class="login-description">{MARKETING_COPY.subtitle}</p>
-
-				<!-- Screenshot placeholder - you can add this later -->
-				<!-- <div class="screenshot-placeholder">
-        <img src="/images/screenshot.png" alt="sideBar workspace" />
-      </div> -->
 
 				<div class="login-features">
 					<div class="feature">
 						<MessageSquare size={18} strokeWidth={2} />
 						<div class="feature-content">
-							<span class="feature-title">Chat with Full Context</span>
+							<span class="feature-title">Chat</span>
 							<span class="feature-desc"
-								>Work with sideBar while it accesses your notes, files, and research</span
+								>Ask questions, get things done, and work through problems with an AI that knows
+								your content.</span
+							>
+						</div>
+					</div>
+					<div class="feature">
+						<Brain size={18} strokeWidth={2} />
+						<div class="feature-content">
+							<span class="feature-title">Skills</span>
+							<span class="feature-desc"
+								>Extend sideBar with installable skills. Transcribe audio, save YouTube videos, and
+								more.</span
 							>
 						</div>
 					</div>
 					<div class="feature">
 						<FileText size={18} strokeWidth={2} />
 						<div class="feature-content">
-							<span class="feature-title">Smart Note-Taking</span>
+							<span class="feature-title">Notes</span>
 							<span class="feature-desc"
-								>Markdown editor with AI-powered organisation and search</span
-							>
-						</div>
-					</div>
-					<div class="feature">
-						<Globe size={18} strokeWidth={2} />
-						<div class="feature-content">
-							<span class="feature-title">Website Captures</span>
-							<span class="feature-desc">Save full page content, not just bookmarks</span>
-						</div>
-					</div>
-					<div class="feature">
-						<Brain size={18} strokeWidth={2} />
-						<div class="feature-content">
-							<span class="feature-title">Memory System</span>
-							<span class="feature-desc"
-								>sideBar remembers important context across conversations</span
+								>A full writing environment with folders, rich text, and a Scratchpad always one tap
+								away.</span
 							>
 						</div>
 					</div>
 					<div class="feature">
 						<ListTodo size={18} strokeWidth={2} />
 						<div class="feature-content">
-							<span class="feature-title">Task Management</span>
-							<span class="feature-desc">Plan projects and track tasks in one workspace</span>
+							<span class="feature-title">Tasks</span>
+							<span class="feature-desc"
+								>Projects, due dates, and smart lists that keep Today and Upcoming always current.</span
+							>
+						</div>
+					</div>
+					<div class="feature">
+						<Globe size={18} strokeWidth={2} />
+						<div class="feature-content">
+							<span class="feature-title">Websites</span>
+							<span class="feature-desc"
+								>Save web pages to read offline. sideBar indexes everything so you can ask questions
+								about it.</span
+							>
 						</div>
 					</div>
 					<div class="feature">
 						<FolderOpen size={18} strokeWidth={2} />
 						<div class="feature-content">
-							<span class="feature-title">File Intelligence</span>
-							<span class="feature-desc">Upload documents and discuss them with sideBar</span>
-						</div>
-					</div>
-					<div class="feature">
-						<Cloud size={18} strokeWidth={2} />
-						<div class="feature-content">
-							<span class="feature-title">Live Weather & Location</span>
-							<span class="feature-desc">Context-aware with real-time environmental data</span>
+							<span class="feature-title">Files</span>
+							<span class="feature-desc"
+								>Upload PDFs, documents, images, and more. Search and ask questions across all of
+								it.</span
+							>
 						</div>
 					</div>
 				</div>
@@ -267,9 +253,11 @@
 
 	.login-tagline {
 		margin: 0 0 1rem;
-		font-size: 1.125rem;
-		font-weight: 500;
-		color: var(--color-primary);
+		font-size: 1.75rem;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1.2;
+		color: var(--color-foreground);
 	}
 
 	.login-description {
