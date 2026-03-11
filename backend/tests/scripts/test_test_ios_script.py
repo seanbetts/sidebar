@@ -50,6 +50,38 @@ def test_ci_uses_temp_git_config_when_global_config_is_locked(tmp_path: Path) ->
     assert (home_dir / ".gitconfig.lock").exists()
 
 
+def test_default_scheme_uses_canonical_sidebar_app_tests(tmp_path: Path) -> None:
+    """The shell harness should default to the canonical shared app-test scheme."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\nexit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_DESTINATION": "platform=macOS",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+        }
+    )
+    env.pop("IOS_SCHEME", None)
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Running Apple tests for scheme sideBar " in result.stdout
+
+
 def test_ui_only_lane_fails_when_backend_config_is_missing(tmp_path: Path) -> None:
     """UI-only lanes should fail closed when required backend config is absent."""
     bin_dir = tmp_path / "bin"

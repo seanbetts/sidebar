@@ -155,7 +155,7 @@ npm test TaskItem                         # Specific file
 npm run coverage                          # With coverage
 
 # iOS
-./scripts/test-ios.sh                     # default fast macOS AppleFast lane
+./scripts/test-ios.sh                     # default fast AppleFast lane
 IOS_DESTINATION='platform=iOS Simulator,name=iPhone 15 Pro' ./scripts/test-ios.sh
 IOS_SCHEME=sideBarUI ./scripts/test-ios.sh                         # default curated UI smoke lane
 IOS_SCHEME=sideBarUI IOS_UI_SMOKE_ONLY=NO ./scripts/test-ios.sh    # broader UI regression lane
@@ -196,7 +196,7 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 
 | Lane | Scheme / Plan | Default scope | Blocking status | When to run |
 | --- | --- | --- | --- | --- |
-| Logic | `sideBarMacTests` / `AppleFast` | Deterministic shared-code coverage from the `logic` taxonomy bucket | Required on `dev` and `main` | Default Apple guardrail, local default, every protected push |
+| Logic | `sideBar` / `AppleFast` | Deterministic shared-code coverage from the `logic` taxonomy bucket across iPhone, iPad, and macOS | Required on `dev` and `main` | Default Apple guardrail, local default, every protected push |
 | Surface | `sideBar` / `AppleStateful` | Mounted views, app-environment wiring, persistence, and broader integration coverage | Required on `main` | Broader release protection and manual regression on integration-heavy changes |
 | UI Smoke | `sideBarUI` / `AppleUI` | Curated smoke coverage with one real login and seeded auth for the rest | Required on `main` | Release verification, manual UI checks, branch protection on `main` |
 | Extensions | `sideBarExtensions` / `AppleExtensions` | Share sheet, widget, and Safari extension surfaces | Required on `main` | Release protection and extension-specific regression |

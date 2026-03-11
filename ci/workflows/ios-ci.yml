@@ -61,9 +61,46 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: logic
+          - id: logic-iphone
+            lane: logic
+            label: "iPhone 17 Pro iOS 26"
+            scheme: sideBar
+            test_plan: AppleFast
+            destination: "platform=iOS Simulator,name=iPhone 17 Pro"
+            runner_label: ios
+            run_on_dev: "YES"
+            run_on_main: "YES"
+            spec_selection_main: main_logic
+            skip_testing: ""
+            retry_tests_on_failure: "NO"
+            parallel_testing_enabled: "NO"
+            max_parallel_test_workers: "1"
+            destination_timeout: "180"
+            enable_coverage: "NO"
+            prepare_simulator_before_tests: "YES"
+            collect_simulator_diagnostics_on_failure: "YES"
+          - id: logic-ipad
+            lane: logic
+            label: "iPad Pro 13-inch (M5) iPadOS 26"
+            scheme: sideBar
+            test_plan: AppleFast
+            destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
+            runner_label: ios
+            run_on_dev: "YES"
+            run_on_main: "YES"
+            spec_selection_main: main_logic
+            skip_testing: ""
+            retry_tests_on_failure: "NO"
+            parallel_testing_enabled: "NO"
+            max_parallel_test_workers: "1"
+            destination_timeout: "180"
+            enable_coverage: "NO"
+            prepare_simulator_before_tests: "YES"
+            collect_simulator_diagnostics_on_failure: "YES"
+          - id: logic-mac
+            lane: logic
             label: "macOS 26"
-            scheme: sideBarMacTests
+            scheme: sideBar
             test_plan: AppleFast
             destination: "platform=macOS"
             runner_label: mac
@@ -79,6 +116,7 @@ jobs:
             prepare_simulator_before_tests: "NO"
             collect_simulator_diagnostics_on_failure: "NO"
           - id: surface
+            lane: surface
             label: "iPhone 17 Pro iOS 26"
             scheme: sideBar
             test_plan: AppleStateful
@@ -96,6 +134,7 @@ jobs:
             prepare_simulator_before_tests: "YES"
             collect_simulator_diagnostics_on_failure: "YES"
           - id: ui
+            lane: ui
             label: "iPad Pro 13-inch (M5) iPadOS 26"
             scheme: sideBarUI
             test_plan: AppleUI
@@ -113,6 +152,7 @@ jobs:
             prepare_simulator_before_tests: "YES"
             collect_simulator_diagnostics_on_failure: "YES"
           - id: extensions
+            lane: extensions
             label: "iPhone 17 Pro iOS 26"
             scheme: sideBarExtensions
             test_plan: AppleExtensions
@@ -131,13 +171,13 @@ jobs:
             collect_simulator_diagnostics_on_failure: "YES"
     steps:
       - name: Checkout
-        if: ${{ (github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id)) }}
+        if: ${{ (github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane)) }}
         uses: actions/checkout@v5
       - name: Resolve taxonomy test specs (${{ matrix.label }})
-        if: ${{ (github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id)) }}
+        if: ${{ (github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane)) }}
         run: |
           selection=""
-          case "${{ matrix.id }}" in
+          case "${{ matrix.lane }}" in
             logic)
               if [[ "${GITHUB_REF_NAME}" == "dev" ]]; then
                 selection="dev_logic"
@@ -164,7 +204,7 @@ jobs:
           echo "IOS_ONLY_TESTING=$specs" >> "$GITHUB_ENV"
           echo "IOS_RESOLVED_TAXONOMY_SELECTION=$selection" >> "$GITHUB_ENV"
       - name: Validate lane configuration (${{ matrix.label }})
-        if: ${{ (github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id)) }}
+        if: ${{ (github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane)) }}
         run: |
           python3 scripts/validate_ios_test_lane.py \
             --project ios/sideBar/sideBar.xcodeproj \
@@ -174,7 +214,7 @@ jobs:
             --skip-testing "${{ matrix.skip_testing }}" \
             --allowed-macos-targets "sideBarTests"
       - name: Run tests (${{ matrix.label }})
-        if: ${{ (github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id)) }}
+        if: ${{ (github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane)) }}
         env:
           IOS_SCHEME: ${{ matrix.scheme }}
           IOS_TEST_PLAN: ${{ matrix.test_plan }}
@@ -199,7 +239,7 @@ jobs:
           SIDEBAR_UI_TEST_PASSWORD: ${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}
         run: scripts/test-ios.sh
       - name: Upload xcresult bundle (${{ matrix.id }})
-        if: ${{ failure() && ((github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id))) }}
+        if: ${{ failure() && ((github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane))) }}
         continue-on-error: true
         uses: actions/upload-artifact@v6
         with:
@@ -207,7 +247,7 @@ jobs:
           path: ios-test-results/${{ matrix.id }}.xcresult
           if-no-files-found: ignore
       - name: Upload simulator diagnostics (${{ matrix.id }})
-        if: ${{ failure() && ((github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id))) }}
+        if: ${{ failure() && ((github.event_name == 'push' && ((github.ref_name == 'dev' && matrix.run_on_dev == 'YES') || (github.ref_name == 'main' && matrix.run_on_main == 'YES'))) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane))) }}
         continue-on-error: true
         uses: actions/upload-artifact@v6
         with:

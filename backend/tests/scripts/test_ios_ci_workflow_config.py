@@ -11,11 +11,22 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ios-ci.yml"
 BASELINE_ARTIFACT_PATH = (
-    REPO_ROOT / "docs" / "plans" / "artifacts" / "apple-testing-baseline-2026-03-11.md"
+    REPO_ROOT
+    / "docs"
+    / "superpowers"
+    / "plans"
+    / "artifacts"
+    / "apple-testing-baseline-2026-03-11.md"
 )
 XCODE_PROJECT_PATH = REPO_ROOT / "ios" / "sideBar" / "sideBar.xcodeproj"
 APPLE_FAST_PLAN_PATH = (
     XCODE_PROJECT_PATH / "xcshareddata" / "xctestplans" / "AppleFast.xctestplan"
+)
+SIDEBAR_SCHEME_PATH = (
+    XCODE_PROJECT_PATH / "xcshareddata" / "xcschemes" / "sideBar.xcscheme"
+)
+SIDEBAR_MAC_TESTS_SCHEME_PATH = (
+    XCODE_PROJECT_PATH / "xcshareddata" / "xcschemes" / "sideBarMacTests.xcscheme"
 )
 
 MODULE_PATH = REPO_ROOT / "scripts" / "validate_ios_test_lane.py"
@@ -49,6 +60,11 @@ def _matrix_entry(entry_id: str) -> dict[str, str]:
     raise AssertionError(f"Missing iOS CI matrix entry: {entry_id}")
 
 
+def _matrix_entries_for_lane(lane: str) -> list[dict[str, str]]:
+    """Return all workflow matrix rows for a lane group."""
+    return [entry for entry in _load_ios_ci_matrix() if entry.get("lane") == lane]
+
+
 def _ios_test_run_step() -> dict[str, object]:
     """Return the shared test-execution step from the workflow."""
     workflow = _load_ios_ci_workflow()
@@ -80,22 +96,22 @@ def _test_target_names_from_plan(path: Path) -> set[str]:
 
 
 def test_logic_lane_configuration_validates_against_committed_scheme() -> None:
-    """The logic lane should resolve to deterministic macOS-compatible tests."""
-    lane = _matrix_entry("logic")
-    scheme_targets = read_scheme_test_targets(XCODE_PROJECT_PATH, lane["scheme"])
-    effective_targets = effective_test_targets(
-        scheme_targets,
-        parse_csv_specs(lane.get("only_testing", "")),
-        parse_csv_specs(lane.get("skip_testing", "")),
-    )
+    """The logic lanes should resolve to deterministic tests on every app surface."""
+    for lane in _matrix_entries_for_lane("logic"):
+        scheme_targets = read_scheme_test_targets(XCODE_PROJECT_PATH, lane["scheme"])
+        effective_targets = effective_test_targets(
+            scheme_targets,
+            parse_csv_specs(lane.get("only_testing", "")),
+            parse_csv_specs(lane.get("skip_testing", "")),
+        )
 
-    assert validate_lane(
-        lane["destination"],
-        scheme_targets,
-        effective_targets,
-        {"sideBarTests"},
-    ) == []
-    assert effective_targets == ["sideBarTests"]
+        assert validate_lane(
+            lane["destination"],
+            scheme_targets,
+            effective_targets,
+            {"sideBarTests"},
+        ) == []
+        assert effective_targets == ["sideBarTests"]
 
 
 def test_apple_testing_baseline_artifact_exists() -> None:
@@ -136,6 +152,18 @@ def test_extensions_lane_configuration_uses_the_split_extensions_scheme() -> Non
 def test_apple_fast_plan_excludes_share_extension_tests() -> None:
     """The fast plan should stay limited to deterministic app tests."""
     assert _test_target_names_from_plan(APPLE_FAST_PLAN_PATH) == {"sideBarTests"}
+
+
+def test_sidebar_scheme_is_the_canonical_app_test_scheme() -> None:
+    """The shared app-test scheme should only carry the app test bundle."""
+    scheme_targets = read_scheme_test_targets(XCODE_PROJECT_PATH, "sideBar")
+
+    assert scheme_targets == ["sideBarTests"]
+
+
+def test_duplicate_sidebar_macos_test_scheme_is_removed() -> None:
+    """The duplicate macOS-only app-test scheme should not remain in the repo."""
+    assert not SIDEBAR_MAC_TESTS_SCHEME_PATH.exists()
 
 
 def test_ios_ci_does_not_run_for_pull_requests() -> None:
@@ -182,17 +210,42 @@ def test_ios_ci_branch_routing_marks_dev_logic_only_and_main_broader() -> None:
         if entry.get("run_on_main") == "YES"
     }
 
-    assert dev_push_lanes == {"logic"}
-    assert main_push_lanes == {"logic", "surface", "ui", "extensions"}
+    assert dev_push_lanes == {"logic-iphone", "logic-ipad", "logic-mac"}
+    assert main_push_lanes == {
+        "logic-iphone",
+        "logic-ipad",
+        "logic-mac",
+        "surface",
+        "ui",
+        "extensions",
+    }
+
+
+def test_ios_ci_logic_lanes_use_sidebar_scheme_across_all_surfaces() -> None:
+    """The dev logic lane should run the same scheme on iPhone, iPad, and macOS."""
+    logic_entries = _matrix_entries_for_lane("logic")
+
+    assert {entry["id"] for entry in logic_entries} == {
+        "logic-iphone",
+        "logic-ipad",
+        "logic-mac",
+    }
+    assert {entry["scheme"] for entry in logic_entries} == {"sideBar"}
+    assert {entry["test_plan"] for entry in logic_entries} == {"AppleFast"}
+    assert {entry["destination"] for entry in logic_entries} == {
+        "platform=iOS Simulator,name=iPhone 17 Pro",
+        "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
+        "platform=macOS",
+    }
 
 
 def test_ios_ci_dispatch_lane_options_match_matrix_entries() -> None:
     """Manual dispatch options should map cleanly onto the configured lanes."""
     workflow = _load_ios_ci_workflow()
     options = workflow["on"]["workflow_dispatch"]["inputs"]["lane"]["options"]
-    matrix_ids = {entry["id"] for entry in _load_ios_ci_matrix()}
+    matrix_lanes = {entry["lane"] for entry in _load_ios_ci_matrix()}
 
-    assert set(options) == {"all"} | matrix_ids
+    assert set(options) == {"all"} | matrix_lanes
 
 
 def test_ios_ci_ui_lane_receives_explicit_ui_test_secrets() -> None:
@@ -217,7 +270,9 @@ def test_ios_ci_resolves_only_testing_specs_from_taxonomy() -> None:
     assert "python3 scripts/resolve_ios_test_specs.py" in step_script
     assert "IOS_ONLY_TESTING=" in step_script
     assert "dev_logic" in step_script
-    assert matrix["logic"]["spec_selection_main"] == "main_logic"
+    assert matrix["logic-iphone"]["spec_selection_main"] == "main_logic"
+    assert matrix["logic-ipad"]["spec_selection_main"] == "main_logic"
+    assert matrix["logic-mac"]["spec_selection_main"] == "main_logic"
     assert matrix["surface"]["spec_selection_main"] == "main_surface"
     assert matrix["extensions"]["spec_selection_main"] == "main_extensions"
     assert matrix["ui"]["spec_selection_main"] == "ui_smoke"

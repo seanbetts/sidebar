@@ -10,12 +10,12 @@ IOS_PROJECT="${IOS_PROJECT:-ios/sideBar/sideBar.xcodeproj}"
 if [[ -n "${IOS_SCHEME+x}" ]]; then
   IOS_SCHEME="${IOS_SCHEME}"
 else
-  IOS_SCHEME="sideBarMacTests"
+  IOS_SCHEME="sideBar"
 fi
 
 default_test_plan_for_scheme() {
   case "${1}" in
-    sideBarMacTests|sideBar)
+    sideBar)
       echo "AppleFast"
       ;;
     sideBarUI)
@@ -46,15 +46,13 @@ scheme_has_only_ui_tests() {
 
 if [[ -n "${IOS_DESTINATION+x}" ]]; then
   IOS_DESTINATION="${IOS_DESTINATION}"
-elif [[ "${IOS_SCHEME}" == "sideBarMacTests" ]]; then
-  IOS_DESTINATION="platform=macOS,arch=arm64"
 else
   IOS_DESTINATION="platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
 fi
 IOS_DESTINATION_TIMEOUT="${IOS_DESTINATION_TIMEOUT:-120}"
 if [[ -n "${IOS_ENABLE_CODE_COVERAGE+x}" ]]; then
   IOS_ENABLE_CODE_COVERAGE="${IOS_ENABLE_CODE_COVERAGE}"
-elif [[ "${IOS_SCHEME}" == "sideBarMacTests" || "${IOS_SCHEME}" == "sideBar" ]]; then
+elif [[ "${IOS_SCHEME}" == "sideBar" ]]; then
   IOS_ENABLE_CODE_COVERAGE="NO"
 else
   IOS_ENABLE_CODE_COVERAGE="YES"
