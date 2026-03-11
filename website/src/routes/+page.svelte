@@ -335,7 +335,6 @@
     position: relative;
     border-radius: 0.75rem;
     overflow: hidden;
-    border: 1px solid var(--color-border);
   }
 
   .carousel-stage img {
