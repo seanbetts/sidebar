@@ -4,6 +4,7 @@ summary: Read and update your profile, preferences, and app settings through Cha
 tags: [skills, settings, profile]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: [settings-profile-user, ui-theme, settings-other-preferences]
 ---
 
 ## What it does

@@ -4,6 +4,7 @@ summary: Map out all the public subdomains associated with any domain.
 tags: [skills, store, web, domains, research]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: subdomain-discover
 ---
 
 ## What it does

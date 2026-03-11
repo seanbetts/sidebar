@@ -4,6 +4,7 @@ summary: The Required skill that defines sideBar's purpose, operating principles
 tags: [skills, soul, personality]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: assistant-soul
 ---
 
 ## What it does

@@ -4,6 +4,7 @@ summary: Download YouTube videos and audio, and transcribe them into text.
 tags: [skills, store, youtube, transcription, video]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: [youtube-download, youtube-transcribe]
 ---
 
 ## What it does

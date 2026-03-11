@@ -4,6 +4,7 @@ summary: Search the live web for current information, recent news, and real-time
 tags: [skills, web, search]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: web-search
 ---
 
 ## What it does

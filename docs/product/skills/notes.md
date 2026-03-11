@@ -4,6 +4,7 @@ summary: Create, read, edit, and organise your notes through Chat.
 tags: [skills, notes]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: notes
 ---
 
 ## What it does

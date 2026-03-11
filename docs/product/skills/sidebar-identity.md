@@ -4,6 +4,7 @@ summary: The Required skill that gives sideBar its consistent name, tone, values
 tags: [skills, identity, personality]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: assistant-identity
 ---
 
 ## What it does

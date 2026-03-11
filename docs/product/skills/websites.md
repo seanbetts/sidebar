@@ -4,6 +4,7 @@ summary: Save, read, and manage your saved web pages through Chat.
 tags: [skills, websites]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: web-save
 ---
 
 ## What it does

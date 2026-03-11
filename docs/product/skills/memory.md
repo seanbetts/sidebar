@@ -4,6 +4,7 @@ summary: Create and manage persistent memories that carry across every conversat
 tags: [skills, memory]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: memory
 ---
 
 ## What it does

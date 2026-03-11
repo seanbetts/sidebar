@@ -4,6 +4,7 @@ summary: Read, search, and manage your files through Chat.
 tags: [skills, files]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: files
 ---
 
 ## What it does

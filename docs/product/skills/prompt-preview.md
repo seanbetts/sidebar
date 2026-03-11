@@ -4,6 +4,7 @@ summary: See exactly what sideBar is sending to your AI provider, including the 
 tags: [skills, prompt-preview, debugging]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: prompt-preview
 ---
 
 ## What it does

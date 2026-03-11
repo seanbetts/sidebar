@@ -4,6 +4,7 @@ summary: The Required skill that lets you report bugs and request features direc
 tags: [skills, feedback, support]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: product-feedback
 ---
 
 ## What it does

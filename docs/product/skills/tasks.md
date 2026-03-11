@@ -4,6 +4,7 @@ summary: Create, complete, and manage your tasks and projects through Chat.
 tags: [skills, tasks]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: tasks
 ---
 
 ## What it does

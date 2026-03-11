@@ -4,6 +4,7 @@ summary: Analyse which web crawlers and AI systems can access a website's conten
 tags: [skills, store, web, crawlers, ai-policy]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: web-crawler-policy
 ---
 
 ## What it does

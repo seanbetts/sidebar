@@ -4,6 +4,7 @@ summary: Transcribe audio files into text and save the transcript to your Files.
 tags: [skills, store, audio, transcription]
 audience: user
 surfaces: [app, website, internal-knowledge]
+skill_id: audio-transcribe
 ---
 
 ## What it does
