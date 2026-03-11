@@ -196,10 +196,10 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 
 | Lane | Scheme / Plan | Default scope | Blocking status | When to run |
 | --- | --- | --- | --- | --- |
-| Fast | `sideBarMacTests` / `AppleFast` | Deterministic unit and component coverage | Required | `push` to `dev`, local default |
-| Stateful | `sideBar` / `AppleStateful` | Persistence, globals, cross-store integration | Informational | Manual regression when touching stateful app flows |
-| UI smoke | `sideBarUI` / `AppleUI` | Curated smoke coverage with one real login and seeded auth for the rest | Informational | Manual smoke checks, release verification, local UI checks |
-| Extensions | `sideBarExtensions` / `AppleExtensions` | Share sheet, widgets, Safari extension surfaces | Informational | Manual regression when touching extension code |
+| Logic | `sideBarMacTests` / `AppleFast` | Deterministic shared-code coverage from the `logic` taxonomy bucket | Required on `dev` and `main` | Default Apple guardrail, local default, every protected push |
+| Surface | `sideBar` / `AppleStateful` | Mounted views, app-environment wiring, persistence, and broader integration coverage | Required on `main` | Broader release protection and manual regression on integration-heavy changes |
+| UI Smoke | `sideBarUI` / `AppleUI` | Curated smoke coverage with one real login and seeded auth for the rest | Required on `main` | Release verification, manual UI checks, branch protection on `main` |
+| Extensions | `sideBarExtensions` / `AppleExtensions` | Share sheet, widget, and Safari extension surfaces | Required on `main` | Release protection and extension-specific regression |
 
 ### Apple UI Smoke Policy
 

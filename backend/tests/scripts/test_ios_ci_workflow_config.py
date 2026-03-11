@@ -58,6 +58,15 @@ def _ios_test_run_step() -> dict[str, object]:
     raise AssertionError("Missing iOS test execution step")
 
 
+def _resolve_specs_step() -> dict[str, object]:
+    """Return the taxonomy spec-resolution step from the workflow."""
+    workflow = _load_ios_ci_workflow()
+    for step in workflow["jobs"]["ios_test_matrix"]["steps"]:
+        if step.get("name", "").startswith("Resolve taxonomy test specs"):
+            return step
+    raise AssertionError("Missing taxonomy test spec resolution step")
+
+
 def _test_target_names_from_plan(path: Path) -> set[str]:
     """Return test target names from an Xcode `.xctestplan` file."""
     payload = json.loads(path.read_text())
@@ -70,9 +79,9 @@ def _test_target_names_from_plan(path: Path) -> set[str]:
     }
 
 
-def test_fast_lane_configuration_validates_against_committed_scheme() -> None:
-    """The default fast lane should resolve to the deterministic macOS tests."""
-    lane = _matrix_entry("fast")
+def test_logic_lane_configuration_validates_against_committed_scheme() -> None:
+    """The logic lane should resolve to deterministic macOS-compatible tests."""
+    lane = _matrix_entry("logic")
     scheme_targets = read_scheme_test_targets(XCODE_PROJECT_PATH, lane["scheme"])
     effective_targets = effective_test_targets(
         scheme_targets,
@@ -94,31 +103,34 @@ def test_apple_testing_baseline_artifact_exists() -> None:
     assert BASELINE_ARTIFACT_PATH.exists()
 
 
-def test_stateful_lane_configuration_uses_apple_stateful_plan() -> None:
-    """The stateful lane should stay available as an explicit manual-only lane."""
-    lane = _matrix_entry("stateful")
+def test_surface_lane_configuration_uses_sidebar_scheme_and_surface_plan() -> None:
+    """The surface lane should run broader app-surface coverage on iOS."""
+    lane = _matrix_entry("surface")
 
     assert lane["scheme"] == "sideBar"
     assert lane["test_plan"] == "AppleStateful"
-    assert lane["run_on_push"] == "NO"
+    assert lane["run_on_dev"] == "NO"
+    assert lane["run_on_main"] == "YES"
 
 
 def test_ui_lane_configuration_uses_the_split_ui_scheme() -> None:
-    """The UI smoke lane should remain explicit and manual."""
+    """The UI smoke lane should use the split UI scheme on main."""
     lane = _matrix_entry("ui")
 
     assert lane["scheme"] == "sideBarUI"
     assert lane["test_plan"] == "AppleUI"
-    assert lane["run_on_push"] == "NO"
+    assert lane["run_on_dev"] == "NO"
+    assert lane["run_on_main"] == "YES"
 
 
 def test_extensions_lane_configuration_uses_the_split_extensions_scheme() -> None:
-    """The extension lane should remain explicit and manual."""
+    """The extension lane should protect extension surfaces on main."""
     lane = _matrix_entry("extensions")
 
     assert lane["scheme"] == "sideBarExtensions"
     assert lane["test_plan"] == "AppleExtensions"
-    assert lane["run_on_push"] == "NO"
+    assert lane["run_on_dev"] == "NO"
+    assert lane["run_on_main"] == "YES"
 
 
 def test_apple_fast_plan_excludes_share_extension_tests() -> None:
@@ -133,12 +145,22 @@ def test_ios_ci_does_not_run_for_pull_requests() -> None:
     assert "pull_request" not in workflow["on"]
 
 
+def test_ios_ci_pushes_run_on_dev_and_main() -> None:
+    """Branch-specific Apple routing should exist for both development branches."""
+    workflow = _load_ios_ci_workflow()
+
+    assert set(workflow["on"]["push"]["branches"]) == {"dev", "main"}
+
+
 def test_ios_ci_push_paths_include_swiftlint_config() -> None:
     """SwiftLint config changes should trigger the workflow that consumes them."""
     workflow = _load_ios_ci_workflow()
     push_paths = workflow["on"]["push"]["paths"]
 
     assert ".swiftlint.yml" in push_paths
+    assert "scripts/ios_test_taxonomy.json" in push_paths
+    assert "scripts/validate_ios_test_taxonomy.py" in push_paths
+    assert "scripts/resolve_ios_test_specs.py" in push_paths
 
 
 def test_ios_ci_jobs_define_timeouts() -> None:
@@ -149,15 +171,19 @@ def test_ios_ci_jobs_define_timeouts() -> None:
     assert jobs["ios_test_matrix"]["timeout-minutes"] == "90"
 
 
-def test_ios_ci_push_runs_only_the_fast_lane() -> None:
-    """Push-triggered CI should only execute the trusted fast lane by default."""
-    push_lanes = {
+def test_ios_ci_branch_routing_marks_dev_logic_only_and_main_broader() -> None:
+    """Matrix rows should encode the intended branch-specific Apple coverage."""
+    dev_push_lanes = {
+        entry["id"] for entry in _load_ios_ci_matrix() if entry.get("run_on_dev") == "YES"
+    }
+    main_push_lanes = {
         entry["id"]
         for entry in _load_ios_ci_matrix()
-        if entry.get("run_on_push") == "YES"
+        if entry.get("run_on_main") == "YES"
     }
 
-    assert push_lanes == {"fast"}
+    assert dev_push_lanes == {"logic"}
+    assert main_push_lanes == {"logic", "surface", "ui", "extensions"}
 
 
 def test_ios_ci_dispatch_lane_options_match_matrix_entries() -> None:
@@ -174,11 +200,27 @@ def test_ios_ci_ui_lane_receives_explicit_ui_test_secrets() -> None:
     run_step = _ios_test_run_step()
     env = run_step["env"]
 
+    assert env["IOS_ONLY_TESTING"] == "${{ env.IOS_ONLY_TESTING }}"
     assert env["SIDEBAR_UI_TEST_EMAIL"] == "${{ secrets.SIDEBAR_UI_TEST_EMAIL }}"
     assert env["SIDEBAR_UI_TEST_PASSWORD"] == "${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}"
     assert env["API_BASE_URL"] == "${{ secrets.API_BASE_URL }}"
     assert env["SUPABASE_URL"] == "${{ secrets.SUPABASE_URL }}"
     assert env["SUPABASE_ANON_KEY"] == "${{ secrets.SUPABASE_ANON_KEY }}"
+
+
+def test_ios_ci_resolves_only_testing_specs_from_taxonomy() -> None:
+    """Workflow should derive Apple test specs from the committed taxonomy."""
+    resolve_step = _resolve_specs_step()
+    step_script = resolve_step["run"]
+    matrix = {entry["id"]: entry for entry in _load_ios_ci_matrix()}
+
+    assert "python3 scripts/resolve_ios_test_specs.py" in step_script
+    assert "IOS_ONLY_TESTING=" in step_script
+    assert "dev_logic" in step_script
+    assert matrix["logic"]["spec_selection_main"] == "main_logic"
+    assert matrix["surface"]["spec_selection_main"] == "main_surface"
+    assert matrix["extensions"]["spec_selection_main"] == "main_extensions"
+    assert matrix["ui"]["spec_selection_main"] == "ui_smoke"
 
 
 def test_ios_ci_uses_node24_compatible_actions() -> None:
