@@ -8,7 +8,7 @@ protocol SentryBundleInfo {
 }
 
 protocol SentryBootstrapClient {
-    func start(options: SentryBootstrap.Options)
+    func start(options: SentryBootstrap.Configuration)
 }
 
 extension Bundle: SentryBundleInfo {
@@ -18,7 +18,7 @@ extension Bundle: SentryBundleInfo {
 }
 
 enum SentryBootstrap {
-    struct Options: Equatable {
+    struct Configuration: Equatable {
         let dsn: String
         let environment: String
         let releaseName: String
@@ -61,7 +61,7 @@ enum SentryBootstrap {
         isDebugBuild: Bool,
         isRunningTestsOrPreviews: Bool,
         bundle: SentryBundleInfo
-    ) -> Options? {
+    ) -> Configuration? {
         guard let dsn = config.sentryDsn, dsn.isEmpty == false else {
             return nil
         }
@@ -72,7 +72,7 @@ enum SentryBootstrap {
             return nil
         }
 
-        return Options(
+        return Configuration(
             dsn: dsn,
             environment: "production",
             releaseName: releaseName(bundle: bundle),
@@ -105,15 +105,30 @@ enum SentryBootstrap {
 
 private final class DefaultSentryBootstrapClient: SentryBootstrapClient {
     static let shared = DefaultSentryBootstrapClient()
+    private static let startSelector = NSSelectorFromString("startWithOptions:")
 
-    func start(options: SentryBootstrap.Options) {
-        let configureOptions: (SentryOptions) -> Void = { sdkOptions in
-            sdkOptions.dsn = options.dsn
-            sdkOptions.environment = options.environment
-            sdkOptions.releaseName = options.releaseName
-            sdkOptions.tracesSampleRate = NSNumber(value: options.tracesSampleRate)
-            sdkOptions.sendDefaultPii = options.sendDefaultPii
+    func start(options: SentryBootstrap.Configuration) {
+        guard let sdkOptions = Self.makeSdkOptions(from: options) else {
+            assertionFailure("Failed to create SentryOptions")
+            return
         }
-        SentrySDK.start(configureOptions: configureOptions)
+        guard SentrySDK.responds(to: Self.startSelector) else {
+            assertionFailure("SentrySDK.startWithOptions: is unavailable")
+            return
+        }
+        _ = SentrySDK.perform(Self.startSelector, with: sdkOptions)
+    }
+
+    private static func makeSdkOptions(from options: SentryBootstrap.Configuration) -> NSObject? {
+        guard let sdkOptionsType = NSClassFromString("SentryOptions") as? NSObject.Type else {
+            return nil
+        }
+        let sdkOptions = sdkOptionsType.init()
+        sdkOptions.setValue(options.dsn, forKey: "dsn")
+        sdkOptions.setValue(options.environment, forKey: "environment")
+        sdkOptions.setValue(options.releaseName, forKey: "releaseName")
+        sdkOptions.setValue(NSNumber(value: options.tracesSampleRate), forKey: "tracesSampleRate")
+        sdkOptions.setValue(options.sendDefaultPii, forKey: "sendDefaultPii")
+        return sdkOptions
     }
 }

@@ -72,7 +72,7 @@ final class SentryBootstrapTests: XCTestCase {
         XCTAssertEqual(client.startCallCount, 1)
         XCTAssertEqual(
             client.lastOptions,
-            SentryBootstrap.Options(
+            SentryBootstrap.Configuration(
                 dsn: "https://example@sentry.io/123",
                 environment: "production",
                 releaseName: "ai.sidebar.sidebar@1.2.3+456",
@@ -119,9 +119,9 @@ final class SentryBootstrapTests: XCTestCase {
 
 private final class RecordingSentryBootstrapClient: SentryBootstrapClient {
     private(set) var startCallCount = 0
-    private(set) var lastOptions: SentryBootstrap.Options?
+    private(set) var lastOptions: SentryBootstrap.Configuration?
 
-    func start(options: SentryBootstrap.Options) {
+    func start(options: SentryBootstrap.Configuration) {
         startCallCount += 1
         lastOptions = options
     }
