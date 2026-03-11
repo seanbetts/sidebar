@@ -82,6 +82,7 @@ IOS_PARALLEL_TESTING_ENABLED="${IOS_PARALLEL_TESTING_ENABLED:-}"
 IOS_MAXIMUM_PARALLEL_TESTING_WORKERS="${IOS_MAXIMUM_PARALLEL_TESTING_WORKERS:-}"
 IOS_PACKAGE_RESOLVE_RETRIES="${IOS_PACKAGE_RESOLVE_RETRIES:-4}"
 IOS_PACKAGE_RESOLVE_RETRY_DELAY_SECONDS="${IOS_PACKAGE_RESOLVE_RETRY_DELAY_SECONDS:-15}"
+IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS="${IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS:-180}"
 IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY="${IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY:-YES}"
 IOS_PREPARE_SIMULATOR_BEFORE_TESTS="${IOS_PREPARE_SIMULATOR_BEFORE_TESTS:-NO}"
 IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE="${IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE:-NO}"
@@ -391,6 +392,43 @@ collect_simulator_diagnostics() {
   fi
 }
 
+run_xcodebuild_with_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  python3 - "$timeout_seconds" "$@" <<'PY'
+import os
+import signal
+import subprocess
+import sys
+import time
+
+timeout_seconds = int(sys.argv[1])
+command = sys.argv[2:]
+
+process = subprocess.Popen(command)
+deadline = time.monotonic() + timeout_seconds
+
+while True:
+    status = process.poll()
+    if status is not None:
+        sys.exit(status)
+    if time.monotonic() >= deadline:
+        process.send_signal(signal.SIGTERM)
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+        print(
+            f"Command timed out after {timeout_seconds} seconds: {' '.join(command)}",
+            file=sys.stderr,
+        )
+        sys.exit(124)
+    time.sleep(1)
+PY
+}
+
 resolve_package_dependencies() {
   local attempt=1
   while [[ ${attempt} -le ${IOS_PACKAGE_RESOLVE_RETRIES} ]]; do
@@ -406,7 +444,7 @@ resolve_package_dependencies() {
 
     echo "Resolve package dependencies (attempt ${attempt}/${IOS_PACKAGE_RESOLVE_RETRIES})..."
     set +e
-    xcodebuild "${package_args[@]}"
+    run_xcodebuild_with_timeout "${IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS}" xcodebuild "${package_args[@]}"
     local resolve_status=$?
     set -e
 
@@ -419,13 +457,17 @@ resolve_package_dependencies() {
       return "${resolve_status}"
     fi
 
-    echo "Package resolution failed (exit ${resolve_status}). Clearing SwiftPM caches before retry..."
-    if [[ -n "${IOS_DERIVED_DATA_PATH}" ]]; then
-      rm -rf "${IOS_DERIVED_DATA_PATH}/SourcePackages"
-    fi
-    if [[ "${IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY}" == "YES" ]]; then
-      rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/repositories"
-      rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/manifests"
+    if [[ ${resolve_status} -eq 124 ]]; then
+      echo "Package resolution timed out; retrying without clearing SwiftPM caches first..."
+    else
+      echo "Package resolution failed (exit ${resolve_status}). Clearing SwiftPM caches before retry..."
+      if [[ -n "${IOS_DERIVED_DATA_PATH}" ]]; then
+        rm -rf "${IOS_DERIVED_DATA_PATH}/SourcePackages"
+      fi
+      if [[ "${IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY}" == "YES" ]]; then
+        rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/repositories"
+        rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/manifests"
+      fi
     fi
 
     sleep $((IOS_PACKAGE_RESOLVE_RETRY_DELAY_SECONDS * attempt))
@@ -434,6 +476,7 @@ resolve_package_dependencies() {
 }
 
 resolve_package_dependencies
+XCODEBUILD_ARGS+=(-disableAutomaticPackageResolution)
 
 prepare_target_simulator
 

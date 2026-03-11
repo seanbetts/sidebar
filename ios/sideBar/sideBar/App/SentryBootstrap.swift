@@ -107,12 +107,13 @@ private final class DefaultSentryBootstrapClient: SentryBootstrapClient {
     static let shared = DefaultSentryBootstrapClient()
 
     func start(options: SentryBootstrap.Options) {
-        SentrySDK.start { sdkOptions in
+        let configureOptions: (SentryOptions) -> Void = { sdkOptions in
             sdkOptions.dsn = options.dsn
             sdkOptions.environment = options.environment
             sdkOptions.releaseName = options.releaseName
             sdkOptions.tracesSampleRate = NSNumber(value: options.tracesSampleRate)
             sdkOptions.sendDefaultPii = options.sendDefaultPii
         }
+        SentrySDK.start(configureOptions: configureOptions)
     }
 }
