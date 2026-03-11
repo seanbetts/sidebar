@@ -82,7 +82,7 @@
     {
       title: 'Skills',
       description:
-        'Extend sideBar with installable skills. Transcribe audio, save YouTube videos, analyse websites, and more — browse the Skills Store and add what you need.'
+        'Extend sideBar with installable skills. Transcribe audio, save YouTube videos, analyse websites, and more. Browse the Skills Store and add what you need.'
     },
     {
       title: 'Notes',
