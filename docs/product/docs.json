@@ -4,8 +4,8 @@
   "name": "sideBar",
   "url": "https://docs.trysidebar.ai",
   "logo": {
-    "light": "assets/logo.svg",
-    "dark": "assets/logo.svg"
+    "light": "assets/logo-light.svg",
+    "dark": "assets/logo-dark.svg"
   },
   "favicon": "assets/favicon.ico",
   "colors": {
