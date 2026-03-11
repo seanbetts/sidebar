@@ -216,14 +216,7 @@ def test_ios_ci_branch_routing_marks_dev_logic_only_and_main_broader() -> None:
     main_push_lanes = {entry["id"] for entry in _job_matrix("ios_test_main")}
 
     assert dev_push_lanes == {"logic-iphone", "logic-ipad", "logic-mac"}
-    assert main_push_lanes == {
-        "logic-iphone",
-        "logic-ipad",
-        "logic-mac",
-        "surface",
-        "ui",
-        "extensions",
-    }
+    assert main_push_lanes == {"surface", "ui", "extensions"}
 
 
 def test_ios_ci_logic_lanes_use_sidebar_scheme_across_all_surfaces() -> None:
@@ -261,6 +254,13 @@ def test_ios_ci_uses_separate_push_jobs_to_avoid_skipped_matrix_noise() -> None:
     assert jobs["ios_test_dev"]["if"] == "${{ github.event_name == 'push' && github.ref_name == 'dev' }}"
     assert jobs["ios_test_main"]["if"] == "${{ github.event_name == 'push' && github.ref_name == 'main' }}"
     assert jobs["ios_test_dispatch"]["if"] == "${{ github.event_name == 'workflow_dispatch' }}"
+
+
+def test_ios_quality_runs_only_on_dev_pushes() -> None:
+    """Static Apple quality checks should run on dev, not repeat on main."""
+    jobs = _load_ios_ci_workflow()["jobs"]
+
+    assert jobs["ios_quality"]["if"] == "${{ github.event_name == 'push' && github.ref_name == 'dev' }}"
 
 
 def test_ios_ci_ui_lane_receives_explicit_ui_test_secrets() -> None:
