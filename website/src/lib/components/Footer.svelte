@@ -5,7 +5,6 @@
     </p>
     <nav class="footer-links" aria-label="Footer navigation">
       <a href="/privacy">Privacy Policy</a>
-      <a href="https://docs.trysidebar.ai" target="_blank" rel="noopener noreferrer">Docs</a>
       <a href="mailto:support@trysidebar.ai">Contact</a>
     </nav>
     <p class="made-with">

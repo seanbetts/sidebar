@@ -21,6 +21,11 @@
       src: '/screenshots/websites.png',
       alt: 'sideBar websites showing a saved article open with the full text extracted',
       label: 'Websites'
+    },
+    {
+      src: '/screenshots/skills-store.png',
+      alt: 'sideBar Skills Store showing installable skills including Audio Transcription, YouTube, and more',
+      label: 'Skills Store'
     }
   ];
 
@@ -83,6 +88,11 @@
       title: 'Websites and Files',
       description:
         'Save web pages to read offline and upload documents. sideBar indexes everything so you can search, summarise, and ask questions about it all.'
+    },
+    {
+      title: 'Skills',
+      description:
+        'Extend sideBar with installable skills. Transcribe audio, save YouTube videos, analyse websites, and more — browse the Skills Store and add what you need.'
     }
   ];
 </script>
@@ -363,7 +373,7 @@
   /* Thumbnails */
   .carousel-thumbs {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
     gap: 0.5rem;
   }
 
@@ -413,7 +423,7 @@
 
   @media (max-width: 480px) {
     .carousel-thumbs {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
       gap: 0.25rem;
     }
 
