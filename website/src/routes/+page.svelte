@@ -1,6 +1,39 @@
 <script lang="ts">
   import Seo from '$lib/components/Seo.svelte';
 
+  const screenshots = [
+    {
+      src: '/screenshots/overview.png',
+      alt: 'sideBar on iPad showing the chat panel open alongside a website summary',
+      label: 'Chat'
+    },
+    {
+      src: '/screenshots/notes.png',
+      alt: 'sideBar notes with folders and a product roadmap note open',
+      label: 'Notes'
+    },
+    {
+      src: '/screenshots/tasks.png',
+      alt: 'sideBar tasks showing the Today view with grouped tasks across projects',
+      label: 'Tasks'
+    },
+    {
+      src: '/screenshots/websites.png',
+      alt: 'sideBar websites showing a saved article open with the full text extracted',
+      label: 'Websites'
+    }
+  ];
+
+  let activeIndex = $state(0);
+
+  function prev() {
+    activeIndex = (activeIndex - 1 + screenshots.length) % screenshots.length;
+  }
+
+  function next() {
+    activeIndex = (activeIndex + 1) % screenshots.length;
+  }
+
   const organizationJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -101,33 +134,37 @@
 <section class="screenshots" aria-labelledby="screenshots-heading">
   <div class="section-inner">
     <h2 id="screenshots-heading" class="section-title">See it in action</h2>
-    <div class="screenshot-grid">
-      <img
-        class="screenshot-primary"
-        src="/screenshots/overview.png"
-        alt="sideBar on iPad showing the chat panel open alongside a website summary"
-        width="1366"
-        height="1024"
-      />
-      <div class="screenshot-row">
+    <div class="carousel">
+      <!-- Main image -->
+      <div class="carousel-stage">
         <img
-          src="/screenshots/notes.png"
-          alt="sideBar notes with folders and a product roadmap note open"
+          src={screenshots[activeIndex].src}
+          alt={screenshots[activeIndex].alt}
           width="1366"
           height="1024"
         />
-        <img
-          src="/screenshots/tasks.png"
-          alt="sideBar tasks showing the Today view with grouped tasks across projects"
-          width="1366"
-          height="1024"
-        />
-        <img
-          src="/screenshots/websites.png"
-          alt="sideBar websites showing a saved article open with the full text extracted"
-          width="1366"
-          height="1024"
-        />
+        <button class="carousel-btn carousel-prev" onclick={prev} aria-label="Previous screenshot">
+          ‹
+        </button>
+        <button class="carousel-btn carousel-next" onclick={next} aria-label="Next screenshot">
+          ›
+        </button>
+      </div>
+      <!-- Thumbnails -->
+      <div class="carousel-thumbs" role="tablist" aria-label="Screenshot thumbnails">
+        {#each screenshots as shot, i}
+          <button
+            class="thumb"
+            class:active={i === activeIndex}
+            onclick={() => (activeIndex = i)}
+            role="tab"
+            aria-selected={i === activeIndex}
+            aria-label={`View screenshot ${i + 1}`}
+          >
+              <img src={shot.src} alt={shot.alt} width="1366" height="1024" />
+            <span class="thumb-label">{shot.label}</span>
+          </button>
+        {/each}
       </div>
     </div>
   </div>
@@ -270,30 +307,120 @@
     padding: 5rem 0;
   }
 
-  .screenshot-grid {
+  .carousel {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
-  .screenshot-grid img,
-  .screenshot-row img {
-    display: block;
-    width: 100%;
-    height: auto;
+  /* Main stage */
+  .carousel-stage {
+    position: relative;
     border-radius: 0.75rem;
+    overflow: hidden;
     border: 1px solid var(--color-border);
   }
 
-  .screenshot-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+  .carousel-stage img {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 
-  @media (max-width: 640px) {
-    .screenshot-row {
-      grid-template-columns: 1fr;
+  .carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: color-mix(in oklch, var(--color-background) 80%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--color-foreground);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+
+  .carousel-btn:hover {
+    background: var(--color-background);
+  }
+
+  .carousel-prev {
+    left: 0.75rem;
+  }
+
+  .carousel-next {
+    right: 0.75rem;
+  }
+
+  /* Thumbnails */
+  .carousel-thumbs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+  }
+
+  .thumb {
+    padding: 0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 2px solid transparent;
+    cursor: pointer;
+    background: none;
+    transition: border-color 0.15s;
+  }
+
+  .thumb img {
+    display: block;
+    width: 100%;
+    height: auto;
+    opacity: 0.55;
+    transition: opacity 0.15s;
+  }
+
+  .thumb:hover img {
+    opacity: 0.8;
+  }
+
+  .thumb.active {
+    border-color: var(--color-foreground);
+  }
+
+  .thumb.active img {
+    opacity: 1;
+  }
+
+  .thumb-label {
+    display: block;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+    padding: 0.35rem 0 0.1rem;
+    transition: color 0.15s;
+  }
+
+  .thumb.active .thumb-label {
+    color: var(--color-foreground);
+  }
+
+  @media (max-width: 480px) {
+    .carousel-thumbs {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.25rem;
+    }
+
+    .carousel-btn {
+      width: 2rem;
+      height: 2rem;
+      font-size: 1.25rem;
     }
   }
 
