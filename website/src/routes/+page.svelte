@@ -123,6 +123,7 @@
     </div>
     <h1 class="hero-title">The AI assistant that actually knows you.</h1>
     <p class="hero-subtitle">Everything you need in one place, endlessly extensible with skills.</p>
+    <h2>Try sideBar</h2>
     <a href="https://app.trysidebar.ai" class="hero-cta">Request Early Access</a>
     <p class="hero-platforms">Available on iPhone, iPad, Mac, and web</p>
   </div>
@@ -133,8 +134,7 @@
   <div class="section-inner">
     <h2 id="features-heading" class="section-title">Everything in one place</h2>
     <p class="section-subtitle">
-      sideBar brings together the tools you already use with an AI that can see
-      all of it and help you do more.
+      sideBar brings together the things you already do with an AI that can help you do more.
     </p>
     <div class="features-grid">
       {#each features as feature (feature.title)}
@@ -190,7 +190,7 @@
 <!-- Bottom CTA -->
 <section class="bottom-cta">
   <div class="section-inner">
-    <h2>Ready to get started?</h2>
+    <h2>Try sideBar</h2>
     <a href="https://app.trysidebar.ai" class="hero-cta">Request Early Access</a>
   </div>
 </section>
