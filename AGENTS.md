@@ -62,6 +62,30 @@ Write tests for new behavior. Prefer a failing test first when practical.
 **Coverage targets:** 90% services, 70% components/stores
 **Details:** `tests/AGENTS.md`
 
+## Product Documentation
+
+User-facing product docs live in `docs/product/` and are deployed via Mintlify to docs.trysidebar.ai.
+
+**Structure:**
+- `manual/` — long-form user guidance (introduction, getting started, per-feature pages)
+- `faq/` — short answer-oriented content (per-feature + general, privacy)
+- `skills/` — one page per skill (required, standard)
+- `skills/store/` — one page per store skill
+- `snippets/remediation/` — reusable remediation copy
+
+**When to update docs:**
+- Adding a new feature or skill: add the corresponding manual, FAQ, and/or skill page
+- Changing existing behaviour: update the affected pages to match
+- Adding or removing a skill: update `docs/product/docs.json` navigation
+- Changing skill capabilities: update the skill page's Actions table and description
+
+**Frontmatter:** All product docs require `title`, `summary`, `tags`, `audience`, `surfaces`. Skill docs also require `skill_id` matching the runtime identifier from `backend/api/services/tools/skill_metadata.py`.
+
+**Writing style:**
+- No em dashes (use a comma, colon, or restructure the sentence)
+- Skill pages use a table for the Actions section (`| Action | Description |`)
+- Keep answers direct and concise
+
 ## Definition of Done
 
 - [ ] Update or add tests for any behaviour change (prefer failing test first when practical)
@@ -71,6 +95,7 @@ Write tests for new behavior. Prefer a failing test first when practical.
 - [ ] Docstrings present (Python 80%+, TypeScript 90%+)
 - [ ] File size within limits
 - [ ] No console.log, debugger, or print() statements
+- [ ] Product docs updated if user-facing behaviour changed (`docs/product/`)
 
 ## When to Ask
 
