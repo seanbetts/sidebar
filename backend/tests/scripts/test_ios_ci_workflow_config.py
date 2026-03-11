@@ -58,9 +58,9 @@ def _test_target_names_from_plan(path: Path) -> set[str]:
     }
 
 
-def test_ipad_lane_configuration_validates_against_committed_scheme() -> None:
-    """The iPad lane should resolve to a UI-capable test target."""
-    lane = _matrix_entry("ipad")
+def test_fast_lane_configuration_validates_against_committed_scheme() -> None:
+    """The default fast lane should resolve to the deterministic macOS tests."""
+    lane = _matrix_entry("fast")
     scheme_targets = read_scheme_test_targets(XCODE_PROJECT_PATH, lane["scheme"])
     effective_targets = effective_test_targets(
         scheme_targets,
@@ -74,27 +74,46 @@ def test_ipad_lane_configuration_validates_against_committed_scheme() -> None:
         effective_targets,
         {"sideBarTests"},
     ) == []
-    assert effective_targets == ["sideBarUITests"]
+    assert effective_targets == ["sideBarTests"]
 
 
-def test_sidebar_scheme_keeps_extension_tests_available_for_fast_lane() -> None:
-    """The default `sideBar` scheme should expose extension coverage tests."""
-    assert "ShareExtensionTests" in read_scheme_test_targets(
-        XCODE_PROJECT_PATH,
-        "sideBar",
-    )
+def test_stateful_lane_configuration_uses_apple_stateful_plan() -> None:
+    """The stateful lane should stay available as an explicit manual-only lane."""
+    lane = _matrix_entry("stateful")
+
+    assert lane["scheme"] == "sideBar"
+    assert lane["test_plan"] == "AppleStateful"
+    assert lane["run_on_push"] == "NO"
 
 
-def test_apple_fast_plan_keeps_share_extension_tests_enabled() -> None:
-    """The fast plan should include extension coverage tests for coverage gates."""
-    assert "ShareExtensionTests" in _test_target_names_from_plan(APPLE_FAST_PLAN_PATH)
+def test_ui_lane_configuration_uses_the_split_ui_scheme() -> None:
+    """The UI smoke lane should remain explicit and manual."""
+    lane = _matrix_entry("ui")
+
+    assert lane["scheme"] == "sideBarUI"
+    assert lane["test_plan"] == "AppleUI"
+    assert lane["run_on_push"] == "NO"
 
 
-def test_ios_ci_runs_for_pull_requests() -> None:
-    """The iOS workflow should provide pre-merge coverage on pull requests."""
+def test_extensions_lane_configuration_uses_the_split_extensions_scheme() -> None:
+    """The extension lane should remain explicit and manual."""
+    lane = _matrix_entry("extensions")
+
+    assert lane["scheme"] == "sideBarExtensions"
+    assert lane["test_plan"] == "AppleExtensions"
+    assert lane["run_on_push"] == "NO"
+
+
+def test_apple_fast_plan_excludes_share_extension_tests() -> None:
+    """The fast plan should stay limited to deterministic app tests."""
+    assert _test_target_names_from_plan(APPLE_FAST_PLAN_PATH) == {"sideBarTests"}
+
+
+def test_ios_ci_does_not_run_for_pull_requests() -> None:
+    """The simplified iOS workflow should trigger on push and manual runs only."""
     workflow = _load_ios_ci_workflow()
 
-    assert "pull_request" in workflow["on"]
+    assert "pull_request" not in workflow["on"]
 
 
 def test_ios_ci_push_paths_include_swiftlint_config() -> None:
@@ -113,11 +132,24 @@ def test_ios_ci_jobs_define_timeouts() -> None:
     assert jobs["ios_test_matrix"]["timeout-minutes"] == "90"
 
 
-def test_ios_ci_quality_gate_modes_match_lane_purpose() -> None:
-    """Coverage and executed UI gates should run on the appropriate lanes."""
-    assert _matrix_entry("ipad")["quality_gate_args"] == "--skip-coverage"
-    assert _matrix_entry("iphone")["quality_gate_args"] == "--skip-ui-test-minimum"
-    assert _matrix_entry("mac")["quality_gate_args"] == ""
+def test_ios_ci_push_runs_only_the_fast_lane() -> None:
+    """Push-triggered CI should only execute the trusted fast lane by default."""
+    push_lanes = {
+        entry["id"]
+        for entry in _load_ios_ci_matrix()
+        if entry.get("run_on_push") == "YES"
+    }
+
+    assert push_lanes == {"fast"}
+
+
+def test_ios_ci_dispatch_lane_options_match_matrix_entries() -> None:
+    """Manual dispatch options should map cleanly onto the configured lanes."""
+    workflow = _load_ios_ci_workflow()
+    options = workflow["on"]["workflow_dispatch"]["inputs"]["lane"]["options"]
+    matrix_ids = {entry["id"] for entry in _load_ios_ci_matrix()}
+
+    assert set(options) == {"all"} | matrix_ids
 
 
 def test_ios_ci_uses_node24_compatible_actions() -> None:

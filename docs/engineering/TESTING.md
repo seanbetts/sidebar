@@ -196,10 +196,10 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 
 | Lane | Scheme / Plan | Default scope | Blocking status | When to run |
 | --- | --- | --- | --- | --- |
-| Fast | `sideBarMacTests` / `AppleFast` | Deterministic unit and component coverage | Required | Pre-push, PR, local default |
-| Stateful | `sideBar` / `AppleStateful` | Persistence, globals, cross-store integration | Informational | When touching stateful app flows, scheduled regression |
-| UI smoke | `sideBarUI` / `AppleUI` | Curated smoke coverage with one real login and seeded auth for the rest | Informational | Release verification, scheduled smoke, local UI checks |
-| Extensions | `sideBarExtensions` / `AppleExtensions` | Share sheet, widgets, Safari extension surfaces | Informational | When touching extension code, scheduled regression |
+| Fast | `sideBarMacTests` / `AppleFast` | Deterministic unit and component coverage | Required | `push` to `dev`, local default |
+| Stateful | `sideBar` / `AppleStateful` | Persistence, globals, cross-store integration | Informational | Manual regression when touching stateful app flows |
+| UI smoke | `sideBarUI` / `AppleUI` | Curated smoke coverage with one real login and seeded auth for the rest | Informational | Manual smoke checks, release verification, local UI checks |
+| Extensions | `sideBarExtensions` / `AppleExtensions` | Share sheet, widgets, Safari extension surfaces | Informational | Manual regression when touching extension code |
 
 ### Apple UI Smoke Policy
 
