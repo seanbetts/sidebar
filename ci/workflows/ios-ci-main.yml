@@ -1,0 +1,143 @@
+name: iOS CI (main)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "scripts/check_ios_architecture_boundaries.py"
+      - "scripts/ios_architecture_boundaries_baseline.json"
+      - "scripts/check_ios_doc_comments.py"
+      - "scripts/validate_ios_test_lane.py"
+      - "scripts/validate_ios_test_taxonomy.py"
+      - "scripts/resolve_ios_test_specs.py"
+      - "scripts/ios_test_taxonomy.json"
+      - "scripts/check_ios_quality_gates.py"
+      - "scripts/ios_quality_gates.json"
+      - "scripts/check-ios-warning-gate.sh"
+      - "scripts/test-ios.sh"
+      - ".swiftlint.yml"
+      - ".github/workflows/ios-ci.yml"
+      - ".github/workflows/ios-ci-main.yml"
+      - ".github/workflows/ios-ci-dispatch.yml"
+
+concurrency:
+  group: ios-ci-main-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios_test_main:
+    timeout-minutes: 90
+    runs-on:
+      - self-hosted
+      - ${{ matrix.runner_label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: surface
+            lane: surface
+            label: "iPhone 17 Pro iOS 26"
+            scheme: sideBar
+            test_plan: AppleStateful
+            destination: "platform=iOS Simulator,name=iPhone 17 Pro"
+            runner_label: ios
+            spec_selection_main: main_surface
+            skip_testing: ""
+            retry_tests_on_failure: "NO"
+            parallel_testing_enabled: "NO"
+            max_parallel_test_workers: "1"
+            destination_timeout: "180"
+            enable_coverage: "NO"
+            prepare_simulator_before_tests: "YES"
+            collect_simulator_diagnostics_on_failure: "YES"
+          - id: ui
+            lane: ui
+            label: "iPad Pro 13-inch (M5) iPadOS 26"
+            scheme: sideBarUI
+            test_plan: AppleUI
+            destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
+            runner_label: ios
+            spec_selection_main: ui_smoke
+            skip_testing: ""
+            retry_tests_on_failure: "NO"
+            parallel_testing_enabled: "NO"
+            max_parallel_test_workers: "1"
+            destination_timeout: "180"
+            enable_coverage: "NO"
+            prepare_simulator_before_tests: "YES"
+            collect_simulator_diagnostics_on_failure: "YES"
+          - id: extensions
+            lane: extensions
+            label: "iPhone 17 Pro iOS 26"
+            scheme: sideBarExtensions
+            test_plan: AppleExtensions
+            destination: "platform=iOS Simulator,name=iPhone 17 Pro"
+            runner_label: ios
+            spec_selection_main: main_extensions
+            skip_testing: ""
+            retry_tests_on_failure: "NO"
+            parallel_testing_enabled: "NO"
+            max_parallel_test_workers: "1"
+            destination_timeout: "180"
+            enable_coverage: "NO"
+            prepare_simulator_before_tests: "YES"
+            collect_simulator_diagnostics_on_failure: "YES"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Resolve taxonomy test specs (${{ matrix.label }})
+        run: |
+          selection="${{ matrix.spec_selection_main }}"
+          specs="$(python3 scripts/resolve_ios_test_specs.py --repo-root . --selection "$selection")"
+          echo "IOS_ONLY_TESTING=$specs" >> "$GITHUB_ENV"
+          echo "IOS_RESOLVED_TAXONOMY_SELECTION=$selection" >> "$GITHUB_ENV"
+      - name: Validate lane configuration (${{ matrix.label }})
+        run: |
+          python3 scripts/validate_ios_test_lane.py \
+            --project ios/sideBar/sideBar.xcodeproj \
+            --scheme "${{ matrix.scheme }}" \
+            --destination "${{ matrix.destination }}" \
+            --only-testing "${IOS_ONLY_TESTING}" \
+            --skip-testing "${{ matrix.skip_testing }}" \
+            --allowed-macos-targets "sideBarTests"
+      - name: Run tests (${{ matrix.label }})
+        env:
+          IOS_SCHEME: ${{ matrix.scheme }}
+          IOS_TEST_PLAN: ${{ matrix.test_plan }}
+          IOS_DESTINATION: ${{ matrix.destination }}
+          IOS_DESTINATION_TIMEOUT: ${{ matrix.destination_timeout }}
+          IOS_RESULT_BUNDLE_PATH: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult
+          IOS_DERIVED_DATA_PATH: ${{ runner.temp }}/sidebar-deriveddata-${{ matrix.id }}
+          IOS_CLEAN_DERIVED_DATA: "YES"
+          IOS_ONLY_TESTING: ${{ env.IOS_ONLY_TESTING }}
+          IOS_SKIP_TESTING: ${{ matrix.skip_testing }}
+          IOS_RETRY_TESTS_ON_FAILURE: ${{ matrix.retry_tests_on_failure }}
+          IOS_ENABLE_CODE_COVERAGE: ${{ matrix.enable_coverage }}
+          IOS_PARALLEL_TESTING_ENABLED: ${{ matrix.parallel_testing_enabled }}
+          IOS_MAXIMUM_PARALLEL_TESTING_WORKERS: ${{ matrix.max_parallel_test_workers }}
+          IOS_PREPARE_SIMULATOR_BEFORE_TESTS: ${{ matrix.prepare_simulator_before_tests }}
+          IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE: ${{ matrix.collect_simulator_diagnostics_on_failure }}
+          IOS_SIMULATOR_DIAGNOSTICS_DIR: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SIDEBAR_UI_TEST_EMAIL: ${{ secrets.SIDEBAR_UI_TEST_EMAIL }}
+          SIDEBAR_UI_TEST_PASSWORD: ${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}
+        run: scripts/test-ios.sh
+      - name: Upload xcresult bundle (${{ matrix.id }})
+        if: ${{ failure() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-xcresult-${{ matrix.id }}
+          path: ios-test-results/${{ matrix.id }}.xcresult
+          if-no-files-found: ignore
+      - name: Upload simulator diagnostics (${{ matrix.id }})
+        if: ${{ failure() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-simulator-diagnostics-${{ matrix.id }}
+          path: ios-test-results/${{ matrix.id }}-simulator-diagnostics
+          if-no-files-found: ignore

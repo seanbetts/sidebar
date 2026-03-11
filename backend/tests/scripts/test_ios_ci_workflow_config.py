@@ -1,4 +1,4 @@
-"""Regression tests for the committed iOS CI lane configuration."""
+"""Regression tests for the committed iOS CI workflow split."""
 
 from __future__ import annotations
 
@@ -9,7 +9,9 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ios-ci.yml"
+DEV_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ios-ci.yml"
+MAIN_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ios-ci-main.yml"
+DISPATCH_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ios-ci-dispatch.yml"
 BASELINE_ARTIFACT_PATH = (
     REPO_ROOT
     / "docs"
@@ -21,9 +23,6 @@ BASELINE_ARTIFACT_PATH = (
 XCODE_PROJECT_PATH = REPO_ROOT / "ios" / "sideBar" / "sideBar.xcodeproj"
 APPLE_FAST_PLAN_PATH = (
     XCODE_PROJECT_PATH / "xcshareddata" / "xctestplans" / "AppleFast.xctestplan"
-)
-SIDEBAR_SCHEME_PATH = (
-    XCODE_PROJECT_PATH / "xcshareddata" / "xcschemes" / "sideBar.xcscheme"
 )
 SIDEBAR_MAC_TESTS_SCHEME_PATH = (
     XCODE_PROJECT_PATH / "xcshareddata" / "xcschemes" / "sideBarMacTests.xcscheme"
@@ -41,61 +40,55 @@ read_scheme_test_targets = VALIDATE_LANE_MODULE.read_scheme_test_targets
 validate_lane = VALIDATE_LANE_MODULE.validate_lane
 
 
-def _load_ios_ci_workflow() -> dict[str, object]:
-    """Return the committed iOS CI workflow payload."""
-    return yaml.load(WORKFLOW_PATH.read_text(), Loader=yaml.BaseLoader)
+def _load_workflow(path: Path) -> dict[str, object]:
+    """Return a committed GitHub Actions workflow payload."""
+    return yaml.load(path.read_text(), Loader=yaml.BaseLoader)
 
 
-def _load_ios_ci_matrix() -> list[dict[str, str]]:
-    """Return the configured iOS test matrix entries for the manual-dispatch job."""
-    workflow = _load_ios_ci_workflow()
-    return workflow["jobs"]["ios_test_dispatch"]["strategy"]["matrix"]["include"]
+def _dev_workflow() -> dict[str, object]:
+    """Return the dev Apple CI workflow."""
+    return _load_workflow(DEV_WORKFLOW_PATH)
 
 
-def _job_matrix(job_name: str) -> list[dict[str, str]]:
-    """Return the configured iOS test matrix entries for a named workflow job."""
-    workflow = _load_ios_ci_workflow()
+def _main_workflow() -> dict[str, object]:
+    """Return the main Apple CI workflow."""
+    return _load_workflow(MAIN_WORKFLOW_PATH)
+
+
+def _dispatch_workflow() -> dict[str, object]:
+    """Return the manual-dispatch Apple CI workflow."""
+    return _load_workflow(DISPATCH_WORKFLOW_PATH)
+
+
+def _job_matrix(workflow: dict[str, object], job_name: str) -> list[dict[str, str]]:
+    """Return matrix entries for a named workflow job."""
     return workflow["jobs"][job_name]["strategy"]["matrix"]["include"]
 
 
+def _dispatch_matrix() -> list[dict[str, str]]:
+    """Return the configured manual-dispatch lane matrix."""
+    return _job_matrix(_dispatch_workflow(), "ios_test_dispatch")
+
+
 def _matrix_entry(entry_id: str) -> dict[str, str]:
-    """Return the workflow matrix row for a given lane id."""
-    for entry in _load_ios_ci_matrix():
+    """Return a manual-dispatch matrix row by id."""
+    for entry in _dispatch_matrix():
         if entry["id"] == entry_id:
             return entry
-    raise AssertionError(f"Missing iOS CI matrix entry: {entry_id}")
+    raise AssertionError(f"Missing iOS dispatch matrix entry: {entry_id}")
 
 
 def _matrix_entries_for_lane(lane: str) -> list[dict[str, str]]:
-    """Return all workflow matrix rows for a lane group."""
-    return [entry for entry in _load_ios_ci_matrix() if entry.get("lane") == lane]
+    """Return all manual-dispatch matrix rows for a lane group."""
+    return [entry for entry in _dispatch_matrix() if entry.get("lane") == lane]
 
 
-def _ios_test_run_step() -> dict[str, object]:
-    """Return the shared test-execution step from the manual-dispatch workflow job."""
-    workflow = _load_ios_ci_workflow()
-    for step in workflow["jobs"]["ios_test_dispatch"]["steps"]:
-        if step.get("name", "").startswith("Run tests"):
-            return step
-    raise AssertionError("Missing iOS test execution step")
-
-
-def _resolve_specs_step() -> dict[str, object]:
-    """Return the taxonomy spec-resolution step from the manual-dispatch workflow job."""
-    workflow = _load_ios_ci_workflow()
-    for step in workflow["jobs"]["ios_test_dispatch"]["steps"]:
-        if step.get("name", "").startswith("Resolve taxonomy test specs"):
-            return step
-    raise AssertionError("Missing taxonomy test spec resolution step")
-
-
-def _resolve_specs_step_for_job(job_name: str) -> dict[str, object]:
-    """Return the taxonomy spec-resolution step for a specific workflow job."""
-    workflow = _load_ios_ci_workflow()
+def _job_step(workflow: dict[str, object], job_name: str, prefix: str) -> dict[str, object]:
+    """Return the first step whose name starts with a given prefix."""
     for step in workflow["jobs"][job_name]["steps"]:
-        if step.get("name", "").startswith("Resolve taxonomy test specs"):
+        if step.get("name", "").startswith(prefix):
             return step
-    raise AssertionError(f"Missing taxonomy test spec resolution step for {job_name}")
+    raise AssertionError(f"Missing step {prefix!r} in {job_name}")
 
 
 def _test_target_names_from_plan(path: Path) -> set[str]:
@@ -134,30 +127,6 @@ def test_apple_testing_baseline_artifact_exists() -> None:
     assert BASELINE_ARTIFACT_PATH.exists()
 
 
-def test_surface_lane_configuration_uses_sidebar_scheme_and_surface_plan() -> None:
-    """The surface lane should run broader app-surface coverage on iOS."""
-    lane = _matrix_entry("surface")
-
-    assert lane["scheme"] == "sideBar"
-    assert lane["test_plan"] == "AppleStateful"
-
-
-def test_ui_lane_configuration_uses_the_split_ui_scheme() -> None:
-    """The UI smoke lane should use the split UI scheme on main."""
-    lane = _matrix_entry("ui")
-
-    assert lane["scheme"] == "sideBarUI"
-    assert lane["test_plan"] == "AppleUI"
-
-
-def test_extensions_lane_configuration_uses_the_split_extensions_scheme() -> None:
-    """The extension lane should protect extension surfaces on main."""
-    lane = _matrix_entry("extensions")
-
-    assert lane["scheme"] == "sideBarExtensions"
-    assert lane["test_plan"] == "AppleExtensions"
-
-
 def test_apple_fast_plan_excludes_share_extension_tests() -> None:
     """The fast plan should stay limited to deterministic app tests."""
     assert _test_target_names_from_plan(APPLE_FAST_PLAN_PATH) == {"sideBarTests"}
@@ -175,59 +144,105 @@ def test_duplicate_sidebar_macos_test_scheme_is_removed() -> None:
     assert not SIDEBAR_MAC_TESTS_SCHEME_PATH.exists()
 
 
-def test_ios_ci_does_not_run_for_pull_requests() -> None:
-    """The simplified iOS workflow should trigger on push and manual runs only."""
-    workflow = _load_ios_ci_workflow()
+def test_dev_workflow_triggers_only_on_dev_pushes() -> None:
+    """The dev Apple workflow should be scoped to dev pushes."""
+    workflow = _dev_workflow()
 
+    assert workflow["name"] == "iOS CI (dev)"
+    assert set(workflow["on"]["push"]["branches"]) == {"dev"}
+    assert "workflow_dispatch" not in workflow["on"]
     assert "pull_request" not in workflow["on"]
 
 
-def test_ios_ci_pushes_run_on_dev_and_main() -> None:
-    """Branch-specific Apple routing should exist for both development branches."""
-    workflow = _load_ios_ci_workflow()
+def test_main_workflow_triggers_only_on_main_pushes() -> None:
+    """The main Apple workflow should be scoped to main pushes."""
+    workflow = _main_workflow()
 
-    assert set(workflow["on"]["push"]["branches"]) == {"dev", "main"}
+    assert workflow["name"] == "iOS CI (main)"
+    assert set(workflow["on"]["push"]["branches"]) == {"main"}
+    assert "workflow_dispatch" not in workflow["on"]
+    assert "pull_request" not in workflow["on"]
 
 
-def test_ios_ci_push_paths_include_swiftlint_config() -> None:
-    """SwiftLint config changes should trigger the workflow that consumes them."""
-    workflow = _load_ios_ci_workflow()
-    push_paths = workflow["on"]["push"]["paths"]
+def test_dispatch_workflow_triggers_only_manually() -> None:
+    """The manual Apple workflow should expose lane selection via dispatch only."""
+    workflow = _dispatch_workflow()
 
-    assert ".swiftlint.yml" in push_paths
-    assert "scripts/ios_test_taxonomy.json" in push_paths
-    assert "scripts/validate_ios_test_taxonomy.py" in push_paths
-    assert "scripts/resolve_ios_test_specs.py" in push_paths
+    assert workflow["name"] == "iOS CI (manual)"
+    assert set(workflow["on"]) == {"workflow_dispatch"}
+
+
+def test_push_workflows_watch_relevant_ios_inputs_and_workflow_files() -> None:
+    """Both push workflows should re-run when Apple inputs or workflow files change."""
+    expected_paths = {
+        "ios/**",
+        "scripts/check_ios_architecture_boundaries.py",
+        "scripts/ios_architecture_boundaries_baseline.json",
+        "scripts/check_ios_doc_comments.py",
+        "scripts/validate_ios_test_lane.py",
+        "scripts/validate_ios_test_taxonomy.py",
+        "scripts/resolve_ios_test_specs.py",
+        "scripts/ios_test_taxonomy.json",
+        "scripts/check_ios_quality_gates.py",
+        "scripts/ios_quality_gates.json",
+        "scripts/check-ios-warning-gate.sh",
+        "scripts/test-ios.sh",
+        ".swiftlint.yml",
+        ".github/workflows/ios-ci.yml",
+        ".github/workflows/ios-ci-main.yml",
+        ".github/workflows/ios-ci-dispatch.yml",
+    }
+
+    assert set(_dev_workflow()["on"]["push"]["paths"]) == expected_paths
+    assert set(_main_workflow()["on"]["push"]["paths"]) == expected_paths
 
 
 def test_ios_ci_jobs_define_timeouts() -> None:
     """Self-hosted iOS jobs should not run without a hard timeout."""
-    jobs = _load_ios_ci_workflow()["jobs"]
-
-    assert jobs["ios_quality"]["timeout-minutes"] == "30"
-    assert jobs["ios_test_dev"]["timeout-minutes"] == "90"
-    assert jobs["ios_test_main"]["timeout-minutes"] == "90"
-    assert jobs["ios_test_dispatch"]["timeout-minutes"] == "90"
+    assert _dev_workflow()["jobs"]["ios_quality"]["timeout-minutes"] == "30"
+    assert _dev_workflow()["jobs"]["ios_test_dev"]["timeout-minutes"] == "90"
+    assert _main_workflow()["jobs"]["ios_test_main"]["timeout-minutes"] == "90"
+    assert _dispatch_workflow()["jobs"]["ios_test_dispatch"]["timeout-minutes"] == "90"
 
 
-def test_ios_ci_branch_routing_marks_dev_logic_only_and_main_broader() -> None:
-    """Push jobs should materialize only the intended Apple coverage per branch."""
-    dev_push_lanes = {entry["id"] for entry in _job_matrix("ios_test_dev")}
-    main_push_lanes = {entry["id"] for entry in _job_matrix("ios_test_main")}
+def test_dev_workflow_contains_only_quality_and_logic_jobs() -> None:
+    """Dev workflow should materialize only the jobs relevant to dev."""
+    workflow = _dev_workflow()
 
-    assert dev_push_lanes == {"logic-iphone", "logic-ipad", "logic-mac"}
-    assert main_push_lanes == {"surface", "ui", "extensions"}
-
-
-def test_ios_ci_logic_lanes_use_sidebar_scheme_across_all_surfaces() -> None:
-    """The dev logic lane should run the same scheme on iPhone, iPad, and macOS."""
-    logic_entries = _job_matrix("ios_test_dev")
-
-    assert {entry["id"] for entry in logic_entries} == {
+    assert set(workflow["jobs"]) == {"ios_quality", "ios_test_dev"}
+    assert {entry["id"] for entry in _job_matrix(workflow, "ios_test_dev")} == {
         "logic-iphone",
         "logic-ipad",
         "logic-mac",
     }
+
+
+def test_main_workflow_contains_only_release_jobs() -> None:
+    """Main workflow should materialize only the broader release lanes."""
+    workflow = _main_workflow()
+
+    assert set(workflow["jobs"]) == {"ios_test_main"}
+    assert {entry["id"] for entry in _job_matrix(workflow, "ios_test_main")} == {
+        "surface",
+        "ui",
+        "extensions",
+    }
+
+
+def test_dispatch_workflow_contains_all_lane_options() -> None:
+    """Manual dispatch should keep every lane available on demand."""
+    workflow = _dispatch_workflow()
+    options = workflow["on"]["workflow_dispatch"]["inputs"]["lane"]["options"]
+    matrix_lanes = {entry["lane"] for entry in _dispatch_matrix()}
+
+    assert set(workflow["jobs"]) == {"ios_test_dispatch"}
+    assert set(options) == {"all"} | matrix_lanes
+
+
+def test_ios_ci_logic_lanes_use_sidebar_scheme_across_all_surfaces() -> None:
+    """The dev logic lane should run the same scheme on iPhone, iPad, and macOS."""
+    logic_entries = _job_matrix(_dev_workflow(), "ios_test_dev")
+
     assert {entry["scheme"] for entry in logic_entries} == {"sideBar"}
     assert {entry["test_plan"] for entry in logic_entries} == {"AppleFast"}
     assert {entry["destination"] for entry in logic_entries} == {
@@ -237,35 +252,19 @@ def test_ios_ci_logic_lanes_use_sidebar_scheme_across_all_surfaces() -> None:
     }
 
 
-def test_ios_ci_dispatch_lane_options_match_matrix_entries() -> None:
-    """Manual dispatch options should map cleanly onto the configured lanes."""
-    workflow = _load_ios_ci_workflow()
-    options = workflow["on"]["workflow_dispatch"]["inputs"]["lane"]["options"]
-    matrix_lanes = {entry["lane"] for entry in _job_matrix("ios_test_dispatch")}
-
-    assert set(options) == {"all"} | matrix_lanes
-
-
-def test_ios_ci_uses_separate_push_jobs_to_avoid_skipped_matrix_noise() -> None:
-    """Push runs should use branch-specific jobs rather than one broadly skipped matrix."""
-    jobs = _load_ios_ci_workflow()["jobs"]
-
-    assert "ios_test_matrix" not in jobs
-    assert jobs["ios_test_dev"]["if"] == "${{ github.event_name == 'push' && github.ref_name == 'dev' }}"
-    assert jobs["ios_test_main"]["if"] == "${{ github.event_name == 'push' && github.ref_name == 'main' }}"
-    assert jobs["ios_test_dispatch"]["if"] == "${{ github.event_name == 'workflow_dispatch' }}"
-
-
-def test_ios_quality_runs_only_on_dev_pushes() -> None:
-    """Static Apple quality checks should run on dev, not repeat on main."""
-    jobs = _load_ios_ci_workflow()["jobs"]
-
-    assert jobs["ios_quality"]["if"] == "${{ github.event_name == 'push' && github.ref_name == 'dev' }}"
+def test_surface_ui_and_extensions_use_expected_schemes() -> None:
+    """The broader lanes should stay bound to their intended schemes and plans."""
+    assert _matrix_entry("surface")["scheme"] == "sideBar"
+    assert _matrix_entry("surface")["test_plan"] == "AppleStateful"
+    assert _matrix_entry("ui")["scheme"] == "sideBarUI"
+    assert _matrix_entry("ui")["test_plan"] == "AppleUI"
+    assert _matrix_entry("extensions")["scheme"] == "sideBarExtensions"
+    assert _matrix_entry("extensions")["test_plan"] == "AppleExtensions"
 
 
 def test_ios_ci_ui_lane_receives_explicit_ui_test_secrets() -> None:
     """The manual UI lane should receive dedicated auth secrets and shared config."""
-    run_step = _ios_test_run_step()
+    run_step = _job_step(_dispatch_workflow(), "ios_test_dispatch", "Run tests")
     env = run_step["env"]
 
     assert env["IOS_ONLY_TESTING"] == "${{ env.IOS_ONLY_TESTING }}"
@@ -277,16 +276,19 @@ def test_ios_ci_ui_lane_receives_explicit_ui_test_secrets() -> None:
 
 
 def test_ios_ci_resolves_only_testing_specs_from_taxonomy() -> None:
-    """Workflow should derive Apple test specs from the committed taxonomy."""
-    dev_resolve_step = _resolve_specs_step_for_job("ios_test_dev")
-    dispatch_resolve_step = _resolve_specs_step()
-    dev_step_script = dev_resolve_step["run"]
-    dispatch_step_script = dispatch_resolve_step["run"]
-    matrix = {entry["id"]: entry for entry in _load_ios_ci_matrix()}
+    """Workflows should derive Apple test specs from the committed taxonomy."""
+    dev_step_script = _job_step(_dev_workflow(), "ios_test_dev", "Resolve taxonomy test specs")["run"]
+    main_step_script = _job_step(_main_workflow(), "ios_test_main", "Resolve taxonomy test specs")["run"]
+    dispatch_step_script = _job_step(
+        _dispatch_workflow(),
+        "ios_test_dispatch",
+        "Resolve taxonomy test specs",
+    )["run"]
+    matrix = {entry["id"]: entry for entry in _dispatch_matrix()}
 
     assert "python3 scripts/resolve_ios_test_specs.py" in dev_step_script
-    assert "IOS_ONLY_TESTING=" in dev_step_script
     assert "dev_logic" in dev_step_script
+    assert "selection=\"${{ matrix.spec_selection_main }}\"" in main_step_script
     assert "selection=\"${{ matrix.spec_selection_main }}\"" in dispatch_step_script
     assert matrix["logic-iphone"]["spec_selection_main"] == "main_logic"
     assert matrix["logic-ipad"]["spec_selection_main"] == "main_logic"
@@ -297,13 +299,12 @@ def test_ios_ci_resolves_only_testing_specs_from_taxonomy() -> None:
 
 
 def test_ios_ci_uses_node24_compatible_actions() -> None:
-    """The workflow should use action versions that avoid Node 20 deprecation."""
-    jobs = _load_ios_ci_workflow()["jobs"]
+    """The workflows should use action versions that avoid Node 20 deprecation."""
     all_steps = (
-        jobs["ios_quality"]["steps"]
-        + jobs["ios_test_dev"]["steps"]
-        + jobs["ios_test_main"]["steps"]
-        + jobs["ios_test_dispatch"]["steps"]
+        _dev_workflow()["jobs"]["ios_quality"]["steps"]
+        + _dev_workflow()["jobs"]["ios_test_dev"]["steps"]
+        + _main_workflow()["jobs"]["ios_test_main"]["steps"]
+        + _dispatch_workflow()["jobs"]["ios_test_dispatch"]["steps"]
     )
     checkout_steps = [
         step
@@ -318,5 +319,5 @@ def test_ios_ci_uses_node24_compatible_actions() -> None:
 
     assert checkout_steps
     assert upload_steps
-    assert all(step["uses"] == "actions/checkout@v5" for step in checkout_steps)
-    assert all(step["uses"] == "actions/upload-artifact@v6" for step in upload_steps)
+    assert {step["uses"] for step in checkout_steps} == {"actions/checkout@v5"}
+    assert {step["uses"] for step in upload_steps} == {"actions/upload-artifact@v6"}
