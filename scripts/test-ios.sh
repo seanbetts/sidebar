@@ -465,6 +465,7 @@ resolve_package_dependencies() {
         rm -rf "${IOS_DERIVED_DATA_PATH}/SourcePackages"
       fi
       if [[ "${IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY}" == "YES" ]]; then
+        rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/artifacts"
         rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/repositories"
         rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/manifests"
       fi

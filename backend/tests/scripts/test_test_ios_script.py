@@ -91,3 +91,55 @@ def test_ui_only_lane_fails_when_backend_config_is_missing(tmp_path: Path) -> No
 
     assert result.returncode == 1, result.stdout + result.stderr
     assert "UI test backend configuration missing" in result.stdout
+
+
+def test_package_resolution_retry_clears_swiftpm_artifacts_cache(
+    tmp_path: Path,
+) -> None:
+    """Resolve retries should clear the global SwiftPM artifacts cache."""
+    home_dir = tmp_path / "home"
+    artifacts_dir = home_dir / "Library" / "Caches" / "org.swift.swiftpm" / "artifacts"
+    repositories_dir = home_dir / "Library" / "Caches" / "org.swift.swiftpm" / "repositories"
+    manifests_dir = home_dir / "Library" / "Caches" / "org.swift.swiftpm" / "manifests"
+    artifacts_dir.mkdir(parents=True)
+    repositories_dir.mkdir(parents=True)
+    manifests_dir.mkdir(parents=True)
+    (artifacts_dir / "Sentry.xcframework.zip").write_text("stale artifact")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        "if [[ \"$*\" == *\"-resolvePackageDependencies\"* ]]; then\n"
+        f"  if [[ -d \"{artifacts_dir}\" ]]; then\n"
+        "    exit 1\n"
+        "  fi\n"
+        "fi\n"
+        "exit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "HOME": str(home_dir),
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_DESTINATION": "platform=macOS",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+            "IOS_PACKAGE_RESOLVE_RETRIES": "2",
+            "IOS_PACKAGE_RESOLVE_RETRY_DELAY_SECONDS": "0",
+            "IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY": "YES",
+        }
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not artifacts_dir.exists()

@@ -118,3 +118,24 @@ def test_ios_ci_quality_gate_modes_match_lane_purpose() -> None:
     assert _matrix_entry("ipad")["quality_gate_args"] == "--skip-coverage"
     assert _matrix_entry("iphone")["quality_gate_args"] == "--skip-ui-test-minimum"
     assert _matrix_entry("mac")["quality_gate_args"] == ""
+
+
+def test_ios_ci_uses_node24_compatible_actions() -> None:
+    """The workflow should use action versions that avoid Node 20 deprecation."""
+    jobs = _load_ios_ci_workflow()["jobs"]
+    all_steps = jobs["ios_quality"]["steps"] + jobs["ios_test_matrix"]["steps"]
+    checkout_steps = [
+        step
+        for step in all_steps
+        if step.get("uses", "").startswith("actions/checkout@")
+    ]
+    upload_steps = [
+        step
+        for step in all_steps
+        if step.get("uses", "").startswith("actions/upload-artifact@")
+    ]
+
+    assert checkout_steps
+    assert upload_steps
+    assert all(step["uses"] == "actions/checkout@v5" for step in checkout_steps)
+    assert all(step["uses"] == "actions/upload-artifact@v6" for step in upload_steps)

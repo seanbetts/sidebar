@@ -52,7 +52,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: SwiftLint
         run: swiftlint --config .swiftlint.yml
         working-directory: ios/sideBar
@@ -115,7 +115,7 @@ jobs:
     steps:
       - name: Checkout
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Validate lane configuration (${{ matrix.label }})
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id }}
         run: |
@@ -178,7 +178,7 @@ jobs:
       - name: Upload xcresult bundle (${{ matrix.id }})
         if: ${{ failure() && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ios-xcresult-${{ matrix.id }}
           path: ios-test-results/${{ matrix.id }}.xcresult
@@ -186,7 +186,7 @@ jobs:
       - name: Upload simulator diagnostics (${{ matrix.id }})
         if: ${{ failure() && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ios-simulator-diagnostics-${{ matrix.id }}
           path: ios-test-results/${{ matrix.id }}-simulator-diagnostics
