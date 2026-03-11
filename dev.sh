@@ -6,20 +6,25 @@
 #
 # Common commands:
 #   ./dev.sh start
-#     Start backend (http://localhost:8001), frontend (http://localhost:3000),
-#     ingestion worker, docs (http://localhost:3001), and ensure local test
-#     Postgres availability.
-#     Local host aliases:
-#       - Holding page: http://trysidebar.localhost:3000
-#       - App shell:    http://app.trysidebar.localhost:3000
-#       - Docs:         http://localhost:3001
+#     Start backend, frontend, ingestion worker, docs, website, and Caddy proxy,
+#     and ensure local test Postgres availability.
+#     Proxy URLs (requires: brew install caddy):
+#       - Website: http://trysidebar.localhost:8080
+#       - App:     http://app.trysidebar.localhost:8080
+#       - Docs:    http://docs.trysidebar.localhost:8080
+#       - API:     http://api.trysidebar.localhost:8080
+#     Direct ports (no proxy):
+#       - Backend:  http://localhost:8001
+#       - Frontend: http://localhost:3000
+#       - Docs:     http://localhost:3001
+#       - Website:  http://localhost:5173
 #   ./dev.sh stop
 #     Stop all services managed by this script.
 #   ./dev.sh restart
 #     Restart all services.
 #   ./dev.sh status
 #     Show running status, URLs, and log file locations.
-#   ./dev.sh logs [backend|frontend|ingestion]
+#   ./dev.sh logs [backend|frontend|ingestion|docs|website|caddy]
 #     Tail logs for one service or all services.
 #
 # Notes:
@@ -32,10 +37,14 @@ BACKEND_LOG="/tmp/sidebar-backend.log"
 FRONTEND_LOG="/tmp/sidebar-frontend.log"
 INGESTION_LOG="/tmp/sidebar-ingestion-worker.log"
 DOCS_LOG="/tmp/sidebar-docs.log"
+WEBSITE_LOG="/tmp/sidebar-website.log"
 BACKEND_PID="/tmp/sidebar-backend.pid"
 FRONTEND_PID="/tmp/sidebar-frontend.pid"
 INGESTION_PID="/tmp/sidebar-ingestion-worker.pid"
 DOCS_PID="/tmp/sidebar-docs.pid"
+WEBSITE_PID="/tmp/sidebar-website.pid"
+CADDY_LOG="/tmp/sidebar-caddy.log"
+CADDY_PID="/tmp/sidebar-caddy.pid"
 REPO_ROOT="$(pwd)"
 TEST_DB_HOST="localhost"
 TEST_DB_PORT="5433"
@@ -338,6 +347,20 @@ is_docs_process() {
   [[ "${command}" == *"mintlify"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]
 }
 
+is_website_process() {
+  local command="$1"
+  if [[ "${command}" == *"npm run dev"* || "${command}" == *"vite dev"* ]]; then
+    [[ "${command}" == *"${REPO_ROOT}/website"* ]]
+  else
+    return 1
+  fi
+}
+
+is_caddy_process() {
+  local command="$1"
+  [[ "${command}" == *"caddy run"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]
+}
+
 role_matches_command() {
   local role="$1"
   local command="$2"
@@ -353,6 +376,12 @@ role_matches_command() {
       ;;
     docs)
       is_docs_process "${command}"
+      ;;
+    website)
+      is_website_process "${command}"
+      ;;
+    caddy)
+      is_caddy_process "${command}"
       ;;
     *)
       return 1
@@ -497,11 +526,8 @@ ensure_port_available() {
     pid=$(port_pid_any "${port}")
     if [[ -n "${pid}" ]]; then
       command=$(pid_command "${pid}")
-      if [[ "${role}" == "backend" ]] && is_backend_process "${command}"; then
-        echo "Cleaning up stale backend process on port ${port} (PID ${pid})..."
-        stop_pid "${pid}"
-      elif [[ "${role}" == "frontend" ]] && is_frontend_process "${command}"; then
-        echo "Cleaning up stale frontend process on port ${port} (PID ${pid})..."
+      if role_matches_command "${role}" "${command}"; then
+        echo "Cleaning up stale ${role} process on port ${port} (PID ${pid})..."
         stop_pid "${pid}"
       fi
     fi
@@ -515,14 +541,8 @@ ensure_port_available() {
   fi
 
   command=$(pid_command "${pid}")
-  if [[ "${role}" == "backend" ]] && is_backend_process "${command}"; then
-    echo "Cleaning up stale backend process on port ${port} (PID ${pid})..."
-    stop_pid "${pid}"
-    return
-  fi
-
-  if [[ "${role}" == "frontend" ]] && is_frontend_process "${command}"; then
-    echo "Cleaning up stale frontend process on port ${port} (PID ${pid})..."
+  if role_matches_command "${role}" "${command}"; then
+    echo "Cleaning up stale ${role} process on port ${port} (PID ${pid})..."
     stop_pid "${pid}"
     return
   fi
@@ -606,6 +626,48 @@ start_docs() {
   echo $! >"${DOCS_PID}"
   if ! wait_for_role_port 3001 docs "${DOCS_PID}"; then
     echo "Docs failed to bind to port 3001. Check logs: ${DOCS_LOG}"
+  fi
+}
+
+start_website() {
+  if [[ "${command}" == "start" ]]; then
+    local existing_pid
+    existing_pid=$(resolve_pid_for_port 5173 website || true)
+    if [[ -n "${existing_pid}" ]]; then
+      echo "Website already running (PID ${existing_pid})."
+      echo "${existing_pid}" >"${WEBSITE_PID}"
+      return
+    fi
+  fi
+  ensure_port_available 5173 website
+  echo "Starting website..."
+  (cd website && npm run dev -- --host 0.0.0.0 --port 5173 --strictPort) >"${WEBSITE_LOG}" 2>&1 </dev/null &
+  echo $! >"${WEBSITE_PID}"
+  if ! wait_for_role_port 5173 website "${WEBSITE_PID}"; then
+    echo "Website failed to bind to port 5173. Check logs: ${WEBSITE_LOG}"
+  fi
+}
+
+start_caddy() {
+  if ! command -v caddy >/dev/null 2>&1; then
+    echo "Caddy not installed — skipping proxy (install with: brew install caddy)"
+    return
+  fi
+  if [[ "${command}" == "start" ]]; then
+    local existing_pid
+    existing_pid=$(resolve_pid_for_port 8080 caddy || true)
+    if [[ -n "${existing_pid}" ]]; then
+      echo "Caddy proxy already running (PID ${existing_pid})."
+      echo "${existing_pid}" >"${CADDY_PID}"
+      return
+    fi
+  fi
+  ensure_port_available 8080 caddy
+  echo "Starting Caddy proxy..."
+  (cd "${REPO_ROOT}" && caddy run --config Caddyfile) >"${CADDY_LOG}" 2>&1 </dev/null &
+  echo $! >"${CADDY_PID}"
+  if ! wait_for_role_port 8080 caddy "${CADDY_PID}"; then
+    echo "Caddy proxy failed to bind to port 8080. Check logs: ${CADDY_LOG}"
   fi
 }
 
@@ -759,6 +821,22 @@ cleanup_services() {
     fi
   done
 
+  for pid in $(lsof -t -iTCP:5173 -sTCP:LISTEN 2>/dev/null || true); do
+    command=$(pid_command "${pid}")
+    if is_website_process "${command}"; then
+      echo "Cleaning website process (PID ${pid})..."
+      stop_pid "${pid}"
+    fi
+  done
+
+  for pid in $(lsof -t -iTCP:8080 -sTCP:LISTEN 2>/dev/null || true); do
+    command=$(pid_command "${pid}")
+    if is_caddy_process "${command}"; then
+      echo "Cleaning Caddy proxy process (PID ${pid})..."
+      stop_pid "${pid}"
+    fi
+  done
+
   if [[ -f "${INGESTION_PID}" ]]; then
     pid=$(cat "${INGESTION_PID}")
     if kill -0 "${pid}" >/dev/null 2>&1; then
@@ -797,6 +875,12 @@ status_service() {
       pid=$(resolve_pid_for_port 3000 frontend || true)
     elif [[ "${role}" == "ingestion" ]]; then
       pid=$(resolve_ingestion_pid || true)
+    elif [[ "${role}" == "docs" ]]; then
+      pid=$(resolve_pid_for_port 3001 docs || true)
+    elif [[ "${role}" == "website" ]]; then
+      pid=$(resolve_pid_for_port 5173 website || true)
+    elif [[ "${role}" == "caddy" ]]; then
+      pid=$(resolve_pid_for_port 8080 caddy || true)
     fi
     if [[ -n "${pid}" ]]; then
       echo "${pid}" >"${pid_file}"
@@ -846,6 +930,12 @@ show_logs() {
     docs)
       tail -n 200 "${DOCS_LOG}" || true
       ;;
+    website)
+      tail -n 200 "${WEBSITE_LOG}" || true
+      ;;
+    caddy)
+      tail -n 200 "${CADDY_LOG}" || true
+      ;;
     *)
       echo "--- Backend logs (${BACKEND_LOG}) ---"
       tail -n 200 "${BACKEND_LOG}" || true
@@ -855,6 +945,10 @@ show_logs() {
       tail -n 200 "${INGESTION_LOG}" || true
       echo "--- Docs logs (${DOCS_LOG}) ---"
       tail -n 200 "${DOCS_LOG}" || true
+      echo "--- Website logs (${WEBSITE_LOG}) ---"
+      tail -n 200 "${WEBSITE_LOG}" || true
+      echo "--- Caddy proxy logs (${CADDY_LOG}) ---"
+      tail -n 200 "${CADDY_LOG}" || true
       ;;
   esac
 }
@@ -873,12 +967,16 @@ case "${command}" in
     start_frontend
     start_ingestion_worker
     start_docs
+    start_website
+    start_caddy
     ;;
   stop)
     stop_service "${BACKEND_PID}" "backend" "backend" "8001"
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
     stop_service "${DOCS_PID}" "docs" "docs" "3001"
+    stop_service "${WEBSITE_PID}" "website" "website" "5173"
+    stop_service "${CADDY_PID}" "Caddy proxy" "caddy" "8080"
     ;;
   restart)
     cleanup_restart_processes
@@ -886,11 +984,15 @@ case "${command}" in
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
     stop_service "${DOCS_PID}" "docs" "docs" "3001"
+    stop_service "${WEBSITE_PID}" "website" "website" "5173"
+    stop_service "${CADDY_PID}" "Caddy proxy" "caddy" "8080"
     ensure_test_db
     start_backend
     start_frontend
     start_ingestion_worker
     start_docs
+    start_website
+    start_caddy
     ;;
   cleanup)
     cleanup_services
@@ -900,14 +1002,15 @@ case "${command}" in
     status_service "${FRONTEND_PID}" "Frontend" "http://app.trysidebar.localhost:3000" "${FRONTEND_LOG}" "frontend"
     status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}" "ingestion"
     status_service "${DOCS_PID}" "Docs" "http://localhost:3001" "${DOCS_LOG}" "docs"
-    echo "  Holding page: http://trysidebar.localhost:3000"
+    status_service "${WEBSITE_PID}" "Website" "http://localhost:5173" "${WEBSITE_LOG}" "website"
+    status_service "${CADDY_PID}" "Caddy proxy" "http://*.trysidebar.localhost:8080" "${CADDY_LOG}" "caddy"
     status_test_db
     ;;
   logs)
     show_logs "${2:-}"
     ;;
   *)
-    echo "Usage: ./dev.sh [start|stop|restart|cleanup|status|logs [backend|frontend|ingestion|docs]]"
+    echo "Usage: ./dev.sh [start|stop|restart|cleanup|status|logs [backend|frontend|ingestion|docs|website|caddy]]"
     exit 1
     ;;
 esac

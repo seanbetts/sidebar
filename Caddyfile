@@ -1,0 +1,29 @@
+# Local dev reverse proxy — managed by dev.sh
+# Access services at:
+#   http://trysidebar.localhost:8080     → marketing website (5173)
+#   http://app.trysidebar.localhost:8080 → app / holding page (3000)
+#   http://docs.trysidebar.localhost:8080 → docs (3001)
+#   http://api.trysidebar.localhost:8080  → backend API (8001)
+#
+# Requires: brew install caddy
+# No sudo required — runs on port 8080 (HTTP only).
+{
+	admin off
+	http_port 8080
+}
+
+http://trysidebar.localhost {
+	reverse_proxy localhost:5173
+}
+
+http://app.trysidebar.localhost {
+	reverse_proxy localhost:3000
+}
+
+http://docs.trysidebar.localhost {
+	reverse_proxy localhost:3001
+}
+
+http://api.trysidebar.localhost {
+	reverse_proxy localhost:8001
+}
