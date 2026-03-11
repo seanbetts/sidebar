@@ -218,6 +218,26 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 - If a flaky test blocks `AppleFast`, move it out of the required lane first, then fix the harness; do not leave intermittent failures in pre-push.
 - The engineer touching the affected Apple surface owns the quarantine entry until the test is restored or deleted.
 
+### Apple test taxonomy
+
+The Apple test taxonomy is feature-agnostic. Notes, Files, Chat, Tasks, Websites, Skills, and app-shell code should all use the same layer model.
+
+- `Logic`: deterministic shared-code tests
+- `Surface`: mounted views, app-environment wiring, persistence, platform-hosted behavior, and broader integration coverage
+- `UI Smoke`: tiny end-to-end app checks only
+
+Apple branch policy:
+
+- `dev` should run `Logic`
+- `main` should run `Logic`, `Surface`, and `UI Smoke`
+
+When adding Apple coverage, choose the lowest appropriate Apple test layer first. The intended default is:
+- default new Apple tests to `logic`
+- choose `surface` only when the logic layer cannot prove the behavior
+- choose `ui_smoke` only for true end-to-end coverage
+
+The checked-in taxonomy manifest at `scripts/ios_test_taxonomy.json` is the authoritative inventory for Apple test and support files.
+
 ## CI/CD
 
 Backend/frontend tests run automatically on push/PR via GitHub Actions. Coverage reports uploaded to Codecov.

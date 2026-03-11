@@ -6,6 +6,25 @@ New behavior requires tests.
 
 For feature work and bug fixes, follow the active superpowers TDD workflow unless the user explicitly instructs otherwise. For documentation-only changes, add tests only if behavior changes.
 
+## Apple Test Taxonomy
+
+Use one Apple test taxonomy for the shared iOS/macOS app.
+
+- `Logic`: deterministic shared-code tests
+- `Surface`: mounted views, app-environment wiring, persistence, platform-hosted behavior, and broader integration coverage
+- `UI Smoke`: tiny end-to-end app checks only
+
+Branch policy:
+
+- `dev` runs `Logic`
+- `main` runs `Logic`, `Surface`, and `UI Smoke`
+
+For Apple TDD, choose the lowest appropriate Apple test layer.
+- default new Apple tests to `logic`
+- choose `surface` only when the logic layer cannot prove the behavior
+- choose `ui_smoke` only for true end-to-end coverage
+- layer repo-local Apple testing rules on top of third-party skills, do not edit the third-party skills themselves
+
 ## What to Test
 
 **Backend (pytest):**
