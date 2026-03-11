@@ -4,13 +4,21 @@
 
 Full-stack AI assistant platform (SvelteKit + FastAPI). Shared service layer between UI and AI agent operations.
 
+## Instruction Precedence
+
+- Direct user instructions override everything else.
+- Repo `AGENTS.md` files define repo-specific architecture, testing targets, and safety constraints.
+- Superpowers skills remain authoritative for process discipline, especially brainstorming, planning, TDD, and verification.
+- Do not use this file to justify skipping a required superpowers step. Use it to adapt that process to this repo.
+
 ## Quick Start
 
 ```bash
 docker compose up -d                 # dev
-pytest backend/tests/                # backend tests
-npm test                             # frontend tests (in frontend/)
-ruff check backend/ && npm run lint  # lint
+(cd backend && pytest tests/)        # backend tests
+(cd frontend && npm test)            # frontend tests
+(cd backend && ruff check api workers && mypy api)   # backend lint + types
+(cd frontend && npm run lint && npm run check)       # frontend lint + types
 ```
 
 ## Constraints
@@ -24,7 +32,7 @@ ruff check backend/ && npm run lint  # lint
 
 **Real-time updates**
 - AI tool execution emits SSE events for UI reactivity
-- Pattern: `backend/api/services/claude_streaming.py`
+- Pattern: use the current chat SSE pipeline centered on `backend/api/routers/chat.py`
 
 **File size limits** (pre-commit enforced)
 - Backend: 600 LOC (services), 500 LOC (routers)
@@ -56,7 +64,9 @@ ruff check backend/ && npm run lint  # lint
 
 ## Testing
 
-Write tests for new behavior. Prefer a failing test first when practical.
+Write tests for new behavior.
+
+For feature work and bug fixes, follow the active superpowers TDD workflow unless the user explicitly instructs otherwise. For documentation-only or configuration-only changes, add tests when behavior changes or coverage would otherwise regress.
 
 **Tools:** pytest (backend), vitest (frontend)
 **Coverage targets:** 90% services, 70% components/stores
@@ -88,10 +98,10 @@ User-facing product docs live in `docs/product/` and are deployed via Mintlify t
 
 ## Definition of Done
 
-- [ ] Update or add tests for any behaviour change (prefer failing test first when practical)
+- [ ] Update or add tests for any behaviour change, following the active TDD workflow when applicable
 - [ ] Tests pass (pytest, vitest)
-- [ ] Linting passes (ruff, eslint)
-- [ ] Type checking passes (mypy, tsc)
+- [ ] Linting passes (`cd backend && ruff check api workers`, `cd frontend && npm run lint`)
+- [ ] Type checking passes (`cd backend && mypy api`, `cd frontend && npm run check`)
 - [ ] Docstrings present (Python 80%+, TypeScript 90%+)
 - [ ] File size within limits
 - [ ] No console.log, debugger, or print() statements
@@ -107,16 +117,17 @@ User-facing product docs live in `docs/product/` and are deployed via Mintlify t
 
 ## Autonomy and check-ins
 - Work in multi-step batches. Do not stop after each small change.
+- For tasks that trigger superpowers process skills, follow their required sequence. In practice that usually means: approved design, written plan, implementation, verification.
 - Only ask me a question when blocked by:
   - a missing requirement that changes behaviour
   - a risky choice with multiple reasonable options
   - missing secrets, credentials, or access
 - Otherwise, make reasonable assumptions, note them briefly in the final summary, and continue.
-- Prefer: plan -> implement -> run checks -> fix -> final summary.
+- Prefer: follow the required process skill, then implement, run checks, fix, and summarize.
 - Prefer evidence over assumptions: inspect logs, run curls, and write small one-off scripts to confirm hypotheses when debugging.
-- If unsure, read more code in the relevant module before asking. If still blocked, ask with 2–3 short options.
+- If unsure, read more code in the relevant module before asking. If still blocked, ask one concise plain-text question.
 - Do not pause to check in after intermediate steps or partial progress.
-- For larger tasks, write a plan to docs/plans/<yyyy-mm-dd>-<slug>.md, keep it short, and delete it when complete.
+- When a planning skill requires a spec or plan document, use the location that skill requires unless the user says otherwise.
 
 **Decide autonomously:**
 - Implementation details

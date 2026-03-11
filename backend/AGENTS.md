@@ -10,7 +10,7 @@ backend/api/services/{resource}_service.py
 ### Requirements
 - All business logic in service classes
 - Static methods, first param always `db: Session`
-- Return ORM models (not dicts)
+- Return ORM models for domain records. Typed summary helpers may return dataclasses or dict payloads when that is the established service contract.
 - Raise custom exceptions (not HTTPException)
 - Type hints required
 
@@ -67,10 +67,10 @@ def {action}_database(params) -> dict:
 ```
 
 ### Tool Definition
-Add to `backend/api/services/tools/definitions_{domain}.py` and wire in `tool_mapper.py`.
+Add to `backend/api/services/tools/definitions_{domain}.py` and expose it through the current agent tool registry and mapper pipeline.
 
 ### SSE Events
-Emit UI update events in `claude_streaming.py` after tool execution.
+Emit UI update events through the current chat SSE pipeline. Start with `backend/api/routers/chat.py` and the active tool event mapping helpers, do not add a parallel streaming path.
 
 ## Error Handling
 
@@ -81,7 +81,7 @@ Use custom exceptions from `api/exceptions.py`:
 
 ## Testing
 
-- Put tests in `backend/tests/test_{service}_service.py`
+- Put tests in the existing backend test layout, usually `backend/tests/api/test_{service}_service.py` or the closest matching module.
 - Use `db_session` fixture
 - Test happy path + error cases
 - Coverage target: 90%+ for services

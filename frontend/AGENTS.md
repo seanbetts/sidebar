@@ -7,14 +7,14 @@ Hard limit: 600 LOC
 **When approaching limit:**
 
 - Extract sub-components
-- Move logic to custom hooks/utils
+- Move logic to composables/utils
 - Split into container + presentational components
 
 ## State Management
 
 ### Stores
 
-Located in `src/lib/stores/`
+Located in `frontend/src/lib/stores/`
 
 **Pattern:**
 
@@ -33,7 +33,7 @@ function createMyStore() {
 
 ### Store Subscriptions in Components
 
-Use `$` prefix for auto-subscription:
+Use the repo's existing Svelte patterns. Store auto-subscriptions are common, and Svelte 5 runes are also used in some route components. Match the file you are editing instead of forcing a different reactive style.
 
 ```svelte
 <script>
@@ -44,7 +44,7 @@ Use `$` prefix for auto-subscription:
 
 ## API Calls
 
-Always through stores or centralized services, never directly in components.
+Prefer stores, composables, or centralized services. Avoid ad hoc `fetch()` calls in leaf components when shared state or reuse is involved.
 
 **Pattern:**
 
@@ -60,17 +60,11 @@ async loadData() {
 
 ## SSE (Server-Sent Events)
 
-Handle SSE events in `ChatWindow.svelte` callbacks:
+Keep chat SSE logic in the existing chat streaming layer. `ChatWindow.svelte` orchestrates user actions, while the event wiring lives in `frontend/src/lib/composables/useChatSSE.ts`.
 
 ```typescript
-await sseClient.connect(message, {
-	onNoteCreated: async (data) => {
-		await filesStore.load('notes');
-	},
-	onNoteUpdated: async (data) => {
-		await filesStore.load('notes');
-	}
-});
+const chatSse = useChatSSE();
+await chatSse.connect({ assistantMessageId, message, conversationId });
 ```
 
 ## Testing
@@ -82,9 +76,9 @@ await sseClient.connect(message, {
 
 ## Styling
 
-- Use Tailwind classes
-- Component-specific styles in `<style>` blocks
-- Don't create global CSS (use Tailwind utilities)
+- Use Tailwind classes as the default styling tool
+- Component-specific styles in `<style>` blocks are fine
+- Follow existing global styling patterns when needed. `frontend/src/app.css` and targeted `:global(...)` rules already exist, so avoid unnecessary new global rules but do not treat all global CSS as forbidden.
 
 ## Common Mistakes
 
@@ -97,7 +91,7 @@ await sseClient.connect(message, {
 
 **DO:**
 
-- Extract logic to custom hooks/utils
+- Extract logic to composables/utils
 - Use TypeScript types for all data
 - Handle loading and error states
 - Write JSDoc for exported functions

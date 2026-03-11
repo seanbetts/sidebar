@@ -2,7 +2,9 @@
 
 ## When to Add Tests
 
-New behavior requires tests. TDD preferred but not enforced.
+New behavior requires tests.
+
+For feature work and bug fixes, follow the active superpowers TDD workflow unless the user explicitly instructs otherwise. For documentation-only changes, add tests only if behavior changes.
 
 ## What to Test
 
@@ -26,16 +28,16 @@ New behavior requires tests. TDD preferred but not enforced.
 
 **Backend:**
 ```bash
-pytest backend/tests/                          # run all
-pytest backend/tests/test_notes_service.py     # specific file
-pytest --cov=api --cov-report=term-missing     # coverage
+(cd backend && pytest tests/)                                      # run all
+(cd backend && pytest tests/api/test_notes_service.py)             # specific file
+(cd backend && pytest --cov=api --cov-report=term-missing tests/)  # coverage
 ```
 
 **Frontend:**
 ```bash
-npm test                   # run all
-npm test TaskItem          # specific file
-npm run coverage           # coverage report
+(cd frontend && npm test)                                              # run all
+(cd frontend && npm test -- src/tests/components/files-panel.test.ts)  # specific file
+(cd frontend && npm run coverage)                                      # coverage report
 ```
 
 ## Test Structure
