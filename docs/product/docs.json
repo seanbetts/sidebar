@@ -11,7 +11,21 @@
   "colors": {
     "primary": "#111111",
     "light": "#eeeeee",
-    "dark": "#111111"
+    "dark": "#111111",
+    "background": {
+      "light": "#ffffff",
+      "dark": "#171717"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Home",
+      "url": "https://trysidebar.ai"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Open App",
+    "url": "https://app.trysidebar.ai"
   },
   "navigation": {
     "groups": [

@@ -28,7 +28,7 @@
 
     <div class="links">
       <a href="/about">About</a>
-      <a href="https://docs.trysidebar.ai" target="_blank" rel="noopener noreferrer">Docs</a>
+      <a href="https://docs.trysidebar.ai">Docs</a>
       <a href="https://app.trysidebar.ai" class="cta">Open App</a>
       <button class="theme-toggle" onclick={toggleTheme} aria-label="Toggle dark mode">
         {#if isDark}
