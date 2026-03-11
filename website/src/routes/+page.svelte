@@ -97,13 +97,38 @@
   </div>
 </section>
 
-<!-- Screenshots placeholder -->
+<!-- Screenshots -->
 <section class="screenshots" aria-labelledby="screenshots-heading">
   <div class="section-inner">
     <h2 id="screenshots-heading" class="section-title">See it in action</h2>
-    <!-- TODO: Replace with real app screenshot once taken -->
-    <div class="screenshot-placeholder" aria-label="App screenshot coming soon">
-      <span>App screenshot</span>
+    <div class="screenshot-grid">
+      <img
+        class="screenshot-primary"
+        src="/screenshots/overview.png"
+        alt="sideBar on iPad showing the chat panel open alongside a website summary"
+        width="1366"
+        height="1024"
+      />
+      <div class="screenshot-row">
+        <img
+          src="/screenshots/notes.png"
+          alt="sideBar notes with folders and a product roadmap note open"
+          width="1366"
+          height="1024"
+        />
+        <img
+          src="/screenshots/tasks.png"
+          alt="sideBar tasks showing the Today view with grouped tasks across projects"
+          width="1366"
+          height="1024"
+        />
+        <img
+          src="/screenshots/websites.png"
+          alt="sideBar websites showing a saved article open with the full text extracted"
+          width="1366"
+          height="1024"
+        />
+      </div>
     </div>
   </div>
 </section>
@@ -245,18 +270,31 @@
     padding: 5rem 0;
   }
 
-  .screenshot-placeholder {
-    aspect-ratio: 16 / 9;
-    max-width: 56rem;
-    margin: 0 auto;
-    border-radius: var(--radius-xl, 1rem);
-    border: 2px dashed var(--color-border);
+  .screenshot-grid {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-muted-foreground);
-    font-size: 0.875rem;
-    background: var(--color-muted);
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .screenshot-grid img,
+  .screenshot-row img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-border);
+  }
+
+  .screenshot-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  @media (max-width: 640px) {
+    .screenshot-row {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* ---- Bottom CTA ---- */
