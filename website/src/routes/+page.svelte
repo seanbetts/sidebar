@@ -192,6 +192,7 @@
   <div class="section-inner">
     <h2>Try sideBar</h2>
     <a href="https://app.trysidebar.ai" class="hero-cta">Request Early Access</a>
+    <p class="hero-platforms">Available on iPhone, iPad, Mac, and web</p>
   </div>
 </section>
 
@@ -452,8 +453,15 @@
     text-align: center;
   }
 
+  .bottom-cta .section-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
   .bottom-cta h2 {
-    margin: 0 0 1.5rem;
+    margin: 0;
     font-size: clamp(1.5rem, 3vw, 2rem);
     font-weight: 700;
     letter-spacing: -0.015em;
