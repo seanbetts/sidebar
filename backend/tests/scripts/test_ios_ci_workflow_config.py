@@ -162,24 +162,15 @@ def test_ios_ci_dispatch_lane_options_match_matrix_entries() -> None:
 
 
 def test_ios_ci_ui_lane_receives_explicit_ui_test_secrets() -> None:
-    """The manual UI lane should receive dedicated backend/auth secrets."""
+    """The manual UI lane should receive dedicated auth secrets and shared config."""
     run_step = _ios_test_run_step()
     env = run_step["env"]
 
     assert env["SIDEBAR_UI_TEST_EMAIL"] == "${{ secrets.SIDEBAR_UI_TEST_EMAIL }}"
     assert env["SIDEBAR_UI_TEST_PASSWORD"] == "${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}"
-    assert (
-        env["SIDEBAR_UI_TEST_API_BASE_URL"]
-        == "${{ secrets.SIDEBAR_UI_TEST_API_BASE_URL }}"
-    )
-    assert (
-        env["SIDEBAR_UI_TEST_SUPABASE_URL"]
-        == "${{ secrets.SIDEBAR_UI_TEST_SUPABASE_URL }}"
-    )
-    assert (
-        env["SIDEBAR_UI_TEST_SUPABASE_ANON_KEY"]
-        == "${{ secrets.SIDEBAR_UI_TEST_SUPABASE_ANON_KEY }}"
-    )
+    assert env["API_BASE_URL"] == "${{ secrets.API_BASE_URL }}"
+    assert env["SUPABASE_URL"] == "${{ secrets.SUPABASE_URL }}"
+    assert env["SUPABASE_ANON_KEY"] == "${{ secrets.SUPABASE_ANON_KEY }}"
 
 
 def test_ios_ci_uses_node24_compatible_actions() -> None:

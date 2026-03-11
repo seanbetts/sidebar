@@ -208,8 +208,8 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 - To run broader UI coverage, use `IOS_UI_SMOKE_ONLY=NO` or pass explicit `IOS_ONLY_TESTING=...`.
 - Launch screenshot coverage is no longer part of the default UI smoke path.
 - GitHub Actions `workflow_dispatch` runs of the `ui` lane require these repository secrets:
-  `SIDEBAR_UI_TEST_EMAIL`, `SIDEBAR_UI_TEST_PASSWORD`, `SIDEBAR_UI_TEST_API_BASE_URL`,
-  `SIDEBAR_UI_TEST_SUPABASE_URL`, and `SIDEBAR_UI_TEST_SUPABASE_ANON_KEY`.
+  `SIDEBAR_UI_TEST_EMAIL`, `SIDEBAR_UI_TEST_PASSWORD`, `API_BASE_URL`,
+  `SUPABASE_URL`, and `SUPABASE_ANON_KEY`.
 
 ### Quarantine Ownership
 
