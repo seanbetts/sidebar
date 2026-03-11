@@ -92,7 +92,7 @@
     {
       title: 'Tasks',
       description:
-        'Create and manage to-dos manually or just ask sideBar to do it. Smart lists surface what matters today, this week, and upcoming.'
+        'Capture to-dos, set due dates, and organise into projects and groups. Smart lists for Today, Upcoming, and Completed update automatically. Ask sideBar to create or manage tasks for you.'
     },
     {
       title: 'Websites',
