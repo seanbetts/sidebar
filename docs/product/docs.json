@@ -5,7 +5,8 @@
   "url": "https://docs.trysidebar.ai",
   "logo": {
     "light": "assets/logo-light.svg",
-    "dark": "assets/logo-dark.svg"
+    "dark": "assets/logo-dark.svg",
+    "href": "https://trysidebar.ai"
   },
   "favicon": "assets/favicon.ico",
   "colors": {
