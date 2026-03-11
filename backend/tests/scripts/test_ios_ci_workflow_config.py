@@ -10,6 +10,9 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ios-ci.yml"
+BASELINE_ARTIFACT_PATH = (
+    REPO_ROOT / "docs" / "plans" / "artifacts" / "apple-testing-baseline-2026-03-11.md"
+)
 XCODE_PROJECT_PATH = REPO_ROOT / "ios" / "sideBar" / "sideBar.xcodeproj"
 APPLE_FAST_PLAN_PATH = (
     XCODE_PROJECT_PATH / "xcshareddata" / "xctestplans" / "AppleFast.xctestplan"
@@ -84,6 +87,11 @@ def test_fast_lane_configuration_validates_against_committed_scheme() -> None:
         {"sideBarTests"},
     ) == []
     assert effective_targets == ["sideBarTests"]
+
+
+def test_apple_testing_baseline_artifact_exists() -> None:
+    """The Apple testing reset should keep a checked-in baseline artifact."""
+    assert BASELINE_ARTIFACT_PATH.exists()
 
 
 def test_stateful_lane_configuration_uses_apple_stateful_plan() -> None:
