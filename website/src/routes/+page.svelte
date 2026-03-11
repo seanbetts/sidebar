@@ -92,7 +92,7 @@
     {
       title: 'Tasks',
       description:
-        'Capture to-dos, set due dates, and organise into projects and groups. Smart lists for Today, Upcoming, and Completed update automatically. Ask sideBar to create or manage tasks for you.'
+        'Projects, due dates, and smart lists that keep Today and Upcoming always current. Ask sideBar to create or manage tasks for you.'
     },
     {
       title: 'Websites',
