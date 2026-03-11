@@ -27,9 +27,14 @@ read_scheme_test_targets = VALIDATE_LANE_MODULE.read_scheme_test_targets
 validate_lane = VALIDATE_LANE_MODULE.validate_lane
 
 
+def _load_ios_ci_workflow() -> dict[str, object]:
+    """Return the committed iOS CI workflow payload."""
+    return yaml.load(WORKFLOW_PATH.read_text(), Loader=yaml.BaseLoader)
+
+
 def _load_ios_ci_matrix() -> list[dict[str, str]]:
     """Return the configured iOS test matrix entries from the workflow."""
-    workflow = yaml.load(WORKFLOW_PATH.read_text(), Loader=yaml.BaseLoader)
+    workflow = _load_ios_ci_workflow()
     return workflow["jobs"]["ios_test_matrix"]["strategy"]["matrix"]["include"]
 
 
@@ -83,3 +88,33 @@ def test_sidebar_scheme_keeps_extension_tests_available_for_fast_lane() -> None:
 def test_apple_fast_plan_keeps_share_extension_tests_enabled() -> None:
     """The fast plan should include extension coverage tests for coverage gates."""
     assert "ShareExtensionTests" in _test_target_names_from_plan(APPLE_FAST_PLAN_PATH)
+
+
+def test_ios_ci_runs_for_pull_requests() -> None:
+    """The iOS workflow should provide pre-merge coverage on pull requests."""
+    workflow = _load_ios_ci_workflow()
+
+    assert "pull_request" in workflow["on"]
+
+
+def test_ios_ci_push_paths_include_swiftlint_config() -> None:
+    """SwiftLint config changes should trigger the workflow that consumes them."""
+    workflow = _load_ios_ci_workflow()
+    push_paths = workflow["on"]["push"]["paths"]
+
+    assert ".swiftlint.yml" in push_paths
+
+
+def test_ios_ci_jobs_define_timeouts() -> None:
+    """Self-hosted iOS jobs should not run without a hard timeout."""
+    jobs = _load_ios_ci_workflow()["jobs"]
+
+    assert jobs["ios_quality"]["timeout-minutes"] == "30"
+    assert jobs["ios_test_matrix"]["timeout-minutes"] == "90"
+
+
+def test_ios_ci_quality_gate_modes_match_lane_purpose() -> None:
+    """Coverage and executed UI gates should run on the appropriate lanes."""
+    assert _matrix_entry("ipad")["quality_gate_args"] == "--skip-coverage"
+    assert _matrix_entry("iphone")["quality_gate_args"] == "--skip-ui-test-minimum"
+    assert _matrix_entry("mac")["quality_gate_args"] == ""

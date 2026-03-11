@@ -14,6 +14,7 @@ QUALITY_GATES_MODULE = importlib.util.module_from_spec(MODULE_SPEC)
 MODULE_SPEC.loader.exec_module(QUALITY_GATES_MODULE)
 
 collect_warning_entries = QUALITY_GATES_MODULE.collect_warning_entries
+count_executed_ui_tests = QUALITY_GATES_MODULE.count_executed_ui_tests
 evaluate_warning_gates = QUALITY_GATES_MODULE.evaluate_warning_gates
 main = QUALITY_GATES_MODULE.main
 
@@ -30,6 +31,15 @@ def _warning_summary(message: str, file_path: str, line: int) -> dict:
                 )
             }
         },
+    }
+
+
+def _test_case(name: str, result: str) -> dict:
+    """Build a compact xcresult test node for a single test case."""
+    return {
+        "nodeType": "Test Case",
+        "name": name,
+        "result": result,
     }
 
 
@@ -97,6 +107,218 @@ def test_evaluate_warning_gates_scopes_by_path(monkeypatch) -> None:
     assert failures == ["Scoped iOS warnings 1 exceed allowed maximum 0"]
 
 
+def test_count_executed_ui_tests_counts_non_skipped_ui_test_cases() -> None:
+    """Executed UI test count should come from xcresult test results, not source."""
+    payload = {
+        "testPlanConfigurations": [],
+        "devices": [],
+        "testNodes": [
+            {
+                "nodeType": "UI test bundle",
+                "name": "sideBarUITests",
+                "children": [
+                    _test_case("testLogin", "Passed"),
+                    _test_case("testStreamingReply", "Failed"),
+                    _test_case("testSkippedJourney", "Skipped"),
+                ],
+            },
+            {
+                "nodeType": "Unit test bundle",
+                "name": "sideBarTests",
+                "children": [_test_case("testUnitCoverage", "Passed")],
+            },
+        ],
+    }
+
+    assert count_executed_ui_tests(payload, {"sideBarUITests"}) == 2
+
+
+def test_main_fails_when_executed_ui_tests_are_below_minimum(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """The minimum UI journey gate should fail when xcresult shows too few runs."""
+    config_path = tmp_path / "ios_quality_gates.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "coverage_thresholds": {"sideBar.app": 10.0},
+                "minimum_deterministic_ui_journey_tests": 3,
+                "ui_test_target_names": ["sideBarUITests"],
+                "warning_gate": {
+                    "max_warnings": 0,
+                    "include_path_contains": ["/ios/sideBar/sideBar/"],
+                    "exclude_path_contains": [],
+                    "exclude_message_regexes": [],
+                },
+            }
+        )
+    )
+
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xccov",
+        lambda _: {"targets": [{"name": "sideBar.app", "lineCoverage": 0.2}]},
+    )
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xcresulttool_tests",
+        lambda _: {
+            "testPlanConfigurations": [],
+            "devices": [],
+            "testNodes": [
+                {
+                    "nodeType": "UI test bundle",
+                    "name": "sideBarUITests",
+                    "children": [
+                        _test_case("testLogin", "Passed"),
+                        _test_case("testStreamingReply", "Passed"),
+                        _test_case("testSkippedJourney", "Skipped"),
+                    ],
+                }
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xcresulttool",
+        lambda _: {"issues": {"warningSummaries": {"_values": []}}},
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "check_ios_quality_gates.py",
+            "--xcresult",
+            str(tmp_path / "fake.xcresult"),
+            "--config",
+            str(config_path),
+        ],
+    )
+
+    assert main() == 1
+
+
+def test_main_skip_coverage_still_enforces_ui_test_minimum(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """`--skip-coverage` should still enforce executed UI journey minimums."""
+    config_path = tmp_path / "ios_quality_gates.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "coverage_thresholds": {"sideBar.app": 80.0},
+                "minimum_deterministic_ui_journey_tests": 3,
+                "ui_test_target_names": ["sideBarUITests"],
+                "warning_gate": {
+                    "max_warnings": 0,
+                    "include_path_contains": ["/ios/sideBar/sideBar/"],
+                    "exclude_path_contains": [],
+                    "exclude_message_regexes": [],
+                },
+            }
+        )
+    )
+
+    def _unexpected_xccov_call(_: Path) -> dict:  # pragma: no cover - defensive
+        raise AssertionError("run_xccov should not be called in --skip-coverage mode")
+
+    monkeypatch.setattr(QUALITY_GATES_MODULE, "run_xccov", _unexpected_xccov_call)
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xcresulttool_tests",
+        lambda _: {
+            "testPlanConfigurations": [],
+            "devices": [],
+            "testNodes": [
+                {
+                    "nodeType": "UI test bundle",
+                    "name": "sideBarUITests",
+                    "children": [
+                        _test_case("testLogin", "Passed"),
+                        _test_case("testStreamingReply", "Passed"),
+                    ],
+                }
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xcresulttool",
+        lambda _: {"issues": {"warningSummaries": {"_values": []}}},
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "check_ios_quality_gates.py",
+            "--xcresult",
+            str(tmp_path / "fake.xcresult"),
+            "--config",
+            str(config_path),
+            "--skip-coverage",
+        ],
+    )
+
+    assert main() == 1
+
+
+def test_main_skip_ui_test_minimum_still_enforces_coverage(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """`--skip-ui-test-minimum` should still enforce coverage thresholds."""
+    config_path = tmp_path / "ios_quality_gates.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "coverage_thresholds": {"sideBar.app": 50.0},
+                "minimum_deterministic_ui_journey_tests": 99,
+                "ui_test_target_names": ["sideBarUITests"],
+                "warning_gate": {
+                    "max_warnings": 0,
+                    "include_path_contains": ["/ios/sideBar/sideBar/"],
+                    "exclude_path_contains": [],
+                    "exclude_message_regexes": [],
+                },
+            }
+        )
+    )
+
+    def _unexpected_ui_count(*_, **__):  # pragma: no cover - defensive
+        raise AssertionError(
+            "run_xcresulttool_tests should not be called in --skip-ui-test-minimum mode"
+        )
+
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xccov",
+        lambda _: {"targets": [{"name": "sideBar.app", "lineCoverage": 0.2}]},
+    )
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xcresulttool_tests",
+        _unexpected_ui_count,
+    )
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xcresulttool",
+        lambda _: {"issues": {"warningSummaries": {"_values": []}}},
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "check_ios_quality_gates.py",
+            "--xcresult",
+            str(tmp_path / "fake.xcresult"),
+            "--config",
+            str(config_path),
+            "--skip-ui-test-minimum",
+        ],
+    )
+
+    assert main() == 1
+
+
 def test_main_warnings_only_skips_coverage_and_ui_checks(
     monkeypatch, tmp_path: Path
 ) -> None:
@@ -128,13 +350,13 @@ def test_main_warnings_only_skips_coverage_and_ui_checks(
 
     def _unexpected_ui_count(*_, **__):  # pragma: no cover - defensive
         raise AssertionError(
-            "count_deterministic_ui_tests should not be called in --warnings-only mode"
+            "count_executed_ui_tests should not be called in --warnings-only mode"
         )
 
     monkeypatch.setattr(QUALITY_GATES_MODULE, "run_xccov", _unexpected_xccov_call)
     monkeypatch.setattr(
         QUALITY_GATES_MODULE,
-        "count_deterministic_ui_tests",
+        "count_executed_ui_tests",
         _unexpected_ui_count,
     )
 

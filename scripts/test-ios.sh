@@ -205,8 +205,8 @@ if [[ "${lane_includes_ui_tests}" == "YES" ]]; then
   if [[ "${lane_includes_ui_tests}" == "YES" ]] && ! ui_test_backend_config_present; then
     echo "UI test backend configuration missing; skipping sideBarUITests."
     if scheme_has_only_ui_tests "${IOS_SCHEME}"; then
-      echo "No non-UI Apple tests remain in scheme ${IOS_SCHEME}; exiting without running xcodebuild."
-      exit 0
+      echo "No non-UI Apple tests remain in scheme ${IOS_SCHEME}; failing before running xcodebuild."
+      exit 1
     fi
     XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
     lane_includes_ui_tests="NO"

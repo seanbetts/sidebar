@@ -55,6 +55,25 @@ def run_xcresulttool(xcresult_path: Path) -> dict:
     return json.loads(output)
 
 
+def run_xcresulttool_tests(xcresult_path: Path) -> dict:
+    """Return parsed xcresult test-results JSON payload."""
+    command = [
+        "xcrun",
+        "xcresulttool",
+        "get",
+        "test-results",
+        "tests",
+        "--compact",
+        "--path",
+        str(xcresult_path),
+    ]
+    try:
+        output = subprocess.check_output(command, text=True)
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(f"Failed to read xcresult test results: {exc}") from exc
+    return json.loads(output)
+
+
 def iter_warning_summaries(node: object) -> list[dict]:
     """Collect warning summary objects recursively from xcresult JSON."""
     summaries: list[dict] = []
@@ -219,30 +238,42 @@ def extract_coverage_by_target(xccov_report: dict) -> dict[str, float]:
     return result
 
 
-def count_deterministic_ui_tests(
-    root: Path,
-    ui_test_paths: list[str],
-    excluded_test_names: set[str],
+def count_executed_ui_tests(
+    test_results_payload: dict,
+    ui_test_target_names: set[str],
 ) -> int:
-    """Count non-template UI test methods in configured UI test folders."""
-    test_name_re = re.compile(r"^\s*func\s+(test[A-Za-z0-9_]+)\s*\(")
-    discovered: set[str] = set()
+    """Count executed UI test cases from xcresult test-results payload."""
 
-    for relative_path in ui_test_paths:
-        path = root / relative_path
-        if not path.exists():
-            continue
-        for swift_file in path.rglob("*.swift"):
-            text = swift_file.read_text(encoding="utf-8")
-            for line in text.splitlines():
-                match = test_name_re.match(line)
-                if not match:
-                    continue
-                name = match.group(1)
-                if name in excluded_test_names:
-                    continue
-                discovered.add(name)
-    return len(discovered)
+    def _walk(node: object, in_ui_bundle: bool) -> int:
+        if not isinstance(node, dict):
+            return 0
+
+        node_type = node.get("nodeType")
+        node_name = node.get("name")
+        is_ui_bundle = (
+            node_type == "UI test bundle"
+            or (isinstance(node_name, str) and node_name in ui_test_target_names)
+        )
+        within_ui_bundle = in_ui_bundle or is_ui_bundle
+
+        count = 0
+        if within_ui_bundle and node_type == "Test Case":
+            result = node.get("result")
+            if result in {"Passed", "Failed", "Expected Failure"}:
+                count += 1
+
+        children = node.get("children", [])
+        if isinstance(children, list):
+            for child in children:
+                count += _walk(child, within_ui_bundle)
+        return count
+
+    total = 0
+    test_nodes = test_results_payload.get("testNodes", [])
+    if isinstance(test_nodes, list):
+        for node in test_nodes:
+            total += _walk(node, False)
+    return total
 
 
 def emit(message: str = "") -> None:
@@ -278,6 +309,19 @@ def main() -> int:
         action="store_true",
         help="Run warning gates only (skip coverage/UI-count checks).",
     )
+    parser.add_argument(
+        "--skip-coverage",
+        action="store_true",
+        help="Skip coverage checks but still enforce other enabled gates.",
+    )
+    parser.add_argument(
+        "--skip-ui-test-minimum",
+        action="store_true",
+        help=(
+            "Skip executed UI test minimum checks but still enforce "
+            "other enabled gates."
+        ),
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -287,65 +331,79 @@ def main() -> int:
     )
     max_drop_pct_points = float(config.get("max_drop_pct_points", 0.0))
     min_ui_tests = int(config.get("minimum_deterministic_ui_journey_tests", 0))
-    ui_test_paths = list(config.get("ui_test_paths", ["ios/sideBar/sideBarUITests"]))
-    excluded = set(config.get("excluded_ui_test_names", []))
+    ui_test_target_names = {
+        str(name)
+        for name in config.get("ui_test_target_names", ["sideBarUITests"])
+        if str(name).strip()
+    }
 
     failures: list[str] = []
     if args.warnings_only:
         emit("Coverage gates: skipped (--warnings-only)")
         emit("Deterministic UI journey tests: skipped (--warnings-only)")
     else:
-        report = run_xccov(args.xcresult)
-        coverage_by_target = extract_coverage_by_target(report)
+        if args.skip_coverage:
+            emit("Coverage gates: skipped (--skip-coverage)")
+        else:
+            report = run_xccov(args.xcresult)
+            coverage_by_target = extract_coverage_by_target(report)
 
-        emit("Coverage gates:")
-        for target_name, threshold in thresholds.items():
-            actual = coverage_by_target.get(target_name)
-            if actual is None:
-                failures.append(f"Missing coverage target in report: {target_name}")
-                continue
-            emit(f"- {target_name}: {actual:.2f}% (required >= {threshold:.2f}%)")
-            if actual < float(threshold):
-                required = float(threshold)
-                failures.append(
-                    f"{target_name} coverage {actual:.2f}% "
-                    f"is below threshold {required:.2f}%"
-                )
-
-        if baseline_thresholds and max_drop_pct_points > 0:
-            emit("Baseline drop gates:")
-            for target_name, baseline in baseline_thresholds.items():
+            emit("Coverage gates:")
+            for target_name, threshold in thresholds.items():
                 actual = coverage_by_target.get(target_name)
                 if actual is None:
-                    failures.append(f"Missing baseline target in report: {target_name}")
+                    failures.append(f"Missing coverage target in report: {target_name}")
                     continue
-                minimum_allowed = float(baseline) - max_drop_pct_points
                 emit(
                     f"- {target_name}: {actual:.2f}% "
-                    f"(baseline {float(baseline):.2f}%, "
-                    f"max drop {max_drop_pct_points:.2f}pp)"
+                    f"(required >= {float(threshold):.2f}%)"
                 )
-                if actual < minimum_allowed:
+                if actual < float(threshold):
+                    required = float(threshold)
                     failures.append(
-                        f"{target_name} coverage {actual:.2f}% dropped more than "
-                        f"{max_drop_pct_points:.2f}pp from baseline "
-                        f"{float(baseline):.2f}%"
+                        f"{target_name} coverage {actual:.2f}% "
+                        f"is below threshold {required:.2f}%"
                     )
 
-        ui_test_count = count_deterministic_ui_tests(
-            root=args.repo_root,
-            ui_test_paths=ui_test_paths,
-            excluded_test_names=excluded,
-        )
-        emit(
-            "Deterministic UI journey tests: "
-            f"{ui_test_count} (required >= {min_ui_tests})"
-        )
-        if ui_test_count < min_ui_tests:
-            failures.append(
-                "Deterministic UI journey tests "
-                f"{ui_test_count} is below required minimum {min_ui_tests}"
+            if baseline_thresholds and max_drop_pct_points > 0:
+                emit("Baseline drop gates:")
+                for target_name, baseline in baseline_thresholds.items():
+                    actual = coverage_by_target.get(target_name)
+                    if actual is None:
+                        failures.append(
+                            f"Missing baseline target in report: {target_name}"
+                        )
+                        continue
+                    minimum_allowed = float(baseline) - max_drop_pct_points
+                    emit(
+                        f"- {target_name}: {actual:.2f}% "
+                        f"(baseline {float(baseline):.2f}%, "
+                        f"max drop {max_drop_pct_points:.2f}pp)"
+                    )
+                    if actual < minimum_allowed:
+                        failures.append(
+                            f"{target_name} coverage {actual:.2f}% dropped more than "
+                            f"{max_drop_pct_points:.2f}pp from baseline "
+                            f"{float(baseline):.2f}%"
+                        )
+
+        if args.skip_ui_test_minimum:
+            emit("Deterministic UI journey tests: skipped (--skip-ui-test-minimum)")
+        else:
+            ui_test_results = run_xcresulttool_tests(args.xcresult)
+            ui_test_count = count_executed_ui_tests(
+                test_results_payload=ui_test_results,
+                ui_test_target_names=ui_test_target_names,
             )
+            emit(
+                "Deterministic UI journey tests: "
+                f"{ui_test_count} (required >= {min_ui_tests})"
+            )
+            if ui_test_count < min_ui_tests:
+                failures.append(
+                    "Deterministic UI journey tests "
+                    f"{ui_test_count} is below required minimum {min_ui_tests}"
+                )
 
     warning_config = config.get("warning_gate", {})
     if warning_config:

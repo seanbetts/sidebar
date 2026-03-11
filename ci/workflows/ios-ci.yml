@@ -13,6 +13,20 @@ on:
           - ipad
           - iphone
           - mac
+  pull_request:
+    branches: [dev]
+    paths:
+      - "ios/**"
+      - "scripts/check_ios_architecture_boundaries.py"
+      - "scripts/ios_architecture_boundaries_baseline.json"
+      - "scripts/check_ios_doc_comments.py"
+      - "scripts/validate_ios_test_lane.py"
+      - "scripts/check_ios_quality_gates.py"
+      - "scripts/ios_quality_gates.json"
+      - "scripts/check-ios-warning-gate.sh"
+      - "scripts/test-ios.sh"
+      - ".swiftlint.yml"
+      - ".github/workflows/ios-ci.yml"
   push:
     branches: [dev]
     paths:
@@ -25,6 +39,7 @@ on:
       - "scripts/ios_quality_gates.json"
       - "scripts/check-ios-warning-gate.sh"
       - "scripts/test-ios.sh"
+      - ".swiftlint.yml"
       - ".github/workflows/ios-ci.yml"
 
 concurrency:
@@ -34,6 +49,7 @@ concurrency:
 jobs:
   ios_quality:
     runs-on: [self-hosted, mac]
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,6 +63,7 @@ jobs:
 
   ios_test_matrix:
     needs: [ios_quality]
+    timeout-minutes: 90
     runs-on:
       - self-hosted
       - ${{ matrix.runner_label }}
@@ -59,6 +76,7 @@ jobs:
             scheme: sideBarUI
             destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
             runner_label: ios
+            quality_gate_args: "--skip-coverage"
             only_testing: sideBarUITests
             skip_testing: sideBarUITests/SideBarUITestsLaunchTests
             retry_tests_on_failure: "NO"
@@ -73,6 +91,7 @@ jobs:
             scheme: sideBar
             destination: "platform=iOS Simulator,name=iPhone 17 Pro"
             runner_label: ios
+            quality_gate_args: "--skip-ui-test-minimum"
             skip_testing: sideBarUITests
             retry_tests_on_failure: "NO"
             parallel_testing_enabled: "NO"
@@ -86,6 +105,7 @@ jobs:
             scheme: sideBarMacTests
             destination: "platform=macOS"
             runner_label: mac
+            quality_gate_args: ""
             only_testing: sideBarTests
             skip_testing: sideBarUITests,ShareExtensionTests
             destination_timeout: "180"
@@ -125,8 +145,10 @@ jobs:
           IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE: ${{ matrix.collect_simulator_diagnostics_on_failure }}
           IOS_SIMULATOR_DIAGNOSTICS_DIR: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics
         run: scripts/test-ios.sh
-      - name: Enforce hard quality gates (iPhone lane)
-        if: ${{ (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) && matrix.id == 'iphone' }}
+      - name: Enforce hard quality gates (${{ matrix.id }})
+        if: ${{ (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) && matrix.quality_gate_args != '' }}
+        env:
+          IOS_QUALITY_GATE_ARGS: ${{ matrix.quality_gate_args }}
         run: |
           xcresult_path="ios-test-results/${{ matrix.id }}.xcresult"
           if [[ ! -f "${xcresult_path}/Info.plist" ]]; then
@@ -135,16 +157,24 @@ jobs:
             exit 1
           fi
 
-          if ! xcrun xccov view --report --json "${xcresult_path}" >/dev/null 2>&1; then
-            echo "xcresult path is unreadable by xccov: ${xcresult_path}"
-            find ios-test-results -maxdepth 4 -print || true
-            exit 1
+          quality_gate_args=()
+          if [[ -n "${IOS_QUALITY_GATE_ARGS}" ]]; then
+            read -r -a quality_gate_args <<< "${IOS_QUALITY_GATE_ARGS}"
+          fi
+
+          if [[ "${IOS_QUALITY_GATE_ARGS}" != *"--skip-coverage"* ]]; then
+            if ! xcrun xccov view --report --json "${xcresult_path}" >/dev/null 2>&1; then
+              echo "xcresult path is unreadable by xccov: ${xcresult_path}"
+              find ios-test-results -maxdepth 4 -print || true
+              exit 1
+            fi
           fi
 
           echo "Using xcresult bundle at: ${xcresult_path}"
           python3 scripts/check_ios_quality_gates.py \
             --xcresult "${xcresult_path}" \
-            --config scripts/ios_quality_gates.json
+            --config scripts/ios_quality_gates.json \
+            "${quality_gate_args[@]}"
       - name: Upload xcresult bundle (${{ matrix.id }})
         if: ${{ failure() && (github.event_name != 'workflow_dispatch' || github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id) }}
         continue-on-error: true
