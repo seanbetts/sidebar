@@ -46,6 +46,15 @@ def _matrix_entry(entry_id: str) -> dict[str, str]:
     raise AssertionError(f"Missing iOS CI matrix entry: {entry_id}")
 
 
+def _ios_test_run_step() -> dict[str, object]:
+    """Return the shared test-execution step from the workflow."""
+    workflow = _load_ios_ci_workflow()
+    for step in workflow["jobs"]["ios_test_matrix"]["steps"]:
+        if step.get("name", "").startswith("Run tests"):
+            return step
+    raise AssertionError("Missing iOS test execution step")
+
+
 def _test_target_names_from_plan(path: Path) -> set[str]:
     """Return test target names from an Xcode `.xctestplan` file."""
     payload = json.loads(path.read_text())
@@ -150,6 +159,27 @@ def test_ios_ci_dispatch_lane_options_match_matrix_entries() -> None:
     matrix_ids = {entry["id"] for entry in _load_ios_ci_matrix()}
 
     assert set(options) == {"all"} | matrix_ids
+
+
+def test_ios_ci_ui_lane_receives_explicit_ui_test_secrets() -> None:
+    """The manual UI lane should receive dedicated backend/auth secrets."""
+    run_step = _ios_test_run_step()
+    env = run_step["env"]
+
+    assert env["SIDEBAR_UI_TEST_EMAIL"] == "${{ secrets.SIDEBAR_UI_TEST_EMAIL }}"
+    assert env["SIDEBAR_UI_TEST_PASSWORD"] == "${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}"
+    assert (
+        env["SIDEBAR_UI_TEST_API_BASE_URL"]
+        == "${{ secrets.SIDEBAR_UI_TEST_API_BASE_URL }}"
+    )
+    assert (
+        env["SIDEBAR_UI_TEST_SUPABASE_URL"]
+        == "${{ secrets.SIDEBAR_UI_TEST_SUPABASE_URL }}"
+    )
+    assert (
+        env["SIDEBAR_UI_TEST_SUPABASE_ANON_KEY"]
+        == "${{ secrets.SIDEBAR_UI_TEST_SUPABASE_ANON_KEY }}"
+    )
 
 
 def test_ios_ci_uses_node24_compatible_actions() -> None:

@@ -68,6 +68,7 @@ def test_ui_only_lane_fails_when_backend_config_is_missing(tmp_path: Path) -> No
             "IOS_SCHEME": "sideBarUI",
             "IOS_ONLY_TESTING": "sideBarUITests",
             "IOS_DESTINATION": "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
+            "SIDEBAR_UI_TEST_SECRETS_FILE": str(tmp_path / "missing-ui-secrets.local"),
         }
     )
     for key in (
@@ -91,6 +92,102 @@ def test_ui_only_lane_fails_when_backend_config_is_missing(tmp_path: Path) -> No
 
     assert result.returncode == 1, result.stdout + result.stderr
     assert "UI test backend configuration missing" in result.stdout
+
+
+def test_ui_only_lane_fails_when_credentials_are_missing(tmp_path: Path) -> None:
+    """UI-only lanes should fail closed when auth credentials are absent."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        "echo 'xcodebuild should not have been invoked' >&2\n"
+        "exit 99\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_SCHEME": "sideBarUI",
+            "IOS_ONLY_TESTING": "sideBarUITests",
+            "IOS_DESTINATION": "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
+            "SIDEBAR_UI_TEST_API_BASE_URL": "https://api.sidebar.example/api/v1",
+            "SIDEBAR_UI_TEST_SUPABASE_URL": "https://sidebar.supabase.co",
+            "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY": "anon-key",
+            "SIDEBAR_UI_TEST_SECRETS_FILE": str(tmp_path / "missing-ui-secrets.local"),
+        }
+    )
+    for key in (
+        "SIDEBAR_UI_TEST_EMAIL",
+        "SIDEBAR_UI_TEST_PASSWORD",
+    ):
+        env.pop(key, None)
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "UI test credentials missing" in result.stdout
+
+
+def test_ui_only_lane_accepts_secrets_file_inputs(tmp_path: Path) -> None:
+    """UI-only lanes should accept backend/auth values from the secrets file."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\nexit 0\n",
+    )
+
+    secrets_file = tmp_path / ".ui-test-secrets.local"
+    secrets_file.write_text(
+        "\n".join(
+            [
+                "SIDEBAR_UI_TEST_EMAIL=tester@example.com",
+                "SIDEBAR_UI_TEST_PASSWORD=super-secret",
+                "SIDEBAR_UI_TEST_API_BASE_URL=https://api.sidebar.example/api/v1",
+                "SIDEBAR_UI_TEST_SUPABASE_URL=https://sidebar.supabase.co",
+                "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY=anon-key",
+            ]
+        )
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_SCHEME": "sideBarUI",
+            "IOS_ONLY_TESTING": "sideBarUITests",
+            "IOS_DESTINATION": "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
+            "SIDEBAR_UI_TEST_SECRETS_FILE": str(secrets_file),
+        }
+    )
+    for key in (
+        "SIDEBAR_UI_TEST_EMAIL",
+        "SIDEBAR_UI_TEST_PASSWORD",
+        "SIDEBAR_UI_TEST_API_BASE_URL",
+        "SIDEBAR_UI_TEST_SUPABASE_URL",
+        "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY",
+    ):
+        env.pop(key, None)
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_package_resolution_retry_clears_swiftpm_artifacts_cache(

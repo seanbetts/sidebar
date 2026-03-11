@@ -155,6 +155,11 @@ jobs:
           IOS_PREPARE_SIMULATOR_BEFORE_TESTS: ${{ matrix.prepare_simulator_before_tests }}
           IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE: ${{ matrix.collect_simulator_diagnostics_on_failure }}
           IOS_SIMULATOR_DIAGNOSTICS_DIR: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics
+          SIDEBAR_UI_TEST_EMAIL: ${{ secrets.SIDEBAR_UI_TEST_EMAIL }}
+          SIDEBAR_UI_TEST_PASSWORD: ${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}
+          SIDEBAR_UI_TEST_API_BASE_URL: ${{ secrets.SIDEBAR_UI_TEST_API_BASE_URL }}
+          SIDEBAR_UI_TEST_SUPABASE_URL: ${{ secrets.SIDEBAR_UI_TEST_SUPABASE_URL }}
+          SIDEBAR_UI_TEST_SUPABASE_ANON_KEY: ${{ secrets.SIDEBAR_UI_TEST_SUPABASE_ANON_KEY }}
         run: scripts/test-ios.sh
       - name: Upload xcresult bundle (${{ matrix.id }})
         if: ${{ failure() && ((github.event_name == 'push' && matrix.run_on_push == 'YES') || (github.event_name == 'workflow_dispatch' && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.id))) }}
