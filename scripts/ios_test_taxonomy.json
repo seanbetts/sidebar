@@ -1,0 +1,1179 @@
+{
+  "version": 1,
+  "tests": [
+    {
+      "path": "ios/sideBar/sideBarTests/APIClientTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentAuthCacheScopeTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentDeepLinkAuthStateTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentDeepLinkShortcutTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentDeepLinkTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentDependencyBuilderTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentSettingsPresentationTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentShortcutPaneTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppFontStyleTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppTextSizeOptionTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AttributedNoteFormattingDefinitionTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/CachePolicyTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/CachedLoaderTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/CachedStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "shared_infra",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/CertificatePinningDelegateTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatInputKeyBehaviorTests.swift",
+      "bucket": "logic",
+      "feature_area": "chat",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatInputSizingTests.swift",
+      "bucket": "logic",
+      "feature_area": "chat",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatMessageCopyFeedbackStateTests.swift",
+      "bucket": "logic",
+      "feature_area": "chat",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatMessageListViewScrollBehaviorTests.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatMessagePresentationTests.swift",
+      "bucket": "logic",
+      "feature_area": "chat",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatModelsDecodingTests.swift",
+      "bucket": "logic",
+      "feature_area": "chat",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatStreamParserTests.swift",
+      "bucket": "logic",
+      "feature_area": "chat",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatViewModelAssistantSettingsTests.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatViewModelSearchTests.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatViewModelStreamingFailureTests.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatViewModelTests+PromptPreview.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatViewModelTests+StreamingAndContext.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatViewModelTitleGenerationTests.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatWorkspacePatchParserTests.swift",
+      "bucket": "logic",
+      "feature_area": "chat",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/CompactPhoneSearchDockTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ConnectivityMonitorTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ContentViewLifecycleTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ContentViewWorkspaceBehaviorTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ConversationCopyFormatterTests.swift",
+      "bucket": "logic",
+      "feature_area": "chat",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ConversationsAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/CurrentLocationViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/DateParsingTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/DraftStorageTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/EnvironmentConfigFileReaderTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/EnvironmentConfigLoadTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ErrorMappingTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ExtensionUserMessageCatalogTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ExternalSurfaceDiagnosticsStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "shared_infra",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/FileNameFormattingTests.swift",
+      "bucket": "logic",
+      "feature_area": "files",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/FileTreeSignatureTests.swift",
+      "bucket": "logic",
+      "feature_area": "files",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/FileViewerViewTests.swift",
+      "bucket": "surface",
+      "feature_area": "files",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/FilesAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "files",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/FilesPanelExpansionPolicyTests.swift",
+      "bucket": "logic",
+      "feature_area": "files",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/FilesWorkspaceDisplayPolicyTests.swift",
+      "bucket": "logic",
+      "feature_area": "files",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/GIFAnimationTimingTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/IngestionAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "ingestion",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/IngestionDetailViewTests.swift",
+      "bucket": "surface",
+      "feature_area": "ingestion",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/IngestionStatusFormattingTests.swift",
+      "bucket": "logic",
+      "feature_area": "ingestion",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/IngestionStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "ingestion",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/IngestionUploadManagerTests.swift",
+      "bucket": "logic",
+      "feature_area": "ingestion",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/IngestionViewModelPollingStressTests.swift",
+      "bucket": "surface",
+      "feature_area": "ingestion",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/IngestionViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "ingestion",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/KeyboardShortcutRegistryTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/KeychainAuthStateStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/LoadableStateTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/LoginCredentialAutofillHintsTests.swift",
+      "bucket": "logic",
+      "feature_area": "settings",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/LoginEmailPrefillTests.swift",
+      "bucket": "logic",
+      "feature_area": "settings",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/MacWindowSceneCoverageTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/MarkdownRenderingTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/MarkdownTypographyTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/MemoriesAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "memories",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/MemoriesViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "memories",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NativeNoteEditorPersistenceTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NativeNoteEditorViewModelFormattingRegressionTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NativeNoteEditorViewModelInlineFormattingTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NativeNoteEditorViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NavigationStateTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesAttributedDocumentCodecTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesDetailViewFormattingBarTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesDetailViewMacOSStabilityTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesDetailViewMountedMacOSTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesDetailViewTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesEditorSurfaceParityTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesEditorViewModelHydrationTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesEditorViewModelSemanticSyncTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesEditorViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesPanelTreeHelpersTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesSemanticDocumentProjectionTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesWriteQueueExecutorTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/OfflineStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "shared_infra",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/PanelHeaderTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/PendingShareStoreTests+ExtensionURLHandler.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/PendingShareStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "tasks",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/PersistenceControllerTests.swift",
+      "bucket": "surface",
+      "feature_area": "shared_infra",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/PlacesViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "shared_infra",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/PlatformContextMenuTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/PromptPreviewPayloadParserTests.swift",
+      "bucket": "logic",
+      "feature_area": "chat",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/PromptPreviewWorkspaceSurfaceFactoryTests.swift",
+      "bucket": "surface",
+      "feature_area": "chat",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/RealtimeMappersTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/RenameTaskSheetTests.swift",
+      "bucket": "logic",
+      "feature_area": "tasks",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SafariExtensionMessageHandlerTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ScratchpadAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "scratchpad",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ScratchpadFormattingTests.swift",
+      "bucket": "logic",
+      "feature_area": "scratchpad",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ScratchpadStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "scratchpad",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ScratchpadViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "scratchpad",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SearchFieldTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SearchTextMatcherTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SelectableNoteReadActivationTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SelectableNoteReadViewMountedMacOSTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SelectableNoteReadViewTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SentryBootstrapTests.swift",
+      "bucket": "surface",
+      "feature_area": "shared_infra",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsAPIDisconnectTests.swift",
+      "bucket": "logic",
+      "feature_area": "settings",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsSectionsTests.swift",
+      "bucket": "logic",
+      "feature_area": "settings",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsViewModelAssistantDisplayNameTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsViewModelAssistantRealtimeTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsViewModelCacheScopeTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsViewModelPrimaryProviderTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsViewModelProfileTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsViewModelSessionScopeTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsViewModelStoreInstallTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ShareExtensionQueueContractTests.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SidebarMenuItemTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SidebarTypographyTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SkillIconResolverTests.swift",
+      "bucket": "logic",
+      "feature_area": "skills",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SkillsAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "skills",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SkillsStoreLogicTests.swift",
+      "bucket": "logic",
+      "feature_area": "skills",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/StatusFilterableTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/StringValidationTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SupabaseAuthAdapterTests.swift",
+      "bucket": "logic",
+      "feature_area": "settings",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SupabaseRealtimeAdapterTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SyncCoordinatorTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TaskManagerTests.swift",
+      "bucket": "logic",
+      "feature_area": "tasks",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "tasks",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksDetailViewTests.swift",
+      "bucket": "surface",
+      "feature_area": "tasks",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksNotesKeyBehaviorTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksShortcutRoutingTests.swift",
+      "bucket": "logic",
+      "feature_area": "tasks",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "tasks",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksUtilsTests.swift",
+      "bucket": "logic",
+      "feature_area": "tasks",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksViewModelRealtimeTests.swift",
+      "bucket": "surface",
+      "feature_area": "tasks",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksViewModelRecurringToastTests.swift",
+      "bucket": "surface",
+      "feature_area": "tasks",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "tasks",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksWriteQueueExecutorTests.swift",
+      "bucket": "logic",
+      "feature_area": "tasks",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TestIsolationTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ThemeManagerTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ToolResultWorkspaceSurfaceParserTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/UIKitNoteFormattingBarTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/UIKitNoteTextEditorSurfaceTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/UITestAuthBootstrapTests.swift",
+      "bucket": "surface",
+      "feature_area": "shared_infra",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/URLSessionChatStreamClientTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WeatherAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "weather",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WeatherViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "weather",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WebsiteURLValidatorTests.swift",
+      "bucket": "logic",
+      "feature_area": "websites",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WebsitesAPITests.swift",
+      "bucket": "surface",
+      "feature_area": "websites",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WebsitesPanelListSectionsTests.swift",
+      "bucket": "logic",
+      "feature_area": "websites",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WebsitesPendingStatusLabelTests.swift",
+      "bucket": "logic",
+      "feature_area": "websites",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WebsitesStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "websites",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WebsitesViewModelTests.swift",
+      "bucket": "surface",
+      "feature_area": "websites",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WidgetBridgeContractTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WidgetIntentRoutingTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WidgetModelConversionTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WorkspaceBuiltInSectionRegistryTests.swift",
+      "bucket": "logic",
+      "feature_area": "workspace",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WorkspaceLegacySectionAdapterTests.swift",
+      "bucket": "logic",
+      "feature_area": "workspace",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WorkspaceModelsAgentSurfaceTests.swift",
+      "bucket": "surface",
+      "feature_area": "workspace",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WorkspaceRendererRegistryTests.swift",
+      "bucket": "logic",
+      "feature_area": "workspace",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WorkspaceStoreTests.swift",
+      "bucket": "surface",
+      "feature_area": "workspace",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WriteQueueConflictResolutionTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WriteQueueTests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/YouTubePlayerViewTests.swift",
+      "bucket": "surface",
+      "feature_area": "websites",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/YouTubeURLPolicyTests.swift",
+      "bucket": "logic",
+      "feature_area": "websites",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/ShareExtensionTests/SafariExtensionCoverageTests.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/ShareExtensionTests/ShareErrorViewTests.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/ShareExtensionTests/ShareExtensionAuthRefresherTests.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/ShareExtensionTests/ShareExtensionCoverageTests.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/ShareExtensionTests/ShareGIFAnimationTimingTests.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/ShareExtensionTests/ShareLoadingViewTests.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/ShareExtensionTests/SharePlatformImageTests.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/ShareExtensionTests/ShareSuccessViewTests.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/ShareExtensionTests/WidgetExtensionCoverageTests.swift",
+      "bucket": "surface",
+      "feature_area": "extensions",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarUITests/sideBarUITests+Helpers.swift",
+      "bucket": "ui_smoke",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarUITests/sideBarUITests.swift",
+      "bucket": "ui_smoke",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarUITests/sideBarUITestsLaunchTests.swift",
+      "bucket": "ui_smoke",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    }
+  ],
+  "excluded_files": [
+    {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentDeepLinkTestSupport.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatViewModelTestsSupport.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/IngestionStoreTestsSupport.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NativeNoteEditorFormattingTestHelpers.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesDetailViewTestSupport.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesEditorSurfaceArchitectureTestSupport.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesMountedMacOSTestHarness.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesStoreTestsSupport.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SelectableNoteReadViewTestSupport.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SettingsViewModelTestDoubles.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TestCacheClient.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TestSupport/ScopedURLProtocolRouter.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TestSupport/TasksViewModelTestStubs.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TestSupport/TestIsolation.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TestSupport/URLRequest+TestBody.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/sideBarTests.swift",
+      "reason": "xcode_template"
+    },
+    {
+      "path": "ios/sideBar/sideBarUITests/sideBarUITests+AuthenticatedLaunch.swift",
+      "reason": "ui_smoke_support"
+    }
+  ]
+}
