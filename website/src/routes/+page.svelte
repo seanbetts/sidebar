@@ -109,7 +109,7 @@
 
 <Seo
   title="sideBar"
-  description="An AI assistant for iPhone, iPad, and Mac. Take notes, manage tasks, save websites, and work with files — all with AI that learns how you work."
+  description="The AI assistant that actually knows you. Everything you need in one place, endlessly extensible with skills."
   url="https://trysidebar.ai"
   jsonLd={[organizationJsonLd, appJsonLd]}
 />
@@ -121,11 +121,8 @@
       <img class="logo-light" src="/logo-animated-light.gif" alt="sideBar" width="96" height="96" />
       <img class="logo-dark" src="/logo-animated-dark.gif" alt="" aria-hidden="true" width="96" height="96" />
     </div>
-    <h1 class="hero-title">Your AI assistant,<br />built around how you work</h1>
-    <p class="hero-subtitle">
-      Take notes, manage tasks, save websites, and work with files — with an AI that
-      reads your content, remembers your preferences, and gets things done alongside you.
-    </p>
+    <h1 class="hero-title">The AI assistant that actually knows you.</h1>
+    <p class="hero-subtitle">Everything you need in one place, endlessly extensible with skills.</p>
     <a href="https://app.trysidebar.ai" class="hero-cta">Request Early Access</a>
     <p class="hero-platforms">Available on iPhone, iPad, Mac, and web</p>
   </div>
