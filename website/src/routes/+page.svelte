@@ -23,6 +23,11 @@
       label: 'Websites'
     },
     {
+      src: '/screenshots/files.png',
+      alt: 'sideBar files list showing uploaded documents, images, and other file types',
+      label: 'Files'
+    },
+    {
       src: '/screenshots/skills-store.png',
       alt: 'sideBar Skills Store showing installable skills including Audio Transcription, YouTube, and more',
       label: 'Skills Store'
@@ -75,6 +80,11 @@
         'Ask questions, get things done, and work through problems with an AI that knows your content and adapts to how you think.'
     },
     {
+      title: 'Skills',
+      description:
+        'Extend sideBar with installable skills. Transcribe audio, save YouTube videos, analyse websites, and more — browse the Skills Store and add what you need.'
+    },
+    {
       title: 'Notes',
       description:
         'A full writing environment with folders, rich text, and a Scratchpad always one tap away. sideBar can read and reference everything you write.'
@@ -85,14 +95,14 @@
         'Create and manage to-dos manually or just ask sideBar to do it. Smart lists surface what matters today, this week, and upcoming.'
     },
     {
-      title: 'Websites and Files',
+      title: 'Websites',
       description:
-        'Save web pages to read offline and upload documents. sideBar indexes everything so you can search, summarise, and ask questions about it all.'
+        'Save web pages to read offline. sideBar extracts the full content, indexes it, and makes it available to reference in any conversation.'
     },
     {
-      title: 'Skills',
+      title: 'Files',
       description:
-        'Extend sideBar with installable skills. Transcribe audio, save YouTube videos, analyse websites, and more — browse the Skills Store and add what you need.'
+        'Upload PDFs, documents, spreadsheets, images, and more. sideBar processes and indexes everything so you can search and ask questions about it all.'
     }
   ];
 </script>
@@ -287,7 +297,7 @@
 
   .features-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
   }
 
@@ -419,6 +429,12 @@
 
   .thumb.active .thumb-label {
     color: var(--color-foreground);
+  }
+
+  @media (max-width: 640px) {
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   @media (max-width: 480px) {
