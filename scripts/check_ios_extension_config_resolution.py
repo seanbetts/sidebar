@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Validate Safari extension config resolution for iOS/macOS extension targets."""
+"""Validate Safari extension config wiring for iOS/macOS Safari extension targets."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_PATH = REPO_ROOT / "ios/sideBar/sideBar.xcodeproj"
 BASE_XCCONFIG_PATH = REPO_ROOT / "ios/sideBar/Config/SideBar.xcconfig"
+PBXPROJ_PATH = PROJECT_PATH / "project.pbxproj"
 
 TARGETS = (
     "sideBar Safari Extension",
@@ -71,6 +72,20 @@ def normalize_sdkroot_value(value: str) -> str:
     return normalized
 
 
+def parse_xcconfig_values(xcconfig_text: str) -> dict[str, str]:
+    """Parse key/value pairs from an xcconfig string."""
+    values: dict[str, str] = {}
+    for raw_line in xcconfig_text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("//") or line.startswith("#include"):
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = normalize_value(value)
+    return values
+
+
 def has_relative_local_include(xcconfig_text: str) -> bool:
     """Return true if SideBar.xcconfig includes local overrides via relative include."""
     for raw_line in xcconfig_text.splitlines():
@@ -84,47 +99,148 @@ def has_relative_local_include(xcconfig_text: str) -> bool:
     return False
 
 
-def parse_build_settings(output: str) -> dict[str, str]:
-    """Parse `xcodebuild -showBuildSettings` output into a key/value map."""
-    settings: dict[str, str] = {}
-    for raw_line in output.splitlines():
-        line = raw_line.strip()
-        if " = " not in line:
-            continue
-        key, value = line.split(" = ", 1)
-        key = key.strip()
-        if not key:
-            continue
-        settings[key] = normalize_value(value)
-    return settings
-
-
-def run_show_build_settings(
-    *,
-    project_path: Path,
-    target: str,
-    configuration: str,
-    xcconfig_path: Path,
-) -> str:
-    """Return build settings output for a target."""
-    command = [
-        "xcodebuild",
-        "-project",
-        str(project_path),
-        "-target",
-        target,
-        "-configuration",
-        configuration,
-        "-xcconfig",
-        str(xcconfig_path),
-        "-showBuildSettings",
-    ]
+def load_pbxproj_objects(pbxproj_path: Path) -> dict[str, dict[str, object]]:
+    """Return the parsed pbxproj objects map via plutil JSON conversion."""
+    command = ["plutil", "-convert", "json", "-o", "-", str(pbxproj_path)]
     try:
-        return subprocess.check_output(command, text=True, stderr=subprocess.STDOUT)
+        output = subprocess.check_output(command, text=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(
-            f"xcodebuild failed for target '{target}' with exit {exc.returncode}:\n{exc.output}"
+            f"plutil failed for '{pbxproj_path}' with exit {exc.returncode}:\n{exc.output}"
         ) from exc
+
+    payload = json.loads(output)
+    objects = payload.get("objects")
+    if not isinstance(objects, dict):
+        raise RuntimeError(f"{pbxproj_path}: missing parsed pbxproj objects")
+    return objects
+
+
+def configuration_settings_for_target(
+    *,
+    objects: dict[str, dict[str, object]],
+    target: str,
+    configuration: str,
+) -> dict[str, str]:
+    """Return normalized build settings for a target configuration."""
+    target_id = None
+    for object_id, value in objects.items():
+        if value.get("isa") != "PBXNativeTarget":
+            continue
+        if value.get("name") == target:
+            target_id = object_id
+            break
+
+    if target_id is None:
+        raise RuntimeError(f"Missing PBXNativeTarget for '{target}'")
+
+    configuration_list_id = objects[target_id].get("buildConfigurationList")
+    configuration_list = objects.get(str(configuration_list_id), {})
+    build_configuration_ids = configuration_list.get("buildConfigurations", [])
+    if not isinstance(build_configuration_ids, list):
+        raise RuntimeError(f"{target}: invalid build configuration list")
+
+    for build_configuration_id in build_configuration_ids:
+        config = objects.get(str(build_configuration_id), {})
+        if config.get("isa") != "XCBuildConfiguration":
+            continue
+        if config.get("name") != configuration:
+            continue
+        build_settings = config.get("buildSettings", {})
+        if not isinstance(build_settings, dict):
+            raise RuntimeError(f"{target}: invalid build settings for {configuration}")
+        return {
+            key: normalize_value(str(value))
+            for key, value in build_settings.items()
+        }
+
+    raise RuntimeError(f"{target}: missing {configuration} build configuration")
+
+
+def project_configuration_settings(
+    *,
+    objects: dict[str, dict[str, object]],
+    configuration: str,
+) -> dict[str, str]:
+    """Return normalized project-level build settings for a configuration."""
+    root_object_id = next(
+        (
+            object_id
+            for object_id, value in objects.items()
+            if value.get("isa") == "PBXProject"
+        ),
+        None,
+    )
+    if root_object_id is None:
+        raise RuntimeError("Missing PBXProject object")
+
+    configuration_list_id = objects[root_object_id].get("buildConfigurationList")
+    configuration_list = objects.get(str(configuration_list_id), {})
+    build_configuration_ids = configuration_list.get("buildConfigurations", [])
+    if not isinstance(build_configuration_ids, list):
+        raise RuntimeError("Invalid project build configuration list")
+
+    for build_configuration_id in build_configuration_ids:
+        config = objects.get(str(build_configuration_id), {})
+        if config.get("isa") != "XCBuildConfiguration":
+            continue
+        if config.get("name") != configuration:
+            continue
+        build_settings = config.get("buildSettings", {})
+        if not isinstance(build_settings, dict):
+            raise RuntimeError(f"Invalid project build settings for {configuration}")
+        return {
+            key: normalize_value(str(value))
+            for key, value in build_settings.items()
+        }
+
+    raise RuntimeError(f"Missing project {configuration} build configuration")
+
+
+def resolve_value(
+    key: str,
+    *,
+    settings: dict[str, str],
+    xcconfig_values: dict[str, str],
+    local_overrides: dict[str, str],
+    seen: set[str] | None = None,
+) -> str | None:
+    """Resolve a build setting through target/project settings and xcconfig overrides."""
+    if seen is None:
+        seen = set()
+    if key in seen:
+        return None
+    seen = seen | {key}
+
+    raw_value = settings.get(key)
+    if raw_value is None:
+        raw_value = local_overrides.get(key)
+    if raw_value is None:
+        raw_value = xcconfig_values.get(key)
+    if raw_value is None:
+        return None
+
+    normalized = normalize_value(raw_value)
+    if "$(" not in normalized and "${" not in normalized:
+        return normalized
+
+    resolved = normalized
+    for source_key in set(settings) | set(xcconfig_values) | set(local_overrides):
+        token = f"$({source_key})"
+        if token not in resolved:
+            continue
+        replacement = resolve_value(
+            source_key,
+            settings=settings,
+            xcconfig_values=xcconfig_values,
+            local_overrides=local_overrides,
+            seen=seen,
+        )
+        if replacement is None:
+            continue
+        resolved = resolved.replace(token, replacement)
+
+    return normalize_value(resolved)
 
 
 def evaluate_setting_expectations(
@@ -170,65 +286,65 @@ def evaluate_platform_expectations(
     )
 
 
-def write_temp_xcconfig_pair(base_text: str, directory: Path) -> Path:
-    """Write SideBar.xcconfig + SideBar.local.xcconfig in a temp directory."""
-    base_path = directory / "SideBar.xcconfig"
-    local_path = directory / "SideBar.local.xcconfig"
-    base_path.write_text(base_text, encoding="utf-8")
-    encoded_values = {
-        key: value.replace("/", "\\/")
-        for key, value in SENTINEL_VALUES.items()
-    }
-    local_payload = "\n".join(
-        [f"{key} = {value}" for key, value in encoded_values.items()]
-    )
-    local_path.write_text(f"{local_payload}\n", encoding="utf-8")
-    return base_path
-
-
 def validate_extension_config_resolution(
     *,
-    project_path: Path,
+    pbxproj_path: Path,
     base_xcconfig_path: Path,
     configuration: str,
     targets: tuple[str, ...],
 ) -> list[str]:
-    """Validate Safari extension config resolution and return all discovered errors."""
+    """Validate Safari extension config wiring and return all discovered errors."""
     errors: list[str] = []
 
     base_text = base_xcconfig_path.read_text(encoding="utf-8")
+    xcconfig_values = parse_xcconfig_values(base_text)
     if not has_relative_local_include(base_text):
         errors.append(
             f"{base_xcconfig_path}: expected relative include line `{LOCAL_INCLUDE_LINE}`"
         )
 
-    with tempfile.TemporaryDirectory(prefix="sidebar-ios-config-") as temp_dir:
-        temp_xcconfig = write_temp_xcconfig_pair(base_text, Path(temp_dir))
+    objects = load_pbxproj_objects(pbxproj_path)
+    project_settings = project_configuration_settings(
+        objects=objects,
+        configuration=configuration,
+    )
 
-        for target in targets:
-            output = run_show_build_settings(
-                project_path=project_path,
+    for target in targets:
+        target_settings = configuration_settings_for_target(
+            objects=objects,
+            target=target,
+            configuration=configuration,
+        )
+        settings = {**project_settings, **target_settings}
+        expected_keys = set(SETTING_EXPECTATIONS)
+        platform_expectations = PLATFORM_EXPECTATIONS_BY_TARGET.get(target)
+        if platform_expectations:
+            expected_keys.update(platform_expectations)
+        resolved_settings = {
+            key: value
+            for key in (set(settings) | expected_keys)
+            if (value := resolve_value(
+                key,
+                settings=settings,
+                xcconfig_values=xcconfig_values,
+                local_overrides=SENTINEL_VALUES,
+            )) is not None
+        }
+        errors.extend(
+            evaluate_setting_expectations(
                 target=target,
-                configuration=configuration,
-                xcconfig_path=temp_xcconfig,
+                settings=resolved_settings,
+                expectations=SETTING_EXPECTATIONS,
             )
-            settings = parse_build_settings(output)
+        )
+        if platform_expectations:
             errors.extend(
-                evaluate_setting_expectations(
+                evaluate_platform_expectations(
                     target=target,
-                    settings=settings,
-                    expectations=SETTING_EXPECTATIONS,
+                    settings=resolved_settings,
+                    expectations=platform_expectations,
                 )
             )
-            platform_expectations = PLATFORM_EXPECTATIONS_BY_TARGET.get(target)
-            if platform_expectations:
-                errors.extend(
-                    evaluate_platform_expectations(
-                        target=target,
-                        settings=settings,
-                        expectations=platform_expectations,
-                    )
-                )
 
     return errors
 
@@ -236,13 +352,13 @@ def validate_extension_config_resolution(
 def main() -> int:
     """Run the config-resolution check and return a process exit code."""
     parser = argparse.ArgumentParser(
-        description="Check Safari extension build-setting resolution for API/Supabase keys."
+        description="Check Safari extension project wiring for API/Supabase build settings."
     )
     parser.add_argument(
-        "--project",
+        "--pbxproj",
         type=Path,
-        default=PROJECT_PATH,
-        help="Path to sideBar.xcodeproj",
+        default=PBXPROJ_PATH,
+        help="Path to sideBar.xcodeproj/project.pbxproj",
     )
     parser.add_argument(
         "--base-xcconfig",
@@ -257,8 +373,8 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if not args.project.exists():
-        emit(f"Missing project: {args.project}")
+    if not args.pbxproj.exists():
+        emit(f"Missing pbxproj: {args.pbxproj}")
         return 1
 
     if not args.base_xcconfig.exists():
@@ -267,7 +383,7 @@ def main() -> int:
 
     try:
         errors = validate_extension_config_resolution(
-            project_path=args.project,
+            pbxproj_path=args.pbxproj,
             base_xcconfig_path=args.base_xcconfig,
             configuration=args.configuration,
             targets=TARGETS,
