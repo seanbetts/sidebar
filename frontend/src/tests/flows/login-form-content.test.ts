@@ -29,6 +29,6 @@ describe('login form content', () => {
 		render(LoginForm);
 		expect(screen.getByText('Sign in', { selector: '.login-wordmark' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
-		expect(screen.getByText('Task Management')).toBeInTheDocument();
+		expect(screen.getByText('Tasks')).toBeInTheDocument();
 	});
 });

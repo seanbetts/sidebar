@@ -232,25 +232,6 @@
 		position: relative;
 	}
 
-	.login-hero-title {
-		display: flex;
-		align-items: center;
-		gap: 0.85rem;
-		margin: 0 0 0.5rem;
-		font-size: 2rem;
-		font-weight: 600;
-		color: var(--color-foreground);
-	}
-
-	.hero-logo {
-		width: 44px;
-		height: 44px;
-	}
-
-	:global(.dark) .hero-logo {
-		filter: invert(1);
-	}
-
 	.login-tagline {
 		margin: 0 0 1rem;
 		font-size: 1.75rem;
@@ -452,10 +433,6 @@
 		.login-hero,
 		.login-panel {
 			padding: 2rem 1.75rem;
-		}
-
-		.login-hero-title {
-			font-size: 1.75rem;
 		}
 
 		.login-tagline {

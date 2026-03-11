@@ -35,17 +35,27 @@ async function runLoad(options: LoadOptions) {
 }
 
 describe('root layout maintenance mode', () => {
-	it('enables maintenance mode for holding-page hosts by default', async () => {
+	it('does not enable maintenance mode when MAINTENANCE_MODE is false', async () => {
 		const result = await runLoad({
 			url: 'https://trysidebar.ai/'
+		});
+
+		expect(result.maintenanceMode).toBe(false);
+	});
+
+	it('enables maintenance mode when MAINTENANCE_MODE env var is true', async () => {
+		const result = await runLoad({
+			url: 'https://trysidebar.ai/',
+			envOverrides: { MAINTENANCE_MODE: 'true' }
 		});
 
 		expect(result.maintenanceMode).toBe(true);
 	});
 
-	it('bypasses maintenance mode for privacy route on holding-page hosts', async () => {
+	it('bypasses maintenance mode for privacy route even when enabled', async () => {
 		const result = await runLoad({
-			url: 'https://trysidebar.ai/privacy'
+			url: 'https://trysidebar.ai/privacy',
+			envOverrides: { MAINTENANCE_MODE: 'true' }
 		});
 
 		expect(result.maintenanceMode).toBe(false);
@@ -53,7 +63,8 @@ describe('root layout maintenance mode', () => {
 
 	it('bypasses maintenance mode for nested privacy paths', async () => {
 		const result = await runLoad({
-			url: 'https://trysidebar.ai/privacy/ios'
+			url: 'https://trysidebar.ai/privacy/ios',
+			envOverrides: { MAINTENANCE_MODE: 'true' }
 		});
 
 		expect(result.maintenanceMode).toBe(false);
