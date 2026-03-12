@@ -18,6 +18,9 @@
 
 set -euo pipefail
 
+REPO_ROOT="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/../.." && pwd)}"
+SIDEBAR_DIR="$REPO_ROOT/ios/sideBar"
+
 echo "=== ci_post_clone.sh: Ensuring SwiftLint is available (best effort) ==="
 if command -v swiftlint >/dev/null 2>&1; then
     echo "SwiftLint already available at: $(command -v swiftlint)"
@@ -34,6 +37,32 @@ elif command -v brew >/dev/null 2>&1; then
     fi
 else
     echo "warning: Homebrew not found and SwiftLint not installed; continuing without SwiftLint"
+fi
+
+if [[ -f "$SIDEBAR_DIR/Podfile" ]]; then
+    echo "=== ci_post_clone.sh: Ensuring CocoaPods is available ==="
+    if command -v pod >/dev/null 2>&1; then
+        echo "CocoaPods already available at: $(command -v pod)"
+    elif command -v brew >/dev/null 2>&1; then
+        export HOMEBREW_NO_AUTO_UPDATE=1
+        if brew list cocoapods >/dev/null 2>&1; then
+            echo "CocoaPods already installed via Homebrew"
+        elif brew install cocoapods; then
+            echo "Installed CocoaPods via Homebrew"
+        else
+            echo "Error: Unable to install CocoaPods via Homebrew for workspace bootstrap"
+            exit 1
+        fi
+    else
+        echo "Error: Podfile present but CocoaPods is not available on PATH"
+        exit 1
+    fi
+
+    echo "=== ci_post_clone.sh: Installing pods ==="
+    (
+        cd "$SIDEBAR_DIR"
+        pod install --repo-update
+    )
 fi
 
 echo "=== ci_post_clone.sh: Generating SideBar.local.xcconfig ==="
@@ -97,10 +126,6 @@ INFOPLIST_KEY_R2_FAVICON_PUBLIC_BASE_URL = \$(R2_FAVICON_PUBLIC_BASE_URL)
 INFOPLIST_KEY_APP_GROUP_ID = \$(APP_GROUP_ID)
 INFOPLIST_KEY_KEYCHAIN_ACCESS_GROUP = \$(KEYCHAIN_ACCESS_GROUP)
 INFOPLIST_KEY_KEYCHAIN_SERVICE = \$(KEYCHAIN_SERVICE)"
-
-# Write to both locations the project might reference
-REPO_ROOT="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/../.." && pwd)}"
-SIDEBAR_DIR="$REPO_ROOT/ios/sideBar"
 
 echo "$XCCONFIG_CONTENT" > "$SIDEBAR_DIR/SideBar.local.xcconfig"
 echo "Created: $SIDEBAR_DIR/SideBar.local.xcconfig"

@@ -132,3 +132,38 @@ def test_ci_post_clone_preserves_sentry_upload_variables_for_later_steps(tmp_pat
     assert "AUTH=token" in result.stdout
     assert "ORG=sidebar" in result.stdout
     assert "PROJECT=apple" in result.stdout
+
+
+def test_ci_post_clone_runs_pod_install_when_a_podfile_exists(tmp_path: Path) -> None:
+    """Xcode Cloud bootstrap should install pods before workspace-based Apple builds."""
+    repo_root = make_temp_repo(tmp_path)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    pod_log = tmp_path / "pod.log"
+    workspace_dir = repo_root / "ios" / "sideBar" / "sideBar.xcworkspace"
+    workspace_dir.mkdir(parents=True)
+    (repo_root / "ios" / "sideBar" / "Podfile").write_text(
+        "platform :ios, '16.0'\n\ntarget 'sideBar' do\n  pod 'Sentry'\nend\n",
+        encoding="utf-8",
+    )
+    write_executable(bin_dir / "swiftlint", "#!/bin/bash\nexit 0\n")
+    write_executable(
+        bin_dir / "pod",
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$*\" >> \"{pod_log}\"\n"
+        "exit 0\n",
+    )
+
+    env = required_env(repo_root, bin_dir)
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "install --repo-update" in pod_log.read_text(encoding="utf-8")

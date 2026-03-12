@@ -29,10 +29,12 @@ The Apple app and extensions require runtime configuration from build settings
 3. Ensure the project uses `/Users/sean/Coding/sideBar/ios/sideBar/Config/SideBar.xcconfig`
    (it includes the local override file).
 4. `SENTRY_DSN` may be left empty. The key remains in the config surface for now, but current Apple builds do not initialize Sentry from it.
+5. If `/Users/sean/Coding/sideBar/ios/sideBar/Podfile` is present, run `cd /Users/sean/Coding/sideBar/ios/sideBar && pod install` before workspace-based Apple builds.
 
 ## CI / Xcode Cloud
 - `/Users/sean/Coding/sideBar/ios/sideBar/ci_scripts/ci_post_clone.sh`
   generates `SideBar.local.xcconfig` from environment variables.
+- If a Podfile is present, the post-clone script installs CocoaPods if needed and runs `pod install --repo-update` before building the Apple workspace.
 - Missing required config values fail fast.
 - `SENTRY_DSN` may still be provided to keep generated xcconfig files compatible with the current config surface, but it does not enable Apple SDK startup.
 - `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_CLI_VERSION` are not used by the current Apple build path.
@@ -42,3 +44,4 @@ The Apple app and extensions require runtime configuration from build settings
 - If required keys are missing or invalid at runtime, config load fails and the app shows
   a configuration error state.
 - The Apple app does not initialize Sentry in the current release cycle. Debug, XCTest, and Release/TestFlight builds all leave the Apple bootstrap seam inert.
+- Apple build/test entrypoints should target `/Users/sean/Coding/sideBar/ios/sideBar/sideBar.xcworkspace` when the CocoaPods candidate path is present.
