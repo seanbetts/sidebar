@@ -85,9 +85,6 @@ ios/**/*.swiftpm
 ios/**/Pods/
 ios/**/*.podspec
 
-# Carthage (if used)
-ios/**/Carthage/
-
 # Build artifacts
 ios/**/DerivedData/
 ios/**/build/

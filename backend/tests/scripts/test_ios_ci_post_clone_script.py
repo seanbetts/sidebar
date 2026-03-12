@@ -132,38 +132,3 @@ def test_ci_post_clone_preserves_sentry_upload_variables_for_later_steps(tmp_pat
     assert "AUTH=token" in result.stdout
     assert "ORG=sidebar" in result.stdout
     assert "PROJECT=apple" in result.stdout
-
-
-def test_ci_post_clone_runs_carthage_update_when_a_cartfile_exists(tmp_path: Path) -> None:
-    """Xcode Cloud bootstrap should build Carthage dependencies before project builds."""
-    repo_root = make_temp_repo(tmp_path)
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    carthage_log = tmp_path / "carthage.log"
-    (repo_root / "ios" / "sideBar" / "Cartfile").write_text(
-        'github "getsentry/sentry-cocoa" == 9.7.0\n',
-        encoding="utf-8",
-    )
-    write_executable(bin_dir / "swiftlint", "#!/bin/bash\nexit 0\n")
-    write_executable(
-        bin_dir / "carthage",
-        "#!/bin/bash\n"
-        f"printf '%s\\n' \"$*\" >> \"{carthage_log}\"\n"
-        "exit 0\n",
-    )
-
-    env = required_env(repo_root, bin_dir)
-
-    result = subprocess.run(
-        [str(SCRIPT_PATH)],
-        cwd=REPO_ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "bootstrap --use-xcframeworks --platform iOS,macOS --cache-builds" in carthage_log.read_text(
-        encoding="utf-8"
-    )

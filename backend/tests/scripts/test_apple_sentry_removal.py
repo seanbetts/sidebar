@@ -75,23 +75,6 @@ def test_project_reserves_at_most_one_upload_hook_entry() -> None:
     assert project_contents.count("Upload Sentry dSYMs") <= 1
 
 
-def test_carthage_candidate_is_scoped_to_main_sidebar_app_target() -> None:
-    cartfile = IOS_ROOT / "Cartfile"
-    cartfile_contents = cartfile.read_text(encoding="utf-8")
-
-    assert "getsentry/sentry-cocoa" in cartfile_contents
-    assert "ShareExtension" not in cartfile_contents
-    assert "sideBarWidgetsExtension" not in cartfile_contents
-
-
-def test_carthage_candidate_links_sentry_xcframework_from_carthage_build() -> None:
-    project_contents = PBXPROJ.read_text(encoding="utf-8")
-
-    assert "path = Carthage/Build/Sentry.xcframework;" in project_contents
-    assert "/* Sentry.xcframework */ = {isa = PBXFileReference;" in project_contents
-    assert "/* Sentry.xcframework in Embed Frameworks */ = {isa = PBXBuildFile;" in project_contents
-
-
 def _has_swift_package_sentry_path() -> bool:
     project_contents = PBXPROJ.read_text(encoding="utf-8")
     return "sentry-cocoa" in project_contents or "productName = Sentry" in project_contents
@@ -119,12 +102,17 @@ def _has_carthage_sentry_path() -> bool:
 
 
 def _has_vendored_sentry_path() -> bool:
-    vendor_root = IOS_ROOT / "Vendor"
     vendored_patterns = ("*Sentry*.framework", "*Sentry*.xcframework")
+    excluded_roots = {
+        IOS_ROOT / "Carthage",
+        IOS_ROOT / "Pods",
+        IOS_ROOT / ".build",
+    }
     return any(
         path.exists()
+        and not any(excluded_root in path.parents for excluded_root in excluded_roots)
         for pattern in vendored_patterns
-        for path in vendor_root.rglob(pattern)
+        for path in IOS_ROOT.rglob(pattern)
     )
 
 

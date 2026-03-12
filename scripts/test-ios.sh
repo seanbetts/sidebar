@@ -89,9 +89,6 @@ IOS_SKIP_PACKAGE_DEPENDENCY_RESOLUTION="${IOS_SKIP_PACKAGE_DEPENDENCY_RESOLUTION
 IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY="${IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY:-NO}"
 IOS_CLONED_SOURCE_PACKAGES_DIR="${IOS_CLONED_SOURCE_PACKAGES_DIR:-}"
 IOS_PACKAGE_CACHE_PATH="${IOS_PACKAGE_CACHE_PATH:-}"
-IOS_SKIP_CARTHAGE_BOOTSTRAP="${IOS_SKIP_CARTHAGE_BOOTSTRAP:-NO}"
-IOS_CARTHAGE_CACHE_PATH="${IOS_CARTHAGE_CACHE_PATH:-}"
-IOS_CARTHAGE_BUILD_ROOT="${IOS_CARTHAGE_BUILD_ROOT:-}"
 if [[ -n "${IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE+x}" ]]; then
   IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE="${IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE}"
 elif [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
@@ -144,67 +141,6 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
   git config --file "${ios_ci_git_config}" http.version HTTP/1.1
   export GIT_CONFIG_GLOBAL="${ios_ci_git_config}"
 fi
-
-ios_project_dir="$(cd "$(dirname "${IOS_PROJECT}")" >/dev/null 2>&1 && pwd)"
-
-carthage_cartfile_path() {
-  printf '%s/Cartfile\n' "${ios_project_dir}"
-}
-
-carthage_bootstrap_required() {
-  [[ -f "$(carthage_cartfile_path)" ]]
-}
-
-bootstrap_carthage_dependencies() {
-  local local_carthage_dir="${ios_project_dir}/Carthage"
-  local local_carthage_build_dir="${local_carthage_dir}/Build"
-
-  mkdir -p "${local_carthage_dir}"
-
-  if [[ -n "${IOS_CARTHAGE_BUILD_ROOT}" ]]; then
-    if [[ "${IOS_CARTHAGE_BUILD_ROOT}" == "/" ]]; then
-      echo "Error: IOS_CARTHAGE_BUILD_ROOT cannot be '/'."
-      exit 1
-    fi
-
-    mkdir -p "${IOS_CARTHAGE_BUILD_ROOT}"
-    if [[ -L "${local_carthage_build_dir}" ]]; then
-      existing_target="$(readlink "${local_carthage_build_dir}")"
-      if [[ "${existing_target}" != "${IOS_CARTHAGE_BUILD_ROOT}" ]]; then
-        rm -f "${local_carthage_build_dir}"
-      fi
-    elif [[ -e "${local_carthage_build_dir}" ]]; then
-      rm -rf "${local_carthage_build_dir}"
-    fi
-
-    if [[ ! -L "${local_carthage_build_dir}" ]]; then
-      ln -s "${IOS_CARTHAGE_BUILD_ROOT}" "${local_carthage_build_dir}"
-    fi
-  fi
-
-  if [[ "${IOS_SKIP_CARTHAGE_BOOTSTRAP}" == "YES" ]]; then
-    echo "Skipping Carthage bootstrap before test execution."
-    return 0
-  fi
-
-  if ! carthage_bootstrap_required; then
-    return 0
-  fi
-
-  if ! command -v carthage >/dev/null 2>&1; then
-    echo "Error: Cartfile present at $(carthage_cartfile_path) but carthage is not available on PATH."
-    exit 1
-  fi
-
-  local carthage_cache_path="${IOS_CARTHAGE_CACHE_PATH:-${ios_project_dir}/.carthage-cache}"
-  mkdir -p "${carthage_cache_path}"
-  echo "Bootstrapping Carthage dependencies..."
-  (
-    cd "${ios_project_dir}"
-    CARTHAGE_CACHE_PATH="${carthage_cache_path}" \
-      carthage bootstrap --use-xcframeworks --platform iOS,macOS --cache-builds
-  )
-}
 
 XCODEBUILD_ARGS=(
   -project "${IOS_PROJECT}"
@@ -728,10 +664,8 @@ resolve_package_dependencies() {
 }
 
 if [[ "${IOS_SKIP_PACKAGE_DEPENDENCY_RESOLUTION}" != "YES" ]]; then
-  bootstrap_carthage_dependencies
   resolve_package_dependencies
 else
-  bootstrap_carthage_dependencies
   echo "Skipping explicit package resolution before test execution."
 fi
 

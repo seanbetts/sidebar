@@ -199,13 +199,6 @@ def test_ios_ci_jobs_define_timeouts() -> None:
     assert _dispatch_workflow()["jobs"]["ios_test_dispatch"]["timeout-minutes"] == "90"
 
 
-def test_ios_ci_serializes_matrix_jobs_on_shared_machines() -> None:
-    """Apple matrix jobs should run one-at-a-time when multiple runners share one Mac."""
-    assert _dev_workflow()["jobs"]["ios_test_dev"]["strategy"]["max-parallel"] == "1"
-    assert _main_workflow()["jobs"]["ios_test_main"]["strategy"]["max-parallel"] == "1"
-    assert _dispatch_workflow()["jobs"]["ios_test_dispatch"]["strategy"]["max-parallel"] == "1"
-
-
 def test_dev_workflow_contains_only_quality_and_logic_jobs() -> None:
     """Dev workflow should materialize only the jobs relevant to dev."""
     workflow = _dev_workflow()
@@ -320,8 +313,6 @@ def test_ios_ci_uses_persistent_swiftpm_cache_paths() -> None:
         env = _job_step(workflow, job_name, "Run tests")["env"]
         assert env["IOS_CLONED_SOURCE_PACKAGES_DIR"] == "${{ env.IOS_CLONED_SOURCE_PACKAGES_DIR }}"
         assert env["IOS_PACKAGE_CACHE_PATH"] == "${{ env.IOS_PACKAGE_CACHE_PATH }}"
-        assert env["IOS_CARTHAGE_CACHE_PATH"] == "${{ env.IOS_CARTHAGE_CACHE_PATH }}"
-        assert env["IOS_CARTHAGE_BUILD_ROOT"] == "${{ env.IOS_CARTHAGE_BUILD_ROOT }}"
         assert env["IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS"] == "600"
 
 
@@ -412,21 +403,6 @@ def test_ios_ci_configures_shared_machine_cache_paths() -> None:
         assert '$HOME/Library/Caches/sidebar-ci-apple-tests' in script
         assert 'IOS_CLONED_SOURCE_PACKAGES_DIR=' in script
         assert 'IOS_PACKAGE_CACHE_PATH=' in script
-        assert 'IOS_CARTHAGE_CACHE_PATH=' in script
-        assert 'IOS_CARTHAGE_BUILD_ROOT=' in script
-
-
-def test_ios_ci_skips_redundant_carthage_bootstrap_in_test_lanes() -> None:
-    """Apple test lanes should reuse the prepared shared Carthage build root."""
-    workflows_and_jobs = [
-        (_dev_workflow(), "ios_test_dev"),
-        (_main_workflow(), "ios_test_main"),
-        (_dispatch_workflow(), "ios_test_dispatch"),
-    ]
-
-    for workflow, job_name in workflows_and_jobs:
-        env = _job_step(workflow, job_name, "Run tests")["env"]
-        assert env["IOS_SKIP_CARTHAGE_BOOTSTRAP"] == "YES"
 
 
 def test_ios_ci_resolves_only_testing_specs_from_taxonomy() -> None:

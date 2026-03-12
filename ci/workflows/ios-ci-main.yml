@@ -37,13 +37,9 @@ jobs:
           shared_root="$HOME/Library/Caches/sidebar-ci-apple-tests"
           mkdir -p "$shared_root/swiftpm/source-packages"
           mkdir -p "$shared_root/swiftpm/package-cache"
-          mkdir -p "$shared_root/carthage-cache"
-          mkdir -p "$shared_root/carthage-build"
           mkdir -p "$shared_root/deriveddata"
           echo "IOS_CLONED_SOURCE_PACKAGES_DIR=$shared_root/swiftpm/source-packages" >> "$GITHUB_ENV"
           echo "IOS_PACKAGE_CACHE_PATH=$shared_root/swiftpm/package-cache" >> "$GITHUB_ENV"
-          echo "IOS_CARTHAGE_CACHE_PATH=$shared_root/carthage-cache" >> "$GITHUB_ENV"
-          echo "IOS_CARTHAGE_BUILD_ROOT=$shared_root/carthage-build" >> "$GITHUB_ENV"
           echo "IOS_SHARED_DERIVED_DATA_ROOT=$shared_root/deriveddata" >> "$GITHUB_ENV"
       - name: Warm shared package state
         run: |
@@ -56,8 +52,6 @@ jobs:
             IOS_CLEAN_DERIVED_DATA="NO" \
             IOS_CLONED_SOURCE_PACKAGES_DIR="${IOS_CLONED_SOURCE_PACKAGES_DIR}" \
             IOS_PACKAGE_CACHE_PATH="${IOS_PACKAGE_CACHE_PATH}" \
-            IOS_CARTHAGE_CACHE_PATH="${IOS_CARTHAGE_CACHE_PATH}" \
-            IOS_CARTHAGE_BUILD_ROOT="${IOS_CARTHAGE_BUILD_ROOT}" \
             IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS="600" \
             IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY="YES" \
             scripts/test-ios.sh
@@ -75,7 +69,6 @@ jobs:
       - ${{ matrix.runner_label }}
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
         include:
           - id: surface
@@ -134,13 +127,9 @@ jobs:
           shared_root="$HOME/Library/Caches/sidebar-ci-apple-tests"
           mkdir -p "$shared_root/swiftpm/source-packages"
           mkdir -p "$shared_root/swiftpm/package-cache"
-          mkdir -p "$shared_root/carthage-cache"
-          mkdir -p "$shared_root/carthage-build"
           mkdir -p "$shared_root/deriveddata"
           echo "IOS_CLONED_SOURCE_PACKAGES_DIR=$shared_root/swiftpm/source-packages" >> "$GITHUB_ENV"
           echo "IOS_PACKAGE_CACHE_PATH=$shared_root/swiftpm/package-cache" >> "$GITHUB_ENV"
-          echo "IOS_CARTHAGE_CACHE_PATH=$shared_root/carthage-cache" >> "$GITHUB_ENV"
-          echo "IOS_CARTHAGE_BUILD_ROOT=$shared_root/carthage-build" >> "$GITHUB_ENV"
           echo "IOS_SHARED_DERIVED_DATA_ROOT=$shared_root/deriveddata" >> "$GITHUB_ENV"
       - name: Pre-clean stale test outputs (${{ matrix.id }})
         run: |
@@ -175,9 +164,6 @@ jobs:
           IOS_CLEAN_DERIVED_DATA: "NO"
           IOS_CLONED_SOURCE_PACKAGES_DIR: ${{ env.IOS_CLONED_SOURCE_PACKAGES_DIR }}
           IOS_PACKAGE_CACHE_PATH: ${{ env.IOS_PACKAGE_CACHE_PATH }}
-          IOS_CARTHAGE_CACHE_PATH: ${{ env.IOS_CARTHAGE_CACHE_PATH }}
-          IOS_CARTHAGE_BUILD_ROOT: ${{ env.IOS_CARTHAGE_BUILD_ROOT }}
-          IOS_SKIP_CARTHAGE_BOOTSTRAP: "YES"
           IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS: "600"
           IOS_SKIP_PACKAGE_DEPENDENCY_RESOLUTION: "YES"
           IOS_ONLY_TESTING: ${{ env.IOS_ONLY_TESTING }}
