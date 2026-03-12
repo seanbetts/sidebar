@@ -1,8 +1,0 @@
-source 'https://cdn.cocoapods.org/'
-
-project 'sideBar.xcodeproj'
-
-target 'sideBar' do
-  use_frameworks! :linkage => :static
-  pod 'Sentry'
-end

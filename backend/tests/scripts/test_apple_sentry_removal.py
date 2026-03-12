@@ -8,14 +8,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 IOS_ROOT = REPO_ROOT / "ios" / "sideBar"
 PBXPROJ = REPO_ROOT / "ios" / "sideBar" / "sideBar.xcodeproj" / "project.pbxproj"
-WORKSPACE = IOS_ROOT / "sideBar.xcworkspace" / "contents.xcworkspacedata"
-PODFILE = IOS_ROOT / "Podfile"
 CI_POST_CLONE_SCRIPT = REPO_ROOT / "ios" / "sideBar" / "ci_scripts" / "ci_post_clone.sh"
 UPLOAD_SCRIPT = REPO_ROOT / "ios" / "sideBar" / "ci_scripts" / "upload_sentry_dsyms.sh"
 BOOTSTRAP = REPO_ROOT / "ios" / "sideBar" / "sideBar" / "App" / "SentryBootstrap.swift"
 IOS_APP_DELEGATE = REPO_ROOT / "ios" / "sideBar" / "sideBar" / "App" / "AppLaunchDelegate.swift"
 MAC_APP_DELEGATE = REPO_ROOT / "ios" / "sideBar" / "sideBar" / "App" / "MacAppDelegate.swift"
-TEST_IOS_SCRIPT = REPO_ROOT / "scripts" / "test-ios.sh"
 
 
 def test_bootstrap_seam_remains_present_and_dependency_injected() -> None:
@@ -76,25 +73,6 @@ def test_project_allows_at_most_one_future_approved_sentry_dependency_path() -> 
 def test_project_reserves_at_most_one_upload_hook_entry() -> None:
     project_contents = PBXPROJ.read_text(encoding="utf-8")
     assert project_contents.count("Upload Sentry dSYMs") <= 1
-
-
-def test_cocoapods_candidate_is_scoped_to_main_sidebar_app_target() -> None:
-    podfile_contents = PODFILE.read_text(encoding="utf-8")
-    workspace_contents = WORKSPACE.read_text(encoding="utf-8")
-
-    assert "target 'sideBar' do" in podfile_contents
-    assert "pod 'Sentry'" in podfile_contents
-    assert "ShareExtension" not in podfile_contents
-    assert "sideBarWidgetsExtension" not in podfile_contents
-    assert "sideBar.xcodeproj" in workspace_contents
-
-
-def test_ios_test_harness_prefers_workspace_builds_when_cocoapods_is_present() -> None:
-    script_contents = TEST_IOS_SCRIPT.read_text(encoding="utf-8")
-
-    assert 'IOS_WORKSPACE="${IOS_WORKSPACE:-ios/sideBar/sideBar.xcworkspace}"' in script_contents
-    assert '-workspace "${IOS_WORKSPACE}"' in script_contents
-    assert '-project "${IOS_PROJECT}"' not in script_contents
 
 
 def _has_swift_package_sentry_path() -> bool:

@@ -6,7 +6,6 @@ if ! command -v xcodebuild >/dev/null 2>&1; then
   exit 1
 fi
 
-IOS_WORKSPACE="${IOS_WORKSPACE:-ios/sideBar/sideBar.xcworkspace}"
 IOS_PROJECT="${IOS_PROJECT:-ios/sideBar/sideBar.xcodeproj}"
 if [[ -n "${IOS_SCHEME+x}" ]]; then
   IOS_SCHEME="${IOS_SCHEME}"
@@ -144,7 +143,7 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
 fi
 
 XCODEBUILD_ARGS=(
-  -workspace "${IOS_WORKSPACE}"
+  -project "${IOS_PROJECT}"
   -scheme "${IOS_SCHEME}"
   -destination "${IOS_DESTINATION}"
   -destination-timeout "${IOS_DESTINATION_TIMEOUT}"
@@ -259,7 +258,7 @@ ui_test_secrets_file_path() {
   fi
 
   local project_dir
-  project_dir="$(cd "$(dirname "${IOS_WORKSPACE}")" >/dev/null 2>&1 && pwd)"
+  project_dir="$(cd "$(dirname "${IOS_PROJECT}")" >/dev/null 2>&1 && pwd)"
   printf '%s/.ui-test-secrets.local\n' "${project_dir}"
 }
 
@@ -601,7 +600,7 @@ resolve_package_dependencies() {
   while [[ ${attempt} -le ${IOS_PACKAGE_RESOLVE_RETRIES} ]]; do
     local package_args=(
       -resolvePackageDependencies
-      -workspace "${IOS_WORKSPACE}"
+      -project "${IOS_PROJECT}"
       -scheme "${IOS_SCHEME}"
     )
 
