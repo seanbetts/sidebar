@@ -1,10 +1,12 @@
 """Tests for docs indexer frontmatter parsing."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from api.services.knowledge.docs_indexer import DocsIndexer
+from api.services.knowledge.provider import get_docs_indexer, init_docs_indexer
 
 
 @pytest.fixture()
@@ -159,3 +161,19 @@ class TestDocsIndexer:
         results = indexer.search("sidebar", max_results=1)
 
         assert len(results) <= 1
+
+
+class TestKnowledgeProvider:
+    """Tests for knowledge provider singleton."""
+
+    def test_init_and_get(self, sample_docs: Path) -> None:
+        with patch("api.services.knowledge.provider._indexer", None):
+            init_docs_indexer(sample_docs)
+            indexer = get_docs_indexer()
+            assert indexer is not None
+            assert len(indexer.catalog) > 0
+
+    def test_get_without_init_raises(self) -> None:
+        with patch("api.services.knowledge.provider._indexer", None):
+            with pytest.raises(RuntimeError):
+                get_docs_indexer()
