@@ -91,6 +91,7 @@ IOS_CLONED_SOURCE_PACKAGES_DIR="${IOS_CLONED_SOURCE_PACKAGES_DIR:-}"
 IOS_PACKAGE_CACHE_PATH="${IOS_PACKAGE_CACHE_PATH:-}"
 IOS_SKIP_CARTHAGE_BOOTSTRAP="${IOS_SKIP_CARTHAGE_BOOTSTRAP:-NO}"
 IOS_CARTHAGE_CACHE_PATH="${IOS_CARTHAGE_CACHE_PATH:-}"
+IOS_CARTHAGE_BUILD_ROOT="${IOS_CARTHAGE_BUILD_ROOT:-}"
 if [[ -n "${IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE+x}" ]]; then
   IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE="${IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE}"
 elif [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
@@ -155,6 +156,32 @@ carthage_bootstrap_required() {
 }
 
 bootstrap_carthage_dependencies() {
+  local local_carthage_dir="${ios_project_dir}/Carthage"
+  local local_carthage_build_dir="${local_carthage_dir}/Build"
+
+  mkdir -p "${local_carthage_dir}"
+
+  if [[ -n "${IOS_CARTHAGE_BUILD_ROOT}" ]]; then
+    if [[ "${IOS_CARTHAGE_BUILD_ROOT}" == "/" ]]; then
+      echo "Error: IOS_CARTHAGE_BUILD_ROOT cannot be '/'."
+      exit 1
+    fi
+
+    mkdir -p "${IOS_CARTHAGE_BUILD_ROOT}"
+    if [[ -L "${local_carthage_build_dir}" ]]; then
+      existing_target="$(readlink "${local_carthage_build_dir}")"
+      if [[ "${existing_target}" != "${IOS_CARTHAGE_BUILD_ROOT}" ]]; then
+        rm -f "${local_carthage_build_dir}"
+      fi
+    elif [[ -e "${local_carthage_build_dir}" ]]; then
+      rm -rf "${local_carthage_build_dir}"
+    fi
+
+    if [[ ! -L "${local_carthage_build_dir}" ]]; then
+      ln -s "${IOS_CARTHAGE_BUILD_ROOT}" "${local_carthage_build_dir}"
+    fi
+  fi
+
   if [[ "${IOS_SKIP_CARTHAGE_BOOTSTRAP}" == "YES" ]]; then
     echo "Skipping Carthage bootstrap before test execution."
     return 0

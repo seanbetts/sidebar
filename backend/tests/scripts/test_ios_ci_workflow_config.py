@@ -321,6 +321,7 @@ def test_ios_ci_uses_persistent_swiftpm_cache_paths() -> None:
         assert env["IOS_CLONED_SOURCE_PACKAGES_DIR"] == "${{ env.IOS_CLONED_SOURCE_PACKAGES_DIR }}"
         assert env["IOS_PACKAGE_CACHE_PATH"] == "${{ env.IOS_PACKAGE_CACHE_PATH }}"
         assert env["IOS_CARTHAGE_CACHE_PATH"] == "${{ env.IOS_CARTHAGE_CACHE_PATH }}"
+        assert env["IOS_CARTHAGE_BUILD_ROOT"] == "${{ env.IOS_CARTHAGE_BUILD_ROOT }}"
         assert env["IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS"] == "600"
 
 
@@ -412,6 +413,20 @@ def test_ios_ci_configures_shared_machine_cache_paths() -> None:
         assert 'IOS_CLONED_SOURCE_PACKAGES_DIR=' in script
         assert 'IOS_PACKAGE_CACHE_PATH=' in script
         assert 'IOS_CARTHAGE_CACHE_PATH=' in script
+        assert 'IOS_CARTHAGE_BUILD_ROOT=' in script
+
+
+def test_ios_ci_skips_redundant_carthage_bootstrap_in_test_lanes() -> None:
+    """Apple test lanes should reuse the prepared shared Carthage build root."""
+    workflows_and_jobs = [
+        (_dev_workflow(), "ios_test_dev"),
+        (_main_workflow(), "ios_test_main"),
+        (_dispatch_workflow(), "ios_test_dispatch"),
+    ]
+
+    for workflow, job_name in workflows_and_jobs:
+        env = _job_step(workflow, job_name, "Run tests")["env"]
+        assert env["IOS_SKIP_CARTHAGE_BOOTSTRAP"] == "YES"
 
 
 def test_ios_ci_resolves_only_testing_specs_from_taxonomy() -> None:
