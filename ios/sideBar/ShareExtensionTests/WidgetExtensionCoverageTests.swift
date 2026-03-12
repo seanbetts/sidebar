@@ -2,9 +2,20 @@ import Foundation
 import AppIntents
 import WidgetKit
 import XCTest
+import sideBarShared
 @testable import sideBarWidgetsExtension
 
 final class WidgetExtensionCoverageTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        ExternalSurfaceDiagnosticsStore.shared.clear()
+    }
+
+    override func tearDown() {
+        ExternalSurfaceDiagnosticsStore.shared.clear()
+        super.tearDown()
+    }
+
     func testWidgetTestsResolveExpectedAppGroupIdentifier() {
         XCTAssertEqual(appGroupIdForWidgetTests(), "group.ai.sidebar.sidebar")
     }
@@ -142,6 +153,25 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         manager.recordPendingQuickSave(url: url)
         XCTAssertEqual(manager.consumePendingQuickSave(), url)
         XCTAssertNil(manager.consumePendingQuickSave())
+    }
+
+    func testWidgetDiagnosticsUseSharedExternalSurfaceStoreMetadata() {
+        let groupId = appGroupIdForWidgetTests()
+        let defaults = UserDefaults(suiteName: groupId)
+        defaults?.set(true, forKey: "widgetIsAuthenticated")
+        defaults?.synchronize()
+        defer {
+            defaults?.removeObject(forKey: "widgetIsAuthenticated")
+            defaults?.synchronize()
+        }
+
+        XCTAssertTrue(WidgetDataManager.shared.isAuthenticated())
+
+        let export = ExternalSurfaceDiagnosticsStore.shared.exportText(limit: 5)
+        XCTAssertTrue(export.contains("[widget_bridge_extension] read_auth_state:"))
+        XCTAssertTrue(export.contains("build_number="))
+        XCTAssertTrue(export.contains("process_name="))
+        XCTAssertTrue(export.contains("bundle_path="))
     }
 
     func testSavedSitesWidgetUsesSevenItemsForLargeFamily() {
@@ -291,18 +321,7 @@ final class WidgetExtensionCoverageTests: XCTestCase {
 private func assertOpensIntent<Result: OpensIntent>(_: Result) {}
 
 private func appGroupIdForWidgetTests() -> String {
-    if let configured = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String {
-        let trimmed = configured.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty, !trimmed.contains("$(") {
-            return trimmed
-        }
-    }
-
-    let bundleId = Bundle.main.bundleIdentifier ?? "ai.sidebar.sidebar"
-    let normalized = bundleId
-        .replacingOccurrences(of: ".ShareExtension", with: "")
-        .replacingOccurrences(of: ".sideBarWidgets", with: "")
-    return "group.\(normalized)"
+    AppGroupConfiguration.appGroupId ?? "group.ai.sidebar.sidebar"
 }
 
 private func clearTaskWidgetStorage() {

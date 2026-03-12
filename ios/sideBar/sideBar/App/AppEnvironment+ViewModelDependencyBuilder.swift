@@ -241,6 +241,7 @@ extension AppEnvironment {
             container: ServiceContainer,
             core: CoreDependencyBuilder.Output,
             stores: StoreDependencyBuilder.Output,
+            widgetDataManager: WidgetDataManager,
             workspaceStateProvider: @escaping () -> WorkspaceState? = { nil }
         ) -> Output {
             let settingsViewModel = makeSettingsViewModel(container: container)
@@ -278,6 +279,7 @@ extension AppEnvironment {
             let tasksViewModel = TasksViewModel(
                 api: container.tasksAPI,
                 store: stores.tasksStore,
+                widgetDataManager: widgetDataManager,
                 toastCenter: core.toastCenter,
                 networkStatus: core.connectivityMonitor
             )

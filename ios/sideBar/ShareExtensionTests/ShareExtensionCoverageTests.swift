@@ -4,6 +4,30 @@ import XCTest
 import sideBarShared
 
 final class ShareExtensionCoverageTests: XCTestCase {
+    func testShareExtensionInfoPlistSupportsSafariWebpagesAndRichAttachmentPayloads() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let plistURL = repositoryRoot.appendingPathComponent("ios/sideBar/ShareExtension/Info.plist")
+        let plistData = try Data(contentsOf: plistURL)
+        let propertyList = try XCTUnwrap(
+            PropertyListSerialization.propertyList(
+                from: plistData,
+                options: [],
+                format: nil
+            ) as? [String: Any]
+        )
+        let extensionDictionary = try XCTUnwrap(propertyList["NSExtension"] as? [String: Any])
+        let attributes = try XCTUnwrap(extensionDictionary["NSExtensionAttributes"] as? [String: Any])
+        let activationRule = try XCTUnwrap(attributes["NSExtensionActivationRule"] as? [String: Any])
+
+        XCTAssertEqual(activationRule["NSExtensionActivationSupportsAttachmentsWithMaxCount"] as? Int, 10)
+        XCTAssertEqual(activationRule["NSExtensionActivationSupportsFileWithMaxCount"] as? Int, 10)
+        XCTAssertEqual(activationRule["NSExtensionActivationSupportsImageWithMaxCount"] as? Int, 10)
+        XCTAssertEqual(activationRule["NSExtensionActivationSupportsURLWithMaxCount"] as? Int, 10)
+        XCTAssertEqual(activationRule["NSExtensionActivationSupportsWebPageWithMaxCount"] as? Int, 1)
+        XCTAssertEqual(activationRule["NSExtensionActivationSupportsWebURLWithMaxCount"] as? Int, 10)
+        XCTAssertEqual(activationRule["NSExtensionActivationSupportsText"] as? Bool, true)
+    }
+
     func testErrorMessageUsesCatalogForNotAuthenticated() {
         let message = ShareExtensionMessageMapper.errorMessage(for: ShareExtensionError.notAuthenticated)
 
@@ -157,5 +181,18 @@ final class ShareExtensionCoverageTests: XCTestCase {
         let export = ExternalSurfaceDiagnosticsStore.shared.exportText(limit: 10)
         XCTAssertTrue(export.contains("[share_extension] begin_request: Began processing shared content."))
         XCTAssertTrue(export.contains("item_provider_count=0"))
+    }
+
+    private func findRepositoryRoot(filePath: String = #filePath) throws -> URL {
+        var candidate = URL(fileURLWithPath: filePath).deletingLastPathComponent()
+        while candidate.path != "/" {
+            let projectFile = candidate
+                .appendingPathComponent("ios/sideBar/sideBar.xcodeproj/project.pbxproj")
+            if FileManager.default.fileExists(atPath: projectFile.path) {
+                return candidate
+            }
+            candidate.deleteLastPathComponent()
+        }
+        throw NSError(domain: "ShareExtensionCoverageTests", code: 1)
     }
 }

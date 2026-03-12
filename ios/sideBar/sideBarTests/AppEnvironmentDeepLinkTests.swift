@@ -303,6 +303,61 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         )
     }
 
+    func testAddTaskIntentRoutesImmediatelyWhenAppEnvironmentIsAvailable() async throws {
+        let environment = requireEnvironment()
+        environment.authState = .active
+        environment.isTasksFocused = false
+
+        _ = try await AddTaskIntent().perform()
+
+        XCTAssertEqual(environment.commandSelection, .tasks)
+        XCTAssertTrue(environment.pendingNewTaskDeepLink)
+    }
+
+    func testCreateNoteIntentRoutesImmediatelyWhenAppEnvironmentIsAvailable() async throws {
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        _ = try await CreateNoteIntent().perform()
+
+        XCTAssertEqual(environment.commandSelection, .notes)
+        XCTAssertTrue(environment.pendingNewNoteDeepLink)
+    }
+
+    func testHandleSignedInActivationRefreshesWebsiteWidgetSnapshot() async {
+        let item = WebsiteItem(
+            id: "website-1",
+            title: "Example",
+            url: "https://example.com/articles/1",
+            domain: "example.com",
+            savedAt: "2026-03-12T17:00:00Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2026-03-12T17:00:00Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let websitesAPI = WidgetRefreshWebsitesAPI(items: [item])
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        let before: WidgetWebsiteData = storage.widgetDataManager.load(for: .websites)
+        XCTAssertEqual(before.totalCount, 0)
+
+        await environment.handleSignedInActivation()
+
+        let after: WidgetWebsiteData = storage.widgetDataManager.load(for: .websites)
+        XCTAssertEqual(after.totalCount, 1)
+        XCTAssertEqual(after.websites.first?.url, item.url)
+    }
+
     private func clearWidgetPendingOperations() {
         _ = storage.widgetDataManager.consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
         _ = storage.widgetDataManager.consumePendingOperations(for: .notes, actionType: NoteWidgetAction.self)
@@ -373,4 +428,74 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.websitesViewModel.pendingWebsite = nil
     }
 
+}
+
+private final class WidgetRefreshWebsitesAPI: WebsitesProviding {
+    let items: [WebsiteItem]
+
+    init(items: [WebsiteItem]) {
+        self.items = items
+    }
+
+    func list() async throws -> WebsitesResponse {
+        WebsitesResponse(items: items, archivedCount: 0)
+    }
+
+    func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse {
+        _ = limit
+        _ = offset
+        return WebsitesResponse(items: [], archivedCount: 0)
+    }
+
+    func get(id: String) async throws -> WebsiteDetail {
+        _ = id
+        throw WidgetRefreshWebsitesAPIError.forced
+    }
+
+    func save(url: String) async throws -> WebsiteSaveResponse {
+        _ = url
+        throw WidgetRefreshWebsitesAPIError.forced
+    }
+
+    func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
+        _ = id
+        _ = url
+        throw WidgetRefreshWebsitesAPIError.forced
+    }
+
+    func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
+        _ = id
+        _ = pinned
+        _ = clientUpdatedAt
+        throw WidgetRefreshWebsitesAPIError.forced
+    }
+
+    func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem {
+        _ = id
+        _ = title
+        _ = clientUpdatedAt
+        throw WidgetRefreshWebsitesAPIError.forced
+    }
+
+    func archive(id: String, archived: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
+        _ = id
+        _ = archived
+        _ = clientUpdatedAt
+        throw WidgetRefreshWebsitesAPIError.forced
+    }
+
+    func delete(id: String, clientUpdatedAt: String?) async throws {
+        _ = id
+        _ = clientUpdatedAt
+        throw WidgetRefreshWebsitesAPIError.forced
+    }
+
+    func sync(_ payload: WebsiteSyncRequest) async throws -> WebsiteSyncResponse {
+        _ = payload
+        throw WidgetRefreshWebsitesAPIError.forced
+    }
+}
+
+private enum WidgetRefreshWebsitesAPIError: Error {
+    case forced
 }

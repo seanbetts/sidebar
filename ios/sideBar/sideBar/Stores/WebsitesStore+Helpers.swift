@@ -428,7 +428,7 @@ extension WebsitesStore {
             .map { WidgetWebsite(from: $0) }
         let displaySites = Array(savedSites.prefix(10))
         let data = WidgetWebsiteData(websites: displaySites, totalCount: savedSites.count)
-        WidgetDataManager.shared.store(data, for: .websites)
+        widgetDataManager.store(data, for: .websites)
     }
 }
 

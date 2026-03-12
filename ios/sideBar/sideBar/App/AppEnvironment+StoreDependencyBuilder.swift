@@ -16,7 +16,8 @@ extension AppEnvironment {
 
         static func build(
             container: ServiceContainer,
-            core: CoreDependencyBuilder.Output
+            core: CoreDependencyBuilder.Output,
+            widgetDataManager: WidgetDataManager
         ) -> Output {
             let chatStore = ChatStore(
                 conversationsAPI: container.conversationsAPI,
@@ -27,6 +28,7 @@ extension AppEnvironment {
             let websitesStore = WebsitesStore(
                 api: container.websitesAPI,
                 cache: container.cacheClient,
+                widgetDataManager: widgetDataManager,
                 offlineStore: core.offlineStore,
                 networkStatus: core.connectivityMonitor
             )
@@ -34,6 +36,7 @@ extension AppEnvironment {
             let ingestionStore = IngestionStore(
                 api: container.ingestionAPI,
                 cache: container.cacheClient,
+                widgetDataManager: widgetDataManager,
                 offlineStore: core.offlineStore,
                 networkStatus: core.connectivityMonitor
             )
@@ -48,6 +51,7 @@ extension AppEnvironment {
             let notesStore = NotesStore(
                 api: container.notesAPI,
                 cache: container.cacheClient,
+                widgetDataManager: widgetDataManager,
                 offlineStore: core.offlineStore,
                 networkStatus: core.connectivityMonitor
             )

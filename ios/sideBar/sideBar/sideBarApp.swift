@@ -10,6 +10,9 @@ import sideBarShared
 import Foundation
 import SwiftUI
 import os
+#if os(macOS)
+import AppKit
+#endif
 
 enum MacWindowConfiguration {
     static let mainWindowID = "main"
@@ -133,8 +136,15 @@ struct AddTaskIntent: AppIntent {
     func perform() async throws -> some IntentResult & OpensIntent {
         logger.info("AddTaskIntent recording pending add task (app process)")
         await MainActor.run {
+            let widgetDataManager = AppEnvironment.shared?.storage.widgetDataManager ?? WidgetDataManager.shared
             let operation = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
-            WidgetDataManager.shared.recordPendingOperation(operation, for: .tasks)
+            widgetDataManager.recordPendingOperation(operation, for: .tasks)
+            if let environment = AppEnvironment.shared {
+                #if os(macOS)
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                #endif
+                environment.consumeWidgetAddTask()
+            }
         }
         guard let url = URL(string: "sidebar://tasks/today") else {
             logger.error("AddTaskIntent failed: invalid deep link URL")
@@ -184,8 +194,15 @@ struct CreateNoteIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & OpensIntent {
         await MainActor.run {
+            let widgetDataManager = AppEnvironment.shared?.storage.widgetDataManager ?? WidgetDataManager.shared
             let operation = WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew)
-            WidgetDataManager.shared.recordPendingOperation(operation, for: .notes)
+            widgetDataManager.recordPendingOperation(operation, for: .notes)
+            if let environment = AppEnvironment.shared {
+                #if os(macOS)
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                #endif
+                environment.consumeWidgetAddNote()
+            }
         }
         guard let url = URL(string: "sidebar://notes") else {
             logger.error("CreateNoteIntent failed: invalid deep link URL")

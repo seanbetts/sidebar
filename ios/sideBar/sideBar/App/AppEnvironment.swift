@@ -144,12 +144,14 @@ public final class AppEnvironment: ObservableObject {
         #if DEBUG
         let storeStart = CFAbsoluteTimeGetCurrent()
         #endif
+        let resolvedStorage = storage ?? .shared
         self.container = container
-        self.storage = storage ?? .shared
+        self.storage = resolvedStorage
         let workspaceStore = WorkspaceStore()
         let dependencies = Self.buildDependencies(
             container: container,
             isTestMode: isTestMode,
+            widgetDataManager: resolvedStorage.widgetDataManager,
             workspaceStateProvider: { workspaceStore.state }
         )
         self.persistenceController = dependencies.persistenceController

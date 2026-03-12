@@ -1,5 +1,6 @@
 import Foundation
 import WidgetKit
+import sideBarShared
 
 /// Lightweight widget data manager for extension use only.
 /// Supports read operations and recording pending operations.
@@ -7,7 +8,6 @@ public final class WidgetDataManager {
   public static let shared = WidgetDataManager()
 
   private let authKey = "widgetIsAuthenticated"
-  private let diagnosticsKey = "externalSurfaceDiagnostics"
   private let faviconR2EndpointKey = "widget_favicon_r2_endpoint"
   private let faviconR2BucketKey = "widget_favicon_r2_bucket"
   private let faviconR2PublicBaseUrlKey = "widget_favicon_r2_public_base_url"
@@ -26,24 +26,7 @@ public final class WidgetDataManager {
   }
 
   private var appGroupId: String {
-    // Try configured value from Info.plist first
-    if let configured = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String,
-       !configured.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-       !configured.contains("$(") {
-      return configured
-    }
-    // Fall back to derived value from bundle ID
-    let bundleId = Bundle.main.bundleIdentifier ?? "ai.sidebar.sidebar"
-    let normalized = [
-      ".sideBar-Safari-Extension--macOS-.Extension",
-      ".sideBar-Safari-Extension--macOS-",
-      ".sideBar-Safari-Extension",
-      ".sideBarWidgets",
-      ".ShareExtension"
-    ].reduce(bundleId) { partial, suffix in
-      partial.replacingOccurrences(of: suffix, with: "")
-    }
-    return "group.\(normalized)"
+    AppGroupConfiguration.appGroupId ?? "group.ai.sidebar.sidebar"
   }
 
   // MARK: - Generic Data Storage
@@ -297,59 +280,14 @@ private extension WidgetDataManager {
     message: String,
     metadata: [String: String] = [:]
   ) {
-    guard let defaults = userDefaults else { return }
-    var entries = loadDiagnosticEntries(defaults: defaults)
-    entries.append(
-      WidgetDiagnosticEntry(
-        surface: "widget_bridge_extension",
-        stage: stage,
-        message: message,
-        metadata: metadata.merging(
-          [
-            "bundle_id": Bundle.main.bundleIdentifier ?? "nil",
-            "app_group_id": appGroupId
-          ],
-          uniquingKeysWith: { current, _ in current }
-        )
+    ExternalSurfaceDiagnosticsStore.shared.record(
+      surface: "widget_bridge_extension",
+      stage: stage,
+      message: message,
+      metadata: metadata.merging(
+        ["app_group_id": appGroupId],
+        uniquingKeysWith: { current, _ in current }
       )
     )
-    if entries.count > 200 {
-      entries.removeFirst(entries.count - 200)
-    }
-    let encoder = JSONEncoder()
-    encoder.dateEncodingStrategy = .iso8601
-    if let data = try? encoder.encode(entries) {
-      defaults.set(data, forKey: diagnosticsKey)
-      defaults.synchronize()
-    }
-  }
-
-  func loadDiagnosticEntries(defaults: UserDefaults) -> [WidgetDiagnosticEntry] {
-    guard let data = defaults.data(forKey: diagnosticsKey) else { return [] }
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .iso8601
-    return (try? decoder.decode([WidgetDiagnosticEntry].self, from: data)) ?? []
-  }
-}
-
-private struct WidgetDiagnosticEntry: Codable, Equatable {
-  let timestamp: Date
-  let surface: String
-  let stage: String
-  let message: String
-  let metadata: [String: String]
-
-  init(
-    timestamp: Date = Date(),
-    surface: String,
-    stage: String,
-    message: String,
-    metadata: [String: String]
-  ) {
-    self.timestamp = timestamp
-    self.surface = surface
-    self.stage = stage
-    self.message = message
-    self.metadata = metadata
   }
 }

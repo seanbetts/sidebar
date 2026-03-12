@@ -22,6 +22,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     @Published public internal(set) var activeNote: NotePayload?
 
     let api: any NotesProviding
+    let widgetDataManager: WidgetDataManager
     let offlineStore: OfflineStore?
     let networkStatus: (any NetworkStatusProviding)?
     weak var writeQueue: WriteQueue?
@@ -42,12 +43,14 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     public init(
         api: any NotesProviding,
         cache: CacheClient,
+        widgetDataManager: WidgetDataManager = .shared,
         offlineStore: OfflineStore? = nil,
         networkStatus: (any NetworkStatusProviding)? = nil,
         archivedRefreshWaitTimeoutNanoseconds: UInt64 = 10_000_000_000,
         archivedRefreshPollIntervalNanoseconds: UInt64 = 50_000_000
     ) {
         self.api = api
+        self.widgetDataManager = widgetDataManager
         self.offlineStore = offlineStore
         self.networkStatus = networkStatus
         let pollInterval = max(1, archivedRefreshPollIntervalNanoseconds)

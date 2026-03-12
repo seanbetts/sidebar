@@ -18,6 +18,7 @@ public final class TasksViewModel: ObservableObject {
 
     let api: any TasksProviding
     let store: TasksStore
+    let widgetDataManager: WidgetDataManager
     let toastCenter: ToastCenter
     let networkStatus: any NetworkStatusProviding
     let searchDebounceNanoseconds: UInt64
@@ -30,6 +31,7 @@ public final class TasksViewModel: ObservableObject {
     public init(
         api: any TasksProviding,
         store: TasksStore,
+        widgetDataManager: WidgetDataManager? = nil,
         toastCenter: ToastCenter,
         networkStatus: any NetworkStatusProviding,
         searchDebounceNanoseconds: UInt64 = 350_000_000,
@@ -37,6 +39,7 @@ public final class TasksViewModel: ObservableObject {
     ) {
         self.api = api
         self.store = store
+        self.widgetDataManager = widgetDataManager ?? .shared
         self.toastCenter = toastCenter
         self.networkStatus = networkStatus
         self.searchDebounceNanoseconds = searchDebounceNanoseconds
@@ -104,7 +107,7 @@ public final class TasksViewModel: ObservableObject {
             tasks: Array(widgetTasks),
             remainingCount: todayTasks.count
         )
-        WidgetDataManager.shared.store(data, for: .tasks)
+        widgetDataManager.store(data, for: .tasks)
     }
 
     /// Fetches today's tasks and updates widget data (works from any view)
@@ -127,7 +130,7 @@ public final class TasksViewModel: ObservableObject {
                 tasks: Array(widgetTasks),
                 remainingCount: todayTasks.count
             )
-            WidgetDataManager.shared.store(data, for: .tasks)
+            widgetDataManager.store(data, for: .tasks)
         } catch {
             // Silently fail - widget will use cached data
         }
@@ -135,7 +138,7 @@ public final class TasksViewModel: ObservableObject {
 
     private func buildWidgetTaskData(tasks: [WidgetTask], remainingCount: Int) -> WidgetTaskData {
         let now = Date()
-        let previous: WidgetTaskData = WidgetDataManager.shared.load(for: .tasks)
+        let previous: WidgetTaskData = widgetDataManager.load(for: .tasks)
         let calendar = Calendar.current
 
         let progressCompletedCount: Int

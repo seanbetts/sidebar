@@ -355,7 +355,7 @@ extension NotesStore {
             .sorted { ($0.pinnedOrder ?? Int.max) < ($1.pinnedOrder ?? Int.max) }
         let displayNotes = Array(pinnedNotes.prefix(10))
         let data = WidgetNoteData(notes: displayNotes, totalCount: pinnedNotes.count)
-        WidgetDataManager.shared.store(data, for: .notes)
+        widgetDataManager.store(data, for: .notes)
     }
 
     func flattenNotes(from nodes: [FileNode]) -> [WidgetNote] {

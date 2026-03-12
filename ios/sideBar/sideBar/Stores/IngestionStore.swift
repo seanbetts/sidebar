@@ -20,6 +20,7 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     @Published public internal(set) var isOffline: Bool = false
 
     let api: any IngestionProviding
+    let widgetDataManager: WidgetDataManager
     let offlineStore: OfflineStore?
     let networkStatus: (any NetworkStatusProviding)?
     weak var writeQueue: WriteQueue?
@@ -36,11 +37,13 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     public init(
         api: any IngestionProviding,
         cache: CacheClient,
+        widgetDataManager: WidgetDataManager = .shared,
         offlineStore: OfflineStore? = nil,
         networkStatus: (any NetworkStatusProviding)? = nil,
         userDefaults: UserDefaults = .standard
     ) {
         self.api = api
+        self.widgetDataManager = widgetDataManager
         self.offlineStore = offlineStore
         self.networkStatus = networkStatus
         self.userDefaults = userDefaults

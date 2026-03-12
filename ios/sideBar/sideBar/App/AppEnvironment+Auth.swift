@@ -159,6 +159,7 @@ extension AppEnvironment {
             await consumeExtensionEvents()
             await consumeWidgetCompletions()
             await consumeWidgetQuickSave()
+            await refreshWidgetDataBridges()
         }
         consumeWidgetAddTask()
         consumeWidgetAddNote()
@@ -176,6 +177,14 @@ extension AppEnvironment {
             message: "Finished signed-in activation.",
             metadata: ["auth_state": authState.rawValue]
         )
+    }
+
+    private func refreshWidgetDataBridges() async {
+        async let tasks: () = tasksViewModel.refreshWidgetData()
+        async let notes: () = notesViewModel.refreshWidgetData()
+        async let websites: () = websitesViewModel.refreshWidgetData()
+        async let files: () = ingestionViewModel.refreshWidgetData()
+        _ = await (tasks, notes, websites, files)
     }
 
     public func consumeExtensionEvents() async {

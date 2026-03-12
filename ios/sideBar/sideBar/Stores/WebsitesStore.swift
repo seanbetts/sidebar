@@ -20,6 +20,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     @Published public internal(set) var archivedSummary: ArchivedSummary?
 
     let api: any WebsitesProviding
+    let widgetDataManager: WidgetDataManager
     let offlineStore: OfflineStore?
     let networkStatus: (any NetworkStatusProviding)?
     weak var writeQueue: WriteQueue?
@@ -37,12 +38,14 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     public init(
         api: any WebsitesProviding,
         cache: CacheClient,
+        widgetDataManager: WidgetDataManager = .shared,
         offlineStore: OfflineStore? = nil,
         networkStatus: (any NetworkStatusProviding)? = nil,
         archivedRefreshWaitTimeoutNanoseconds: UInt64 = 10_000_000_000,
         archivedRefreshPollIntervalNanoseconds: UInt64 = 50_000_000
     ) {
         self.api = api
+        self.widgetDataManager = widgetDataManager
         self.offlineStore = offlineStore
         self.networkStatus = networkStatus
         let pollInterval = max(1, archivedRefreshPollIntervalNanoseconds)
