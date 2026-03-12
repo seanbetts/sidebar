@@ -1354,3 +1354,66 @@ def test_generate_title_uses_conversation_provider_lock(
     assert response.status_code == 200
     assert captured["preferred_provider"] == "openai"
     assert response.json()["title"] == "Locked Provider Title"
+
+
+def test_generate_title_uses_first_user_assistant_pair_by_role(
+    test_client, test_db, monkeypatch
+):
+    user_id = "user-1"
+    conversation = ConversationService.create_conversation(
+        test_db, user_id, "Role Pair Title"
+    )
+    ConversationService.add_message(
+        test_db,
+        user_id,
+        conversation.id,
+        {"role": "assistant", "content": "I apologize for the confusion"},
+    )
+    ConversationService.add_message(
+        test_db,
+        user_id,
+        conversation.id,
+        {"role": "user", "content": "Help me plan a weekend in Lisbon"},
+    )
+    ConversationService.add_message(
+        test_db,
+        user_id,
+        conversation.id,
+        {"role": "assistant", "content": "Here is a two day Lisbon itinerary"},
+    )
+
+    captured: dict[str, str | None] = {
+        "user_message": None,
+        "assistant_message": None,
+    }
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def generate_title(self, **kwargs):
+            captured["user_message"] = kwargs.get("user_message")
+            captured["assistant_message"] = kwargs.get("assistant_message")
+            return SimpleNamespace(raw_title="Lisbon Weekend Plan")
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+
+    app.dependency_overrides[get_current_user_id] = lambda: user_id
+    try:
+        response = test_client.post(
+            "/api/chat/generate-title",
+            headers=_auth_headers(),
+            json={"conversation_id": str(conversation.id)},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    assert response.status_code == 200
+    assert captured["user_message"] == "Help me plan a weekend in Lisbon"
+    assert captured["assistant_message"] == "Here is a two day Lisbon itinerary"
+    assert response.json()["title"] == "Lisbon Weekend Plan"

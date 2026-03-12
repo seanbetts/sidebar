@@ -5,6 +5,7 @@ from sqlalchemy import text
 
 from api.db.base import Base
 from api.models.conversation import Conversation
+from api.models.file_ingestion import IngestedFile
 from api.models.note import Note
 from api.models.user_settings import UserSettings
 from api.models.website import Website
@@ -208,6 +209,57 @@ def test_prompt_context_service_strict_mode_rejects_budget_overflow(
     assert message.endswith(" > 40000)")
     overflow_chars = int(message.split("(")[1].split(" >")[0])
     assert overflow_chars > PromptContextService.MAX_SYSTEM_PROMPT_CHARS
+
+
+def test_prompt_context_service_includes_file_paths_in_current_open_and_attachments(
+    test_db,
+):
+    Base.metadata.create_all(bind=test_db.connection())
+    _ensure_user_settings_prompt_columns(test_db)
+    now = datetime(2025, 2, 1, 9, 0, tzinfo=UTC)
+    user_id = "user-files"
+
+    test_db.add(UserSettings(user_id=user_id, name="Sam"))
+    current_file = IngestedFile(
+        user_id=user_id,
+        filename_original="plan.md",
+        path="Projects/plan.md",
+        mime_original="text/markdown",
+        size_bytes=42,
+        sha256="abc",
+        created_at=now,
+        deleted_at=None,
+    )
+    attachment_file = IngestedFile(
+        user_id=user_id,
+        filename_original="brief.pdf",
+        path="Uploads/brief.pdf",
+        mime_original="application/pdf",
+        size_bytes=84,
+        sha256="def",
+        created_at=now,
+        deleted_at=None,
+    )
+    test_db.add_all([current_file, attachment_file])
+    test_db.commit()
+
+    prompt_bundle = PromptContextService.build_prompts(
+        db=test_db,
+        user_id=user_id,
+        open_context={"file": {"id": str(current_file.id), "category": "workspace_file"}},
+        attachments=[{"file_id": str(attachment_file.id), "category": "attachment"}],
+        user_agent=None,
+        now=now,
+    )
+
+    current_open = next(
+        section
+        for section in prompt_bundle["system_prompt"]["sections"]
+        if section["id"] == "current_open"
+    )["content"]
+
+    assert "path: Projects/plan.md" in current_open
+    assert "path: Uploads/brief.pdf" in current_open
 
 
 def test_recent_activity_cache_hit(test_db):

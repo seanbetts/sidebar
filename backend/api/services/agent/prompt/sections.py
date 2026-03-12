@@ -355,9 +355,12 @@ def build_open_context_block(
         lines.append(CURRENT_OPEN_FILE_HEADER)
         filename = file_item.get("filename") or "Untitled"
         file_id = file_item.get("id") or "unknown"
+        path = file_item.get("path")
         mime = file_item.get("mime")
         category = file_item.get("category")
         meta_bits = [f"id: {file_id}"]
+        if path:
+            meta_bits.append(f"path: {path}")
         if mime:
             meta_bits.append(f"type: {mime}")
         if category:
@@ -376,9 +379,12 @@ def build_open_context_block(
         for attachment in attachments:
             filename = attachment.get("filename") or "Untitled"
             file_id = attachment.get("id") or "unknown"
+            path = attachment.get("path")
             mime = attachment.get("mime")
             category = attachment.get("category")
             meta_bits = [f"id: {file_id}"]
+            if path:
+                meta_bits.append(f"path: {path}")
             if mime:
                 meta_bits.append(f"type: {mime}")
             if category:

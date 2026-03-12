@@ -139,6 +139,7 @@ extension ChatViewModel {
                 message: trimmed,
                 conversationId: conversationId,
                 userMessageId: userMessageId,
+                assistantMessageId: assistantMessageId,
                 openContext: requestContext?.openContext,
                 attachments: attachmentsForMessage.isEmpty ? nil : attachmentsForMessage,
                 currentLocation: requestContext?.currentLocation,

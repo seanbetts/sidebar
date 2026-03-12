@@ -65,6 +65,39 @@ extension ChatViewModelTests {
         XCTAssertEqual(weather["is_day"]?.value as? Int, 1)
     }
 
+    func testSendMessageIncludesAssistantMessageIdInStreamRequest() async throws {
+        let cache = TestCacheClient()
+        let streamClient = ChatViewModelTestsSupport.MockChatStreamClient()
+        let created = Conversation(
+            id: "conv-new",
+            title: "New Chat",
+            titleGenerated: false,
+            createdAt: "2026-01-02T00:00:00Z",
+            updatedAt: "2026-01-02T00:00:00Z",
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: nil
+        )
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(
+            listResult: .success([]),
+            createResult: .success(created),
+            addMessageResult: .success(created)
+        )
+        let viewModel = makeViewModel(
+            api: api,
+            cache: cache,
+            streamClient: streamClient
+        )
+
+        await viewModel.sendMessage(text: "Hello")
+
+        let assistantMessage = try XCTUnwrap(
+            viewModel.messages.last(where: { $0.role == .assistant })
+        )
+        let sentRequest = try XCTUnwrap(streamClient.requests.first)
+        XCTAssertEqual(sentRequest.assistantMessageId, assistantMessage.id)
+    }
+
     func testReconcileMessagesPrefersLocalStreamingContentWhenIDsMatch() async {
         let cache = TestCacheClient()
         let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)

@@ -111,6 +111,25 @@ def _sanitize_title(raw_title: str) -> str:
     return title
 
 
+def _select_title_messages(messages: list[dict[str, object]]) -> tuple[str, str]:
+    """Return the first user/assistant pair suitable for title generation."""
+    first_user_message: str | None = None
+
+    for message in messages:
+        role = str(message.get("role") or "").strip().lower()
+        content = str(message.get("content") or "").strip()
+        if not content:
+            continue
+        if first_user_message is None:
+            if role == "user":
+                first_user_message = content
+            continue
+        if role == "assistant":
+            return first_user_message, content
+
+    raise BadRequestError("Need a user message and assistant reply to generate title")
+
+
 def _new_user_scoped_session(user_id: str) -> Session:
     """Create a short-lived session with request-style user/search-path scoping."""
     session = SessionLocal()
@@ -686,14 +705,13 @@ async def generate_title(
     if conversation.title_generated and conversation.title:
         return {"title": conversation.title, "fallback": False}
 
-    # Get first user and assistant messages from JSONB array
+    # Find the first actual user/assistant pair rather than trusting positions.
     messages = ConversationService.visible_messages(conversation.messages)
 
     if not messages or len(messages) < 2:
         raise BadRequestError("Need at least 2 messages to generate title")
 
-    user_msg = messages[0].get("content", "")
-    assistant_msg = messages[1].get("content", "")
+    user_msg, assistant_msg = _select_title_messages(messages)
     settings_record = UserSettingsService.get_settings(db, user_id)
     cache_key = _build_title_cache_key(user_msg, assistant_msg)
     cached = _get_cached_title(cache_key)

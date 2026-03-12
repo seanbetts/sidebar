@@ -230,6 +230,8 @@ public struct ChatStreamRequest: Codable {
     public let conversationId: String?
     /// The user message id value.
     public let userMessageId: String?
+    /// The assistant message id value.
+    public let assistantMessageId: String?
     /// The open context value.
     public let openContext: [String: AnyCodable]?
     /// The attachments value.
@@ -247,6 +249,7 @@ public struct ChatStreamRequest: Codable {
         message: String,
         conversationId: String? = nil,
         userMessageId: String? = nil,
+        assistantMessageId: String? = nil,
         openContext: [String: AnyCodable]? = nil,
         attachments: [ChatAttachment]? = nil,
         currentLocation: String? = nil,
@@ -257,6 +260,7 @@ public struct ChatStreamRequest: Codable {
         self.message = message
         self.conversationId = conversationId
         self.userMessageId = userMessageId
+        self.assistantMessageId = assistantMessageId
         self.openContext = openContext
         self.attachments = attachments
         self.currentLocation = currentLocation

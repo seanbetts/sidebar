@@ -518,6 +518,7 @@ class PromptContextService:
         return {
             "id": str(record.id),
             "filename": record.filename_original,
+            "path": record.path,
             "mime": record.mime_original,
             "category": file_ref.get("category"),
             "content": content,
@@ -568,6 +569,7 @@ class PromptContextService:
                 {
                     "id": str(record.id),
                     "filename": record.filename_original,
+                    "path": record.path,
                     "mime": record.mime_original,
                     "category": attachment.get("category"),
                     "content": content,
