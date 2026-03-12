@@ -43,6 +43,18 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         )
     }
 
+    func testFormattingBarPresentationUsesFloatingTopTrailingOnIPhoneBeforeSoftwareKeyboardIsVisible() {
+        XCTAssertEqual(
+            NoteFormattingBarPresentation.resolve(
+                isEditing: true,
+                isPhone: true,
+                isSoftwareKeyboardVisible: false,
+                isHardwareKeyboardInputExpected: false
+            ),
+            .floatingTopTrailing
+        )
+    }
+
     func testFormattingBarPresentationUsesKeyboardAccessoryWhenSoftwareKeyboardIsVisible() {
         XCTAssertEqual(
             NoteFormattingBarPresentation.resolve(
@@ -85,7 +97,7 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
 
         XCTAssertEqual(
             context.makeView().formattingBarPresentation,
-            UIDevice.current.userInterfaceIdiom == .phone ? .keyboardAccessory : .floatingTopTrailing
+            .floatingTopTrailing
         )
         XCTAssertTrue(context.makeView().isFormattingToolbarVisible)
     }
@@ -162,7 +174,7 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         _ = mount(container, environment: environment)
         XCTAssertEqual(
             presentations.last,
-            UIDevice.current.userInterfaceIdiom == .phone ? .hidden : .floatingTopTrailing
+            .floatingTopTrailing
         )
 
         hardwareKeyboardExpectation.value = true

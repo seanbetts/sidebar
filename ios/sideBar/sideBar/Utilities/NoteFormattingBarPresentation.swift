@@ -17,6 +17,6 @@ enum NoteFormattingBarPresentation: Equatable {
         if isHardwareKeyboardInputExpected {
             return .floatingTopTrailing
         }
-        return .hidden
+        return .floatingTopTrailing
     }
 }

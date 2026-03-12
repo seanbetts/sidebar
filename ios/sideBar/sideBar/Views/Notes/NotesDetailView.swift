@@ -436,7 +436,7 @@ extension NotesDetailView {
     var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
     private var defaultEditingFormattingBarPresentation: NoteFormattingBarPresentation {
-        isPhone ? .keyboardAccessory : .floatingTopTrailing
+        .floatingTopTrailing
     }
 
     private func handleFormattingBarPresentationChange(_ presentation: NoteFormattingBarPresentation) {
