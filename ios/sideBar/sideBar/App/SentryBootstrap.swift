@@ -1,4 +1,5 @@
 import Foundation
+import Sentry
 import sideBarShared
 
 protocol SentryBundleInfo {
@@ -25,6 +26,9 @@ enum SentryBootstrap {
         let sendDefaultPii: Bool
     }
 
+    private static let stateLock = NSLock()
+    private static var hasStarted = false
+
     @discardableResult
     static func startIfConfigured(
         config: EnvironmentConfig,
@@ -33,12 +37,53 @@ enum SentryBootstrap {
         bundle: SentryBundleInfo = Bundle.main,
         client: SentryBootstrapClient = DefaultSentryBootstrapClient.shared
     ) -> Bool {
-        _ = config
-        _ = isDebugBuild
-        _ = isRunningTestsOrPreviews
-        _ = bundle
-        _ = client
-        return false
+        guard let options = makeOptions(
+            config: config,
+            isDebugBuild: isDebugBuild,
+            isRunningTestsOrPreviews: isRunningTestsOrPreviews,
+            bundle: bundle
+        ) else {
+            return false
+        }
+
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard hasStarted == false else {
+            return false
+        }
+
+        client.start(options: options)
+        hasStarted = true
+        return true
+    }
+
+    static func makeOptions(
+        config: EnvironmentConfig,
+        isDebugBuild: Bool,
+        isRunningTestsOrPreviews: Bool,
+        bundle: SentryBundleInfo
+    ) -> Configuration? {
+        guard let dsn = config.sentryDsn, dsn.isEmpty == false else {
+            return nil
+        }
+        guard isRunningTestsOrPreviews == false else {
+            return nil
+        }
+
+        return Configuration(
+            dsn: dsn,
+            environment: isDebugBuild ? "debug" : "production",
+            releaseName: releaseName(bundle: bundle),
+            tracesSampleRate: 0.1,
+            sendDefaultPii: false
+        )
+    }
+
+    private static func releaseName(bundle: SentryBundleInfo) -> String {
+        let bundleIdentifier = bundle.bundleIdentifier ?? "sideBar"
+        let shortVersion = bundle.string(forInfoDictionaryKey: "CFBundleShortVersionString") ?? "0"
+        let buildNumber = bundle.string(forInfoDictionaryKey: "CFBundleVersion") ?? "0"
+        return "\(bundleIdentifier)@\(shortVersion)+\(buildNumber)"
     }
 
     private static var defaultIsDebugBuild: Bool {
@@ -50,7 +95,9 @@ enum SentryBootstrap {
     }
 
     static func resetForTesting() {
-        // Intentionally empty: the release bootstrap is currently inert.
+        stateLock.lock()
+        hasStarted = false
+        stateLock.unlock()
     }
 }
 
@@ -58,6 +105,12 @@ private final class DefaultSentryBootstrapClient: SentryBootstrapClient {
     static let shared = DefaultSentryBootstrapClient()
 
     func start(options: SentryBootstrap.Configuration) {
-        _ = options
+        SentrySDK.start { sdkOptions in
+            sdkOptions.dsn = options.dsn
+            sdkOptions.environment = options.environment
+            sdkOptions.releaseName = options.releaseName
+            sdkOptions.tracesSampleRate = NSNumber(value: options.tracesSampleRate)
+            sdkOptions.sendDefaultPii = options.sendDefaultPii
+        }
     }
 }

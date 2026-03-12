@@ -38,7 +38,7 @@ final class SentryBootstrapTests: XCTestCase {
         XCTAssertEqual(client.startCallCount, 0)
     }
 
-    func testStartIfConfiguredDoesNotStartInDebugBuilds() {
+    func testStartIfConfiguredStartsInDebugBuildsWhenDsnIsPresent() {
         let client = RecordingSentryBootstrapClient()
 
         let didStart = SentryBootstrap.startIfConfigured(
@@ -49,11 +49,21 @@ final class SentryBootstrapTests: XCTestCase {
             client: client
         )
 
-        XCTAssertFalse(didStart)
-        XCTAssertEqual(client.startCallCount, 0)
+        XCTAssertTrue(didStart)
+        XCTAssertEqual(client.startCallCount, 1)
+        XCTAssertEqual(
+            client.lastOptions,
+            SentryBootstrap.Configuration(
+                dsn: "https://example@sentry.io/123",
+                environment: "debug",
+                releaseName: "ai.sidebar.sidebar@0.1+1",
+                tracesSampleRate: 0.1,
+                sendDefaultPii: false
+            )
+        )
     }
 
-    func testStartIfConfiguredDoesNotStartForConfiguredReleaseBuild() {
+    func testStartIfConfiguredStartsForConfiguredReleaseBuild() {
         let client = RecordingSentryBootstrapClient()
 
         let didStart = SentryBootstrap.startIfConfigured(
@@ -68,12 +78,21 @@ final class SentryBootstrapTests: XCTestCase {
             client: client
         )
 
-        XCTAssertFalse(didStart)
-        XCTAssertEqual(client.startCallCount, 0)
-        XCTAssertNil(client.lastOptions)
+        XCTAssertTrue(didStart)
+        XCTAssertEqual(client.startCallCount, 1)
+        XCTAssertEqual(
+            client.lastOptions,
+            SentryBootstrap.Configuration(
+                dsn: "https://example@sentry.io/123",
+                environment: "production",
+                releaseName: "ai.sidebar.sidebar@1.2.3+456",
+                tracesSampleRate: 0.1,
+                sendDefaultPii: false
+            )
+        )
     }
 
-    func testStartIfConfiguredRemainsHarmlessAcrossRepeatedConfiguredCalls() {
+    func testStartIfConfiguredStartsOnlyOnce() {
         let client = RecordingSentryBootstrapClient()
         let bundle = TestSentryBundleInfo()
         let config = makeConfig(sentryDsn: "https://example@sentry.io/123")
@@ -93,10 +112,9 @@ final class SentryBootstrapTests: XCTestCase {
             client: client
         )
 
-        XCTAssertFalse(firstStart)
+        XCTAssertTrue(firstStart)
         XCTAssertFalse(secondStart)
-        XCTAssertEqual(client.startCallCount, 0)
-        XCTAssertNil(client.lastOptions)
+        XCTAssertEqual(client.startCallCount, 1)
     }
 
     private func makeConfig(sentryDsn: String?) -> EnvironmentConfig {
