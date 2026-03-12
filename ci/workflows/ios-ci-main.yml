@@ -88,7 +88,6 @@ jobs:
         uses: actions/checkout@v5
       - name: Pre-clean stale test outputs (${{ matrix.id }})
         run: |
-          rm -rf "${{ runner.temp }}/sidebar-deriveddata-${{ matrix.id }}"
           rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"
           rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics"
           rm -rf "${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult"
@@ -116,8 +115,8 @@ jobs:
           IOS_DESTINATION: ${{ matrix.destination }}
           IOS_DESTINATION_TIMEOUT: ${{ matrix.destination_timeout }}
           IOS_RESULT_BUNDLE_PATH: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult
-          IOS_DERIVED_DATA_PATH: ${{ runner.temp }}/sidebar-deriveddata-${{ matrix.id }}
-          IOS_CLEAN_DERIVED_DATA: "YES"
+          IOS_DERIVED_DATA_PATH: ${{ runner.temp }}/../sidebar-deriveddata-${{ matrix.id }}
+          IOS_CLEAN_DERIVED_DATA: "NO"
           IOS_CLONED_SOURCE_PACKAGES_DIR: ${{ runner.temp }}/../sidebar-source-packages-cache
           IOS_PACKAGE_CACHE_PATH: ${{ runner.temp }}/../sidebar-package-cache
           IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS: "600"
@@ -157,7 +156,6 @@ jobs:
       - name: Cleanup test outputs (${{ matrix.id }})
         if: ${{ always() }}
         run: |
-          rm -rf "${{ runner.temp }}/sidebar-deriveddata-${{ matrix.id }}"
           rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"
           rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics"
           rm -rf "${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult"

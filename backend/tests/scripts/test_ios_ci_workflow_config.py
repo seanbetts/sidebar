@@ -302,6 +302,20 @@ def test_ios_ci_stores_result_bundles_under_runner_temp() -> None:
         )
 
 
+def test_ios_ci_uses_persistent_lane_derived_data() -> None:
+    """Apple lanes should reuse a stable derived-data path per lane to avoid cold package graph setup."""
+    workflows_and_jobs = [
+        (_dev_workflow(), "ios_test_dev"),
+        (_main_workflow(), "ios_test_main"),
+        (_dispatch_workflow(), "ios_test_dispatch"),
+    ]
+
+    for workflow, job_name in workflows_and_jobs:
+        env = _job_step(workflow, job_name, "Run tests")["env"]
+        assert env["IOS_DERIVED_DATA_PATH"] == "${{ runner.temp }}/../sidebar-deriveddata-${{ matrix.id }}"
+        assert env["IOS_CLEAN_DERIVED_DATA"] == "NO"
+
+
 def test_ios_ci_uses_persistent_swiftpm_cache_paths() -> None:
     """Apple lanes should keep SwiftPM sources outside disposable per-run DerivedData."""
     workflows_and_jobs = [
@@ -333,7 +347,7 @@ def test_ios_ci_uploads_failure_artifacts_with_short_retention() -> None:
 
 
 def test_ios_ci_always_cleans_runner_test_outputs() -> None:
-    """Apple lanes should clean derived data and temp result bundles after every run."""
+    """Apple lanes should clean temp result bundles after every run without deleting warm derived data."""
     workflows_and_jobs = [
         (_dev_workflow(), "ios_test_dev"),
         (_main_workflow(), "ios_test_main"),
@@ -351,8 +365,8 @@ def test_ios_ci_always_cleans_runner_test_outputs() -> None:
             )
         else:
             assert cleanup_step["if"] == "${{ always() }}"
-        assert "${{ runner.temp }}/sidebar-deriveddata-" in cleanup_script
         assert "${{ runner.temp }}/ios-test-results/" in cleanup_script
+        assert "${{ runner.temp }}/../sidebar-deriveddata-" not in cleanup_script
 
 
 def test_dev_workflow_does_not_collect_or_upload_simulator_diagnostics() -> None:
