@@ -28,6 +28,7 @@ from api.services.agent.prompt.sections import (
     resolve_template,
 )
 from api.services.file_ingestion_service import FileIngestionService
+from api.services.knowledge.provider import get_docs_indexer
 from api.services.storage.service import get_storage_backend
 from api.services.user_settings_service import UserSettingsService
 
@@ -219,6 +220,11 @@ class PromptContextService:
             )
         )
 
+        try:
+            product_knowledge_brief = get_docs_indexer().product_knowledge_brief
+        except RuntimeError:
+            product_knowledge_brief = ""
+
         system_sections = [
             PromptContextService._build_section(
                 section_id="message_context",
@@ -249,6 +255,12 @@ class PromptContextService:
                 title="Context Guidance",
                 source="context_guidance_template",
                 content=context_guidance,
+            ),
+            PromptContextService._build_section(
+                section_id="product_knowledge",
+                title="Product Knowledge",
+                source="docs_indexer",
+                content=product_knowledge_brief,
             ),
             PromptContextService._build_section(
                 section_id="selected_capabilities",

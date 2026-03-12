@@ -343,6 +343,40 @@ def test_recent_activity_cache_expiry(test_db):
     }
 
 
+def test_system_prompt_includes_product_knowledge_section(test_db):
+    """The system prompt should include a product_knowledge section."""
+    from unittest.mock import patch
+    from api.services.knowledge.provider import init_docs_indexer
+    from pathlib import Path
+    import tempfile
+
+    # Build a minimal docs directory
+    with tempfile.TemporaryDirectory() as tmp:
+        docs_root = Path(tmp)
+        (docs_root / "intro.md").write_text(
+            "---\ntitle: Introduction\nsummary: What sideBar is.\n"
+            "tags: [manual]\naudience: user\nsurfaces: [internal-knowledge]\n---\n\nContent.\n"
+        )
+        init_docs_indexer(docs_root)
+
+        Base.metadata.create_all(bind=test_db.connection())
+        _ensure_user_settings_prompt_columns(test_db)
+        user_id = "user-product-knowledge-test"
+        settings = UserSettings(user_id=user_id, name="Test User")
+        test_db.add(settings)
+        test_db.commit()
+
+        result = PromptContextService.build_prompts(
+            db=test_db,
+            user_id=user_id,
+            open_context=None,
+            attachments=None,
+            user_agent="test",
+        )
+        section_ids = [s["id"] for s in result["system_prompt"]["sections"]]
+        assert "product_knowledge" in section_ids
+
+
 def test_recent_activity_uses_user_timezone_for_day_boundary(test_db):
     PromptContextService._recent_activity_cache.clear()
     Base.metadata.create_all(bind=test_db.connection())
