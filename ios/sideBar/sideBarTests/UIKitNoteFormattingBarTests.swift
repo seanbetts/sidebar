@@ -178,6 +178,24 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         }
     }
 
+    func testBarButtonsInsetGlassBackgroundInsideHitTarget() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(configuration: .disabled)
+
+        for formatting in [NoteFormatting.bold, .italic, .underline] {
+            let configuration = try XCTUnwrap(bar.button(for: formatting).configuration)
+            let backgroundInsets = configuration.background.backgroundInsets
+
+            XCTAssertEqual(backgroundInsets.top, 4)
+            XCTAssertEqual(backgroundInsets.bottom, 4)
+            XCTAssertEqual(backgroundInsets.leading, 3)
+            XCTAssertEqual(backgroundInsets.trailing, 3)
+        }
+    }
+
     func testBarPreservesAccessibilityIdentifiersForSharedButtons() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
@@ -219,6 +237,30 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
             boldButton.configuration?.baseForegroundColor?.resolvedColor(with: boldButton.traitCollection),
             italicButton.configuration?.baseForegroundColor?.resolvedColor(with: italicButton.traitCollection)
         )
+    }
+
+    func testSelectedButtonsUseDarkForegroundColorInDarkMode() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(
+            configuration: .init(
+                isBoldActive: true,
+                isItalicActive: false,
+                isUnderlineActive: false,
+                isEnabled: true,
+                onBoldTap: {},
+                onItalicTap: {},
+                onUnderlineTap: {}
+            )
+        )
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+        let selectedColor = try XCTUnwrap(
+            bar.button(for: .bold).configuration?.baseForegroundColor?.resolvedColor(with: darkTraits)
+        )
+
+        XCTAssertEqual(selectedColor, UIColor.black)
     }
 }
 

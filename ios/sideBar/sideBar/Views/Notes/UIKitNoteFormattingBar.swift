@@ -171,8 +171,18 @@ private extension UIKitNoteFormattingBar {
         configuration.cornerStyle = UIButton.Configuration.CornerStyle.capsule
         configuration.image = UIImage(systemName: systemImage(for: formatting))
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 6, bottom: 4, trailing: 6)
-        configuration.baseForegroundColor = isActive ? UIColor.white : UIColor.label
+        var background = configuration.background
+        background.backgroundInsets = NSDirectionalEdgeInsets(top: 4, leading: 3, bottom: 4, trailing: 3)
+        configuration.background = background
+        configuration.baseForegroundColor = foregroundColor(isActive: isActive)
         return configuration
+    }
+
+    static func foregroundColor(isActive: Bool) -> UIColor {
+        guard isActive else { return UIColor.label }
+        return UIColor { traits in
+            traits.userInterfaceStyle == .dark ? UIColor.black : UIColor.white
+        }
     }
 
     static func systemImage(for formatting: NoteFormatting) -> String {
