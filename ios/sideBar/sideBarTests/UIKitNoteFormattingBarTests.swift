@@ -161,6 +161,23 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         }
     }
 
+    func testBarButtonsUseCompactInsetsInsideFortyFourPointHitTargets() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(configuration: .disabled)
+
+        for formatting in [NoteFormatting.bold, .italic, .underline] {
+            let configuration = try XCTUnwrap(bar.button(for: formatting).configuration)
+
+            XCTAssertEqual(configuration.contentInsets.top, 4)
+            XCTAssertEqual(configuration.contentInsets.bottom, 4)
+            XCTAssertEqual(configuration.contentInsets.leading, 6)
+            XCTAssertEqual(configuration.contentInsets.trailing, 6)
+        }
+    }
+
     func testBarPreservesAccessibilityIdentifiersForSharedButtons() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")

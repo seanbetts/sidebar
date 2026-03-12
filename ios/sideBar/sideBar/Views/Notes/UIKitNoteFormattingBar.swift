@@ -170,7 +170,7 @@ private extension UIKitNoteFormattingBar {
         configuration.buttonSize = UIButton.Configuration.Size.mini
         configuration.cornerStyle = UIButton.Configuration.CornerStyle.capsule
         configuration.image = UIImage(systemName: systemImage(for: formatting))
-        configuration.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 7, bottom: 6, trailing: 7)
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 6, bottom: 4, trailing: 6)
         configuration.baseForegroundColor = isActive ? UIColor.white : UIColor.label
         return configuration
     }
