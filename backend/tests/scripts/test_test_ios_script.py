@@ -222,6 +222,55 @@ def test_ui_only_lane_accepts_secrets_file_inputs(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_ui_resolve_only_lane_skips_backend_preflight(tmp_path: Path) -> None:
+    """Resolve-only UI warmup should succeed without UI backend or auth secrets."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log_path = tmp_path / "xcodebuild.log"
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$*\" > \"{log_path}\"\n"
+        "exit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_SCHEME": "sideBarUI",
+            "IOS_DESTINATION": "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
+            "IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY": "YES",
+            "SIDEBAR_UI_TEST_SECRETS_FILE": str(tmp_path / "missing-ui-secrets.local"),
+        }
+    )
+    for key in (
+        "API_BASE_URL",
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SIDEBAR_UI_TEST_API_BASE_URL",
+        "SIDEBAR_UI_TEST_SUPABASE_URL",
+        "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY",
+        "SIDEBAR_UI_TEST_EMAIL",
+        "SIDEBAR_UI_TEST_PASSWORD",
+    ):
+        env.pop(key, None)
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Package resolution complete; exiting before test execution." in result.stdout
+    assert "UI test backend configuration missing" not in result.stdout
+    assert "-resolvePackageDependencies" in log_path.read_text()
+
+
 def test_package_resolution_retry_clears_swiftpm_artifacts_cache(
     tmp_path: Path,
 ) -> None:

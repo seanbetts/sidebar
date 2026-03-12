@@ -206,6 +206,12 @@ if [[ -n "${IOS_SKIP_TESTING}" ]]; then
   done
 fi
 
+if [[ "${IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY}" == "YES" ]]; then
+  resolve_only_mode="YES"
+else
+  resolve_only_mode="NO"
+fi
+
 ui_test_backend_config_present() {
   local secrets_file_path
   secrets_file_path="$(ui_test_secrets_file_path)"
@@ -302,55 +308,58 @@ ui_test_value() {
 }
 
 lane_includes_ui_tests="NO"
-if scheme_includes_ui_tests "${IOS_SCHEME}"; then
-  lane_includes_ui_tests="YES"
-fi
 
-if [[ "${lane_includes_ui_tests}" == "YES" ]]; then
-  if [[ -n "${IOS_ONLY_TESTING}" ]]; then
-    IFS=',' read -r -a only_testing_specs_for_ui <<< "${IOS_ONLY_TESTING}"
-    lane_includes_ui_tests="NO"
-    for raw_spec in "${only_testing_specs_for_ui[@]}"; do
-      spec="$(echo "${raw_spec}" | xargs)"
-      target="${spec%%/*}"
-      if [[ "${target}" == "sideBarUITests" ]]; then
-        lane_includes_ui_tests="YES"
-        break
-      fi
-    done
-  else
+if [[ "${resolve_only_mode}" != "YES" ]]; then
+  if scheme_includes_ui_tests "${IOS_SCHEME}"; then
     lane_includes_ui_tests="YES"
   fi
 
-  if [[ "${lane_includes_ui_tests}" == "YES" && -n "${IOS_SKIP_TESTING}" ]]; then
-    IFS=',' read -r -a skip_testing_specs_for_ui <<< "${IOS_SKIP_TESTING}"
-    for raw_spec in "${skip_testing_specs_for_ui[@]}"; do
-      spec="$(echo "${raw_spec}" | xargs)"
-      if [[ "${spec}" == "sideBarUITests" ]]; then
-        lane_includes_ui_tests="NO"
-        break
+  if [[ "${lane_includes_ui_tests}" == "YES" ]]; then
+    if [[ -n "${IOS_ONLY_TESTING}" ]]; then
+      IFS=',' read -r -a only_testing_specs_for_ui <<< "${IOS_ONLY_TESTING}"
+      lane_includes_ui_tests="NO"
+      for raw_spec in "${only_testing_specs_for_ui[@]}"; do
+        spec="$(echo "${raw_spec}" | xargs)"
+        target="${spec%%/*}"
+        if [[ "${target}" == "sideBarUITests" ]]; then
+          lane_includes_ui_tests="YES"
+          break
+        fi
+      done
+    else
+      lane_includes_ui_tests="YES"
+    fi
+
+    if [[ "${lane_includes_ui_tests}" == "YES" && -n "${IOS_SKIP_TESTING}" ]]; then
+      IFS=',' read -r -a skip_testing_specs_for_ui <<< "${IOS_SKIP_TESTING}"
+      for raw_spec in "${skip_testing_specs_for_ui[@]}"; do
+        spec="$(echo "${raw_spec}" | xargs)"
+        if [[ "${spec}" == "sideBarUITests" ]]; then
+          lane_includes_ui_tests="NO"
+          break
+        fi
+      done
+    fi
+
+    if [[ "${lane_includes_ui_tests}" == "YES" ]] && ! ui_test_backend_config_present; then
+      echo "UI test backend configuration missing; skipping sideBarUITests."
+      if scheme_has_only_ui_tests "${IOS_SCHEME}"; then
+        echo "No non-UI Apple tests remain in scheme ${IOS_SCHEME}; failing before running xcodebuild."
+        exit 1
       fi
-    done
-  fi
-
-  if [[ "${lane_includes_ui_tests}" == "YES" ]] && ! ui_test_backend_config_present; then
-    echo "UI test backend configuration missing; skipping sideBarUITests."
-    if scheme_has_only_ui_tests "${IOS_SCHEME}"; then
-      echo "No non-UI Apple tests remain in scheme ${IOS_SCHEME}; failing before running xcodebuild."
-      exit 1
+      XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
+      lane_includes_ui_tests="NO"
     fi
-    XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
-    lane_includes_ui_tests="NO"
-  fi
 
-  if [[ "${lane_includes_ui_tests}" == "YES" ]] && ! ui_test_credentials_present; then
-    echo "UI test credentials missing; skipping sideBarUITests."
-    if scheme_has_only_ui_tests "${IOS_SCHEME}"; then
-      echo "No non-UI Apple tests remain in scheme ${IOS_SCHEME}; failing before running xcodebuild."
-      exit 1
+    if [[ "${lane_includes_ui_tests}" == "YES" ]] && ! ui_test_credentials_present; then
+      echo "UI test credentials missing; skipping sideBarUITests."
+      if scheme_has_only_ui_tests "${IOS_SCHEME}"; then
+        echo "No non-UI Apple tests remain in scheme ${IOS_SCHEME}; failing before running xcodebuild."
+        exit 1
+      fi
+      XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
+      lane_includes_ui_tests="NO"
     fi
-    XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
-    lane_includes_ui_tests="NO"
   fi
 fi
 
