@@ -451,3 +451,17 @@ def test_ios_ci_uses_node24_compatible_actions() -> None:
     assert upload_steps
     assert {step["uses"] for step in checkout_steps} == {"actions/checkout@v5"}
     assert {step["uses"] for step in upload_steps} == {"actions/upload-artifact@v6"}
+
+
+def test_apple_workflows_do_not_bootstrap_sentry_with_package_managers() -> None:
+    """Hosted Apple jobs should not use Carthage, CocoaPods, or Sentry SwiftPM bootstrap paths."""
+    for workflow, job_name in (
+        (_dev_workflow(), "ios_prepare_packages"),
+        (_main_workflow(), "ios_prepare_packages"),
+        (_dispatch_workflow(), "ios_prepare_packages"),
+    ):
+        serialized = json.dumps(workflow["jobs"][job_name]).lower()
+
+        assert "carthage" not in serialized
+        assert "pod install" not in serialized
+        assert "sentry-cocoa" not in serialized

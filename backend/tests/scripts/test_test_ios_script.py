@@ -552,6 +552,16 @@ def test_skip_package_resolution_mode_runs_tests_without_explicit_resolve(
     assert " test" in log_lines[0]
 
 
+def test_test_ios_script_has_no_apple_sentry_package_manager_bootstrap() -> None:
+    """The Apple test harness should not bootstrap Sentry through a package manager."""
+    script = SCRIPT_PATH.read_text(encoding="utf-8").lower()
+
+    assert "bootstrapping carthage dependencies" not in script
+    assert "carthage bootstrap" not in script
+    assert "pod install" not in script
+    assert "sentry-cocoa" not in script
+
+
 def test_pre_push_mode_creates_dedicated_simulator_and_rewrites_destination(
     tmp_path: Path,
 ) -> None:

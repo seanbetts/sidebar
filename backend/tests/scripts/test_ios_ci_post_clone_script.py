@@ -132,3 +132,12 @@ def test_ci_post_clone_preserves_sentry_upload_variables_for_later_steps(tmp_pat
     assert "AUTH=token" in result.stdout
     assert "ORG=sidebar" in result.stdout
     assert "PROJECT=apple" in result.stdout
+
+
+def test_ci_post_clone_has_no_apple_sentry_package_manager_bootstrap() -> None:
+    """Xcode Cloud should not try to install Apple Sentry through a package manager."""
+    script = SCRIPT_PATH.read_text(encoding="utf-8").lower()
+
+    assert "carthage" not in script
+    assert "pod install" not in script
+    assert "sentry-cocoa" not in script
