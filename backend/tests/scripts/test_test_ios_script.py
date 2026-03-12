@@ -67,6 +67,7 @@ def pre_push_env(bin_dir: Path, **overrides: str) -> dict[str, str]:
             "SIDEBAR_PRE_PUSH_STATE_DIR": str(bin_dir.parent / "state"),
             "SIDEBAR_PRE_PUSH_SIMULATOR_NAME": "sideBar PrePush iPad",
             "IOS_DESTINATION": "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
     env.update(overrides)
@@ -126,6 +127,7 @@ def test_ci_uses_temp_git_config_when_global_config_is_locked(tmp_path: Path) ->
             "PATH": f"{bin_dir}:{env['PATH']}",
             "IOS_DESTINATION": "platform=macOS",
             "IOS_ENABLE_CODE_COVERAGE": "NO",
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
 
@@ -157,6 +159,7 @@ def test_default_scheme_uses_canonical_sidebar_app_tests(tmp_path: Path) -> None
             "PATH": f"{bin_dir}:{env['PATH']}",
             "IOS_DESTINATION": "platform=macOS",
             "IOS_ENABLE_CODE_COVERAGE": "NO",
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
     env.pop("IOS_SCHEME", None)
@@ -193,6 +196,7 @@ def test_ui_only_lane_fails_when_backend_config_is_missing(tmp_path: Path) -> No
             "IOS_ONLY_TESTING": "sideBarUITests",
             "IOS_DESTINATION": "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
             "SIDEBAR_UI_TEST_SECRETS_FILE": str(tmp_path / "missing-ui-secrets.local"),
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
     for key in (
@@ -240,6 +244,7 @@ def test_ui_only_lane_fails_when_credentials_are_missing(tmp_path: Path) -> None
             "SIDEBAR_UI_TEST_SUPABASE_URL": "https://sidebar.supabase.co",
             "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY": "anon-key",
             "SIDEBAR_UI_TEST_SECRETS_FILE": str(tmp_path / "missing-ui-secrets.local"),
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
     for key in (
@@ -291,6 +296,7 @@ def test_ui_only_lane_accepts_secrets_file_inputs(tmp_path: Path) -> None:
             "IOS_ONLY_TESTING": "sideBarUITests",
             "IOS_DESTINATION": "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
             "SIDEBAR_UI_TEST_SECRETS_FILE": str(secrets_file),
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
     for key in (
@@ -334,6 +340,7 @@ def test_ui_resolve_only_lane_skips_backend_preflight(tmp_path: Path) -> None:
             "IOS_DESTINATION": "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
             "IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY": "YES",
             "SIDEBAR_UI_TEST_SECRETS_FILE": str(tmp_path / "missing-ui-secrets.local"),
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
     for key in (
@@ -399,6 +406,7 @@ def test_package_resolution_retry_clears_swiftpm_artifacts_cache(
             "IOS_PACKAGE_RESOLVE_RETRIES": "2",
             "IOS_PACKAGE_RESOLVE_RETRY_DELAY_SECONDS": "0",
             "IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY": "YES",
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
 
@@ -443,6 +451,7 @@ def test_package_resolution_uses_persistent_swiftpm_paths_and_resolved_versions(
             "IOS_DERIVED_DATA_PATH": str(derived_data_dir),
             "IOS_CLONED_SOURCE_PACKAGES_DIR": str(cloned_packages_dir),
             "IOS_PACKAGE_CACHE_PATH": str(package_cache_dir),
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
 
@@ -492,6 +501,7 @@ def test_resolve_only_mode_exits_after_package_resolution(tmp_path: Path) -> Non
             "IOS_DESTINATION": "platform=macOS",
             "IOS_ENABLE_CODE_COVERAGE": "NO",
             "IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY": "YES",
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
 
@@ -533,6 +543,7 @@ def test_skip_package_resolution_mode_runs_tests_without_explicit_resolve(
             "IOS_DESTINATION": "platform=macOS",
             "IOS_ENABLE_CODE_COVERAGE": "NO",
             "IOS_SKIP_PACKAGE_DEPENDENCY_RESOLUTION": "YES",
+            "IOS_SKIP_CARTHAGE_BOOTSTRAP": "YES",
         }
     )
 
@@ -550,6 +561,62 @@ def test_skip_package_resolution_mode_runs_tests_without_explicit_resolve(
     assert len(log_lines) == 1
     assert "-resolvePackageDependencies" not in log_lines[0]
     assert " test" in log_lines[0]
+
+
+def test_cartfile_triggers_carthage_update_before_xcodebuild(tmp_path: Path) -> None:
+    """When a Cartfile exists, the Apple test harness should warm Carthage first."""
+    cartfile = REPO_ROOT / "ios" / "sideBar" / "Cartfile"
+    created_cartfile = False
+    if not cartfile.exists():
+        cartfile.write_text('github "getsentry/sentry-cocoa" == 8.55.1\n', encoding="utf-8")
+        created_cartfile = True
+
+    try:
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        xcodebuild_log = tmp_path / "xcodebuild.log"
+        carthage_log = tmp_path / "carthage.log"
+
+        write_executable(
+            bin_dir / "xcodebuild",
+            "#!/bin/bash\n"
+            f"printf '%s\\n' \"$*\" >> \"{xcodebuild_log}\"\n"
+            "exit 0\n",
+        )
+        write_executable(
+            bin_dir / "carthage",
+            "#!/bin/bash\n"
+            f"printf '%s\\n' \"$*\" >> \"{carthage_log}\"\n"
+            "exit 0\n",
+        )
+
+        env = os.environ.copy()
+        env.update(
+            {
+                "PATH": f"{bin_dir}:{env['PATH']}",
+                "IOS_DESTINATION": "platform=macOS",
+                "IOS_ENABLE_CODE_COVERAGE": "NO",
+                "IOS_SKIP_PACKAGE_DEPENDENCY_RESOLUTION": "YES",
+            }
+        )
+
+        result = subprocess.run(
+            [str(SCRIPT_PATH)],
+            cwd=REPO_ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "bootstrap --use-xcframeworks --platform iOS,macOS --cache-builds" in carthage_log.read_text(
+            encoding="utf-8"
+        )
+        assert " test" in xcodebuild_log.read_text(encoding="utf-8")
+    finally:
+        if created_cartfile:
+            cartfile.unlink(missing_ok=True)
 
 
 def test_pre_push_mode_creates_dedicated_simulator_and_rewrites_destination(

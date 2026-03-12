@@ -18,6 +18,9 @@
 
 set -euo pipefail
 
+REPO_ROOT="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/../.." && pwd)}"
+SIDEBAR_DIR="$REPO_ROOT/ios/sideBar"
+
 echo "=== ci_post_clone.sh: Ensuring SwiftLint is available (best effort) ==="
 if command -v swiftlint >/dev/null 2>&1; then
     echo "SwiftLint already available at: $(command -v swiftlint)"
@@ -34,6 +37,33 @@ elif command -v brew >/dev/null 2>&1; then
     fi
 else
     echo "warning: Homebrew not found and SwiftLint not installed; continuing without SwiftLint"
+fi
+
+if [[ -f "$SIDEBAR_DIR/Cartfile" ]]; then
+    echo "=== ci_post_clone.sh: Ensuring Carthage is available ==="
+    if command -v carthage >/dev/null 2>&1; then
+        echo "Carthage already available at: $(command -v carthage)"
+    elif command -v brew >/dev/null 2>&1; then
+        export HOMEBREW_NO_AUTO_UPDATE=1
+        if brew list carthage >/dev/null 2>&1; then
+            echo "Carthage already installed via Homebrew"
+        elif brew install carthage; then
+            echo "Installed Carthage via Homebrew"
+        else
+            echo "Error: Unable to install Carthage via Homebrew for project bootstrap"
+            exit 1
+        fi
+    else
+        echo "Error: Cartfile present but Carthage is not available on PATH"
+        exit 1
+    fi
+
+    echo "=== ci_post_clone.sh: Building Carthage dependencies ==="
+    (
+        cd "$SIDEBAR_DIR"
+        CARTHAGE_CACHE_PATH="${CARTHAGE_CACHE_PATH:-$SIDEBAR_DIR/.carthage-cache}" \
+        carthage bootstrap --use-xcframeworks --platform iOS,macOS --cache-builds
+    )
 fi
 
 echo "=== ci_post_clone.sh: Generating SideBar.local.xcconfig ==="
@@ -97,10 +127,6 @@ INFOPLIST_KEY_R2_FAVICON_PUBLIC_BASE_URL = \$(R2_FAVICON_PUBLIC_BASE_URL)
 INFOPLIST_KEY_APP_GROUP_ID = \$(APP_GROUP_ID)
 INFOPLIST_KEY_KEYCHAIN_ACCESS_GROUP = \$(KEYCHAIN_ACCESS_GROUP)
 INFOPLIST_KEY_KEYCHAIN_SERVICE = \$(KEYCHAIN_SERVICE)"
-
-# Write to both locations the project might reference
-REPO_ROOT="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/../.." && pwd)}"
-SIDEBAR_DIR="$REPO_ROOT/ios/sideBar"
 
 echo "$XCCONFIG_CONTENT" > "$SIDEBAR_DIR/SideBar.local.xcconfig"
 echo "Created: $SIDEBAR_DIR/SideBar.local.xcconfig"

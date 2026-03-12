@@ -29,10 +29,12 @@ The Apple app and extensions require runtime configuration from build settings
 3. Ensure the project uses `/Users/sean/Coding/sideBar/ios/sideBar/Config/SideBar.xcconfig`
    (it includes the local override file).
 4. `SENTRY_DSN` may be left empty. The key remains in the config surface for now, but current Apple builds do not initialize Sentry from it.
+5. If `/Users/sean/Coding/sideBar/ios/sideBar/Cartfile` is present, run `cd /Users/sean/Coding/sideBar/ios/sideBar && carthage bootstrap --use-xcframeworks --platform iOS,macOS --cache-builds` before local Apple builds.
 
 ## CI / Xcode Cloud
 - `/Users/sean/Coding/sideBar/ios/sideBar/ci_scripts/ci_post_clone.sh`
   generates `SideBar.local.xcconfig` from environment variables.
+- If a `Cartfile` is present, the post-clone script ensures Carthage is available and runs `carthage bootstrap --use-xcframeworks --platform iOS,macOS --cache-builds` before building.
 - Missing required config values fail fast.
 - `SENTRY_DSN` may still be provided to keep generated xcconfig files compatible with the current config surface, but it does not enable Apple SDK startup.
 - `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_CLI_VERSION` are not used by the current Apple build path.
