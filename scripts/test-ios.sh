@@ -49,6 +49,9 @@ if [[ -n "${IOS_DESTINATION+x}" ]]; then
 else
   IOS_DESTINATION="platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
 fi
+SIDEBAR_PRE_PUSH_MODE="${SIDEBAR_PRE_PUSH_MODE:-NO}"
+SIDEBAR_PRE_PUSH_STATE_DIR="${SIDEBAR_PRE_PUSH_STATE_DIR:-}"
+SIDEBAR_PRE_PUSH_SIMULATOR_NAME="${SIDEBAR_PRE_PUSH_SIMULATOR_NAME:-}"
 IOS_DESTINATION_TIMEOUT="${IOS_DESTINATION_TIMEOUT:-120}"
 if [[ -n "${IOS_ENABLE_CODE_COVERAGE+x}" ]]; then
   IOS_ENABLE_CODE_COVERAGE="${IOS_ENABLE_CODE_COVERAGE}"
@@ -104,6 +107,20 @@ IOS_PREPARE_SIMULATOR_BEFORE_TESTS="${IOS_PREPARE_SIMULATOR_BEFORE_TESTS:-NO}"
 IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE="${IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE:-NO}"
 IOS_SIMULATOR_DIAGNOSTICS_DIR="${IOS_SIMULATOR_DIAGNOSTICS_DIR:-}"
 IOS_TARGET_SIMULATOR_UDID=""
+
+if [[ "${SIDEBAR_PRE_PUSH_MODE}" == "YES" ]]; then
+  # Keep pre-push simulator resolution isolated from generic test execution.
+  # The helper owns dedicated simulator reuse/creation and destination rewriting.
+  # shellcheck source=/dev/null
+  source "$(dirname "$0")/test-ios-pre-push-simulator.sh"
+  if ! IOS_TARGET_SIMULATOR_UDID="$(ensure_pre_push_simulator_udid)"; then
+    if [[ -n "${IOS_TARGET_SIMULATOR_UDID}" ]]; then
+      printf '%s\n' "${IOS_TARGET_SIMULATOR_UDID}"
+    fi
+    exit 1
+  fi
+  IOS_DESTINATION="platform=iOS Simulator,id=${IOS_TARGET_SIMULATOR_UDID}"
+fi
 
 if [[ -n "${IOS_TEST_PLAN}" ]]; then
   echo "Running Apple tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION}, test plan ${IOS_TEST_PLAN})..."

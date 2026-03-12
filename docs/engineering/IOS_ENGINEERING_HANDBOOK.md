@@ -143,11 +143,14 @@ CI workflow (`.github/workflows/ios-ci.yml`):
 Pre-push hook (`.git/hooks/pre-push`):
 
 - Blocks pushes to `main` unless `scripts/test-ios.sh` passes locally.
+- Local `main` pushes run `scripts/test-ios.sh` in dedicated pre-push simulator mode.
+- The hook auto-creates and reuses `sideBar PrePush iPad`, storing its UDID in `.git/sidebar-pre-push/simulator-udid`.
 - Blocks pushes to `main` unless `scripts/check-main-linear-history.sh` passes:
   - pushed `main` tip must match local `dev` tip
   - push range may not include merge commits
   - non-fast-forward updates to `main` are rejected
 - Pushes to `dev` and other branches are unblocked.
+- Self-hosted runner lanes keep their existing iPad, iPhone, and macOS split.
 - Guards against broken builds reaching Xcode Cloud.
 - Expensive iOS warning/cert gates are manual pre-commit hooks so normal `dev` pushes stay fast.
 

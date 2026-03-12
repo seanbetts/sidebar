@@ -692,6 +692,35 @@ def test_pre_push_mode_fails_when_no_ios_runtime_is_available(tmp_path: Path) ->
     assert "Error: could not resolve an available iOS simulator runtime for pre-push mode." in result.stdout
 
 
+def test_pre_push_mode_fails_cleanly_when_runtime_listing_is_invalid(
+    tmp_path: Path,
+) -> None:
+    """Pre-push mode should avoid parser tracebacks when simctl emits invalid runtime data."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    write_xcodebuild_logger(bin_dir / "xcodebuild", tmp_path / "xcodebuild.log")
+    write_xcrun_stub(
+        bin_dir / "xcrun",
+        devices_json='{"devices":{}}',
+        runtimes_json="not-json",
+        device_types_json=IPAD_DEVICE_TYPES_JSON,
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=pre_push_env(bin_dir),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "Error: could not resolve an available iOS simulator runtime for pre-push mode." in result.stdout
+    assert "JSONDecodeError" not in result.stderr
+    assert "Traceback" not in result.stderr
+
+
 def test_pre_push_mode_fails_when_device_type_cannot_be_resolved(
     tmp_path: Path,
 ) -> None:
