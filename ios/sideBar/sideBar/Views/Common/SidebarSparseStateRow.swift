@@ -12,20 +12,21 @@ public struct SidebarSparseStateRow: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: iconName)
-                .appFont(.callout)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
-            Text(title)
-                .appFont(.headline)
-                .foregroundStyle(DesignTokens.Colors.textPrimary)
-            if let subtitle {
-                Text(subtitle)
-                    .appFont(.subheadline)
+        SelectableRow(isSelected: false) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                Image(systemName: iconName)
+                    .appFont(.callout)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Text(title)
+                    .appFont(.headline)
+                    .foregroundStyle(DesignTokens.Colors.textPrimary)
+                if let subtitle {
+                    Text(subtitle)
+                        .appFont(.subheadline)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
-        .padding(.vertical, DesignTokens.Spacing.md)
     }
 }
