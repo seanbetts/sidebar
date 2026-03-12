@@ -15,7 +15,6 @@
 		1448E6CA2F27A6420066EE47 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6C92F27A6420066EE47 /* WidgetKit.framework */; };
 		1448E6CC2F27A6420066EE47 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1448E6CB2F27A6420066EE47 /* SwiftUI.framework */; };
 		1448E6DD2F27A6430066EE47 /* sideBarWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1448E6C72F27A6420066EE47 /* sideBarWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		C1D2E3F42F70000200ABC123 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		146EA0712F2FE83C004AE7D1 /* sideBar Safari Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 146EA0592F2FE83C004AE7D1 /* sideBar Safari Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		146EA0972F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 146EA0962F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
@@ -31,6 +30,7 @@
 		A7C1D2E32B01000100A1B2C3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		B1F100012F50000100ABC001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		B1F100022F50000100ABC001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
+		C1D2E3F42F70000200ABC123 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -991,11 +991,6 @@
 			target = 1448E6C62F27A6420066EE47 /* sideBarWidgetsExtension */;
 			targetProxy = 1448E6DB2F27A6430066EE47 /* PBXContainerItemProxy */;
 		};
-		C1D2E3F52F70000200ABC123 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 1413DE452F2B514C002495EE /* sideBarShared */;
-			targetProxy = 1413DE722F2B53B3002495EE /* PBXContainerItemProxy */;
-		};
 		146EA0702F2FE83C004AE7D1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			platformFilter = ios;
@@ -1022,6 +1017,11 @@
 			platformFilter = ios;
 			target = 142516AC2F1EB96B0072E4F9 /* ShareExtension */;
 			targetProxy = 142516B52F1EB96B0072E4F9 /* PBXContainerItemProxy */;
+		};
+		C1D2E3F52F70000200ABC123 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1413DE452F2B514C002495EE /* sideBarShared */;
+			targetProxy = 1413DE722F2B53B3002495EE /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
