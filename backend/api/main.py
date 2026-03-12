@@ -48,6 +48,7 @@ from api.routers import (
 from api.routers import settings as user_settings
 from api.security.path_validator import PathValidator
 from api.services.agent.skills.executor import SkillExecutor
+from api.services.knowledge.provider import init_docs_indexer
 from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 
 sentry_fastapi_module: ModuleType | None
@@ -120,6 +121,8 @@ async def lifespan(app: FastAPI):
             workspace_base=settings.workspace_base,
             writable_paths=settings.writable_paths,
         )
+        init_docs_indexer()
+        logger.info("DocsIndexer initialised")
         yield
         # Cleanup happens here if needed
 
