@@ -46,17 +46,14 @@ enum NotesDetailViewTestRetainer {
 
     static func reset() {
         #if os(iOS)
+        drainNotesHostingRunLoop()
         hostingWindows.forEach { window in
-            if let rootViewController = window.rootViewController,
-               rootViewController.isViewLoaded,
-               rootViewController.view.window != nil {
-                rootViewController.beginAppearanceTransition(false, animated: false)
-                rootViewController.endAppearanceTransition()
-                rootViewController.view.removeFromSuperview()
-            }
             window.endEditing(true)
             window.resignKey()
             window.isHidden = true
+        }
+        drainNotesHostingRunLoop()
+        hostingWindows.forEach { window in
             window.rootViewController = nil
         }
         drainNotesHostingRunLoop()

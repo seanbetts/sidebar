@@ -24,20 +24,18 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
             NoteFormattingBarPresentation.resolve(
                 isEditing: true,
                 isPhone: false,
-                isSoftwareKeyboardVisible: false,
-                isHardwareKeyboardInputExpected: false
+                isSoftwareKeyboardVisible: false
             ),
             .floatingTopTrailing
         )
     }
 
-    func testFormattingBarPresentationUsesFloatingTopTrailingWhenHardwareKeyboardInputIsExpected() {
+    func testFormattingBarPresentationUsesFloatingTopTrailingWhenSoftwareKeyboardIsHidden() {
         XCTAssertEqual(
             NoteFormattingBarPresentation.resolve(
                 isEditing: true,
                 isPhone: true,
-                isSoftwareKeyboardVisible: false,
-                isHardwareKeyboardInputExpected: true
+                isSoftwareKeyboardVisible: false
             ),
             .floatingTopTrailing
         )
@@ -48,8 +46,7 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
             NoteFormattingBarPresentation.resolve(
                 isEditing: true,
                 isPhone: true,
-                isSoftwareKeyboardVisible: false,
-                isHardwareKeyboardInputExpected: false
+                isSoftwareKeyboardVisible: false
             ),
             .floatingTopTrailing
         )
@@ -60,20 +57,7 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
             NoteFormattingBarPresentation.resolve(
                 isEditing: true,
                 isPhone: true,
-                isSoftwareKeyboardVisible: true,
-                isHardwareKeyboardInputExpected: false
-            ),
-            .keyboardAccessory
-        )
-    }
-
-    func testFormattingBarPresentationPrefersKeyboardAccessoryWhenSoftwareKeyboardIsVisibleAndHardwareKeyboardInputIsExpected() {
-        XCTAssertEqual(
-            NoteFormattingBarPresentation.resolve(
-                isEditing: true,
-                isPhone: true,
-                isSoftwareKeyboardVisible: true,
-                isHardwareKeyboardInputExpected: true
+                isSoftwareKeyboardVisible: true
             ),
             .keyboardAccessory
         )
@@ -84,8 +68,7 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
             NoteFormattingBarPresentation.resolve(
                 isEditing: false,
                 isPhone: true,
-                isSoftwareKeyboardVisible: false,
-                isHardwareKeyboardInputExpected: false
+                isSoftwareKeyboardVisible: false
             ),
             .hidden
         )
@@ -153,49 +136,6 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(context.makeView().formattingBarPresentation, .hidden)
         XCTAssertFalse(view.isFloatingFormattingBarVisible)
         XCTAssertFalse(view.isFormattingToolbarVisible)
-    }
-
-    @available(iOS 26.0, *)
-    func testAttributedNoteEditorContainerReevaluatesPresentationWhenInputModeChanges() async throws {
-        let context = await makeNotesDetailViewTestContext()
-        context.editorViewModel.enterEditMode()
-        let environment = makeNotesDetailTestEnvironment()
-        let hardwareKeyboardExpectation = MutableHardwareKeyboardExpectation(value: false)
-        var presentations: [NoteFormattingBarPresentation] = []
-        let container = AttributedNoteEditorContainer(
-            editorViewModel: context.editorViewModel,
-            maxContentWidth: 390,
-            autofocusEnabled: false,
-            hardwareKeyboardInputExpectedProvider: { hardwareKeyboardExpectation.value },
-            onFormattingBarPresentationChange: { presentations.append($0) },
-            onEscape: nil
-        )
-
-        _ = mount(container, environment: environment)
-        XCTAssertEqual(
-            presentations.last,
-            .floatingTopTrailing
-        )
-
-        hardwareKeyboardExpectation.value = true
-        NotificationCenter.default.post(name: UITextInputMode.currentInputModeDidChangeNotification, object: nil)
-        try await waitForFormattingBarPresentation(.floatingTopTrailing, in: presentations)
-
-        XCTAssertEqual(presentations.last, .floatingTopTrailing)
-    }
-
-    private func waitForFormattingBarPresentation(
-        _ expected: NoteFormattingBarPresentation,
-        in presentations: @autoclosure @escaping () -> [NoteFormattingBarPresentation]
-    ) async throws {
-        let timeout = Date().addingTimeInterval(1.0)
-        while Date() < timeout {
-            if presentations().last == expected {
-                return
-            }
-            await Task.yield()
-        }
-        XCTFail("Timed out waiting for formatting bar presentation \(expected)")
     }
 
     func testFormattingBarConfigurationTapUpdatesCanonicalSnapshotAndSelectedState() async throws {
@@ -375,15 +315,6 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
 }
 
 #if os(iOS)
-@MainActor
-private final class MutableHardwareKeyboardExpectation {
-    var value: Bool
-
-    init(value: Bool) {
-        self.value = value
-    }
-}
-
 @MainActor
 private func findDescendantView(in view: UIView, accessibilityIdentifier: String) -> UIView? {
     if view.accessibilityIdentifier == accessibilityIdentifier {

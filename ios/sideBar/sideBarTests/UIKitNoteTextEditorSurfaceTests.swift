@@ -14,7 +14,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testCanonicalSelectionUpdatesMoveTextViewCaretUsingUTF16Offsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("A👍🏽B"),
+            canonicalContent: canonicalUIKitPlainTextPass("A👍🏽B"),
             plainText: "A👍🏽B"
         )
         viewModel.selection = viewModel.insertionPointSelection(
@@ -27,7 +27,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testKeyboardAccessoryPresentationWrapsFormattingBarInAccessoryHost() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(
@@ -43,7 +43,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testKeyboardAccessoryHostKeepsFormattingBarCompactAndTrailingAligned() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(
@@ -66,7 +66,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testKeyboardAccessoryHostAddsBottomInsetAboveKeyboard() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(
@@ -96,7 +96,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testKeyboardAccessoryHostUsesRequestedWidthWhenFitting() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(
@@ -117,7 +117,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testFloatingTopTrailingPresentationOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(
@@ -130,7 +130,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testHiddenPresentationOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(
@@ -143,7 +143,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testReadOnlySurfaceOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(
@@ -157,7 +157,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testPhoneSurfaceDisablesDuplicateSystemFormattingUI() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(
@@ -208,7 +208,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testFirstResponderSurfaceReloadsInputViewsWhenAccessoryPresentationChanges() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let presentationState = FormattingPresentationState(.keyboardAccessory)
@@ -231,7 +231,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testEditableSurfaceBecomesFirstResponderOnMount() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(
@@ -246,7 +246,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testNotesDetailViewTestRetainerResetDetachesHostedWindows() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         _ = try mountTextView(viewModel: viewModel, attachToWindow: true)
@@ -261,7 +261,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testEditableSurfaceSkipsFirstResponderWhenAutofocusDisabled() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(viewModel: viewModel, autofocusEnabled: false)
@@ -270,7 +270,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testUIKitSurfaceUsesReadModeTextPaddingInsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(viewModel: viewModel)
@@ -283,7 +283,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testUIKitSelectionChangesFlowBackIntoCanonicalSelectionUsingUTF16Offsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("A👍🏽B"),
+            canonicalContent: canonicalUIKitPlainTextPass("A👍🏽B"),
             plainText: "A👍🏽B"
         )
         let coordinator = UIKitNoteTextEditorSurface.Coordinator(viewModel: viewModel)
@@ -292,7 +292,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         textView.delegate = coordinator
         textView.selectedRange = NSRange(location: 5, length: 0)
         textView.delegate?.textViewDidChangeSelection?(textView)
-        assertInsertionPointUTF16Offset(
+        assertUIKitInsertionPointUTF16Offset(
             viewModel.selection,
             in: viewModel.attributedContent,
             equals: 5
@@ -301,7 +301,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testUIKitTextChangesFlowBackIntoCanonicalContent() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(viewModel: viewModel)
@@ -315,7 +315,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testCanonicalBoldFormattingRendersIntoUIKitAttributedText() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Bold"),
+            canonicalContent: canonicalUIKitPlainTextPass("Bold"),
             plainText: "Bold"
         )
         let range = noteCharacterRange(length: 4, in: viewModel.attributedContent)
@@ -328,7 +328,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testInsertionPointFormattingToggleUpdatesUIKitTypingAttributes() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let insertion = viewModel.attributedContent.endIndex
@@ -348,7 +348,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testUIKitSurfaceUsesDynamicLabelColorForExistingAndNewText() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Hello"),
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
             plainText: "Hello"
         )
         let textView = try mountTextView(viewModel: viewModel)
@@ -369,7 +369,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testUIKitFormattedEditsDoNotStripExistingBoldFormatting() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalPlainTextPass("Bold"),
+            canonicalContent: canonicalUIKitPlainTextPass("Bold"),
             plainText: "Bold"
         )
         let range = noteCharacterRange(length: 4, in: viewModel.attributedContent)
@@ -399,191 +399,4 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     }
 }
 
-@MainActor
-@available(iOS 26.0, *)
-private func mountTextView(
-    viewModel: NativeNoteEditorViewModel,
-    isEditable: Bool = true,
-    autofocusEnabled: Bool = false,
-    attachToWindow: Bool = true,
-    makeKeyAndVisible: Bool = false,
-    formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
-    formattingBarPresentation: NoteFormattingBarPresentation = .keyboardAccessory,
-    width: CGFloat = 360,
-    height: CGFloat = 320
-) throws -> UITextView {
-    let controller = UIHostingController<AnyView>(
-        rootView: AnyView(
-            UIKitNoteTextEditorSurface(
-                viewModel: viewModel,
-                maxContentWidth: width,
-                isEditable: isEditable,
-                shouldAutofocus: autofocusEnabled,
-                formattingBarConfiguration: formattingBarConfiguration,
-                formattingBarPresentation: formattingBarPresentation
-            )
-        )
-    )
-    let frame = CGRect(x: 0, y: 0, width: width, height: height)
-    NotesDetailViewTestRetainer.hostingControllers.append(controller)
-    if attachToWindow {
-        let window = makeHostingWindow(frame: frame)
-        window.rootViewController = controller
-        if makeKeyAndVisible {
-            window.makeKeyAndVisible()
-        } else {
-            window.isHidden = false
-        }
-        NotesDetailViewTestRetainer.hostingWindows.append(window)
-        controller.view.frame = frame
-        controller.view.setNeedsLayout()
-        controller.view.layoutIfNeeded()
-    } else {
-        controller.loadViewIfNeeded()
-        let hostView = UIView(frame: frame)
-        hostView.addSubview(controller.view)
-        controller.view.frame = hostView.bounds
-        hostView.setNeedsLayout()
-        hostView.layoutIfNeeded()
-        controller.view.setNeedsLayout()
-        controller.view.layoutIfNeeded()
-    }
-    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-    return try XCTUnwrap(findTextView(in: controller.view))
-}
-
-@MainActor
-private func findTextView(in view: UIView) -> UITextView? {
-    if let textView = view as? UITextView {
-        return textView
-    }
-    for subview in view.subviews {
-        if let match = findTextView(in: subview) {
-            return match
-        }
-    }
-    return nil
-}
-
-@MainActor
-private func makeHostingWindow(frame: CGRect) -> UIWindow {
-    guard let windowScene = UIApplication.shared.connectedScenes
-        .compactMap({ $0 as? UIWindowScene })
-        .first else {
-        fatalError("Expected UIWindowScene for UIKit notes editor surface tests")
-    }
-    let window = UIWindow(windowScene: windowScene)
-    window.frame = frame
-    return window
-}
-
-@MainActor
-@available(iOS 26.0, *)
-private func mountSurfaceHost(
-    viewModel: NativeNoteEditorViewModel,
-    presentationState: FormattingPresentationState,
-    textView: ReloadTrackingAccessoryTextView,
-    width: CGFloat = 360,
-    height: CGFloat = 320
-) -> UIHostingController<AnyView> {
-    let controller = UIHostingController<AnyView>(
-        rootView: AnyView(
-            FormattingSurfaceHost(
-                presentationState: presentationState,
-                viewModel: viewModel,
-                textView: textView
-            )
-        )
-    )
-    let frame = CGRect(x: 0, y: 0, width: width, height: height)
-    let window = makeHostingWindow(frame: frame)
-    window.rootViewController = controller
-    window.makeKeyAndVisible()
-    controller.view.frame = frame
-    controller.view.setNeedsLayout()
-    controller.view.layoutIfNeeded()
-    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-    NotesDetailViewTestRetainer.hostingControllers.append(controller)
-    NotesDetailViewTestRetainer.hostingWindows.append(window)
-    return controller
-}
-
-@MainActor
-@available(iOS 26.0, *)
-private final class FormattingPresentationState: ObservableObject {
-    @Published var presentation: NoteFormattingBarPresentation
-    init(_ presentation: NoteFormattingBarPresentation) {
-        self.presentation = presentation
-    }
-}
-
-@MainActor
-@available(iOS 26.0, *)
-private final class ReloadTrackingAccessoryTextView: UIKitNoteTextEditorSurface.AccessoryTextView {
-    private(set) var reloadInputViewsCallCount = 0
-    override func reloadInputViews() {
-        reloadInputViewsCallCount += 1
-        super.reloadInputViews()
-    }
-}
-
-@MainActor
-@available(iOS 26.0, *)
-private struct FormattingSurfaceHost: View {
-    @ObservedObject var presentationState: FormattingPresentationState
-    let viewModel: NativeNoteEditorViewModel
-    let textView: ReloadTrackingAccessoryTextView
-
-    var body: some View {
-        UIKitNoteTextEditorSurface(
-            viewModel: viewModel,
-            maxContentWidth: 360,
-            isEditable: true,
-            shouldAutofocus: true,
-            formattingBarConfiguration: .disabled,
-            formattingBarPresentation: presentationState.presentation,
-            makeTextView: { textView }
-        )
-    }
-}
-
-@available(iOS 26.0, *)
-private func assertInsertionPointUTF16Offset(
-    _ selection: AttributedTextSelection,
-    in text: AttributedString,
-    equals expectedOffset: Int,
-    file: StaticString = #filePath,
-    line: UInt = #line
-) {
-    let string = String(text.characters)
-
-    switch selection.indices(in: text) {
-    case .insertionPoint(let index):
-        let characterOffset = text.characters.distance(from: text.startIndex, to: index)
-        let stringIndex = string.index(string.startIndex, offsetBy: characterOffset)
-        XCTAssertEqual(stringIndex.utf16Offset(in: string), expectedOffset, file: file, line: line)
-    case .ranges:
-        XCTFail("Expected insertion point selection", file: file, line: line)
-    }
-}
-
-@available(iOS 26.0, *)
-private func findEmbeddedFormattingBar(in view: UIView) -> UIKitNoteFormattingBar? {
-    for subview in view.subviews {
-        if let bar = subview as? UIKitNoteFormattingBar {
-            return bar
-        }
-        if let nested = findEmbeddedFormattingBar(in: subview) {
-            return nested
-        }
-    }
-
-    return nil
-}
-
-private func canonicalPlainTextPass(_ plainText: String) -> String {
-    NotesSemanticDocumentCodec.encode(
-        NotesSemanticDocumentProjection.document(fromPlainText: plainText)
-    ) ?? plainText
-}
 #endif

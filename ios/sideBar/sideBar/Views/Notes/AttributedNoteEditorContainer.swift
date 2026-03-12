@@ -1,5 +1,6 @@
 import SwiftUI
 #if os(iOS)
+import Combine
 import UIKit
 #endif
 
@@ -13,7 +14,6 @@ struct AttributedNoteEditorContainer: View {
     @ObservedObject var editorViewModel: NotesEditorViewModel
     let maxContentWidth: CGFloat
     let autofocusEnabled: Bool
-    let hardwareKeyboardInputExpectedProvider: (() -> Bool)?
     let onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)?
     let onEscape: ((NotesSemanticDocument) -> Void)?
     @EnvironmentObject var environment: AppEnvironment
@@ -23,21 +23,18 @@ struct AttributedNoteEditorContainer: View {
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     #if os(iOS)
     @State private var isSoftwareKeyboardVisible = false
-    @State private var inputModeChangeRevision = 0
     #endif
 
     init(
         editorViewModel: NotesEditorViewModel,
         maxContentWidth: CGFloat,
         autofocusEnabled: Bool = true,
-        hardwareKeyboardInputExpectedProvider: (() -> Bool)? = nil,
         onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)? = nil,
         onEscape: ((NotesSemanticDocument) -> Void)?
     ) {
         self.editorViewModel = editorViewModel
         self.maxContentWidth = maxContentWidth
         self.autofocusEnabled = autofocusEnabled
-        self.hardwareKeyboardInputExpectedProvider = hardwareKeyboardInputExpectedProvider
         self.onFormattingBarPresentationChange = onFormattingBarPresentationChange
         self.onEscape = onEscape
         _nativeViewModel = StateObject(wrappedValue: editorViewModel.sharedNativeEditor())
@@ -86,9 +83,6 @@ struct AttributedNoteEditorContainer: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             isSoftwareKeyboardVisible = false
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UITextInputMode.currentInputModeDidChangeNotification)) { _ in
-            inputModeChangeRevision += 1
         }
         .onChange(of: resolvedFormattingBarPresentation) { _, newValue in
             onFormattingBarPresentationChange?(newValue)
@@ -181,23 +175,11 @@ struct AttributedNoteEditorContainer: View {
 
     #if os(iOS)
     private var resolvedFormattingBarPresentation: NoteFormattingBarPresentation {
-        _ = inputModeChangeRevision
         return NoteFormattingBarPresentation.resolve(
             isEditing: true,
             isPhone: UIDevice.current.userInterfaceIdiom == .phone,
-            isSoftwareKeyboardVisible: isSoftwareKeyboardVisible,
-            isHardwareKeyboardInputExpected: isHardwareKeyboardInputExpected
+            isSoftwareKeyboardVisible: isSoftwareKeyboardVisible
         )
-    }
-
-    private var isHardwareKeyboardInputExpected: Bool {
-        if let hardwareKeyboardInputExpectedProvider {
-            return hardwareKeyboardInputExpectedProvider()
-        }
-        if #available(iOS 16.4, *) {
-            return UITextInputContext.current()?.isHardwareKeyboardInputExpected ?? false
-        }
-        return false
     }
     #endif
 }
