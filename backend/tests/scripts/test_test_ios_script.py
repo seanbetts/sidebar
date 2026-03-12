@@ -272,3 +272,60 @@ def test_package_resolution_retry_clears_swiftpm_artifacts_cache(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert not artifacts_dir.exists()
+
+
+def test_package_resolution_uses_persistent_swiftpm_paths_and_resolved_versions(
+    tmp_path: Path,
+) -> None:
+    """SwiftPM resolution should use persistent caches, not disposable DerivedData."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+    cloned_packages_dir = tmp_path / "swiftpm-clones"
+    package_cache_dir = tmp_path / "swiftpm-cache"
+    derived_data_dir = tmp_path / "derived-data"
+
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$*\" >> \"{xcodebuild_log}\"\n"
+        "exit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "GITHUB_ACTIONS": "true",
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_DESTINATION": "platform=macOS",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+            "IOS_DERIVED_DATA_PATH": str(derived_data_dir),
+            "IOS_CLONED_SOURCE_PACKAGES_DIR": str(cloned_packages_dir),
+            "IOS_PACKAGE_CACHE_PATH": str(package_cache_dir),
+        }
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    log_lines = xcodebuild_log.read_text().splitlines()
+    assert len(log_lines) == 2
+
+    resolve_args, test_args = log_lines
+    for args in (resolve_args, test_args):
+        assert f"-clonedSourcePackagesDirPath {cloned_packages_dir}" in args
+        assert f"-packageCachePath {package_cache_dir}" in args
+        assert "-onlyUsePackageVersionsFromResolvedFile" in args
+        assert "-skipPackageUpdates" in args
+
+    assert f"-derivedDataPath {derived_data_dir}" in resolve_args
+    assert f"-derivedDataPath {derived_data_dir}" in test_args
+    assert "-resolvePackageDependencies" in resolve_args
+    assert "-disableAutomaticPackageResolution" in test_args

@@ -132,6 +132,9 @@ jobs:
           IOS_RESULT_BUNDLE_PATH: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult
           IOS_DERIVED_DATA_PATH: ${{ runner.temp }}/sidebar-deriveddata-${{ matrix.id }}
           IOS_CLEAN_DERIVED_DATA: "YES"
+          IOS_CLONED_SOURCE_PACKAGES_DIR: ${{ runner.temp }}/../sidebar-source-packages-cache
+          IOS_PACKAGE_CACHE_PATH: ${{ runner.temp }}/../sidebar-package-cache
+          IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS: "600"
           IOS_ONLY_TESTING: ${{ env.IOS_ONLY_TESTING }}
           IOS_SKIP_TESTING: ${{ matrix.skip_testing }}
           IOS_RETRY_TESTS_ON_FAILURE: ${{ matrix.retry_tests_on_failure }}

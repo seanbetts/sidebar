@@ -302,6 +302,21 @@ def test_ios_ci_stores_result_bundles_under_runner_temp() -> None:
         )
 
 
+def test_ios_ci_uses_persistent_swiftpm_cache_paths() -> None:
+    """Apple lanes should keep SwiftPM sources outside disposable per-run DerivedData."""
+    workflows_and_jobs = [
+        (_dev_workflow(), "ios_test_dev"),
+        (_main_workflow(), "ios_test_main"),
+        (_dispatch_workflow(), "ios_test_dispatch"),
+    ]
+
+    for workflow, job_name in workflows_and_jobs:
+        env = _job_step(workflow, job_name, "Run tests")["env"]
+        assert env["IOS_CLONED_SOURCE_PACKAGES_DIR"] == "${{ runner.temp }}/../sidebar-source-packages-cache"
+        assert env["IOS_PACKAGE_CACHE_PATH"] == "${{ runner.temp }}/../sidebar-package-cache"
+        assert env["IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS"] == "600"
+
+
 def test_ios_ci_uploads_failure_artifacts_with_short_retention() -> None:
     """Failure artifacts should expire quickly to avoid exhausting GitHub storage."""
     workflows_and_jobs = [

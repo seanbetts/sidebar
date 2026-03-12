@@ -82,6 +82,22 @@ IOS_PACKAGE_RESOLVE_RETRIES="${IOS_PACKAGE_RESOLVE_RETRIES:-4}"
 IOS_PACKAGE_RESOLVE_RETRY_DELAY_SECONDS="${IOS_PACKAGE_RESOLVE_RETRY_DELAY_SECONDS:-15}"
 IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS="${IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS:-180}"
 IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY="${IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY:-YES}"
+IOS_CLONED_SOURCE_PACKAGES_DIR="${IOS_CLONED_SOURCE_PACKAGES_DIR:-}"
+IOS_PACKAGE_CACHE_PATH="${IOS_PACKAGE_CACHE_PATH:-}"
+if [[ -n "${IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE+x}" ]]; then
+  IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE="${IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE}"
+elif [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE="YES"
+else
+  IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE="NO"
+fi
+if [[ -n "${IOS_SKIP_PACKAGE_UPDATES+x}" ]]; then
+  IOS_SKIP_PACKAGE_UPDATES="${IOS_SKIP_PACKAGE_UPDATES}"
+elif [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  IOS_SKIP_PACKAGE_UPDATES="YES"
+else
+  IOS_SKIP_PACKAGE_UPDATES="NO"
+fi
 IOS_PREPARE_SIMULATOR_BEFORE_TESTS="${IOS_PREPARE_SIMULATOR_BEFORE_TESTS:-NO}"
 IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE="${IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE:-NO}"
 IOS_SIMULATOR_DIAGNOSTICS_DIR="${IOS_SIMULATOR_DIAGNOSTICS_DIR:-}"
@@ -135,6 +151,32 @@ if [[ -n "${IOS_DERIVED_DATA_PATH}" ]]; then
   fi
   mkdir -p "${IOS_DERIVED_DATA_PATH}"
   XCODEBUILD_ARGS+=(-derivedDataPath "${IOS_DERIVED_DATA_PATH}")
+fi
+
+if [[ -n "${IOS_CLONED_SOURCE_PACKAGES_DIR}" ]]; then
+  if [[ "${IOS_CLONED_SOURCE_PACKAGES_DIR}" == "/" ]]; then
+    echo "Error: IOS_CLONED_SOURCE_PACKAGES_DIR cannot be '/'."
+    exit 1
+  fi
+  mkdir -p "${IOS_CLONED_SOURCE_PACKAGES_DIR}"
+  XCODEBUILD_ARGS+=(-clonedSourcePackagesDirPath "${IOS_CLONED_SOURCE_PACKAGES_DIR}")
+fi
+
+if [[ -n "${IOS_PACKAGE_CACHE_PATH}" ]]; then
+  if [[ "${IOS_PACKAGE_CACHE_PATH}" == "/" ]]; then
+    echo "Error: IOS_PACKAGE_CACHE_PATH cannot be '/'."
+    exit 1
+  fi
+  mkdir -p "${IOS_PACKAGE_CACHE_PATH}"
+  XCODEBUILD_ARGS+=(-packageCachePath "${IOS_PACKAGE_CACHE_PATH}")
+fi
+
+if [[ "${IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE}" == "YES" ]]; then
+  XCODEBUILD_ARGS+=(-onlyUsePackageVersionsFromResolvedFile)
+fi
+
+if [[ "${IOS_SKIP_PACKAGE_UPDATES}" == "YES" ]]; then
+  XCODEBUILD_ARGS+=(-skipPackageUpdates)
 fi
 
 if [[ "${IOS_SCHEME}" == "sideBarUI" && -z "${IOS_ONLY_TESTING}" && "${IOS_UI_SMOKE_ONLY}" == "YES" ]]; then
@@ -538,6 +580,24 @@ resolve_package_dependencies() {
       package_args+=(-derivedDataPath "${IOS_DERIVED_DATA_PATH}")
     fi
 
+    if [[ -n "${IOS_CLONED_SOURCE_PACKAGES_DIR}" ]]; then
+      mkdir -p "${IOS_CLONED_SOURCE_PACKAGES_DIR}"
+      package_args+=(-clonedSourcePackagesDirPath "${IOS_CLONED_SOURCE_PACKAGES_DIR}")
+    fi
+
+    if [[ -n "${IOS_PACKAGE_CACHE_PATH}" ]]; then
+      mkdir -p "${IOS_PACKAGE_CACHE_PATH}"
+      package_args+=(-packageCachePath "${IOS_PACKAGE_CACHE_PATH}")
+    fi
+
+    if [[ "${IOS_ONLY_USE_PACKAGE_VERSIONS_FROM_RESOLVED_FILE}" == "YES" ]]; then
+      package_args+=(-onlyUsePackageVersionsFromResolvedFile)
+    fi
+
+    if [[ "${IOS_SKIP_PACKAGE_UPDATES}" == "YES" ]]; then
+      package_args+=(-skipPackageUpdates)
+    fi
+
     echo "Resolve package dependencies (attempt ${attempt}/${IOS_PACKAGE_RESOLVE_RETRIES})..."
     set +e
     run_xcodebuild_with_timeout "${IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS}" xcodebuild "${package_args[@]}"
@@ -559,6 +619,9 @@ resolve_package_dependencies() {
       echo "Package resolution failed (exit ${resolve_status}). Clearing SwiftPM caches before retry..."
       if [[ -n "${IOS_DERIVED_DATA_PATH}" ]]; then
         rm -rf "${IOS_DERIVED_DATA_PATH}/SourcePackages"
+      fi
+      if [[ -n "${IOS_CLONED_SOURCE_PACKAGES_DIR}" ]]; then
+        rm -rf "${IOS_CLONED_SOURCE_PACKAGES_DIR}"
       fi
       if [[ "${IOS_CLEAN_GLOBAL_SWIFTPM_CACHE_ON_RETRY}" == "YES" ]]; then
         rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/artifacts"
