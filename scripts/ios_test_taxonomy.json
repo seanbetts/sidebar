@@ -1144,6 +1144,10 @@
       "reason": "test_support"
     },
     {
+      "path": "ios/sideBar/sideBarTests/UIKitNoteTextEditorSurfaceTestSupport.swift",
+      "reason": "test_support"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/SettingsViewModelTestDoubles.swift",
       "reason": "test_support"
     },

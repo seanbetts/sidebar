@@ -9,9 +9,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MANIFEST_PATH = REPO_ROOT / "scripts" / "ios_test_taxonomy.json"
 MODULE_PATH = REPO_ROOT / "scripts" / "validate_ios_test_taxonomy.py"
-BOUNDARY_DECISION_PATH = (
-    REPO_ROOT / "docs" / "plans" / "artifacts" / "apple-testing-boundary-decision.md"
-)
 APPLE_TEST_DIRS = (
     REPO_ROOT / "ios" / "sideBar" / "sideBarTests",
     REPO_ROOT / "ios" / "sideBar" / "ShareExtensionTests",
@@ -133,15 +130,3 @@ def test_validator_rejects_dev_entries_outside_logic_bucket() -> None:
     )
 
     assert any("dev" in error for error in errors)
-
-
-def test_boundary_decision_artifact_is_definitive() -> None:
-    """Phase 4 should record a clear yes-or-no boundary decision."""
-    assert BOUNDARY_DECISION_PATH.exists()
-    content = BOUNDARY_DECISION_PATH.read_text()
-
-    assert (
-        "manifest/test-plan approach accepted" in content
-        or "Xcode multi-target split required" in content
-    )
-    assert "decide later" not in content
