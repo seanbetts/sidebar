@@ -150,6 +150,5 @@ def test_tasks_definitions_include_context_menu_parity_tools():
 
 def test_skills_definitions_do_not_expose_skill_packaging():
     definitions = get_skills_definitions()
-    assert definitions == {}
     assert "Package Skill" not in definitions
     assert "Evaluate MCP Server" not in definitions

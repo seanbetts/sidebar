@@ -388,6 +388,27 @@ async def test_execute_tool_injects_transcription_model_from_gateway(monkeypatch
     }
 
 
+def test_get_skill_inventory_tool_defined():
+    """The Get Skill Inventory tool should be in the definitions."""
+    from api.services.tools.definitions_skills import get_skills_definitions
+
+    defs = get_skills_definitions()
+    assert "Get Skill Inventory" in defs
+    schema = defs["Get Skill Inventory"]["input_schema"]
+    assert schema["type"] == "object"
+
+
+def test_search_product_knowledge_tool_defined():
+    """The Search Product Knowledge tool should be in the definitions."""
+    from api.services.tools.definitions_skills import get_skills_definitions
+
+    defs = get_skills_definitions()
+    assert "Search Product Knowledge" in defs
+    schema = defs["Search Product Knowledge"]["input_schema"]
+    assert "query" in schema["properties"]
+    assert "query" in schema["required"]
+
+
 @pytest.mark.asyncio
 async def test_execute_tool_returns_error_when_transcription_unavailable(monkeypatch):
     tools = {
