@@ -218,7 +218,7 @@ def test_dev_workflow_contains_only_quality_and_logic_jobs() -> None:
     """Dev workflow should materialize only the jobs relevant to dev."""
     workflow = _dev_workflow()
 
-    assert set(workflow["jobs"]) == {"ios_quality", "ios_test_dev"}
+    assert set(workflow["jobs"]) == {"ios_quality", "ios_prepare_packages", "ios_test_dev"}
     assert {entry["id"] for entry in _job_matrix(workflow, "ios_test_dev")} == {
         "logic-iphone",
         "logic-ipad",
@@ -230,7 +230,7 @@ def test_main_workflow_contains_only_release_jobs() -> None:
     """Main workflow should materialize only the broader release lanes."""
     workflow = _main_workflow()
 
-    assert set(workflow["jobs"]) == {"ios_test_main"}
+    assert set(workflow["jobs"]) == {"ios_prepare_packages", "ios_test_main"}
     assert {entry["id"] for entry in _job_matrix(workflow, "ios_test_main")} == {
         "surface",
         "ui",
@@ -244,7 +244,7 @@ def test_dispatch_workflow_contains_all_lane_options() -> None:
     options = workflow["on"]["workflow_dispatch"]["inputs"]["lane"]["options"]
     matrix_lanes = {entry["lane"] for entry in _dispatch_matrix()}
 
-    assert set(workflow["jobs"]) == {"ios_test_dispatch"}
+    assert set(workflow["jobs"]) == {"ios_prepare_packages", "ios_test_dispatch"}
     assert set(options) == {"all"} | matrix_lanes
 
 
@@ -312,7 +312,7 @@ def test_ios_ci_uses_persistent_lane_derived_data() -> None:
 
     for workflow, job_name in workflows_and_jobs:
         env = _job_step(workflow, job_name, "Run tests")["env"]
-        assert env["IOS_DERIVED_DATA_PATH"] == "${{ runner.temp }}/../sidebar-deriveddata-${{ matrix.id }}"
+        assert env["IOS_DERIVED_DATA_PATH"] == "${{ env.IOS_SHARED_DERIVED_DATA_ROOT }}/${{ matrix.id }}"
         assert env["IOS_CLEAN_DERIVED_DATA"] == "NO"
 
 
@@ -326,8 +326,8 @@ def test_ios_ci_uses_persistent_swiftpm_cache_paths() -> None:
 
     for workflow, job_name in workflows_and_jobs:
         env = _job_step(workflow, job_name, "Run tests")["env"]
-        assert env["IOS_CLONED_SOURCE_PACKAGES_DIR"] == "${{ runner.temp }}/../sidebar-source-packages-cache"
-        assert env["IOS_PACKAGE_CACHE_PATH"] == "${{ runner.temp }}/../sidebar-package-cache"
+        assert env["IOS_CLONED_SOURCE_PACKAGES_DIR"] == "${{ env.IOS_CLONED_SOURCE_PACKAGES_DIR }}"
+        assert env["IOS_PACKAGE_CACHE_PATH"] == "${{ env.IOS_PACKAGE_CACHE_PATH }}"
         assert env["IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS"] == "600"
 
 
@@ -379,6 +379,45 @@ def test_dev_workflow_does_not_collect_or_upload_simulator_diagnostics() -> None
         run_step["env"]["IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE"] == "NO"
     )
     assert {step["name"] for step in upload_steps} == {"Upload xcresult bundle (${{ matrix.id }})"}
+
+
+def test_ios_ci_prewarms_packages_before_parallel_lanes() -> None:
+    """Apple workflows should warm shared package state once before running test lanes."""
+    dev_workflow = _dev_workflow()
+    main_workflow = _main_workflow()
+    dispatch_workflow = _dispatch_workflow()
+
+    assert dev_workflow["jobs"]["ios_test_dev"]["needs"] == ["ios_quality", "ios_prepare_packages"]
+    assert main_workflow["jobs"]["ios_test_main"]["needs"] == ["ios_prepare_packages"]
+    assert dispatch_workflow["jobs"]["ios_test_dispatch"]["needs"] == ["ios_prepare_packages"]
+
+    for workflow, job_name in (
+        (dev_workflow, "ios_test_dev"),
+        (main_workflow, "ios_test_main"),
+        (dispatch_workflow, "ios_test_dispatch"),
+    ):
+        assert (
+            _job_step(workflow, job_name, "Run tests")["env"]["IOS_SKIP_PACKAGE_DEPENDENCY_RESOLUTION"]
+            == "YES"
+        )
+
+
+def test_ios_ci_configures_shared_machine_cache_paths() -> None:
+    """Warm and test jobs should derive their shared Apple cache paths from HOME."""
+    workflows_and_jobs = [
+        (_dev_workflow(), "ios_prepare_packages"),
+        (_dev_workflow(), "ios_test_dev"),
+        (_main_workflow(), "ios_prepare_packages"),
+        (_main_workflow(), "ios_test_main"),
+        (_dispatch_workflow(), "ios_prepare_packages"),
+        (_dispatch_workflow(), "ios_test_dispatch"),
+    ]
+
+    for workflow, job_name in workflows_and_jobs:
+        script = _job_step(workflow, job_name, "Configure shared Apple cache paths")["run"]
+        assert '$HOME/Library/Caches/sidebar-ci-apple-tests' in script
+        assert 'IOS_CLONED_SOURCE_PACKAGES_DIR=' in script
+        assert 'IOS_PACKAGE_CACHE_PATH=' in script
 
 
 def test_ios_ci_resolves_only_testing_specs_from_taxonomy() -> None:

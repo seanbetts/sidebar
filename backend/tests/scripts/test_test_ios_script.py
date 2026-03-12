@@ -329,3 +329,83 @@ def test_package_resolution_uses_persistent_swiftpm_paths_and_resolved_versions(
     assert f"-derivedDataPath {derived_data_dir}" in test_args
     assert "-resolvePackageDependencies" in resolve_args
     assert "-disableAutomaticPackageResolution" in test_args
+
+
+def test_resolve_only_mode_exits_after_package_resolution(tmp_path: Path) -> None:
+    """Warmup mode should resolve packages and exit before invoking the test action."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$*\" >> \"{xcodebuild_log}\"\n"
+        "exit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_DESTINATION": "platform=macOS",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+            "IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY": "YES",
+        }
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    log_lines = xcodebuild_log.read_text().splitlines()
+    assert len(log_lines) == 1
+    assert "-resolvePackageDependencies" in log_lines[0]
+    assert " test" not in log_lines[0]
+
+
+def test_skip_package_resolution_mode_runs_tests_without_explicit_resolve(
+    tmp_path: Path,
+) -> None:
+    """Test lanes should be able to skip the pre-resolve step after a warm phase."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$*\" >> \"{xcodebuild_log}\"\n"
+        "exit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_DESTINATION": "platform=macOS",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+            "IOS_SKIP_PACKAGE_DEPENDENCY_RESOLUTION": "YES",
+        }
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    log_lines = xcodebuild_log.read_text().splitlines()
+    assert len(log_lines) == 1
+    assert "-resolvePackageDependencies" not in log_lines[0]
+    assert " test" in log_lines[0]

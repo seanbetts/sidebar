@@ -26,7 +26,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ios_prepare_packages:
+    timeout-minutes: 45
+    runs-on: [self-hosted, mac]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Configure shared Apple cache paths
+        run: |
+          shared_root="$HOME/Library/Caches/sidebar-ci-apple-tests"
+          mkdir -p "$shared_root/swiftpm/source-packages"
+          mkdir -p "$shared_root/swiftpm/package-cache"
+          mkdir -p "$shared_root/deriveddata"
+          echo "IOS_CLONED_SOURCE_PACKAGES_DIR=$shared_root/swiftpm/source-packages" >> "$GITHUB_ENV"
+          echo "IOS_PACKAGE_CACHE_PATH=$shared_root/swiftpm/package-cache" >> "$GITHUB_ENV"
+          echo "IOS_SHARED_DERIVED_DATA_ROOT=$shared_root/deriveddata" >> "$GITHUB_ENV"
+      - name: Warm shared package state
+        run: |
+          while IFS='|' read -r lane_id scheme test_plan destination; do
+            IOS_SCHEME="$scheme" \
+            IOS_TEST_PLAN="$test_plan" \
+            IOS_DESTINATION="$destination" \
+            IOS_DESTINATION_TIMEOUT="180" \
+            IOS_DERIVED_DATA_PATH="${IOS_SHARED_DERIVED_DATA_ROOT}/${lane_id}" \
+            IOS_CLEAN_DERIVED_DATA="NO" \
+            IOS_CLONED_SOURCE_PACKAGES_DIR="${IOS_CLONED_SOURCE_PACKAGES_DIR}" \
+            IOS_PACKAGE_CACHE_PATH="${IOS_PACKAGE_CACHE_PATH}" \
+            IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS="600" \
+            IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY="YES" \
+            scripts/test-ios.sh
+          done <<'EOF'
+          surface|sideBar|AppleStateful|platform=iOS Simulator,name=iPhone 17 Pro
+          ui|sideBarUI|AppleUI|platform=iOS Simulator,name=iPad Pro 13-inch (M5)
+          extensions|sideBarExtensions|AppleExtensions|platform=iOS Simulator,name=iPhone 17 Pro
+          EOF
+
   ios_test_main:
+    needs: [ios_prepare_packages]
     timeout-minutes: 90
     runs-on:
       - self-hosted
@@ -86,6 +122,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Configure shared Apple cache paths
+        run: |
+          shared_root="$HOME/Library/Caches/sidebar-ci-apple-tests"
+          mkdir -p "$shared_root/swiftpm/source-packages"
+          mkdir -p "$shared_root/swiftpm/package-cache"
+          mkdir -p "$shared_root/deriveddata"
+          echo "IOS_CLONED_SOURCE_PACKAGES_DIR=$shared_root/swiftpm/source-packages" >> "$GITHUB_ENV"
+          echo "IOS_PACKAGE_CACHE_PATH=$shared_root/swiftpm/package-cache" >> "$GITHUB_ENV"
+          echo "IOS_SHARED_DERIVED_DATA_ROOT=$shared_root/deriveddata" >> "$GITHUB_ENV"
       - name: Pre-clean stale test outputs (${{ matrix.id }})
         run: |
           rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"
@@ -115,11 +160,12 @@ jobs:
           IOS_DESTINATION: ${{ matrix.destination }}
           IOS_DESTINATION_TIMEOUT: ${{ matrix.destination_timeout }}
           IOS_RESULT_BUNDLE_PATH: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult
-          IOS_DERIVED_DATA_PATH: ${{ runner.temp }}/../sidebar-deriveddata-${{ matrix.id }}
+          IOS_DERIVED_DATA_PATH: ${{ env.IOS_SHARED_DERIVED_DATA_ROOT }}/${{ matrix.id }}
           IOS_CLEAN_DERIVED_DATA: "NO"
-          IOS_CLONED_SOURCE_PACKAGES_DIR: ${{ runner.temp }}/../sidebar-source-packages-cache
-          IOS_PACKAGE_CACHE_PATH: ${{ runner.temp }}/../sidebar-package-cache
+          IOS_CLONED_SOURCE_PACKAGES_DIR: ${{ env.IOS_CLONED_SOURCE_PACKAGES_DIR }}
+          IOS_PACKAGE_CACHE_PATH: ${{ env.IOS_PACKAGE_CACHE_PATH }}
           IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS: "600"
+          IOS_SKIP_PACKAGE_DEPENDENCY_RESOLUTION: "YES"
           IOS_ONLY_TESTING: ${{ env.IOS_ONLY_TESTING }}
           IOS_SKIP_TESTING: ${{ matrix.skip_testing }}
           IOS_RETRY_TESTS_ON_FAILURE: ${{ matrix.retry_tests_on_failure }}
