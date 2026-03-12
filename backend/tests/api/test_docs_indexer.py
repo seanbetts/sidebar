@@ -88,3 +88,31 @@ class TestDocsIndexer:
         assert len(ws["sections"]) >= 1
         assert ws["sections"][0]["heading"] == "What it does"
         assert "searches the web" in ws["sections"][0]["content"]
+
+    def test_brief_includes_internal_knowledge_docs(self, sample_docs: Path) -> None:
+        indexer = DocsIndexer(sample_docs)
+        indexer.build()
+        brief = indexer.product_knowledge_brief
+
+        assert "Introduction" in brief
+        assert "What sideBar is and how it works." in brief
+        assert "Web Search" in brief
+        assert "Search the live web" in brief
+
+    def test_brief_excludes_non_internal_knowledge_docs(
+        self, sample_docs: Path,
+    ) -> None:
+        indexer = DocsIndexer(sample_docs)
+        indexer.build()
+        brief = indexer.product_knowledge_brief
+
+        assert "Internal Only" not in brief
+        assert "Not for the assistant" not in brief
+
+    def test_brief_groups_by_section(self, sample_docs: Path) -> None:
+        indexer = DocsIndexer(sample_docs)
+        indexer.build()
+        brief = indexer.product_knowledge_brief
+
+        assert "Manual" in brief or "manual" in brief.lower()
+        assert "Skills" in brief or "skills" in brief.lower()

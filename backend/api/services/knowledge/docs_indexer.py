@@ -99,3 +99,55 @@ class DocsIndexer:
             )
         self._catalog = catalog
         logger.info("DocsIndexer: indexed %d documents", len(catalog))
+
+    @property
+    def product_knowledge_brief(self) -> str:
+        """Generate a condensed knowledge brief from indexed docs.
+
+        Only includes docs where surfaces contains 'internal-knowledge'.
+        Grouped by directory (manual, faq, skills, etc.).
+        """
+        eligible = [
+            doc
+            for doc in self._catalog
+            if "internal-knowledge" in doc.get("surfaces", [])
+        ]
+        if not eligible:
+            return ""
+
+        groups: dict[str, list[dict[str, Any]]] = {}
+        for doc in eligible:
+            section = doc["path"].split("/")[0] if "/" in doc["path"] else "general"
+            groups.setdefault(section, []).append(doc)
+
+        group_labels = {
+            "manual": "Manual",
+            "faq": "FAQ",
+            "skills": "Skills",
+            "snippets": "Reference",
+        }
+
+        lines = ["<product_knowledge>", ""]
+        lines.append("sideBar product knowledge summary:")
+        lines.append("")
+        for group_key in ["manual", "faq", "skills", "snippets"]:
+            docs = groups.get(group_key)
+            if not docs:
+                continue
+            label = group_labels.get(group_key, group_key.title())
+            lines.append(f"{label}:")
+            for doc in sorted(docs, key=lambda d: d["title"]):
+                lines.append(f"- {doc['title']}: {doc['summary']}")
+            lines.append("")
+        # Catch any ungrouped docs.
+        for group_key, docs in sorted(groups.items()):
+            if group_key in group_labels:
+                continue
+            label = group_key.title()
+            lines.append(f"{label}:")
+            for doc in sorted(docs, key=lambda d: d["title"]):
+                lines.append(f"- {doc['title']}: {doc['summary']}")
+            lines.append("")
+
+        lines.append("</product_knowledge>")
+        return "\n".join(lines)
