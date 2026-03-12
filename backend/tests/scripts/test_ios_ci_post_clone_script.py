@@ -38,6 +38,9 @@ def required_env(repo_root: Path, bin_dir: Path) -> dict[str, str]:
             "SUPABASE_ANON_KEY": "anon-key",
             "KEYCHAIN_ACCESS_GROUP": "ABCDE12345.ai.sidebar.sidebar",
             "KEYCHAIN_SERVICE": "ai.sidebar.sidebar",
+            "SENTRY_AUTH_TOKEN": "token",
+            "SENTRY_ORG": "sidebar",
+            "SENTRY_PROJECT": "apple",
         }
     )
     return env
@@ -71,16 +74,12 @@ def test_ci_post_clone_writes_optional_sentry_dsn(tmp_path: Path) -> None:
     assert "INFOPLIST_KEY_SENTRY_DSN = $(SENTRY_DSN)" in generated
 
 
-def test_ci_post_clone_no_longer_mentions_sentry_cli_install(tmp_path: Path) -> None:
-    """The post-clone script should only generate config, not sentry-cli setup."""
+def test_ci_post_clone_keeps_sentry_keys_available_when_dsn_is_unset(tmp_path: Path) -> None:
+    """Xcode Cloud config generation should keep the Sentry keys available even when blank."""
     repo_root = make_temp_repo(tmp_path)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     write_executable(bin_dir / "swiftlint", "#!/bin/bash\nexit 0\n")
-    write_executable(
-        bin_dir / "curl",
-        "#!/bin/bash\necho 'curl should not be called' >&2\nexit 99\n",
-    )
 
     env = required_env(repo_root, bin_dir)
 
@@ -94,4 +93,42 @@ def test_ci_post_clone_no_longer_mentions_sentry_cli_install(tmp_path: Path) -> 
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "sentry-cli" not in result.stdout
+
+    generated = (repo_root / "ios" / "sideBar" / "Config" / "SideBar.local.xcconfig").read_text(
+        encoding="utf-8"
+    )
+    assert "SENTRY_DSN = " in generated
+    assert "INFOPLIST_KEY_SENTRY_DSN = $(SENTRY_DSN)" in generated
+
+
+def test_ci_post_clone_preserves_sentry_upload_variables_for_later_steps(tmp_path: Path) -> None:
+    """The post-clone step should leave upload credentials available for a later upload hook."""
+    repo_root = make_temp_repo(tmp_path)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    write_executable(bin_dir / "swiftlint", "#!/bin/bash\nexit 0\n")
+
+    env = required_env(repo_root, bin_dir)
+    env["SENTRY_DSN"] = "https://public@example.ingest.sentry.io/123"
+
+    result = subprocess.run(
+        [
+            "bash",
+            "-lc",
+            (
+                f'source "{SCRIPT_PATH}" >/dev/null && '
+                'printf "AUTH=%s\\nORG=%s\\nPROJECT=%s\\n" '
+                '"$SENTRY_AUTH_TOKEN" "$SENTRY_ORG" "$SENTRY_PROJECT"'
+            ),
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "AUTH=token" in result.stdout
+    assert "ORG=sidebar" in result.stdout
+    assert "PROJECT=apple" in result.stdout

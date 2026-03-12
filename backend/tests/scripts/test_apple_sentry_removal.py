@@ -1,55 +1,116 @@
-"""Repo-level checks guarding the Apple Sentry cleanup."""
+"""Repo-level guardrails for future Apple Sentry reintegration."""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+IOS_ROOT = REPO_ROOT / "ios" / "sideBar"
 PBXPROJ = REPO_ROOT / "ios" / "sideBar" / "sideBar.xcodeproj" / "project.pbxproj"
 CI_POST_CLONE_SCRIPT = REPO_ROOT / "ios" / "sideBar" / "ci_scripts" / "ci_post_clone.sh"
 UPLOAD_SCRIPT = REPO_ROOT / "ios" / "sideBar" / "ci_scripts" / "upload_sentry_dsyms.sh"
+BOOTSTRAP = REPO_ROOT / "ios" / "sideBar" / "sideBar" / "App" / "SentryBootstrap.swift"
+IOS_APP_DELEGATE = REPO_ROOT / "ios" / "sideBar" / "sideBar" / "App" / "AppLaunchDelegate.swift"
+MAC_APP_DELEGATE = REPO_ROOT / "ios" / "sideBar" / "sideBar" / "App" / "MacAppDelegate.swift"
 
 
-def test_project_does_not_reference_sentry_cocoa() -> None:
-    project_contents = PBXPROJ.read_text(encoding="utf-8")
-    assert "sentry-cocoa" not in project_contents
+def test_bootstrap_seam_remains_present_and_dependency_injected() -> None:
+    bootstrap_contents = BOOTSTRAP.read_text(encoding="utf-8")
 
+    signature_match = re.search(
+        r"static func startIfConfigured\((?P<signature>.*?)\)\s*->\s*Bool",
+        bootstrap_contents,
+        re.DOTALL,
+    )
 
-def test_no_target_depends_on_the_sentry_package_product() -> None:
-    project_contents = PBXPROJ.read_text(encoding="utf-8")
-    assert "productName = Sentry" not in project_contents
-
-
-def test_upload_build_phase_is_removed_from_project() -> None:
-    project_contents = PBXPROJ.read_text(encoding="utf-8")
-    assert "Upload Sentry dSYMs" not in project_contents
-
-
-def test_ci_post_clone_stops_touching_sentry_cli() -> None:
-    script_contents = CI_POST_CLONE_SCRIPT.read_text(encoding="utf-8")
-    assert "sentry-cli" not in script_contents
-
-
-def test_upload_sentry_dsyms_is_disabled_placeholder() -> None:
-    script_contents = UPLOAD_SCRIPT.read_text(encoding="utf-8")
-    assert "disabled" in script_contents
-    assert "exit 0" in script_contents
-    assert "sentry-cli" not in script_contents
-    assert "debug-files upload" not in script_contents
-    assert "SENTRY_AUTH_TOKEN" not in script_contents
-
-
-def test_bootstrap_no_longer_imports_or_calls_sentry_sdk() -> None:
-    bootstrap_contents = (
-        REPO_ROOT / "ios" / "sideBar" / "sideBar" / "App" / "SentryBootstrap.swift"
-    ).read_text(encoding="utf-8")
-    assert "import Sentry" not in bootstrap_contents
-    assert "SentrySDK" not in bootstrap_contents
-
-
-def test_bootstrap_seam_remains_present() -> None:
-    bootstrap_contents = (
-        REPO_ROOT / "ios" / "sideBar" / "sideBar" / "App" / "SentryBootstrap.swift"
-    ).read_text(encoding="utf-8")
     assert "enum SentryBootstrap" in bootstrap_contents
-    assert "static func startIfConfigured" in bootstrap_contents
+    assert "protocol SentryBundleInfo" in bootstrap_contents
+    assert "protocol SentryBootstrapClient" in bootstrap_contents
+    assert signature_match is not None
+    assert "config: EnvironmentConfig" in signature_match.group("signature")
+    assert "bundle: SentryBundleInfo" in signature_match.group("signature")
+    assert "client: SentryBootstrapClient" in signature_match.group("signature")
+    assert "static func resetForTesting()" in bootstrap_contents
+
+
+def test_bootstrap_seam_remains_wired_from_app_entry_points() -> None:
+    ios_delegate_contents = IOS_APP_DELEGATE.read_text(encoding="utf-8")
+    mac_delegate_contents = MAC_APP_DELEGATE.read_text(encoding="utf-8")
+
+    assert "SentryBootstrap.startIfConfigured(config: config)" in ios_delegate_contents
+    assert "SentryBootstrap.startIfConfigured(config: config)" in mac_delegate_contents
+
+
+def test_ci_and_upload_hooks_remain_explicit_sentry_touchpoints() -> None:
+    ci_contents = CI_POST_CLONE_SCRIPT.read_text(encoding="utf-8")
+    script_contents = UPLOAD_SCRIPT.read_text(encoding="utf-8")
+
+    assert "SENTRY_DSN" in ci_contents
+    assert r"INFOPLIST_KEY_SENTRY_DSN = \$(SENTRY_DSN)" in ci_contents
+    assert "sentry-dsym-upload:" in script_contents
+    assert "set -euo pipefail" in script_contents
+
+
+def test_swiftpm_remains_disallowed_for_future_apple_sentry_reintegration() -> None:
+    assert _has_swift_package_sentry_path() is False
+
+
+def test_project_allows_at_most_one_future_approved_sentry_dependency_path() -> None:
+    active_paths = {
+        "cocoapods": _has_cocoapods_sentry_path(),
+        "carthage": _has_carthage_sentry_path(),
+        "vendored": _has_vendored_sentry_path(),
+    }
+    selected_paths = [name for name, is_active in active_paths.items() if is_active]
+
+    assert len(selected_paths) <= 1, (
+        "Apple Sentry reintegration must choose a single dependency path, "
+        f"found multiple active paths: {selected_paths}"
+    )
+
+
+def test_project_reserves_at_most_one_upload_hook_entry() -> None:
+    project_contents = PBXPROJ.read_text(encoding="utf-8")
+    assert project_contents.count("Upload Sentry dSYMs") <= 1
+
+
+def _has_swift_package_sentry_path() -> bool:
+    project_contents = PBXPROJ.read_text(encoding="utf-8")
+    return "sentry-cocoa" in project_contents or "productName = Sentry" in project_contents
+
+
+def _has_cocoapods_sentry_path() -> bool:
+    podfile = IOS_ROOT / "Podfile"
+    podfile_lock = IOS_ROOT / "Podfile.lock"
+    pods_root = IOS_ROOT / "Pods"
+    return (
+        _file_contains_pattern(podfile, r"(?im)^\s*pod\s+['\"]Sentry['\"]")
+        or _file_contains_pattern(podfile_lock, r"(?m)^\s*-\sSentry\b")
+        or any(path.exists() for path in pods_root.rglob("*Sentry*"))
+    )
+
+
+def _has_carthage_sentry_path() -> bool:
+    cartfile = IOS_ROOT / "Cartfile"
+    cartfile_resolved = IOS_ROOT / "Cartfile.resolved"
+    return (
+        _file_contains_pattern(cartfile, r"(?i)\bSentry\b")
+        or _file_contains_pattern(cartfile_resolved, r"(?i)\bSentry\b")
+        or any(path.exists() for path in (IOS_ROOT / "Carthage").rglob("*Sentry*"))
+    )
+
+
+def _has_vendored_sentry_path() -> bool:
+    vendored_patterns = ("*Sentry*.framework", "*Sentry*.xcframework")
+    return any(
+        path.exists()
+        for pattern in vendored_patterns
+        for path in IOS_ROOT.rglob(pattern)
+    )
+
+
+def _file_contains_pattern(path: Path, pattern: str) -> bool:
+    if path.exists() is False:
+        return False
+    return re.search(pattern, path.read_text(encoding="utf-8")) is not None
