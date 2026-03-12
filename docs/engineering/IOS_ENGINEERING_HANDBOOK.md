@@ -9,7 +9,7 @@ This is the canonical iOS/macOS engineering document for sideBar.
 
 - Source of truth for Apple-platform setup, architecture, and operations.
 - Applies to: `ios/sideBar` app target, extensions, shared framework, and Apple test targets.
-- Last reviewed: `2026-03-01`.
+- Last reviewed: `2026-03-12`.
 
 ## Scope and Project Layout
 
@@ -49,7 +49,7 @@ Runtime values come from `.xcconfig` and are exposed via Info.plist build settin
 - `KEYCHAIN_ACCESS_GROUP`
 - `KEYCHAIN_SERVICE`
 - `ASSOCIATED_DOMAINS` (for example `webcredentials:app.trysidebar.ai`)
-- `SENTRY_DSN` (optional; enables the main app target's Sentry SDK in Release builds)
+- `SENTRY_DSN` (optional reserved key; retained in the config surface, but the Apple bootstrap seam is currently inert)
 - `R2_ENDPOINT`
 - `R2_BUCKET`
 - `R2_FAVICON_BUCKET`
@@ -58,8 +58,8 @@ Runtime values come from `.xcconfig` and are exposed via Info.plist build settin
 Notes:
 - Non-production runtime paths fail fast when required configuration is missing or invalid.
 - Non-production builds do not silently fall back to production API endpoints.
-- The Apple Sentry integration is main-app-only in phase 1. Share extension, widgets, and Safari targets are intentionally excluded.
-- Sentry starts only in Release builds and is skipped in Debug/XCTest runs.
+- The Apple Sentry seam remains main-app-only. Share extension, widgets, and Safari targets remain excluded.
+- The Apple Sentry bootstrap is intentionally inert in the current release cycle, so Debug, XCTest, and Release/TestFlight runs all skip Apple SDK startup.
 
 ## Architecture Summary
 
@@ -185,26 +185,17 @@ Runners only need to be active when you want CI to process pushes to `dev`.
 - Script: `ios/sideBar/ci_scripts/ci_post_clone.sh`
 - It generates `SideBar.local.xcconfig` from environment variables.
 - Missing required values fail the build early.
-- Optional Sentry variables for release/TestFlight:
-  - `SENTRY_DSN` to enable SDK initialization inside the shipped app.
-  - `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` to enable dSYM upload.
-  - `SENTRY_CLI_VERSION` to pin the best-effort `sentry-cli` install used by the upload build phase.
+- `SENTRY_DSN` may still be present in the environment to preserve config compatibility, but current Apple builds ignore it because the bootstrap seam is inert.
+- `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_CLI_VERSION` are not used by the current Apple build path.
 - Xcode Cloud handles `main` branch builds for distribution.
 
-## Apple Sentry Operations
+## Apple Sentry Status
 
-- Runtime bootstrap lives in `ios/sideBar/sideBar/App/SentryBootstrap.swift` and is invoked from both app delegates.
-- The main app target runs `ios/sideBar/ci_scripts/upload_sentry_dsyms.sh` during Release builds.
-- The upload script skips Debug/simulator builds and no-ops unless `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are present.
-- If those Sentry upload variables are set, missing `sentry-cli` is treated as a release misconfiguration and fails the build.
-- Local archives can satisfy the upload step by either installing `sentry-cli` on `PATH` or setting `SENTRY_CLI_PATH`.
-
-Manual smoke test:
-
-1. Set `SENTRY_DSN` for the release/TestFlight build path.
-2. Archive a Release build with dSYM upload variables present.
-3. Install the build and trigger a short-lived smoke event from a temporary branch or targeted test code path.
-4. Confirm the event appears in Sentry with a symbolicated release/build tag before removing the smoke path.
+- Runtime bootstrap still lives in `ios/sideBar/sideBar/App/SentryBootstrap.swift` and is invoked from both app delegates.
+- `SentryBootstrap.startIfConfigured(...)` is currently a deliberate no-op that preserves the app launch seam without linking the Apple Sentry SDK.
+- The `sentry-cocoa` package, `Sentry` product linkage, and `Upload Sentry dSYMs` build phase were removed to reduce Apple package-resolution risk before release.
+- `ios/sideBar/ci_scripts/upload_sentry_dsyms.sh` is now an explicit disabled placeholder rather than an active release step.
+- Any future Apple Sentry reintroduction should start with a new design/plan pass rather than reactivating the old upload flow ad hoc.
 
 ## Extension Reliability Expectations
 
