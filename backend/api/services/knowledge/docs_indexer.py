@@ -81,14 +81,8 @@ class DocsIndexer:
                 continue
             rel_path = str(md_path.relative_to(self._docs_root))
             skill_id_raw = metadata.get("skill_id")
-            if (
-                isinstance(skill_id_raw, list)
-                or isinstance(skill_id_raw, str)
-                and skill_id_raw
-            ):
-                skill_id = skill_id_raw
-            else:
-                skill_id = None
+            is_valid = isinstance(skill_id_raw, list | str) and skill_id_raw
+            skill_id = skill_id_raw if is_valid else None
             catalog.append(
                 {
                     "id": rel_path,
