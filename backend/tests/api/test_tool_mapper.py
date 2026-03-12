@@ -410,6 +410,57 @@ def test_search_product_knowledge_tool_defined():
 
 
 @pytest.mark.asyncio
+async def test_execute_get_skill_inventory():
+    """Get Skill Inventory should return structured skill data."""
+    from api.services.tools.definitions_skills import get_skills_definitions
+    mapper = _build_mapper(get_skills_definitions())
+    result = await mapper.execute_tool(
+        "Get_Skill_Inventory",
+        {"filter": "all"},
+        context={
+            "user_id": "test-user",
+            "enabled_skill_ids": ["notes", "tasks"],
+            "runtime_capabilities": [
+                {"skill_id": "notes", "availability_status": "ready"},
+                {"skill_id": "tasks", "availability_status": "ready"},
+            ],
+        },
+    )
+    assert result["success"] is True
+    skills = result["data"]["skills"]
+    assert any(s["skill_id"] == "notes" for s in skills)
+
+
+@pytest.mark.asyncio
+async def test_execute_search_product_knowledge():
+    """Search Product Knowledge should return matching docs."""
+    from api.services.tools.definitions_skills import get_skills_definitions
+    from api.services.knowledge.provider import init_docs_indexer
+    from pathlib import Path
+    import tempfile
+    import api.services.knowledge.provider as _knowledge_provider
+
+    with tempfile.TemporaryDirectory() as tmp:
+        docs_root = Path(tmp)
+        (docs_root / "notes.md").write_text(
+            "---\ntitle: Notes\nsummary: Capture and organise your thoughts.\n"
+            "tags: [skills]\naudience: user\nsurfaces: [internal-knowledge]\n---\n\nContent.\n"
+        )
+        init_docs_indexer(docs_root)
+        try:
+            mapper = _build_mapper(get_skills_definitions())
+            result = await mapper.execute_tool(
+                "Search_Product_Knowledge",
+                {"query": "notes"},
+                context={"user_id": "test-user"},
+            )
+            assert result["success"] is True
+            assert "results" in result["data"]
+        finally:
+            _knowledge_provider._indexer = None
+
+
+@pytest.mark.asyncio
 async def test_execute_tool_returns_error_when_transcription_unavailable(monkeypatch):
     tools = {
         "Transcribe Audio": {

@@ -340,6 +340,28 @@ class ToolMapper:
                 )
                 return normalized
 
+            # Special case: Get Skill Inventory (internal tool)
+            if display_name == "Get Skill Inventory":
+                result = self._execute_get_skill_inventory(parameters, context)
+                normalized = self._normalize_result(result)
+                status = "success" if normalized.get("success") else "error"
+                tool_executions_total.labels(tool_skill, status).inc()
+                tool_execution_duration_seconds.labels(tool_skill).observe(
+                    time.time() - start_time
+                )
+                return normalized
+
+            # Special case: Search Product Knowledge (internal tool)
+            if display_name == "Search Product Knowledge":
+                result = self._execute_search_product_knowledge(parameters)
+                normalized = self._normalize_result(result)
+                status = "success" if normalized.get("success") else "error"
+                tool_executions_total.labels(tool_skill, status).inc()
+                tool_execution_duration_seconds.labels(tool_skill).observe(
+                    time.time() - start_time
+                )
+                return normalized
+
             # Validate paths if needed
             if tool_config.get("validate_write"):
                 if "path" in parameters:
@@ -422,6 +444,90 @@ class ToolMapper:
                 time.time() - start_time
             )
             return self._normalize_result({"success": False, "error": str(e)})
+
+    @staticmethod
+    def _execute_get_skill_inventory(
+        parameters: dict[str, Any],
+        context: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Handle Get Skill Inventory tool execution."""
+        from api.services.tools.skill_metadata import (
+            EXPOSED_SKILLS,
+            SKILL_DISPLAY,
+            get_skill_tier,
+        )
+
+        filter_status = parameters.get("filter", "all")
+        enabled_skill_ids: list[str] = []
+        runtime_capabilities: list[dict[str, Any]] = []
+        if context:
+            enabled_skill_ids = context.get("enabled_skill_ids") or []
+            runtime_capabilities = context.get("runtime_capabilities") or []
+
+        enabled_set = set(enabled_skill_ids)
+        runtime_by_id = {str(c.get("skill_id")): c for c in runtime_capabilities}
+
+        skills = []
+        for skill_id in sorted(EXPOSED_SKILLS):
+            display = SKILL_DISPLAY.get(skill_id, {})
+            runtime = runtime_by_id.get(skill_id, {})
+            status = str(runtime.get("availability_status", "unknown"))
+            enabled = skill_id in enabled_set
+
+            if filter_status == "enabled" and not enabled:
+                continue
+            if filter_status == "disabled" and enabled:
+                continue
+            if filter_status == "blocked" and status != "blocked":
+                continue
+
+            skills.append(
+                {
+                    "skill_id": skill_id,
+                    "name": display.get("name", skill_id),
+                    "description": display.get("description", ""),
+                    "tier": get_skill_tier(skill_id),
+                    "enabled": enabled,
+                    "availability_status": status,
+                    "availability_reason": runtime.get("availability_reason"),
+                    "availability_remediation": runtime.get("availability_remediation"),
+                }
+            )
+
+        return {"success": True, "data": {"skills": skills}}
+
+    @staticmethod
+    def _execute_search_product_knowledge(
+        parameters: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Handle Search Product Knowledge tool execution."""
+        from api.services.knowledge.provider import get_docs_indexer
+
+        query = parameters.get("query", "")
+        if not query:
+            return {"success": False, "error": "query is required"}
+
+        try:
+            indexer = get_docs_indexer()
+        except RuntimeError:
+            return {"success": False, "error": "Product knowledge not available"}
+
+        results = indexer.search(query, max_results=5)
+        formatted = []
+        for doc in results:
+            sections_text = "\n\n".join(
+                f"### {s['heading']}\n{s['content']}" for s in doc.get("sections", [])
+            )
+            formatted.append(
+                {
+                    "title": doc["title"],
+                    "summary": doc["summary"],
+                    "path": doc["path"],
+                    "content": sections_text,
+                }
+            )
+
+        return {"success": True, "data": {"results": formatted}}
 
     @staticmethod
     def _is_skill_enabled(
