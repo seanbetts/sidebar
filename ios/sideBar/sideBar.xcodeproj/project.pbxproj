@@ -601,6 +601,7 @@
 				14C84A442F10562300FE0C16 /* Sources */,
 				14E0AB1A2F20000000BEEF01 /* Generate SideBarConfig.plist */,
 				14E0AB1B2F30000000BEEF07 /* SwiftLint */,
+				14E0AB1C2F30000000BEEF08 /* Upload Sentry dSYMs */,
 				14C84A452F10562300FE0C16 /* Frameworks */,
 				14C84A462F10562300FE0C16 /* Resources */,
 				142516BC2F1EB96B0072E4F9 /* Embed Foundation Extensions */,
@@ -895,6 +896,23 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "OUTPUT=\"${DERIVED_FILE_DIR}/swiftlint.output\"\nSWIFTLINT=\"\"\nif command -v swiftlint > /dev/null; then\n  SWIFTLINT=\"swiftlint\"\nelif [ -x \"/opt/homebrew/bin/swiftlint\" ]; then\n  SWIFTLINT=\"/opt/homebrew/bin/swiftlint\"\nelif [ -x \"/usr/local/bin/swiftlint\" ]; then\n  SWIFTLINT=\"/usr/local/bin/swiftlint\"\nfi\nif [ -n \"${SWIFTLINT}\" ]; then\n  \"${SWIFTLINT}\" lint --config \"${SRCROOT}/.swiftlint.yml\" \"${SRCROOT}/sideBar\" \"${SRCROOT}/sideBarTests\"\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\ntouch \"${OUTPUT}\"\n";
+		};
+		14E0AB1C2F30000000BEEF08 /* Upload Sentry dSYMs */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)",
+				"$(SRCROOT)/ci_scripts/upload_sentry_dsyms.sh",
+			);
+			name = "Upload Sentry dSYMs";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/upload-sentry-dsyms.output",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n\"${SRCROOT}/ci_scripts/upload_sentry_dsyms.sh\"\ntouch \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

@@ -141,3 +141,46 @@ def test_ci_post_clone_has_no_apple_sentry_package_manager_bootstrap() -> None:
     assert "carthage" not in script
     assert "pod install" not in script
     assert "sentry-cocoa" not in script
+
+
+def test_ci_post_clone_installs_sentry_cli_best_effort_when_upload_is_enabled(tmp_path: Path) -> None:
+    """Xcode Cloud should provision sentry-cli when dSYM upload credentials are present."""
+    repo_root = make_temp_repo(tmp_path)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    install_log = tmp_path / "sentry-install.log"
+    write_executable(bin_dir / "swiftlint", "#!/bin/bash\nexit 0\n")
+    write_executable(
+        bin_dir / "curl",
+        (
+            "#!/bin/bash\n"
+            "cat <<'SCRIPT'\n"
+            "#!/bin/bash\n"
+            "mkdir -p \"${INSTALL_DIR}\"\n"
+            "printf '%s\\n' \"${SENTRY_CLI_VERSION}\" > \"" + str(install_log) + "\"\n"
+            "cat > \"${INSTALL_DIR}/sentry-cli\" <<'EOF'\n"
+            "#!/bin/bash\n"
+            "exit 0\n"
+            "EOF\n"
+            "chmod +x \"${INSTALL_DIR}/sentry-cli\"\n"
+            "SCRIPT\n"
+        ),
+    )
+
+    env = required_env(repo_root, bin_dir)
+    env["SENTRY_CLI_VERSION"] = "2.58.2"
+    env["PATH"] = f"{bin_dir}:/usr/bin:/bin"
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    installed_cli = repo_root / "ios" / "sideBar" / ".tools" / "sentry-cli" / "bin" / "sentry-cli"
+    assert installed_cli.exists()
+    assert install_log.read_text(encoding="utf-8").strip() == "2.58.2"

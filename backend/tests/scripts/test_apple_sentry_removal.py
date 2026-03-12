@@ -72,7 +72,8 @@ def test_project_allows_at_most_one_future_approved_sentry_dependency_path() -> 
 
 def test_project_reserves_at_most_one_upload_hook_entry() -> None:
     project_contents = PBXPROJ.read_text(encoding="utf-8")
-    assert project_contents.count("Upload Sentry dSYMs") <= 1
+    assert project_contents.count('name = "Upload Sentry dSYMs";') == 1
+    assert "upload_sentry_dsyms.sh" in project_contents
 
 
 def test_vendored_sdk_is_linked_only_to_the_main_app_target() -> None:
