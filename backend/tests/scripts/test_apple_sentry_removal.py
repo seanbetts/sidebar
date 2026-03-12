@@ -64,8 +64,8 @@ def test_project_allows_at_most_one_future_approved_sentry_dependency_path() -> 
     }
     selected_paths = [name for name, is_active in active_paths.items() if is_active]
 
-    assert len(selected_paths) <= 1, (
-        "Apple Sentry reintegration must choose a single dependency path, "
+    assert selected_paths == ["vendored"], (
+        "Apple Sentry reintegration must rely exclusively on the vendored XCFramework path as the approved dependency, "
         f"found multiple active paths: {selected_paths}"
     )
 
@@ -102,18 +102,8 @@ def _has_carthage_sentry_path() -> bool:
 
 
 def _has_vendored_sentry_path() -> bool:
-    vendored_patterns = ("*Sentry*.framework", "*Sentry*.xcframework")
-    excluded_roots = {
-        IOS_ROOT / "Carthage",
-        IOS_ROOT / "Pods",
-        IOS_ROOT / ".build",
-    }
-    return any(
-        path.exists()
-        and not any(excluded_root in path.parents for excluded_root in excluded_roots)
-        for pattern in vendored_patterns
-        for path in IOS_ROOT.rglob(pattern)
-    )
+    vendor_path = IOS_ROOT / "Vendor" / "Sentry"
+    return (vendor_path / "Sentry.xcframework").exists()
 
 
 def _file_contains_pattern(path: Path, pattern: str) -> bool:

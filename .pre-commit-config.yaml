@@ -140,11 +140,14 @@ repos:
     hooks:
       - id: check-added-large-files
         args: [--maxkb=1000]
+        exclude: ^ios/sideBar/Vendor/Sentry/
       - id: check-json
       - id: check-yaml
       - id: check-merge-conflict
       - id: end-of-file-fixer
+        exclude: ^ios/sideBar/Vendor/Sentry/
       - id: trailing-whitespace
+        exclude: ^ios/sideBar/Vendor/Sentry/
       - id: no-commit-to-branch
         args: [--branch, main]
 
