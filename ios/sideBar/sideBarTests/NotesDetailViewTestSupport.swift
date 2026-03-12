@@ -161,34 +161,11 @@ func mount(
 @MainActor
 @discardableResult
 func mount(
-    _ view: NotesDetailView,
-    environment: AppEnvironment
-) -> UIHostingController<AnyView> {
-    let controller = UIHostingController(
-        rootView: AnyView(view.environmentObject(environment))
-    )
-    let window = makeHostingWindow(frame: CGRect(x: 0, y: 0, width: 900, height: 700))
-    window.rootViewController = controller
-    window.isHidden = false
-    let rootView = controller.view!
-    rootView.frame = window.bounds
-    rootView.setNeedsLayout()
-    rootView.layoutIfNeeded()
-    drainNotesHostingRunLoop()
-    NotesDetailViewTestRetainer.hostingControllers.append(controller)
-    NotesDetailViewTestRetainer.hostingWindows.append(window)
-    return controller
-}
-
-@MainActor
-@discardableResult
-func mount(
-    _ container: AttributedNoteEditorContainer,
-    environment: AppEnvironment,
+    _ view: some View,
     frame: CGRect = CGRect(x: 0, y: 0, width: 390, height: 844)
 ) -> UIHostingController<AnyView> {
     let controller = UIHostingController(
-        rootView: AnyView(container.environmentObject(environment))
+        rootView: AnyView(view)
     )
     let window = makeHostingWindow(frame: frame)
     window.rootViewController = controller
@@ -201,6 +178,28 @@ func mount(
     NotesDetailViewTestRetainer.hostingControllers.append(controller)
     NotesDetailViewTestRetainer.hostingWindows.append(window)
     return controller
+}
+
+@MainActor
+@discardableResult
+func mount(
+    _ view: NotesDetailView,
+    environment: AppEnvironment
+) -> UIHostingController<AnyView> {
+    mount(
+        view.environmentObject(environment),
+        frame: CGRect(x: 0, y: 0, width: 900, height: 700)
+    )
+}
+
+@MainActor
+@discardableResult
+func mount(
+    _ container: AttributedNoteEditorContainer,
+    environment: AppEnvironment,
+    frame: CGRect = CGRect(x: 0, y: 0, width: 390, height: 844)
+) -> UIHostingController<AnyView> {
+    mount(container.environmentObject(environment), frame: frame)
 }
 
 @MainActor

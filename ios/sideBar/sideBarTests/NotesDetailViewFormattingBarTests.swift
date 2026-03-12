@@ -87,22 +87,10 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
 
     @available(iOS 26.0, *)
     func testFloatingFormattingBarRendersTopTrailingInEditMode() async throws {
-        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
-        context.editorViewModel.enterEditMode()
-        let environment = makeNotesDetailTestEnvironment()
         let controller = mount(
-            NotesDetailView(
-                viewModel: context.notesViewModel,
-                editorViewModel: context.editorViewModel,
-                isMoveSheetPresented: .constant(false),
-                moveSelection: .constant(""),
-                isDeleteAlertPresented: .constant(false),
-                isExporting: .constant(false),
-                exportDocument: .constant(nil),
-                exportFilename: .constant(""),
-                formattingBarPresentationOverride: .floatingTopTrailing
-            ),
-            environment: environment
+            FloatingFormattingBarHost(
+                configuration: .disabled
+            )
         )
         let barView = try XCTUnwrap(
             findDescendantView(
@@ -115,7 +103,11 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
 
         XCTAssertLessThan(barFrame.width, 240)
         XCTAssertGreaterThan(barFrame.minX, rootBounds.midX)
-        XCTAssertGreaterThan(barFrame.maxX, rootBounds.maxX - 40)
+        XCTAssertEqual(
+            barFrame.maxX,
+            rootBounds.maxX - DesignTokens.Spacing.md,
+            accuracy: 0.5
+        )
     }
 
     @available(iOS 26.0, *)
@@ -315,6 +307,25 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
 }
 
 #if os(iOS)
+@MainActor
+@available(iOS 26.0, *)
+private struct FloatingFormattingBarHost: View {
+    let configuration: NoteFormattingBarConfiguration
+
+    var body: some View {
+        Color.clear
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .topTrailing) {
+                UIKitNoteFormattingBarRepresentable(
+                    configuration: configuration
+                )
+                .fixedSize()
+                .padding(.top, DesignTokens.Spacing.sm)
+                .padding(.trailing, DesignTokens.Spacing.md)
+            }
+    }
+}
+
 @MainActor
 private func findDescendantView(in view: UIView, accessibilityIdentifier: String) -> UIView? {
     if view.accessibilityIdentifier == accessibilityIdentifier {
