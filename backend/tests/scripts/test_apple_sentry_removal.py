@@ -75,6 +75,19 @@ def test_project_reserves_at_most_one_upload_hook_entry() -> None:
     assert project_contents.count("Upload Sentry dSYMs") <= 1
 
 
+def test_vendored_sdk_is_linked_only_to_the_main_app_target() -> None:
+    project_contents = PBXPROJ.read_text(encoding="utf-8")
+
+    assert "Vendor/Sentry/Sentry.xcframework" in project_contents
+    assert "/* Sentry.xcframework */ = {isa = PBXFileReference;" in project_contents
+
+    sentry_frameworks_phases = _frameworks_phases_linking_sentry(project_contents)
+
+    assert "sideBar" in sentry_frameworks_phases
+    assert "sideBarWidgetsExtension" not in sentry_frameworks_phases
+    assert "ShareExtension" not in sentry_frameworks_phases
+
+
 def _has_swift_package_sentry_path() -> bool:
     project_contents = PBXPROJ.read_text(encoding="utf-8")
     return "sentry-cocoa" in project_contents or "productName = Sentry" in project_contents
@@ -110,3 +123,30 @@ def _file_contains_pattern(path: Path, pattern: str) -> bool:
     if path.exists() is False:
         return False
     return re.search(pattern, path.read_text(encoding="utf-8")) is not None
+
+
+def _frameworks_phases_linking_sentry(project_contents: str) -> set[str]:
+    target_names: set[str] = set()
+    for phase_match in re.finditer(
+        r"(?P<phase_id>[A-F0-9]{24}) /\* Frameworks \*/ = \{\s*isa = PBXFrameworksBuildPhase;.*?files = \((?P<files>.*?)\);\s*runOnlyForDeploymentPostprocessing = 0;\s*\};",
+        project_contents,
+        re.DOTALL,
+    ):
+        if "Sentry.xcframework in Frameworks" not in phase_match.group("files"):
+            continue
+        phase_id = phase_match.group("phase_id")
+        for target_name in ("sideBar", "sideBarWidgetsExtension", "ShareExtension"):
+            if phase_id in _native_target_build_phases(project_contents, target_name):
+                target_names.add(target_name)
+    return target_names
+
+
+def _native_target_build_phases(project_contents: str, target_name: str) -> str:
+    match = re.search(
+        rf"[A-F0-9]{{24}} /\* {re.escape(target_name)} \*/ = \{{\s*isa = PBXNativeTarget;.*?buildPhases = \((?P<phases>.*?)\);\s*buildRules = \(",
+        project_contents,
+        re.DOTALL,
+    )
+    if match is None:
+        return ""
+    return match.group("phases")

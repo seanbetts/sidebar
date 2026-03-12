@@ -25,6 +25,7 @@
 		14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
 		14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		14F1A0B82F31000000BEEF03 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0B92F31000000BEEF03 /* Markdown */; };
+		E1D200012F90000100ABC001 /* Sentry.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1D200022F90000100ABC001 /* Sentry.xcframework */; };
 		9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		A7C1D2E32B01000100A1B2C3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
@@ -146,6 +147,7 @@
 		14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14DFA3272F10F45E001DAF5B /* SideBarCache.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = SideBarCache.xcdatamodel; sourceTree = "<group>"; };
 		14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/SideBar.xcconfig; sourceTree = "<group>"; };
+		E1D200022F90000100ABC001 /* Sentry.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Vendor/Sentry/Sentry.xcframework; sourceTree = "<group>"; };
 		4F1D2A6D2FF2A6A100A0B2C3 /* sideBar/sideBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = sideBar/sideBar.entitlements; sourceTree = "<group>"; };
 		87939F14DC374DD684951468 /* sideBar/Base.lproj/SideBarLaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = sideBar/Base.lproj/SideBarLaunchScreen.storyboard; sourceTree = "<group>"; };
 		A1B2C3E12F40000200ABCDEF /* ShareExtensionTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShareExtensionTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -344,6 +346,7 @@
 				14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */,
 				14F1A0B82F31000000BEEF03 /* Markdown in Frameworks */,
 				1413DE4E2F2B514C002495EE /* sideBarShared.framework in Frameworks */,
+				E1D200012F90000100ABC001 /* Sentry.xcframework in Frameworks */,
 				14DFA3322F110406001DAF5B /* PostgREST in Frameworks */,
 				14DFA3302F110406001DAF5B /* Functions in Frameworks */,
 				14DFA32E2F110406001DAF5B /* Auth in Frameworks */,
@@ -382,6 +385,7 @@
 			children = (
 				1448E6C92F27A6420066EE47 /* WidgetKit.framework */,
 				1448E6CB2F27A6420066EE47 /* SwiftUI.framework */,
+				E1D200022F90000100ABC001 /* Sentry.xcframework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
