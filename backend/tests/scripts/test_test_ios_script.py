@@ -13,6 +13,98 @@ def write_executable(path: Path, contents: str) -> None:
     path.chmod(path.stat().st_mode | stat.S_IEXEC)
 
 
+def write_xcodebuild_logger(path: Path, log_path: Path) -> None:
+    write_executable(
+        path,
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$*\" >> \"{log_path}\"\n"
+        "exit 0\n",
+    )
+
+
+def write_xcrun_stub(
+    path: Path,
+    *,
+    devices_json: str,
+    runtimes_json: str,
+    device_types_json: str,
+    created_udid: str = "PREPUSH-UDID-1234",
+) -> None:
+    script = f"""#!/bin/bash
+if [[ "$1 $2 $3" == "simctl list devices" ]]; then
+  cat <<'EOF'
+{devices_json}
+EOF
+  exit 0
+fi
+if [[ "$1 $2 $3" == "simctl list runtimes" ]]; then
+  cat <<'EOF'
+{runtimes_json}
+EOF
+  exit 0
+fi
+if [[ "$1 $2 $3" == "simctl list devicetypes" ]]; then
+  cat <<'EOF'
+{device_types_json}
+EOF
+  exit 0
+fi
+if [[ "$1 $2" == "simctl create" ]]; then
+  echo {created_udid}
+  exit 0
+fi
+exit 0
+"""
+    write_executable(path, script)
+
+
+def pre_push_env(bin_dir: Path, **overrides: str) -> dict[str, str]:
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "SIDEBAR_PRE_PUSH_MODE": "YES",
+            "SIDEBAR_PRE_PUSH_STATE_DIR": str(bin_dir.parent / "state"),
+            "SIDEBAR_PRE_PUSH_SIMULATOR_NAME": "sideBar PrePush iPad",
+            "IOS_DESTINATION": "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
+        }
+    )
+    env.update(overrides)
+    return env
+
+
+AVAILABLE_IOS_RUNTIMES_JSON = """
+{"runtimes":[
+  {
+    "identifier":"com.apple.CoreSimulator.SimRuntime.iOS-26-2",
+    "isAvailable":true,
+    "platform":"iOS",
+    "version":"26.2"
+  }
+]}
+""".strip()
+
+
+EMPTY_IOS_RUNTIMES_JSON = """
+{"runtimes":[]}
+""".strip()
+
+
+IPAD_DEVICE_TYPES_JSON = """
+{"devicetypes":[
+  {
+    "name":"iPad Pro 13-inch (M5)",
+    "identifier":"com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M5"
+  }
+]}
+""".strip()
+
+
+EMPTY_DEVICE_TYPES_JSON = """
+{"devicetypes":[]}
+""".strip()
+
+
 def test_ci_uses_temp_git_config_when_global_config_is_locked(tmp_path: Path) -> None:
     home_dir = tmp_path / "home"
     home_dir.mkdir()
@@ -458,3 +550,173 @@ def test_skip_package_resolution_mode_runs_tests_without_explicit_resolve(
     assert len(log_lines) == 1
     assert "-resolvePackageDependencies" not in log_lines[0]
     assert " test" in log_lines[0]
+
+
+def test_pre_push_mode_creates_dedicated_simulator_and_rewrites_destination(
+    tmp_path: Path,
+) -> None:
+    """Pre-push mode should target a dedicated simulator by UDID."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+    write_xcodebuild_logger(bin_dir / "xcodebuild", xcodebuild_log)
+    write_xcrun_stub(
+        bin_dir / "xcrun",
+        devices_json='{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-26-2":[]}}',
+        runtimes_json=AVAILABLE_IOS_RUNTIMES_JSON,
+        device_types_json=IPAD_DEVICE_TYPES_JSON,
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=pre_push_env(bin_dir),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "-destination platform=iOS Simulator,id=PREPUSH-UDID-1234" in xcodebuild_log.read_text()
+    assert (tmp_path / "state" / "simulator-udid").read_text().strip() == "PREPUSH-UDID-1234"
+
+
+def test_pre_push_mode_reuses_existing_simulator_udid(tmp_path: Path) -> None:
+    """Pre-push mode should reuse an existing dedicated simulator."""
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    (state_dir / "simulator-udid").write_text("EXISTING-UDID-1234")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+    create_log = tmp_path / "xcrun-create.log"
+    write_xcodebuild_logger(bin_dir / "xcodebuild", xcodebuild_log)
+    write_executable(
+        bin_dir / "xcrun",
+        "#!/bin/bash\n"
+        "if [[ \"$1 $2 $3\" == \"simctl list devices\" ]]; then\n"
+        "  cat <<'EOF'\n"
+        '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-26-2":[{"name":"sideBar PrePush iPad","udid":"EXISTING-UDID-1234","isAvailable":true,"state":"Shutdown"}]}}\n'
+        "EOF\n"
+        "  exit 0\n"
+        "fi\n"
+        "if [[ \"$1 $2 $3\" == \"simctl list runtimes\" ]]; then\n"
+        "  cat <<'EOF'\n"
+        f"{AVAILABLE_IOS_RUNTIMES_JSON}\n"
+        "EOF\n"
+        "  exit 0\n"
+        "fi\n"
+        "if [[ \"$1 $2 $3\" == \"simctl list devicetypes\" ]]; then\n"
+        "  cat <<'EOF'\n"
+        f"{IPAD_DEVICE_TYPES_JSON}\n"
+        "EOF\n"
+        "  exit 0\n"
+        "fi\n"
+        "if [[ \"$1 $2\" == \"simctl create\" ]]; then\n"
+        f"  printf '%s\\n' \"$*\" >> \"{create_log}\"\n"
+        "  echo SHOULD-NOT-BE-USED\n"
+        "  exit 0\n"
+        "fi\n"
+        "exit 0\n",
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=pre_push_env(bin_dir, SIDEBAR_PRE_PUSH_STATE_DIR=str(state_dir)),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "-destination platform=iOS Simulator,id=EXISTING-UDID-1234" in xcodebuild_log.read_text()
+    assert not create_log.exists()
+
+
+def test_pre_push_mode_recovers_from_stale_udid(tmp_path: Path) -> None:
+    """Pre-push mode should replace a stale UDID with the current simulator UDID."""
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    (state_dir / "simulator-udid").write_text("STALE-UDID-1234")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+    write_xcodebuild_logger(bin_dir / "xcodebuild", xcodebuild_log)
+    write_xcrun_stub(
+        bin_dir / "xcrun",
+        devices_json='{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-26-2":[{"name":"sideBar PrePush iPad","udid":"VALID-UDID-5678","isAvailable":true,"state":"Shutdown"}]}}',
+        runtimes_json=AVAILABLE_IOS_RUNTIMES_JSON,
+        device_types_json=IPAD_DEVICE_TYPES_JSON,
+        created_udid="VALID-UDID-5678",
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=pre_push_env(bin_dir, SIDEBAR_PRE_PUSH_STATE_DIR=str(state_dir)),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "-destination platform=iOS Simulator,id=VALID-UDID-5678" in xcodebuild_log.read_text()
+    assert (state_dir / "simulator-udid").read_text().strip() == "VALID-UDID-5678"
+
+
+def test_pre_push_mode_fails_when_no_ios_runtime_is_available(tmp_path: Path) -> None:
+    """Pre-push mode should fail clearly when no iOS runtime can be resolved."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    write_xcodebuild_logger(bin_dir / "xcodebuild", tmp_path / "xcodebuild.log")
+    write_xcrun_stub(
+        bin_dir / "xcrun",
+        devices_json='{"devices":{}}',
+        runtimes_json=EMPTY_IOS_RUNTIMES_JSON,
+        device_types_json=IPAD_DEVICE_TYPES_JSON,
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=pre_push_env(bin_dir),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "Error: could not resolve an available iOS simulator runtime for pre-push mode." in result.stdout
+
+
+def test_pre_push_mode_fails_when_device_type_cannot_be_resolved(
+    tmp_path: Path,
+) -> None:
+    """Pre-push mode should fail clearly when the simulator device type is missing."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    write_xcodebuild_logger(bin_dir / "xcodebuild", tmp_path / "xcodebuild.log")
+    write_xcrun_stub(
+        bin_dir / "xcrun",
+        devices_json='{"devices":{}}',
+        runtimes_json=AVAILABLE_IOS_RUNTIMES_JSON,
+        device_types_json=EMPTY_DEVICE_TYPES_JSON,
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=pre_push_env(bin_dir),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert (
+        "Error: could not resolve simulator device type for destination "
+        "platform=iOS Simulator,name=iPad Pro 13-inch (M5)."
+    ) in result.stdout
