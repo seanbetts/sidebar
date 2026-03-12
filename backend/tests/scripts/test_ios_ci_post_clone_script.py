@@ -71,8 +71,8 @@ def test_ci_post_clone_writes_optional_sentry_dsn(tmp_path: Path) -> None:
     assert "INFOPLIST_KEY_SENTRY_DSN = $(SENTRY_DSN)" in generated
 
 
-def test_ci_post_clone_skips_sentry_cli_install_without_sentry_upload_env(tmp_path: Path) -> None:
-    """The post-clone script should not attempt sentry-cli install without upload secrets."""
+def test_ci_post_clone_no_longer_mentions_sentry_cli_install(tmp_path: Path) -> None:
+    """The post-clone script should only generate config, not sentry-cli setup."""
     repo_root = make_temp_repo(tmp_path)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -94,4 +94,4 @@ def test_ci_post_clone_skips_sentry_cli_install_without_sentry_upload_env(tmp_pa
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "Sentry dSYM upload disabled" in result.stdout
+    assert "sentry-cli" not in result.stdout

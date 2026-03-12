@@ -15,12 +15,6 @@
 #   - ASSOCIATED_DOMAINS
 # Optional (enables Apple app Sentry SDK in release builds):
 #   - SENTRY_DSN
-# Optional (enables dSYM upload when all are present):
-#   - SENTRY_AUTH_TOKEN
-#   - SENTRY_ORG
-#   - SENTRY_PROJECT
-# Optional (pins the best-effort sentry-cli install, defaults to 2.58.2):
-#   - SENTRY_CLI_VERSION
 
 set -euo pipefail
 
@@ -41,41 +35,6 @@ elif command -v brew >/dev/null 2>&1; then
 else
     echo "warning: Homebrew not found and SwiftLint not installed; continuing without SwiftLint"
 fi
-
-ensure_sentry_cli() {
-    echo "=== ci_post_clone.sh: Ensuring sentry-cli is available (best effort) ==="
-
-    if [[ -z "${SENTRY_AUTH_TOKEN:-}" || -z "${SENTRY_ORG:-}" || -z "${SENTRY_PROJECT:-}" ]]; then
-        echo "Sentry dSYM upload disabled; set SENTRY_AUTH_TOKEN, SENTRY_ORG, and SENTRY_PROJECT to enable it"
-        return 0
-    fi
-
-    local install_root="$SIDEBAR_DIR/.tools/sentry-cli"
-    local install_dir="$install_root/bin"
-    local cli_version="${SENTRY_CLI_VERSION:-2.58.2}"
-
-    if command -v sentry-cli >/dev/null 2>&1; then
-        echo "sentry-cli already available at: $(command -v sentry-cli)"
-        return 0
-    fi
-
-    if [[ -x "$install_dir/sentry-cli" ]]; then
-        echo "sentry-cli already installed at: $install_dir/sentry-cli"
-        return 0
-    fi
-
-    if ! command -v curl >/dev/null 2>&1; then
-        echo "warning: curl not found; unable to install sentry-cli automatically"
-        return 0
-    fi
-
-    mkdir -p "$install_dir"
-    if INSTALL_DIR="$install_dir" SENTRY_CLI_VERSION="$cli_version" curl -sL https://sentry.io/get-cli/ | bash; then
-        echo "Installed sentry-cli ${cli_version} to $install_dir/sentry-cli"
-    else
-        echo "warning: Unable to install sentry-cli automatically; dSYM upload build phase will require sentry-cli on PATH or SENTRY_CLI_PATH"
-    fi
-}
 
 echo "=== ci_post_clone.sh: Generating SideBar.local.xcconfig ==="
 
@@ -142,8 +101,6 @@ INFOPLIST_KEY_KEYCHAIN_SERVICE = \$(KEYCHAIN_SERVICE)"
 # Write to both locations the project might reference
 REPO_ROOT="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/../.." && pwd)}"
 SIDEBAR_DIR="$REPO_ROOT/ios/sideBar"
-
-ensure_sentry_cli
 
 echo "$XCCONFIG_CONTENT" > "$SIDEBAR_DIR/SideBar.local.xcconfig"
 echo "Created: $SIDEBAR_DIR/SideBar.local.xcconfig"
