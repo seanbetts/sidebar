@@ -141,7 +141,7 @@ def test_ci_post_clone_runs_carthage_update_when_a_cartfile_exists(tmp_path: Pat
     bin_dir.mkdir()
     carthage_log = tmp_path / "carthage.log"
     (repo_root / "ios" / "sideBar" / "Cartfile").write_text(
-        'github "getsentry/sentry-cocoa" == 8.55.1\n',
+        'github "getsentry/sentry-cocoa" == 9.7.0\n',
         encoding="utf-8",
     )
     write_executable(bin_dir / "swiftlint", "#!/bin/bash\nexit 0\n")

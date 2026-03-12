@@ -568,7 +568,7 @@ def test_cartfile_triggers_carthage_update_before_xcodebuild(tmp_path: Path) -> 
     cartfile = REPO_ROOT / "ios" / "sideBar" / "Cartfile"
     created_cartfile = False
     if not cartfile.exists():
-        cartfile.write_text('github "getsentry/sentry-cocoa" == 8.55.1\n', encoding="utf-8")
+        cartfile.write_text('github "getsentry/sentry-cocoa" == 9.7.0\n', encoding="utf-8")
         created_cartfile = True
 
     try:
