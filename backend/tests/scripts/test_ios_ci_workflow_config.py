@@ -91,6 +91,15 @@ def _job_step(workflow: dict[str, object], job_name: str, prefix: str) -> dict[s
     raise AssertionError(f"Missing step {prefix!r} in {job_name}")
 
 
+def _steps_using(workflow: dict[str, object], job_name: str, action_prefix: str) -> list[dict[str, object]]:
+    """Return steps using an action prefix within a workflow job."""
+    return [
+        step
+        for step in workflow["jobs"][job_name]["steps"]
+        if step.get("uses", "").startswith(action_prefix)
+    ]
+
+
 def _test_target_names_from_plan(path: Path) -> set[str]:
     """Return test target names from an Xcode `.xctestplan` file."""
     payload = json.loads(path.read_text())
@@ -273,6 +282,74 @@ def test_ios_ci_ui_lane_receives_explicit_ui_test_secrets() -> None:
     assert env["API_BASE_URL"] == "${{ secrets.API_BASE_URL }}"
     assert env["SUPABASE_URL"] == "${{ secrets.SUPABASE_URL }}"
     assert env["SUPABASE_ANON_KEY"] == "${{ secrets.SUPABASE_ANON_KEY }}"
+
+
+def test_ios_ci_stores_result_bundles_under_runner_temp() -> None:
+    """Per-run Apple artifacts should live under runner temp, not the persistent workspace."""
+    workflows_and_jobs = [
+        (_dev_workflow(), "ios_test_dev"),
+        (_main_workflow(), "ios_test_main"),
+        (_dispatch_workflow(), "ios_test_dispatch"),
+    ]
+
+    for workflow, job_name in workflows_and_jobs:
+        run_step = _job_step(workflow, job_name, "Run tests")
+        env = run_step["env"]
+
+        assert env["IOS_RESULT_BUNDLE_PATH"].startswith("${{ runner.temp }}/ios-test-results/")
+        assert env["IOS_SIMULATOR_DIAGNOSTICS_DIR"].startswith(
+            "${{ runner.temp }}/ios-test-results/"
+        )
+
+
+def test_ios_ci_uploads_failure_artifacts_with_short_retention() -> None:
+    """Failure artifacts should expire quickly to avoid exhausting GitHub storage."""
+    workflows_and_jobs = [
+        (_dev_workflow(), "ios_test_dev"),
+        (_main_workflow(), "ios_test_main"),
+        (_dispatch_workflow(), "ios_test_dispatch"),
+    ]
+
+    for workflow, job_name in workflows_and_jobs:
+        upload_steps = _steps_using(workflow, job_name, "actions/upload-artifact@")
+        assert upload_steps
+        for step in upload_steps:
+            assert step["with"]["retention-days"] == "1"
+
+
+def test_ios_ci_always_cleans_runner_test_outputs() -> None:
+    """Apple lanes should clean derived data and temp result bundles after every run."""
+    workflows_and_jobs = [
+        (_dev_workflow(), "ios_test_dev"),
+        (_main_workflow(), "ios_test_main"),
+        (_dispatch_workflow(), "ios_test_dispatch"),
+    ]
+
+    for workflow, job_name in workflows_and_jobs:
+        cleanup_step = _job_step(workflow, job_name, "Cleanup test outputs")
+        cleanup_script = cleanup_step["run"]
+
+        if job_name == "ios_test_dispatch":
+            assert cleanup_step["if"] == (
+                "${{ always() && (github.event.inputs.lane == 'all' || "
+                "github.event.inputs.lane == matrix.lane) }}"
+            )
+        else:
+            assert cleanup_step["if"] == "${{ always() }}"
+        assert "${{ runner.temp }}/sidebar-deriveddata-" in cleanup_script
+        assert "${{ runner.temp }}/ios-test-results/" in cleanup_script
+
+
+def test_dev_workflow_does_not_collect_or_upload_simulator_diagnostics() -> None:
+    """Dev logic lanes should avoid bulky simulator diagnostics on failure."""
+    workflow = _dev_workflow()
+    run_step = _job_step(workflow, "ios_test_dev", "Run tests")
+    upload_steps = _steps_using(workflow, "ios_test_dev", "actions/upload-artifact@")
+
+    assert (
+        run_step["env"]["IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE"] == "NO"
+    )
+    assert {step["name"] for step in upload_steps} == {"Upload xcresult bundle (${{ matrix.id }})"}
 
 
 def test_ios_ci_resolves_only_testing_specs_from_taxonomy() -> None:

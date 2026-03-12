@@ -65,7 +65,7 @@ jobs:
             destination_timeout: "180"
             enable_coverage: "NO"
             prepare_simulator_before_tests: "YES"
-            collect_simulator_diagnostics_on_failure: "YES"
+            collect_simulator_diagnostics_on_failure: "NO"
           - id: logic-ipad
             lane: logic
             label: "iPad Pro 13-inch (M5) iPadOS 26"
@@ -81,7 +81,7 @@ jobs:
             destination_timeout: "180"
             enable_coverage: "NO"
             prepare_simulator_before_tests: "YES"
-            collect_simulator_diagnostics_on_failure: "YES"
+            collect_simulator_diagnostics_on_failure: "NO"
           - id: logic-mac
             lane: logic
             label: "macOS 26"
@@ -101,6 +101,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Pre-clean stale test outputs (${{ matrix.id }})
+        run: |
+          rm -rf "${{ runner.temp }}/sidebar-deriveddata-${{ matrix.id }}"
+          rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"
+          rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics"
+          rm -rf "${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult"
+          rm -rf "${{ github.workspace }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics"
+          mkdir -p "${{ runner.temp }}/ios-test-results"
       - name: Resolve taxonomy test specs (${{ matrix.label }})
         run: |
           specs="$(python3 scripts/resolve_ios_test_specs.py --repo-root . --selection "dev_logic")"
@@ -121,7 +129,7 @@ jobs:
           IOS_TEST_PLAN: ${{ matrix.test_plan }}
           IOS_DESTINATION: ${{ matrix.destination }}
           IOS_DESTINATION_TIMEOUT: ${{ matrix.destination_timeout }}
-          IOS_RESULT_BUNDLE_PATH: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult
+          IOS_RESULT_BUNDLE_PATH: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult
           IOS_DERIVED_DATA_PATH: ${{ runner.temp }}/sidebar-deriveddata-${{ matrix.id }}
           IOS_CLEAN_DERIVED_DATA: "YES"
           IOS_ONLY_TESTING: ${{ env.IOS_ONLY_TESTING }}
@@ -131,8 +139,8 @@ jobs:
           IOS_PARALLEL_TESTING_ENABLED: ${{ matrix.parallel_testing_enabled }}
           IOS_MAXIMUM_PARALLEL_TESTING_WORKERS: ${{ matrix.max_parallel_test_workers }}
           IOS_PREPARE_SIMULATOR_BEFORE_TESTS: ${{ matrix.prepare_simulator_before_tests }}
-          IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE: ${{ matrix.collect_simulator_diagnostics_on_failure }}
-          IOS_SIMULATOR_DIAGNOSTICS_DIR: ${{ github.workspace }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics
+          IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE: "NO"
+          IOS_SIMULATOR_DIAGNOSTICS_DIR: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -145,13 +153,14 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: ios-xcresult-${{ matrix.id }}
-          path: ios-test-results/${{ matrix.id }}.xcresult
+          path: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult
           if-no-files-found: ignore
-      - name: Upload simulator diagnostics (${{ matrix.id }})
-        if: ${{ failure() }}
-        continue-on-error: true
-        uses: actions/upload-artifact@v6
-        with:
-          name: ios-simulator-diagnostics-${{ matrix.id }}
-          path: ios-test-results/${{ matrix.id }}-simulator-diagnostics
-          if-no-files-found: ignore
+          retention-days: 1
+      - name: Cleanup test outputs (${{ matrix.id }})
+        if: ${{ always() }}
+        run: |
+          rm -rf "${{ runner.temp }}/sidebar-deriveddata-${{ matrix.id }}"
+          rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"
+          rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics"
+          rm -rf "${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult"
+          rm -rf "${{ github.workspace }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics"
