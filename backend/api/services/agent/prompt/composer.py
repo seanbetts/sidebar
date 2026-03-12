@@ -223,6 +223,9 @@ class PromptContextService:
         try:
             product_knowledge_brief = get_docs_indexer().product_knowledge_brief
         except RuntimeError:
+            logger.warning(
+                "DocsIndexer not initialised; product_knowledge section will be empty"
+            )
             product_knowledge_brief = ""
 
         system_sections = [

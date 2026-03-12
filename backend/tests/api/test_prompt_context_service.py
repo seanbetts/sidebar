@@ -1,4 +1,6 @@
+import tempfile
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from sqlalchemy import text
@@ -345,10 +347,7 @@ def test_recent_activity_cache_expiry(test_db):
 
 def test_system_prompt_includes_product_knowledge_section(test_db):
     """The system prompt should include a product_knowledge section."""
-    from unittest.mock import patch
     from api.services.knowledge.provider import init_docs_indexer
-    from pathlib import Path
-    import tempfile
 
     # Build a minimal docs directory
     with tempfile.TemporaryDirectory() as tmp:
@@ -375,6 +374,9 @@ def test_system_prompt_includes_product_knowledge_section(test_db):
         )
         section_ids = [s["id"] for s in result["system_prompt"]["sections"]]
         assert "product_knowledge" in section_ids
+
+    import api.services.knowledge.provider as _knowledge_provider
+    _knowledge_provider._indexer = None
 
 
 def test_recent_activity_uses_user_timezone_for_day_boundary(test_db):
