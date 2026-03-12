@@ -2,6 +2,30 @@ import XCTest
 @testable import sideBar
 
 final class WebsitesPanelListSectionsTests: XCTestCase {
+    func testSectionOrderShowsSparseStateThenArchiveWhenOnlyArchiveRemains() {
+        XCTAssertEqual(
+            WebsitesPanelView.listSectionLayout(
+                panelState: .sparse,
+                hasPinnedItems: false,
+                hasMainItems: false,
+                hasPendingItems: false
+            ),
+            [.sparseState, .archive]
+        )
+    }
+
+    func testSectionOrderShowsPrimaryContentThenArchiveWhenItemsExist() {
+        XCTAssertEqual(
+            WebsitesPanelView.listSectionLayout(
+                panelState: .content,
+                hasPinnedItems: true,
+                hasMainItems: false,
+                hasPendingItems: false
+            ),
+            [.primaryContent, .archive]
+        )
+    }
+
     func testSwipeActionArchivesReturnsFalseForArchivedItem() {
         let item = makeItem(archived: true)
 

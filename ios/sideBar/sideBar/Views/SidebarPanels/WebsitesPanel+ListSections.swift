@@ -6,6 +6,82 @@ import UIKit
 #endif
 
 extension WebsitesPanelView {
+    enum PanelState: Equatable {
+        case loading
+        case error
+        case search
+        case content
+        case sparse
+    }
+
+    enum ListSectionLayout: Equatable {
+        case sparseState
+        case primaryContent
+        case archive
+    }
+
+    static let sparseStateTitle = "No websites yet"
+    static let sparseStateSubtitle = "Archived websites are still available below."
+
+    static func resolvePanelState(
+        isLoading: Bool,
+        hasError: Bool,
+        hasLoadedContent: Bool,
+        panelSearchQuery: String,
+        pinnedCount: Int,
+        mainCount: Int,
+        pendingCount: Int
+    ) -> PanelState {
+        if isLoading && !hasLoadedContent {
+            return .loading
+        }
+        if hasError && !hasLoadedContent {
+            return .error
+        }
+        if !panelSearchQuery.trimmed.isEmpty {
+            return .search
+        }
+        return (pinnedCount == 0 && mainCount == 0 && pendingCount == 0) ? .sparse : .content
+    }
+
+    static func listSectionLayout(
+        panelState: PanelState,
+        hasPinnedItems: Bool,
+        hasMainItems: Bool,
+        hasPendingItems: Bool
+    ) -> [ListSectionLayout] {
+        switch panelState {
+        case .sparse:
+            return [.sparseState, .archive]
+        case .content:
+            let hasPrimaryContent = hasPinnedItems || hasMainItems || hasPendingItems
+            return hasPrimaryContent ? [.primaryContent, .archive] : [.archive]
+        default:
+            return []
+        }
+    }
+
+    var panelState: PanelState {
+        Self.resolvePanelState(
+            isLoading: viewModel.isLoading || isInitialLoadPending,
+            hasError: viewModel.errorMessage != nil,
+            hasLoadedContent: !viewModel.items.isEmpty || !viewModel.pendingWebsites.isEmpty,
+            panelSearchQuery: viewModel.panelSearchQuery,
+            pinnedCount: pinnedItemsSorted.count,
+            mainCount: mainItems.count,
+            pendingCount: viewModel.pendingWebsites.count
+        )
+    }
+
+    var listSectionLayout: [ListSectionLayout] {
+        Self.listSectionLayout(
+            panelState: panelState,
+            hasPinnedItems: !pinnedItemsSorted.isEmpty,
+            hasMainItems: !mainItems.isEmpty,
+            hasPendingItems: !viewModel.pendingWebsites.isEmpty
+        )
+    }
+
     static func swipeActionArchives(item: WebsiteItem, allowArchive: Bool) -> Bool {
         allowArchive && !item.archived
     }
@@ -135,7 +211,7 @@ extension WebsitesPanelView {
     }
 
     var isArchiveLoading: Bool {
-        isArchiveExpanded && viewModel.isLoadingArchived
+        isArchiveExpanded && (viewModel.isLoadingArchived || isArchiveLoadPending)
     }
 
     var showArchiveLoadingPlaceholder: Bool {

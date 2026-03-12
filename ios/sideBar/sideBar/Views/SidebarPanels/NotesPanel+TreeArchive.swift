@@ -22,39 +22,52 @@ extension NotesPanelView {
 
     var notesTreeListView: some View {
         List {
-            Section {
-                if pinnedItems.isEmpty {
-                    Text("No pinned notes")
-                        .appFont(.caption)
-                        .foregroundStyle(.secondary)
-                        .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
-                } else {
-                    ForEach(pinnedItems) { item in
-                        let isSelected = viewModel.selectedNoteId == item.id
-                        NotesTreeRow(
-                            item: item,
-                            isSelected: isSelected,
-                            onSelect: {
-                                requestNoteSelection(id: item.id)
-                            },
-                            onRename: nil,
-                            onDelete: {
-                                confirmDelete(for: item)
-                            }
-                        )
-                        .platformContextMenu(items: noteContextMenuItemsList(for: item))
-                        .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
-                    }
+            switch panelState {
+            case .sparse:
+                Section {
+                    SidebarSparseStateRow(
+                        iconName: "note.text",
+                        title: Self.sparseStateTitle,
+                        subtitle: Self.sparseStateSubtitle
+                    )
                 }
-            } header: {
-                sidebarProminentSectionHeader("Pinned")
-            }
-            .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
+            case .content:
+                Section {
+                    if pinnedItems.isEmpty {
+                        Text("No pinned notes")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                            .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
+                    } else {
+                        ForEach(pinnedItems) { item in
+                            let isSelected = viewModel.selectedNoteId == item.id
+                            NotesTreeRow(
+                                item: item,
+                                isSelected: isSelected,
+                                onSelect: {
+                                    requestNoteSelection(id: item.id)
+                                },
+                                onRename: nil,
+                                onDelete: {
+                                    confirmDelete(for: item)
+                                }
+                            )
+                            .platformContextMenu(items: noteContextMenuItemsList(for: item))
+                            .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
+                        }
+                    }
+                } header: {
+                    sidebarProminentSectionHeader("Pinned")
+                }
+                .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
 
-            Section {
-                mainOutlineGroup
-            } header: {
-                sidebarProminentSectionHeader("Notes")
+                Section {
+                    mainOutlineGroup
+                } header: {
+                    sidebarProminentSectionHeader("Notes")
+                }
+            case .loading, .error, .search:
+                EmptyView()
             }
             Section {
                 SelectableRow(

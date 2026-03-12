@@ -22,9 +22,11 @@ struct WebsitesPanelView: View {
     #endif
     @Environment(\.colorScheme) var colorScheme
     @State var hasLoaded = false
+    @State var isInitialLoadPending = false
     @State var isArchiveExpanded = false
     @State var selection: String?
     @State var listAppeared = false
+    @State var isArchiveLoadPending = false
     @State var isNewWebsitePresented = false
     @State var newWebsiteUrl: String = ""
     @State var saveErrorMessage: String?
@@ -46,7 +48,11 @@ struct WebsitesPanelView: View {
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
-                Task { await viewModel.load() }
+                isInitialLoadPending = true
+                Task {
+                    await viewModel.load()
+                    isInitialLoadPending = false
+                }
             }
             if selection == nil {
                 selection = viewModel.active?.id
@@ -61,7 +67,11 @@ struct WebsitesPanelView: View {
         }
         .onChange(of: isArchiveExpanded) { _, expanded in
             if expanded {
-                Task { await viewModel.loadArchived() }
+                isArchiveLoadPending = true
+                Task {
+                    await viewModel.loadArchived()
+                    isArchiveLoadPending = false
+                }
             }
         }
         return base
@@ -193,9 +203,9 @@ extension WebsitesPanelView {
 
     @ViewBuilder
     var content: some View {
-        if viewModel.isLoading && viewModel.items.isEmpty {
+        if panelState == .loading {
             SidebarListSkeleton(rowCount: 8, showSubtitle: true)
-        } else if let error = viewModel.errorMessage {
+        } else if panelState == .error, let error = viewModel.errorMessage {
             SidebarPanelPlaceholder(
                 title: "Unable to load websites",
                 subtitle: error,
@@ -204,7 +214,7 @@ extension WebsitesPanelView {
             ) {
                 Task { await viewModel.load() }
             }
-        } else if !viewModel.panelSearchQuery.trimmed.isEmpty {
+        } else if panelState == .search {
             List {
                 if !viewModel.pendingWebsites.isEmpty {
                     Section {
@@ -236,7 +246,17 @@ extension WebsitesPanelView {
             }
         } else {
             List {
-                if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || !viewModel.pendingWebsites.isEmpty {
+                if listSectionLayout.contains(.sparseState) {
+                    Section {
+                        SidebarSparseStateRow(
+                            iconName: "globe",
+                            title: Self.sparseStateTitle,
+                            subtitle: Self.sparseStateSubtitle
+                        )
+                    }
+                }
+
+                if listSectionLayout.contains(.primaryContent) {
                     if !pinnedItemsSorted.isEmpty {
                         Section {
                             ForEach(pinnedItemsSorted, id: \.id) { item in

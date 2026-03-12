@@ -2,6 +2,64 @@ import sideBarShared
 import SwiftUI
 
 extension NotesPanelView {
+    enum PanelState: Equatable {
+        case loading
+        case error
+        case search
+        case content
+        case sparse
+    }
+
+    enum ListSectionLayout: Equatable {
+        case sparseState
+        case pinned
+        case mainNotes
+        case archive
+    }
+
+    static let sparseStateTitle = "No notes yet"
+    static let sparseStateSubtitle = "Archived notes are still available below."
+
+    static func resolvePanelState(
+        isTreeLoaded: Bool,
+        hasError: Bool,
+        searchQuery: String,
+        pinnedCount: Int,
+        mainNodeCount: Int
+    ) -> PanelState {
+        if !isTreeLoaded && hasError {
+            return .error
+        }
+        if !isTreeLoaded {
+            return .loading
+        }
+        if !searchQuery.trimmed.isEmpty {
+            return .search
+        }
+        return (pinnedCount == 0 && mainNodeCount == 0) ? .sparse : .content
+    }
+
+    var panelState: PanelState {
+        Self.resolvePanelState(
+            isTreeLoaded: viewModel.tree != nil,
+            hasError: viewModel.errorMessage != nil,
+            searchQuery: viewModel.searchQuery,
+            pinnedCount: pinnedItems.count,
+            mainNodeCount: mainNodes.count
+        )
+    }
+
+    var listSectionLayout: [ListSectionLayout] {
+        switch panelState {
+        case .sparse:
+            return [.sparseState, .archive]
+        case .content:
+            return [.pinned, .mainNotes, .archive]
+        default:
+            return []
+        }
+    }
+
     func noteNavigationItems() -> [String] {
         let query = viewModel.searchQuery.trimmed
         if !query.isEmpty {
