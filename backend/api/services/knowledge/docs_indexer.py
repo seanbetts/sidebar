@@ -151,3 +151,47 @@ class DocsIndexer:
 
         lines.append("</product_knowledge>")
         return "\n".join(lines)
+
+    def search(
+        self,
+        query: str,
+        *,
+        max_results: int = 5,
+    ) -> list[dict[str, Any]]:
+        """Search the catalog using lightweight token matching.
+
+        Scores each document by how many query tokens appear in its
+        title, summary, tags, headings, and section content.
+        """
+        tokens = set(query.lower().split())
+        if not tokens:
+            return []
+
+        scored: list[tuple[float, dict[str, Any]]] = []
+        for doc in self._catalog:
+            score = 0.0
+            title_lower = doc["title"].lower()
+            summary_lower = doc["summary"].lower()
+            tags_lower = " ".join(doc.get("tags", [])).lower()
+            headings_lower = " ".join(doc.get("headings", [])).lower()
+            section_text = " ".join(
+                s["content"] for s in doc.get("sections", [])
+            ).lower()
+
+            for token in tokens:
+                if token in title_lower:
+                    score += 3.0
+                if token in summary_lower:
+                    score += 2.0
+                if token in tags_lower:
+                    score += 2.0
+                if token in headings_lower:
+                    score += 1.5
+                if token in section_text:
+                    score += 1.0
+
+            if score > 0:
+                scored.append((score, doc))
+
+        scored.sort(key=lambda pair: pair[0], reverse=True)
+        return [doc for _, doc in scored[:max_results]]

@@ -116,3 +116,46 @@ class TestDocsIndexer:
 
         assert "Manual" in brief or "manual" in brief.lower()
         assert "Skills" in brief or "skills" in brief.lower()
+
+    def test_search_matches_title(self, sample_docs: Path) -> None:
+        indexer = DocsIndexer(sample_docs)
+        indexer.build()
+        results = indexer.search("introduction")
+
+        assert len(results) >= 1
+        assert results[0]["title"] == "Introduction"
+
+    def test_search_matches_tags(self, sample_docs: Path) -> None:
+        indexer = DocsIndexer(sample_docs)
+        indexer.build()
+        results = indexer.search("overview")
+
+        assert any(r["title"] == "Introduction" for r in results)
+
+    def test_search_matches_summary(self, sample_docs: Path) -> None:
+        indexer = DocsIndexer(sample_docs)
+        indexer.build()
+        results = indexer.search("live web")
+
+        assert any(r["title"] == "Web Search" for r in results)
+
+    def test_search_matches_section_content(self, sample_docs: Path) -> None:
+        indexer = DocsIndexer(sample_docs)
+        indexer.build()
+        results = indexer.search("notes tasks")
+
+        assert any(r["title"] == "Introduction" for r in results)
+
+    def test_search_returns_empty_for_no_match(self, sample_docs: Path) -> None:
+        indexer = DocsIndexer(sample_docs)
+        indexer.build()
+        results = indexer.search("xyznonexistent")
+
+        assert results == []
+
+    def test_search_limits_results(self, sample_docs: Path) -> None:
+        indexer = DocsIndexer(sample_docs)
+        indexer.build()
+        results = indexer.search("sidebar", max_results=1)
+
+        assert len(results) <= 1
