@@ -24,6 +24,9 @@ struct GeneralSettingsView: View {
     @State private var canUseDeviceAuth = false
     @State private var biometryType: LABiometryType = .none
     @State private var diagnosticsStatusMessage: String?
+    #if DEBUG
+    @State private var isSentryCrashConfirmationPresented = false
+    #endif
 
     static func textSizeControlMode(for platform: TextSizeControlPlatform) -> TextSizeControlMode {
         switch platform {
@@ -67,6 +70,14 @@ struct GeneralSettingsView: View {
                 Button("Clear External Surface Diagnostics") {
                     clearExternalSurfaceDiagnostics()
                 }
+                #if DEBUG
+                Button("Send Sentry Test Crash", role: .destructive) {
+                    isSentryCrashConfirmationPresented = true
+                }
+                Text("Crashes the app immediately. Launch without Xcode attached, then relaunch once so Sentry can send the crash.")
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
+                #endif
                 if let diagnosticsStatusMessage {
                     Text(diagnosticsStatusMessage)
                         .appFont(.caption)
@@ -81,6 +92,20 @@ struct GeneralSettingsView: View {
             appTextSizeRaw = AppTextSizeOption.resolved(from: appTextSizeRaw).rawValue
             evaluateBiometricSupport()
         }
+        #if DEBUG
+        .confirmationDialog(
+            "Send Sentry Test Crash?",
+            isPresented: $isSentryCrashConfirmationPresented
+        ) {
+            Button("Crash App Now", role: .destructive) {
+                _ = SentryBootstrap.triggerDebugTestCrash()
+            }
+            Button("Cancel", role: .cancel) {
+            }
+        } message: {
+            Text("This will terminate the app immediately. Launch again afterward so the crash can be sent to Sentry.")
+        }
+        #endif
     }
 
     @ViewBuilder

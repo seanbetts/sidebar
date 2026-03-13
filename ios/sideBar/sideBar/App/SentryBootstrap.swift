@@ -9,6 +9,7 @@ protocol SentryBundleInfo {
 
 protocol SentryBootstrapClient {
     func start(options: SentryBootstrap.Configuration)
+    func crashForTesting()
 }
 
 extension Bundle: SentryBundleInfo {
@@ -99,6 +100,23 @@ enum SentryBootstrap {
         hasStarted = false
         stateLock.unlock()
     }
+
+    @discardableResult
+    static func triggerDebugTestCrash(
+        isDebugBuild: Bool = defaultIsDebugBuild,
+        isRunningTestsOrPreviews: Bool = EnvironmentConfig.isRunningTestsOrPreviews(),
+        client: SentryBootstrapClient = DefaultSentryBootstrapClient.shared
+    ) -> Bool {
+        guard isDebugBuild else {
+            return false
+        }
+        guard isRunningTestsOrPreviews == false else {
+            return false
+        }
+
+        client.crashForTesting()
+        return true
+    }
 }
 
 private final class DefaultSentryBootstrapClient: SentryBootstrapClient {
@@ -112,5 +130,9 @@ private final class DefaultSentryBootstrapClient: SentryBootstrapClient {
             sdkOptions.tracesSampleRate = NSNumber(value: options.tracesSampleRate)
             sdkOptions.sendDefaultPii = options.sendDefaultPii
         }
+    }
+
+    func crashForTesting() {
+        SentrySDK.crash()
     }
 }

@@ -117,6 +117,45 @@ final class SentryBootstrapTests: XCTestCase {
         XCTAssertEqual(client.startCallCount, 1)
     }
 
+    func testTriggerDebugTestCrashDoesNothingOutsideDebugBuild() {
+        let client = RecordingSentryBootstrapClient()
+
+        let didTrigger = SentryBootstrap.triggerDebugTestCrash(
+            isDebugBuild: false,
+            isRunningTestsOrPreviews: false,
+            client: client
+        )
+
+        XCTAssertFalse(didTrigger)
+        XCTAssertEqual(client.crashCallCount, 0)
+    }
+
+    func testTriggerDebugTestCrashDoesNothingWhileRunningTests() {
+        let client = RecordingSentryBootstrapClient()
+
+        let didTrigger = SentryBootstrap.triggerDebugTestCrash(
+            isDebugBuild: true,
+            isRunningTestsOrPreviews: true,
+            client: client
+        )
+
+        XCTAssertFalse(didTrigger)
+        XCTAssertEqual(client.crashCallCount, 0)
+    }
+
+    func testTriggerDebugTestCrashTriggersCrashInDebugBuild() {
+        let client = RecordingSentryBootstrapClient()
+
+        let didTrigger = SentryBootstrap.triggerDebugTestCrash(
+            isDebugBuild: true,
+            isRunningTestsOrPreviews: false,
+            client: client
+        )
+
+        XCTAssertTrue(didTrigger)
+        XCTAssertEqual(client.crashCallCount, 1)
+    }
+
     private func makeConfig(sentryDsn: String?) -> EnvironmentConfig {
         EnvironmentConfig(
             apiBaseUrl: URL(string: "https://api.example.com/api/v1")!,
@@ -129,11 +168,16 @@ final class SentryBootstrapTests: XCTestCase {
 
 private final class RecordingSentryBootstrapClient: SentryBootstrapClient {
     private(set) var startCallCount = 0
+    private(set) var crashCallCount = 0
     private(set) var lastOptions: SentryBootstrap.Configuration?
 
     func start(options: SentryBootstrap.Configuration) {
         startCallCount += 1
         lastOptions = options
+    }
+
+    func crashForTesting() {
+        crashCallCount += 1
     }
 }
 
