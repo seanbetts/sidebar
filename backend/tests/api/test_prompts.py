@@ -234,3 +234,12 @@ def test_build_open_context_block_empty() -> None:
 def test_context_guidance_template_renders_name() -> None:
     rendered = resolve_template(CONTEXT_GUIDANCE_TEMPLATE, {"name": "Sam"})
     assert "Sam has been working on today" in rendered
+
+
+def test_context_guidance_mentions_product_knowledge() -> None:
+    """Context guidance template should reference product knowledge tools."""
+    from api.services.agent.prompt.templates import CONTEXT_GUIDANCE_TEMPLATE
+
+    assert "Product Knowledge" in CONTEXT_GUIDANCE_TEMPLATE
+    assert "Search Product Knowledge" in CONTEXT_GUIDANCE_TEMPLATE
+    assert "Get Skill Inventory" in CONTEXT_GUIDANCE_TEMPLATE

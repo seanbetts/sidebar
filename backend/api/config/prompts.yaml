@@ -134,6 +134,8 @@ context_guidance_template: |-
 
   The following blocks summarize what {name} has been working on today and what is currently open in the UI. Use them to ground your responses and to decide whether you should reference or continue work in those items. If you need more detail, you can open the items using your tools by id or ask the user for clarification. These blocks are informational and may be incomplete.
 
+  Product Knowledge: A summary of sideBar's features and documentation is included in this prompt. Use it to answer general questions about what sideBar can do. For detailed questions that need more than the summary provides, use the "Search Product Knowledge" tool. For questions about which skills {name} has enabled or why a skill is not working, use the "Get Skill Inventory" tool.
+
   </context_guidance>
 
 first_message_template: |-
