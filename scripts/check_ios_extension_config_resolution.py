@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Safari extension config wiring for iOS/macOS Safari extension targets."""
+"""Validate Apple extension config wiring for config values and embedded frameworks."""
 
 from __future__ import annotations
 
@@ -15,10 +15,21 @@ BASE_XCCONFIG_PATH = REPO_ROOT / "ios/sideBar/Config/SideBar.xcconfig"
 PBXPROJ_PATH = PROJECT_PATH / "project.pbxproj"
 
 TARGETS = (
+    "ShareExtension",
+    "sideBarWidgetsExtension",
     "sideBar Safari Extension",
     "sideBar Safari Extension (macOS)",
     "sideBar Safari Extension (macOS) Extension",
 )
+
+FRAMEWORK_EMBED_TARGETS = (
+    "ShareExtension",
+    "sideBarWidgetsExtension",
+    "sideBar Safari Extension",
+    "sideBar Safari Extension (macOS) Extension",
+)
+
+SHARED_FRAMEWORK_PATH = "sideBarShared.framework"
 
 PLATFORM_EXPECTATIONS_BY_TARGET = {
     "sideBar Safari Extension (macOS)": {
@@ -84,6 +95,18 @@ def parse_xcconfig_values(xcconfig_text: str) -> dict[str, str]:
         key, value = line.split("=", 1)
         values[key.strip()] = normalize_value(value)
     return values
+
+
+def parse_build_settings(output: str) -> dict[str, str]:
+    """Parse xcodebuild-style KEY = VALUE output into normalized settings."""
+    settings: dict[str, str] = {}
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        if not line or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        settings[key.strip()] = normalize_value(value)
+    return settings
 
 
 def has_relative_local_include(xcconfig_text: str) -> bool:
@@ -155,6 +178,59 @@ def configuration_settings_for_target(
         }
 
     raise RuntimeError(f"{target}: missing {configuration} build configuration")
+
+
+def target_object_for_name(
+    *,
+    objects: dict[str, dict[str, object]],
+    target: str,
+) -> dict[str, object]:
+    """Return the PBXNativeTarget object for a target name."""
+    for value in objects.values():
+        if value.get("isa") != "PBXNativeTarget":
+            continue
+        if value.get("name") == target:
+            return value
+
+    raise RuntimeError(f"Missing PBXNativeTarget for '{target}'")
+
+
+def evaluate_embedded_framework_expectations(
+    *,
+    objects: dict[str, dict[str, object]],
+    target: str,
+) -> list[str]:
+    """Return validation errors for extension targets that must embed sideBarShared."""
+    target_object = target_object_for_name(objects=objects, target=target)
+    build_phase_ids = target_object.get("buildPhases", [])
+    if not isinstance(build_phase_ids, list):
+        return [f"{target}: invalid build phase list"]
+
+    for build_phase_id in build_phase_ids:
+        build_phase = objects.get(str(build_phase_id), {})
+        if build_phase.get("isa") != "PBXCopyFilesBuildPhase":
+            continue
+        if str(build_phase.get("dstSubfolderSpec")) != "10":
+            continue
+
+        file_ids = build_phase.get("files", [])
+        if not isinstance(file_ids, list):
+            continue
+
+        for file_id in file_ids:
+            build_file = objects.get(str(file_id), {})
+            if build_file.get("isa") != "PBXBuildFile":
+                continue
+            file_ref = objects.get(str(build_file.get("fileRef")), {})
+            if file_ref.get("path") == SHARED_FRAMEWORK_PATH:
+                return []
+
+    return [
+        (
+            f"{target}: missing embedded framework copy phase for "
+            f"'{SHARED_FRAMEWORK_PATH}'"
+        )
+    ]
 
 
 def project_configuration_settings(
@@ -345,6 +421,13 @@ def validate_extension_config_resolution(
                     expectations=platform_expectations,
                 )
             )
+        if target in FRAMEWORK_EMBED_TARGETS:
+            errors.extend(
+                evaluate_embedded_framework_expectations(
+                    objects=objects,
+                    target=target,
+                )
+            )
 
     return errors
 
@@ -352,7 +435,10 @@ def validate_extension_config_resolution(
 def main() -> int:
     """Run the config-resolution check and return a process exit code."""
     parser = argparse.ArgumentParser(
-        description="Check Safari extension project wiring for API/Supabase build settings."
+        description=(
+            "Check Apple extension project wiring for API/Supabase build settings "
+            "and required embedded frameworks."
+        )
     )
     parser.add_argument(
         "--pbxproj",
@@ -398,7 +484,7 @@ def main() -> int:
             emit(f"- {item}")
         return 1
 
-    emit("Safari extension config-resolution check passed.")
+    emit("Apple extension config-resolution check passed.")
     return 0
 
 
