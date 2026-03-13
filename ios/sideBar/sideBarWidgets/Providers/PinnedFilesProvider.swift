@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import sideBarShared
 
 struct PinnedFilesEntry: TimelineEntry {
     let date: Date
@@ -33,11 +34,13 @@ struct PinnedFilesProvider: TimelineProvider {
         }
 
         let entry = createEntry()
+        recordProviderDiagnostics(stage: "snapshot", entry: entry)
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedFilesEntry>) -> Void) {
         let entry = createEntry()
+        recordProviderDiagnostics(stage: "timeline", entry: entry)
 
         // Refresh every 15 minutes
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
@@ -53,5 +56,19 @@ struct PinnedFilesProvider: TimelineProvider {
 
         let data: WidgetFileData = WidgetDataManager.shared.load(for: .files)
         return PinnedFilesEntry(date: Date(), data: data, isAuthenticated: true)
+    }
+
+    private func recordProviderDiagnostics(stage: String, entry: PinnedFilesEntry) {
+        WidgetExtensionDiagnostics.reporter.recordBreadcrumb(
+            surface: "widget_provider",
+            stage: stage,
+            message: "Built files widget entry.",
+            metadata: [
+                "provider": "PinnedFilesProvider",
+                "is_authenticated": entry.isAuthenticated ? "true" : "false",
+                "item_count": "\(entry.data.files.count)",
+                "total_count": "\(entry.data.totalCount)"
+            ]
+        )
     }
 }

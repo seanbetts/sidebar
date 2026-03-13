@@ -23,8 +23,18 @@ public struct ExternalSurfaceDiagnosticEntry: Codable, Equatable {
     }
 }
 
+public protocol ExternalSurfaceDiagnosticsRecording {
+    @discardableResult
+    func record(
+        surface: String,
+        stage: String,
+        message: String,
+        metadata: [String: String]
+    ) -> Bool
+}
+
 /// Shared store for recent external-surface diagnostics written into the app group.
-public final class ExternalSurfaceDiagnosticsStore {
+public final class ExternalSurfaceDiagnosticsStore: ExternalSurfaceDiagnosticsRecording {
     public static let shared = ExternalSurfaceDiagnosticsStore()
 
     private let key = "externalSurfaceDiagnostics"
@@ -32,12 +42,13 @@ public final class ExternalSurfaceDiagnosticsStore {
 
     private init() {}
 
+    @discardableResult
     public func record(
         surface: String,
         stage: String,
         message: String,
         metadata: [String: String] = [:]
-    ) {
+    ) -> Bool {
         append(
             ExternalSurfaceDiagnosticEntry(
                 surface: surface,
@@ -82,8 +93,8 @@ public final class ExternalSurfaceDiagnosticsStore {
         defaults.synchronize()
     }
 
-    private func append(_ entry: ExternalSurfaceDiagnosticEntry) {
-        guard let defaults = userDefaults else { return }
+    private func append(_ entry: ExternalSurfaceDiagnosticEntry) -> Bool {
+        guard let defaults = userDefaults else { return false }
         var entries = loadEntries(defaults: defaults)
         entries.append(entry)
         if entries.count > maxEntries {
@@ -95,7 +106,9 @@ public final class ExternalSurfaceDiagnosticsStore {
         if let data = try? encoder.encode(entries) {
             defaults.set(data, forKey: key)
             defaults.synchronize()
+            return true
         }
+        return false
     }
 
     private func loadEntries(defaults: UserDefaults) -> [ExternalSurfaceDiagnosticEntry] {

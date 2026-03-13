@@ -122,7 +122,7 @@ struct TodayTasksProvider: TimelineProvider {
     }
 
     private func recordProviderDiagnostics(stage: String, entry: TodayTasksEntry) {
-        ExternalSurfaceDiagnosticsStore.shared.record(
+        WidgetExtensionDiagnostics.reporter.recordBreadcrumb(
             surface: "widget_provider",
             stage: stage,
             message: "Built task widget entry.",

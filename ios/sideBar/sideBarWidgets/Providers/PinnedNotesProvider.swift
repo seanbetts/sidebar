@@ -59,7 +59,7 @@ struct PinnedNotesProvider: TimelineProvider {
     }
 
     private func recordProviderDiagnostics(stage: String, entry: PinnedNotesEntry) {
-        ExternalSurfaceDiagnosticsStore.shared.record(
+        WidgetExtensionDiagnostics.reporter.recordBreadcrumb(
             surface: "widget_provider",
             stage: stage,
             message: "Built note widget entry.",

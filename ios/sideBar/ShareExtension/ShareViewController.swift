@@ -19,12 +19,21 @@ final class ShareViewController: SharePlatformViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         shareApplyDefaultHostBackground(to: view)
+        ShareExtensionDiagnostics.ensureSentryStarted()
         do {
             environment = try ShareExtensionEnvironment()
         } catch {
             environmentInitializationError = error
             logger.notice(
                 "Share extension environment unavailable; falling back to queue-only mode: \(error.localizedDescription, privacy: .public)"
+            )
+            ShareExtensionDiagnostics.reporter.captureFailure(
+                surface: "share_extension",
+                stage: "environment_init_failed",
+                message: "Share extension environment unavailable.",
+                metadata: [
+                    "reason": error.localizedDescription
+                ]
             )
         }
         processSharedContent()
@@ -59,7 +68,7 @@ final class ShareViewController: SharePlatformViewController {
     }
 
     private func recordEntryDiagnostics(itemProviderCount: Int) {
-        ExternalSurfaceDiagnosticsStore.shared.record(
+        ShareExtensionDiagnostics.reporter.recordBreadcrumb(
             surface: "share_extension",
             stage: "begin_request",
             message: "Began processing shared content.",

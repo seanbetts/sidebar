@@ -347,17 +347,44 @@ private extension WidgetDataManager {
     message: String,
     metadata: [String: String] = [:]
   ) {
-    ExternalSurfaceDiagnosticsStore.shared.record(
-      surface: "widget_bridge_extension",
-      stage: stage,
-      message: message,
-      metadata: metadata.merging(
-        [
-          "app_group_id": appGroupId,
-          "app_group_source": appGroupResolution.source
-        ],
-        uniquingKeysWith: { current, _ in current }
-      )
+    WidgetExtensionDiagnostics.ensureSentryStarted()
+    let mergedMetadata = metadata.merging(
+      [
+        "app_group_id": appGroupId,
+        "app_group_source": appGroupResolution.source
+      ],
+      uniquingKeysWith: { current, _ in current }
     )
+    let reporter = WidgetExtensionDiagnostics.reporter
+    switch stage {
+    case "store_missing_defaults":
+      reporter.captureFailure(
+        surface: "widget_bridge_extension",
+        stage: stage,
+        message: message,
+        metadata: mergedMetadata
+      )
+    case "load_empty" where mergedMetadata["has_defaults"] == "false":
+      reporter.captureFailure(
+        surface: "widget_bridge_extension",
+        stage: stage,
+        message: message,
+        metadata: mergedMetadata
+      )
+    case "load" where mergedMetadata["decode_success"] == "false":
+      reporter.captureFailure(
+        surface: "widget_bridge_extension",
+        stage: stage,
+        message: message,
+        metadata: mergedMetadata
+      )
+    default:
+      reporter.recordBreadcrumb(
+        surface: "widget_bridge_extension",
+        stage: stage,
+        message: message,
+        metadata: mergedMetadata
+      )
+    }
   }
 }

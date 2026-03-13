@@ -10,6 +10,10 @@ import WidgetKit
 
 @main
 struct SideBarWidgetsBundle: WidgetBundle {
+    init() {
+        WidgetExtensionDiagnostics.ensureSentryStarted()
+    }
+
     var body: some Widget {
         // Home screen widgets - Tasks
         TodayTasksWidget()

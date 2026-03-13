@@ -13,6 +13,7 @@ import sideBarShared
 class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
     func beginRequest(with context: NSExtensionContext) {
+        SafariExtensionDiagnostics.ensureSentryStarted()
         let request = context.inputItems.first as? NSExtensionItem
 
         let profile: UUID?
@@ -38,7 +39,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         let payload = message as? [String: Any]
         let action = payload?["action"] as? String
         let urlString = payload?["url"] as? String
-        ExternalSurfaceDiagnosticsStore.shared.record(
+        SafariExtensionDiagnostics.reporter.recordBreadcrumb(
             surface: "safari_extension",
             stage: "begin_request",
             message: "Received Safari extension request.",
@@ -59,18 +60,28 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
                 }
             )
             os_log(.default, "SafariWebExtensionHandler response=%@", String(describing: responsePayload))
-            ExternalSurfaceDiagnosticsStore.shared.record(
-                surface: "safari_extension",
-                stage: "complete_request",
-                message: "Completed Safari extension request.",
-                metadata: [
-                    "action": action ?? "nil",
-                    "url": urlString ?? "nil",
-                    "ok": (responsePayload["ok"] as? Bool).map { $0 ? "true" : "false" } ?? "nil",
-                    "code": responsePayload["code"] as? String ?? "nil",
-                    "bundle_id": Bundle.main.bundleIdentifier ?? "nil"
-                ]
-            )
+            let responseMetadata = [
+                "action": action ?? "nil",
+                "url": urlString ?? "nil",
+                "ok": (responsePayload["ok"] as? Bool).map { $0 ? "true" : "false" } ?? "nil",
+                "code": responsePayload["code"] as? String ?? "nil",
+                "bundle_id": Bundle.main.bundleIdentifier ?? "nil"
+            ]
+            if responsePayload["ok"] as? Bool == false {
+                SafariExtensionDiagnostics.reporter.captureFailure(
+                    surface: "safari_extension",
+                    stage: "complete_request",
+                    message: "Safari extension request failed.",
+                    metadata: responseMetadata
+                )
+            } else {
+                SafariExtensionDiagnostics.reporter.recordBreadcrumb(
+                    surface: "safari_extension",
+                    stage: "complete_request",
+                    message: "Completed Safari extension request.",
+                    metadata: responseMetadata
+                )
+            }
 
             let response = NSExtensionItem()
             if #available(iOS 15.0, macOS 11.0, *) {

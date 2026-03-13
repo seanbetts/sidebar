@@ -26,6 +26,10 @@
 		14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		14F1A0B82F31000000BEEF03 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0B92F31000000BEEF03 /* Markdown */; };
 		E1D200012F90000100ABC001 /* Sentry.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1D200022F90000100ABC001 /* Sentry.xcframework */; };
+		F0E1D2C32F90001000ABC001 /* Sentry.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1D200022F90000100ABC001 /* Sentry.xcframework */; };
+		F0E1D2C42F90001000ABC001 /* Sentry.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1D200022F90000100ABC001 /* Sentry.xcframework */; };
+		F0E1D2C52F90001000ABC001 /* Sentry.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1D200022F90000100ABC001 /* Sentry.xcframework */; };
+		F0E1D2C62F90001000ABC001 /* Sentry.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1D200022F90000100ABC001 /* Sentry.xcframework */; };
 		9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		A7C1D2E32B01000100A1B2C3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
@@ -319,6 +323,7 @@
 			files = (
 				A7C1D2E32B01000100A1B2C3 /* Supabase in Frameworks */,
 				1413DE702F2B53B3002495EE /* sideBarShared.framework in Frameworks */,
+				F0E1D2C32F90001000ABC001 /* Sentry.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -329,6 +334,7 @@
 				C1D2E3F42F70000200ABC123 /* sideBarShared.framework in Frameworks */,
 				1448E6CC2F27A6420066EE47 /* SwiftUI.framework in Frameworks */,
 				1448E6CA2F27A6420066EE47 /* WidgetKit.framework in Frameworks */,
+				F0E1D2C42F90001000ABC001 /* Sentry.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -338,6 +344,7 @@
 			files = (
 				B1F100012F50000100ABC001 /* Supabase in Frameworks */,
 				9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */,
+				F0E1D2C52F90001000ABC001 /* Sentry.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -354,6 +361,7 @@
 			files = (
 				B1F100022F50000100ABC001 /* Supabase in Frameworks */,
 				9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */,
+				F0E1D2C62F90001000ABC001 /* Sentry.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
