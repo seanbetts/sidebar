@@ -7,7 +7,7 @@
 # Common commands:
 #   ./dev.sh start
 #     Start backend, frontend, ingestion worker, docs, website, and Caddy proxy,
-#     and ensure local test Postgres availability.
+#     restart local GitHub Actions runners, and ensure local test Postgres availability.
 #     Proxy URLs (requires: brew install caddy):
 #       - Website: http://trysidebar.localhost:8080
 #       - App:     http://app.trysidebar.localhost:8080
@@ -19,11 +19,11 @@
 #       - Docs:     http://localhost:3001
 #       - Website:  http://localhost:5173
 #   ./dev.sh stop
-#     Stop all services managed by this script.
+#     Stop all services managed by this script, including local GitHub Actions runners.
 #   ./dev.sh restart
-#     Restart all services.
+#     Restart all services, including local GitHub Actions runners.
 #   ./dev.sh status
-#     Show running status, URLs, and log file locations.
+#     Show running status, including local GitHub Actions runners, URLs, and log file locations.
 #   ./dev.sh logs [backend|frontend|ingestion|docs|website|caddy]
 #     Tail logs for one service or all services.
 #
@@ -31,6 +31,7 @@
 # - If .env and/or .env.local exist, they are loaded automatically.
 # - If Doppler is installed and configured, services run through doppler.
 # - Set SIDEBAR_DEV_TEST_DB=0 to skip local test DB setup/checks.
+# - Set SIDEBAR_FORCE_RUNNER_RESTART=1 to restart GitHub runners even if they are busy.
 set -euo pipefail
 
 BACKEND_LOG="/tmp/sidebar-backend.log"
@@ -58,6 +59,11 @@ use_doppler=0
 RESTART_LOCK="/tmp/sidebar-dev-restart.lock"
 STARTUP_DETECT_ATTEMPTS=40
 STARTUP_DETECT_INTERVAL_SECONDS="0.5"
+RUNNER_DIRS=(
+  "/Users/sean/Coding/actions-runner-ios"
+  "/Users/sean/Coding/actions-runner-ios2"
+  "/Users/sean/Coding/actions-runner-mac"
+)
 
 load_env() {
   if [[ -f ".env" ]]; then
@@ -96,6 +102,172 @@ detect_doppler() {
       use_doppler=1
     fi
   fi
+}
+
+runner_name() {
+  local runner_dir="$1"
+  basename "${runner_dir}"
+}
+
+runner_svc_path() {
+  local runner_dir="$1"
+  echo "${runner_dir}/svc.sh"
+}
+
+runner_is_force_restart_enabled() {
+  case "${SIDEBAR_FORCE_RUNNER_RESTART:-0}" in
+    1|true|TRUE|yes|YES|on|ON)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+runner_is_configured() {
+  local runner_dir="$1"
+  [[ -d "${runner_dir}" && -x "$(runner_svc_path "${runner_dir}")" ]]
+}
+
+for_each_runner() {
+  local callback="$1"
+  local runner_dir
+
+  for runner_dir in "${RUNNER_DIRS[@]}"; do
+    "${callback}" "${runner_dir}"
+  done
+}
+
+runner_worker_pid() {
+  local runner_dir="$1"
+  local pid
+  local proc_command
+
+  if ! command -v pgrep >/dev/null 2>&1; then
+    return 1
+  fi
+
+  while read -r pid; do
+    [[ -z "${pid}" ]] && continue
+    proc_command="$(pid_command "${pid}")"
+    if [[ "${proc_command}" == *"${runner_dir}/bin/Runner.Worker"* ]]; then
+      echo "${pid}"
+      return 0
+    fi
+  done < <(pgrep -f "Runner.Worker" || true)
+
+  return 1
+}
+
+runner_listener_pid() {
+  local runner_dir="$1"
+  local pid
+  local proc_command
+
+  if ! command -v pgrep >/dev/null 2>&1; then
+    return 1
+  fi
+
+  while read -r pid; do
+    [[ -z "${pid}" ]] && continue
+    proc_command="$(pid_command "${pid}")"
+    if [[ "${proc_command}" == *"${runner_dir}/bin/Runner.Listener"* ]]; then
+      echo "${pid}"
+      return 0
+    fi
+  done < <(pgrep -f "Runner.Listener" || true)
+
+  return 1
+}
+
+runner_state() {
+  local runner_dir="$1"
+
+  if runner_worker_pid "${runner_dir}" >/dev/null; then
+    echo "busy"
+    return
+  fi
+
+  if runner_listener_pid "${runner_dir}" >/dev/null; then
+    echo "idle"
+    return
+  fi
+
+  echo "stopped"
+}
+
+restart_runner() {
+  local runner_dir="$1"
+  local runner_label
+  local state
+  runner_label="$(runner_name "${runner_dir}")"
+
+  if ! runner_is_configured "${runner_dir}"; then
+    echo "Skipping GitHub runner ${runner_label}, svc.sh not found."
+    return
+  fi
+
+  state="$(runner_state "${runner_dir}")"
+  if [[ "${state}" == "busy" ]] && ! runner_is_force_restart_enabled; then
+    echo "Skipping GitHub runner ${runner_label}, runner is busy. Set SIDEBAR_FORCE_RUNNER_RESTART=1 to force."
+    return
+  fi
+
+  echo "Restarting GitHub runner ${runner_label}..."
+  (
+    cd "${runner_dir}"
+    ./svc.sh stop >/dev/null 2>&1 || true
+    ./svc.sh start >/dev/null
+  )
+}
+
+stop_runner() {
+  local runner_dir="$1"
+  local runner_label
+  runner_label="$(runner_name "${runner_dir}")"
+
+  if ! runner_is_configured "${runner_dir}"; then
+    echo "Skipping GitHub runner ${runner_label}, svc.sh not found."
+    return
+  fi
+
+  echo "Stopping GitHub runner ${runner_label}..."
+  (
+    cd "${runner_dir}"
+    ./svc.sh stop >/dev/null 2>&1 || true
+  )
+}
+
+status_runner() {
+  local runner_dir="$1"
+  local runner_label
+  local state
+  runner_label="$(runner_name "${runner_dir}")"
+
+  if ! runner_is_configured "${runner_dir}"; then
+    echo "✗ GitHub runner ${runner_label} not configured"
+    return
+  fi
+
+  state="$(runner_state "${runner_dir}")"
+  if [[ "${state}" == "busy" ]]; then
+    echo "✓ GitHub runner ${runner_label} running"
+    echo "  State: busy"
+    echo "  Path: ${runner_dir}"
+    return
+  fi
+
+  if [[ "${state}" == "idle" ]]; then
+    echo "✓ GitHub runner ${runner_label} running"
+    echo "  State: idle"
+    echo "  Path: ${runner_dir}"
+    return
+  fi
+
+  echo "✗ GitHub runner ${runner_label} not running"
+  echo "  State: stopped"
+  echo "  Path: ${runner_dir}"
 }
 
 is_test_db_enabled() {
@@ -962,6 +1134,7 @@ ensure_restart_lock
 
 case "${command}" in
   start)
+    for_each_runner restart_runner
     ensure_test_db
     start_backend
     start_frontend
@@ -971,6 +1144,7 @@ case "${command}" in
     start_caddy
     ;;
   stop)
+    for_each_runner stop_runner
     stop_service "${BACKEND_PID}" "backend" "backend" "8001"
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
@@ -980,12 +1154,14 @@ case "${command}" in
     ;;
   restart)
     cleanup_restart_processes
+    for_each_runner stop_runner
     stop_service "${BACKEND_PID}" "backend" "backend" "8001"
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
     stop_service "${DOCS_PID}" "docs" "docs" "3001"
     stop_service "${WEBSITE_PID}" "website" "website" "5173"
     stop_service "${CADDY_PID}" "Caddy proxy" "caddy" "8080"
+    for_each_runner restart_runner
     ensure_test_db
     start_backend
     start_frontend
@@ -998,6 +1174,7 @@ case "${command}" in
     cleanup_services
     ;;
   status)
+    for_each_runner status_runner
     status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}" "backend"
     status_service "${FRONTEND_PID}" "Frontend" "http://app.trysidebar.localhost:3000" "${FRONTEND_LOG}" "frontend"
     status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}" "ingestion"
