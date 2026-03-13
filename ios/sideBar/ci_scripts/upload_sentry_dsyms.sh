@@ -76,6 +76,5 @@ log "uploading ${DSYM_NAME} for ${PRODUCT_BUNDLE_IDENTIFIER:-unknown-bundle-id}"
 "${SENTRY_CLI}" debug-files upload \
     --org "${SENTRY_ORG}" \
     --project "${SENTRY_PROJECT}" \
-    --no-progress \
     "${DSYM_PATH}"
 log "upload complete"

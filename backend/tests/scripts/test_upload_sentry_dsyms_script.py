@@ -111,7 +111,6 @@ def test_upload_script_uses_explicit_sentry_cli_path(tmp_path: Path) -> None:
     assert "debug-files upload" in args
     assert "--org sidebar" in args
     assert "--project apple" in args
-    assert "--no-progress" in args
     assert str(dsym_dir / "sideBar.app.dSYM") in args
 
 
