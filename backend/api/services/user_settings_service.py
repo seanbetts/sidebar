@@ -107,6 +107,7 @@ class UserSettingsService:
         ai_primary_provider: Any = UNSET,
         shortcuts_pat: Any = UNSET,
         tasks_ai_snapshot: Any = UNSET,
+        onboarding: Any = UNSET,
         commit: bool = True,
     ) -> UserSettings:
         """Create or update a user's settings.
@@ -133,6 +134,7 @@ class UserSettingsService:
             ai_primary_provider: Optional primary AI provider override.
             shortcuts_pat: Optional shortcuts PAT token.
             tasks_ai_snapshot: Optional tasks AI snapshot payload.
+            onboarding: Optional onboarding state payload.
             commit: Whether to commit the transaction before returning.
 
         Returns:
@@ -181,6 +183,9 @@ class UserSettingsService:
                 settings.shortcuts_pat = shortcuts_pat
             if tasks_ai_snapshot is not UserSettingsService.UNSET:
                 settings.tasks_ai_snapshot = tasks_ai_snapshot
+            if onboarding is not UserSettingsService.UNSET:
+                settings.onboarding = onboarding
+                flag_modified(settings, "onboarding")
             settings.updated_at = now
         else:
             settings = UserSettings(
@@ -224,6 +229,9 @@ class UserSettingsService:
                 tasks_ai_snapshot=None
                 if tasks_ai_snapshot is UserSettingsService.UNSET
                 else tasks_ai_snapshot,
+                onboarding=None
+                if onboarding is UserSettingsService.UNSET
+                else onboarding,
                 created_at=now,
                 updated_at=now,
             )

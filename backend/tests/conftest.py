@@ -178,6 +178,12 @@ def _ensure_user_settings_columns(connection) -> None:
     )
     connection.execute(
         text(
+            "ALTER TABLE user_settings "
+            "ADD COLUMN IF NOT EXISTS onboarding jsonb"
+        )
+    )
+    connection.execute(
+        text(
             "ALTER TABLE conversations "
             "ADD COLUMN IF NOT EXISTS ai_provider text"
         )
