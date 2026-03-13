@@ -54,9 +54,9 @@ jobs:
             IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY="YES" \
             scripts/test-ios.sh
           done <<'EOF'
-          logic|logic-iphone|sideBar|AppleFast|platform=iOS Simulator,name=iPhone 17 Pro
-          logic|logic-ipad|sideBar|AppleFast|platform=iOS Simulator,name=iPad Pro 13-inch (M5)
-          logic|logic-mac|sideBar|AppleFast|platform=macOS
+          logic|logic-iphone|sideBarLogicHost|AppleFast|platform=iOS Simulator,name=iPhone 17 Pro
+          logic|logic-ipad|sideBarLogicHost|AppleFast|platform=iOS Simulator,name=iPad Pro 13-inch (M5)
+          logic|logic-mac|sideBarLogicHost|AppleFast|platform=macOS
           surface|surface|sideBar|AppleStateful|platform=iOS Simulator,name=iPhone 17 Pro
           ui|ui|sideBarUI|AppleUI|platform=iOS Simulator,name=iPad Pro 13-inch (M5)
           extensions|extensions|sideBarExtensions|AppleExtensions|platform=iOS Simulator,name=iPhone 17 Pro
@@ -75,7 +75,7 @@ jobs:
           - id: logic-iphone
             lane: logic
             label: "iPhone 17 Pro iOS 26"
-            scheme: sideBar
+            scheme: sideBarLogicHost
             test_plan: AppleFast
             destination: "platform=iOS Simulator,name=iPhone 17 Pro"
             runner_label: ios
@@ -91,7 +91,7 @@ jobs:
           - id: logic-ipad
             lane: logic
             label: "iPad Pro 13-inch (M5) iPadOS 26"
-            scheme: sideBar
+            scheme: sideBarLogicHost
             test_plan: AppleFast
             destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
             runner_label: ios
@@ -108,7 +108,7 @@ jobs:
           - id: logic-mac
             lane: logic
             label: "macOS 26"
-            scheme: sideBar
+            scheme: sideBarLogicHost
             test_plan: AppleFast
             destination: "platform=macOS"
             runner_label: mac
@@ -208,7 +208,7 @@ jobs:
             --destination "${{ matrix.destination }}" \
             --only-testing "${IOS_ONLY_TESTING}" \
             --skip-testing "${{ matrix.skip_testing }}" \
-            --allowed-macos-targets "sideBarTests"
+            --allowed-macos-targets "sideBarLogicTests"
       - name: Run tests (${{ matrix.label }})
         if: ${{ github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane }}
         env:

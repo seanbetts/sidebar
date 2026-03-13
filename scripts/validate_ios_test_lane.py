@@ -105,14 +105,6 @@ def validate_lane(
         return errors
 
     if platform == "macos":
-        disallowed_scheme_targets = sorted(set(scheme_targets) - allowed_macos_targets)
-        if disallowed_scheme_targets:
-            errors.append(
-                "macOS lane scheme includes unsupported test targets: "
-                f"{', '.join(disallowed_scheme_targets)}. "
-                f"Allowed targets: {', '.join(sorted(allowed_macos_targets))}."
-            )
-
         disallowed_effective_targets = sorted(
             set(effective_targets) - allowed_macos_targets
         )

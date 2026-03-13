@@ -89,7 +89,7 @@ jobs:
           - id: logic-iphone
             lane: logic
             label: "iPhone 17 Pro iOS 26"
-            scheme: sideBar
+            scheme: sideBarLogicHost
             test_plan: AppleFast
             destination: "platform=iOS Simulator,name=iPhone 17 Pro"
             runner_label: ios
@@ -105,7 +105,7 @@ jobs:
           - id: logic-ipad
             lane: logic
             label: "iPad Pro 13-inch (M5) iPadOS 26"
-            scheme: sideBar
+            scheme: sideBarLogicHost
             test_plan: AppleFast
             destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
             runner_label: ios
@@ -122,7 +122,7 @@ jobs:
           - id: logic-mac
             lane: logic
             label: "macOS 26"
-            scheme: sideBar
+            scheme: sideBarLogicHost
             test_plan: AppleFast
             destination: "platform=macOS"
             runner_label: mac
@@ -167,7 +167,7 @@ jobs:
             --destination "${{ matrix.destination }}" \
             --only-testing "${IOS_ONLY_TESTING}" \
             --skip-testing "${{ matrix.skip_testing }}" \
-            --allowed-macos-targets "sideBarTests"
+            --allowed-macos-targets "sideBarLogicTests"
       - name: Run tests (${{ matrix.label }})
         env:
           IOS_SCHEME: ${{ matrix.scheme }}

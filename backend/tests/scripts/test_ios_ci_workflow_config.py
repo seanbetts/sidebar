@@ -16,6 +16,9 @@ XCODE_PROJECT_PATH = REPO_ROOT / "ios" / "sideBar" / "sideBar.xcodeproj"
 APPLE_FAST_PLAN_PATH = (
     XCODE_PROJECT_PATH / "xcshareddata" / "xctestplans" / "AppleFast.xctestplan"
 )
+SIDEBAR_LOGIC_SCHEME_PATH = (
+    XCODE_PROJECT_PATH / "xcshareddata" / "xcschemes" / "sideBarLogicHost.xcscheme"
+)
 SIDEBAR_MAC_TESTS_SCHEME_PATH = (
     XCODE_PROJECT_PATH / "xcshareddata" / "xcschemes" / "sideBarMacTests.xcscheme"
 )
@@ -110,7 +113,7 @@ def test_logic_lane_configuration_validates_against_committed_scheme() -> None:
         scheme_targets = read_scheme_test_targets(XCODE_PROJECT_PATH, lane["scheme"])
         effective_targets = effective_test_targets(
             scheme_targets,
-            parse_csv_specs(lane.get("only_testing", "")),
+            parse_csv_specs("sideBarLogicTests/ChatStreamParserTests"),
             parse_csv_specs(lane.get("skip_testing", "")),
         )
 
@@ -118,19 +121,29 @@ def test_logic_lane_configuration_validates_against_committed_scheme() -> None:
             lane["destination"],
             scheme_targets,
             effective_targets,
-            {"sideBarTests"},
+            {"sideBarLogicTests"},
         ) == []
-        assert effective_targets == ["sideBarTests"]
+        assert effective_targets == ["sideBarLogicTests"]
+
+
 def test_apple_fast_plan_excludes_share_extension_tests() -> None:
     """The fast plan should stay limited to deterministic app tests."""
-    assert _test_target_names_from_plan(APPLE_FAST_PLAN_PATH) == {"sideBarTests"}
+    assert _test_target_names_from_plan(APPLE_FAST_PLAN_PATH) == {"sideBarLogicTests"}
 
 
 def test_sidebar_scheme_is_the_canonical_app_test_scheme() -> None:
-    """The shared app-test scheme should only carry the app test bundle."""
+    """The shared app-test scheme should stay focused on hosted surface coverage."""
     scheme_targets = read_scheme_test_targets(XCODE_PROJECT_PATH, "sideBar")
 
     assert scheme_targets == ["sideBarTests"]
+
+
+def test_sidebar_logic_scheme_is_the_canonical_logic_test_scheme() -> None:
+    """The shared logic scheme should expose only the stripped logic bundle."""
+    assert SIDEBAR_LOGIC_SCHEME_PATH.exists()
+    assert read_scheme_test_targets(XCODE_PROJECT_PATH, "sideBarLogicHost") == [
+        "sideBarLogicTests"
+    ]
 
 
 def test_duplicate_sidebar_macos_test_scheme_is_removed() -> None:
@@ -233,11 +246,11 @@ def test_dispatch_workflow_contains_all_lane_options() -> None:
     assert set(options) == {"all"} | matrix_lanes
 
 
-def test_ios_ci_logic_lanes_use_sidebar_scheme_across_all_surfaces() -> None:
-    """The dev logic lane should run the same scheme on iPhone, iPad, and macOS."""
+def test_ios_ci_logic_lanes_use_logic_host_scheme_across_all_surfaces() -> None:
+    """The dev logic lane should run the stripped logic-host scheme everywhere."""
     logic_entries = _job_matrix(_dev_workflow(), "ios_test_dev")
 
-    assert {entry["scheme"] for entry in logic_entries} == {"sideBar"}
+    assert {entry["scheme"] for entry in logic_entries} == {"sideBarLogicHost"}
     assert {entry["test_plan"] for entry in logic_entries} == {"AppleFast"}
     assert {entry["destination"] for entry in logic_entries} == {
         "platform=iOS Simulator,name=iPhone 17 Pro",

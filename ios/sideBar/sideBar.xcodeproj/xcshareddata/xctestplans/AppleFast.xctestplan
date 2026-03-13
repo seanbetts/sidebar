@@ -16,8 +16,8 @@
     {
       "target" : {
         "containerPath" : "container:sideBar.xcodeproj",
-        "identifier" : "14C84A542F10562500FE0C16",
-        "name" : "sideBarTests"
+        "identifier" : "B2D4E6F52F50010000ABC001",
+        "name" : "sideBarLogicTests"
       }
     }
   ],

@@ -32,6 +32,7 @@
 		B1F100012F50000100ABC001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		B1F100022F50000100ABC001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		C1D2E3F42F70000200ABC123 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
+		D4E6F8142F50030000ABC001 /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +92,13 @@
 			remoteGlobalIDString = 14C84A472F10562300FE0C16;
 			remoteInfo = sideBar;
 		};
+		C3E5F7042F50020000ABC001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 14C84A402F10562300FE0C16 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C3E5F7022F50020000ABC001;
+			remoteInfo = sideBarLogicHost;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -143,6 +151,8 @@
 		146EA0962F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "sideBar Safari Extension (macOS) Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SideBar.local.xcconfig; sourceTree = "<group>"; };
 		14C84A482F10562300FE0C16 /* sideBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sideBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B2D4E6F12F50010000ABC001 /* sideBarLogicTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarLogicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C3E5F7012F50020000ABC001 /* sideBarLogicHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sideBarLogicHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A552F10562500FE0C16 /* sideBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14DFA3272F10F45E001DAF5B /* SideBarCache.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = SideBarCache.xcdatamodel; sourceTree = "<group>"; };
@@ -205,6 +215,13 @@
 			);
 			target = 14C84A472F10562300FE0C16 /* sideBar */;
 		};
+		D4E6F8132F50030000ABC001 /* Exceptions for "sideBar" folder in "sideBarLogicHost" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C3E5F7022F50020000ABC001 /* sideBarLogicHost */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -265,6 +282,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				A9F18E1B3C4D5E6F00112233 /* Exceptions for "sideBar" folder in "sideBar" target */,
+				D4E6F8132F50030000ABC001 /* Exceptions for "sideBar" folder in "sideBarLogicHost" target */,
 				142516C62F1EBECC0072E4F9 /* Exceptions for "sideBar" folder in "ShareExtension" target */,
 			);
 			path = sideBar;
@@ -363,6 +381,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B2D4E6F22F50010000ABC001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		14C84A5C2F10562500FE0C16 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -419,6 +444,8 @@
 			isa = PBXGroup;
 			children = (
 				14C84A482F10562300FE0C16 /* sideBar.app */,
+				C3E5F7012F50020000ABC001 /* sideBarLogicHost.app */,
+				B2D4E6F12F50010000ABC001 /* sideBarLogicTests.xctest */,
 				14C84A552F10562500FE0C16 /* sideBarTests.xctest */,
 				14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */,
 				A1B2C3E12F40000200ABCDEF /* ShareExtensionTests.xctest */,
@@ -633,6 +660,41 @@
 			productReference = 14C84A482F10562300FE0C16 /* sideBar.app */;
 			productType = "com.apple.product-type.application";
 		};
+		C3E5F7022F50020000ABC001 /* sideBarLogicHost */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C3E5F7072F50020000ABC001 /* Build configuration list for PBXNativeTarget "sideBarLogicHost" */;
+			buildPhases = (
+				D4E6F8112F50030000ABC001 /* Sources */,
+				14E0AB1A2F20000000BEEF01 /* Generate SideBarConfig.plist */,
+				14E0AB1B2F30000000BEEF07 /* SwiftLint */,
+				14E0AB1C2F30000000BEEF08 /* Upload Sentry dSYMs */,
+				14C84A452F10562300FE0C16 /* Frameworks */,
+				D4E6F8122F50030000ABC001 /* Resources */,
+				1413DE532F2B514C002495EE /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1413DE4D2F2B514C002495EE /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				14C84A4A2F10562300FE0C16 /* sideBar */,
+			);
+			name = sideBarLogicHost;
+			packageProductDependencies = (
+				14DFA32D2F110406001DAF5B /* Auth */,
+				14DFA32F2F110406001DAF5B /* Functions */,
+				14DFA3312F110406001DAF5B /* PostgREST */,
+				14DFA3332F110406001DAF5B /* Realtime */,
+				14DFA3352F110406001DAF5B /* Storage */,
+				14DFA3382F116F2C001DAF5B /* Supabase */,
+				14F1A0A12F21000000BEEF02 /* MarkdownUI */,
+				14F1A0B92F31000000BEEF03 /* Markdown */,
+			);
+			productName = sideBarLogicHost;
+			productReference = C3E5F7012F50020000ABC001 /* sideBarLogicHost.app */;
+			productType = "com.apple.product-type.application";
+		};
 		14C84A542F10562500FE0C16 /* sideBarTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 14C84A6C2F10562500FE0C16 /* Build configuration list for PBXNativeTarget "sideBarTests" */;
@@ -654,6 +716,29 @@
 			);
 			productName = sideBarTests;
 			productReference = 14C84A552F10562500FE0C16 /* sideBarTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		B2D4E6F52F50010000ABC001 /* sideBarLogicTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B2D4E6F92F50010000ABC001 /* Build configuration list for PBXNativeTarget "sideBarLogicTests" */;
+			buildPhases = (
+				B2D4E6F32F50010000ABC001 /* Sources */,
+				B2D4E6F22F50010000ABC001 /* Frameworks */,
+				B2D4E6F42F50010000ABC001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C3E5F7032F50020000ABC001 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				14C84A582F10562500FE0C16 /* sideBarTests */,
+			);
+			name = sideBarLogicTests;
+			packageProductDependencies = (
+			);
+			productName = sideBarLogicTests;
+			productReference = B2D4E6F12F50010000ABC001 /* sideBarLogicTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		14C84A5E2F10562500FE0C16 /* sideBarUITests */ = {
@@ -741,7 +826,14 @@
 							};
 						};
 					};
+					C3E5F7022F50020000ABC001 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					14C84A542F10562500FE0C16 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 14C84A472F10562300FE0C16;
+					};
+					B2D4E6F52F50010000ABC001 = {
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 14C84A472F10562300FE0C16;
 					};
@@ -775,6 +867,8 @@
 			projectRoot = "";
 			targets = (
 				14C84A472F10562300FE0C16 /* sideBar */,
+				C3E5F7022F50020000ABC001 /* sideBarLogicHost */,
+				B2D4E6F52F50010000ABC001 /* sideBarLogicTests */,
 				14C84A542F10562500FE0C16 /* sideBarTests */,
 				14C84A5E2F10562500FE0C16 /* sideBarUITests */,
 				142516AC2F1EB96B0072E4F9 /* ShareExtension */,
@@ -839,6 +933,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		14C84A532F10562500FE0C16 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B2D4E6F42F50010000ABC001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D4E6F8122F50030000ABC001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -974,6 +1082,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B2D4E6F32F50010000ABC001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D4E6F8112F50030000ABC001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D4E6F8142F50030000ABC001 /* SideBarCache.xcdatamodeld in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		14C84A5B2F10562500FE0C16 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1033,6 +1156,11 @@
 			isa = PBXTargetDependency;
 			target = 14C84A472F10562300FE0C16 /* sideBar */;
 			targetProxy = 14C84A602F10562500FE0C16 /* PBXContainerItemProxy */;
+		};
+		C3E5F7032F50020000ABC001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C3E5F7022F50020000ABC001 /* sideBarLogicHost */;
+			targetProxy = C3E5F7042F50020000ABC001 /* PBXContainerItemProxy */;
 		};
 		A1B2C3E72F40000200ABCDEF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1858,6 +1986,162 @@
 			};
 			name = Release;
 		};
+		C3E5F7052F50020000ABC001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */;
+			buildSettings = {
+				"APS_ENVIRONMENT[sdk=iphoneos*]" = development;
+				"APS_ENVIRONMENT[sdk=macosx*]" = development;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = sideBar/sideBar.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = sideBar/sideBar.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = YOURTEAMID;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = YES;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = SideBarLaunchScreen.storyboard;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = sideBar/Info.plist;
+				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
+				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleTypeRole = Editor;\n    CFBundleURLName = \"ai.sidebar.sidebar.logic-host\";\n    CFBundleURLSchemes =     (\n        sidebar\n    );\n}";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "We use Face ID to securely unlock sideBar and protect your data.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a profile photo for your sideBar account.";
+				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
+				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphoneos*]" = "remote-notification";
+				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphonesimulator*]" = "remote-notification";
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = NO;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = NO;
+				"INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphoneos*]" = SideBarLaunchScreen;
+				"INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphonesimulator*]" = SideBarLaunchScreen;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.logic-host;
+				PRODUCT_MODULE_NAME = sideBar;
+				PRODUCT_NAME = sideBarLogicHost;
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		C3E5F7062F50020000ABC001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */;
+			buildSettings = {
+				"APS_ENVIRONMENT[sdk=iphoneos*]" = production;
+				"APS_ENVIRONMENT[sdk=macosx*]" = production;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = sideBar/sideBar.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = sideBar/sideBar.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = YOURTEAMID;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = YES;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = SideBarLaunchScreen.storyboard;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = sideBar/Info.plist;
+				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
+				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleTypeRole = Editor;\n    CFBundleURLName = \"ai.sidebar.sidebar.logic-host\";\n    CFBundleURLSchemes =     (\n        sidebar\n    );\n}";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "We use Face ID to securely unlock sideBar and protect your data.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a profile photo for your sideBar account.";
+				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
+				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphoneos*]" = "remote-notification";
+				"INFOPLIST_KEY_UIBackgroundModes[sdk=iphonesimulator*]" = "remote-notification";
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = NO;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = NO;
+				"INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphoneos*]" = SideBarLaunchScreen;
+				"INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphonesimulator*]" = SideBarLaunchScreen;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.logic-host;
+				PRODUCT_MODULE_NAME = sideBar;
+				PRODUCT_NAME = sideBarLogicHost;
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
 		14C84A6D2F10562500FE0C16 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1908,6 +2192,62 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/sideBar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/sideBar";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		B2D4E6F72F50010000ABC001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = YOURTEAMID;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = seanbetts.sideBarLogicTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/sideBarLogicHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/sideBarLogicHost";
+				TEST_TARGET_NAME = sideBarLogicHost;
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		B2D4E6F82F50010000ABC001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = YOURTEAMID;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = seanbetts.sideBarLogicTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/sideBarLogicHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/sideBarLogicHost";
+				TEST_TARGET_NAME = sideBarLogicHost;
 				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
@@ -2117,11 +2457,29 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		C3E5F7072F50020000ABC001 /* Build configuration list for PBXNativeTarget "sideBarLogicHost" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C3E5F7052F50020000ABC001 /* Debug */,
+				C3E5F7062F50020000ABC001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		14C84A6C2F10562500FE0C16 /* Build configuration list for PBXNativeTarget "sideBarTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				14C84A6D2F10562500FE0C16 /* Debug */,
 				14C84A6E2F10562500FE0C16 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B2D4E6F92F50010000ABC001 /* Build configuration list for PBXNativeTarget "sideBarLogicTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2D4E6F72F50010000ABC001 /* Debug */,
+				B2D4E6F82F50010000ABC001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -28,6 +28,13 @@ def target_from_manifest_path(path: str) -> str:
     return parts[2]
 
 
+def target_for_selection(selection: str, path: str) -> str:
+    """Return the XCTest target name for a resolver selection and manifest path."""
+    if selection in {"dev_logic", "main_logic"}:
+        return "sideBarLogicTests"
+    return target_from_manifest_path(path)
+
+
 def extract_test_class_names(path: Path) -> list[str]:
     """Return XCTestCase class names referenced by a Swift test source file."""
     text = path.read_text()
@@ -89,7 +96,7 @@ def resolve_selection_specs(
         source_path = repo_root / row["path"]
         if not source_path.exists():
             raise FileNotFoundError(f"Taxonomy source file missing: {source_path}")
-        target = target_from_manifest_path(row["path"])
+        target = target_for_selection(selection, row["path"])
         class_names = extract_test_class_names(source_path)
         if not class_names:
             raise ValueError(

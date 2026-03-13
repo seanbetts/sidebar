@@ -57,9 +57,10 @@ def test_dev_logic_selection_returns_logic_specs_only() -> None:
         selection="dev_logic",
     )
 
-    assert "sideBarTests/ChatStreamParserTests" in specs
+    assert "sideBarLogicTests/ChatStreamParserTests" in specs
     assert "sideBarTests/ContentViewLifecycleTests" not in specs
     assert "sideBarUITests/SideBarUITests" not in specs
+    assert all(spec.startswith("sideBarLogicTests/") for spec in specs)
 
 
 def test_main_surface_selection_returns_sidebartests_surface_specs() -> None:

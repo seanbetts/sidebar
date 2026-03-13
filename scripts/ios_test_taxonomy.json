@@ -32,6 +32,12 @@
       "branch_policy": "main"
     },
     {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentSavedWebsiteEventTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/AppEnvironmentDependencyBuilderTests.swift",
       "bucket": "logic",
       "feature_area": "app_shell",
@@ -59,6 +65,12 @@
       "path": "ios/sideBar/sideBarTests/AppTextSizeOptionTests.swift",
       "bucket": "logic",
       "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/BiometricMonitorTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
       "branch_policy": "dev"
     },
     {
@@ -138,6 +150,12 @@
       "bucket": "surface",
       "feature_area": "chat",
       "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ChatStartupStabilityTests.swift",
+      "bucket": "logic",
+      "feature_area": "chat",
+      "branch_policy": "dev"
     },
     {
       "path": "ios/sideBar/sideBarTests/ChatStreamParserTests.swift",
@@ -518,7 +536,19 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/NotesPanelSparseStateTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/NotesSemanticDocumentProjectionTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesStoreWidgetDataTests.swift",
       "bucket": "logic",
       "feature_area": "notes",
       "branch_policy": "dev"
@@ -758,6 +788,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/SidebarSparseStateRowTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/SkillIconResolverTests.swift",
       "bucket": "logic",
       "feature_area": "skills",
@@ -944,7 +980,19 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/WebsitesPanelSparseStateTests.swift",
+      "bucket": "logic",
+      "feature_area": "websites",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/WebsitesPendingStatusLabelTests.swift",
+      "bucket": "logic",
+      "feature_area": "websites",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WebsitesStoreReconciliationTests.swift",
       "bucket": "logic",
       "feature_area": "websites",
       "branch_policy": "dev"
@@ -954,6 +1002,12 @@
       "bucket": "surface",
       "feature_area": "websites",
       "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WebsitesStoreWidgetDataTests.swift",
+      "bucket": "logic",
+      "feature_area": "websites",
+      "branch_policy": "dev"
     },
     {
       "path": "ios/sideBar/sideBarTests/WebsitesViewModelTests.swift",
@@ -1109,6 +1163,10 @@
   "excluded_files": [
     {
       "path": "ios/sideBar/sideBarTests/AppEnvironmentDeepLinkTestSupport.swift",
+      "reason": "test_support"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentDeepLinkWidgetRefreshAPITestSupport.swift",
       "reason": "test_support"
     },
     {
