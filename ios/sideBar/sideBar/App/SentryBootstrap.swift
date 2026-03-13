@@ -102,14 +102,10 @@ enum SentryBootstrap {
     }
 
     @discardableResult
-    static func triggerDebugTestCrash(
-        isDebugBuild: Bool = defaultIsDebugBuild,
+    static func triggerTestCrash(
         isRunningTestsOrPreviews: Bool = EnvironmentConfig.isRunningTestsOrPreviews(),
         client: SentryBootstrapClient = DefaultSentryBootstrapClient.shared
     ) -> Bool {
-        guard isDebugBuild else {
-            return false
-        }
         guard isRunningTestsOrPreviews == false else {
             return false
         }

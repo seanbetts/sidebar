@@ -117,24 +117,10 @@ final class SentryBootstrapTests: XCTestCase {
         XCTAssertEqual(client.startCallCount, 1)
     }
 
-    func testTriggerDebugTestCrashDoesNothingOutsideDebugBuild() {
+    func testTriggerTestCrashDoesNothingWhileRunningTests() {
         let client = RecordingSentryBootstrapClient()
 
-        let didTrigger = SentryBootstrap.triggerDebugTestCrash(
-            isDebugBuild: false,
-            isRunningTestsOrPreviews: false,
-            client: client
-        )
-
-        XCTAssertFalse(didTrigger)
-        XCTAssertEqual(client.crashCallCount, 0)
-    }
-
-    func testTriggerDebugTestCrashDoesNothingWhileRunningTests() {
-        let client = RecordingSentryBootstrapClient()
-
-        let didTrigger = SentryBootstrap.triggerDebugTestCrash(
-            isDebugBuild: true,
+        let didTrigger = SentryBootstrap.triggerTestCrash(
             isRunningTestsOrPreviews: true,
             client: client
         )
@@ -143,11 +129,10 @@ final class SentryBootstrapTests: XCTestCase {
         XCTAssertEqual(client.crashCallCount, 0)
     }
 
-    func testTriggerDebugTestCrashTriggersCrashInDebugBuild() {
+    func testTriggerTestCrashTriggersCrashOutsideTests() {
         let client = RecordingSentryBootstrapClient()
 
-        let didTrigger = SentryBootstrap.triggerDebugTestCrash(
-            isDebugBuild: true,
+        let didTrigger = SentryBootstrap.triggerTestCrash(
             isRunningTestsOrPreviews: false,
             client: client
         )
