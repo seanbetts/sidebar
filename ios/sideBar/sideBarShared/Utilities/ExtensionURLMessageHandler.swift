@@ -181,6 +181,9 @@ public enum ExtensionURLMessageHandler {
                 }
             case .apiError(let message):
                 let lowered = message.lowercased()
+                if lowered == "unable to save website" || lowered == "failed to save website" {
+                    return .queue(.savedForLater)
+                }
                 if lowered.contains("timeout")
                     || lowered.contains("timed out")
                     || lowered.contains("temporar")

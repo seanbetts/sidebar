@@ -17,6 +17,13 @@ final class APIClientTests: XCTestCase {
         super.tearDown()
     }
 
+    private func waitForSignal(
+        _ semaphore: DispatchSemaphore,
+        timeout seconds: TimeInterval
+    ) -> DispatchTimeoutResult {
+        semaphore.wait(timeout: .now() + seconds)
+    }
+
     func testInjectsAuthorizationHeader() async throws {
         let token = "token-123"
         let client = makeClient(token: token)
@@ -275,7 +282,7 @@ final class APIClientTests: XCTestCase {
 
         async let first: EmptyResponse = client.request("ping", method: "GET")
         XCTAssertEqual(
-            firstUnauthorized.wait(timeout: .now() + 0.25),
+            waitForSignal(firstUnauthorized, timeout: 0.25),
             .success,
             "Expected the first request to reach the unauthorized response"
         )

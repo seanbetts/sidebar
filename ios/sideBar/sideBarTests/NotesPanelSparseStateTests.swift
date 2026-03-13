@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class NotesPanelSparseStateTests: XCTestCase {
     func testPanelStatePrefersLoadingBeforeSparseState() {
         XCTAssertEqual(

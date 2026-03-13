@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class UITestAuthBootstrapTests: XCTestCase {
     private static var retainedSessions: [PlaceholderAuthSession] = []
 
