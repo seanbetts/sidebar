@@ -377,6 +377,8 @@ async def stream_chat(
         selected_skill_ids=selected_skill_ids,
         executable_skill_ids=executable_skill_ids,
         blocked_skill_summaries=blocked_skill_summaries,
+        enabled_skill_ids=list(enabled_skills),
+        runtime_capabilities=runtime_capabilities,
     )
 
     stream_started_at = time.perf_counter()

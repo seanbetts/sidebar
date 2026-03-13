@@ -30,6 +30,8 @@ class ToolExecutionContext:
     selected_skill_ids: list[str] = field(default_factory=list)
     executable_skill_ids: list[str] = field(default_factory=list)
     blocked_skill_summaries: list[dict[str, Any]] = field(default_factory=list)
+    enabled_skill_ids: list[str] = field(default_factory=list)
+    runtime_capabilities: list[dict[str, Any]] = field(default_factory=list)
     prompt_preview_payload: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -58,5 +60,7 @@ class ToolExecutionContext:
             "selected_skill_ids": self.selected_skill_ids,
             "executable_skill_ids": self.executable_skill_ids,
             "blocked_skill_summaries": self.blocked_skill_summaries,
+            "enabled_skill_ids": self.enabled_skill_ids,
+            "runtime_capabilities": self.runtime_capabilities,
             "prompt_preview_payload": self.prompt_preview_payload,
         }
