@@ -4,9 +4,66 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SIDEBAR_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+RETRY_ATTEMPTS="${SENTRY_UPLOAD_RETRY_ATTEMPTS:-3}"
+RETRY_DELAY_SECONDS="${SENTRY_UPLOAD_RETRY_DELAY_SECONDS:-5}"
 
 log() {
     echo "sentry-dsym-upload: $*"
+}
+
+is_transient_upload_failure() {
+    local output="$1"
+
+    [[ "${output}" == *"Could not resolve host"* ]] ||
+    [[ "${output}" == *"could not resolve host"* ]] ||
+    [[ "${output}" == *"Failed to connect"* ]] ||
+    [[ "${output}" == *"Connection timed out"* ]] ||
+    [[ "${output}" == *"Operation timed out"* ]] ||
+    [[ "${output}" == *"network error"* ]] ||
+    [[ "${output}" == *"temporarily unavailable"* ]] ||
+    [[ "${output}" == *"timeout"* ]] ||
+    [[ "${output}" == *"HTTP 502"* ]] ||
+    [[ "${output}" == *"HTTP 503"* ]] ||
+    [[ "${output}" == *"HTTP 504"* ]]
+}
+
+run_upload_with_retry() {
+    local sentry_cli="$1"
+    local dsym_path="$2"
+    local attempt=1
+    local output=""
+    local exit_code=0
+
+    while (( attempt <= RETRY_ATTEMPTS )); do
+        set +e
+        output="$("${sentry_cli}" debug-files upload \
+            --org "${SENTRY_ORG}" \
+            --project "${SENTRY_PROJECT}" \
+            "${dsym_path}" 2>&1)"
+        exit_code=$?
+        set -e
+
+        if [[ "${exit_code}" -eq 0 ]]; then
+            [[ -n "${output}" ]] && echo "${output}"
+            return 0
+        fi
+
+        echo "${output}"
+        if (( attempt < RETRY_ATTEMPTS )); then
+            log "upload attempt ${attempt}/${RETRY_ATTEMPTS} failed, retrying in ${RETRY_DELAY_SECONDS}s"
+            sleep "${RETRY_DELAY_SECONDS}"
+        fi
+
+        ((attempt++))
+    done
+
+    if is_transient_upload_failure "${output}"; then
+        log "warning: transient Sentry upload failure after ${RETRY_ATTEMPTS} attempts; continuing without failing the archive"
+        return 0
+    fi
+
+    log "error: non-transient Sentry upload failure"
+    return "${exit_code}"
 }
 
 find_sentry_cli() {
@@ -73,8 +130,5 @@ fi
 
 DSYM_NAME="$(basename "${DSYM_PATH}")"
 log "uploading ${DSYM_NAME} for ${PRODUCT_BUNDLE_IDENTIFIER:-unknown-bundle-id}"
-"${SENTRY_CLI}" debug-files upload \
-    --org "${SENTRY_ORG}" \
-    --project "${SENTRY_PROJECT}" \
-    "${DSYM_PATH}"
+run_upload_with_retry "${SENTRY_CLI}" "${DSYM_PATH}"
 log "upload complete"
