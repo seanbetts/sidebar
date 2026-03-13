@@ -3,6 +3,7 @@ import uuid
 from datetime import UTC, datetime
 
 from api.config import settings
+from api.exceptions import WebsiteNotFoundError
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from api.models.website import Website
 from api.schemas.filters import WebsiteFilters
@@ -95,6 +96,86 @@ def test_websites_save_reports_no_readable_content(test_client, monkeypatch):
         response.json()["error"]["details"]["code"] == "WEB_SAVE_NO_READABLE_CONTENT"
     )
     assert captured["user_id"] == TEST_USER_ID
+
+
+def test_websites_save_returns_canonical_detail(test_client, test_db, monkeypatch):
+    url = "https://example.com/canonical"
+    website_id = uuid.uuid4()
+    saved_at = datetime.now(UTC)
+    website = Website(
+        id=website_id,
+        user_id=TEST_USER_ID,
+        url=url,
+        url_full=url,
+        domain="example.com",
+        title="Example title",
+        content="Example content",
+        source=None,
+        saved_at=saved_at,
+        published_at=saved_at,
+        reading_time=None,
+        metadata_={
+            "pinned": False,
+            "archived": False,
+            "favicon_url": "https://example.com/favicon.ico",
+            "favicon_r2_key": "r2-key",
+            "youtube_transcripts": {"video": "transcript"},
+        },
+        is_archived=False,
+        created_at=saved_at,
+        updated_at=saved_at,
+        last_opened_at=saved_at,
+        deleted_at=None,
+    )
+    test_db.add(website)
+    test_db.commit()
+
+    async def fake_execute(*args, **kwargs):
+        return {"success": True, "data": {"id": str(website_id)}}
+
+    monkeypatch.setattr(
+        test_client.app.state.executor, "execute", fake_execute
+    )
+
+    response = test_client.post(
+        "/api/websites/save",
+        json={"url": url},
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    website_payload = body["website"]
+    assert website_payload["id"] == str(website_id)
+    assert website_payload["title"] == "Example title"
+    assert website_payload["url"] == url
+    assert website_payload["content"] == "Example content"
+    assert website_payload["favicon_url"] == "https://example.com/favicon.ico"
+    assert website_payload["favicon_r2_key"] == "r2-key"
+    assert website_payload["youtube_transcripts"] == {"video": "transcript"}
+    assert isinstance(website_payload["published_at"], str)
+
+
+def test_websites_save_rejects_explicit_port_urls(test_client, monkeypatch):
+    async def fake_execute(*args, **kwargs):
+        return {"success": True, "data": {"id": str(uuid.uuid4())}}
+
+    monkeypatch.setattr(
+        test_client.app.state.executor, "execute", fake_execute
+    )
+
+    response = test_client.post(
+        "/api/websites/save",
+        json={"url": "https://example.com:8443/article"},
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 400
+    payload = response.json()["error"]
+    assert payload["code"] == "BAD_REQUEST"
+    assert payload["message"] == "Invalid URL"
+    assert payload["details"]["reason"] == "invalid_url"
 
 
 def test_quick_save_routes_are_removed(test_client):
