@@ -94,6 +94,7 @@ jobs:
             test_plan: AppleUI
             destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
             runner_label: ios
+            pre_push_mode: "YES"
             spec_selection_main: ui_smoke
             skip_testing: ""
             retry_tests_on_failure: "NO"
@@ -175,6 +176,9 @@ jobs:
           IOS_PREPARE_SIMULATOR_BEFORE_TESTS: ${{ matrix.prepare_simulator_before_tests }}
           IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE: ${{ matrix.collect_simulator_diagnostics_on_failure }}
           IOS_SIMULATOR_DIAGNOSTICS_DIR: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics
+          SIDEBAR_PRE_PUSH_MODE: ${{ matrix.pre_push_mode || 'NO' }}
+          SIDEBAR_PRE_PUSH_STATE_DIR: ${{ runner.temp }}/pre-push-simulator/${{ matrix.id }}
+          SIDEBAR_PRE_PUSH_SIMULATOR_NAME: sideBar PrePush iPad
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

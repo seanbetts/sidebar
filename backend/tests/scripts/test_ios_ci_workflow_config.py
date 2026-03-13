@@ -269,6 +269,33 @@ def test_ios_ci_ui_lane_receives_explicit_ui_test_secrets() -> None:
     assert env["SUPABASE_ANON_KEY"] == "${{ secrets.SUPABASE_ANON_KEY }}"
 
 
+def test_ios_ci_ipad_lanes_use_the_dedicated_pre_push_simulator() -> None:
+    """Shared-Mac iPad lanes should route through the dedicated pre-push simulator helper."""
+    workflows_and_jobs = [
+        (_dev_workflow(), "ios_test_dev"),
+        (_main_workflow(), "ios_test_main"),
+        (_dispatch_workflow(), "ios_test_dispatch"),
+    ]
+
+    for workflow, job_name in workflows_and_jobs:
+        env = _job_step(workflow, job_name, "Run tests")["env"]
+        assert env["SIDEBAR_PRE_PUSH_MODE"] == "${{ matrix.pre_push_mode || 'NO' }}"
+        assert env["SIDEBAR_PRE_PUSH_STATE_DIR"] == "${{ runner.temp }}/pre-push-simulator/${{ matrix.id }}"
+        assert env["SIDEBAR_PRE_PUSH_SIMULATOR_NAME"] == "sideBar PrePush iPad"
+
+    dispatch_entries = _dispatch_matrix()
+    ipad_entry_ids = {
+        entry["id"]
+        for entry in dispatch_entries
+        if entry["destination"] == "platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
+    }
+    pre_push_entry_ids = {
+        entry["id"] for entry in dispatch_entries if entry.get("pre_push_mode") == "YES"
+    }
+    assert ipad_entry_ids == {"logic-ipad", "ui"}
+    assert pre_push_entry_ids == ipad_entry_ids
+
+
 def test_ios_ci_stores_result_bundles_under_runner_temp() -> None:
     """Per-run Apple artifacts should live under runner temp, not the persistent workspace."""
     workflows_and_jobs = [
