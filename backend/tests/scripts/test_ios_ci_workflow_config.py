@@ -259,6 +259,16 @@ def test_ios_ci_logic_lanes_use_logic_host_scheme_across_all_surfaces() -> None:
     }
 
 
+def test_ios_prepare_packages_logic_resolution_uses_logic_host_scheme() -> None:
+    """Shared package resolution should stay aligned with the logic-host split."""
+    workflow = _dev_workflow()
+    run_script = _job_step(workflow, "ios_prepare_packages", "Warm shared package state")["run"]
+
+    assert "logic-iphone|sideBarLogicHost|AppleFast|" in run_script
+    assert "logic-ipad|sideBarLogicHost|AppleFast|" in run_script
+    assert "logic-mac|sideBarLogicHost|AppleFast|" in run_script
+
+
 def test_surface_ui_and_extensions_use_expected_schemes() -> None:
     """The broader lanes should stay bound to their intended schemes and plans."""
     assert _matrix_entry("surface")["scheme"] == "sideBar"

@@ -71,9 +71,9 @@ jobs:
             IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY="YES" \
             scripts/test-ios.sh
           done <<'EOF'
-          logic-iphone|sideBar|AppleFast|platform=iOS Simulator,name=iPhone 17 Pro
-          logic-ipad|sideBar|AppleFast|platform=iOS Simulator,name=iPad Pro 13-inch (M5)
-          logic-mac|sideBar|AppleFast|platform=macOS
+          logic-iphone|sideBarLogicHost|AppleFast|platform=iOS Simulator,name=iPhone 17 Pro
+          logic-ipad|sideBarLogicHost|AppleFast|platform=iOS Simulator,name=iPad Pro 13-inch (M5)
+          logic-mac|sideBarLogicHost|AppleFast|platform=macOS
           EOF
 
   ios_test_dev:

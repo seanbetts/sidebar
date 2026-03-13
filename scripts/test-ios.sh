@@ -13,9 +13,23 @@ else
   IOS_SCHEME="sideBar"
 fi
 
+resolve_execution_scheme() {
+  case "${1}:${2}" in
+    sideBar:AppleFast)
+      echo "sideBarLogicHost"
+      ;;
+    *)
+      echo "${1}"
+      ;;
+  esac
+}
+
 default_test_plan_for_scheme() {
   case "${1}" in
     sideBar)
+      echo "AppleFast"
+      ;;
+    sideBarLogicHost)
       echo "AppleFast"
       ;;
     sideBarUI)
@@ -65,6 +79,7 @@ if [[ -n "${IOS_TEST_PLAN+x}" ]]; then
 else
   IOS_TEST_PLAN="$(default_test_plan_for_scheme "${IOS_SCHEME}")"
 fi
+IOS_EXECUTION_SCHEME="$(resolve_execution_scheme "${IOS_SCHEME}" "${IOS_TEST_PLAN}")"
 IOS_RESULT_BUNDLE_PATH="${IOS_RESULT_BUNDLE_PATH:-}"
 IOS_DERIVED_DATA_PATH="${IOS_DERIVED_DATA_PATH:-}"
 IOS_CLEAN_DERIVED_DATA="${IOS_CLEAN_DERIVED_DATA:-NO}"
@@ -122,10 +137,14 @@ if [[ "${SIDEBAR_PRE_PUSH_MODE}" == "YES" ]]; then
   IOS_DESTINATION="platform=iOS Simulator,id=${IOS_TARGET_SIMULATOR_UDID}"
 fi
 
+if [[ "${IOS_EXECUTION_SCHEME}" != "${IOS_SCHEME}" ]]; then
+  echo "Routing Apple tests from scheme ${IOS_SCHEME} to ${IOS_EXECUTION_SCHEME} for test plan ${IOS_TEST_PLAN}."
+fi
+
 if [[ -n "${IOS_TEST_PLAN}" ]]; then
-  echo "Running Apple tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION}, test plan ${IOS_TEST_PLAN})..."
+  echo "Running Apple tests for scheme ${IOS_EXECUTION_SCHEME} (${IOS_DESTINATION}, test plan ${IOS_TEST_PLAN})..."
 else
-  echo "Running Apple tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
+  echo "Running Apple tests for scheme ${IOS_EXECUTION_SCHEME} (${IOS_DESTINATION})..."
 fi
 
 if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
@@ -144,7 +163,7 @@ fi
 
 XCODEBUILD_ARGS=(
   -project "${IOS_PROJECT}"
-  -scheme "${IOS_SCHEME}"
+  -scheme "${IOS_EXECUTION_SCHEME}"
   -destination "${IOS_DESTINATION}"
   -destination-timeout "${IOS_DESTINATION_TIMEOUT}"
   -enableCodeCoverage "${IOS_ENABLE_CODE_COVERAGE}"
@@ -198,7 +217,7 @@ if [[ "${IOS_SKIP_PACKAGE_UPDATES}" == "YES" ]]; then
   XCODEBUILD_ARGS+=(-skipPackageUpdates)
 fi
 
-if [[ "${IOS_SCHEME}" == "sideBarUI" && -z "${IOS_ONLY_TESTING}" && "${IOS_UI_SMOKE_ONLY}" == "YES" ]]; then
+if [[ "${IOS_EXECUTION_SCHEME}" == "sideBarUI" && -z "${IOS_ONLY_TESTING}" && "${IOS_UI_SMOKE_ONLY}" == "YES" ]]; then
   IOS_ONLY_TESTING="$(default_ui_smoke_only_testing)"
   echo "Defaulting sideBarUI to curated smoke coverage. Set IOS_UI_SMOKE_ONLY=NO or IOS_ONLY_TESTING to run a broader UI selection."
 fi
@@ -327,7 +346,7 @@ ui_test_value() {
 lane_includes_ui_tests="NO"
 
 if [[ "${resolve_only_mode}" != "YES" ]]; then
-  if scheme_includes_ui_tests "${IOS_SCHEME}"; then
+  if scheme_includes_ui_tests "${IOS_EXECUTION_SCHEME}"; then
     lane_includes_ui_tests="YES"
   fi
 
@@ -360,8 +379,8 @@ if [[ "${resolve_only_mode}" != "YES" ]]; then
 
     if [[ "${lane_includes_ui_tests}" == "YES" ]] && ! ui_test_backend_config_present; then
       echo "UI test backend configuration missing; skipping sideBarUITests."
-      if scheme_has_only_ui_tests "${IOS_SCHEME}"; then
-        echo "No non-UI Apple tests remain in scheme ${IOS_SCHEME}; failing before running xcodebuild."
+      if scheme_has_only_ui_tests "${IOS_EXECUTION_SCHEME}"; then
+        echo "No non-UI Apple tests remain in scheme ${IOS_EXECUTION_SCHEME}; failing before running xcodebuild."
         exit 1
       fi
       XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
@@ -370,8 +389,8 @@ if [[ "${resolve_only_mode}" != "YES" ]]; then
 
     if [[ "${lane_includes_ui_tests}" == "YES" ]] && ! ui_test_credentials_present; then
       echo "UI test credentials missing; skipping sideBarUITests."
-      if scheme_has_only_ui_tests "${IOS_SCHEME}"; then
-        echo "No non-UI Apple tests remain in scheme ${IOS_SCHEME}; failing before running xcodebuild."
+      if scheme_has_only_ui_tests "${IOS_EXECUTION_SCHEME}"; then
+        echo "No non-UI Apple tests remain in scheme ${IOS_EXECUTION_SCHEME}; failing before running xcodebuild."
         exit 1
       fi
       XCODEBUILD_ARGS+=(-skip-testing:sideBarUITests)
@@ -601,7 +620,7 @@ resolve_package_dependencies() {
     local package_args=(
       -resolvePackageDependencies
       -project "${IOS_PROJECT}"
-      -scheme "${IOS_SCHEME}"
+      -scheme "${IOS_EXECUTION_SCHEME}"
     )
 
     if [[ -n "${IOS_DERIVED_DATA_PATH}" ]]; then
