@@ -195,6 +195,10 @@ extension AppEnvironment {
 
         var enqueuedWebsiteEvents = false
         for event in events where event.type == .websiteSaved {
+            if let website = event.website {
+                await applySavedWebsiteEvent(website)
+                continue
+            }
             guard let url = event.websiteUrl,
                   let normalized = ExtensionURLMessageHandler.normalizeQueuedURL(url) else {
                 continue
@@ -206,6 +210,73 @@ extension AppEnvironment {
 
         if enqueuedWebsiteEvents {
             websitesViewModel.syncPendingWebsitesFromQueuedShares(storage.pendingShareStore.loadAll())
+        }
+    }
+
+    private func applySavedWebsiteEvent(_ website: ExtensionSavedWebsite) async {
+        let item = WebsiteItem(
+            id: website.id,
+            title: website.title,
+            url: website.url,
+            domain: website.domain,
+            savedAt: website.savedAt,
+            publishedAt: website.publishedAt,
+            pinned: website.pinned,
+            pinnedOrder: website.pinnedOrder,
+            archived: website.archived,
+            faviconUrl: website.faviconUrl,
+            faviconR2Key: website.faviconR2Key,
+            youtubeTranscripts: website.youtubeTranscripts,
+            readingTime: website.readingTime,
+            updatedAt: website.updatedAt,
+            lastOpenedAt: website.lastOpenedAt,
+            deletedAt: nil
+        )
+        if let detail = await resolvedSavedWebsiteDetail(from: website) {
+            websitesStore.persistDetail(detail)
+            websitesStore.insertItemAtTop(WebsiteItem(detail: detail), persist: true)
+        } else {
+            websitesStore.insertItemAtTop(item, persist: true)
+        }
+        websitesStore.invalidateList()
+        websitesViewModel.removePendingWebsite(for: website.url)
+    }
+
+    private func resolvedSavedWebsiteDetail(from website: ExtensionSavedWebsite) async -> WebsiteDetail? {
+        if let content = website.content, website.requiresDetailFetch == false {
+            return WebsiteDetail(
+                id: website.id,
+                title: website.title,
+                url: website.url,
+                urlFull: website.urlFull,
+                domain: website.domain,
+                content: content,
+                source: website.source,
+                savedAt: website.savedAt,
+                publishedAt: website.publishedAt,
+                pinned: website.pinned,
+                pinnedOrder: website.pinnedOrder,
+                archived: website.archived,
+                faviconUrl: website.faviconUrl,
+                faviconR2Key: website.faviconR2Key,
+                youtubeTranscripts: website.youtubeTranscripts,
+                readingTime: website.readingTime,
+                updatedAt: website.updatedAt,
+                lastOpenedAt: website.lastOpenedAt
+            )
+        }
+
+        do {
+            return try await websitesStore.api.get(id: website.id)
+        } catch {
+            authLogger.error(
+                """
+                Failed to hydrate saved website event detail for \
+                \(website.id, privacy: .public): \
+                \(error.localizedDescription, privacy: .public)
+                """
+            )
+            return nil
         }
     }
 
@@ -273,6 +344,11 @@ extension AppEnvironment {
         guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
 
         // Navigate to tasks section and start new task
+        AppSentry.recordAction(
+            category: "widget",
+            name: "Started New Task from Widget",
+            data: ["source": "widget_add_task"]
+        )
         routeWorkspaceSelection(to: .tasks, source: "widget_add_task")
         #if !os(macOS)
         tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
@@ -302,6 +378,11 @@ extension AppEnvironment {
         guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
 
         // Navigate to notes section and trigger new note creation
+        AppSentry.recordAction(
+            category: "widget",
+            name: "Started New Note from Widget",
+            data: ["source": "widget_add_note"]
+        )
         routeWorkspaceSelection(to: .notes, source: "widget_add_note")
         pendingNewNoteDeepLink = true
     }
@@ -319,6 +400,11 @@ extension AppEnvironment {
         )
 
         // Navigate to websites and save the URL
+        AppSentry.recordAction(
+            category: "widget",
+            name: "Quick Save from Widget",
+            data: ["source": "widget_quick_save"]
+        )
         routeWorkspaceSelection(to: .websites, source: "widget_quick_save")
         _ = await enqueueWebsiteSave(url: url.absoluteString, selectAfterSave: true)
     }

@@ -21,6 +21,7 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
     func testAllMessageCodesHaveStableFriendlyCopy() {
         let expected: [ExtensionMessageCode: String] = [
             .savedForLater: "Saved for later.",
+            .savedForLaterSignInRequired: "Saved for later. Open sideBar and sign in to finish saving.",
             .websiteSaved: "Website saved.",
             .imageSaved: "Image saved.",
             .fileSaved: "File saved.",
@@ -131,6 +132,8 @@ final class ExtensionUserMessageCatalogTests: XCTestCase {
 
         let expected: [String: String] = [
             ExtensionMessageCode.savedForLater.rawValue: ExtensionUserMessageCatalog.message(for: .savedForLater),
+            ExtensionMessageCode.savedForLaterSignInRequired.rawValue:
+                ExtensionUserMessageCatalog.message(for: .savedForLaterSignInRequired),
             ExtensionMessageCode.websiteSaved.rawValue: ExtensionUserMessageCatalog.message(for: .websiteSaved),
             ExtensionMessageCode.unsupportedAction.rawValue: ExtensionUserMessageCatalog.message(for: .unsupportedAction),
             ExtensionMessageCode.missingURL.rawValue: ExtensionUserMessageCatalog.message(for: .missingURL),

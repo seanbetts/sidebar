@@ -86,6 +86,7 @@ const {
 		websitesStore: {
 			clearActive: vi.fn(),
 			loadById: vi.fn(),
+			setActiveWebsite: vi.fn(),
 			search: vi.fn(),
 			load: vi.fn()
 		},

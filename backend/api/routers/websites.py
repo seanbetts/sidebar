@@ -3,6 +3,7 @@
 
 import logging
 import uuid
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Body, Depends, Request
 from fastapi.responses import JSONResponse, Response
@@ -13,7 +14,7 @@ from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError, WebsiteNotFoundError
 from api.routers.download_headers import markdown_download_headers
-from api.routers.websites_helpers import website_summary
+from api.routers.websites_helpers import website_detail_payload, website_summary
 from api.schemas.filters import WebsiteFilters
 from api.services.web_save_error_service import classify_web_save_result
 from api.services.website_transcript_service import WebsiteTranscriptService
@@ -26,6 +27,26 @@ from api.utils.validation import parse_uuid
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/websites", tags=["websites"])
 ARCHIVED_LIST_MAX_LIMIT = 500
+
+
+def _validate_save_website_url(url: str) -> None:
+    """Reject save inputs that this flow does not support."""
+    candidate = url.strip()
+    if not candidate:
+        raise BadRequestError("url required")
+
+    parsed = urlparse(
+        candidate
+        if candidate.startswith(("http://", "https://"))
+        else f"https://{candidate}"
+    )
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise BadRequestError("Invalid URL", details={"reason": "invalid_url"}) from exc
+
+    if port is not None:
+        raise BadRequestError("Invalid URL", details={"reason": "invalid_url"})
 
 
 @router.get("")
@@ -159,9 +180,8 @@ async def save_website(
     Raises:
         BadRequestError: For missing url or skill errors.
     """
-    url = payload.get("url", "")
-    if not url:
-        raise BadRequestError("url required")
+    url = str(payload.get("url", "")).strip()
+    _validate_save_website_url(url)
 
     executor = request.app.state.executor
     result = await executor.execute(
@@ -188,7 +208,15 @@ async def save_website(
         }
         raise BadRequestError(normalized_error["message"], details=details)
 
-    return result
+    raw_website_id = str((result.get("data") or {}).get("id") or "").strip()
+    if not raw_website_id:
+        raise BadRequestError("Failed to save website")
+    website_id = parse_uuid(raw_website_id, "website", "id")
+    website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+    if not website:
+        raise BadRequestError("Failed to save website")
+
+    return {"success": True, "website": website_detail_payload(website)}
 
 
 @router.post("/{website_id}/youtube-transcript")
@@ -222,10 +250,8 @@ def append_youtube_transcript(
             raise NotFoundError("Website", str(website_id))
 
         return {
-            **website_summary(website),
+            **website_detail_payload(website),
             "content": result.content,
-            "source": website.source,
-            "url_full": website.url_full,
         }
 
     return JSONResponse(
@@ -272,12 +298,7 @@ def get_website(
         website_id=website_id,
     )
 
-    return {
-        **website_summary(website),
-        "content": website.content,
-        "source": website.source,
-        "url_full": website.url_full,
-    }
+    return website_detail_payload(website)
 
 
 @router.patch("/{website_id}/pin")

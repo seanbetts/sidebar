@@ -406,7 +406,31 @@ class WebsitesAPI {
 	 * @returns Save response payload.
 	 * @throws Error when the request fails.
 	 */
-	async save(url: string): Promise<unknown> {
+	async save(url: string): Promise<{
+		success: boolean;
+		website?: {
+			id: string;
+			title: string;
+			url: string;
+			domain: string;
+			content: string;
+			source: string | null;
+			url_full: string | null;
+			saved_at: string | null;
+			published_at: string | null;
+			pinned: boolean;
+			pinned_order?: number | null;
+			archived?: boolean;
+			favicon_url?: string | null;
+			favicon_r2_key?: string | null;
+			favicon_extracted_at?: string | null;
+			youtube_transcripts?: Record<string, unknown>;
+			reading_time?: string | null;
+			updated_at: string | null;
+			last_opened_at: string | null;
+			deleted_at?: string | null;
+		};
+	}> {
 		const response = await fetch(`${this.baseUrl}/save`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },

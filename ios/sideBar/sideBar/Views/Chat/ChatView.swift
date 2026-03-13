@@ -50,7 +50,6 @@ public struct ChatView: View {
             }
             #endif
             .task {
-                await environment.chatViewModel.loadConversations()
                 environment.chatViewModel.startAutoRefresh()
             }
             .onDisappear {

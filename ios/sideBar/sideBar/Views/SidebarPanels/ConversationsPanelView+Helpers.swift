@@ -219,7 +219,7 @@ extension ConversationsPanelView {
                 let results = try await viewModel.searchConversations(query: trimmed, limit: 100)
                 guard !Task.isCancelled else { return }
                 await MainActor.run {
-                    searchResults = results
+                    searchResults = viewModel.sortedConversationsByUpdatedAt(results)
                     searchErrorMessage = nil
                     isSearchLoading = false
                 }
@@ -239,15 +239,10 @@ extension ConversationsPanelView {
         guard !query.isEmpty else {
             return viewModel.groupedConversations
         }
-        let source = searchResults ?? viewModel.conversations
+        let source = searchResults ?? viewModel.sortedConversationsByUpdatedAt(viewModel.conversations)
         let filtered = source
             .filter { conversation in
                 Self.conversationMatchesSearchQuery(query, conversation: conversation)
-            }
-            .sorted { lhs, rhs in
-                let leftDate = DateParsing.parseISO8601(lhs.updatedAt) ?? .distantPast
-                let rightDate = DateParsing.parseISO8601(rhs.updatedAt) ?? .distantPast
-                return leftDate > rightDate
             }
         guard !filtered.isEmpty else {
             return []

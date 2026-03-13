@@ -5,16 +5,40 @@ from datetime import UTC, datetime
 import pytest
 
 from api.config import settings
-from api.exceptions import WebsiteNotFoundError
 from api.models.website import Website
 from api.services.agent.tools.mapper import ToolMapper
-from api.services.websites_service import WebsitesService
 
 TEST_USER_ID = os.environ["TEST_USER_ID"]
 
 
 def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.bearer_token}"}
+
+
+def _persist_website(
+    test_db,
+    *,
+    website_id: uuid.UUID,
+    url: str,
+    title: str,
+    content: str,
+) -> Website:
+    website = Website(
+        id=website_id,
+        user_id=TEST_USER_ID,
+        url=url,
+        url_full=f"{url}?ref=canonical",
+        domain="example.com",
+        title=title,
+        content=content,
+        source="web",
+        metadata_={"pinned": False, "archived": False},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(website)
+    test_db.commit()
+    return website
 
 
 def test_legacy_quick_save_routes_are_removed(test_client):
@@ -32,15 +56,18 @@ def test_legacy_quick_save_routes_are_removed(test_client):
     assert status_response.status_code == 404
 
 
-def test_save_website_endpoint_uses_canonical_script_contract(test_client, monkeypatch):
+def test_save_website_endpoint_uses_canonical_script_contract(
+    test_client, test_db, monkeypatch
+):
     url = "https://example.com/article"
     website_id = uuid.uuid4()
-    expected_data = {
-        "id": str(website_id),
-        "title": "Example",
-        "url": url,
-        "domain": "example.com",
-    }
+    _persist_website(
+        test_db,
+        website_id=website_id,
+        url=url,
+        title="Example title",
+        content="Example content",
+    )
     calls: list[dict[str, object]] = []
 
     async def fake_execute(skill, script, args, user_id=None, **kwargs):
@@ -52,7 +79,16 @@ def test_save_website_endpoint_uses_canonical_script_contract(test_client, monke
                 "user_id": user_id,
             }
         )
-        return {"success": True, "data": expected_data}
+        return {
+            "success": True,
+            "data": {
+                "id": str(website_id),
+                "title": "Executor title",
+                "url": url,
+                "domain": "example.com",
+                "reading_time": "41 min",
+            },
+        }
 
     monkeypatch.setattr(test_client.app.state.executor, "execute", fake_execute)
 
@@ -62,7 +98,12 @@ def test_save_website_endpoint_uses_canonical_script_contract(test_client, monke
         headers=_auth_headers(),
     )
     assert save_response.status_code == 200
-    assert save_response.json().get("data") == expected_data
+    body = save_response.json()
+    assert body["success"] is True
+    assert body["website"]["id"] == str(website_id)
+    assert body["website"]["title"] == "Example title"
+    assert body["website"]["url"] == url
+    assert body["website"]["content"] == "Example content"
 
     assert len(calls) == 1
     assert calls[0]["skill"] == "web-save"
@@ -76,44 +117,24 @@ def test_save_website_endpoint_returns_existing_detail_for_duplicate_url(
 ):
     url = "https://example.com/article"
     website_id = uuid.uuid4()
-    saved_at = datetime.now(UTC)
-    website = Website(
-        id=website_id,
-        user_id=TEST_USER_ID,
+    _persist_website(
+        test_db,
+        website_id=website_id,
         url=url,
-        url_full=url,
-        domain="example.com",
-        title="Example title",
-        content="Example content",
-        source="test",
-        saved_at=saved_at,
-        published_at=saved_at,
-        reading_time=None,
-        metadata_={
-            "pinned": True,
-            "favicon_url": "https://example.com/favicon.ico",
-            "favicon_r2_key": "r2-key",
-            "youtube_transcripts": {},
-        },
-        is_archived=False,
-        created_at=saved_at,
-        updated_at=saved_at,
-        last_opened_at=saved_at,
-        deleted_at=None,
+        title="Canonical title",
+        content="Canonical content",
     )
-    test_db.add(website)
-    test_db.commit()
 
-    responses = [
-        {"success": True, "data": {"id": str(website_id)}},
-        {"success": True, "data": {"id": str(website_id)}},
-    ]
-    call_state = {"index": 0}
-
-    async def fake_execute(*args, **kwargs):
-        idx = min(call_state["index"], len(responses) - 1)
-        call_state["index"] += 1
-        return responses[idx]
+    async def fake_execute(_skill, _script, _args, user_id=None, **kwargs):
+        return {
+            "success": True,
+            "data": {
+                "id": str(website_id),
+                "title": "Executor title",
+                "url": url,
+                "domain": "example.com",
+            },
+        }
 
     monkeypatch.setattr(test_client.app.state.executor, "execute", fake_execute)
 
@@ -130,37 +151,40 @@ def test_save_website_endpoint_returns_existing_detail_for_duplicate_url(
 
     assert first.status_code == 200
     assert second.status_code == 200
-
-    first_payload = first.json()["website"]
-    second_payload = second.json()["website"]
-    assert first_payload == second_payload
-    assert first_payload["id"] == str(website_id)
+    assert first.json()["website"]["id"] == str(website_id)
+    assert second.json()["website"]["id"] == str(website_id)
+    assert first.json()["website"]["title"] == "Canonical title"
+    assert first.json()["website"]["content"] == "Canonical content"
+    assert first.json()["website"] == second.json()["website"]
 
 
 def test_websites_save_executor_success_but_unreadable_record_fails(
     test_client, monkeypatch
 ):
-    website_id = uuid.uuid4()
-
-    async def fake_execute(*args, **kwargs):
-        return {"success": True, "data": {"id": str(website_id)}}
-
-    def fake_get_website(db, user_id, website_id_value, **kwargs):
-        raise WebsiteNotFoundError(str(website_id_value))
+    async def fake_execute(_skill, _script, _args, user_id=None, **kwargs):
+        return {
+            "success": True,
+            "data": {
+                "id": str(uuid.uuid4()),
+                "title": "Executor title",
+                "url": "https://example.com/missing",
+                "domain": "example.com",
+            },
+        }
 
     monkeypatch.setattr(test_client.app.state.executor, "execute", fake_execute)
-    monkeypatch.setattr(WebsitesService, "get_website", fake_get_website)
 
     response = test_client.post(
         "/api/websites/save",
-        json={"url": "https://example.com/article"},
+        json={"url": "https://example.com/missing"},
         headers=_auth_headers(),
     )
 
     assert response.status_code == 400
-    payload = response.json()["error"]
-    assert payload["code"] == "BAD_REQUEST"
-    assert payload["message"] == "Failed to save website"
+    body = response.json()
+    assert body["error"]["code"] == "BAD_REQUEST"
+    assert body["error"]["message"] == "Failed to save website"
+    assert isinstance(body["error"]["details"], dict)
 
 
 @pytest.mark.asyncio

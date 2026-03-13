@@ -135,27 +135,27 @@ final class SafariExtensionCoverageTests: XCTestCase {
 
         do {
             let store = makeStore()
-            var saveCalled = false
+            var savedURL: String?
             var refreshCalled = false
             let payload = await SafariExtensionMessageHandler.responsePayload(
                 for: message,
                 pendingStore: store,
-                saveWebsite: { _ in saveCalled = true },
+                saveWebsite: { url in savedURL = url },
                 refreshAccessToken: {
                     refreshCalled = true
                     return true
                 }
             )
 
-            XCTAssertFalse(saveCalled)
+            XCTAssertEqual(savedURL, url)
             XCTAssertFalse(refreshCalled)
             XCTAssertEqual(payload["ok"] as? Bool, true)
-            XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
+            XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
             XCTAssertEqual(
                 payload["message"] as? String,
-                ExtensionUserMessageCatalog.message(for: .savedForLater)
+                ExtensionUserMessageCatalog.message(for: .websiteSaved)
             )
-            XCTAssertEqual(store.loadAll().count, 1)
+            XCTAssertTrue(store.loadAll().isEmpty)
         }
 
         do {

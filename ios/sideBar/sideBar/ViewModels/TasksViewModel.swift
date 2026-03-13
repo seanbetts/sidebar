@@ -326,6 +326,11 @@ extension TasksViewModel {
 
     public func startNewTask() {
         let baseSelection = selection.isSearch ? lastNonSearchSelection : selection
+        AppSentry.recordAction(
+            category: "task",
+            name: "Opened New Task Composer",
+            data: ["selection_kind": taskSelectionKind(baseSelection)]
+        )
         let dueDate: Date?
         if case .upcoming = baseSelection {
             dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()

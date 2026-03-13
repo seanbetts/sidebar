@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 final class ShareViewController: SharePlatformViewController {
     // Stored properties are intentionally module-scoped so extension files can share logic.
     var environment: ShareExtensionEnvironment?
+    var environmentInitializationError: Error?
     var progressView: ShareProgressView?
     let pendingShareStore = PendingShareStore.shared
     let logger = Logger(subsystem: "sideBar", category: "ShareExtension")
@@ -21,6 +22,7 @@ final class ShareViewController: SharePlatformViewController {
         do {
             environment = try ShareExtensionEnvironment()
         } catch {
+            environmentInitializationError = error
             logger.notice(
                 "Share extension environment unavailable; falling back to queue-only mode: \(error.localizedDescription, privacy: .public)"
             )

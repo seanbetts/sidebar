@@ -166,6 +166,11 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func createBlankNote() async -> NotePayload? {
+        AppSentry.recordAction(
+            category: "note",
+            name: "Started Blank Note",
+            data: ["source": "notes_view_model"]
+        )
         do {
             let created = try await api.createNote(
                 request: NoteCreateRequest(
@@ -178,6 +183,13 @@ public final class NotesViewModel: ObservableObject {
             await refreshTree(force: true)
             return created
         } catch {
+            AppSentry.capture(
+                error: error,
+                context: [
+                    "feature": "notes",
+                    "operation": "create_blank_note"
+                ]
+            )
             toastCenter.show(message: "Failed to create note")
             return nil
         }

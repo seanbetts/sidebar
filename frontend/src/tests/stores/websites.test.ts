@@ -250,7 +250,22 @@ describe('websitesStore', () => {
 	it('tracks pending website while saving and returns the saved id', async () => {
 		websitesAPI.save.mockResolvedValue({
 			success: true,
-			data: { id: 'saved-1' }
+			website: {
+				id: 'saved-1',
+				title: 'Saved Website',
+				url: 'https://example.com',
+				domain: 'example.com',
+				content: 'Hello',
+				source: 'readability',
+				url_full: 'https://example.com',
+				saved_at: '2026-03-13T10:00:00Z',
+				published_at: null,
+				pinned: false,
+				archived: false,
+				youtube_transcripts: {},
+				updated_at: '2026-03-13T10:00:00Z',
+				last_opened_at: null
+			}
 		});
 
 		const savePromise = websitesStore.saveWebsite('example.com');
@@ -260,21 +275,123 @@ describe('websitesStore', () => {
 
 		const result = await savePromise;
 		const finalState = get(websitesStore);
-		expect(result).toEqual({ success: true, id: 'saved-1' });
+		expect(result).toMatchObject({
+			success: true,
+			id: 'saved-1',
+			website: {
+				id: 'saved-1',
+				title: 'Saved Website'
+			}
+		});
 		expect(finalState.isSavingWebsite).toBe(false);
 		expect(finalState.pendingWebsite).toBeNull();
+		expect(finalState.items[0]).toMatchObject({
+			id: 'saved-1',
+			title: 'Saved Website',
+			url: 'https://example.com'
+		});
 	});
 
 	it('treats YouTube URLs as regular website saves', async () => {
 		websitesAPI.save.mockResolvedValue({
 			success: true,
-			data: { id: 'saved-youtube' }
+			website: {
+				id: 'saved-youtube',
+				title: 'Video',
+				url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+				domain: 'youtube.com',
+				content: 'Transcript',
+				source: 'youtube',
+				url_full: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+				saved_at: '2026-03-13T10:00:00Z',
+				published_at: null,
+				pinned: false,
+				archived: false,
+				youtube_transcripts: {},
+				updated_at: '2026-03-13T10:00:00Z',
+				last_opened_at: null
+			}
 		});
 
 		const result = await websitesStore.saveWebsite('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 
 		expect(websitesAPI.save).toHaveBeenCalledWith('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-		expect(result).toEqual({ success: true, id: 'saved-youtube' });
+		expect(result).toMatchObject({
+			success: true,
+			id: 'saved-youtube',
+			website: {
+				id: 'saved-youtube'
+			}
+		});
 		expect(get(websitesStore).saveError).toBeNull();
+	});
+
+	it('can set a saved website as active without refetching', async () => {
+		const website = {
+			id: 'saved-active',
+			title: 'Saved Active',
+			url: 'https://example.com/active',
+			domain: 'example.com',
+			content: 'Saved active content',
+			source: 'readability',
+			url_full: 'https://example.com/active',
+			saved_at: '2026-03-13T10:10:00Z',
+			published_at: null,
+			pinned: false,
+			archived: false,
+			youtube_transcripts: {},
+			updated_at: '2026-03-13T10:10:00Z',
+			last_opened_at: null
+		};
+
+		websitesStore.setActiveWebsite(website);
+
+		expect(get(websitesStore).active).toMatchObject({
+			id: 'saved-active',
+			content: 'Saved active content'
+		});
+	});
+
+	it('preserves freshly saved websites during stale reloads', async () => {
+		websitesAPI.save.mockResolvedValue({
+			success: true,
+			website: {
+				id: 'saved-2',
+				title: 'Fresh Save',
+				url: 'https://example.com/fresh',
+				domain: 'example.com',
+				content: 'Fresh content',
+				source: 'readability',
+				url_full: 'https://example.com/fresh',
+				saved_at: '2026-03-13T10:05:00Z',
+				published_at: null,
+				pinned: false,
+				archived: false,
+				youtube_transcripts: {},
+				updated_at: '2026-03-13T10:05:00Z',
+				last_opened_at: null
+			}
+		});
+		websitesAPI.list.mockResolvedValue({
+			items: [
+				{
+					id: 'older-1',
+					title: 'Older',
+					url: 'https://example.com/older',
+					domain: 'example.com',
+					saved_at: '2026-03-12T10:00:00Z',
+					published_at: null,
+					pinned: false,
+					archived: false,
+					updated_at: '2026-03-12T10:00:00Z',
+					last_opened_at: null
+				}
+			]
+		});
+
+		await websitesStore.saveWebsite('https://example.com/fresh');
+		await websitesStore.load(true);
+
+		expect(get(websitesStore).items.map((item) => item.id)).toEqual(['saved-2', 'older-1']);
 	});
 });

@@ -1,20 +1,23 @@
 import Foundation
 
 public enum DateParsing {
-    private static let isoFormatter: ISO8601DateFormatter = {
+    private static let fractionalSecondsFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
+    }()
+
+    private static let fallbackFormatter: ISO8601DateFormatter = {
+        ISO8601DateFormatter()
     }()
 
     public static func parseISO8601(_ value: String?) -> Date? {
         guard let value else {
             return nil
         }
-        if let date = isoFormatter.date(from: value) {
+        if let date = fractionalSecondsFormatter.date(from: value) {
             return date
         }
-        let fallback = ISO8601DateFormatter()
-        return fallback.date(from: value)
+        return fallbackFormatter.date(from: value)
     }
 }

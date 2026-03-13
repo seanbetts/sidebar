@@ -3,7 +3,6 @@ import uuid
 from datetime import UTC, datetime
 
 from api.config import settings
-from api.exceptions import WebsiteNotFoundError
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from api.models.website import Website
 from api.schemas.filters import WebsiteFilters
@@ -98,73 +97,77 @@ def test_websites_save_reports_no_readable_content(test_client, monkeypatch):
     assert captured["user_id"] == TEST_USER_ID
 
 
-def test_websites_save_returns_canonical_detail(test_client, test_db, monkeypatch):
-    url = "https://example.com/canonical"
+def test_websites_save_returns_canonical_detail_payload(test_client, test_db, monkeypatch):
     website_id = uuid.uuid4()
-    saved_at = datetime.now(UTC)
+    saved_at = datetime(2026, 3, 1, tzinfo=UTC)
+    published_at = datetime(2026, 2, 27, tzinfo=UTC)
     website = Website(
         id=website_id,
         user_id=TEST_USER_ID,
-        url=url,
-        url_full=url,
+        url="https://example.com/article",
+        url_full="https://example.com/article?ref=full",
         domain="example.com",
         title="Example title",
         content="Example content",
-        source=None,
+        source="web",
         saved_at=saved_at,
-        published_at=saved_at,
-        reading_time=None,
+        published_at=published_at,
+        reading_time="1 min",
         metadata_={
             "pinned": False,
             "archived": False,
             "favicon_url": "https://example.com/favicon.ico",
-            "favicon_r2_key": "r2-key",
-            "youtube_transcripts": {"video": "transcript"},
+            "favicon_r2_key": "favicons/example.ico",
+            "youtube_transcripts": {"youtube": {"status": "ready"}},
         },
-        is_archived=False,
-        created_at=saved_at,
-        updated_at=saved_at,
-        last_opened_at=saved_at,
-        deleted_at=None,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     test_db.add(website)
     test_db.commit()
 
-    async def fake_execute(*args, **kwargs):
-        return {"success": True, "data": {"id": str(website_id)}}
+    async def fake_execute(_skill, _script, _args, user_id=None):
+        assert user_id == TEST_USER_ID
+        return {
+            "success": True,
+            "data": {
+                "id": str(website_id),
+                "title": "Ignored",
+                "url": "https://ignored.example.com",
+                "domain": "ignored.example.com",
+            },
+        }
 
-    monkeypatch.setattr(
-        test_client.app.state.executor, "execute", fake_execute
-    )
+    monkeypatch.setattr(test_client.app.state.executor, "execute", fake_execute)
 
     response = test_client.post(
         "/api/websites/save",
-        json={"url": url},
+        json={"url": "https://example.com/article"},
         headers=_auth_headers(),
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
-    website_payload = body["website"]
-    assert website_payload["id"] == str(website_id)
-    assert website_payload["title"] == "Example title"
-    assert website_payload["url"] == url
-    assert website_payload["content"] == "Example content"
-    assert website_payload["favicon_url"] == "https://example.com/favicon.ico"
-    assert website_payload["favicon_r2_key"] == "r2-key"
-    assert website_payload["youtube_transcripts"] == {"video": "transcript"}
-    assert isinstance(website_payload["published_at"], str)
+    website_body = body["website"]
+    assert website_body["id"] == str(website_id)
+    assert website_body["title"] == "Example title"
+    assert website_body["url"] == "https://example.com/article"
+    assert website_body["url_full"] == "https://example.com/article?ref=full"
+    assert website_body["domain"] == "example.com"
+    assert website_body["content"] == "Example content"
+    assert website_body["source"] == "web"
+    assert website_body["saved_at"] == saved_at.isoformat()
+    assert website_body["published_at"] == published_at.isoformat()
+    assert website_body["favicon_url"] == "https://example.com/favicon.ico"
+    assert website_body["favicon_r2_key"] == "favicons/example.ico"
+    assert website_body["youtube_transcripts"] == {"youtube": {"status": "ready"}}
+    assert "published_at" in website_body
+    assert "updated_at" in website_body
+    assert "last_opened_at" in website_body
 
 
-def test_websites_save_rejects_explicit_port_urls(test_client, monkeypatch):
-    async def fake_execute(*args, **kwargs):
-        return {"success": True, "data": {"id": str(uuid.uuid4())}}
-
-    monkeypatch.setattr(
-        test_client.app.state.executor, "execute", fake_execute
-    )
-
+def test_websites_save_rejects_explicit_port_url(test_client):
     response = test_client.post(
         "/api/websites/save",
         json={"url": "https://example.com:8443/article"},
@@ -172,10 +175,53 @@ def test_websites_save_rejects_explicit_port_urls(test_client, monkeypatch):
     )
 
     assert response.status_code == 400
-    payload = response.json()["error"]
-    assert payload["code"] == "BAD_REQUEST"
-    assert payload["message"] == "Invalid URL"
-    assert payload["details"]["reason"] == "invalid_url"
+    payload = response.json()
+    assert payload["error"]["code"] == "BAD_REQUEST"
+    assert payload["error"]["message"] == "Invalid URL"
+    assert payload["error"]["details"]["reason"] == "invalid_url"
+
+
+def test_websites_save_rejects_malformed_port_url(test_client):
+    response = test_client.post(
+        "/api/websites/save",
+        json={"url": "https://example.com:abc/article"},
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "BAD_REQUEST"
+    assert payload["error"]["message"] == "Invalid URL"
+    assert payload["error"]["details"]["reason"] == "invalid_url"
+
+
+def test_websites_save_executor_success_but_missing_record_fails(
+    test_client, monkeypatch
+):
+    async def fake_execute(_skill, _script, _args, user_id=None):
+        assert user_id == TEST_USER_ID
+        return {
+            "success": True,
+            "data": {
+                "id": str(uuid.uuid4()),
+                "title": "Example title",
+                "url": "https://example.com/article",
+                "domain": "example.com",
+            },
+        }
+
+    monkeypatch.setattr(test_client.app.state.executor, "execute", fake_execute)
+
+    response = test_client.post(
+        "/api/websites/save",
+        json={"url": "https://example.com/article"},
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "BAD_REQUEST"
+    assert payload["error"]["message"] == "Failed to save website"
 
 
 def test_quick_save_routes_are_removed(test_client):
@@ -215,6 +261,64 @@ def test_websites_get_success(test_client, test_db):
     body = response.json()
     assert body["id"] == str(website_id)
     assert body["content"] == "Example content"
+
+
+def test_websites_save_duplicate_returns_same_detail_as_get(
+    test_client, test_db, monkeypatch
+):
+    website_id = uuid.uuid4()
+    website = Website(
+        id=website_id,
+        user_id=TEST_USER_ID,
+        url="https://example.com/duplicate",
+        url_full="https://example.com/duplicate",
+        domain="example.com",
+        title="Duplicate",
+        content="Duplicate content",
+        metadata_={"pinned": False, "archived": False},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(website)
+    test_db.commit()
+
+    async def fake_execute(_skill, _script, _args, user_id=None):
+        assert user_id == TEST_USER_ID
+        return {
+            "success": True,
+            "data": {
+                "id": str(website_id),
+                "title": "Ignored duplicate",
+                "url": "https://ignored.example.com",
+                "domain": "ignored.example.com",
+            },
+        }
+
+    monkeypatch.setattr(test_client.app.state.executor, "execute", fake_execute)
+
+    first = test_client.post(
+        "/api/websites/save",
+        json={"url": "https://example.com/duplicate"},
+        headers=_auth_headers(),
+    )
+    second = test_client.post(
+        "/api/websites/save",
+        json={"url": "https://example.com/duplicate"},
+        headers=_auth_headers(),
+    )
+    get_response = test_client.get(
+        f"/api/websites/{website_id}",
+        headers=_auth_headers(),
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert get_response.status_code == 200
+    assert first.json()["website"]["id"] == second.json()["website"]["id"]
+    assert first.json()["website"] == second.json()["website"]
+    expected_get_payload = dict(get_response.json())
+    expected_get_payload["last_opened_at"] = first.json()["website"]["last_opened_at"]
+    assert first.json()["website"] == expected_get_payload
 
 
 def test_websites_download_handles_unicode_filename(test_client, test_db):

@@ -1,6 +1,25 @@
 import Foundation
 
 extension TasksViewModel {
+    func taskSelectionKind(_ selection: TaskSelection) -> String {
+        switch selection {
+        case .none:
+            return "none"
+        case .today:
+            return "today"
+        case .upcoming:
+            return "upcoming"
+        case .completed:
+            return "completed"
+        case .search:
+            return "search"
+        case .group:
+            return "group"
+        case .project:
+            return "project"
+        }
+    }
+
     public func setErrorMessage(_ message: String) {
         setLocalErrorMessage(message)
     }

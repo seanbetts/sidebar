@@ -83,3 +83,13 @@ def website_summary(website: Website) -> dict:
         else None,
         "deleted_at": website.deleted_at.isoformat() if website.deleted_at else None,
     }
+
+
+def website_detail_payload(website: Website) -> dict:
+    """Build the canonical detail payload for a website record."""
+    return {
+        **website_summary(website),
+        "content": website.content,
+        "source": website.source,
+        "url_full": website.url_full,
+    }

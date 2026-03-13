@@ -31,8 +31,16 @@ the share extension and Safari extension.
 
 sideBar fetches the page and extracts the title, domain, full content, and
 reading time automatically. If a publication date is detectable, that is saved
-too. The whole process takes a few seconds. If something goes wrong, you will
-see an error state on the page card.
+too. The whole process takes a few seconds. When processing finishes, the page
+appears in your Websites list and is ready to open straight away. If something
+goes wrong, sideBar tells you whether the page was queued for later or failed
+to save.
+
+## What does "saved for later" mean in the share sheet?
+
+It means sideBar could not finish saving the page immediately, usually because
+you were offline or needed to sign in again, but it did queue the URL. Open
+sideBar, sign in if needed, and the app will finish saving the page.
 
 ## Can sideBar work with saved pages in chat?
 

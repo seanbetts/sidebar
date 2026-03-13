@@ -22,8 +22,9 @@ about it, take notes, or dig deeper with further research.
 There are three ways to save a web page:
 
 - **Share sheet**: tap the share button in any app and choose sideBar to save
-  the current page instantly. See [Widgets & Extensions](/manual/extensions)
-  to enable it.
+  the current page instantly. If sideBar cannot finish the save in the share
+  sheet, it tells you whether the page was queued for later or failed to save.
+  See [Widgets & Extensions](/manual/extensions) to enable it.
 - **Safari extension**: tap the sideBar button in your browser toolbar to
   save the page without leaving it. See [Widgets & Extensions](/manual/extensions)
   to set it up.
@@ -33,7 +34,9 @@ There are three ways to save a web page:
 Once saved, sideBar fetches the page and automatically extracts the title,
 domain, favicon, full page content, and estimated reading time. If a
 publication date is detectable, that's saved and displayed too. You can rename
-the title any time after saving.
+the title any time after saving. As soon as processing finishes, the saved page
+is added to your Websites list and is ready to open without waiting for a
+manual refresh.
 
 ## Supported Sites
 

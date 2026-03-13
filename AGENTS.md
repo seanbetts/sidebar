@@ -155,6 +155,34 @@ User-facing product docs live in `docs/product/` and are deployed via Mintlify t
 - Refactoring within limits
 - Tests and documentation
 
+## Sentry Access
+
+When debugging production or pre-release Apple crashes, prefer checking real Sentry issues and events instead of inferring from local logs alone.
+
+Load local Sentry auth from `.env.local`:
+
+```bash
+set -a && source .env.local && set +a
+```
+
+Verify access:
+
+```bash
+sentry-cli info
+```
+
+For direct API checks when `sentry-cli` subcommands are limited:
+
+```bash
+curl -sS -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+  "https://sentry.io/api/0/projects/$SENTRY_ORG/$SENTRY_PROJECT/issues/"
+```
+
+Useful defaults:
+- required local env vars: `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`
+- Apple app release format: `bundleIdentifier@version+build`
+- never commit tokens, DSNs, or copied secret values into the repo or docs
+
 ## Gotchas
 
 - **Supabase**: Must use connection pooler (see DATABASE_URL in .env.example)

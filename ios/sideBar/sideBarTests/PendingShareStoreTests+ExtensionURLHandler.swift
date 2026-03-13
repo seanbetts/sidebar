@@ -38,17 +38,17 @@ extension PendingShareStoreTests {
         XCTAssertEqual(response["error"] as? String, ExtensionUserMessageCatalog.message(for: .missingURL))
     }
 
-    func testExtensionURLMessageHandlerQueuesWithoutCallingSaveOrRefresh() async {
+    func testExtensionURLMessageHandlerSavesImmediatelyWhenSaveClosureSucceeds() async {
         let store = makeStoreForExtensionURLHandlerTests()
-        var saveCalled = false
+        var savedURL: String?
         var refreshCalled = false
 
         let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: "save_url",
             urlString: "https://example.com",
             pendingStore: store,
-            saveWebsite: { _ in
-                saveCalled = true
+            saveWebsite: { url in
+                savedURL = url
             },
             refreshAccessToken: {
                 refreshCalled = true
@@ -56,12 +56,12 @@ extension PendingShareStoreTests {
             }
         )
 
-        XCTAssertFalse(saveCalled)
+        XCTAssertEqual(savedURL, "https://example.com")
         XCTAssertFalse(refreshCalled)
         XCTAssertEqual(response["ok"] as? Bool, true)
-        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
-        XCTAssertEqual(store.loadAll().count, 1)
-        XCTAssertEqual(store.loadAll().first?.url, "https://example.com")
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
+        XCTAssertEqual(response["message"] as? String, ExtensionUserMessageCatalog.message(for: .websiteSaved))
+        XCTAssertTrue(store.loadAll().isEmpty)
     }
 
     func testExtensionURLMessageHandlerQueuesWebsiteWhenSaveClosureThrows() async {
@@ -87,25 +87,101 @@ extension PendingShareStoreTests {
         XCTAssertEqual(store.loadAll().first?.url, "https://example.com")
     }
 
-    func testExtensionURLMessageHandlerQueuesWebsiteWhenRefreshClosureReturnsFalse() async {
+    func testExtensionURLMessageHandlerFailsForNonRetryableAPIError() async {
         let store = makeStoreForExtensionURLHandlerTests()
-        var refreshCalled = false
+
         let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: "save_url",
             urlString: "https://example.com",
             pendingStore: store,
+            saveWebsite: { _ in
+                throw APIClientError.apiError("Invalid URL")
+            }
+        )
+
+        XCTAssertEqual(response["ok"] as? Bool, false)
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.uploadFailed.rawValue)
+        XCTAssertEqual(
+            response["error"] as? String,
+            ExtensionUserMessageCatalog.message(for: .uploadFailed)
+        )
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
+    func testExtensionURLMessageHandlerQueuesRetryableAPIError() async {
+        let store = makeStoreForExtensionURLHandlerTests()
+
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: "save_url",
+            urlString: "https://example.com",
+            pendingStore: store,
+            saveWebsite: { _ in
+                throw APIClientError.apiError("Temporary upstream timeout, try again")
+            }
+        )
+
+        XCTAssertEqual(response["ok"] as? Bool, true)
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
+        XCTAssertEqual(store.loadAll().count, 1)
+        XCTAssertEqual(store.loadAll().first?.url, "https://example.com")
+    }
+
+    func testExtensionURLMessageHandlerRetriesAfterUnauthorizedAndRefreshes() async {
+        let store = makeStoreForExtensionURLHandlerTests()
+        var refreshCallCount = 0
+        var saveCallCount = 0
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: "save_url",
+            urlString: "https://example.com",
+            pendingStore: store,
+            saveWebsite: { _ in
+                saveCallCount += 1
+                if saveCallCount == 1 {
+                    throw APIClientError.requestFailed(401)
+                }
+            },
             refreshAccessToken: {
-                refreshCalled = true
+                refreshCallCount += 1
+                return true
+            }
+        )
+
+        XCTAssertEqual(saveCallCount, 2)
+        XCTAssertEqual(refreshCallCount, 1)
+        XCTAssertEqual(response["ok"] as? Bool, true)
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
+        XCTAssertEqual(
+            response["message"] as? String,
+            ExtensionUserMessageCatalog.message(for: .websiteSaved)
+        )
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
+    func testExtensionURLMessageHandlerQueuesWebsiteWithSignInMessageWhenRefreshFails() async {
+        let store = makeStoreForExtensionURLHandlerTests()
+        var refreshCallCount = 0
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: "save_url",
+            urlString: "https://example.com",
+            pendingStore: store,
+            saveWebsite: { _ in
+                throw APIClientError.requestFailed(401)
+            },
+            refreshAccessToken: {
+                refreshCallCount += 1
                 return false
             }
         )
 
-        XCTAssertFalse(refreshCalled)
+        XCTAssertEqual(refreshCallCount, 1)
         XCTAssertEqual(response["ok"] as? Bool, true)
-        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
+        XCTAssertEqual(
+            response["code"] as? String,
+            ExtensionMessageCode.savedForLaterSignInRequired.rawValue
+        )
         XCTAssertEqual(
             response["message"] as? String,
-            ExtensionUserMessageCatalog.message(for: .savedForLater)
+            ExtensionUserMessageCatalog.message(for: .savedForLaterSignInRequired)
         )
         XCTAssertEqual(response["queued"] as? String, "website")
         XCTAssertEqual(store.loadAll().count, 1)

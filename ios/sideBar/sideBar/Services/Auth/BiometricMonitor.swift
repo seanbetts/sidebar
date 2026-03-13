@@ -1,6 +1,11 @@
 import Foundation
 import Combine
 import LocalAuthentication
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 @MainActor
 /// Observes biometric availability and state changes.
@@ -8,38 +13,76 @@ public final class BiometricMonitor: ObservableObject {
     @Published public private(set) var biometryType: LABiometryType = .none
     @Published public private(set) var isAvailable: Bool = false
 
-    private var timer: Timer?
+    private let notificationCenter: NotificationCenter
+    private let activeNotificationName: Notification.Name
+    private let statusProvider: () -> (Bool, LABiometryType)
+    private var activeObserver: NSObjectProtocol?
 
     public init() {
+        self.notificationCenter = .default
+        self.activeNotificationName = defaultBiometricMonitorActiveNotificationName()
+        self.statusProvider = defaultBiometricMonitorStatusProvider
+    }
+
+    init(
+        notificationCenter: NotificationCenter = .default,
+        activeNotificationName: Notification.Name,
+        statusProvider: @escaping () -> (Bool, LABiometryType)
+    ) {
+        self.notificationCenter = notificationCenter
+        self.activeNotificationName = activeNotificationName
+        self.statusProvider = statusProvider
     }
 
     public func startMonitoring() {
-        updateStatus()
-        timer?.invalidate()
-        let timer = Timer(
-            timeInterval: 5.0,
-            target: self,
-            selector: #selector(handleTimerTick),
-            userInfo: nil,
-            repeats: true
-        )
-        RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
+        refreshStatus()
+        guard activeObserver == nil else {
+            return
+        }
+        activeObserver = notificationCenter.addObserver(
+            forName: activeNotificationName,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.refreshStatus()
+            }
+        }
     }
 
     public func stopMonitoring() {
-        timer?.invalidate()
-        timer = nil
+        if let activeObserver {
+            notificationCenter.removeObserver(activeObserver)
+            self.activeObserver = nil
+        }
     }
 
-    private func updateStatus() {
-        let context = LAContext()
-        var error: NSError?
-        isAvailable = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
-        biometryType = context.biometryType
+    deinit {
+        if let activeObserver {
+            notificationCenter.removeObserver(activeObserver)
+        }
     }
 
-    @objc private func handleTimerTick() {
-        updateStatus()
+    public func refreshStatus() {
+        let status = statusProvider()
+        isAvailable = status.0
+        biometryType = status.1
     }
+}
+
+private func defaultBiometricMonitorStatusProvider() -> (Bool, LABiometryType) {
+    let context = LAContext()
+    var error: NSError?
+    let available = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+    return (available, context.biometryType)
+}
+
+private func defaultBiometricMonitorActiveNotificationName() -> Notification.Name {
+    #if os(iOS)
+    UIApplication.didBecomeActiveNotification
+    #elseif os(macOS)
+    NSApplication.didBecomeActiveNotification
+    #else
+    Notification.Name("BiometricMonitorDidBecomeActive")
+    #endif
 }

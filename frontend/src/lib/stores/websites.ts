@@ -40,6 +40,18 @@ export interface WebsiteDetail extends WebsiteItem {
 	url_full: string | null;
 }
 
+interface WebsiteSaveResponse {
+	success: boolean;
+	website?: WebsiteDetail;
+}
+
+interface SaveWebsiteResult {
+	success: boolean;
+	id?: string;
+	website?: WebsiteDetail;
+	error?: string;
+}
+
 export interface PendingWebsiteItem {
 	id: string;
 	title: string;
@@ -100,18 +112,10 @@ const mergeWebsiteCollections = (active: WebsiteItem[], archived: WebsiteItem[])
 	return [...active, ...filteredArchived];
 };
 
-const parseSavedWebsiteId = (value: unknown): string | null => {
+const parseSavedWebsite = (value: unknown): WebsiteDetail | null => {
 	if (!value || typeof value !== 'object') return null;
-	const payload = value as Record<string, unknown>;
-	const data = payload.data;
-	if (data && typeof data === 'object') {
-		const candidate = (data as Record<string, unknown>).id;
-		if (typeof candidate === 'string' && candidate.trim()) {
-			return candidate;
-		}
-	}
-	const rootId = payload.id;
-	return typeof rootId === 'string' && rootId.trim() ? rootId : null;
+	const payload = value as WebsiteSaveResponse;
+	return isWebsiteDetail(payload.website) ? payload.website : null;
 };
 
 const stripWwwPrefix = (value: string): string => value.replace(/^www\./i, '');
@@ -145,7 +149,51 @@ const buildPendingWebsite = (normalizedUrl: URL): PendingWebsiteItem => {
 	};
 };
 
+const LOCAL_SAVE_RECONCILIATION_WINDOW_MS = 30_000;
+const LOCAL_SAVE_RECONCILIATION_LIMIT = 50;
+
 function createWebsitesStore() {
+	const freshWebsiteExpirations = new Map<string, number>();
+
+	const pruneFreshWebsiteExpirations = (now: number = Date.now()) => {
+		for (const [id, expiresAt] of freshWebsiteExpirations) {
+			if (expiresAt <= now) {
+				freshWebsiteExpirations.delete(id);
+			}
+		}
+	};
+
+	const noteFreshWebsite = (id: string) => {
+		pruneFreshWebsiteExpirations();
+		freshWebsiteExpirations.set(id, Date.now() + LOCAL_SAVE_RECONCILIATION_WINDOW_MS);
+		if (freshWebsiteExpirations.size <= LOCAL_SAVE_RECONCILIATION_LIMIT) {
+			return;
+		}
+		const sortedEntries = [...freshWebsiteExpirations.entries()].sort(
+			(lhs, rhs) => lhs[1] - rhs[1]
+		);
+		while (sortedEntries.length > LOCAL_SAVE_RECONCILIATION_LIMIT) {
+			const oldest = sortedEntries.shift();
+			if (!oldest) break;
+			freshWebsiteExpirations.delete(oldest[0]);
+		}
+	};
+
+	const mergeActiveItems = (incoming: WebsiteItem[], current: WebsiteItem[]): WebsiteItem[] => {
+		pruneFreshWebsiteExpirations();
+		const incomingIds = new Set(incoming.map((item) => item.id));
+		for (const id of incomingIds) {
+			freshWebsiteExpirations.delete(id);
+		}
+		const preserved = current.filter(
+			(item) =>
+				!isArchivedWebsite(item) &&
+				freshWebsiteExpirations.has(item.id) &&
+				!incomingIds.has(item.id)
+		);
+		return [...preserved, ...incoming];
+	};
+
 	const { subscribe, set, update } = writable<{
 		items: WebsiteItem[];
 		loading: boolean;
@@ -206,7 +254,10 @@ function createWebsitesStore() {
 			update((state) => ({ ...state, loading: true, error: null, searchQuery: '' }));
 			try {
 				const data = await websitesAPI.list();
-				const activeItems = extractWebsiteItems(data).filter((item) => !isArchivedWebsite(item));
+				const activeItems = mergeActiveItems(
+					extractWebsiteItems(data).filter((item) => !isArchivedWebsite(item)),
+					currentState.items.filter((item) => !isArchivedWebsite(item))
+				);
 				const mergedItems = mergeWebsiteCollections(
 					activeItems,
 					currentState.items.filter((item) => isArchivedWebsite(item))
@@ -337,7 +388,11 @@ function createWebsitesStore() {
 		async revalidateInBackground() {
 			try {
 				const data = await websitesAPI.list();
-				const freshItems = extractWebsiteItems(data);
+				const currentState = get({ subscribe });
+				const freshItems = mergeActiveItems(
+					extractWebsiteItems(data).filter((item) => !isArchivedWebsite(item)),
+					currentState.items.filter((item) => !isArchivedWebsite(item))
+				);
 				update((state) => {
 					const mergedItems = state.items.map((existingItem) => {
 						const freshItem = freshItems.find((item) => item.id === existingItem.id);
@@ -378,6 +433,7 @@ function createWebsitesStore() {
 
 		reset() {
 			invalidateCache(CACHE_KEY);
+			freshWebsiteExpirations.clear();
 			set({
 				items: [],
 				loading: false,
@@ -398,7 +454,7 @@ function createWebsitesStore() {
 			update((state) => ({ ...state, saveError: null }));
 		},
 
-		async saveWebsite(url: string): Promise<{ success: boolean; id?: string; error?: string }> {
+		async saveWebsite(url: string): Promise<SaveWebsiteResult> {
 			const normalized = normalizeWebsiteUrl(url);
 			if (!normalized) {
 				const error = 'Enter a valid URL.';
@@ -416,10 +472,12 @@ function createWebsitesStore() {
 
 			try {
 				const result = await websitesAPI.save(normalized.href);
-				const websiteId = parseSavedWebsiteId(result);
-				if (!websiteId) {
+				const website = parseSavedWebsite(result);
+				if (!website) {
 					throw new Error('Failed to save website');
 				}
+				noteFreshWebsite(website.id);
+				this.upsertFromRealtime(buildWebsiteSummary(website));
 
 				update((state) => ({
 					...state,
@@ -427,7 +485,7 @@ function createWebsitesStore() {
 					pendingWebsite: null,
 					saveError: null
 				}));
-				return { success: true, id: websiteId };
+				return { success: true, id: website.id, website };
 			} catch (error) {
 				const message =
 					error instanceof Error && error.message ? error.message : 'Failed to save website';
@@ -570,6 +628,13 @@ function createWebsitesStore() {
 					active: { ...state.active, ...updates }
 				};
 			});
+		},
+
+		setActiveWebsite(website: WebsiteDetail) {
+			update((state) => ({
+				...state,
+				active: website
+			}));
 		}
 	};
 }

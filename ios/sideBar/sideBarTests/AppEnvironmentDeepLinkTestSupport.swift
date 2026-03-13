@@ -3,10 +3,15 @@ import Foundation
 
 final class DeepLinkWebsitesAPI: WebsitesProviding {
     let saveResult: Result<WebsiteSaveResponse, Error>
+    let detailResult: Result<WebsiteDetail, Error>
     private(set) var lastSavedURL: String?
 
-    init(saveResult: Result<WebsiteSaveResponse, Error>) {
+    init(
+        saveResult: Result<WebsiteSaveResponse, Error>,
+        detailResult: Result<WebsiteDetail, Error> = .failure(DeepLinkWebsitesAPIError.forced)
+    ) {
         self.saveResult = saveResult
+        self.detailResult = detailResult
     }
 
     func list() async throws -> WebsitesResponse {
@@ -21,7 +26,7 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
 
     func get(id: String) async throws -> WebsiteDetail {
         _ = id
-        throw DeepLinkWebsitesAPIError.forced
+        return try detailResult.get()
     }
 
     func save(url: String) async throws -> WebsiteSaveResponse {

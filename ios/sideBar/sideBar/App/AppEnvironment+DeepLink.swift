@@ -11,6 +11,11 @@ extension AppEnvironment {
         guard url.scheme == "sidebar" else { return }
         let logger = Logger(subsystem: "sideBar", category: "DeepLink")
         logger.info("Handling deep link: \(url.absoluteString, privacy: .public)")
+        AppSentry.recordAction(
+            category: "deep_link",
+            name: deepLinkActionName(for: url),
+            data: ["host": url.host ?? "unknown"]
+        )
         ExternalSurfaceDiagnosticsStore.shared.record(
             surface: "deep_link",
             stage: "handle",
@@ -123,5 +128,35 @@ extension AppEnvironment {
         // Scratchpad is accessed via the chat section
         routeWorkspaceSelection(to: .chat, source: "deeplink_scratchpad")
         pendingScratchpadDeepLink = true
+    }
+
+    private func deepLinkActionName(for url: URL) -> String {
+        switch url.host {
+        case "tasks":
+            return tasksDeepLinkActionName(path: url.path)
+        case "notes":
+            return url.path == "/new" ? "Started New Note via Deep Link" : "Opened Notes via Deep Link"
+        case "chat":
+            return url.path == "/new" ? "Started New Chat via Deep Link" : "Opened Chat via Deep Link"
+        case "scratchpad":
+            return "Opened Scratchpad via Deep Link"
+        case "websites":
+            return "Opened Websites via Deep Link"
+        case "files":
+            return "Opened Files via Deep Link"
+        default:
+            return "Handled Deep Link"
+        }
+    }
+
+    private func tasksDeepLinkActionName(path: String) -> String {
+        switch path {
+        case "/new":
+            return "Started New Task via Deep Link"
+        case "/today":
+            return "Opened Tasks Today via Deep Link"
+        default:
+            return "Opened Tasks via Deep Link"
+        }
     }
 }

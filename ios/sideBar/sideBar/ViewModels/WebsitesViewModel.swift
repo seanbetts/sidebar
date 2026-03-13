@@ -242,11 +242,11 @@ public final class WebsitesViewModel: ObservableObject {
             saveErrorMessage = nil
             do {
                 let response = try await api.save(url: normalized.absoluteString)
-                guard response.success, let data = response.data else {
+                guard response.success, let website = response.website else {
                     saveErrorMessage = "Failed to save website"
                     return false
                 }
-                applySavedWebsiteWithoutSelection(data, pendingURL: normalized)
+                applySavedWebsiteWithoutSelection(website, pendingURL: normalized)
                 return true
             } catch {
                 saveErrorMessage = ErrorMapping.message(for: error)
@@ -257,14 +257,14 @@ public final class WebsitesViewModel: ObservableObject {
         defer { endWebsiteSave() }
         do {
             let response = try await api.save(url: normalized.absoluteString)
-            guard let data = validatedSaveData(
+            guard let website = validatedSavedWebsite(
                 from: response,
                 previousSelectedId: previousSelectedId,
                 pendingURL: normalized
             ) else {
                 return false
             }
-            try await applySavedWebsite(data, pendingURL: normalized)
+            applySavedWebsite(website, pendingURL: normalized)
             return true
         } catch {
             failWebsiteSave(

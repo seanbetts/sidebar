@@ -29,7 +29,20 @@ final class WebsitesAPITests: XCTestCase {
                 headerFields: nil
             )!
             let payload = """
-            {"success":true,"data":{"id":"w1","title":"Site","url":"https://example.com","domain":"example.com"}}
+            {
+              "success": true,
+              "website": {
+                "id": "w1",
+                "title": "Site",
+                "url": "https://example.com",
+                "url_full": "https://example.com/full",
+                "domain": "example.com",
+                "content": "Body",
+                "source": "web",
+                "pinned": false,
+                "archived": false
+              }
+            }
             """
             return (response, Data(payload.utf8))
         }
@@ -37,7 +50,8 @@ final class WebsitesAPITests: XCTestCase {
         let response = try await api.save(url: "https://example.com")
 
         XCTAssertTrue(response.success)
-        XCTAssertEqual(response.data?.id, "w1")
+        XCTAssertEqual(response.website?.id, "w1")
+        XCTAssertEqual(response.website?.content, "Body")
     }
 
     func testListDecodesReadingTimeField() async throws {

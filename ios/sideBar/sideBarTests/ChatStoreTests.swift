@@ -123,6 +123,32 @@ final class ChatStoreTests: XCTestCase {
         XCTAssertEqual(cached?.first?.id, "m1")
         XCTAssertEqual(cached?.first?.content, "Hello")
     }
+
+    func testConcurrentLoadConversationsSharesOneUnderlyingListRequest() async {
+        let conversations = [
+            Conversation(
+                id: "c1",
+                title: "Fresh",
+                titleGenerated: false,
+                createdAt: "2024-01-01",
+                updatedAt: "2024-01-02",
+                messageCount: 1,
+                firstMessage: "Hi",
+                isArchived: false
+            )
+        ]
+        let cache = TestCacheClient()
+        let api = MockConversationsAPI(listResult: .success(conversations), getResult: .failure(MockError.forced))
+        api.listDelay = 0.05
+        let store = ChatStore(conversationsAPI: api, cache: cache)
+
+        async let first: Void = store.loadConversations()
+        async let second: Void = store.loadConversations()
+        _ = try? await (first, second)
+
+        XCTAssertEqual(api.listCallCount, 1)
+        XCTAssertEqual(store.conversations.map(\.id), ["c1"])
+    }
 }
 
 private enum MockError: Error {

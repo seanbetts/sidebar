@@ -22,6 +22,8 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     private let networkStatus: (any NetworkStatusProviding)?
     private var isRefreshingList = false
     private var refreshingConversationDetailIDs: Set<String> = []
+    private var isConversationsLoadInFlight = false
+    private var conversationsLoadWaiters: [CheckedContinuation<Void, Error>] = []
 
     public init(
         conversationsAPI: ConversationsProviding,
@@ -54,19 +56,6 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     }
 
     // MARK: - Public API
-
-    public func loadConversations(force: Bool = false) async throws {
-        let listCacheKey = self.cacheKey
-        let offlineStore = offlineStore
-        _ = try await loadWithCacheAndOffline(
-            force: force,
-            offline: { offlineStore?.get(key: listCacheKey, as: [Conversation].self) },
-            isNetworkAvailable: !(networkStatus?.isOffline ?? false),
-            remoteUnavailableError: {
-                ChatOfflineError(message: "Conversations aren't available offline yet.")
-            }
-        )
-    }
 
     public func loadConversation(id: String, force: Bool = false) async throws {
         let cacheKey = CacheKeys.conversation(id: id)
@@ -441,6 +430,41 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             }
         }
         return false
+    }
+}
+
+public extension ChatStore {
+    func loadConversations(force: Bool = false) async throws {
+        if isConversationsLoadInFlight {
+            try await withCheckedThrowingContinuation { continuation in
+                conversationsLoadWaiters.append(continuation)
+            }
+            return
+        }
+
+        isConversationsLoadInFlight = true
+        let listCacheKey = self.cacheKey
+        let offlineStore = offlineStore
+        do {
+            _ = try await loadWithCacheAndOffline(
+                force: force,
+                offline: { offlineStore?.get(key: listCacheKey, as: [Conversation].self) },
+                isNetworkAvailable: !(networkStatus?.isOffline ?? false),
+                remoteUnavailableError: {
+                    ChatOfflineError(message: "Conversations aren't available offline yet.")
+                }
+            )
+            isConversationsLoadInFlight = false
+            let waiters = conversationsLoadWaiters
+            conversationsLoadWaiters = []
+            waiters.forEach { $0.resume() }
+        } catch {
+            isConversationsLoadInFlight = false
+            let waiters = conversationsLoadWaiters
+            conversationsLoadWaiters = []
+            waiters.forEach { $0.resume(throwing: error) }
+            throw error
+        }
     }
 }
 

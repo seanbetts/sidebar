@@ -19,6 +19,7 @@ const setStatus = (text, tone = "pending") => {
 
 const CODE_TO_MESSAGE = {
     saved_for_later: "Saved for later.",
+    saved_for_later_sign_in_required: "Saved for later. Open sideBar and sign in to finish saving.",
     website_saved: "Website saved.",
     unsupported_action: "This action is not supported.",
     missing_url: "No active tab URL found.",

@@ -1,6 +1,11 @@
 import Foundation
 
 public enum ExtensionURLMessageHandler {
+    private enum SaveFailureDisposition {
+        case queue(ExtensionMessageCode)
+        case fail(ExtensionMessageCode)
+    }
+
     private static func isIPv4Address(_ host: String) -> Bool {
         let pattern = #"^\d{1,3}(\.\d{1,3}){3}$"#
         return host.range(of: pattern, options: .regularExpression) != nil
@@ -133,14 +138,114 @@ public enum ExtensionURLMessageHandler {
 
     private static func queuedWebsiteResponse(
         for normalizedURL: String,
-        pendingStore: PendingShareStore
+        pendingStore: PendingShareStore,
+        code: ExtensionMessageCode = .savedForLater
     ) -> [String: Any] {
         if pendingStore.enqueueWebsite(url: normalizedURL) != nil {
-            var payload = successResponse(.savedForLater)
+            var payload = successResponse(code)
             payload["queued"] = "website"
             return payload
         }
         return failureResponse(.queueFailed)
+    }
+
+    private static func isUnauthorized(_ error: Error) -> Bool {
+        if let apiError = error as? APIClientError {
+            switch apiError {
+            case .requestFailed(401), .requestFailed(403):
+                return true
+            case .apiError(let message):
+                let lowered = message.lowercased()
+                return lowered.contains("unauthorized") || lowered.contains("forbidden")
+            default:
+                return false
+            }
+        }
+
+        let description = error.localizedDescription.lowercased()
+        return description.contains("unauthorized") || description.contains("forbidden")
+    }
+
+    private static func disposition(for error: Error) -> SaveFailureDisposition {
+        if isUnauthorized(error) {
+            return .queue(.savedForLaterSignInRequired)
+        }
+        if ExtensionNetworkErrorClassifier.isOfflineLike(error) {
+            return .queue(.savedForLater)
+        }
+        if let apiError = error as? APIClientError {
+            switch apiError {
+            case .requestFailed(let statusCode):
+                if statusCode == 408 || statusCode == 429 || (500...599).contains(statusCode) {
+                    return .queue(.savedForLater)
+                }
+            case .apiError(let message):
+                let lowered = message.lowercased()
+                if lowered.contains("timeout")
+                    || lowered.contains("timed out")
+                    || lowered.contains("temporar")
+                    || lowered.contains("try again")
+                    || lowered.contains("rate limit")
+                    || lowered.contains("too many request")
+                    || lowered.contains("unavailable")
+                    || lowered.contains("gateway")
+                    || lowered.contains("server error") {
+                    return .queue(.savedForLater)
+                }
+            default:
+                break
+            }
+        }
+        return .fail(.uploadFailed)
+    }
+
+    private static func response(
+        for disposition: SaveFailureDisposition,
+        normalizedURL: String,
+        pendingStore: PendingShareStore
+    ) -> [String: Any] {
+        switch disposition {
+        case .queue(let code):
+            return queuedWebsiteResponse(
+                for: normalizedURL,
+                pendingStore: pendingStore,
+                code: code
+            )
+        case .fail(let code):
+            return failureResponse(code)
+        }
+    }
+
+    private static func saveImmediately(
+        normalizedURL: String,
+        pendingStore: PendingShareStore,
+        saveWebsite: (String) async throws -> Void,
+        refreshAccessToken: (() async -> Bool)?
+    ) async -> [String: Any] {
+        do {
+            try await saveWebsite(normalizedURL)
+            return successResponse(.websiteSaved)
+        } catch {
+            if isUnauthorized(error),
+               await (refreshAccessToken?() ?? false) {
+                do {
+                    try await saveWebsite(normalizedURL)
+                    return successResponse(.websiteSaved)
+                } catch {
+                    return response(
+                        for: disposition(for: error),
+                        normalizedURL: normalizedURL,
+                        pendingStore: pendingStore
+                    )
+                }
+            }
+
+            return response(
+                for: disposition(for: error),
+                normalizedURL: normalizedURL,
+                pendingStore: pendingStore
+            )
+        }
     }
 
     public static func handleSaveURLMessage(
@@ -159,10 +264,14 @@ public enum ExtensionURLMessageHandler {
         guard let normalized = normalizeQueuedURL(urlString) else {
             return failureResponse(.invalidURL)
         }
-        // Keep extension writes lightweight and deterministic:
-        // queue first, then let the main app submit/process when active.
-        _ = saveWebsite
-        _ = refreshAccessToken
-        return queuedWebsiteResponse(for: normalized, pendingStore: pendingStore)
+        guard let saveWebsite else {
+            return queuedWebsiteResponse(for: normalized, pendingStore: pendingStore)
+        }
+        return await saveImmediately(
+            normalizedURL: normalized,
+            pendingStore: pendingStore,
+            saveWebsite: saveWebsite,
+            refreshAccessToken: refreshAccessToken
+        )
     }
 }

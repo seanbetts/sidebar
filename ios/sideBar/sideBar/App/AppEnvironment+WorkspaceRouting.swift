@@ -11,6 +11,7 @@ extension AppEnvironment {
             source: source
         )
         commandSelection = section
+        AppSentry.recordNavigation(to: section, source: source)
     }
 
     func presentAgentSurface(

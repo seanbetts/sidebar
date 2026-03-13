@@ -46,12 +46,71 @@ extension ShareViewController {
     func saveURL(_ url: URL) {
         setContentView(ShareLoadingView(message: ExtensionUserMessageCatalog.message(for: .savingWebsite)))
         Task { @MainActor in
-            queuePendingWebsite(url)
+            await saveOrQueueWebsite(url)
         }
     }
 
     @MainActor
-    func queuePendingWebsite(_ url: URL) {
+    func saveOrQueueWebsite(_ url: URL) async {
+        if !(await ShareNetworkMonitor.isOnline()) {
+            queuePendingWebsite(url)
+            return
+        }
+
+        guard let environment else {
+            let queueCode: ExtensionMessageCode
+            if let initializationError = environmentInitializationError as? ShareExtensionError,
+               case .notAuthenticated = initializationError {
+                queueCode = .savedForLaterSignInRequired
+            } else {
+                queueCode = .savedForLater
+            }
+            queuePendingWebsite(url, successCode: queueCode)
+            return
+        }
+
+        let payload = await ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: "save_url",
+            urlString: normalizedWebsiteEventURL(url),
+            pendingStore: pendingShareStore,
+            saveWebsite: { normalizedURL in
+                let response = try await environment.websitesAPI.save(url: normalizedURL)
+                guard response.success, let website = response.website else {
+                    throw APIClientError.apiError("Failed to save website")
+                }
+                ExtensionEventStore.shared.recordWebsiteSaved(
+                    website: ExtensionSavedWebsite(
+                        id: website.id,
+                        title: website.title,
+                        url: website.url,
+                        urlFull: website.urlFull,
+                        domain: website.domain,
+                        content: website.content,
+                        source: website.source,
+                        savedAt: website.savedAt,
+                        publishedAt: website.publishedAt,
+                        pinned: website.pinned,
+                        pinnedOrder: website.pinnedOrder,
+                        archived: website.archived,
+                        faviconUrl: website.faviconUrl,
+                        faviconR2Key: website.faviconR2Key,
+                        youtubeTranscripts: website.youtubeTranscripts,
+                        readingTime: website.readingTime,
+                        updatedAt: website.updatedAt,
+                        lastOpenedAt: website.lastOpenedAt
+                    )
+                )
+            },
+            refreshAccessToken: {
+                await environment.ensureValidAccessToken(forceRefresh: true)
+            }
+        )
+
+        showSaveURLResult(payload)
+    }
+
+    @MainActor
+    func queuePendingWebsite(_ url: URL, successCode: ExtensionMessageCode = .savedForLater) {
         guard pendingShareStore.canQueueURLItems() else {
             showError(ExtensionUserMessageCatalog.sharedStorageUnavailableMessage())
             return
@@ -60,7 +119,7 @@ extension ShareViewController {
             url,
             pendingStore: pendingShareStore
         )
-        showQueueResult(item)
+        showQueueResult(item, successCode: successCode)
     }
 
     @MainActor
@@ -96,12 +155,29 @@ extension ShareViewController {
     }
 
     @MainActor
-    func showQueueResult(_ item: PendingShareItem?) {
-        let message = ShareExtensionMessageMapper.queueResultMessage(for: item)
+    func showQueueResult(_ item: PendingShareItem?, successCode: ExtensionMessageCode = .savedForLater) {
+        let message = item == nil
+            ? ShareExtensionMessageMapper.queueResultMessage(for: item)
+            : ExtensionUserMessageCatalog.message(for: successCode)
         if ShareExtensionMessageMapper.queueSucceeded(for: item) {
             showSuccess(message: message)
             return
         }
+        showError(message)
+    }
+
+    @MainActor
+    func showSaveURLResult(_ payload: [String: Any]) {
+        let ok = payload["ok"] as? Bool ?? false
+        if ok {
+            let message = payload["message"] as? String
+                ?? ExtensionUserMessageCatalog.message(for: .websiteSaved)
+            showSuccess(message: message)
+            return
+        }
+
+        let message = payload["error"] as? String
+            ?? ExtensionUserMessageCatalog.message(for: .unknownFailure)
         showError(message)
     }
 }

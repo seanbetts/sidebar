@@ -27,9 +27,11 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     weak var spotlightIndexer: (any SpotlightIndexing)?
     var isRefreshingList = false
     var isRefreshingArchived = false
+    let reconciliationState: WebsitesStoreReconciliationState
     let archivedDetailRetentionDays = 7
     let archivedDetailPrefetchLimit = 50
     let archivedListLimit = 500
+    let localListReconciliationWindow: TimeInterval
     var archivedListSyncedAt: String?
     var archivedSyncLoaded = false
     let archivedRefreshWaitTimeoutNanoseconds: UInt64
@@ -41,6 +43,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         widgetDataManager: WidgetDataManager = .shared,
         offlineStore: OfflineStore? = nil,
         networkStatus: (any NetworkStatusProviding)? = nil,
+        localListReconciliationWindow: TimeInterval = 30,
         archivedRefreshWaitTimeoutNanoseconds: UInt64 = 10_000_000_000,
         archivedRefreshPollIntervalNanoseconds: UInt64 = 50_000_000
     ) {
@@ -48,6 +51,8 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         self.widgetDataManager = widgetDataManager
         self.offlineStore = offlineStore
         self.networkStatus = networkStatus
+        self.localListReconciliationWindow = max(0, localListReconciliationWindow)
+        self.reconciliationState = WebsitesStoreReconciliationState(window: max(0, localListReconciliationWindow))
         let pollInterval = max(1, archivedRefreshPollIntervalNanoseconds)
         self.archivedRefreshPollIntervalNanoseconds = pollInterval
         self.archivedRefreshWaitTimeoutNanoseconds = max(pollInterval, archivedRefreshWaitTimeoutNanoseconds)
@@ -165,6 +170,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     }
 
     public func insertItemAtTop(_ item: WebsiteItem, persist: Bool = true) {
+        preserveLocallyInsertedWebsite(id: item.id)
         items.removeAll { $0.id == item.id }
         items.insert(item, at: 0)
         if let active, active.id == item.id {
@@ -185,6 +191,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     }
 
     public func removeItem(id: String, persist: Bool = true) {
+        reconciliationState.expirations.removeValue(forKey: id)
         items.removeAll { $0.id == id }
         if active?.id == id {
             active = nil

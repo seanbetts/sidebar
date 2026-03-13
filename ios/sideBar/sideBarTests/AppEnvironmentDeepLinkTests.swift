@@ -278,11 +278,25 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             saveResult: .success(
                 WebsiteSaveResponse(
                     success: true,
-                    data: WebsiteSaveData(
+                    website: WebsiteDetail(
                         id: "website-1",
                         title: "Saved",
                         url: url.absoluteString,
-                        domain: "example.com"
+                        urlFull: url.absoluteString,
+                        domain: "example.com",
+                        content: "Saved content",
+                        source: "web",
+                        savedAt: nil,
+                        publishedAt: nil,
+                        pinned: false,
+                        pinnedOrder: nil,
+                        archived: false,
+                        faviconUrl: nil,
+                        faviconR2Key: nil,
+                        youtubeTranscripts: nil,
+                        readingTime: nil,
+                        updatedAt: nil,
+                        lastOpenedAt: nil
                     )
                 )
             )
@@ -294,6 +308,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         storage.widgetDataManager.recordPendingQuickSave(url: url)
 
         await environment.handleSignedInActivation()
+        await waitForWebsiteEventSurface(url.absoluteString, in: environment)
 
         XCTAssertEqual(environment.commandSelection, .websites)
         XCTAssertEqual(websitesAPI.lastSavedURL, url.absoluteString)
@@ -358,34 +373,31 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(after.websites.first?.url, item.url)
     }
 
-    private func clearWidgetPendingOperations() {
+    func clearWidgetPendingOperations() {
         _ = storage.widgetDataManager.consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
         _ = storage.widgetDataManager.consumePendingOperations(for: .notes, actionType: NoteWidgetAction.self)
         _ = storage.widgetDataManager.consumePendingQuickSave()
     }
 
-    private func clearExtensionEvents() {
+    func clearExtensionEvents() {
         _ = storage.extensionEventStore.consumeEvents()
         storage.pendingShareStore.replaceAll([])
     }
 
-    private func websiteEventIsSurfaced(_ url: String, in environment: AppEnvironment) -> Bool {
+    func websiteEventIsSurfaced(_ url: String, in environment: AppEnvironment) -> Bool {
         if environment.websitesViewModel.pendingWebsite?.url == url {
             return true
         }
-
+        if environment.websitesViewModel.store.active?.url == url {
+            return true
+        }
         if storage.pendingShareStore.loadAll().contains(where: { $0.url == url }) {
             return true
         }
-
         return environment.websitesViewModel.items.contains(where: { $0.url == url })
     }
 
-    func waitForWebsiteEventSurface(
-        _ url: String,
-        in environment: AppEnvironment,
-        attempts: Int = 40
-    ) async {
+    func waitForWebsiteEventSurface(_ url: String, in environment: AppEnvironment, attempts: Int = 40) async {
         for _ in 0..<attempts where !websiteEventIsSurfaced(url, in: environment) {
             await Task.yield()
             try? await Task.sleep(nanoseconds: 50_000_000)
@@ -439,74 +451,4 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         environment.websitesViewModel.pendingWebsite = nil
     }
 
-}
-
-private final class WidgetRefreshWebsitesAPI: WebsitesProviding {
-    let items: [WebsiteItem]
-
-    init(items: [WebsiteItem]) {
-        self.items = items
-    }
-
-    func list() async throws -> WebsitesResponse {
-        WebsitesResponse(items: items, archivedCount: 0)
-    }
-
-    func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse {
-        _ = limit
-        _ = offset
-        return WebsitesResponse(items: [], archivedCount: 0)
-    }
-
-    func get(id: String) async throws -> WebsiteDetail {
-        _ = id
-        throw WidgetRefreshWebsitesAPIError.forced
-    }
-
-    func save(url: String) async throws -> WebsiteSaveResponse {
-        _ = url
-        throw WidgetRefreshWebsitesAPIError.forced
-    }
-
-    func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
-        _ = id
-        _ = url
-        throw WidgetRefreshWebsitesAPIError.forced
-    }
-
-    func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
-        _ = id
-        _ = pinned
-        _ = clientUpdatedAt
-        throw WidgetRefreshWebsitesAPIError.forced
-    }
-
-    func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem {
-        _ = id
-        _ = title
-        _ = clientUpdatedAt
-        throw WidgetRefreshWebsitesAPIError.forced
-    }
-
-    func archive(id: String, archived: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
-        _ = id
-        _ = archived
-        _ = clientUpdatedAt
-        throw WidgetRefreshWebsitesAPIError.forced
-    }
-
-    func delete(id: String, clientUpdatedAt: String?) async throws {
-        _ = id
-        _ = clientUpdatedAt
-        throw WidgetRefreshWebsitesAPIError.forced
-    }
-
-    func sync(_ payload: WebsiteSyncRequest) async throws -> WebsiteSyncResponse {
-        _ = payload
-        throw WidgetRefreshWebsitesAPIError.forced
-    }
-}
-
-private enum WidgetRefreshWebsitesAPIError: Error {
-    case forced
 }

@@ -138,7 +138,7 @@ final class WebsitesViewModelTests: XCTestCase {
             getResult: .success(detail),
             saveResult: .success(WebsiteSaveResponse(
                 success: true,
-                data: WebsiteSaveData(id: "site-1", title: "Site", url: "https://example.com", domain: "example.com")
+                website: detail
             ))
         )
         let store = WebsitesStore(api: api, cache: cache)
@@ -166,7 +166,7 @@ final class WebsitesViewModelTests: XCTestCase {
             getResult: .success(detail),
             saveResult: .success(WebsiteSaveResponse(
                 success: true,
-                data: WebsiteSaveData(id: "site-1", title: "Site", url: "https://example.com", domain: "example.com")
+                website: detail
             ))
         )
         let store = WebsitesStore(api: api, cache: cache)
@@ -206,7 +206,7 @@ final class WebsitesViewModelTests: XCTestCase {
         api.resumeSave(
             result: .success(WebsiteSaveResponse(
                 success: true,
-                data: WebsiteSaveData(id: "site-1", title: "Site", url: "https://example.com", domain: "example.com")
+                website: makeDetail(id: "site-1")
             ))
         )
 
@@ -240,7 +240,7 @@ final class WebsitesViewModelTests: XCTestCase {
         api.resumeSave(
             result: .success(WebsiteSaveResponse(
                 success: true,
-                data: WebsiteSaveData(
+                website: makeDetail(
                     id: "site-yt-1",
                     title: "Video",
                     url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -458,7 +458,7 @@ final class WebsitesViewModelTests: XCTestCase {
             getResult: .success(existingDetail),
             saveResult: .success(WebsiteSaveResponse(
                 success: true,
-                data: WebsiteSaveData(
+                website: makeDetail(
                     id: "site-new",
                     title: "New Site",
                     url: "https://new.example",
@@ -508,7 +508,7 @@ final class WebsitesViewModelTests: XCTestCase {
             result: .success(
                 WebsiteSaveResponse(
                     success: true,
-                    data: WebsiteSaveData(
+                    website: makeDetail(
                         id: "site-queued-1",
                         title: "Queued",
                         url: "https://queued.example/path",
@@ -1389,16 +1389,19 @@ private func makeItem(id: String, updatedAt: String? = nil) -> WebsiteItem {
 
 private func makeDetail(
     id: String,
+    title: String = "Site",
+    url: String = "https://example.com",
+    domain: String = "example.com",
     content: String = "Example",
     youtubeTranscripts: [String: WebsiteTranscriptEntry]? = nil,
     updatedAt: String? = nil
 ) -> WebsiteDetail {
     WebsiteDetail(
         id: id,
-        title: "Site",
-        url: "https://example.com",
+        title: title,
+        url: url,
         urlFull: nil,
-        domain: "example.com",
+        domain: domain,
         content: content,
         source: nil,
         savedAt: nil,

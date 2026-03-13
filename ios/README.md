@@ -24,7 +24,7 @@ Runtime keys are loaded through build settings and Info.plist keys. See
 `/Users/sean/Coding/sideBar/docs/engineering/IOS_ENGINEERING_HANDBOOK.md` for full setup and operations guidance.
 
 ## Apple Sentry Status
-- The Apple app no longer links `sentry-cocoa` in the current release cycle.
-- `/Users/sean/Coding/sideBar/ios/sideBar/sideBar/App/SentryBootstrap.swift` remains as an inert local seam, and `startIfConfigured(...)` currently returns `false` without starting an SDK client.
-- `SENTRY_DSN` is still part of the Apple config surface for now, but current Apple builds ignore it.
-- `/Users/sean/Coding/sideBar/ios/sideBar/ci_scripts/upload_sentry_dsyms.sh` is an explicit disabled placeholder pending any future reintroduction.
+- The Apple app links the vendored `sentry-cocoa` XCFramework for the main `sideBar` target.
+- `/Users/sean/Coding/sideBar/ios/sideBar/sideBar/App/SentryBootstrap.swift` starts Sentry when `SENTRY_DSN` is configured and the app is not running tests or previews.
+- The Apple bootstrap explicitly configures tracing, app hang tracking, auto session tracking, and network tracing.
+- `/Users/sean/Coding/sideBar/ios/sideBar/ci_scripts/upload_sentry_dsyms.sh` uploads release-device dSYMs when Sentry auth/project environment variables are present.

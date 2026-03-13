@@ -44,41 +44,23 @@ extension WebsitesViewModel {
         isLoadingDetail = false
     }
 
-    func validatedSaveData(
+    func validatedSavedWebsite(
         from response: WebsiteSaveResponse,
         previousSelectedId: String?,
         pendingURL: URL
-    ) -> WebsiteSaveData? {
-        guard response.success, let data = response.data else {
+    ) -> WebsiteDetail? {
+        guard response.success, let website = response.website else {
             failWebsiteSave(previousSelectedId: previousSelectedId, pendingURL: pendingURL, message: "Failed to save website")
             return nil
         }
-        return data
+        return website
     }
 
-    func applySavedWebsite(_ data: WebsiteSaveData, pendingURL: URL) async throws {
-        selectedWebsiteId = data.id
-        try await store.loadDetail(id: data.id, force: true)
-        let detail = active
+    func applySavedWebsite(_ website: WebsiteDetail, pendingURL: URL) {
+        selectedWebsiteId = website.id
+        store.applyDetailUpdate(website, persist: true)
         store.insertItemAtTop(
-            WebsiteItem(
-                id: data.id,
-                title: detail?.title ?? data.title,
-                url: detail?.url ?? data.url,
-                domain: detail?.domain ?? data.domain,
-                savedAt: detail?.savedAt,
-                publishedAt: detail?.publishedAt,
-                pinned: detail?.pinned ?? false,
-                pinnedOrder: detail?.pinnedOrder,
-                archived: detail?.archived ?? false,
-                faviconUrl: detail?.faviconUrl,
-                faviconR2Key: detail?.faviconR2Key,
-                youtubeTranscripts: detail?.youtubeTranscripts,
-                readingTime: detail?.readingTime,
-                updatedAt: detail?.updatedAt,
-                lastOpenedAt: detail?.lastOpenedAt,
-                deletedAt: nil
-            ),
+            WebsiteItem(detail: website),
             persist: true
         )
         removePendingWebsite(for: pendingURL.absoluteString)
@@ -92,29 +74,19 @@ extension WebsitesViewModel {
         }
     }
 
-    func applySavedWebsiteWithoutSelection(_ data: WebsiteSaveData, pendingURL: URL) {
+    func applySavedWebsiteWithoutSelection(_ website: WebsiteDetail, pendingURL: URL) {
+        applySavedWebsiteWithoutSelection(website, pendingURLString: pendingURL.absoluteString)
+    }
+
+    func applySavedWebsiteWithoutSelection(_ website: WebsiteDetail, pendingURLString: String?) {
+        store.applyDetailUpdate(website, persist: true)
         store.insertItemAtTop(
-            WebsiteItem(
-                id: data.id,
-                title: data.title,
-                url: data.url,
-                domain: data.domain,
-                savedAt: nil,
-                publishedAt: nil,
-                pinned: false,
-                pinnedOrder: nil,
-                archived: false,
-                faviconUrl: nil,
-                faviconR2Key: nil,
-                youtubeTranscripts: nil,
-                readingTime: nil,
-                updatedAt: nil,
-                lastOpenedAt: nil,
-                deletedAt: nil
-            ),
+            WebsiteItem(detail: website),
             persist: true
         )
-        removePendingWebsite(for: pendingURL.absoluteString)
+        if let pendingURLString {
+            removePendingWebsite(for: pendingURLString)
+        }
         store.invalidateList()
     }
 

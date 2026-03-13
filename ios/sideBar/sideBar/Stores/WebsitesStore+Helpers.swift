@@ -83,16 +83,17 @@ extension WebsitesStore {
 
     func applyListUpdate(_ incoming: [WebsiteItem], persist: Bool) {
         let currentActive = items.filter { !$0.archived }
-        guard shouldUpdateList(incoming, current: currentActive) else {
+        let reconciledActive = reconcileLocallyInsertedActiveItems(incoming, current: currentActive)
+        guard shouldUpdateList(reconciledActive, current: currentActive) else {
             return
         }
         let archivedItems = items.filter { $0.archived }
-        items = mergeItems(active: incoming, archived: archivedItems)
+        items = mergeItems(active: reconciledActive, archived: archivedItems)
         if persist {
             persistListCache()
-            indexWebsitesInSpotlight(incoming)
+            indexWebsitesInSpotlight(reconciledActive)
         }
-        updateWidgetData(from: incoming)
+        updateWidgetData(from: reconciledActive)
     }
 
     func applyArchivedUpdate(_ incoming: [WebsiteItem], persist: Bool) {

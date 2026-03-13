@@ -2,6 +2,7 @@ import Foundation
 
 public enum ExtensionMessageCode: String, CaseIterable {
     case savedForLater = "saved_for_later"
+    case savedForLaterSignInRequired = "saved_for_later_sign_in_required"
     case websiteSaved = "website_saved"
     case imageSaved = "image_saved"
     case fileSaved = "file_saved"
@@ -32,6 +33,7 @@ public enum ExtensionMessageCode: String, CaseIterable {
 public enum ExtensionUserMessageCatalog {
     private static let messagesByCode: [ExtensionMessageCode: String] = [
         .savedForLater: "Saved for later.",
+        .savedForLaterSignInRequired: "Saved for later. Open sideBar and sign in to finish saving.",
         .websiteSaved: "Website saved.",
         .imageSaved: "Image saved.",
         .fileSaved: "File saved.",

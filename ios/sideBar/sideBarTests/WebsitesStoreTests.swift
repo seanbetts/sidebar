@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import XCTest
 import sideBarShared
@@ -5,6 +6,13 @@ import sideBarShared
 
 @MainActor
 final class WebsitesStoreTests: XCTestCase {
+    func makeWidgetDataManager() -> WidgetDataManager {
+        WidgetDataManager(
+            userDefaults: UserDefaults(
+                suiteName: "WebsitesStoreTests.\(UUID().uuidString)"
+            )!
+        )
+    }
     func testLoadListUsesOfflineStoreWhenCacheMissing() async {
         let item = WebsiteItem(
             id: "w1",
@@ -29,12 +37,16 @@ final class WebsitesStoreTests: XCTestCase {
         let offlineStore = OfflineStore(container: persistence.container)
         offlineStore.set(key: CacheKeys.websitesList, entityType: "websitesList", value: response, lastSyncAt: nil)
         let cache = TestCacheClient()
-        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
         let store = WebsitesStore(
             api: api,
             cache: cache,
+            widgetDataManager: makeWidgetDataManager(),
             offlineStore: offlineStore,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+            networkStatus: WebsitesStoreTestNetworkStatus(isNetworkAvailable: false, isOffline: true)
         )
 
         try? await store.loadList()
@@ -62,14 +74,18 @@ final class WebsitesStoreTests: XCTestCase {
             deletedAt: nil
         )
         let cache = TestCacheClient()
-        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let store = WebsitesStore(
             api: api,
             cache: cache,
+            widgetDataManager: makeWidgetDataManager(),
             offlineStore: offlineStore,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+            networkStatus: WebsitesStoreTestNetworkStatus(isNetworkAvailable: false, isOffline: true)
         )
         store.updateListItem(item, persist: false)
 
@@ -106,12 +122,13 @@ final class WebsitesStoreTests: XCTestCase {
         let response = WebsitesResponse(items: [item], archivedCount: 1, archivedLastUpdated: "2024-01-01")
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: 60)
-        let api = MockWebsitesAPI(listResult: .success(response), getResult: .failure(MockError.forced))
+        let api = WebsitesStoreMockWebsitesAPI(listResult: .success(response), getResult: .failure(WebsitesStoreMockError.forced))
         api.archivedListDelay = 0.12
 
         let store = WebsitesStore(
             api: api,
             cache: cache,
+            widgetDataManager: makeWidgetDataManager(),
             archivedRefreshWaitTimeoutNanoseconds: 50_000_000,
             archivedRefreshPollIntervalNanoseconds: 10_000_000
         )
@@ -119,7 +136,7 @@ final class WebsitesStoreTests: XCTestCase {
         let firstRefresh = Task {
             await store.loadArchivedList(force: true)
         }
-        try? await waitUntilWebsitesStoreCondition(timeoutSeconds: 1.0) {
+        try? await waitUntilWebsitesStoreConditionMet(timeoutSeconds: 1.0) {
             await api.archivedListCallCount > 0
         }
 
@@ -173,7 +190,10 @@ final class WebsitesStoreTests: XCTestCase {
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.websitesList, value: WebsitesResponse(items: [item]), ttlSeconds: 60)
         cache.set(key: CacheKeys.websiteDetail(id: "w1"), value: detail, ttlSeconds: 60)
-        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
         let store = WebsitesStore(api: api, cache: cache)
         store.updateListItem(item, persist: false)
         try? await store.loadDetail(id: "w1")
@@ -206,6 +226,10 @@ final class WebsitesStoreTests: XCTestCase {
         XCTAssertNil(cached)
     }
 
+}
+
+@MainActor
+extension WebsitesStoreTests {
     func testApplyRealtimeUpdatePreservesPinnedAndArchivedWhenMetadataMissing() async {
         let existing = WebsiteItem(
             id: "w1",
@@ -225,8 +249,15 @@ final class WebsitesStoreTests: XCTestCase {
             lastOpenedAt: nil,
             deletedAt: nil
         )
-        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
-        let store = WebsitesStore(api: api, cache: TestCacheClient())
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
+        let store = WebsitesStore(
+            api: api,
+            cache: TestCacheClient(),
+            widgetDataManager: makeWidgetDataManager()
+        )
         store.updateListItem(existing, persist: false)
 
         let payload = RealtimePayload<WebsiteRealtimeRecord>(
@@ -277,8 +308,15 @@ final class WebsitesStoreTests: XCTestCase {
             lastOpenedAt: nil,
             deletedAt: nil
         )
-        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
-        let store = WebsitesStore(api: api, cache: TestCacheClient())
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
+        let store = WebsitesStore(
+            api: api,
+            cache: TestCacheClient(),
+            widgetDataManager: makeWidgetDataManager()
+        )
         store.updateListItem(existing, persist: false)
 
         let payload = RealtimePayload<WebsiteRealtimeRecord>(
@@ -331,8 +369,15 @@ final class WebsitesStoreTests: XCTestCase {
             lastOpenedAt: nil,
             deletedAt: nil
         )
-        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
-        let store = WebsitesStore(api: api, cache: TestCacheClient())
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
+        let store = WebsitesStore(
+            api: api,
+            cache: TestCacheClient(),
+            widgetDataManager: makeWidgetDataManager()
+        )
         store.updateListItem(existing, persist: false)
 
         let payload = RealtimePayload<WebsiteRealtimeRecord>(
@@ -367,7 +412,7 @@ final class WebsitesStoreTests: XCTestCase {
 }
 
 @MainActor
-private func waitUntilWebsitesStoreCondition(
+func waitUntilWebsitesStoreConditionMet(
     timeoutSeconds: TimeInterval,
     condition: @escaping () async -> Bool
 ) async throws {
@@ -381,7 +426,7 @@ private func waitUntilWebsitesStoreCondition(
     XCTFail("Timed out waiting for websites store condition")
 }
 
-private actor ArchivedListCallCounter {
+actor WebsitesStoreArchivedListCallCounter {
     private var count = 0
 
     func increment() {
@@ -393,17 +438,17 @@ private actor ArchivedListCallCounter {
     }
 }
 
-private enum MockError: Error {
+enum WebsitesStoreMockError: Error {
     case forced
 }
 
-private struct TestNetworkStatus: NetworkStatusProviding {
+struct WebsitesStoreTestNetworkStatus: NetworkStatusProviding {
     let isNetworkAvailable: Bool
     let isOffline: Bool
 }
 
-private final class MockWebsitesAPI: WebsitesProviding {
-    private let archivedListCounter = ArchivedListCallCounter()
+final class WebsitesStoreMockWebsitesAPI: WebsitesProviding {
+    private let archivedListCounter = WebsitesStoreArchivedListCallCounter()
 
     let listResult: Result<WebsitesResponse, Error>
     let getResult: Result<WebsiteDetail, Error>
@@ -441,44 +486,44 @@ private final class MockWebsitesAPI: WebsitesProviding {
 
     func save(url: String) async throws -> WebsiteSaveResponse {
         _ = url
-        throw MockError.forced
+        throw WebsitesStoreMockError.forced
     }
 
     func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
         _ = id
         _ = url
-        throw MockError.forced
+        throw WebsitesStoreMockError.forced
     }
 
     func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = id
         _ = pinned
         _ = clientUpdatedAt
-        throw MockError.forced
+        throw WebsitesStoreMockError.forced
     }
 
     func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = id
         _ = title
         _ = clientUpdatedAt
-        throw MockError.forced
+        throw WebsitesStoreMockError.forced
     }
 
     func archive(id: String, archived: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem {
         _ = id
         _ = archived
         _ = clientUpdatedAt
-        throw MockError.forced
+        throw WebsitesStoreMockError.forced
     }
 
     func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
         _ = clientUpdatedAt
-        throw MockError.forced
+        throw WebsitesStoreMockError.forced
     }
 
     func sync(_ payload: WebsiteSyncRequest) async throws -> WebsiteSyncResponse {
         _ = payload
-        throw MockError.forced
+        throw WebsitesStoreMockError.forced
     }
 }

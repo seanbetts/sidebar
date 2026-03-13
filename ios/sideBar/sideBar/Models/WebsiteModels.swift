@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import sideBarShared
 
 /// Represents a website item struct.
 public struct WebsiteItem: Codable, Identifiable {
@@ -35,6 +36,63 @@ public struct WebsiteItem: Codable, Identifiable {
     public let lastOpenedAt: String?
     /// The deleted at value.
     public let deletedAt: String?
+
+    public init(
+        id: String,
+        title: String,
+        url: String,
+        domain: String,
+        savedAt: String?,
+        publishedAt: String?,
+        pinned: Bool,
+        pinnedOrder: Int?,
+        archived: Bool,
+        faviconUrl: String?,
+        faviconR2Key: String?,
+        youtubeTranscripts: [String: WebsiteTranscriptEntry]?,
+        readingTime: String?,
+        updatedAt: String?,
+        lastOpenedAt: String?,
+        deletedAt: String?
+    ) {
+        self.id = id
+        self.title = title
+        self.url = url
+        self.domain = domain
+        self.savedAt = savedAt
+        self.publishedAt = publishedAt
+        self.pinned = pinned
+        self.pinnedOrder = pinnedOrder
+        self.archived = archived
+        self.faviconUrl = faviconUrl
+        self.faviconR2Key = faviconR2Key
+        self.youtubeTranscripts = youtubeTranscripts
+        self.readingTime = readingTime
+        self.updatedAt = updatedAt
+        self.lastOpenedAt = lastOpenedAt
+        self.deletedAt = deletedAt
+    }
+
+    public init(detail: WebsiteDetail) {
+        self.init(
+            id: detail.id,
+            title: detail.title,
+            url: detail.url,
+            domain: detail.domain,
+            savedAt: detail.savedAt,
+            publishedAt: detail.publishedAt,
+            pinned: detail.pinned,
+            pinnedOrder: detail.pinnedOrder,
+            archived: detail.archived,
+            faviconUrl: detail.faviconUrl,
+            faviconR2Key: detail.faviconR2Key,
+            youtubeTranscripts: detail.youtubeTranscripts,
+            readingTime: detail.readingTime,
+            updatedAt: detail.updatedAt,
+            lastOpenedAt: detail.lastOpenedAt,
+            deletedAt: nil
+        )
+    }
 }
 
 /// Represents a websites response struct.
@@ -99,18 +157,6 @@ public struct WebsiteDetail: Codable, Identifiable {
     public let lastOpenedAt: String?
 }
 
-/// Represents a website transcript entry struct.
-public struct WebsiteTranscriptEntry: Codable, Equatable {
-    /// The status value.
-    public let status: String?
-    /// The file id value.
-    public let fileId: String?
-    /// The updated at value.
-    public let updatedAt: String?
-    /// The error value.
-    public let error: String?
-}
-
 /// Represents a website transcript response struct.
 public struct WebsiteTranscriptResponse: Decodable {
     /// The ready website value.
@@ -158,20 +204,8 @@ private struct TranscriptQueueData: Decodable {
 public struct WebsiteSaveResponse: Codable {
     /// The success value.
     public let success: Bool
-    /// The data value.
-    public let data: WebsiteSaveData?
-}
-
-/// Represents a website save data struct.
-public struct WebsiteSaveData: Codable {
-    /// The id value.
-    public let id: String
-    /// The title value.
-    public let title: String
-    /// The url value.
-    public let url: String
-    /// The domain value.
-    public let domain: String
+    /// The canonical saved website payload.
+    public let website: WebsiteDetail?
 }
 
 /// Represents a website sync response struct.

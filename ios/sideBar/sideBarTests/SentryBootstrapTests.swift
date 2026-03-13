@@ -58,7 +58,11 @@ final class SentryBootstrapTests: XCTestCase {
                 environment: "debug",
                 releaseName: "ai.sidebar.sidebar@0.1+1",
                 tracesSampleRate: 0.1,
-                sendDefaultPii: false
+                sendDefaultPii: false,
+                enableAppHangTracking: true,
+                enableAutoSessionTracking: true,
+                enableNetworkTracking: true,
+                tracePropagationTargets: ["api.example.com", "project.supabase.co"]
             )
         )
     }
@@ -87,9 +91,91 @@ final class SentryBootstrapTests: XCTestCase {
                 environment: "production",
                 releaseName: "ai.sidebar.sidebar@1.2.3+456",
                 tracesSampleRate: 0.1,
-                sendDefaultPii: false
+                sendDefaultPii: false,
+                enableAppHangTracking: true,
+                enableAutoSessionTracking: true,
+                enableNetworkTracking: true,
+                tracePropagationTargets: ["api.example.com", "project.supabase.co"]
             )
         )
+    }
+
+    func testMakeOptionsDedupeTracePropagationTargets() {
+        let config = EnvironmentConfig(
+            apiBaseUrl: URL(string: "https://shared.example.com/api/v1")!,
+            supabaseUrl: URL(string: "https://shared.example.com")!,
+            supabaseAnonKey: "anon-key",
+            sentryDsn: "https://example@sentry.io/123"
+        )
+
+        let options = SentryBootstrap.makeOptions(
+            config: config,
+            isDebugBuild: false,
+            isRunningTestsOrPreviews: false,
+            bundle: TestSentryBundleInfo()
+        )
+
+        XCTAssertEqual(options?.tracePropagationTargets, ["shared.example.com"])
+    }
+
+    func testRecordNavigationAddsBreadcrumbWhenEnabled() {
+        let recorder = RecordingAppSentryRecorder()
+
+        AppSentry.recordNavigation(
+            to: .notes,
+            source: "deeplink_notes",
+            recorder: recorder,
+            isEnabled: true
+        )
+
+        XCTAssertEqual(
+            recorder.breadcrumbs,
+            [
+                BreadcrumbRecord(
+                    level: "info",
+                    category: "navigation",
+                    message: "Opened Notes",
+                    data: ["section": "notes", "source": "deeplink_notes"]
+                )
+            ]
+        )
+    }
+
+    func testRecordActionAddsBreadcrumbWhenEnabled() {
+        let recorder = RecordingAppSentryRecorder()
+
+        AppSentry.recordAction(
+            category: "widget",
+            name: "Quick Save",
+            data: ["source": "widget_quick_save"],
+            recorder: recorder,
+            isEnabled: true
+        )
+
+        XCTAssertEqual(
+            recorder.breadcrumbs,
+            [
+                BreadcrumbRecord(
+                    level: "info",
+                    category: "widget",
+                    message: "Quick Save",
+                    data: ["source": "widget_quick_save"]
+                )
+            ]
+        )
+    }
+
+    func testRecordNavigationDoesNothingWhenDisabled() {
+        let recorder = RecordingAppSentryRecorder()
+
+        AppSentry.recordNavigation(
+            to: .tasks,
+            source: "shortcut_navigate",
+            recorder: recorder,
+            isEnabled: false
+        )
+
+        XCTAssertTrue(recorder.breadcrumbs.isEmpty)
     }
 
     func testStartIfConfiguredStartsOnlyOnce() {
@@ -117,30 +203,6 @@ final class SentryBootstrapTests: XCTestCase {
         XCTAssertEqual(client.startCallCount, 1)
     }
 
-    func testTriggerTestCrashDoesNothingWhileRunningTests() {
-        let client = RecordingSentryBootstrapClient()
-
-        let didTrigger = SentryBootstrap.triggerTestCrash(
-            isRunningTestsOrPreviews: true,
-            client: client
-        )
-
-        XCTAssertFalse(didTrigger)
-        XCTAssertEqual(client.crashCallCount, 0)
-    }
-
-    func testTriggerTestCrashTriggersCrashOutsideTests() {
-        let client = RecordingSentryBootstrapClient()
-
-        let didTrigger = SentryBootstrap.triggerTestCrash(
-            isRunningTestsOrPreviews: false,
-            client: client
-        )
-
-        XCTAssertTrue(didTrigger)
-        XCTAssertEqual(client.crashCallCount, 1)
-    }
-
     private func makeConfig(sentryDsn: String?) -> EnvironmentConfig {
         EnvironmentConfig(
             apiBaseUrl: URL(string: "https://api.example.com/api/v1")!,
@@ -151,18 +213,41 @@ final class SentryBootstrapTests: XCTestCase {
     }
 }
 
+private struct BreadcrumbRecord: Equatable {
+    let level: String
+    let category: String
+    let message: String
+    let data: [String: String]
+}
+
 private final class RecordingSentryBootstrapClient: SentryBootstrapClient {
     private(set) var startCallCount = 0
-    private(set) var crashCallCount = 0
     private(set) var lastOptions: SentryBootstrap.Configuration?
 
     func start(options: SentryBootstrap.Configuration) {
         startCallCount += 1
         lastOptions = options
     }
+}
 
-    func crashForTesting() {
-        crashCallCount += 1
+private final class RecordingAppSentryRecorder: AppSentryRecording {
+    private(set) var breadcrumbs: [BreadcrumbRecord] = []
+
+    func addBreadcrumb(level: String, category: String, message: String, data: [String: String]) {
+        breadcrumbs.append(
+            BreadcrumbRecord(
+                level: level,
+                category: category,
+                message: message,
+                data: data
+            )
+        )
+    }
+
+    func capture(error: any Error, context: [String: String]) {
+    }
+
+    func capture(message: String, level: String, context: [String: String]) {
     }
 }
 

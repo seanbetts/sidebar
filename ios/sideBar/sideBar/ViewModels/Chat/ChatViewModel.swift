@@ -168,6 +168,7 @@ private final class ChatViewModelTeardownBag {
             teardownBag.setAttachmentPollTasks(attachmentPollTasks)
         }
     }
+    var conversationUpdatedAtDates: [String: Date] = [:]
 
     init(
         network: ChatNetworkCoordinator,
@@ -187,6 +188,11 @@ private final class ChatViewModelTeardownBag {
         chatStore.$conversations
             .sink { [weak self] conversations in
                 self?.conversations = conversations
+                self?.conversationUpdatedAtDates = Dictionary(
+                    uniqueKeysWithValues: conversations.map { conversation in
+                        (conversation.id, DateParsing.parseISO8601(conversation.updatedAt) ?? .distantPast)
+                    }
+                )
                 self?.applySelectionIfNeeded(using: conversations)
             }
             .store(in: &cancellables)
@@ -208,11 +214,7 @@ private final class ChatViewModelTeardownBag {
     }
 
     public var groupedConversations: [ConversationGroup] {
-        let sorted = conversations.sorted { lhs, rhs in
-            let leftDate = DateParsing.parseISO8601(lhs.updatedAt) ?? .distantPast
-            let rightDate = DateParsing.parseISO8601(rhs.updatedAt) ?? .distantPast
-            return leftDate > rightDate
-        }
+        let sorted = sortedConversationsByUpdatedAt(conversations)
 
         let now = clock()
         let calendar = Calendar.current
@@ -230,7 +232,7 @@ private final class ChatViewModelTeardownBag {
         var olderItems: [Conversation] = []
 
         for conversation in sorted {
-            let updated = DateParsing.parseISO8601(conversation.updatedAt) ?? .distantPast
+            let updated = updatedAtDate(for: conversation)
             if updated >= today {
                 todayItems.append(conversation)
             } else if updated >= yesterday {
@@ -295,10 +297,28 @@ private final class ChatViewModelTeardownBag {
         activeTool = nil
         promptPreview = nil
         generatingTitleIds.removeAll()
+        conversationUpdatedAtDates = [:]
         clearActiveToolTask?.cancel()
         clearActiveToolTask = nil
         userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
         clearAttachments()
+    }
+
+    func sortedConversationsByUpdatedAt(_ conversations: [Conversation]) -> [Conversation] {
+        conversations
+            .map { conversation in
+                (conversation, updatedAtDate(for: conversation))
+            }
+            .sorted { lhs, rhs in
+                lhs.1 > rhs.1
+            }
+            .map(\.0)
+    }
+
+    private func updatedAtDate(for conversation: Conversation) -> Date {
+        conversationUpdatedAtDates[conversation.id]
+            ?? DateParsing.parseISO8601(conversation.updatedAt)
+            ?? .distantPast
     }
 
 }

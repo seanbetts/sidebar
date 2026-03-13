@@ -35,27 +35,26 @@ final class SafariExtensionMessageHandlerTests: XCTestCase {
         XCTAssertEqual(payload["error"] as? String, ExtensionUserMessageCatalog.message(for: .unsupportedAction))
     }
 
-    func testResponsePayloadQueuesCanonicalYouTubeURL() async {
+    func testResponsePayloadSavesCanonicalYouTubeURLImmediately() async {
         let store = makeStore()
         let message: [String: Any] = [
             "action": "save_url",
             "url": "https://youtu.be/abc123xyzAA?t=35"
         ]
-        var saveCalled = false
+        var savedURL: String?
 
         let payload = await SafariExtensionMessageHandler.responsePayload(
             for: message,
             pendingStore: store,
-            saveWebsite: { _ in
-                saveCalled = true
+            saveWebsite: { url in
+                savedURL = url
             }
         )
 
-        XCTAssertFalse(saveCalled)
+        XCTAssertEqual(savedURL, "https://www.youtube.com/watch?v=abc123xyzAA")
         XCTAssertEqual(payload["ok"] as? Bool, true)
-        XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
-        XCTAssertEqual(store.loadAll().count, 1)
-        XCTAssertEqual(store.loadAll().first?.url, "https://www.youtube.com/watch?v=abc123xyzAA")
+        XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
+        XCTAssertTrue(store.loadAll().isEmpty)
     }
 
     func testResponsePayloadRejectsMissingURL() async {
@@ -72,7 +71,7 @@ final class SafariExtensionMessageHandlerTests: XCTestCase {
         XCTAssertTrue(store.loadAll().isEmpty)
     }
 
-    func testResponsePayloadQueuesWhenSaveClosureThrows() async {
+    func testResponsePayloadFailsWhenSaveClosureReturnsNonRetryableAPIError() async {
         let store = makeStore()
         let message: [String: Any] = [
             "action": "save_url",
@@ -83,7 +82,31 @@ final class SafariExtensionMessageHandlerTests: XCTestCase {
             for: message,
             pendingStore: store,
             saveWebsite: { _ in
-                throw APIClientError.apiError("Unable to save website")
+                throw APIClientError.apiError("Invalid URL")
+            }
+        )
+
+        XCTAssertEqual(payload["ok"] as? Bool, false)
+        XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.uploadFailed.rawValue)
+        XCTAssertEqual(
+            payload["error"] as? String,
+            ExtensionUserMessageCatalog.message(for: .uploadFailed)
+        )
+        XCTAssertTrue(store.loadAll().isEmpty)
+    }
+
+    func testResponsePayloadQueuesWhenSaveClosureReturnsRetryableAPIError() async {
+        let store = makeStore()
+        let message: [String: Any] = [
+            "action": "save_url",
+            "url": "https://example.com/article"
+        ]
+
+        let payload = await SafariExtensionMessageHandler.responsePayload(
+            for: message,
+            pendingStore: store,
+            saveWebsite: { _ in
+                throw APIClientError.apiError("Temporary upstream timeout, try again")
             }
         )
 
@@ -97,33 +120,35 @@ final class SafariExtensionMessageHandlerTests: XCTestCase {
         XCTAssertEqual(store.loadAll().first?.url, "https://example.com/article")
     }
 
-    func testResponsePayloadIgnoresSaveAndRefreshClosures() async {
+    func testResponsePayloadRetriesSaveAfterUnauthorizedRefresh() async {
         let store = makeStore()
         let message: [String: Any] = [
             "action": "save_url",
             "url": "https://example.com/article"
         ]
-        var saveCalled = false
-        var refreshCalled = false
+        var saveCallCount = 0
+        var refreshCallCount = 0
 
         let payload = await SafariExtensionMessageHandler.responsePayload(
             for: message,
             pendingStore: store,
             saveWebsite: { _ in
-                saveCalled = true
+                saveCallCount += 1
+                if saveCallCount == 1 {
+                    throw APIClientError.requestFailed(403)
+                }
             },
             refreshAccessToken: {
-                refreshCalled = true
+                refreshCallCount += 1
                 return true
             }
         )
 
-        XCTAssertFalse(saveCalled)
-        XCTAssertFalse(refreshCalled)
+        XCTAssertEqual(saveCallCount, 2)
+        XCTAssertEqual(refreshCallCount, 1)
         XCTAssertEqual(payload["ok"] as? Bool, true)
-        XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
-        XCTAssertEqual(store.loadAll().count, 1)
-        XCTAssertEqual(store.loadAll().first?.url, "https://example.com/article")
+        XCTAssertEqual(payload["code"] as? String, ExtensionMessageCode.websiteSaved.rawValue)
+        XCTAssertTrue(store.loadAll().isEmpty)
     }
 
     private func makeStore() -> PendingShareStore {

@@ -264,16 +264,15 @@
 		isSavingWebsite = true;
 		try {
 			const result = await websitesStore.saveWebsite(url);
-			if (!result.success || !result.id) {
+			if (!result.success || !result.id || !result.website) {
 				throw new Error(result.error || 'Failed to save website');
 			}
-			const websiteId = result.id;
 
 			dispatchCacheEvent('website.saved');
 			ingestionViewerStore.clearActive();
 			editorStore.reset();
 			currentNoteId.set(null);
-			await websitesStore.loadById(websiteId);
+			websitesStore.setActiveWebsite(result.website);
 			isNewWebsiteDialogOpen = false;
 		} catch (error) {
 			logError('Failed to save website', error, { scope: 'Sidebar' });
