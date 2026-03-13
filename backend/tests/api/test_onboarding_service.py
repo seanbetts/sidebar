@@ -130,3 +130,13 @@ def test_validate_updates_accepts_null_intent() -> None:
 
 def test_validate_updates_accepts_null_milestone() -> None:
     OnboardingService._validate_updates({"milestones": {"provider_connected": None}})
+
+
+def test_validate_updates_rejects_invalid_last_prompted_at() -> None:
+    with pytest.raises(HTTPException) as exc:
+        OnboardingService._validate_updates({"last_prompted_at": 12345})
+    assert exc.value.status_code == 400
+
+
+def test_validate_updates_accepts_null_last_prompted_at() -> None:
+    OnboardingService._validate_updates({"last_prompted_at": None})

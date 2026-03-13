@@ -146,6 +146,14 @@ class OnboardingService:
                         detail=f"Invalid permission state for {key}",
                     )
 
+        if "last_prompted_at" in updates:
+            val = updates["last_prompted_at"]
+            if val is not None and not isinstance(val, str):
+                raise HTTPException(
+                    status_code=400,
+                    detail="last_prompted_at must be a string or null",
+                )
+
     @staticmethod
     def _compute_provider_ready(db: Session, user_id: str) -> bool:
         """Return True when the user has an active key for their primary provider.
