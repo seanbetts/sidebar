@@ -115,6 +115,47 @@ def test_upload_script_uses_explicit_sentry_cli_path(tmp_path: Path) -> None:
     assert str(dsym_dir / "sideBar.app.dSYM") in args
 
 
+def test_upload_script_uses_explicit_dsym_override_path(tmp_path: Path) -> None:
+    """Archive upload hooks should be able to provide an explicit dSYM path override."""
+    env = os.environ.copy()
+    env.update(
+        {
+            "CONFIGURATION": "Release",
+            "PLATFORM_NAME": "iphoneos",
+            "PRODUCT_BUNDLE_IDENTIFIER": "ai.sidebar.sidebar",
+            "SENTRY_AUTH_TOKEN": "token",
+            "SENTRY_ORG": "sidebar",
+            "SENTRY_PROJECT": "apple",
+        }
+    )
+    archive_dsym = tmp_path / "build.xcarchive" / "dSYMs" / "sideBar.app.dSYM"
+    archive_dsym.mkdir(parents=True)
+    cli_path = tmp_path / "sentry-cli"
+    cli_path.write_text(
+        "#!/bin/bash\n"
+        "echo \"$@\" > \"$TMPDIR/sentry-cli-args.txt\"\n",
+        encoding="utf-8",
+    )
+    cli_path.chmod(0o755)
+    env["SENTRY_CLI_PATH"] = str(cli_path)
+    env["SENTRY_DSYM_PATH"] = str(archive_dsym)
+    env["TMPDIR"] = str(tmp_path)
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "uploading sideBar.app.dSYM for ai.sidebar.sidebar" in result.stdout
+    args = (tmp_path / "sentry-cli-args.txt").read_text(encoding="utf-8")
+    assert str(archive_dsym) in args
+
+
 def base_env(tmp_path: Path) -> dict[str, str]:
     """Construct the baseline environment for the upload hook."""
     env = os.environ.copy()

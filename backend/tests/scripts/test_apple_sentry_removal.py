@@ -9,6 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 IOS_ROOT = REPO_ROOT / "ios" / "sideBar"
 PBXPROJ = REPO_ROOT / "ios" / "sideBar" / "sideBar.xcodeproj" / "project.pbxproj"
 CI_POST_CLONE_SCRIPT = REPO_ROOT / "ios" / "sideBar" / "ci_scripts" / "ci_post_clone.sh"
+CI_POST_XCODEBUILD_SCRIPT = REPO_ROOT / "ios" / "sideBar" / "ci_scripts" / "ci_post_xcodebuild.sh"
 UPLOAD_SCRIPT = REPO_ROOT / "ios" / "sideBar" / "ci_scripts" / "upload_sentry_dsyms.sh"
 BOOTSTRAP = REPO_ROOT / "ios" / "sideBar" / "sideBar" / "App" / "SentryBootstrap.swift"
 IOS_APP_DELEGATE = REPO_ROOT / "ios" / "sideBar" / "sideBar" / "App" / "AppLaunchDelegate.swift"
@@ -44,10 +45,12 @@ def test_bootstrap_seam_remains_wired_from_app_entry_points() -> None:
 
 def test_ci_and_upload_hooks_remain_explicit_sentry_touchpoints() -> None:
     ci_contents = CI_POST_CLONE_SCRIPT.read_text(encoding="utf-8")
+    post_xcodebuild_contents = CI_POST_XCODEBUILD_SCRIPT.read_text(encoding="utf-8")
     script_contents = UPLOAD_SCRIPT.read_text(encoding="utf-8")
 
     assert "SENTRY_DSN" in ci_contents
     assert r"INFOPLIST_KEY_SENTRY_DSN = \$(SENTRY_DSN)" in ci_contents
+    assert "sentry-post-xcodebuild:" in post_xcodebuild_contents
     assert "sentry-dsym-upload:" in script_contents
     assert "set -euo pipefail" in script_contents
 

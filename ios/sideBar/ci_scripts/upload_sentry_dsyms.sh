@@ -51,12 +51,15 @@ if (( ${#missing_vars[@]} > 0 )); then
     exit 0
 fi
 
-if [[ -z "${DWARF_DSYM_FOLDER_PATH:-}" || -z "${DWARF_DSYM_FILE_NAME:-}" ]]; then
-    log "skipping upload because dSYM build settings are unavailable"
-    exit 0
+DSYM_PATH="${SENTRY_DSYM_PATH:-}"
+if [[ -z "${DSYM_PATH}" ]]; then
+    if [[ -z "${DWARF_DSYM_FOLDER_PATH:-}" || -z "${DWARF_DSYM_FILE_NAME:-}" ]]; then
+        log "skipping upload because dSYM build settings are unavailable"
+        exit 0
+    fi
+    DSYM_PATH="${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
 fi
 
-DSYM_PATH="${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}"
 if [[ ! -d "${DSYM_PATH}" ]]; then
     log "skipping upload because dSYM path does not exist: ${DSYM_PATH}"
     exit 0
@@ -68,7 +71,8 @@ if ! SENTRY_CLI="$(find_sentry_cli)"; then
     exit 1
 fi
 
-log "uploading ${DWARF_DSYM_FILE_NAME} for ${PRODUCT_BUNDLE_IDENTIFIER:-unknown-bundle-id}"
+DSYM_NAME="$(basename "${DSYM_PATH}")"
+log "uploading ${DSYM_NAME} for ${PRODUCT_BUNDLE_IDENTIFIER:-unknown-bundle-id}"
 "${SENTRY_CLI}" debug-files upload \
     --org "${SENTRY_ORG}" \
     --project "${SENTRY_PROJECT}" \
