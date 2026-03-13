@@ -128,7 +128,7 @@ final class NotesStoreWidgetDataTests: XCTestCase {
         ])
 
         store.applyTreeUpdate(tree, persist: false)
-        widgetDataManager.store(.empty, for: .notes)
+        widgetDataManager.store(WidgetNoteData.empty, for: .notes)
 
         store.applyTreeUpdate(tree, persist: false)
 

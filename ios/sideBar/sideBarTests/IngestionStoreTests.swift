@@ -223,7 +223,7 @@ final class IngestionStoreTests: XCTestCase {
         )
 
         store.applyListUpdate([item], persist: false)
-        widgetDataManager.store(.empty, for: .files)
+        widgetDataManager.store(WidgetFileData.empty, for: .files)
 
         store.applyListUpdate([item], persist: false)
 

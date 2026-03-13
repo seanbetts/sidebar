@@ -5,6 +5,14 @@ import sideBarShared
 
 @MainActor
 final class WebsitesStoreWidgetDataTests: XCTestCase {
+    private func makeWidgetDataManager() -> WidgetDataManager {
+        WidgetDataManager(
+            userDefaults: UserDefaults(
+                suiteName: "WebsitesStoreWidgetDataTests.\(UUID().uuidString)"
+            )!
+        )
+    }
+
     func testUpdateWidgetDataPrefersPinnedSitesAndFallsBackToRecentSavedSites() async {
         let api = WebsitesWidgetDataMockAPI(
             listResult: .failure(WebsitesWidgetDataMockError.forced),
@@ -89,7 +97,7 @@ final class WebsitesStoreWidgetDataTests: XCTestCase {
         ]
 
         store.applyListUpdate(items, persist: false)
-        widgetDataManager.store(.empty, for: .websites)
+        widgetDataManager.store(WidgetWebsiteData.empty, for: .websites)
 
         store.applyListUpdate(items, persist: false)
 
