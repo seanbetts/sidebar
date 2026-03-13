@@ -4,6 +4,14 @@ import sideBarShared
 
 @MainActor
 extension WebsitesViewModel {
+    private var transcriptFailureToastMessage: String {
+        "Couldn't get the transcript right now. Please try again."
+    }
+
+    func showTranscriptFailureToast() {
+        toastCenter.show(message: transcriptFailureToastMessage)
+    }
+
     func normalizedWebsiteURL(from rawURL: String) -> URL? {
         guard let trimmed = rawURL.trimmedOrNil,
               let normalized = WebsiteURLValidator.normalizedCandidate(trimmed) else {
@@ -299,6 +307,7 @@ extension WebsitesViewModel {
         }
         if status == "failed" || status == "canceled" {
             errorMessage = current.youtubeTranscripts?[videoId]?.error ?? "Transcript failed."
+            showTranscriptFailureToast()
         }
         stopTranscriptPolling(key: key)
         return .completed
@@ -315,6 +324,7 @@ extension WebsitesViewModel {
             error: message
         )
         errorMessage = message
+        showTranscriptFailureToast()
         stopTranscriptPolling(key: key)
     }
 

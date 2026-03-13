@@ -816,6 +816,38 @@ final class WebsitesViewModelTests: XCTestCase {
         )
     }
 
+    func testRequestYouTubeTranscriptShowsFriendlyToastOnFailure() async {
+        let detail = makeDetail(id: "site-1")
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            getResult: .success(detail),
+            transcribeResult: .failure(MockError.forced)
+        )
+        let toastCenter = ToastCenter()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.selectWebsite(id: "site-1")
+        await viewModel.requestYouTubeTranscript(
+            websiteId: "site-1",
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+
+        XCTAssertEqual(
+            toastCenter.toast?.message,
+            "Couldn't get the transcript right now. Please try again."
+        )
+        if case .error? = toastCenter.toast?.style {
+        } else {
+            XCTFail("Expected transcript failure toast style to be error")
+        }
+    }
+
     func testTranscriptReadyStateOverridesStalePendingIngestionJob() async {
         let videoId = "dQw4w9WgXcQ"
         let readyEntry = WebsiteTranscriptEntry(
@@ -968,11 +1000,12 @@ final class WebsitesViewModelTests: XCTestCase {
                 )
             )
         )
+        let toastCenter = ToastCenter()
         let store = WebsitesStore(api: api, cache: cache)
         let viewModel = WebsitesViewModel(
             api: api,
             store: store,
-            toastCenter: ToastCenter(),
+            toastCenter: toastCenter,
             networkStatus: TestNetworkStatus(isNetworkAvailable: true),
             transcriptPollInterval: 0,
             transcriptPollMaxInterval: 0,
@@ -1006,6 +1039,10 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(
             viewModel.errorMessage,
             "Could not refresh transcript status. Retry transcription."
+        )
+        XCTAssertEqual(
+            toastCenter.toast?.message,
+            "Couldn't get the transcript right now. Please try again."
         )
         XCTAssertTrue(viewModel.transcriptPollingTasks.isEmpty)
     }

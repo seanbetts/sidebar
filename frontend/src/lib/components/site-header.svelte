@@ -22,6 +22,10 @@
 	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
 	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 	import { AlertTriangle, ArrowLeftRight, CheckCircle2 } from 'lucide-svelte';
+	import {
+		handleTranscriptPollingError,
+		showTranscriptFailureToast
+	} from '$lib/components/websites/transcriptNotifications';
 
 	const siteHeaderData = useSiteHeaderData();
 	const INGESTION_READY_WINDOW_MS = 6_000;
@@ -203,13 +207,18 @@
 						file_id: fileId,
 						updated_at: new Date().toISOString()
 					});
-					toast.error('Transcript failed', { description: 'Please try again.' });
+					showTranscriptFailureToast();
 					transcriptStatus = null;
 					transcriptLabel = '';
 					transcriptStatusStore.set(null);
 				}
 			} catch (error) {
-				stopTranscriptPolling();
+				handleTranscriptPollingError(() => {
+					stopTranscriptPolling();
+					transcriptStatus = null;
+					transcriptLabel = '';
+					transcriptStatusStore.set(null);
+				});
 			} finally {
 				transcriptPollingInFlight = false;
 			}

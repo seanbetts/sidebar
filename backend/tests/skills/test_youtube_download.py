@@ -68,6 +68,46 @@ def test_resolve_player_clients_from_env(monkeypatch):
     assert module._resolve_player_clients(audio_only=True) == ["ios", "web", "tv"]
 
 
+def test_download_youtube_enables_remote_components(monkeypatch, tmp_path):
+    module = _load_download_module()
+    captured: dict[str, Any] = {}
+
+    class FakeYoutubeDL:
+        def __init__(self, opts):
+            captured["opts"] = opts
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def extract_info(self, _url, download=False):
+            assert download is False
+            return {"title": "Video", "duration": 42}
+
+        def prepare_filename(self, _info):
+            return str(tmp_path / "Video.webm")
+
+        def download(self, _urls):
+            (tmp_path / "Video.mp3").write_bytes(b"audio")
+
+    monkeypatch.setattr(module, "check_ffmpeg", lambda: True)
+    monkeypatch.setattr(module.yt_dlp, "YoutubeDL", FakeYoutubeDL)
+    monkeypatch.setattr(module, "_resolve_js_runtimes", lambda: {"node": {}})
+
+    result = module.download_youtube(
+        url="https://www.youtube.com/watch?v=abc123xyzAA",
+        audio_only=True,
+        quiet=True,
+        upload=False,
+        temp_dir=str(tmp_path),
+    )
+
+    assert result["success"] is True
+    assert captured["opts"]["remote_components"] == ["ejs:github"]
+
+
 def test_store_downloaded_output_uses_ingestion_helpers(monkeypatch, tmp_path):
     module = _load_download_module()
     record = SimpleNamespace(id="abc123", path="files/videos/download.mp4")

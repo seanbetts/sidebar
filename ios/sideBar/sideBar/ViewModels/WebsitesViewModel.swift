@@ -427,6 +427,7 @@ public final class WebsitesViewModel: ObservableObject {
             startTranscriptPollingIfNeeded(websiteId: websiteId, videoId: videoId)
         } catch {
             errorMessage = ErrorMapping.message(for: error)
+            showTranscriptFailureToast()
         }
     }
 

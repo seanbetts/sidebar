@@ -27,6 +27,7 @@
 	import { extractYouTubeVideoId } from '$lib/utils/youtube';
 	import { normalizeHtmlBlocks, rewriteVideoEmbeds } from './viewerEmbedTransforms';
 	import { applyTranscriptQueuedState, resetTranscriptLinkState } from './transcriptLinkState';
+	import { showTranscriptFailureToast } from './transcriptNotifications';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -129,9 +130,7 @@
 				scope: 'websitesViewer.transcribe',
 				url
 			});
-			toast.error('Transcript failed', {
-				description: 'Please try again.'
-			});
+			showTranscriptFailureToast();
 			return false;
 		}
 	}
