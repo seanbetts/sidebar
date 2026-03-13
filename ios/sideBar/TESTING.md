@@ -15,6 +15,14 @@ This applies equally to Notes, Files, Chat, Tasks, Websites, Skills, app-shell c
 - `dev` should run `Logic`
 - `main` should run `Logic`, `Surface`, and `UI Smoke`
 
+## Lane routing
+
+- The user-facing Logic lane remains `sideBar` with `AppleFast`.
+- `./scripts/test-ios.sh` routes that combination to `sideBarLogicHost` for execution.
+- We do this because the `sideBar` scheme includes `sideBarTests`, while `AppleFast` targets `sideBarLogicTests`.
+- Running `AppleFast` directly through the `sideBar` scheme causes Xcode to union those test bundles, build both `sideBar` and `sideBarLogicHost`, and risk duplicate `sideBar.swiftmodule` outputs.
+- `sideBarLogicHost` is the execution scheme used by CI for the Logic lane.
+
 ## Placement rules
 
 Choose the lowest appropriate Apple test layer first.

@@ -161,8 +161,9 @@ IOS_SCHEME=sideBarUI ./scripts/test-ios.sh                         # default cur
 IOS_SCHEME=sideBarUI IOS_UI_SMOKE_ONLY=NO ./scripts/test-ios.sh    # broader UI regression lane
 IOS_SCHEME=sideBarExtensions ./scripts/test-ios.sh                 # extension lane
 
-# Deterministic CLI verification for the fast/default iOS lane
-xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar \
+# Deterministic CLI verification for the fast/default Logic lane
+# The wrapper script routes sideBar + AppleFast through sideBarLogicHost.
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarLogicHost \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' test
 
 # Explicit UI and extension lanes
@@ -172,7 +173,7 @@ xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarExtensions \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' test
 
 # Optional local retry mode for transient simulator/runtime flake triage
-xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar \
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarLogicHost \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
   -retry-tests-on-failure -test-iterations 3 test
 ```
@@ -196,10 +197,12 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 
 | Lane | Scheme / Plan | Default scope | Blocking status | When to run |
 | --- | --- | --- | --- | --- |
-| Logic | `sideBar` / `AppleFast` | Deterministic shared-code coverage from the `logic` taxonomy bucket across iPhone, iPad, and macOS | Required on `dev` and `main` | Default Apple guardrail, local default, every protected push |
+| Logic | user-facing `sideBar` / `AppleFast`, executed via `sideBarLogicHost` / `AppleFast` | Deterministic shared-code coverage from the `logic` taxonomy bucket across iPhone, iPad, and macOS | Required on `dev` and `main` | Default Apple guardrail, local default, every protected push |
 | Surface | `sideBar` / `AppleStateful` | Mounted views, app-environment wiring, persistence, and broader integration coverage | Required on `main` | Broader release protection and manual regression on integration-heavy changes |
 | UI Smoke | `sideBarUI` / `AppleUI` | Curated smoke coverage with one real login and seeded auth for the rest | Required on `main` | Release verification, manual UI checks, branch protection on `main` |
 | Extensions | `sideBarExtensions` / `AppleExtensions` | Share sheet, widget, and Safari extension surfaces | Required on `main` | Release protection and extension-specific regression |
+
+`./scripts/test-ios.sh` keeps `sideBar` as the default user-facing Logic lane selector, then routes `sideBar` + `AppleFast` to `sideBarLogicHost` for execution. CI uses `sideBarLogicHost` directly for the Logic lane.
 
 ### Apple UI Smoke Policy
 
@@ -243,7 +246,7 @@ The checked-in taxonomy manifest at `scripts/ios_test_taxonomy.json` is the auth
 Backend/frontend tests run automatically on push/PR via GitHub Actions. Coverage reports uploaded to Codecov.
 
 Xcode Cloud and any broader Apple coverage jobs should run the explicit lane schemes:
-- `sideBar` for the fast/default unit lane
+- `sideBarLogicHost` for the fast/default Logic lane
 - `sideBarUI` for UI coverage
 - `sideBarExtensions` for extension coverage
 

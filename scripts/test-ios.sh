@@ -16,6 +16,11 @@ fi
 resolve_execution_scheme() {
   case "${1}:${2}" in
     sideBar:AppleFast)
+      # Keep `sideBar` as the user-facing Logic lane selector, but execute
+      # AppleFast through sideBarLogicHost. Invoking AppleFast directly on the
+      # sideBar scheme causes Xcode to union the scheme's built-in sideBarTests
+      # with AppleFast's sideBarLogicTests, which then builds both sideBar and
+      # sideBarLogicHost and can produce duplicate sideBar.swiftmodule outputs.
       echo "sideBarLogicHost"
       ;;
     *)
