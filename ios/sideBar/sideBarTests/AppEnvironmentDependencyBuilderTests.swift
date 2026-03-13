@@ -24,6 +24,12 @@ final class AppEnvironmentDependencyBuilderTests: XCTestCase {
         XCTAssertTrue((dependencies.ingestionStore.spotlightIndexer as AnyObject?) === dependencies.spotlightIndexer)
     }
 
+    func testBuildDependenciesUsesNoOpSpotlightIndexerInTestMode() {
+        let dependencies = makeDependencies()
+
+        XCTAssertTrue(dependencies.spotlightIndexer is NoOpSpotlightIndexer)
+    }
+
     func testBuildDependenciesReusesOfflineStoreAcrossFeatureStores() {
         let dependencies = makeDependencies()
 

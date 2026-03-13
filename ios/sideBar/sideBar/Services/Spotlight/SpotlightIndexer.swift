@@ -368,6 +368,25 @@ public final class SpotlightIndexer: SpotlightIndexing {
   }
 }
 
+/// No-op Spotlight indexer used to isolate tests and previews from system search services.
+public final class NoOpSpotlightIndexer: SpotlightIndexing {
+  public init() {}
+
+  public func indexNote(_ note: SpotlightNote) async { _ = note }
+  public func indexNotes(_ notes: [SpotlightNote]) async { _ = notes }
+  public func indexFile(_ file: SpotlightFile) async { _ = file }
+  public func indexFiles(_ files: [SpotlightFile]) async { _ = files }
+  public func indexWebsite(_ website: SpotlightWebsite) async { _ = website }
+  public func indexWebsites(_ websites: [SpotlightWebsite]) async { _ = websites }
+  public func removeNote(path: String) async { _ = path }
+  public func removeFile(id: String) async { _ = id }
+  public func removeWebsite(id: String) async { _ = id }
+  public func clearNotesIndex() async {}
+  public func clearFilesIndex() async {}
+  public func clearWebsitesIndex() async {}
+  public func clearAllIndexes() async {}
+}
+
 // MARK: - Array Extension
 
 private extension Array {

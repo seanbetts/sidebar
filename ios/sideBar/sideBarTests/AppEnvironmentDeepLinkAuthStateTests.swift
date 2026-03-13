@@ -4,7 +4,7 @@ import sideBarShared
 
 @MainActor
 extension AppEnvironmentDeepLinkTests {
-    func testRefreshAuthStateWhenSessionBecomesActiveConsumesExtensionEvents() {
+    func testRefreshAuthStateWhenSessionBecomesActiveConsumesExtensionEvents() async {
         let previousSharedEnvironment = AppEnvironment.shared
         defer { AppEnvironment.shared = previousSharedEnvironment }
 
@@ -25,9 +25,7 @@ extension AppEnvironmentDeepLinkTests {
         authSession.authState = .active
         environment.refreshAuthState()
 
-        for _ in 0..<40 where environment.websitesViewModel.pendingWebsite?.url != url {
-            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-        }
+        await waitForWebsiteEventSurface(url, in: environment)
 
         XCTAssertEqual(environment.authState, .active)
         XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)

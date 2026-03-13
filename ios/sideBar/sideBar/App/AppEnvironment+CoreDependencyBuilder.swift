@@ -14,7 +14,7 @@ extension AppEnvironment {
             let persistenceContainer: NSPersistentContainer
             let draftStorage: DraftStorage
             let offlineStore: OfflineStore
-            let spotlightIndexer: SpotlightIndexer
+            let spotlightIndexer: any SpotlightIndexing
             let biometricMonitor: BiometricMonitor
         }
 
@@ -32,7 +32,7 @@ extension AppEnvironment {
             let persistenceController = persistenceController(for: isTestMode)
             let draftStorage = DraftStorage(container: persistenceController.container)
             let offlineStore = OfflineStore(container: persistenceController.container)
-            let spotlightIndexer = SpotlightIndexer()
+            let spotlightIndexer: any SpotlightIndexing = isTestMode ? NoOpSpotlightIndexer() : SpotlightIndexer()
             let biometricMonitor = BiometricMonitor()
             return Output(
                 persistenceController: persistenceController,

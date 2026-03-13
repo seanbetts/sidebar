@@ -29,7 +29,7 @@ extension AppEnvironment {
         let biometricMonitor: BiometricMonitor
         let writeQueue: WriteQueue
         let draftStorage: DraftStorage
-        let spotlightIndexer: SpotlightIndexer
+        let spotlightIndexer: any SpotlightIndexing
     }
 
     static func buildDependencies(

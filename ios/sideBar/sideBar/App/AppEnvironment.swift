@@ -99,7 +99,7 @@ public final class AppEnvironment: ObservableObject {
     /// Queue that persists and replays offline writes.
     public let writeQueue: WriteQueue
     let draftStorage: DraftStorage
-    let spotlightIndexer: SpotlightIndexer
+    let spotlightIndexer: any SpotlightIndexing
     let syncCoordinator: SyncCoordinator
 
     /// Current authentication state observed by top-level app routing.

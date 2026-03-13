@@ -381,6 +381,17 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         return environment.websitesViewModel.items.contains(where: { $0.url == url })
     }
 
+    func waitForWebsiteEventSurface(
+        _ url: String,
+        in environment: AppEnvironment,
+        attempts: Int = 40
+    ) async {
+        for _ in 0..<attempts where !websiteEventIsSurfaced(url, in: environment) {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+    }
+
     func makeEnvironment(
         storage: AppEnvironmentStorage,
         websitesAPI: (any WebsitesProviding)? = nil
