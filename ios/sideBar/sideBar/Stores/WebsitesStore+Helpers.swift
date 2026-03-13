@@ -85,6 +85,7 @@ extension WebsitesStore {
         let currentActive = items.filter { !$0.archived }
         let reconciledActive = reconcileLocallyInsertedActiveItems(incoming, current: currentActive)
         guard shouldUpdateList(reconciledActive, current: currentActive) else {
+            updateWidgetData(from: items)
             return
         }
         let archivedItems = items.filter { $0.archived }

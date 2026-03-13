@@ -272,11 +272,12 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     }
 
     func applyTreeUpdate(_ incoming: FileTree, persist: Bool) {
+        let merged = mergeArchivedSummary(into: incoming)
         guard shouldUpdateTree(incoming) else {
+            updateWidgetData(from: merged)
             return
         }
         updateArchivedSummary(from: incoming, persist: persist)
-        let merged = mergeArchivedSummary(into: incoming)
         tree = merged
         if persist {
             cache.set(key: CacheKeys.notesTree, value: merged, ttlSeconds: CachePolicy.notesTree)

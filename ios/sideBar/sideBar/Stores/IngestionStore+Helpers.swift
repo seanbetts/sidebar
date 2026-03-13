@@ -72,6 +72,7 @@ extension IngestionStore {
     func applyListUpdate(_ incoming: [IngestionListItem], persist: Bool) {
         let filteredIncoming = incoming.filter(shouldIncludeIngestionItem)
         guard shouldUpdateList(filteredIncoming) else {
+            updateWidgetData()
             return
         }
         remoteItems = filteredIncoming

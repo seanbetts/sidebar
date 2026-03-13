@@ -55,6 +55,48 @@ final class WebsitesStoreWidgetDataTests: XCTestCase {
         XCTAssertEqual(snapshot.totalCount, 2)
         XCTAssertEqual(snapshot.websites.map(\.id), ["pinned", "recent"])
     }
+
+    func testApplyListUpdateRepairsWidgetSnapshotEvenWhenListIsUnchanged() async {
+        let api = WebsitesWidgetDataMockAPI(
+            listResult: .failure(WebsitesWidgetDataMockError.forced),
+            getResult: .failure(WebsitesWidgetDataMockError.forced)
+        )
+        let widgetDataManager = makeWidgetDataManager()
+        let store = WebsitesStore(
+            api: api,
+            cache: TestCacheClient(),
+            widgetDataManager: widgetDataManager
+        )
+        let items = [
+            WebsiteItem(
+                id: "pinned",
+                title: "Pinned",
+                url: "https://example.com/pinned",
+                domain: "example.com",
+                savedAt: "2026-03-11T10:00:00Z",
+                publishedAt: nil,
+                pinned: true,
+                pinnedOrder: 0,
+                archived: false,
+                faviconUrl: nil,
+                faviconR2Key: nil,
+                youtubeTranscripts: nil,
+                readingTime: nil,
+                updatedAt: "2026-03-11T10:00:00Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            )
+        ]
+
+        store.applyListUpdate(items, persist: false)
+        widgetDataManager.store(.empty, for: .websites)
+
+        store.applyListUpdate(items, persist: false)
+
+        let snapshot: WidgetWebsiteData = widgetDataManager.load(for: .websites)
+        XCTAssertEqual(snapshot.totalCount, 1)
+        XCTAssertEqual(snapshot.websites.map(\.id), ["pinned"])
+    }
 }
 
 private enum WebsitesWidgetDataMockError: Error {

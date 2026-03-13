@@ -5,6 +5,14 @@ import sideBarShared
 
 @MainActor
 final class IngestionStoreTests: XCTestCase {
+    private func makeWidgetDataManager() -> WidgetDataManager {
+        WidgetDataManager(
+            userDefaults: UserDefaults(
+                suiteName: "IngestionStoreTests.widget.\(UUID().uuidString)"
+            )!
+        )
+    }
+
     func testApplyIngestedFileEventCachesList() async {
         let cache = TestCacheClient()
         let defaults = IngestionStoreTestsSupport.makeDefaults()
@@ -191,6 +199,37 @@ final class IngestionStoreTests: XCTestCase {
 
         XCTAssertTrue(reloaded.items.contains { $0.file.id == "local-1" })
         XCTAssertFalse(reloaded.items.contains { $0.file.id == "file-1" })
+    }
+
+    func testApplyListUpdateRepairsFileWidgetSnapshotEvenWhenListIsUnchanged() async {
+        let cache = TestCacheClient()
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let widgetDataManager = makeWidgetDataManager()
+        let store = IngestionStore(
+            api: IngestionStoreTestsSupport.MockIngestionAPI(),
+            cache: cache,
+            widgetDataManager: widgetDataManager,
+            userDefaults: defaults
+        )
+        let item = IngestionStoreTestsSupport.makeItem(
+            id: "file-1",
+            filename: "Pinned.pdf",
+            mimeOriginal: "application/pdf",
+            pinned: true,
+            pinnedOrder: 0,
+            status: "ready",
+            stage: "ready",
+            recommendedViewer: "viewer_pdf"
+        )
+
+        store.applyListUpdate([item], persist: false)
+        widgetDataManager.store(.empty, for: .files)
+
+        store.applyListUpdate([item], persist: false)
+
+        let snapshot: WidgetFileData = widgetDataManager.load(for: .files)
+        XCTAssertEqual(snapshot.totalCount, 1)
+        XCTAssertEqual(snapshot.files.map(\.id), ["file-1"])
     }
 
     func testApplyIngestedFileEventSkipsWebsiteTranscriptRecords() async {

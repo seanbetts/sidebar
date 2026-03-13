@@ -5,6 +5,14 @@ import XCTest
 
 @MainActor
 final class NotesStoreWidgetDataTests: XCTestCase {
+    private func makeWidgetDataManager() -> WidgetDataManager {
+        WidgetDataManager(
+            userDefaults: UserDefaults(
+                suiteName: "NotesStoreWidgetDataTests.\(UUID().uuidString)"
+            )!
+        )
+    }
+
     func testUpdateWidgetDataFallsBackToRecentNotesWhenNoPinnedNotes() async {
         let api = NotesStoreTestsSupport.MockNotesAPI(
             treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
@@ -89,5 +97,43 @@ final class NotesStoreWidgetDataTests: XCTestCase {
 
         XCTAssertEqual(snapshot.totalCount, 2)
         XCTAssertEqual(snapshot.notes.map(\.path), ["/pinned.md", "/recent.md"])
+    }
+
+    func testApplyTreeUpdateRepairsWidgetSnapshotEvenWhenTreeIsUnchanged() async {
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
+        let widgetDataManager = makeWidgetDataManager()
+        let store = NotesStore(
+            api: api,
+            cache: TestCacheClient(),
+            widgetDataManager: widgetDataManager
+        )
+        let tree = FileTree(children: [
+            FileNode(
+                name: "Pinned.md",
+                path: "/pinned.md",
+                type: .file,
+                size: nil,
+                modified: 1,
+                created: nil,
+                children: nil,
+                expanded: nil,
+                pinned: true,
+                pinnedOrder: 0,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+
+        store.applyTreeUpdate(tree, persist: false)
+        widgetDataManager.store(.empty, for: .notes)
+
+        store.applyTreeUpdate(tree, persist: false)
+
+        let snapshot: WidgetNoteData = widgetDataManager.load(for: .notes)
+        XCTAssertEqual(snapshot.totalCount, 1)
+        XCTAssertEqual(snapshot.notes.map(\.path), ["/pinned.md"])
     }
 }
