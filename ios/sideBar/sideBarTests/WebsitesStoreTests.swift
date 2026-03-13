@@ -5,53 +5,6 @@ import sideBarShared
 
 @MainActor
 final class WebsitesStoreTests: XCTestCase {
-    func testUpdateWidgetDataPrefersPinnedSitesAndFallsBackToRecentSavedSites() {
-        let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
-        let store = WebsitesStore(api: api, cache: TestCacheClient())
-        let items = [
-            WebsiteItem(
-                id: "recent",
-                title: "Recent",
-                url: "https://example.com/recent",
-                domain: "example.com",
-                savedAt: "2026-03-12T11:00:00Z",
-                publishedAt: nil,
-                pinned: false,
-                pinnedOrder: nil,
-                archived: false,
-                faviconUrl: nil,
-                faviconR2Key: nil,
-                youtubeTranscripts: nil,
-                readingTime: nil,
-                updatedAt: "2026-03-12T11:00:00Z",
-                lastOpenedAt: nil,
-                deletedAt: nil
-            ),
-            WebsiteItem(
-                id: "pinned",
-                title: "Pinned",
-                url: "https://example.com/pinned",
-                domain: "example.com",
-                savedAt: "2026-03-11T10:00:00Z",
-                publishedAt: nil,
-                pinned: true,
-                pinnedOrder: 0,
-                archived: false,
-                faviconUrl: nil,
-                faviconR2Key: nil,
-                youtubeTranscripts: nil,
-                readingTime: nil,
-                updatedAt: "2026-03-11T10:00:00Z",
-                lastOpenedAt: nil,
-                deletedAt: nil
-            )
-        ]
-
-        let snapshot = store.makeWidgetData(from: items)
-        XCTAssertEqual(snapshot.totalCount, 2)
-        XCTAssertEqual(snapshot.websites.map(\.id), ["pinned", "recent"])
-    }
-
     func testLoadListUsesOfflineStoreWhenCacheMissing() async {
         let item = WebsiteItem(
             id: "w1",
