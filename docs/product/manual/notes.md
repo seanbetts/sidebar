@@ -70,8 +70,9 @@ move on without thinking about it.
 ## Widgets
 
 Pinned notes appear in sideBar's Pinned Notes home screen widget, giving you
-quick access without opening the app. See [Widgets & Extensions](/manual/extensions)
-to set it up.
+quick access without opening the app. If you have not pinned any notes yet,
+the widget shows your most recent notes so it never stays empty just because
+nothing is pinned. See [Widgets & Extensions](/manual/extensions) to set it up.
 
 ## Keyboard Shortcuts
 

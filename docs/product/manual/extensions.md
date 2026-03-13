@@ -26,9 +26,11 @@ in small, medium, and large sizes:
   See [Tasks](/manual/tasks) for more on how tasks work.
 - **Task Count**: a compact progress ring showing how many tasks you've
   completed today.
-- **Pinned Notes**: quick links to your pinned notes. See
+- **Pinned Notes**: quick links to your pinned notes. If you have not pinned
+  any notes yet, sideBar shows your most recent notes instead. See
   [Notes](/manual/notes) for how to pin a note.
-- **Saved Websites**: your saved websites with favicons. See
+- **Saved Websites**: your saved websites with favicons. Pinned websites appear
+  first, followed by your most recent saved websites. See
   [Websites](/manual/websites) for how to save sites.
 - **Pinned Files**: your pinned files with file-type icons. See
   [Files](/manual/files) for how to pin a file.

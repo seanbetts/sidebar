@@ -350,12 +350,21 @@ extension NotesStore {
     // MARK: - Widget Data
 
     func updateWidgetData(from tree: FileTree) {
-        let pinnedNotes = flattenNotes(from: tree.children)
+        widgetDataManager.store(makeWidgetData(from: tree), for: .notes)
+    }
+
+    func makeWidgetData(from tree: FileTree) -> WidgetNoteData {
+        let allNotes = flattenNotes(from: tree.children)
+        let pinnedNotes = allNotes
             .filter { $0.pinned }
             .sorted { ($0.pinnedOrder ?? Int.max) < ($1.pinnedOrder ?? Int.max) }
-        let displayNotes = Array(pinnedNotes.prefix(10))
-        let data = WidgetNoteData(notes: displayNotes, totalCount: pinnedNotes.count)
-        widgetDataManager.store(data, for: .notes)
+        let fallbackNotes = allNotes
+            .filter { !$0.pinned }
+            .sorted { lhs, rhs in
+                (lhs.modifiedAt ?? .distantPast) > (rhs.modifiedAt ?? .distantPast)
+            }
+        let widgetNotes = Array((pinnedNotes + fallbackNotes).prefix(10))
+        return WidgetNoteData(notes: widgetNotes, totalCount: allNotes.count)
     }
 
     func flattenNotes(from nodes: [FileNode]) -> [WidgetNote] {

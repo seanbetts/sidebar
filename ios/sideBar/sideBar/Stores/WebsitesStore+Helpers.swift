@@ -422,13 +422,24 @@ extension WebsitesStore {
     // MARK: - Widget Data
 
     func updateWidgetData(from items: [WebsiteItem]) {
-        let savedSites = items
-            .filter { !$0.pinned && !$0.archived }
+        widgetDataManager.store(makeWidgetData(from: items), for: .websites)
+    }
+
+    func makeWidgetData(from items: [WebsiteItem]) -> WidgetWebsiteData {
+        let activeItems = items.filter { !$0.archived && $0.deletedAt == nil }
+        let pinnedSites = activeItems
+            .filter(\.pinned)
+            .sorted {
+                if ($0.pinnedOrder ?? Int.max) != ($1.pinnedOrder ?? Int.max) {
+                    return ($0.pinnedOrder ?? Int.max) < ($1.pinnedOrder ?? Int.max)
+                }
+                return ($0.savedAt ?? "") > ($1.savedAt ?? "")
+            }
+        let recentSites = activeItems
+            .filter { !$0.pinned }
             .sorted { ($0.savedAt ?? "") > ($1.savedAt ?? "") }
-            .map { WidgetWebsite(from: $0) }
-        let displaySites = Array(savedSites.prefix(10))
-        let data = WidgetWebsiteData(websites: displaySites, totalCount: savedSites.count)
-        widgetDataManager.store(data, for: .websites)
+        let displaySites = Array((pinnedSites + recentSites).map { WidgetWebsite(from: $0) }.prefix(10))
+        return WidgetWebsiteData(websites: displaySites, totalCount: activeItems.count)
     }
 }
 
