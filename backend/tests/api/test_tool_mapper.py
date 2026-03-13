@@ -460,6 +460,17 @@ async def test_execute_search_product_knowledge():
             _knowledge_provider._indexer = None
 
 
+def test_internal_tools_always_included():
+    """Tools with skill=None should always be included regardless of allowed_skills."""
+    from api.services.tools.definitions_skills import get_skills_definitions
+
+    mapper = _build_mapper(get_skills_definitions())
+    tools = mapper.get_claude_tools(allowed_skills=["notes"])
+    tool_names = [t["name"] for t in tools]
+    assert "Get_Skill_Inventory" in tool_names
+    assert "Search_Product_Knowledge" in tool_names
+
+
 @pytest.mark.asyncio
 async def test_execute_tool_returns_error_when_transcription_unavailable(monkeypatch):
     tools = {
