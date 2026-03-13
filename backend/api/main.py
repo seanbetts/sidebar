@@ -38,6 +38,7 @@ from api.routers import (
     memories,
     metrics,
     notes,
+    onboarding,
     places,
     scratchpad,
     skills,
@@ -289,6 +290,7 @@ app.include_router(weather.router, prefix="/api/v1", tags=["weather"])
 app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
 app.include_router(events.router, prefix="/api/v1", tags=["events"])
 app.include_router(device_tokens.router, prefix="/api/v1", tags=["device-tokens"])
+app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
 
 # Legacy routes (deprecated)
 app.include_router(
@@ -324,6 +326,9 @@ app.include_router(
     weather.router, prefix="/api", tags=["weather-legacy"], deprecated=True
 )
 app.include_router(tasks.router, prefix="/api", tags=["tasks-legacy"], deprecated=True)
+app.include_router(
+    onboarding.router, prefix="/api", tags=["onboarding-legacy"], deprecated=True
+)
 
 # Mount MCP endpoint (auth handled by middleware)
 # FastMCP creates its own /mcp route, so we mount at root
