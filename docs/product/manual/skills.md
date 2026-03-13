@@ -46,7 +46,7 @@ needed.
 Skills marked **Beta** are early access. They work, but their behaviour may
 change in a future update.
 
-{/* TODO: Update availability states when OAuth external connections ships (docs/plans/2026-03-07-external-connections-oauth2-implementation-plan.md).
+{/* TODO: Update availability states when OAuth external connections ships (docs/superpowers/plans/2026-03-07-external-connections-oauth2-implementation-plan.md).
     New states to add: ready, needs_connection, scope_upgrade_required, error.
     Some skills will show "Connect Google to install" instead of an API key field. */}
 

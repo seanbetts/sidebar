@@ -28,7 +28,7 @@ requirements, and version details.
 
 ## Installing a Store Skill
 
-{/* TODO: Update install flow when OAuth external connections ships (docs/plans/2026-03-07-external-connections-oauth2-implementation-plan.md).
+{/* TODO: Update install flow when OAuth external connections ships (docs/superpowers/plans/2026-03-07-external-connections-oauth2-implementation-plan.md).
     Some skills will require connecting a service account via OAuth instead of entering an API key.
     Install button states will vary: "Install", "Connect Google to install", "Reconnect". */}
 

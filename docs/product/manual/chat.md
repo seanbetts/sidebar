@@ -46,7 +46,7 @@ To copy any message, tap the copy button once and the content goes to your
 clipboard. The clipboard clears automatically after 30 seconds, so copied text
 doesn't linger longer than you'd want.
 
-{/* TODO: Update Skills in Action when Skills Guard ships (docs/plans/2026-02-28-skills-guard-recommendation.md).
+{/* TODO: Update Skills in Action when Skills Guard ships (docs/superpowers/plans/2026-02-28-skills-guard-recommendation.md).
     Add: inline confirmation cards for destructive actions (delete note/task/website/file),
     Accept/Decline buttons, and short-lived undo option after a successful delete. */}
 

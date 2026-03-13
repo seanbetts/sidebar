@@ -215,7 +215,7 @@ Use this handbook as primary reference.
 - Quick project orientation: `ios/README.md`
 - Environment key detail: `ios/ENVIRONMENT.md`
 - Legacy architecture page (deprecated pointer): `docs/IOS_ARCHITECTURE.md`
-- Active/historical iOS implementation plans: `docs/plans/`
+- Active/historical iOS implementation plans: `docs/superpowers/plans/`
 
 ## Maintenance Rule
 
