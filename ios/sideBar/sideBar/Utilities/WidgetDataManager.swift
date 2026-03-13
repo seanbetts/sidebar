@@ -58,7 +58,9 @@ public final class WidgetDataManager {
         message: "Stored widget data snapshot.",
         metadata: [
           "content_type": contentType.rawValue,
-          "bytes": "\(encoded.count)"
+          "bytes": "\(encoded.count)",
+          "item_count": "\(data.items.count)",
+          "total_count": "\(data.totalCount)"
         ]
       )
     }
@@ -317,6 +319,14 @@ public final class WidgetDataManager {
 
   private func reloadWidgets(for contentType: WidgetContentType) {
     #if canImport(WidgetKit)
+    recordDiagnostics(
+      stage: "reload_timelines",
+      message: "Requested widget timeline reload.",
+      metadata: [
+        "content_type": contentType.rawValue,
+        "widget_kinds": contentType.widgetKinds.joined(separator: ",")
+      ]
+    )
     for kind in contentType.widgetKinds {
       WidgetCenter.shared.reloadTimelines(ofKind: kind)
     }
@@ -325,6 +335,10 @@ public final class WidgetDataManager {
 
   private func reloadAllWidgets() {
     #if canImport(WidgetKit)
+    recordDiagnostics(
+      stage: "reload_all_timelines",
+      message: "Requested reload for all widget timelines."
+    )
     WidgetCenter.shared.reloadAllTimelines()
     #endif
   }

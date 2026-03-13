@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import sideBarShared
 
 struct TodayTasksEntry: TimelineEntry {
     let date: Date
@@ -41,6 +42,7 @@ struct TodayTasksProvider: TimelineProvider {
         }
 
         let entry = createEntry(for: Date())
+        recordProviderDiagnostics(stage: "snapshot", entry: entry)
         completion(entry)
     }
 
@@ -48,6 +50,7 @@ struct TodayTasksProvider: TimelineProvider {
         let isAuthenticated = WidgetDataManager.shared.isAuthenticated()
         guard isAuthenticated else {
             let entry = TodayTasksEntry.notAuthenticated
+            recordProviderDiagnostics(stage: "timeline", entry: entry)
             let timeline = Timeline(entries: [entry], policy: .after(nextMidnight()))
             completion(timeline)
             return
@@ -97,6 +100,7 @@ struct TodayTasksProvider: TimelineProvider {
         // Use .after policy for the last boundary + 15 minutes to trigger a fresh data fetch
         let lastEntry = sortedBoundaries.last ?? nextMidnightDate
         let nextRefresh = calendar.date(byAdding: .minute, value: 15, to: lastEntry) ?? lastEntry
+        recordProviderDiagnostics(stage: "timeline", entry: entries.first ?? TodayTasksEntry.notAuthenticated)
         let timeline = Timeline(entries: entries, policy: .after(nextRefresh))
         completion(timeline)
     }
@@ -115,5 +119,19 @@ struct TodayTasksProvider: TimelineProvider {
         let calendar = Calendar.current
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date()) ?? Date()
         return calendar.startOfDay(for: tomorrow)
+    }
+
+    private func recordProviderDiagnostics(stage: String, entry: TodayTasksEntry) {
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "widget_provider",
+            stage: stage,
+            message: "Built task widget entry.",
+            metadata: [
+                "provider": "TodayTasksProvider",
+                "is_authenticated": entry.isAuthenticated ? "true" : "false",
+                "item_count": "\(entry.data.tasks.count)",
+                "total_count": "\(entry.data.totalCount)"
+            ]
+        )
     }
 }

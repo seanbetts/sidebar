@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import sideBarShared
 
 struct PinnedNotesEntry: TimelineEntry {
     let date: Date
@@ -33,11 +34,13 @@ struct PinnedNotesProvider: TimelineProvider {
         }
 
         let entry = createEntry()
+        recordProviderDiagnostics(stage: "snapshot", entry: entry)
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedNotesEntry>) -> Void) {
         let entry = createEntry()
+        recordProviderDiagnostics(stage: "timeline", entry: entry)
 
         // Refresh every 15 minutes
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
@@ -53,5 +56,19 @@ struct PinnedNotesProvider: TimelineProvider {
 
         let data: WidgetNoteData = WidgetDataManager.shared.load(for: .notes)
         return PinnedNotesEntry(date: Date(), data: data, isAuthenticated: true)
+    }
+
+    private func recordProviderDiagnostics(stage: String, entry: PinnedNotesEntry) {
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "widget_provider",
+            stage: stage,
+            message: "Built note widget entry.",
+            metadata: [
+                "provider": "PinnedNotesProvider",
+                "is_authenticated": entry.isAuthenticated ? "true" : "false",
+                "item_count": "\(entry.data.notes.count)",
+                "total_count": "\(entry.data.totalCount)"
+            ]
+        )
     }
 }

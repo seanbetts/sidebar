@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import sideBarShared
 
 struct SavedSitesEntry: TimelineEntry {
     let date: Date
@@ -36,6 +37,7 @@ struct SavedSitesProvider: TimelineProvider {
         }
         Task {
             let entry = await createEntry()
+            recordProviderDiagnostics(stage: "snapshot", entry: entry)
             completion(entry)
         }
     }
@@ -43,6 +45,7 @@ struct SavedSitesProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<SavedSitesEntry>) -> Void) {
         Task {
             let entry = await createEntry()
+            recordProviderDiagnostics(stage: "timeline", entry: entry)
             // Refresh every 15 minutes
             let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
             let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
@@ -103,5 +106,20 @@ struct SavedSitesProvider: TimelineProvider {
         } catch {
             return nil
         }
+    }
+
+    private func recordProviderDiagnostics(stage: String, entry: SavedSitesEntry) {
+        ExternalSurfaceDiagnosticsStore.shared.record(
+            surface: "widget_provider",
+            stage: stage,
+            message: "Built websites widget entry.",
+            metadata: [
+                "provider": "SavedSitesProvider",
+                "is_authenticated": entry.isAuthenticated ? "true" : "false",
+                "item_count": "\(entry.data.websites.count)",
+                "total_count": "\(entry.data.totalCount)",
+                "favicon_count": "\(entry.faviconDataByWebsiteId.count)"
+            ]
+        )
     }
 }

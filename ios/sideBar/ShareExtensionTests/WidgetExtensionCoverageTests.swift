@@ -172,6 +172,38 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertTrue(export.contains("build_number="))
         XCTAssertTrue(export.contains("process_name="))
         XCTAssertTrue(export.contains("bundle_path="))
+        XCTAssertTrue(export.contains("app_group_source="))
+        XCTAssertTrue(export.contains("auth_key_present=true"))
+    }
+
+    func testWidgetLoadDiagnosticsIncludeSnapshotMetadata() throws {
+        let groupId = appGroupIdForWidgetTests()
+        let defaults = UserDefaults(suiteName: groupId)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let payload = WidgetNoteData(
+            notes: [
+                WidgetNote(id: "/note.md", name: "Note", path: "/note.md", pinned: true, pinnedOrder: 0)
+            ],
+            totalCount: 1
+        )
+        defaults?.set(try encoder.encode(payload), forKey: WidgetContentType.notes.dataKey)
+        defaults?.synchronize()
+        defer {
+            defaults?.removeObject(forKey: WidgetContentType.notes.dataKey)
+            defaults?.synchronize()
+        }
+
+        let loaded: WidgetNoteData = WidgetDataManager.shared.load(for: .notes)
+
+        XCTAssertEqual(loaded.totalCount, 1)
+        let export = ExternalSurfaceDiagnosticsStore.shared.exportText(limit: 10)
+        XCTAssertTrue(export.contains("[widget_bridge_extension] load:"))
+        XCTAssertTrue(export.contains("content_type=notes"))
+        XCTAssertTrue(export.contains("has_data_key=true"))
+        XCTAssertTrue(export.contains("decode_success=true"))
+        XCTAssertTrue(export.contains("item_count=1"))
+        XCTAssertTrue(export.contains("total_count=1"))
     }
 
     func testSavedSitesWidgetUsesSevenItemsForLargeFamily() {

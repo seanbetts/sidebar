@@ -22,40 +22,89 @@ public final class WidgetDataManager {
   // MARK: - App Group Access
 
   private var userDefaults: UserDefaults? {
-    UserDefaults(suiteName: appGroupId)
+    UserDefaults(suiteName: appGroupResolution.id)
   }
 
   private var appGroupId: String {
-    AppGroupConfiguration.appGroupId ?? "group.ai.sidebar.sidebar"
+    appGroupResolution.id
+  }
+
+  private var appGroupResolution: (id: String, source: String) {
+    if let configured = configuredAppGroupId() {
+      return (configured, "info_plist")
+    }
+    if let derived = AppGroupConfiguration.resolvedAppGroupId(bundleIdentifier: Bundle.main.bundleIdentifier) {
+      return (derived, "bundle_identifier")
+    }
+    return ("group.ai.sidebar.sidebar", "hardcoded_fallback")
   }
 
   // MARK: - Generic Data Storage
 
   /// Loads widget data for a content type
   public func load<T: WidgetDataContainer>(for contentType: WidgetContentType) -> T {
-    guard let defaults = userDefaults,
-          let data = defaults.data(forKey: contentType.dataKey) else {
+    let resolution = appGroupResolution
+    guard let defaults = userDefaults else {
       recordDiagnostics(
         stage: "load_empty",
         message: "No widget data snapshot was available.",
-        metadata: ["content_type": contentType.rawValue]
+        metadata: [
+          "content_type": contentType.rawValue,
+          "app_group_source": resolution.source,
+          "has_defaults": "false",
+          "has_data_key": "false"
+        ]
       )
       return T.empty
     }
+
+    guard let data = defaults.data(forKey: contentType.dataKey) else {
+      recordDiagnostics(
+        stage: "load_empty",
+        message: "No widget data snapshot was available.",
+        metadata: [
+          "content_type": contentType.rawValue,
+          "app_group_source": resolution.source,
+          "has_defaults": "true",
+          "has_data_key": defaults.object(forKey: contentType.dataKey) == nil ? "false" : "true"
+        ]
+      )
+      return T.empty
+    }
+
+    let decoded = try? Self.makeDecoder().decode(T.self, from: data)
     recordDiagnostics(
       stage: "load",
       message: "Loaded widget data snapshot.",
       metadata: [
         "content_type": contentType.rawValue,
-        "bytes": "\(data.count)"
+        "app_group_source": resolution.source,
+        "has_defaults": "true",
+        "has_data_key": "true",
+        "bytes": "\(data.count)",
+        "decode_success": decoded == nil ? "false" : "true",
+        "item_count": "\(decoded?.items.count ?? 0)",
+        "total_count": "\(decoded?.totalCount ?? 0)"
       ]
     )
-    return (try? Self.makeDecoder().decode(T.self, from: data)) ?? T.empty
+    return decoded ?? T.empty
   }
 
   /// Stores widget data for a content type (used for optimistic updates from intents)
   public func store<T: WidgetDataContainer>(_ data: T, for contentType: WidgetContentType) {
-    guard let defaults = userDefaults else { return }
+    let resolution = appGroupResolution
+    guard let defaults = userDefaults else {
+      recordDiagnostics(
+        stage: "store_missing_defaults",
+        message: "Could not store widget data snapshot because shared defaults were unavailable.",
+        metadata: [
+          "content_type": contentType.rawValue,
+          "app_group_source": resolution.source,
+          "has_defaults": "false"
+        ]
+      )
+      return
+    }
     if let encoded = try? Self.makeEncoder().encode(data) {
       defaults.set(encoded, forKey: contentType.dataKey)
       defaults.synchronize()
@@ -64,7 +113,11 @@ public final class WidgetDataManager {
         message: "Stored widget data snapshot.",
         metadata: [
           "content_type": contentType.rawValue,
-          "bytes": "\(encoded.count)"
+          "app_group_source": resolution.source,
+          "has_defaults": "true",
+          "bytes": "\(encoded.count)",
+          "item_count": "\(data.items.count)",
+          "total_count": "\(data.totalCount)"
         ]
       )
     }
@@ -120,7 +173,12 @@ public final class WidgetDataManager {
     recordDiagnostics(
       stage: "read_auth_state",
       message: "Read widget auth state.",
-      metadata: ["is_authenticated": isAuthenticated ? "true" : "false"]
+      metadata: [
+        "app_group_source": appGroupResolution.source,
+        "has_defaults": userDefaults == nil ? "false" : "true",
+        "auth_key_present": userDefaults?.object(forKey: authKey) == nil ? "false" : "true",
+        "is_authenticated": isAuthenticated ? "true" : "false"
+      ]
     )
     return isAuthenticated
   }
@@ -169,6 +227,15 @@ public final class WidgetDataManager {
     let decoder = JSONDecoder()
     decoder.dateDecodingStrategy = .iso8601
     return decoder
+  }
+
+  private func configuredAppGroupId() -> String? {
+    let raw = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String
+    let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    guard !trimmed.isEmpty, !trimmed.contains("$(") else {
+      return nil
+    }
+    return trimmed
   }
 }
 
@@ -285,7 +352,10 @@ private extension WidgetDataManager {
       stage: stage,
       message: message,
       metadata: metadata.merging(
-        ["app_group_id": appGroupId],
+        [
+          "app_group_id": appGroupId,
+          "app_group_source": appGroupResolution.source
+        ],
         uniquingKeysWith: { current, _ in current }
       )
     )
