@@ -125,6 +125,13 @@ public enum MarkdownRendering {
         )
     }
 
+    public nonisolated static func preprocessTranscriptMarkdown(_ text: String) -> String {
+        guard text.contains("YOUTUBE_TRANSCRIPT:") || text.contains("### Transcript of ") else {
+            return text
+        }
+        return stripWebsiteTranscriptArtifacts(text)
+    }
+
     public nonisolated static func normalizedBlocks(from text: String) -> [MarkdownContentBlock] {
         normalizedBlocks(from: text, suppressSVG: false)
     }

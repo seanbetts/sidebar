@@ -226,6 +226,87 @@ final class WebsitesStoreTests: XCTestCase {
         XCTAssertNil(cached)
     }
 
+    func testPrefetchArchivedDetailsFetchesOnlyRetainedUncachedItems() async {
+        let retainedUpdatedAt = ISO8601DateFormatter().string(from: Date())
+        let expiredUpdatedAt = ISO8601DateFormatter().string(from: Calendar.current.date(byAdding: .day, value: -10, to: Date())!)
+        let retainedItem = makeWebsiteItem(id: "retained", archived: true, updatedAt: retainedUpdatedAt)
+        let cachedRetainedItem = makeWebsiteItem(id: "cached", archived: true, updatedAt: retainedUpdatedAt)
+        let expiredItem = makeWebsiteItem(id: "expired", archived: true, updatedAt: expiredUpdatedAt)
+        let malformedItem = makeWebsiteItem(id: "malformed", archived: true, updatedAt: "not-a-date")
+        let nilDateItem = makeWebsiteItem(id: "nil-date", archived: true, updatedAt: nil)
+        let activeItem = makeWebsiteItem(id: "active", archived: false, updatedAt: retainedUpdatedAt)
+        let detail = makeWebsiteDetail(id: "retained", archived: true, updatedAt: retainedUpdatedAt)
+        let cache = TestCacheClient()
+        cache.set(key: CacheKeys.websiteDetail(id: "cached"), value: detail, ttlSeconds: 60)
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .success(detail)
+        )
+        let store = WebsitesStore(
+            api: api,
+            cache: cache,
+            widgetDataManager: makeWidgetDataManager()
+        )
+
+        await store.prefetchArchivedDetails(from: [
+            retainedItem,
+            cachedRetainedItem,
+            expiredItem,
+            malformedItem,
+            nilDateItem,
+            activeItem
+        ])
+
+        let requestedIDs = await api.requestedDetailIDs
+        XCTAssertEqual(requestedIDs, ["retained"])
+    }
+
+}
+
+private extension WebsitesStoreTests {
+    func makeWebsiteItem(id: String, archived: Bool, updatedAt: String?) -> WebsiteItem {
+        WebsiteItem(
+            id: id,
+            title: id.capitalized,
+            url: "https://example.com/\(id)",
+            domain: "example.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: archived,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: updatedAt,
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+    }
+
+    func makeWebsiteDetail(id: String, archived: Bool, updatedAt: String?) -> WebsiteDetail {
+        WebsiteDetail(
+            id: id,
+            title: id.capitalized,
+            url: "https://example.com/\(id)",
+            urlFull: nil,
+            domain: "example.com",
+            content: "Body",
+            source: nil,
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: archived,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: updatedAt,
+            lastOpenedAt: nil
+        )
+    }
 }
 
 @MainActor
@@ -449,6 +530,7 @@ struct WebsitesStoreTestNetworkStatus: NetworkStatusProviding {
 
 final class WebsitesStoreMockWebsitesAPI: WebsitesProviding {
     private let archivedListCounter = WebsitesStoreArchivedListCallCounter()
+    private let requestedDetailIDStore = WebsitesStoreRequestedDetailIDStore()
 
     let listResult: Result<WebsitesResponse, Error>
     let getResult: Result<WebsiteDetail, Error>
@@ -480,7 +562,7 @@ final class WebsitesStoreMockWebsitesAPI: WebsitesProviding {
     }
 
     func get(id: String) async throws -> WebsiteDetail {
-        _ = id
+        await requestedDetailIDStore.append(id)
         return try getResult.get()
     }
 
@@ -525,5 +607,23 @@ final class WebsitesStoreMockWebsitesAPI: WebsitesProviding {
     func sync(_ payload: WebsiteSyncRequest) async throws -> WebsiteSyncResponse {
         _ = payload
         throw WebsitesStoreMockError.forced
+    }
+
+    var requestedDetailIDs: [String] {
+        get async {
+            await requestedDetailIDStore.current
+        }
+    }
+}
+
+actor WebsitesStoreRequestedDetailIDStore {
+    private var ids: [String] = []
+
+    func append(_ id: String) {
+        ids.append(id)
+    }
+
+    var current: [String] {
+        ids
     }
 }

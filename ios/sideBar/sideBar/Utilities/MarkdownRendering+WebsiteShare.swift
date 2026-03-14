@@ -4,7 +4,7 @@ import sideBarShared
 extension MarkdownRendering {
     public nonisolated static func plainTextForWebsiteShare(_ content: String) -> String {
         let stripped = stripFrontmatter(content)
-        let cleaned = stripWebsiteTranscriptArtifacts(stripped)
+        let cleaned = preprocessTranscriptMarkdown(stripped)
         guard !cleaned.isBlank else { return "" }
 
         let blocks = normalizedWebsiteBlocks(from: cleaned)

@@ -270,10 +270,14 @@ extension WebsitesStore {
     func prefetchArchivedDetails(from items: [WebsiteItem]) async {
         guard archivedDetailPrefetchLimit > 0 else { return }
         guard !(networkStatus?.isOffline ?? false) else { return }
-        let candidates = items.filter {
-            $0.archived && isWithinArchivedRetention(updatedAt: $0.updatedAt)
+        var pending: [WebsiteItem] = []
+        pending.reserveCapacity(min(items.count, archivedDetailPrefetchLimit))
+
+        for item in items {
+            guard shouldPrefetchArchivedDetail(for: item) else { continue }
+            pending.append(item)
         }
-        let pending = candidates.filter { !hasCachedDetail(id: $0.id) }
+
         guard !pending.isEmpty else { return }
         for item in pending.prefix(archivedDetailPrefetchLimit) {
             do {
@@ -287,6 +291,20 @@ extension WebsitesStore {
                 continue
             }
         }
+    }
+
+    private func shouldPrefetchArchivedDetail(for item: WebsiteItem) -> Bool {
+        guard item.archived else { return false }
+        guard let epochSeconds = DateParsing.parseISO8601TimeIntervalSince1970(item.updatedAt) else {
+            return false
+        }
+        guard ArchivedRetentionPolicy.contains(
+            epochSeconds: epochSeconds,
+            retentionDays: archivedDetailRetentionDays
+        ) else {
+            return false
+        }
+        return !hasCachedDetail(id: item.id)
     }
 
     // MARK: - Archived Summary

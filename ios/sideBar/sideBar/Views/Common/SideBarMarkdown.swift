@@ -88,7 +88,7 @@ struct SideBarMarkdown: View, Equatable {
         #if canImport(MarkdownUI)
         let displayText = youtubeTranscriptContext == nil
             ? text
-            : MarkdownRendering.stripWebsiteTranscriptArtifacts(text)
+            : MarkdownRendering.preprocessTranscriptMarkdown(text)
         let blocks = renderingContext == .website
             ? MarkdownRendering.normalizedWebsiteBlocks(from: displayText)
             : MarkdownRendering.normalizedBlocks(from: displayText)

@@ -20,4 +20,8 @@ public enum DateParsing {
         }
         return fallbackFormatter.date(from: value)
     }
+
+    static func parseISO8601TimeIntervalSince1970(_ value: String?) -> Double? {
+        parseISO8601(value)?.timeIntervalSince1970
+    }
 }

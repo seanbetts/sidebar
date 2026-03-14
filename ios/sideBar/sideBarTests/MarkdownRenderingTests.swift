@@ -245,6 +245,38 @@ final class MarkdownRenderingTests: XCTestCase {
         XCTAssertFalse(stripped.contains("Transcript of Example video"))
     }
 
+    func testPreprocessTranscriptMarkdownReturnsOriginalTextWhenNoArtifactsExist() {
+        let input = """
+        # Heading
+
+        Plain markdown body.
+        """
+
+        let processed = MarkdownRendering.preprocessTranscriptMarkdown(input)
+
+        XCTAssertEqual(processed, input)
+    }
+
+    func testPreprocessTranscriptMarkdownRemovesTranscriptArtifactsAndCompactsBlankLines() {
+        let input = """
+        Intro
+
+        <!-- YOUTUBE_TRANSCRIPT:dQw4w9WgXcQ -->
+
+        ### Transcript of Example video
+
+        Body
+
+
+
+        Tail
+        """
+
+        let processed = MarkdownRendering.preprocessTranscriptMarkdown(input)
+
+        XCTAssertEqual(processed, "Intro\n\nBody\n\nTail")
+    }
+
     func testPlainTextForWebsiteShareRemovesFrontmatterAndMarkdownSyntax() {
         let input = """
         ---
