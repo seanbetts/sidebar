@@ -177,6 +177,42 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
         XCTAssertTrue(normalized.contains("SettingsMacActionSection("))
     }
+
+    func testUserSettingsMacSourceUsesInspectorCardsAndStatusBanners() throws {
+        let normalized = try systemMacSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacPanelCard"))
+        XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
+        XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
+    }
+
+    func testAgentSettingsMacSourceUsesInspectorCardsAndStatusBanners() throws {
+        let normalized = try systemMacSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacPanelCard"))
+        XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
+        XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
+        XCTAssertTrue(normalized.contains("SettingsMacFieldRow("))
+    }
+
+    func testUtilitiesSettingsMacSourceUsesInspectorCardsAndStatusBanners() throws {
+        let normalized = try utilitiesSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacPanelCard"))
+        XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
+        XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
+    }
+
+    func testStoreSkillCredentialsUsesInspectorRowsAndStatusBanners() throws {
+        let normalized = try storeSkillCredentialsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacSkillRow("))
+        XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
+    }
 }
 
 private func settingsSourceRoot(
@@ -230,6 +266,34 @@ private func storeSkillConfigSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("StoreSkillConfigView.swift", file: file, line: line)
+}
+
+private func systemSettingsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsSections+System.swift", file: file, line: line)
+}
+
+private func systemMacSettingsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsSections+SystemMac.swift", file: file, line: line)
+}
+
+private func utilitiesSettingsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsSections+Utilities.swift", file: file, line: line)
+}
+
+private func storeSkillCredentialsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("StoreSkillCredentialsView.swift", file: file, line: line)
 }
 
 private func settingsSourceFile(

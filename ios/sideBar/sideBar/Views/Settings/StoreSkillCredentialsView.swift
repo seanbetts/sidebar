@@ -44,7 +44,11 @@ struct StoreSkillCredentialsView: View {
                 }
 
                 ForEach(Array(providers.enumerated()), id: \.offset) { index, provider in
+                    #if os(macOS)
+                    macStoreProviderCredentialRow(provider: provider)
+                    #else
                     storeProviderCredentialRow(provider: provider)
+                    #endif
                     if index < providers.count - 1 {
                         Divider()
                     }
@@ -106,6 +110,53 @@ struct StoreSkillCredentialsView: View {
 
         var id: String { provider }
     }
+
+    #if os(macOS)
+    @ViewBuilder
+    private func macStoreProviderCredentialRow(provider: String) -> some View {
+        let normalizedProvider = normalizedProviderName(provider)
+        let isConnected = providerStatus(for: normalizedProvider)?.hasKey ?? false
+
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            SettingsMacSkillRow(
+                title: providerDisplayName(normalizedProvider),
+                subtitle: providerStatusLabel(for: normalizedProvider),
+                systemImage: isConnected ? "key.fill" : "key"
+            ) {
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    Button {
+                        beginCredentialEditor(provider: normalizedProvider)
+                    } label: {
+                        Image(systemName: isConnected ? "pencil.circle.fill" : "plus.circle.fill")
+                            .appFont(.size18Semibold)
+                    }
+                    .accessibilityLabel(isConnected ? "Update Key" : "Add Key")
+                    .disabled(isProviderActionBusy(normalizedProvider))
+                    .buttonStyle(.plain)
+
+                    if isConnected {
+                        Button(role: .destructive) {
+                            beginCredentialRemoval(provider: normalizedProvider)
+                        } label: {
+                            Image(systemName: "trash.circle.fill")
+                                .appFont(.size18Semibold)
+                        }
+                        .accessibilityLabel("Turn Off Skill")
+                        .disabled(isProviderActionBusy(normalizedProvider))
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .task(id: normalizedProvider) {
+                await loadProviderStatusIfNeeded(provider: normalizedProvider)
+            }
+
+            if let providerError = providerKeyErrors[normalizedProvider], !providerError.isEmpty {
+                SettingsMacStatusBanner(message: providerError, tone: .error)
+            }
+        }
+    }
+    #endif
 
     @ViewBuilder
     private func storeProviderCredentialRow(provider: String) -> some View {

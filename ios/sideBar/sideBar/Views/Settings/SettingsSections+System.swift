@@ -3,18 +3,21 @@ import sideBarShared
 
 struct UserSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
-    @EnvironmentObject private var environment: AppEnvironment
-    @State private var isPendingWritesPresented = false
-    @State private var communicationStyle: String = ""
-    @State private var workingRelationship: String = ""
-    @State private var hasLoadedDrafts = false
-    @State private var isSyncingDrafts = false
-    @State private var draftsUserId: String?
-    @State private var autosaveTask: Task<Void, Never>?
+    @EnvironmentObject var environment: AppEnvironment
+    @State var isPendingWritesPresented = false
+    @State var communicationStyle: String = ""
+    @State var workingRelationship: String = ""
+    @State var hasLoadedDrafts = false
+    @State var isSyncingDrafts = false
+    @State var draftsUserId: String?
+    @State var autosaveTask: Task<Void, Never>?
 
     private static let systemAutosaveDelayNs: UInt64 = 800_000_000
 
     var body: some View {
+        #if os(macOS)
+        macUserSettingsBody
+        #else
         Form {
             if environment.writeQueue.pendingCount > 0 || environment.writeQueue.isProcessing {
                 Section("Sync Status") {
@@ -86,9 +89,10 @@ struct UserSettingsView: View {
                 LoadingIndicatorView(size: LoadingIndicatorSize.page)
             }
         }
+        #endif
     }
 
-    private var settingsSignature: String {
+    var settingsSignature: String {
         guard let settings = viewModel.settings else {
             return "none"
         }
@@ -99,20 +103,20 @@ struct UserSettingsView: View {
         ].compactMap { $0 }.joined(separator: "|")
     }
 
-    private var systemAutosaveSignature: String {
+    var systemAutosaveSignature: String {
         [
             communicationStyle,
             workingRelationship
         ].joined(separator: "|")
     }
 
-    private var isDraftDirty: Bool {
+    var isDraftDirty: Bool {
         guard let settings = viewModel.settings else { return false }
         return communicationStyle != (settings.communicationStyle ?? "")
             || workingRelationship != (settings.workingRelationship ?? "")
     }
 
-    private func syncDraftsFromSettings(_ settings: UserSettings?) {
+    func syncDraftsFromSettings(_ settings: UserSettings?) {
         guard let settings else { return }
         let shouldSync = Self.shouldSyncDrafts(
             hasLoadedDrafts: hasLoadedDrafts,
@@ -134,7 +138,7 @@ struct UserSettingsView: View {
         isSyncingDrafts = false
     }
 
-    private func scheduleAutosave() {
+    func scheduleAutosave() {
         guard hasLoadedDrafts, !isSyncingDrafts else { return }
         autosaveTask?.cancel()
         guard isDraftDirty else { return }
@@ -148,7 +152,7 @@ struct UserSettingsView: View {
         }
     }
 
-    private var pendingStatusText: String {
+    var pendingStatusText: String {
         if environment.writeQueue.isProcessing {
             return "Syncing \(environment.writeQueue.pendingCount) changes"
         }
@@ -174,10 +178,13 @@ struct UserSettingsView: View {
 
 struct AgentSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
-    @State private var selectedPrimaryProvider: AIPrimaryProvider = .anthropic
-    @State private var providerKeyInput: String = ""
+    @State var selectedPrimaryProvider: AIPrimaryProvider = .anthropic
+    @State var providerKeyInput: String = ""
 
     var body: some View {
+        #if os(macOS)
+        macAgentSettingsBody
+        #else
         Form {
             Section {
                 Picker("Provider", selection: $selectedPrimaryProvider) {
@@ -359,18 +366,19 @@ struct AgentSettingsView: View {
                 await viewModel.savePrimaryProvider(next)
             }
         }
+        #endif
     }
 
-    private func resolvedText(_ value: String?) -> String {
+    func resolvedText(_ value: String?) -> String {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? "Not set" : trimmed
     }
 
-    private var assistantDisplayName: String {
+    var assistantDisplayName: String {
         viewModel.assistantDisplayName
     }
 
-    private var assistantPossessiveDisplayName: String {
+    var assistantPossessiveDisplayName: String {
         Self.assistantPossessiveDisplayName(assistantDisplayName: assistantDisplayName)
     }
 
@@ -382,29 +390,29 @@ struct AgentSettingsView: View {
         "\(assistantDisplayName)'s"
     }
 
-    private var primaryProviderSignature: String {
+    var primaryProviderSignature: String {
         viewModel.settings?.aiPrimaryProvider ?? ""
     }
 
-    private var selectedProviderHasKey: Bool {
+    var selectedProviderHasKey: Bool {
         guard viewModel.settings?.aiPrimaryProvider == selectedPrimaryProvider.rawValue else {
             return false
         }
         return viewModel.settings?.aiPrimaryProviderHasKey ?? false
     }
 
-    private var selectedProviderKeyLast4: String? {
+    var selectedProviderKeyLast4: String? {
         guard viewModel.settings?.aiPrimaryProvider == selectedPrimaryProvider.rawValue else {
             return nil
         }
         return viewModel.settings?.aiPrimaryProviderKeyLast4
     }
 
-    private var maskedProviderKeyText: String {
+    var maskedProviderKeyText: String {
         "••••••••\(selectedProviderKeyLast4 ?? "----")"
     }
 
-    private func syncSelectedProvider(from settings: UserSettings?) {
+    func syncSelectedProvider(from settings: UserSettings?) {
         guard let rawProvider = settings?.aiPrimaryProvider,
               let provider = AIPrimaryProvider(rawValue: rawProvider) else {
             return

@@ -14,6 +14,44 @@ struct ShortcutsSettingsView: View {
     @State private var copied = false
 
     var body: some View {
+        #if os(macOS)
+        ScrollView {
+            SettingsMacPanelCard {
+                SettingsMacSectionIntro(
+                    title: "Shortcuts token",
+                    message: "Use this token in Apple Shortcuts to authorize quick capture on this account."
+                )
+                SettingsMacFieldRow("Token") {
+                    TextField("Token", text: .constant(viewModel.shortcutsToken))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 360)
+                }
+                SettingsMacFieldRow("Actions") {
+                    HStack(spacing: 12) {
+                        Button(copied ? "Copied" : "Copy") {
+                            copyToken()
+                        }
+                        .disabled(viewModel.shortcutsToken.isEmpty)
+
+                        Button(viewModel.isRotatingShortcuts ? "Regenerating..." : "Regenerate") {
+                            Task { await viewModel.rotateShortcutsToken() }
+                        }
+                        .disabled(viewModel.isRotatingShortcuts || viewModel.isLoadingShortcuts)
+                    }
+                }
+                if let error = viewModel.shortcutsError, !error.isEmpty {
+                    SettingsMacStatusBanner(message: error, tone: .error)
+                }
+            }
+            .padding(DesignTokens.Spacing.lg)
+        }
+        .background(DesignTokens.Colors.settingsBackground)
+        .overlay {
+            if viewModel.isLoadingShortcuts && viewModel.shortcutsToken.isEmpty {
+                LoadingIndicatorView(size: LoadingIndicatorSize.page)
+            }
+        }
+        #else
         Form {
             Section("Shortcuts") {
                 Text("Use this token in Apple Shortcuts to authorize quick capture.")
@@ -46,6 +84,7 @@ struct ShortcutsSettingsView: View {
                 LoadingIndicatorView(size: LoadingIndicatorSize.page)
             }
         }
+        #endif
     }
 
     private func copyToken() {
@@ -81,6 +120,22 @@ struct ShortcutsSettingsView: View {
 
 struct TasksSettingsView: View {
     var body: some View {
+        #if os(macOS)
+        ScrollView {
+            SettingsMacPanelCard {
+                SettingsMacSectionIntro(
+                    title: "Tasks",
+                    message: "Tasks use sideBar's built-in task system and stay in sync with the main workspace."
+                )
+                SettingsMacStatusBanner(
+                    message: "Set up your task lists in sideBar to see them reflected here.",
+                    tone: .info
+                )
+            }
+            .padding(DesignTokens.Spacing.lg)
+        }
+        .background(DesignTokens.Colors.settingsBackground)
+        #else
         Form {
             Section("Tasks") {
                 Text("Tasks sync uses the built-in sideBar task system.")
@@ -92,6 +147,7 @@ struct TasksSettingsView: View {
         #if os(macOS)
         .formStyle(.grouped)
         #endif
+        #endif
     }
 }
 
@@ -100,6 +156,63 @@ struct APISettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        #if os(macOS)
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                SettingsMacPanelCard {
+                    SettingsMacSectionIntro(
+                        title: "API",
+                        message: "Core API behavior is managed by your server configuration."
+                    )
+                    if let userId = settings?.userId {
+                        SettingsMacFieldRow("User ID") {
+                            Text(userId)
+                                .appFont(.body)
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    SettingsMacStatusBanner(
+                        message: "API settings are managed by your server configuration.",
+                        tone: .info
+                    )
+                }
+#if DEBUG
+                SettingsMacPanelCard {
+                    SettingsMacSectionIntro(
+                        title: "Debug",
+                        message: "Internal asset and appearance checks for development builds."
+                    )
+                    HStack(spacing: 16) {
+                        VStack(spacing: 8) {
+                            Image("AppLogo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 32, height: 32)
+                            Text("AppLogo (system)")
+                                .appFont(.caption)
+                        }
+                        VStack(spacing: 8) {
+                            Image("AppLogo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 32, height: 32)
+                                .environment(\.colorScheme, .dark)
+                            Text("AppLogo (forced dark)")
+                                .appFont(.caption)
+                        }
+                    }
+                    SettingsMacStatusBanner(
+                        message: "Color scheme: \(colorScheme == .dark ? "dark" : "light")",
+                        tone: .info
+                    )
+                }
+#endif
+            }
+            .padding(DesignTokens.Spacing.lg)
+        }
+        .background(DesignTokens.Colors.settingsBackground)
+        #else
         Form {
             Section("API") {
                 if let userId = settings?.userId {
@@ -137,6 +250,7 @@ struct APISettingsView: View {
         }
         #if os(macOS)
         .formStyle(.grouped)
+        #endif
         #endif
     }
 }
