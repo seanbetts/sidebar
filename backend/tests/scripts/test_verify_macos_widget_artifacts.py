@@ -37,6 +37,11 @@ def _capture_subprocess_calls(monkeypatch, module, *, fail_for: list[list[str]] 
     return calls
 
 
+def _repo_file_text(relative_path: str) -> str:
+    """Return repository file contents for workflow-facing wiring assertions."""
+    return (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+
+
 def test_debug_mode_runs_build_and_verification(monkeypatch, tmp_path: Path, capsys) -> None:
     """Debug mode should build macOS app output and verify the resulting bundle."""
     workspace_root = tmp_path / "workspace"
@@ -269,17 +274,55 @@ def test_archive_export_cleanup_runs_before_archive(monkeypatch, tmp_path: Path)
     assert calls[2][1] == "-exportArchive"
 
 
-def test_ci_widget_matrix_contract_is_documented() -> None:
-    """Document the intended CI/release widget verification matrix for Task 5 wiring."""
-    expected_modes_by_path = {
-        "dev-ci-macos": ["debug"],
-        "main-ci-macos": ["debug", "release"],
-        "release-promotion": ["archive-export"],
-    }
+def test_dev_workflow_wires_debug_verification_only_for_logic_mac() -> None:
+    """Dev CI should verify macOS widget artifacts only on the macOS logic lane."""
+    workflow = _repo_file_text(".github/workflows/ios-ci.yml")
 
-    assert expected_modes_by_path["dev-ci-macos"] == ["debug"]
-    assert expected_modes_by_path["main-ci-macos"] == ["debug", "release"]
-    assert "archive-export" in expected_modes_by_path["release-promotion"]
+    assert 'if: ${{ matrix.id == \'logic-mac\' }}' in workflow
+    assert '- "scripts/verify_macos_widget_artifacts.py"' in workflow
+    assert 'python3 scripts/verify_macos_widget_artifacts.py \\' in workflow
+    assert '--mode debug \\' in workflow
+    assert '--workspace-root "${{ github.workspace }}" \\' in workflow
+    assert '--clean-stale-registrations' in workflow
+
+
+def test_main_workflow_runs_debug_and_release_widget_verification() -> None:
+    """Main CI should run dedicated macOS Debug and Release widget verification."""
+    workflow = _repo_file_text(".github/workflows/ios-ci-main.yml")
+
+    assert "ios_widget_verification_main:" in workflow
+    assert 'needs: [ios_prepare_packages, ios_widget_verification_main]' in workflow
+    assert "- mode: debug" in workflow
+    assert '- mode: release' in workflow
+    assert '--mode "${{ matrix.mode }}" \\' in workflow
+    assert '--clean-stale-registrations' in workflow
+    assert 'platform=iOS Simulator,name=iPhone 17 Pro' in workflow
+    assert 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' in workflow
+
+
+def test_manual_dispatch_wires_debug_and_release_widget_verification_by_lane() -> None:
+    """Manual CI should gate widget verification by lane without changing simulator lanes."""
+    workflow = _repo_file_text(".github/workflows/ios-ci-dispatch.yml")
+
+    assert "ios_widget_verification_dispatch:" in workflow
+    assert 'lanes: "all logic"' in workflow
+    assert 'lanes: "all surface ui extensions"' in workflow
+    assert "contains(matrix.lanes, github.event.inputs.lane)" in workflow
+    assert '--mode "${{ matrix.mode }}" \\' in workflow
+    assert '--clean-stale-registrations' in workflow
+
+
+def test_release_main_uses_archive_export_verifier_with_shared_script() -> None:
+    """Release promotion should block on archive/export widget verification via the shared script."""
+    release_script = _repo_file_text("scripts/release-main.sh")
+
+    assert "--export-options-plist <path>" in release_script
+    assert 'default_export_options_plist="ios/sideBar/ExportOptions.plist"' in release_script
+    assert "python3 scripts/verify_macos_widget_artifacts.py \\" in release_script
+    assert "--mode archive-export \\" in release_script
+    assert '--workspace-root "$PWD" \\' in release_script
+    assert '--export-options-plist "$export_options_plist" \\' in release_script
+    assert "--clean-stale-registrations" in release_script
 
 
 def test_dry_run_prints_commands_without_running(monkeypatch, tmp_path: Path, capsys) -> None:
