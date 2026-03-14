@@ -166,6 +166,45 @@ This keeps `main` linear by promoting the published `origin/dev` tip with a fast
 scripts/release-main.sh --run-ios-tests
 ```
 
+## macOS Widget Safety Checks
+
+Use the widget safety scripts only for widget-focused macOS flows. They are not part of generic iPhone or iPad simulator testing.
+
+Local registration cleanup:
+
+```bash
+python3 scripts/clean_stale_widget_registrations.py \
+  --workspace-root "$PWD" \
+  --bundle-id ai.sidebar.sidebar.sideBarWidgets
+```
+
+- Run this when local macOS widget launches start resolving the wrong appex, after switching worktrees, or before widget-specific macOS verification if the machine has accumulated old debug installs.
+- The cleaner preserves the current workspace registration and `/Applications/sideBar AI.app`, and removes stale debug registrations from old `DerivedData`, worktrees, and temp locations.
+- Use `--dry-run` to inspect the keep/remove decision set without mutating `pluginkit`.
+
+Artifact verification entry point:
+
+```bash
+python3 scripts/verify_macos_widget_artifacts.py --mode debug --workspace-root "$PWD"
+python3 scripts/verify_macos_widget_artifacts.py --mode release --workspace-root "$PWD"
+python3 scripts/verify_macos_widget_artifacts.py \
+  --mode archive-export \
+  --workspace-root "$PWD" \
+  --export-options-plist ios/sideBar/ExportOptions.plist
+```
+
+- `debug` builds the macOS app in Debug and verifies the built widget bundle can resolve `sideBarShared.framework`.
+- `release` builds the macOS app in Release and runs the same built-artifact checks.
+- `archive-export` archives, exports, and verifies the packaged macOS app artifact that release flows ship.
+- Add `--clean-stale-registrations` when you want the verifier to normalize local widget registrations before building.
+
+CI and release enforcement:
+
+- `ios-ci.yml` runs macOS Debug widget verification only on the `logic-mac` dev lane.
+- `ios-ci-main.yml` runs dedicated macOS widget verification jobs for both Debug and Release before the main test lanes.
+- `ios-ci-dispatch.yml` runs Debug verification for the manual `logic` lane and Release verification for `surface`, `ui`, and `extensions`, while `all` runs both.
+- `scripts/release-main.sh` blocks promotion to `main` unless archive/export widget verification passes.
+
 ## Self-Hosted Runner Setup
 
 Two GitHub Actions runners run locally on the developer machine:

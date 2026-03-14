@@ -545,8 +545,9 @@ def test_validate_built_macos_widget_artifacts_reports_missing_shared_framework_
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    """Artifact validation should fail when widget executable lacks @rpath sideBarShared linkage."""
+    """Artifact validation should fail when the executable is the only binary and lacks sideBarShared linkage."""
     paths = _create_widget_app_bundle(tmp_path)
+    paths["widget_debug_dylib"].unlink()
     _mock_otool_success(monkeypatch, missing_link_for=paths["widget_executable"])
 
     errors = validate_built_macos_widget_artifacts(app_path=paths["app"])
@@ -556,6 +557,50 @@ def test_validate_built_macos_widget_artifacts_reports_missing_shared_framework_
         f"{paths['widget_executable']}: missing linked framework '@rpath/sideBarShared.framework/...'"
         in errors
     )
+
+
+def test_validate_built_macos_widget_artifacts_accepts_debug_stub_executable_layout(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    """Artifact validation should accept the real debug layout where the dylib carries the shared-framework link."""
+    paths = _create_widget_app_bundle(tmp_path)
+    required_rpaths = "\n".join(
+        (
+            "Load command 21\n"
+            "          cmd LC_RPATH\n"
+            "      cmdsize 56\n"
+            f"         path {entry} (offset 12)"
+        )
+        for entry in [
+            "@executable_path/Frameworks",
+            "@executable_path/../../Frameworks",
+            "@executable_path/../../../../Frameworks",
+        ]
+    )
+
+    def _fake_check_output(command, text, stderr):
+        binary_path = Path(command[-1])
+        if command[:2] == ["otool", "-l"]:
+            return required_rpaths
+        if command[:2] == ["otool", "-L"]:
+            if binary_path == paths["widget_executable"]:
+                return (
+                    "@rpath/sideBarWidgetsExtension.debug.dylib "
+                    "(compatibility version 0.0.0, current version 0.0.0)"
+                )
+            if binary_path == paths["widget_debug_dylib"]:
+                return (
+                    "@rpath/sideBarShared.framework/Versions/A/sideBarShared "
+                    "(compatibility version 1.0.0, current version 1.0.0)"
+                )
+        raise AssertionError(f"unexpected command: {command}")
+
+    monkeypatch.setattr(CONFIG_CHECK_MODULE.subprocess, "check_output", _fake_check_output)
+
+    errors = validate_built_macos_widget_artifacts(app_path=paths["app"])
+
+    assert errors == []
 
 
 def test_validate_built_macos_widget_artifacts_reports_missing_shared_framework_linkage_on_debug_dylib(

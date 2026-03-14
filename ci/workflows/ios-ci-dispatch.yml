@@ -76,16 +76,16 @@ jobs:
         include:
           - mode: debug
             label: "macOS Debug widget verification"
-            lanes: "all logic"
+            lanes_json: '["all", "logic"]'
           - mode: release
             label: "macOS Release widget verification"
-            lanes: "all surface ui extensions"
+            lanes_json: '["all", "surface", "ui", "extensions"]'
     steps:
       - name: Checkout
-        if: ${{ contains(matrix.lanes, github.event.inputs.lane) }}
+        if: ${{ contains(fromJSON(matrix.lanes_json), github.event.inputs.lane) }}
         uses: actions/checkout@v5
       - name: Verify macOS widget artifacts (${{ matrix.label }})
-        if: ${{ contains(matrix.lanes, github.event.inputs.lane) }}
+        if: ${{ contains(fromJSON(matrix.lanes_json), github.event.inputs.lane) }}
         run: |
           python3 scripts/verify_macos_widget_artifacts.py \
             --mode "${{ matrix.mode }}" \

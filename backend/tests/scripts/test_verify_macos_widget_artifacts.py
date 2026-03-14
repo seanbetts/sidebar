@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import plistlib
 import subprocess
 import sys
 from pathlib import Path
@@ -348,12 +349,12 @@ def test_manual_dispatch_wires_debug_and_release_widget_verification_by_lane() -
         {
             "mode": "debug",
             "label": "macOS Debug widget verification",
-            "lanes": "all logic",
+            "lanes_json": '["all", "logic"]',
         },
         {
             "mode": "release",
             "label": "macOS Release widget verification",
-            "lanes": "all surface ui extensions",
+            "lanes_json": '["all", "surface", "ui", "extensions"]',
         },
     ]
     checkout_step = _job_step_by_name(job=widget_job, name="Checkout")
@@ -361,7 +362,7 @@ def test_manual_dispatch_wires_debug_and_release_widget_verification_by_lane() -
         job=widget_job,
         name="Verify macOS widget artifacts (${{ matrix.label }})",
     )
-    expected_if = "${{ contains(matrix.lanes, github.event.inputs.lane) }}"
+    expected_if = "${{ contains(fromJSON(matrix.lanes_json), github.event.inputs.lane) }}"
     assert checkout_step["if"] == expected_if
     assert verify_step["if"] == expected_if
     assert verify_step["run"] == (
@@ -391,6 +392,23 @@ def test_release_main_uses_archive_export_verifier_with_shared_script() -> None:
     assert '--workspace-root "$PWD" \\' not in release_script
     assert '--export-options-plist "$export_options_plist" \\' in release_script
     assert "--clean-stale-registrations" in release_script
+
+
+def test_default_export_options_plist_exists_for_release_archive_export() -> None:
+    """Release flows should have a checked-in macOS export-options plist at the default path."""
+    export_options_path = REPO_ROOT / "ios/sideBar/ExportOptions.plist"
+
+    assert export_options_path.is_file()
+
+    with export_options_path.open("rb") as handle:
+        export_options = plistlib.load(handle)
+
+    assert export_options == {
+        "destination": "export",
+        "method": "mac-application",
+        "signingStyle": "automatic",
+        "teamID": "YOURTEAMID",
+    }
 
 
 def test_dry_run_prints_commands_without_running(monkeypatch, tmp_path: Path, capsys) -> None:

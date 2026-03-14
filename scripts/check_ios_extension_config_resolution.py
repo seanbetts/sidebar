@@ -445,8 +445,12 @@ def inspect_binary_with_otool(binary_path: Path, mode: str) -> str:
         ) from exc
 
 
-def evaluate_widget_binary_artifact_expectations(binary_path: Path) -> list[str]:
-    """Validate rpath and shared-framework linkage for one widget binary."""
+def evaluate_widget_binary_artifact_expectations(
+    binary_path: Path,
+    *,
+    require_shared_framework_link: bool,
+) -> list[str]:
+    """Validate rpath and optionally shared-framework linkage for one widget binary."""
     errors: list[str] = []
     rpath_output = inspect_binary_with_otool(binary_path, "-l")
     actual_rpaths = parse_otool_rpath_entries(rpath_output)
@@ -454,15 +458,16 @@ def evaluate_widget_binary_artifact_expectations(binary_path: Path) -> list[str]
         if required_rpath not in actual_rpaths:
             errors.append(f"{binary_path}: missing LC_RPATH entry '{required_rpath}'")
 
-    linked_output = inspect_binary_with_otool(binary_path, "-L")
-    linked_libraries = parse_otool_linked_libraries(linked_output)
-    if not any(
-        linked.startswith(REQUIRED_SHARED_FRAMEWORK_LINK_PREFIX)
-        for linked in linked_libraries
-    ):
-        errors.append(
-            f"{binary_path}: missing linked framework '@rpath/sideBarShared.framework/...'"
-        )
+    if require_shared_framework_link:
+        linked_output = inspect_binary_with_otool(binary_path, "-L")
+        linked_libraries = parse_otool_linked_libraries(linked_output)
+        if not any(
+            linked.startswith(REQUIRED_SHARED_FRAMEWORK_LINK_PREFIX)
+            for linked in linked_libraries
+        ):
+            errors.append(
+                f"{binary_path}: missing linked framework '@rpath/sideBarShared.framework/...'"
+            )
     return errors
 
 
@@ -494,16 +499,21 @@ def validate_built_macos_widget_artifacts(*, app_path: Path) -> list[str]:
         errors.append(f"{widget_executable_path}: missing widget executable")
         return errors
 
-    binary_paths = [widget_executable_path]
     widget_debug_dylib_path = (
         widget_appex_path / "Contents" / "MacOS" / WIDGET_DEBUG_DYLIB_NAME
     )
+    binary_expectations = [(widget_executable_path, not widget_debug_dylib_path.exists())]
     if widget_debug_dylib_path.exists():
-        binary_paths.append(widget_debug_dylib_path)
+        binary_expectations.append((widget_debug_dylib_path, True))
 
-    for binary_path in binary_paths:
+    for binary_path, require_shared_framework_link in binary_expectations:
         try:
-            errors.extend(evaluate_widget_binary_artifact_expectations(binary_path))
+            errors.extend(
+                evaluate_widget_binary_artifact_expectations(
+                    binary_path,
+                    require_shared_framework_link=require_shared_framework_link,
+                )
+            )
         except RuntimeError as exc:
             errors.append(str(exc))
 
