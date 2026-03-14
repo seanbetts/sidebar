@@ -166,6 +166,85 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
         XCTAssertEqual(harness.store.tree?.children.first?.name, "Queued title")
         XCTAssertTrue(harness.viewModel.isQueuedForSync)
     }
+
+    func testApplyingSemanticDraftRestoresCanonicalContentWithoutFlattening() async throws {
+        try skipUnlessNativeEditorAvailable()
+
+        let draftDocument = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Draft title", marks: [.bold])]),
+                .paragraph([.init(text: "Draft body", marks: [.italic])])
+            ]
+        )
+        let draftCanonical = try XCTUnwrap(NotesSemanticDocumentCodec.encode(draftDocument))
+        let harness = makeHarness(
+            updateResult: .failure(SemanticSyncMockError.forced),
+            networkAvailable: true
+        )
+        let draftStorage = DraftStorage(container: harness.persistence.container)
+        let note = NotePayload(
+            id: "n1",
+            name: "Server title",
+            document: NotesSemanticDocumentProjection.document(fromPlainText: "Server title\nServer body"),
+            plainText: "Server title\nServer body",
+            path: "/note.md",
+            modified: 1,
+            created: nil
+        )
+
+        try draftStorage.saveDraft(entityType: "note", entityId: "n1", content: draftCanonical)
+        harness.store.applyEditorUpdate(note)
+        try await waitUntilSemantic(timeoutSeconds: 3.0) {
+            harness.viewModel.canonicalContent == draftCanonical
+        }
+
+        XCTAssertEqual(harness.viewModel.canonicalContent, draftCanonical)
+        XCTAssertEqual(harness.viewModel.content, "Draft title\nDraft body")
+        XCTAssertTrue(harness.viewModel.isDirty)
+        XCTAssertTrue(harness.viewModel.isQueuedForSync)
+    }
+
+    func testOpenNoteContextIncludesLiveSemanticDocumentForUnsavedEdits() async throws {
+        try skipUnlessNativeEditorAvailable()
+
+        let harness = makeHarness(
+            updateResult: .failure(SemanticSyncMockError.forced),
+            networkAvailable: true
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Old title",
+            document: NotesSemanticDocumentProjection.document(fromPlainText: "Old title"),
+            plainText: "Old title",
+            path: "/note.md",
+            modified: 1,
+            created: nil
+        )
+
+        harness.store.applyEditorUpdate(note)
+        await Task.yield()
+
+        let nativeViewModel = harness.viewModel.makeNativeEditorViewModel()
+        nativeViewModel.attributedContent = AttributedString("Live title\nLive body")
+        nativeViewModel.handleContentChange(previous: AttributedString("Old title"))
+        try await waitUntilSemantic(timeoutSeconds: 3.0) { nativeViewModel.hasUnsavedChanges }
+        harness.viewModel.attachNativeEditor(nativeViewModel)
+
+        let runtime = NotesRuntime(
+            viewModel: harness.notesViewModel,
+            editorViewModel: harness.viewModel
+        )
+        let context = try XCTUnwrap(runtime.openNoteContext())
+        let document = try XCTUnwrap(context["document"] as? [String: Any])
+        let blocks = try XCTUnwrap(document["blocks"] as? [[String: Any]])
+
+        XCTAssertEqual(context["plain_text"] as? String, "Live title\nLive body")
+        XCTAssertEqual(blocks.first?["type"] as? String, "title")
+        XCTAssertEqual(
+            ((blocks.first?["content"] as? [[String: Any]])?.first?["text"] as? String),
+            "Live title"
+        )
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)

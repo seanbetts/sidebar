@@ -71,7 +71,55 @@ final class RealtimeMappersTests: XCTestCase {
         XCTAssertEqual(
             mapped?.document,
             NotesSemanticDocument(
-                blocks: [.paragraph([.init(text: "Top level plain text", marks: [])])]
+                blocks: [.init(type: .title, content: [.init(text: "Top level plain text", marks: [])])]
+            )
+        )
+    }
+
+    func testMapNotePrefersSemanticDocumentOverStaleDerivedHelpers() {
+        let record = try? JSONDecoder().decode(
+            NoteRealtimeRecord.self,
+            from: Data(
+                """
+                {
+                  "id": "n5",
+                  "title": "Old title",
+                  "document": {
+                    "version": 1,
+                    "blocks": [
+                      {
+                        "type": "title",
+                        "content": [
+                          { "text": "Fresh title", "marks": [] }
+                        ]
+                      },
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          { "text": "Fresh body", "marks": ["italic"] }
+                        ]
+                      }
+                    ]
+                  },
+                  "document_version": 1,
+                  "plain_text": "Old title\\nOld body",
+                  "updated_at": "2024-01-01T12:00:00.000Z"
+                }
+                """.utf8
+            )
+        )
+
+        let mapped = record.flatMap(RealtimeMappers.mapNote)
+
+        XCTAssertEqual(mapped?.name, "Fresh title")
+        XCTAssertEqual(mapped?.plainText, "Fresh title\nFresh body")
+        XCTAssertEqual(
+            mapped?.document,
+            NotesSemanticDocument(
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Fresh title", marks: [])]),
+                    .paragraph([.init(text: "Fresh body", marks: [.italic])])
+                ]
             )
         )
     }

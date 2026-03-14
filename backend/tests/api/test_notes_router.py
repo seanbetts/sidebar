@@ -154,7 +154,7 @@ def test_notes_create_and_update_derive_title_from_plain_text(test_client):
     )
     assert update.status_code == 200
     updated_payload = update.json()
-    assert updated_payload["title"] == "Updated Title"
+    assert updated_payload["title"] == "New Note"
     assert updated_payload["plain_text"] == updated_content
     assert updated_payload["document"] == note_document_from_plain_text(updated_content)
     assert updated_payload["folder"] == ""

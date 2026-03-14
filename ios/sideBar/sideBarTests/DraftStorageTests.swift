@@ -13,8 +13,37 @@ final class DraftStorageTests: XCTestCase {
 
         let draft = try storage.getDraft(entityType: "note", entityId: "note-1")
         XCTAssertEqual(draft?.content, "Hello")
+        XCTAssertEqual(
+            draft?.canonicalContent,
+            NotesSemanticDocumentCodec.encode(
+                NotesSemanticDocumentProjection.document(fromPlainText: "Hello")
+            )
+        )
         XCTAssertNotNil(draft?.savedAt)
         XCTAssertNil(draft?.syncedAt)
+    }
+
+    func testSaveAndLoadSemanticDraftPreservesCanonicalContent() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let storage = DraftStorage(container: persistence.container)
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Draft title", marks: [.bold])]),
+                .paragraph([.init(text: "Draft body", marks: [.italic])])
+            ]
+        )
+        let canonicalContent = try XCTUnwrap(NotesSemanticDocumentCodec.encode(document))
+
+        try storage.saveDraft(
+            entityType: "note",
+            entityId: "note-1",
+            content: "Draft title\nDraft body",
+            canonicalContent: canonicalContent
+        )
+
+        let draft = try storage.getDraft(entityType: "note", entityId: "note-1")
+        XCTAssertEqual(draft?.content, "Draft title\nDraft body")
+        XCTAssertEqual(draft?.canonicalContent, canonicalContent)
     }
 
     func testMarkSyncedSetsDate() async throws {

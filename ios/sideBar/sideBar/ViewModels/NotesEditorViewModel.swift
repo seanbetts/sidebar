@@ -133,20 +133,15 @@ public final class NotesEditorViewModel: ObservableObject {
             guard let draft = try draftStorage.getDraft(entityType: "note", entityId: note.id) else { return }
             guard draft.syncedAt == nil else { return }
             let normalized = normalizedEditorSnapshot(for: note)
-            if draft.content == normalized.plainText {
+            if draft.canonicalContent == normalized.content {
                 try? draftStorage.markSynced(entityType: "note", entityId: note.id)
                 isQueuedForSync = false
                 return
             }
             content = draft.content
-            let draftDocument = NotesSemanticDocumentProjection.document(fromPlainText: draft.content)
-            let draftBaseline = (
-                content: NotesSemanticDocumentCodec.encode(draftDocument) ?? "",
-                plainText: draft.content
-            )
-            canonicalContent = draftBaseline.content
+            canonicalContent = draft.canonicalContent
             syncNativeEditorContent(
-                canonicalContent: draftBaseline.content,
+                canonicalContent: draft.canonicalContent,
                 plainText: draft.content
             )
             isDirty = true
@@ -200,7 +195,12 @@ public final class NotesEditorViewModel: ObservableObject {
         isSaving = true
         saveErrorMessage = nil
         do {
-            try draftStorage.saveDraft(entityType: "note", entityId: noteId, content: snapshot.plainText)
+            try draftStorage.saveDraft(
+                entityType: "note",
+                entityId: noteId,
+                content: snapshot.plainText,
+                canonicalContent: snapshot.canonicalContent
+            )
         } catch {
             saveErrorMessage = "Failed to save draft"
         }

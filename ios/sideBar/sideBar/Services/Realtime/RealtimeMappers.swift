@@ -5,14 +5,20 @@ import sideBarShared
 public struct RealtimeMappers {
     public static func mapNote(_ record: NoteRealtimeRecord) -> NotePayload? {
         let id = record.id
+        let hasSemanticDocument = record.document != nil
         let resolvedDocument = record.document
             ?? NotesSemanticDocumentProjection.document(fromPlainText: record.plainText ?? "")
-        let plainText = record.plainText
-            ?? NotesSemanticDocumentProjection.plainText(from: resolvedDocument)
+        let hasExplicitTitleBlock = resolvedDocument.blocks.first?.type == .title
+        let plainText = hasSemanticDocument
+            ? NotesSemanticDocumentProjection.plainText(from: resolvedDocument)
+            : (record.plainText ?? NotesSemanticDocumentProjection.plainText(from: resolvedDocument))
+        let title = hasSemanticDocument && hasExplicitTitleBlock
+            ? NotesSemanticDocumentProjection.title(from: resolvedDocument)
+            : (record.title ?? NotesSemanticDocumentProjection.title(fromPlainText: plainText))
         // NOTE: Align note mapping with native models and folder/archive semantics.
         return NotePayload(
             id: id,
-            name: record.title ?? "New Note",
+            name: title,
             document: resolvedDocument,
             documentVersion: record.documentVersion ?? resolvedDocument.version,
             plainText: plainText,

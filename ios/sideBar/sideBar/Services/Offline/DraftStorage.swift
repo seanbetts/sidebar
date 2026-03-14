@@ -3,6 +3,7 @@ import Foundation
 
 struct DraftInfo: Equatable {
     let content: String
+    let canonicalContent: String
     let savedAt: Date
     let syncedAt: Date?
 }
@@ -15,7 +16,12 @@ final class DraftStorage {
         self.container = container
     }
 
-    func saveDraft(entityType: String, entityId: String, content: String) throws {
+    func saveDraft(
+        entityType: String,
+        entityId: String,
+        content: String,
+        canonicalContent: String? = nil
+    ) throws {
         let context = container.viewContext
         let request = LocalDraft.fetchRequest()
         request.predicate = NSPredicate(format: "entityType == %@ AND entityId == %@", entityType, entityId)
@@ -25,7 +31,7 @@ final class DraftStorage {
         }
         draft.entityType = entityType
         draft.entityId = entityId
-        draft.content = content
+        draft.content = canonicalContent ?? content
         draft.savedAt = Date()
         draft.syncedAt = nil
         try context.save()
@@ -36,7 +42,25 @@ final class DraftStorage {
         let request = LocalDraft.fetchRequest()
         request.predicate = NSPredicate(format: "entityType == %@ AND entityId == %@", entityType, entityId)
         guard let draft = try context.fetch(request).first else { return nil }
-        return DraftInfo(content: draft.content, savedAt: draft.savedAt, syncedAt: draft.syncedAt)
+        let storedContent = draft.content
+        if let document = NotesSemanticDocumentCodec.decode(storedContent) {
+            return DraftInfo(
+                content: NotesSemanticDocumentProjection.plainText(from: document),
+                canonicalContent: storedContent,
+                savedAt: draft.savedAt,
+                syncedAt: draft.syncedAt
+            )
+        }
+        let canonicalContent =
+            NotesSemanticDocumentCodec.encode(
+                NotesSemanticDocumentProjection.document(fromPlainText: storedContent)
+            ) ?? ""
+        return DraftInfo(
+            content: storedContent,
+            canonicalContent: canonicalContent,
+            savedAt: draft.savedAt,
+            syncedAt: draft.syncedAt
+        )
     }
 
     func markSynced(entityType: String, entityId: String) throws {

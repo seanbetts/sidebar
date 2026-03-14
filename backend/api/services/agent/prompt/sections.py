@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 from typing import Any
@@ -332,6 +333,15 @@ def build_open_context_block(
         if content:
             lines.append(CURRENT_OPEN_CONTENT_HEADER)
             lines.append(content)
+        document = note.get("document")
+        if document is not None:
+            lines.append("Semantic note document:")
+            document_content = truncate_content(
+                json.dumps(document, ensure_ascii=False, separators=(",", ":")),
+                max_chars,
+            )
+            if document_content:
+                lines.append(document_content)
 
     if website:
         if lines:

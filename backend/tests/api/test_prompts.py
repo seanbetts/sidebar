@@ -226,6 +226,28 @@ def test_build_open_context_block_truncates() -> None:
     assert "\n\n</current_open>" in block
 
 
+def test_build_open_context_block_includes_semantic_note_document_when_present() -> None:
+    note = {
+        "id": "note-1",
+        "title": "Draft",
+        "path": "notes/draft.md",
+        "plain_text": "Draft\nBody",
+        "document": {
+            "version": 1,
+            "blocks": [
+                {"type": "title", "content": [{"text": "Draft", "marks": ["bold"]}]},
+                {"type": "paragraph", "content": [{"text": "Body", "marks": []}]},
+            ],
+        },
+    }
+
+    block = build_open_context_block(note, None, max_chars=200)
+
+    assert "Semantic note document:" in block
+    assert '"type":"title"' in block
+    assert '"text":"Draft"' in block
+
+
 def test_build_open_context_block_empty() -> None:
     block = build_open_context_block(None, None)
     assert "No items are currently open." in block

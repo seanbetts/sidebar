@@ -47,11 +47,24 @@ public final class NotesRuntime: ObservableObject {
         let noteText = editorViewModel.currentPlainTextSnapshot(
             fallback: activeNote.plainText
         )
+        let semanticDocument = editorViewModel.currentSemanticDocumentSnapshot()
         return [
             "id": activeNote.id,
             "title": activeNote.name,
             "path": activeNote.path,
-            "plain_text": noteText
+            "plain_text": noteText,
+            "document": semanticDocument.asJSONObject() ?? [:]
         ]
+    }
+}
+
+private extension NotesSemanticDocument {
+    func asJSONObject() -> [String: Any]? {
+        guard let data = try? JSONEncoder().encode(self),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let dictionary = object as? [String: Any] else {
+            return nil
+        }
+        return dictionary
     }
 }
