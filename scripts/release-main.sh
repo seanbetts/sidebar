@@ -104,6 +104,7 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   exit 1
 fi
 
+repo_root="$(git rev-parse --show-toplevel)"
 start_branch=$(git rev-parse --abbrev-ref HEAD)
 restore_branch() {
   git checkout "$start_branch" >/dev/null 2>&1 || true
@@ -126,13 +127,13 @@ fi
 
 if [[ "$run_ios_tests" == "true" ]]; then
   echo "Running iOS preflight..."
-  scripts/test-ios.sh
+  "$repo_root/scripts/test-ios.sh"
 else
   echo "Skipping local iOS preflight. Use --run-ios-tests for an explicit release preflight."
 fi
 
 if [[ -z "$export_options_plist" ]]; then
-  default_export_options_plist="ios/sideBar/ExportOptions.plist"
+  default_export_options_plist="$repo_root/ios/sideBar/ExportOptions.plist"
   if [[ -f "$default_export_options_plist" ]]; then
     export_options_plist="$default_export_options_plist"
   else
@@ -148,9 +149,9 @@ if [[ ! -f "$export_options_plist" ]]; then
 fi
 
 echo "Running macOS widget archive/export verification..."
-python3 scripts/verify_macos_widget_artifacts.py \
+python3 "$repo_root/scripts/verify_macos_widget_artifacts.py" \
   --mode archive-export \
-  --workspace-root "$PWD" \
+  --workspace-root "$repo_root" \
   --export-options-plist "$export_options_plist" \
   --clean-stale-registrations
 

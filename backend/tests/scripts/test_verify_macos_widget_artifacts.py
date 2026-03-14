@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
 MODULE_PATH = REPO_ROOT / "scripts" / "verify_macos_widget_artifacts.py"
@@ -40,6 +41,18 @@ def _capture_subprocess_calls(monkeypatch, module, *, fail_for: list[list[str]] 
 def _repo_file_text(relative_path: str) -> str:
     """Return repository file contents for workflow-facing wiring assertions."""
     return (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+
+
+def _load_workflow(relative_path: str) -> dict:
+    """Return parsed workflow YAML for structure-aware assertions."""
+    return yaml.safe_load(_repo_file_text(relative_path))
+
+
+def _job_step_by_name(*, job: dict, name: str) -> dict:
+    """Return one step by display name."""
+    matches = [step for step in job["steps"] if step.get("name") == name]
+    assert len(matches) == 1
+    return matches[0]
 
 
 def test_debug_mode_runs_build_and_verification(monkeypatch, tmp_path: Path, capsys) -> None:
@@ -276,40 +289,93 @@ def test_archive_export_cleanup_runs_before_archive(monkeypatch, tmp_path: Path)
 
 def test_dev_workflow_wires_debug_verification_only_for_logic_mac() -> None:
     """Dev CI should verify macOS widget artifacts only on the macOS logic lane."""
-    workflow = _repo_file_text(".github/workflows/ios-ci.yml")
+    workflow = _load_workflow(".github/workflows/ios-ci.yml")
+    jobs = workflow["jobs"]
 
-    assert 'if: ${{ matrix.id == \'logic-mac\' }}' in workflow
-    assert '- "scripts/verify_macos_widget_artifacts.py"' in workflow
-    assert 'python3 scripts/verify_macos_widget_artifacts.py \\' in workflow
-    assert '--mode debug \\' in workflow
-    assert '--workspace-root "${{ github.workspace }}" \\' in workflow
-    assert '--clean-stale-registrations' in workflow
+    ios_test_dev = jobs["ios_test_dev"]
+    assert ios_test_dev["needs"] == ["ios_quality", "ios_prepare_packages"]
+    assert {
+        lane["id"] for lane in ios_test_dev["strategy"]["matrix"]["include"]
+    } == {"logic-iphone", "logic-ipad", "logic-mac"}
+
+    verify_step = _job_step_by_name(job=ios_test_dev, name="Verify macOS widget artifacts (Debug)")
+    assert verify_step["if"] == "${{ matrix.id == 'logic-mac' }}"
+    assert verify_step["run"] == (
+        "python3 scripts/verify_macos_widget_artifacts.py \\\n"
+        "  --mode debug \\\n"
+        "  --workspace-root \"${{ github.workspace }}\" \\\n"
+        "  --clean-stale-registrations\n"
+    )
 
 
 def test_main_workflow_runs_debug_and_release_widget_verification() -> None:
     """Main CI should run dedicated macOS Debug and Release widget verification."""
-    workflow = _repo_file_text(".github/workflows/ios-ci-main.yml")
+    workflow = _load_workflow(".github/workflows/ios-ci-main.yml")
+    jobs = workflow["jobs"]
 
-    assert "ios_widget_verification_main:" in workflow
-    assert 'needs: [ios_prepare_packages, ios_widget_verification_main]' in workflow
-    assert "- mode: debug" in workflow
-    assert '- mode: release' in workflow
-    assert '--mode "${{ matrix.mode }}" \\' in workflow
-    assert '--clean-stale-registrations' in workflow
-    assert 'platform=iOS Simulator,name=iPhone 17 Pro' in workflow
-    assert 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' in workflow
+    widget_job = jobs["ios_widget_verification_main"]
+    assert widget_job["needs"] == ["ios_prepare_packages"]
+    assert [row["mode"] for row in widget_job["strategy"]["matrix"]["include"]] == [
+        "debug",
+        "release",
+    ]
+    verify_step = _job_step_by_name(
+        job=widget_job,
+        name="Verify macOS widget artifacts (${{ matrix.label }})",
+    )
+    assert verify_step["run"] == (
+        "python3 scripts/verify_macos_widget_artifacts.py \\\n"
+        "  --mode \"${{ matrix.mode }}\" \\\n"
+        "  --workspace-root \"${{ github.workspace }}\" \\\n"
+        "  --clean-stale-registrations\n"
+    )
+
+    ios_test_main = jobs["ios_test_main"]
+    assert ios_test_main["needs"] == ["ios_prepare_packages", "ios_widget_verification_main"]
+    assert {
+        lane["id"] for lane in ios_test_main["strategy"]["matrix"]["include"]
+    } == {"surface", "ui", "extensions"}
 
 
 def test_manual_dispatch_wires_debug_and_release_widget_verification_by_lane() -> None:
     """Manual CI should gate widget verification by lane without changing simulator lanes."""
-    workflow = _repo_file_text(".github/workflows/ios-ci-dispatch.yml")
+    workflow = _load_workflow(".github/workflows/ios-ci-dispatch.yml")
+    jobs = workflow["jobs"]
 
-    assert "ios_widget_verification_dispatch:" in workflow
-    assert 'lanes: "all logic"' in workflow
-    assert 'lanes: "all surface ui extensions"' in workflow
-    assert "contains(matrix.lanes, github.event.inputs.lane)" in workflow
-    assert '--mode "${{ matrix.mode }}" \\' in workflow
-    assert '--clean-stale-registrations' in workflow
+    widget_job = jobs["ios_widget_verification_dispatch"]
+    assert widget_job["needs"] == ["ios_prepare_packages"]
+    assert widget_job["strategy"]["matrix"]["include"] == [
+        {
+            "mode": "debug",
+            "label": "macOS Debug widget verification",
+            "lanes": "all logic",
+        },
+        {
+            "mode": "release",
+            "label": "macOS Release widget verification",
+            "lanes": "all surface ui extensions",
+        },
+    ]
+    checkout_step = _job_step_by_name(job=widget_job, name="Checkout")
+    verify_step = _job_step_by_name(
+        job=widget_job,
+        name="Verify macOS widget artifacts (${{ matrix.label }})",
+    )
+    expected_if = "${{ contains(matrix.lanes, github.event.inputs.lane) }}"
+    assert checkout_step["if"] == expected_if
+    assert verify_step["if"] == expected_if
+    assert verify_step["run"] == (
+        "python3 scripts/verify_macos_widget_artifacts.py \\\n"
+        "  --mode \"${{ matrix.mode }}\" \\\n"
+        "  --workspace-root \"${{ github.workspace }}\" \\\n"
+        "  --clean-stale-registrations\n"
+    )
+
+    ios_test_dispatch = jobs["ios_test_dispatch"]
+    assert ios_test_dispatch["needs"] == ["ios_prepare_packages", "ios_widget_verification_dispatch"]
+    assert {
+        lane["id"] for lane in ios_test_dispatch["strategy"]["matrix"]["include"]
+    } == {"logic-iphone", "logic-ipad", "logic-mac", "surface", "ui", "extensions"}
 
 
 def test_release_main_uses_archive_export_verifier_with_shared_script() -> None:
@@ -317,10 +383,12 @@ def test_release_main_uses_archive_export_verifier_with_shared_script() -> None:
     release_script = _repo_file_text("scripts/release-main.sh")
 
     assert "--export-options-plist <path>" in release_script
-    assert 'default_export_options_plist="ios/sideBar/ExportOptions.plist"' in release_script
-    assert "python3 scripts/verify_macos_widget_artifacts.py \\" in release_script
+    assert 'default_export_options_plist="$repo_root/ios/sideBar/ExportOptions.plist"' in release_script
+    assert 'repo_root="$(git rev-parse --show-toplevel)"' in release_script
+    assert 'python3 "$repo_root/scripts/verify_macos_widget_artifacts.py" \\' in release_script
     assert "--mode archive-export \\" in release_script
-    assert '--workspace-root "$PWD" \\' in release_script
+    assert '--workspace-root "$repo_root" \\' in release_script
+    assert '--workspace-root "$PWD" \\' not in release_script
     assert '--export-options-plist "$export_options_plist" \\' in release_script
     assert "--clean-stale-registrations" in release_script
 
