@@ -80,6 +80,40 @@ def test_build_canonical_note_write_promotes_legacy_paragraph_block_zero_to_titl
     assert result.title == "Legacy title"
 
 
+def test_build_canonical_note_write_projects_link_labels_and_url_fallback():
+    document = {
+        "version": 1,
+        "blocks": [
+            {
+                "type": "title",
+                "content": [
+                    {
+                        "text": "Sidebar Docs",
+                        "marks": [],
+                        "link": {"url": "https://example.com/docs"},
+                    }
+                ],
+            },
+            {
+                "type": "paragraph",
+                "content": [
+                    {
+                        "text": "",
+                        "marks": [],
+                        "link": {"url": "https://example.com/reference"},
+                    }
+                ],
+            },
+        ],
+    }
+
+    result = build_canonical_note_write(document)
+
+    assert result.document == document
+    assert result.plain_text == "Sidebar Docs\nhttps://example.com/reference"
+    assert result.title == "Sidebar Docs"
+
+
 def test_build_canonical_note_write_rejects_unsupported_blocks():
     document = {
         "version": 1,

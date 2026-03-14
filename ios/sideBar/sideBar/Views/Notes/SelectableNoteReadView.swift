@@ -55,11 +55,10 @@ struct SelectableNoteReadView: View {
         from document: NotesSemanticDocument,
         baseFontSize: CGFloat = NoteTextTypography.defaultBodyFontSize
     ) -> AttributedString {
-        let rawContent = NotesAttributedDocumentCodec.attributedString(
+        NotesAttributedDocumentCodec.readAttributedString(
             from: document,
             baseFontSize: baseFontSize
         )
-        return applyingDetectedLinks(to: rawContent)
     }
 
     static func readBaseFontSize(for option: AppTextSizeOption) -> CGFloat { NoteTextTypography.defaultBodyFontSize(for: option) }
@@ -193,34 +192,6 @@ struct SelectableNoteReadView: View {
         default:
             return NoteTextParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
         }
-    }
-
-    private static func applyingDetectedLinks(to attributed: AttributedString) -> AttributedString {
-        let plainText = String(attributed.characters)
-        guard !plainText.isEmpty,
-              let detector = try? NSDataDetector(
-                types: NSTextCheckingResult.CheckingType.link.rawValue
-              ) else {
-            return attributed
-        }
-
-        let bridged = NSMutableAttributedString(
-            attributedString: (try? NSAttributedString(attributed, including: \.noteTextEditor))
-                ?? NSAttributedString(attributed)
-        )
-        let fullRange = NSRange(plainText.startIndex..<plainText.endIndex, in: plainText)
-
-        detector.enumerateMatches(in: plainText, options: [], range: fullRange) { match, _, _ in
-            guard let match,
-                  let url = match.url,
-                  match.range.location != NSNotFound else {
-                return
-            }
-            bridged.addAttribute(.link, value: url, range: match.range)
-        }
-
-        return (try? AttributedString(bridged, including: \.noteTextEditor))
-            ?? AttributedString(bridged)
     }
 
     private struct ReadActivationLineMetrics {

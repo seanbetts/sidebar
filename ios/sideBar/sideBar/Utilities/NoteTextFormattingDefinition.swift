@@ -32,6 +32,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
                 traits: inlineTraits(from: run),
                 underline: run.underlineStyle != nil,
                 strikethrough: run.strikethroughStyle != nil,
+                link: run.link,
                 blockType: blockType(for: run, in: text),
                 noteBlock: run.noteBlock
             )
@@ -44,6 +45,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
                 traits: snapshot.traits,
                 underline: snapshot.underline,
                 strikethrough: snapshot.strikethrough,
+                link: snapshot.link,
                 blockType: snapshot.blockType,
                 noteBlock: snapshot.noteBlock
             )
@@ -56,6 +58,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         traits: NoteInlineFormattingTraits,
         underline: Bool,
         strikethrough: Bool,
+        link: URL?,
         blockType: NotesSemanticDocument.BlockType,
         noteBlock: String?
     ) -> AttributedString {
@@ -86,6 +89,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         #endif
         normalized[range].underlineStyle = underline ? .single : nil
         normalized[range].strikethroughStyle = strikethrough ? .single : nil
+        normalized[range].link = link
         normalized[range].paragraphStyle = paragraphStyle(for: blockType)
         normalized[range].noteBlock = noteBlock
         return normalized
@@ -157,6 +161,7 @@ private extension NoteTextFormattingDefinition {
         let traits: NoteInlineFormattingTraits
         let underline: Bool
         let strikethrough: Bool
+        let link: URL?
         let blockType: NotesSemanticDocument.BlockType
         let noteBlock: String?
     }

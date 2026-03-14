@@ -10,40 +10,6 @@ import UIKit
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class SelectableNoteReadViewTests: XCTestCase {
-    func testMakeAttributedContentPreservesFormattingAndDetectsLinks() throws {
-        let document = NotesSemanticDocument(
-            version: NotesSemanticDocument.currentVersion,
-            blocks: [
-                .paragraph([
-                    .init(text: "Visit ", marks: []),
-                    .init(text: "https://example.com", marks: [.bold]),
-                    .init(text: " today", marks: [.underline])
-                ])
-            ]
-        )
-
-        let attributed = SelectableNoteReadView.makeAttributedContent(from: document, baseFontSize: 18)
-
-        XCTAssertEqual(String(attributed.characters), "Visit https://example.com today")
-
-        let linkStart = attributed.index(attributed.startIndex, offsetByCharacters: 6)
-        let linkEnd = attributed.index(linkStart, offsetByCharacters: 19)
-        XCTAssertTrue(noteRangeHasBoldTrait(attributed, range: linkStart..<linkEnd))
-
-        let trailingStart = attributed.index(linkEnd, offsetByCharacters: 1)
-        let trailingEnd = attributed.endIndex
-        XCTAssertTrue(noteRangeIsUnderlined(attributed, range: trailingStart..<trailingEnd))
-
-        let bridged = NSAttributedString(attributed)
-        let expectedURL = try XCTUnwrap(URL(string: "https://example.com"))
-        let linkValue = bridged.attribute(
-            NSAttributedString.Key.link,
-            at: 7,
-            effectiveRange: nil
-        ) as? URL
-        XCTAssertEqual(linkValue, expectedURL)
-    }
-
     func testReadBaseFontSizeMatchesAppBodyTextSize() {
         XCTAssertEqual(
             SelectableNoteReadView.readBaseFontSize(for: .large),

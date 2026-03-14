@@ -55,15 +55,22 @@ enum NotesAttributedDocumentCodec {
         var currentSegments: [NotesSemanticDocument.InlineSegment] = []
         var currentBlockMarker: String?
 
-        func appendSegmentText(_ text: String, marks: [NotesSemanticDocument.InlineMark]) {
+        func appendSegmentText(
+            _ text: String,
+            marks: [NotesSemanticDocument.InlineMark],
+            link: NotesSemanticDocument.Link?
+        ) {
             guard !text.isEmpty else { return }
-            if let last = currentSegments.last, last.marks == marks {
+            if let last = currentSegments.last,
+               last.marks == marks,
+               last.link == link {
                 currentSegments[currentSegments.count - 1] = .init(
                     text: last.text + text,
-                    marks: last.marks
+                    marks: last.marks,
+                    link: last.link
                 )
             } else {
-                currentSegments.append(.init(text: text, marks: marks))
+                currentSegments.append(.init(text: text, marks: marks, link: link))
             }
         }
 
@@ -105,17 +112,18 @@ enum NotesAttributedDocumentCodec {
                 currentBlockMarker = blockMarker
             }
             let marks = inlineMarks(from: run)
+            let link = semanticLink(from: run)
             var buffer = ""
             for character in attributed[run.range].characters {
                 if character.isNewline {
-                    appendSegmentText(buffer, marks: marks)
+                    appendSegmentText(buffer, marks: marks, link: link)
                     buffer.removeAll(keepingCapacity: true)
                     flushBlock()
                 } else {
                     buffer.append(character)
                 }
             }
-            appendSegmentText(buffer, marks: marks)
+            appendSegmentText(buffer, marks: marks, link: link)
         }
 
         if blocks.isEmpty || !currentSegments.isEmpty {
@@ -179,6 +187,7 @@ enum NotesAttributedDocumentCodec {
                 #endif
                 piece[range].underlineStyle = marks.contains(.underline) ? .single : nil
                 piece[range].strikethroughStyle = marks.contains(.strikethrough) ? .single : nil
+                piece[range].link = segment.link.flatMap { URL(string: $0.url) }
                 piece[range].paragraphStyle = paragraphStyle(for: blockType, baseFontSize: baseFontSize)
                 if let blockMarker = blockMarker(for: blockType) {
                     piece[range].noteBlock = blockMarker
@@ -208,29 +217,6 @@ enum NotesAttributedDocumentCodec {
                 return nil
             }
         }
-    }
-
-    private static func applyingDetectedLinks(to attributed: AttributedString) -> AttributedString {
-        let plainText = String(attributed.characters)
-        guard !plainText.isEmpty,
-              let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
-            return attributed
-        }
-
-        let bridged = NSMutableAttributedString(attributedString: NSAttributedString(attributed))
-        let fullRange = NSRange(plainText.startIndex..<plainText.endIndex, in: plainText)
-
-        detector.enumerateMatches(in: plainText, options: [], range: fullRange) { match, _, _ in
-            guard let match,
-                  let url = match.url,
-                  match.range.location != NSNotFound else {
-                return
-            }
-            bridged.addAttribute(.link, value: url, range: match.range)
-        }
-
-        return (try? AttributedString(bridged, including: \.noteTextEditor))
-            ?? AttributedString(bridged)
     }
 
     private static func attributedBlock(
@@ -397,14 +383,51 @@ enum NotesAttributedDocumentCodec {
         }
     }
 
-    private static func orderedListPrefixLength(in text: String) -> Int {
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private extension NotesAttributedDocumentCodec {
+    static func semanticLink(
+        from run: AttributedString.Runs.Run
+    ) -> NotesSemanticDocument.Link? {
+        guard let url = run.link else { return nil }
+        return .init(url: url.absoluteString)
+    }
+
+    static func applyingDetectedLinks(to attributed: AttributedString) -> AttributedString {
+        let plainText = String(attributed.characters)
+        guard !plainText.isEmpty,
+              let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return attributed
+        }
+
+        let bridged = NSMutableAttributedString(
+            attributedString: (try? NSAttributedString(attributed, including: \.noteTextEditor))
+                ?? NSAttributedString(attributed)
+        )
+        let fullRange = NSRange(plainText.startIndex..<plainText.endIndex, in: plainText)
+
+        detector.enumerateMatches(in: plainText, options: [], range: fullRange) { match, _, _ in
+            guard let match,
+                  let url = match.url,
+                  match.range.location != NSNotFound else {
+                return
+            }
+            bridged.addAttribute(.link, value: url, range: match.range)
+        }
+
+        return (try? AttributedString(bridged, including: \.noteTextEditor))
+            ?? AttributedString(bridged)
+    }
+
+    static func orderedListPrefixLength(in text: String) -> Int {
         guard let range = text.range(of: #"^\d+\. "#, options: .regularExpression) else {
             return 0
         }
         return text.distance(from: text.startIndex, to: range.upperBound)
     }
 
-    private static func droppingPrefixCharacters(
+    static func droppingPrefixCharacters(
         count: Int,
         from segments: [NotesSemanticDocument.InlineSegment]
     ) -> [NotesSemanticDocument.InlineSegment] {

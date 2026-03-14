@@ -90,6 +90,42 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         XCTAssertTrue(noteRangeIsUnderlined(roundTrip, range: roundTripUnderlineStart..<roundTripUnderlineEnd))
     }
 
+    func testCanonicalLinksRoundTripThroughSemanticDocumentCodec() throws {
+        var attributed = AttributedString("OpenAI Docs")
+        let linkRange = noteCharacterRange(length: 11, in: attributed)
+        let url = try XCTUnwrap(URL(string: "https://platform.openai.com/docs"))
+
+        attributed[linkRange].font = noteInlineFont(baseFontSize: 16, bold: true, italic: false)
+        attributed[linkRange].link = url
+
+        let document = NotesAttributedDocumentCodec.document(from: attributed)
+
+        XCTAssertEqual(
+            document,
+            NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(
+                        type: .title,
+                        content: [
+                            .init(
+                                text: "OpenAI Docs",
+                                marks: [.bold],
+                                link: .init(url: url.absoluteString)
+                            )
+                        ]
+                    )
+                ]
+            )
+        )
+
+        let roundTrip = NotesAttributedDocumentCodec.attributedString(from: document, baseFontSize: 16)
+
+        XCTAssertEqual(String(roundTrip.characters), "OpenAI Docs")
+        XCTAssertTrue(noteRangeHasBoldTrait(roundTrip, range: noteCharacterRange(length: 11, in: roundTrip)))
+        XCTAssertEqual(noteLinkValue(in: roundTrip, atCharacterOffset: 0), url)
+    }
+
     func testSupportedBlockTypesRoundTripWithoutUnsupportedBoundary() {
         let document = NotesSemanticDocument(
             blocks: [

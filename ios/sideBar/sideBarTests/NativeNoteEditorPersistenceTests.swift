@@ -142,6 +142,36 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertTrue(noteRangeIsStruckThrough(reloaded.attributedContent, range: reloadedRange))
     }
 
+    func testPersistenceSnapshotRoundTripPreservesCanonicalLinks() async throws {
+        let url = try XCTUnwrap(URL(string: "https://platform.openai.com/docs"))
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(
+                    type: .title,
+                    content: [
+                        .init(text: "OpenAI Docs", marks: [.bold], link: .init(url: url.absoluteString))
+                    ]
+                )
+            ]
+        )
+        let encoded = try XCTUnwrap(NotesSemanticDocumentCodec.encode(document))
+        let viewModel = NativeNoteEditorViewModel()
+
+        viewModel.loadDocument(canonicalContent: encoded, plainText: "OpenAI Docs")
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        let reloaded = reloadedViewModel(from: snapshot)
+
+        XCTAssertEqual(snapshot.document, document)
+        XCTAssertTrue(
+            noteRangeHasBoldTrait(
+                reloaded.attributedContent,
+                range: noteCharacterRange(length: 11, in: reloaded.attributedContent)
+            )
+        )
+        XCTAssertEqual(noteLinkValue(in: reloaded.attributedContent, atCharacterOffset: 0), url)
+    }
+
     func testLoadDocumentPreservesExternallyEncodedBoldFormatting() async throws {
         let encoded = try XCTUnwrap(
             NotesSemanticDocumentCodec.encode(

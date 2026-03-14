@@ -156,6 +156,18 @@ func noteRangeIsStruckThrough(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func noteLinkValue(
+    in text: AttributedString,
+    atCharacterOffset offset: Int
+) -> URL? {
+    let plainText = String(text.characters)
+    guard offset >= 0, offset < plainText.count else { return nil }
+    let lower = plainText.index(plainText.startIndex, offsetBy: offset)
+    let nsLocation = lower.utf16Offset(in: plainText)
+    return NSAttributedString(text).attribute(.link, at: nsLocation, effectiveRange: nil) as? URL
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func noteTypingTraits(from attrs: AttributeContainer) -> (bold: Bool, italic: Bool) {
     let resolved = attrs.font?.resolve(in: EnvironmentValues().fontResolutionContext)
     return (resolved?.isBold == true, resolved?.isItalic == true)

@@ -198,6 +198,56 @@ def test_create_note_preserves_literal_hash_prefix_from_semantic_document(db_ses
     assert note.document == document
 
 
+def test_save_note_document_script_create_preserves_canonical_link_segments(
+    db_session, monkeypatch
+):
+    module = _load_save_note_document_module()
+    document = {
+        "version": 1,
+        "blocks": [
+            {
+                "type": "title",
+                "content": [
+                    {
+                        "text": "Sidebar Docs",
+                        "marks": [],
+                        "link": {"url": "https://example.com/docs"},
+                    }
+                ],
+            },
+            {
+                "type": "paragraph",
+                "content": [
+                    {
+                        "text": "",
+                        "marks": [],
+                        "link": {"url": "https://example.com/reference"},
+                    }
+                ],
+            },
+        ],
+    }
+
+    monkeypatch.setattr(module, "SessionLocal", lambda: db_session)
+
+    result = module.save_note_document_database(
+        user_id="test_user",
+        document=document,
+        mode="create",
+    )
+
+    created = NotesService.get_note(
+        db_session,
+        "test_user",
+        uuid.UUID(result["id"]),
+    )
+
+    assert created is not None
+    assert created.document == document
+    assert created.title == "Sidebar Docs"
+    assert created.plain_text == "Sidebar Docs\nhttps://example.com/reference"
+
+
 def test_update_note_derives_title_and_plain_text_from_semantic_document_projection(
     db_session,
 ):
