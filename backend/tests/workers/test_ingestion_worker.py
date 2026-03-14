@@ -125,6 +125,206 @@ def test_retryable_error_exhausts_attempts(test_db):
     assert job.finished_at is not None
 
 
+def test_retryable_website_transcript_error_does_not_report_sentry_before_final_failure(
+    test_db, monkeypatch
+):
+    website_id = uuid4()
+    file_id = uuid4()
+    _make_youtube_website_transcript_ingested_file(test_db, file_id, website_id)
+    job = FileProcessingJob(
+        file_id=file_id,
+        status="processing",
+        stage="extracting",
+        attempts=0,
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(job)
+    test_db.commit()
+
+    sentry_messages: list[str] = []
+    status_updates: list[dict[str, str]] = []
+
+    monkeypatch.setattr(
+        ingestion_worker.sentry_sdk,
+        "capture_message",
+        lambda message, *, level=None: sentry_messages.append(f"{level}:{message}"),
+    )
+
+    def fake_update_transcript_status(
+        _db, *, user_id, website_id, youtube_url, status, file_id=None, error=None
+    ):
+        status_updates.append(
+            {
+                "user_id": user_id,
+                "website_id": str(website_id),
+                "youtube_url": youtube_url,
+                "status": status,
+                "file_id": str(file_id) if file_id else "",
+                "error": error or "",
+            }
+        )
+
+    monkeypatch.setattr(
+        ingestion_worker.WebsiteTranscriptService,
+        "update_transcript_status",
+        fake_update_transcript_status,
+    )
+
+    error = ingestion_worker.IngestionError(
+        "VIDEO_DOWNLOAD_TEMPORARY", "temporary youtube failure", retryable=True
+    )
+
+    ingestion_worker._retry_or_fail(test_db, job, error)
+
+    test_db.refresh(job)
+    assert job.status == "queued"
+    assert sentry_messages == []
+    assert status_updates == []
+
+
+def test_final_website_transcript_failure_reports_sentry_once(test_db, monkeypatch):
+    website_id = uuid4()
+    file_id = uuid4()
+    record = _make_youtube_website_transcript_ingested_file(test_db, file_id, website_id)
+    job = FileProcessingJob(
+        file_id=file_id,
+        status="processing",
+        stage="extracting",
+        attempts=ingestion_worker.MAX_ATTEMPTS - 1,
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(job)
+    test_db.commit()
+
+    sentry_messages: list[dict[str, str]] = []
+    status_updates: list[dict[str, str]] = []
+    soft_deleted_file_ids: list[str] = []
+    tags: dict[str, str] = {}
+    extras: dict[str, str] = {}
+    user_context: dict[str, str] = {}
+    fingerprint: list[str] = []
+
+    class _Scope:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def set_tag(self, key, value):
+            tags[key] = str(value)
+
+        def set_extra(self, key, value):
+            extras[key] = str(value)
+
+        @property
+        def user(self):
+            return user_context
+
+        @user.setter
+        def user(self, value):
+            user_context.clear()
+            user_context.update(value)
+
+        @property
+        def fingerprint(self):
+            return fingerprint
+
+        @fingerprint.setter
+        def fingerprint(self, value):
+            fingerprint[:] = [str(item) for item in value]
+
+    monkeypatch.setattr(ingestion_worker.sentry_sdk, "push_scope", lambda: _Scope())
+    monkeypatch.setattr(
+        ingestion_worker.sentry_sdk,
+        "capture_message",
+        lambda message, *, level=None: sentry_messages.append(
+            {"message": message, "level": str(level)}
+        ),
+    )
+
+    def fake_update_transcript_status(
+        _db, *, user_id, website_id, youtube_url, status, file_id=None, error=None
+    ):
+        status_updates.append(
+            {
+                "user_id": user_id,
+                "website_id": str(website_id),
+                "youtube_url": youtube_url,
+                "status": status,
+                "file_id": str(file_id) if file_id else "",
+                "error": error or "",
+            }
+        )
+
+    monkeypatch.setattr(
+        ingestion_worker.WebsiteTranscriptService,
+        "update_transcript_status",
+        fake_update_transcript_status,
+    )
+    monkeypatch.setattr(
+        ingestion_worker.FileIngestionService,
+        "soft_delete_file",
+        lambda _db, target_file_id: soft_deleted_file_ids.append(str(target_file_id)),
+    )
+
+    error = ingestion_worker.IngestionError(
+        "VIDEO_DOWNLOAD_FORBIDDEN", "youtube blocked download", retryable=True
+    )
+
+    ingestion_worker._retry_or_fail(test_db, job, error)
+
+    test_db.refresh(job)
+    assert job.status == "failed"
+    assert status_updates == [
+        {
+            "user_id": "test-user",
+            "website_id": str(website_id),
+            "youtube_url": "https://www.youtube.com/watch?v=abc123",
+            "status": "failed",
+            "file_id": str(file_id),
+            "error": "youtube blocked download",
+        }
+    ]
+    assert soft_deleted_file_ids == [str(record.id)]
+    assert sentry_messages == [
+        {
+            "message": "Website YouTube transcript failed",
+            "level": "error",
+        }
+    ]
+    assert tags["ingestion_kind"] == "website_youtube_transcript"
+    assert tags["ingestion_failure_code"] == "VIDEO_DOWNLOAD_FORBIDDEN"
+    assert tags["ingestion_failure_stage"] == "extracting"
+    assert extras["youtube_url"] == "https://www.youtube.com/watch?v=abc123"
+    assert extras["website_id"] == str(website_id)
+    assert extras["file_id"] == str(file_id)
+    assert user_context == {"id": "test-user"}
+    assert fingerprint == [
+        "website-youtube-transcript-failed",
+        "VIDEO_DOWNLOAD_FORBIDDEN",
+    ]
+
+
+def test_initialize_worker_sentry_uses_backend_settings(monkeypatch):
+    init_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(ingestion_worker.settings, "sentry_dsn", "https://example@sentry.io/123")
+    monkeypatch.setattr(ingestion_worker.settings, "sentry_traces_sample_rate", 0.25)
+    monkeypatch.setattr(ingestion_worker.settings, "sentry_profiles_sample_rate", 0.5)
+    monkeypatch.setattr(ingestion_worker.settings, "app_env", "production")
+    monkeypatch.setattr(ingestion_worker.sentry_sdk, "init", lambda **kwargs: init_calls.append(kwargs))
+    monkeypatch.setattr(ingestion_worker, "_worker_sentry_initialized", False)
+
+    ingestion_worker._initialize_worker_sentry()
+
+    assert len(init_calls) == 1
+    assert init_calls[0]["dsn"] == "https://example@sentry.io/123"
+    assert init_calls[0]["traces_sample_rate"] == 0.25
+    assert init_calls[0]["profiles_sample_rate"] == 0.5
+    assert init_calls[0]["environment"] == "production"
+
+
 def test_requeue_stalled_jobs_marks_retryable(test_db):
     file_id = uuid4()
     _make_ingested_file(test_db, file_id)

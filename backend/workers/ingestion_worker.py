@@ -27,6 +27,7 @@ from urllib.parse import urlparse
 from uuid import uuid4
 
 import pdfplumber
+import sentry_sdk
 from api.config import settings
 from api.db.session import SessionLocal, set_session_user_id
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
@@ -41,6 +42,7 @@ from PIL import Image
 from pptx import Presentation
 from pypdf import PdfReader
 from python_calamine import CalamineError, CalamineWorkbook, XmlError, ZipError
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sqlalchemy import and_, or_, text
 from sqlalchemy.orm.attributes import flag_modified
 from tabulate import tabulate
@@ -112,6 +114,7 @@ ALLOWED_OCTET_EXTENSIONS = {
 
 logger = logging.getLogger("ingestion.worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+_worker_sentry_initialized = False
 _COMMON_SHORT_WORDS = {
     "a",
     "i",
@@ -166,6 +169,65 @@ _COMMON_SHORT_WORDS = {
     "you",
     "your",
 }
+
+
+def _initialize_worker_sentry() -> None:
+    global _worker_sentry_initialized
+    if _worker_sentry_initialized or not settings.sentry_dsn:
+        return
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        integrations=[SqlalchemyIntegration()],
+        traces_sample_rate=settings.sentry_traces_sample_rate,
+        profiles_sample_rate=settings.sentry_profiles_sample_rate,
+        environment=settings.app_env or None,
+    )
+    _worker_sentry_initialized = True
+
+
+def _report_website_transcript_final_failure(
+    db, job: FileProcessingJob, error: IngestionError, *, failure_stage: str
+) -> None:
+    record = _get_file(db, job)
+    transcript_target = _get_transcript_target(record) if record else None
+    if record is None or transcript_target is None:
+        return
+
+    website_id, youtube_url = transcript_target
+    WebsiteTranscriptService.update_transcript_status(
+        db,
+        user_id=str(record.user_id),
+        website_id=website_id,
+        youtube_url=youtube_url,
+        status="failed",
+        file_id=str(record.id),
+        error=str(error),
+    )
+    FileIngestionService.soft_delete_file(db, record.id)
+
+    try:
+        with sentry_sdk.push_scope() as scope:
+            scope.user = {"id": str(record.user_id)}
+            scope.fingerprint = [
+                "website-youtube-transcript-failed",
+                error.code,
+            ]
+            scope.set_tag("ingestion_kind", "website_youtube_transcript")
+            scope.set_tag("ingestion_failure_code", error.code)
+            scope.set_tag("ingestion_failure_stage", failure_stage)
+            scope.set_extra("website_id", str(website_id))
+            scope.set_extra("youtube_url", youtube_url)
+            scope.set_extra("file_id", str(record.id))
+            sentry_sdk.capture_message(
+                "Website YouTube transcript failed",
+                level="error",
+            )
+    except Exception:
+        logger.exception(
+            "Failed to report website transcript failure to Sentry file_id=%s",
+            record.id,
+        )
+
 
 _audio_transcriber: Callable[..., dict] | None = None
 _youtube_transcriber: Callable[..., dict] | None = None
@@ -550,6 +612,12 @@ def _compute_backoff_seconds(attempts: int) -> int:
 
 
 def _retry_or_fail(db, job: FileProcessingJob, error: IngestionError) -> None:
+    failure_stage = (
+        db.query(FileProcessingJob.stage)
+        .filter(FileProcessingJob.file_id == job.file_id)
+        .scalar()
+        or "unknown"
+    )
     job.attempts = (job.attempts or 0) + 1
     job.error_code = error.code
     job.error_message = str(error)
@@ -576,6 +644,9 @@ def _retry_or_fail(db, job: FileProcessingJob, error: IngestionError) -> None:
     job.stage = "failed"
     job.finished_at = _now()
     db.commit()
+    _report_website_transcript_final_failure(
+        db, job, error, failure_stage=failure_stage
+    )
     logger.error(
         "Job failed file_id=%s attempt=%s code=%s message=%s",
         job.file_id,
@@ -2186,6 +2257,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
 
 def worker_loop() -> None:
     """Run the ingestion worker loop that leases and processes pending jobs."""
+    _initialize_worker_sentry()
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = _resolve_worker_user_id()
     _enforce_safe_dev_worker_configuration(worker_user_id)
