@@ -93,5 +93,24 @@ def test_widget_registration_parsing_and_classification():
     for stale in classification.stale_debug:
         assert not helper.should_keep_registration(stale, workspace_root)
 
-    classification_second = helper.classify_registrations(records, current_workspace=workspace_root)
-    assert classification_second == classification
+    kept_records = [
+        record for record in records if record not in classification.stale_debug
+    ]
+    classification_second = helper.classify_registrations(
+        kept_records, current_workspace=workspace_root
+    )
+    assert not classification_second.stale_debug
+    assert {record.path for record in classification_second.current_workspace} == {
+        Path(
+            "/Users/sean/Coding/sideBar/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex"
+        )
+    }
+    assert {record.path for record in classification_second.installed_app} == {
+        Path("/Applications/sideBar AI.app/Contents/PlugIns/sideBarWidgetsExtension.appex")
+    }
+    assert {record.path for record in classification_second.unknown_non_debug} == {
+        Path("/Users/sean/Downloads/sideBarWidgets/Release/sideBarWidgetsExtension.appex"),
+        Path(
+            "/Users/sean/Library/Application Support/sideBarWidgets/sideBarWidgetsExtension.appex"
+        ),
+    }

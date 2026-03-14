@@ -16,6 +16,12 @@ class WidgetRegistration:
 
 @dataclass(frozen=True)
 class ClassificationResult:
+    """Partition of widget registrations.
+
+    unknown_non_debug contains records that are preserved without auto-removal,
+    even if they exhibit minor debug-like signals outside stale-defined path classes.
+    """
+
     current_workspace: List[WidgetRegistration]
     installed_app: List[WidgetRegistration]
     stale_debug: List[WidgetRegistration]
@@ -73,7 +79,7 @@ def classify_registrations(
             installed_app_bucket.append(record)
             continue
 
-        if _is_debug_registration(record) and _is_stale_path(record.path, workspace_path):
+        if _is_stale_debug_registration(record, workspace_path):
             stale_debug_bucket.append(record)
             continue
 
@@ -93,7 +99,7 @@ def should_keep_registration(record: WidgetRegistration, current_workspace: Path
         return True
     if _is_installed_app(record.path):
         return True
-    if _is_debug_registration(record) and _is_stale_path(record.path, workspace_path):
+    if _is_stale_debug_registration(record, workspace_path):
         return False
     return True
 
@@ -173,5 +179,21 @@ def _is_stale_path(path: Path, workspace: Path) -> bool:
     return False
 
 
+def _is_stale_debug_registration(record: WidgetRegistration, workspace: Path) -> bool:
+    return _is_debug_registration(record) and _is_stale_path(
+        record.path, workspace
+    )
+
 def _is_debug_registration(record: WidgetRegistration) -> bool:
-    return bool(set(record.flags) & _DEBUG_FLAGS)
+    return bool(set(record.flags) & _DEBUG_FLAGS) or _has_debug_path_marker(
+        record.path
+    )
+
+
+def _has_debug_path_marker(path: Path) -> bool:
+    path_str = str(path)
+    if "/Build/Products/Debug/" in path_str:
+        return True
+    if "/DerivedData/" in path_str and "Debug" in path_str:
+        return True
+    return False
