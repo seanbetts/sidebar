@@ -332,6 +332,9 @@ def run_cleaner(argv: Optional[List[str]] = None) -> int:
             print(f"  - {record.path} ({record.identifier})")
         return 1
 
+    cleanup_attempted = False
+    removal_failed = False
+
     if classification.stale_debug:
         if args.dry_run:
             print("Dry run: stale debug registrations flagged for removal:")
@@ -344,10 +347,12 @@ def run_cleaner(argv: Optional[List[str]] = None) -> int:
             if args.dry_run:
                 print(f"  pluginkit -r {record.uuid} ({record.path})")
             else:
+                cleanup_attempted = True
                 try:
                     _remove_widget_registration(record.uuid)
                     print(f"  Removed {record.path}")
                 except subprocess.CalledProcessError as exc:
+                    removal_failed = True
                     stderr_output = exc.stderr.strip() if exc.stderr else "pluginkit command failed"
                     print(
                         f"  Failed to remove {record.path}, "
@@ -361,12 +366,19 @@ def run_cleaner(argv: Optional[List[str]] = None) -> int:
         after_summary = _load_bundle_classification(workspace_root, bundle_id)
     except subprocess.CalledProcessError as exc:
         stderr_output = exc.stderr.strip() if exc.stderr else "pluginkit command failed"
+        if cleanup_attempted or removal_failed:
+            print(
+                "Unable to verify registrations after cleanup attempt, "
+                "treating this as unresolved conflicting state."
+            )
+            print(f"  pluginkit exit {exc.returncode}: {stderr_output}")
+            return 1
         print(
-            "Unable to verify registrations after cleanup attempt, "
-            "treating this as unresolved conflicting state."
+            "Unable to verify registrations after cleanup attempt. "
+            "Skipping post-cleanup verification."
         )
         print(f"  pluginkit exit {exc.returncode}: {stderr_output}")
-        return 1
+        return 0
     _print_summary("Registration summary after cleanup", after_summary)
 
     if not args.dry_run and after_summary.stale_debug:

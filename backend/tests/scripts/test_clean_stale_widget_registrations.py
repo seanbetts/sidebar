@@ -308,3 +308,119 @@ def test_cli_fails_when_stale_debug_remains_after_attempted_cleanup(monkeypatch,
         ["pluginkit", "-r", "6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3"],
         ["pluginkit", "-r", "1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6"],
     ]
+
+
+def test_cli_post_cleanup_verification_failure_is_nonfatal(monkeypatch, capsys):
+    helper = _load_helper_module()
+    before_cleanup = helper.ClassificationResult(
+        current_workspace=[
+            helper.WidgetRegistration(
+                identifier="ai.sidebar.sidebar.sideBarWidgets",
+                path=Path(
+                    "/Users/sean/Coding/sideBar/DerivedData/sideBar/Build/Products/Debug/sideBar.app/Contents/PlugIns/sideBarWidgetsExtension.appex"
+                ),
+                uuid="WORKSPACE-UUID",
+            )
+        ],
+        installed_app=[],
+        stale_debug=[],
+        unknown_non_debug=[],
+    )
+    load_calls = []
+
+    def fake_load_bundle_classification(workspace_root, bundle_id):
+        load_calls.append((workspace_root, bundle_id))
+        if len(load_calls) == 1:
+            return before_cleanup
+        raise subprocess.CalledProcessError(
+            2,
+            ["pluginkit", "-m", "-A", "-D", "-v"],
+            stderr="Connection invalid",
+        )
+
+    removal_calls = []
+
+    def fake_remove_widget_registration(uuid):
+        removal_calls.append(uuid)
+
+    monkeypatch.setattr(
+        helper, "_load_bundle_classification", fake_load_bundle_classification
+    )
+    monkeypatch.setattr(helper, "_remove_widget_registration", fake_remove_widget_registration)
+
+    exit_code = helper.run_cleaner(
+        [
+            "--workspace-root",
+            "/Users/sean/Coding/sideBar",
+            "--bundle-id",
+            "ai.sidebar.sidebar.sideBarWidgets",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Skipping post-cleanup verification." in captured.out
+    assert removal_calls == []
+
+
+def test_cli_post_cleanup_verification_failure_after_cleanup_is_fatal(
+    monkeypatch, capsys
+):
+    helper = _load_helper_module()
+    before_cleanup = helper.ClassificationResult(
+        current_workspace=[
+            helper.WidgetRegistration(
+                identifier="ai.sidebar.sidebar.sideBarWidgets",
+                path=Path(
+                    "/Users/sean/Coding/sideBar/DerivedData/sideBar/Build/Products/Debug/sideBar.app/Contents/PlugIns/sideBarWidgetsExtension.appex"
+                ),
+                uuid="WORKSPACE-UUID",
+            )
+        ],
+        installed_app=[],
+        stale_debug=[
+            helper.WidgetRegistration(
+                identifier="ai.sidebar.sidebar.sideBarWidgets",
+                path=Path(
+                    "/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex"
+                ),
+                uuid="STALE-UUID",
+            )
+        ],
+        unknown_non_debug=[],
+    )
+    load_calls = []
+
+    def fake_load_bundle_classification(workspace_root, bundle_id):
+        load_calls.append((workspace_root, bundle_id))
+        if len(load_calls) == 1:
+            return before_cleanup
+        raise subprocess.CalledProcessError(
+            2,
+            ["pluginkit", "-m", "-A", "-D", "-v"],
+            stderr="Connection invalid",
+        )
+
+    removal_calls = []
+
+    def fake_remove_widget_registration(uuid):
+        removal_calls.append(uuid)
+
+    monkeypatch.setattr(
+        helper, "_load_bundle_classification", fake_load_bundle_classification
+    )
+    monkeypatch.setattr(helper, "_remove_widget_registration", fake_remove_widget_registration)
+
+    exit_code = helper.run_cleaner(
+        [
+            "--workspace-root",
+            "/Users/sean/Coding/sideBar",
+            "--bundle-id",
+            "ai.sidebar.sidebar.sideBarWidgets",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "unresolved conflicting state" in captured.out
+    assert removal_calls == ["STALE-UUID"]
