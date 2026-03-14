@@ -22,7 +22,7 @@ TARGETS = (
     "sideBar Safari Extension (macOS) Extension",
 )
 
-FRAMEWORK_EMBED_TARGETS = (
+DISALLOWED_FRAMEWORK_EMBED_TARGETS = (
     "ShareExtension",
     "sideBarWidgetsExtension",
     "sideBar Safari Extension",
@@ -200,7 +200,7 @@ def evaluate_embedded_framework_expectations(
     objects: dict[str, dict[str, object]],
     target: str,
 ) -> list[str]:
-    """Return validation errors for extension targets that must embed sideBarShared."""
+    """Return validation errors for extension targets that disallow embedding sideBarShared."""
     target_object = target_object_for_name(objects=objects, target=target)
     build_phase_ids = target_object.get("buildPhases", [])
     if not isinstance(build_phase_ids, list):
@@ -223,14 +223,14 @@ def evaluate_embedded_framework_expectations(
                 continue
             file_ref = objects.get(str(build_file.get("fileRef")), {})
             if file_ref.get("path") == SHARED_FRAMEWORK_PATH:
-                return []
+                return [
+                    (
+                        f"{target}: disallowed embedded framework copy phase for "
+                        f"'{SHARED_FRAMEWORK_PATH}'"
+                    )
+                ]
 
-    return [
-        (
-            f"{target}: missing embedded framework copy phase for "
-            f"'{SHARED_FRAMEWORK_PATH}'"
-        )
-    ]
+    return []
 
 
 def project_configuration_settings(
@@ -421,7 +421,7 @@ def validate_extension_config_resolution(
                     expectations=platform_expectations,
                 )
             )
-        if target in FRAMEWORK_EMBED_TARGETS:
+        if target in DISALLOWED_FRAMEWORK_EMBED_TARGETS:
             errors.extend(
                 evaluate_embedded_framework_expectations(
                     objects=objects,
@@ -437,7 +437,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Check Apple extension project wiring for API/Supabase build settings "
-            "and required embedded frameworks."
+            "and disallowed embedded frameworks."
         )
     )
     parser.add_argument(

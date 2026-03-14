@@ -30,10 +30,6 @@
 		F0E1D2C42F90001000ABC001 /* Sentry.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1D200022F90000100ABC001 /* Sentry.xcframework */; };
 		F0E1D2C52F90001000ABC001 /* Sentry.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1D200022F90000100ABC001 /* Sentry.xcframework */; };
 		F0E1D2C62F90001000ABC001 /* Sentry.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1D200022F90000100ABC001 /* Sentry.xcframework */; };
-		F1A2B3C42F91000100ABC001 /* sideBarShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		F1A2B3C52F91000100ABC001 /* sideBarShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		F1A2B3C62F91000100ABC001 /* sideBarShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		F1A2B3C72F91000100ABC001 /* sideBarShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		A7C1D2E32B01000100A1B2C3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
@@ -117,50 +113,6 @@
 			dstSubfolderSpec = 10;
 			files = (
 				1413DE4F2F2B514C002495EE /* sideBarShared.framework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F1A2B3D42F91000100ABC001 /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				F1A2B3C42F91000100ABC001 /* sideBarShared.framework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F1A2B3D52F91000100ABC001 /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				F1A2B3C52F91000100ABC001 /* sideBarShared.framework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F1A2B3D62F91000100ABC001 /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				F1A2B3C62F91000100ABC001 /* sideBarShared.framework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F1A2B3D72F91000100ABC001 /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				F1A2B3C72F91000100ABC001 /* sideBarShared.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -564,7 +516,6 @@
 			buildPhases = (
 				142516A92F1EB96B0072E4F9 /* Sources */,
 				142516AA2F1EB96B0072E4F9 /* Frameworks */,
-				F1A2B3D42F91000100ABC001 /* Embed Frameworks */,
 				142516AB2F1EB96B0072E4F9 /* Resources */,
 			);
 			buildRules = (
@@ -589,7 +540,6 @@
 			buildPhases = (
 				1448E6C32F27A6420066EE47 /* Sources */,
 				1448E6C42F27A6420066EE47 /* Frameworks */,
-				F1A2B3D52F91000100ABC001 /* Embed Frameworks */,
 				1448E6C52F27A6420066EE47 /* Resources */,
 			);
 			buildRules = (
@@ -613,7 +563,6 @@
 			buildPhases = (
 				146EA0552F2FE83C004AE7D1 /* Sources */,
 				146EA0562F2FE83C004AE7D1 /* Frameworks */,
-				F1A2B3D62F91000100ABC001 /* Embed Frameworks */,
 				146EA0572F2FE83C004AE7D1 /* Resources */,
 			);
 			buildRules = (
@@ -662,7 +611,6 @@
 			buildPhases = (
 				146EA0922F2FE878004AE7D1 /* Sources */,
 				146EA0932F2FE878004AE7D1 /* Frameworks */,
-				F1A2B3D72F91000100ABC001 /* Embed Frameworks */,
 				146EA0942F2FE878004AE7D1 /* Resources */,
 			);
 			buildRules = (

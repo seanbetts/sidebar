@@ -69,7 +69,7 @@ def test_evaluate_setting_expectations_reports_unresolved_value() -> None:
 def test_validate_extension_config_resolution_resolves_expected_values(
     tmp_path: Path,
 ) -> None:
-    """Validator should resolve target placeholders via inherited project settings."""
+    """Validator should resolve target placeholders without requiring extension framework embeds."""
     base_xcconfig = tmp_path / "SideBar.xcconfig"
     base_xcconfig.write_text(f"{LOCAL_INCLUDE_LINE}\n", encoding="utf-8")
 
@@ -104,7 +104,7 @@ def test_validate_extension_config_resolution_resolves_expected_values(
             "isa": "PBXNativeTarget",
             "name": "sideBar Safari Extension",
             "buildConfigurationList": "target_configs",
-            "buildPhases": ["embed_phase"],
+            "buildPhases": ["frameworks"],
         },
         "target_configs": {
             "isa": "XCConfigurationList",
@@ -115,18 +115,9 @@ def test_validate_extension_config_resolution_resolves_expected_values(
             "name": "Debug",
             "buildSettings": debug_settings,
         },
-        "embed_phase": {
-            "isa": "PBXCopyFilesBuildPhase",
-            "dstSubfolderSpec": "10",
-            "files": ["embed_file"],
-        },
-        "embed_file": {
-            "isa": "PBXBuildFile",
-            "fileRef": "shared_framework_ref",
-        },
-        "shared_framework_ref": {
-            "isa": "PBXFileReference",
-            "path": "sideBarShared.framework",
+        "frameworks": {
+            "isa": "PBXFrameworksBuildPhase",
+            "files": [],
         },
     }
 
@@ -165,17 +156,26 @@ def test_evaluate_platform_expectations_reports_non_macos_safari_target_settings
     ]
 
 
-def test_evaluate_embedded_framework_expectations_reports_missing_framework_copy_phase() -> None:
-    """Extension targets should fail validation if sideBarShared is linked but not embedded."""
+def test_evaluate_embedded_framework_expectations_reports_embedded_framework_copy_phase() -> None:
+    """Extension targets should fail validation if sideBarShared is embedded in the appex."""
     objects = {
         "target": {
             "isa": "PBXNativeTarget",
             "name": "sideBarWidgetsExtension",
-            "buildPhases": ["frameworks"],
+            "buildPhases": ["embed_phase"],
         },
-        "frameworks": {
-            "isa": "PBXFrameworksBuildPhase",
-            "files": [],
+        "embed_phase": {
+            "isa": "PBXCopyFilesBuildPhase",
+            "dstSubfolderSpec": "10",
+            "files": ["embed_file"],
+        },
+        "embed_file": {
+            "isa": "PBXBuildFile",
+            "fileRef": "shared_framework_ref",
+        },
+        "shared_framework_ref": {
+            "isa": "PBXFileReference",
+            "path": "sideBarShared.framework",
         },
     }
 
@@ -185,14 +185,14 @@ def test_evaluate_embedded_framework_expectations_reports_missing_framework_copy
     )
 
     assert errors == [
-        "sideBarWidgetsExtension: missing embedded framework copy phase for 'sideBarShared.framework'"
+        "sideBarWidgetsExtension: disallowed embedded framework copy phase for 'sideBarShared.framework'"
     ]
 
 
-def test_validate_extension_config_resolution_reports_missing_embedded_framework(
+def test_validate_extension_config_resolution_reports_disallowed_embedded_framework(
     tmp_path: Path,
 ) -> None:
-    """Validator should fail when extension targets do not embed sideBarShared.framework."""
+    """Validator should fail when extension targets embed sideBarShared.framework."""
     base_xcconfig = tmp_path / "SideBar.xcconfig"
     base_xcconfig.write_text(f"{LOCAL_INCLUDE_LINE}\n", encoding="utf-8")
 
@@ -221,7 +221,7 @@ def test_validate_extension_config_resolution_reports_missing_embedded_framework
             "isa": "PBXNativeTarget",
             "name": "sideBarWidgetsExtension",
             "buildConfigurationList": "target_configs",
-            "buildPhases": ["frameworks"],
+            "buildPhases": ["embed_phase"],
         },
         "target_configs": {
             "isa": "XCConfigurationList",
@@ -232,9 +232,18 @@ def test_validate_extension_config_resolution_reports_missing_embedded_framework
             "name": "Debug",
             "buildSettings": debug_settings,
         },
-        "frameworks": {
-            "isa": "PBXFrameworksBuildPhase",
-            "files": [],
+        "embed_phase": {
+            "isa": "PBXCopyFilesBuildPhase",
+            "dstSubfolderSpec": "10",
+            "files": ["embed_file"],
+        },
+        "embed_file": {
+            "isa": "PBXBuildFile",
+            "fileRef": "shared_framework_ref",
+        },
+        "shared_framework_ref": {
+            "isa": "PBXFileReference",
+            "path": "sideBarShared.framework",
         },
     }
 
@@ -251,7 +260,7 @@ def test_validate_extension_config_resolution_reports_missing_embedded_framework
     finally:
         CONFIG_CHECK_MODULE.load_pbxproj_objects = original_loader
 
-    assert "sideBarWidgetsExtension: missing embedded framework copy phase for 'sideBarShared.framework'" in errors
+    assert "sideBarWidgetsExtension: disallowed embedded framework copy phase for 'sideBarShared.framework'" in errors
 
 
 def test_main_returns_failure_when_required_files_missing(monkeypatch, tmp_path: Path) -> None:
