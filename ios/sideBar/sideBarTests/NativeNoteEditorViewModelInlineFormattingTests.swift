@@ -5,6 +5,29 @@ import XCTest
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeNoteEditorInlineFormattingTests: XCTestCase {
+    func testApplyFormattingInlineCodeTogglesTypingAttributesAtInsertionPoint() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        viewModel.applyFormatting(.inlineCode)
+        var sample = AttributedString("x")
+        let sampleRange = noteCharacterRange(length: 1, in: sample)
+        sample[sampleRange].mergeAttributes(
+            viewModel.selection.typingAttributes(in: viewModel.attributedContent)
+        )
+        XCTAssertTrue(noteRangeUsesMonospacedPlatformFont(sample, range: sampleRange))
+
+        viewModel.applyFormatting(.inlineCode)
+        var plainSample = AttributedString("x")
+        let plainSampleRange = noteCharacterRange(length: 1, in: plainSample)
+        plainSample[plainSampleRange].mergeAttributes(
+            viewModel.selection.typingAttributes(in: viewModel.attributedContent)
+        )
+        XCTAssertFalse(noteRangeUsesMonospacedPlatformFont(plainSample, range: plainSampleRange))
+    }
+
     func testApplyFormattingItalicTogglesTypingAttributesAtInsertionPoint() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
@@ -85,6 +108,17 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
         viewModel.applyFormatting(.strikethrough)
 
         XCTAssertTrue(noteRangeIsStruckThrough(viewModel.attributedContent, range: range))
+    }
+
+    func testApplyFormattingInlineCodeStylesSelectedRangeImmediately() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+
+        viewModel.applyFormatting(.inlineCode)
+
+        XCTAssertTrue(noteRangeUsesMonospacedPlatformFont(viewModel.attributedContent, range: range))
     }
 
     func testApplyFormattingPreservesExistingTraitsWhenAddingSecondStyle() async {

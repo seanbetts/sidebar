@@ -306,11 +306,13 @@ public final class NotesEditorViewModel: ObservableObject {
             isItalicActive: isFormattingActive(.italic),
             isUnderlineActive: isFormattingActive(.underline),
             isStrikethroughActive: isFormattingActive(.strikethrough),
+            isInlineCodeActive: isFormattingActive(.inlineCode),
             isEnabled: canApplyFormattingCommands(),
             onBoldTap: { [weak self] in self?.toggleFormatting(.bold) },
             onItalicTap: { [weak self] in self?.toggleFormatting(.italic) },
             onUnderlineTap: { [weak self] in self?.toggleFormatting(.underline) },
-            onStrikethroughTap: { [weak self] in self?.toggleFormatting(.strikethrough) }
+            onStrikethroughTap: { [weak self] in self?.toggleFormatting(.strikethrough) },
+            onInlineCodeTap: { [weak self] in self?.toggleFormatting(.inlineCode) }
         )
     }
 #endif

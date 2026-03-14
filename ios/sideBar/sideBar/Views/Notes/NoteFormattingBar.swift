@@ -7,10 +7,12 @@ struct NoteFormattingBar: View {
     let isItalicActive: Bool
     let isUnderlineActive: Bool
     let isStrikethroughActive: Bool
+    let isInlineCodeActive: Bool
     let onBoldTap: @MainActor @Sendable () -> Void
     let onItalicTap: @MainActor @Sendable () -> Void
     let onUnderlineTap: @MainActor @Sendable () -> Void
     let onStrikethroughTap: @MainActor @Sendable () -> Void
+    let onInlineCodeTap: @MainActor @Sendable () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
@@ -37,6 +39,12 @@ struct NoteFormattingBar: View {
                 label: "Strikethrough",
                 isActive: isStrikethroughActive,
                 action: onStrikethroughTap
+            )
+            formattingButton(
+                systemImage: "chevron.left.forwardslash.chevron.right",
+                label: "Inline Code",
+                isActive: isInlineCodeActive,
+                action: onInlineCodeTap
             )
         }
         .padding(.horizontal, 12)

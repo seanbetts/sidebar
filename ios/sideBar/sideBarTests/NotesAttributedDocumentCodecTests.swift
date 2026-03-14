@@ -126,6 +126,48 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         XCTAssertEqual(noteLinkValue(in: roundTrip, atCharacterOffset: 0), url)
     }
 
+    func testInlineCodeRoundTripsThroughSemanticDocumentCodec() {
+        var attributed = AttributedString("code")
+        let range = noteCharacterRange(length: 4, in: attributed)
+        attributed[range].font = .system(size: 16, design: .monospaced)
+        #if os(iOS)
+        attributed[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = UIFont.monospacedSystemFont(ofSize: 16, weight: .regular)
+        #elseif os(macOS)
+        attributed[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = NSFont.monospacedSystemFont(ofSize: 16, weight: .regular)
+        #endif
+
+        let document = NotesAttributedDocumentCodec.document(from: attributed)
+        let roundTrip = NotesAttributedDocumentCodec.attributedString(from: document, baseFontSize: 16)
+
+        XCTAssertEqual(
+            document,
+            NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(type: .title, content: [.init(text: "code", marks: [.inlineCode])])
+                ]
+            )
+        )
+        XCTAssertTrue(noteRangeUsesMonospacedPlatformFont(roundTrip, range: noteCharacterRange(length: 4, in: roundTrip)))
+    }
+
+    func testCodeBlockRoundTripsMultilineLiteralContent() {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Snippet", marks: [])]),
+                .init(type: .codeBlock, content: [.init(text: "let x = 1\nprint(x)", marks: [])])
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(from: document, baseFontSize: 16)
+        let roundTrip = NotesAttributedDocumentCodec.document(from: attributed)
+
+        XCTAssertEqual(String(attributed.characters), "Snippet\nlet x = 1\nprint(x)")
+        let codeStart = attributed.index(attributed.startIndex, offsetByCharacters: 8)
+        XCTAssertTrue(noteRangeUsesMonospacedPlatformFont(attributed, range: codeStart..<attributed.endIndex))
+        XCTAssertEqual(roundTrip, document)
+    }
+
     func testSupportedBlockTypesRoundTripWithoutUnsupportedBoundary() {
         let document = NotesSemanticDocument(
             blocks: [

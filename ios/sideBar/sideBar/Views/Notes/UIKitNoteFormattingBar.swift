@@ -11,6 +11,7 @@ final class UIKitNoteFormattingBar: UIView {
     private let italicButton: UIButton
     private let underlineButton: UIButton
     private let strikethroughButton: UIButton
+    private let inlineCodeButton: UIButton
     private var currentConfiguration: NoteFormattingBarConfiguration
     private static let barHeight: CGFloat = 48
     private static let minimumButtonTouchTarget: CGFloat = 44
@@ -23,6 +24,7 @@ final class UIKitNoteFormattingBar: UIView {
         self.italicButton = Self.makeButton(for: .italic)
         self.underlineButton = Self.makeButton(for: .underline)
         self.strikethroughButton = Self.makeButton(for: .strikethrough)
+        self.inlineCodeButton = Self.makeButton(for: .inlineCode)
         self.currentConfiguration = .disabled
         super.init(frame: frame)
         setUpViewHierarchy()
@@ -72,6 +74,8 @@ final class UIKitNoteFormattingBar: UIView {
             return underlineButton
         case .strikethrough:
             return strikethroughButton
+        case .inlineCode:
+            return inlineCodeButton
         }
     }
 }
@@ -155,7 +159,7 @@ struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
 
 @available(iOS 26.0, *)
 private extension UIKitNoteFormattingBar {
-    static let buttonOrder: [NoteFormatting] = [.bold, .italic, .underline, .strikethrough]
+    static let buttonOrder: [NoteFormatting] = [.bold, .italic, .underline, .strikethrough, .inlineCode]
 
     static func makeButton(for formatting: NoteFormatting) -> UIButton {
         let button = UIButton(type: .system)
@@ -199,6 +203,8 @@ private extension UIKitNoteFormattingBar {
             return "underline"
         case .strikethrough:
             return "strikethrough"
+        case .inlineCode:
+            return "chevron.left.forwardslash.chevron.right"
         }
     }
 
@@ -212,6 +218,8 @@ private extension UIKitNoteFormattingBar {
             return "Underline"
         case .strikethrough:
             return "Strikethrough"
+        case .inlineCode:
+            return "Inline Code"
         }
     }
 
@@ -225,6 +233,8 @@ private extension UIKitNoteFormattingBar {
             return "note-formatting-underline"
         case .strikethrough:
             return "note-formatting-strikethrough"
+        case .inlineCode:
+            return "note-formatting-inline-code"
         }
     }
 

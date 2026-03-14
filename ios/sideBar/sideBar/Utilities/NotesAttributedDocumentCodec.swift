@@ -113,12 +113,17 @@ enum NotesAttributedDocumentCodec {
             }
             let marks = inlineMarks(from: run)
             let link = semanticLink(from: run)
+            let resolvedBlockType = NoteTextBlockAttribute.blockType(from: blockMarker ?? currentBlockMarker)
             var buffer = ""
             for character in attributed[run.range].characters {
                 if character.isNewline {
-                    appendSegmentText(buffer, marks: marks, link: link)
-                    buffer.removeAll(keepingCapacity: true)
-                    flushBlock()
+                    if resolvedBlockType == .codeBlock {
+                        buffer.append(character)
+                    } else {
+                        appendSegmentText(buffer, marks: marks, link: link)
+                        buffer.removeAll(keepingCapacity: true)
+                        flushBlock()
+                    }
                 } else {
                     buffer.append(character)
                 }
@@ -164,25 +169,29 @@ enum NotesAttributedDocumentCodec {
             if !piece.characters.isEmpty {
                 let range = piece.startIndex..<piece.endIndex
                 let marks = Set(segment.marks)
+                let inlineCode = marks.contains(.inlineCode)
                 piece[range].font = blockFont(
                     baseFontSize: baseFontSize,
                     blockType: blockType,
                     bold: marks.contains(.bold),
-                    italic: marks.contains(.italic)
+                    italic: marks.contains(.italic),
+                    inlineCode: inlineCode
                 )
                 #if os(iOS)
                 piece[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = notePlatformFont(
                     baseFontSize: baseFontSize,
                     blockType: blockType,
                     bold: marks.contains(.bold),
-                    italic: marks.contains(.italic)
+                    italic: marks.contains(.italic),
+                    inlineCode: inlineCode
                 )
                 #elseif os(macOS)
                 piece[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = notePlatformFont(
                     baseFontSize: baseFontSize,
                     blockType: blockType,
                     bold: marks.contains(.bold),
-                    italic: marks.contains(.italic)
+                    italic: marks.contains(.italic),
+                    inlineCode: inlineCode
                 )
                 #endif
                 piece[range].underlineStyle = marks.contains(.underline) ? .single : nil
@@ -203,18 +212,21 @@ enum NotesAttributedDocumentCodec {
         from run: AttributedString.Runs.Run
     ) -> [NotesSemanticDocument.InlineMark] {
         let traits = noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: run.attributes))
+        let formattingTraits = noteInlineFormattingTraits(from: run.attributes)
+        let blockType = NoteTextBlockAttribute.blockType(from: run.noteBlock)
         return NotesSemanticDocument.InlineMark.storageOrder.compactMap { mark in
             switch mark {
             case .bold:
-                return traits.bold ? .bold : nil
+                return formattingTraits.bold || traits.bold ? .bold : nil
             case .italic:
-                return traits.italic ? .italic : nil
+                return formattingTraits.italic || traits.italic ? .italic : nil
             case .underline:
                 return run.underlineStyle != nil ? .underline : nil
             case .strikethrough:
                 return run.strikethroughStyle != nil ? .strikethrough : nil
             case .inlineCode:
-                return nil
+                guard formattingTraits.monospaced, blockType != .some(.codeBlock) else { return nil }
+                return .inlineCode
             }
         }
     }
@@ -286,29 +298,27 @@ enum NotesAttributedDocumentCodec {
         baseFontSize: CGFloat,
         blockType: NotesSemanticDocument.BlockType,
         bold: Bool,
-        italic: Bool
+        italic: Bool,
+        inlineCode: Bool = false
     ) -> Font {
         let size: CGFloat
-        let design: Font.Design
+        let monospaced = noteUsesMonospacedDesign(blockType: blockType, inlineCode: inlineCode)
         switch blockType {
         case .title:
             size = baseFontSize * 1.2
-            design = .default
         case .heading:
             size = baseFontSize * 1.15
-            design = .default
         case .subheading:
             size = baseFontSize * 1.08
-            design = .default
-        case .codeBlock:
-            size = baseFontSize
-            design = .monospaced
         default:
             size = baseFontSize
-            design = .default
         }
 
-        var font = Font.system(size: size, weight: bold ? .bold : .regular, design: design)
+        var font = Font.system(
+            size: size,
+            weight: bold ? .bold : .regular,
+            design: monospaced ? .monospaced : .default
+        )
         if italic {
             font = font.italic()
         }

@@ -70,21 +70,24 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
             baseFontSize: baseFontSize,
             blockType: blockType,
             bold: traits.bold,
-            italic: traits.italic
+            italic: traits.italic,
+            inlineCode: traits.monospaced
         )
         #if os(iOS)
         normalized[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = notePlatformFont(
             baseFontSize: baseFontSize,
             blockType: blockType,
             bold: traits.bold,
-            italic: traits.italic
+            italic: traits.italic,
+            inlineCode: traits.monospaced
         )
         #elseif os(macOS)
         normalized[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = notePlatformFont(
             baseFontSize: baseFontSize,
             blockType: blockType,
             bold: traits.bold,
-            italic: traits.italic
+            italic: traits.italic,
+            inlineCode: traits.monospaced
         )
         #endif
         normalized[range].underlineStyle = underline ? .single : nil
@@ -110,7 +113,8 @@ private struct NormalizeInlineFonts: AttributedTextValueConstraint {
             baseFontSize: baseFontSize,
             blockType: blockType,
             bold: traits.bold,
-            italic: traits.italic
+            italic: traits.italic,
+            inlineCode: traits.monospaced
         )
     }
 
@@ -118,9 +122,13 @@ private struct NormalizeInlineFonts: AttributedTextValueConstraint {
         baseFontSize: CGFloat,
         blockType: NotesSemanticDocument.BlockType,
         bold: Bool,
-        italic: Bool
+        italic: Bool,
+        inlineCode: Bool
     ) -> Font {
-        let design: Font.Design = noteBlockUsesMonospacedDesign(blockType) ? .monospaced : .default
+        let design: Font.Design = noteUsesMonospacedDesign(
+            blockType: blockType,
+            inlineCode: inlineCode
+        ) ? .monospaced : .default
         var font = Font.system(
             size: noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType),
             weight: bold ? .bold : .regular,
@@ -183,9 +191,13 @@ private extension NoteTextFormattingDefinition {
         baseFontSize: CGFloat,
         blockType: NotesSemanticDocument.BlockType,
         bold: Bool,
-        italic: Bool
+        italic: Bool,
+        inlineCode: Bool
     ) -> Font {
-        let design: Font.Design = noteBlockUsesMonospacedDesign(blockType) ? .monospaced : .default
+        let design: Font.Design = noteUsesMonospacedDesign(
+            blockType: blockType,
+            inlineCode: inlineCode
+        ) ? .monospaced : .default
         var font = Font.system(
             size: noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType),
             weight: bold ? .bold : .regular,

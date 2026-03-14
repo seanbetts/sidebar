@@ -95,6 +95,9 @@ struct SidebarCommands: Commands {
                     Toggle("Strikethrough", isOn: formattingBinding(.strikethrough))
                         .keyboardShortcut("x", modifiers: [.command, .shift])
                         .disabled(!canFormatNotes)
+
+                    Toggle("Inline Code", isOn: formattingBinding(.inlineCode))
+                        .disabled(!canFormatNotes)
                 }
             }
         }

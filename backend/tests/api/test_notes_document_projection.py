@@ -168,6 +168,24 @@ def test_project_plain_text_uses_link_label_or_url_fallback() -> None:
     )
 
 
+def test_project_plain_text_preserves_inline_code_visibility_and_code_block_newlines() -> None:
+    document = {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            {
+                "type": "title",
+                "content": [{"text": "Snippet", "marks": ["inline_code"]}],
+            },
+            {
+                "type": "code_block",
+                "content": [{"text": "let x = 1\nprint(x)", "marks": []}],
+            },
+        ],
+    }
+
+    assert project_plain_text_from_document(document) == "Snippet\nlet x = 1\nprint(x)"
+
+
 def test_derive_title_from_block_zero_title() -> None:
     document = {
         "version": NOTE_DOCUMENT_VERSION,

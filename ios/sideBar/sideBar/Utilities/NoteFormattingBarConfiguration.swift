@@ -7,11 +7,39 @@ struct NoteFormattingBarConfiguration {
     let isItalicActive: Bool
     let isUnderlineActive: Bool
     let isStrikethroughActive: Bool
+    let isInlineCodeActive: Bool
     let isEnabled: Bool
     let onBoldTap: @MainActor @Sendable () -> Void
     let onItalicTap: @MainActor @Sendable () -> Void
     let onUnderlineTap: @MainActor @Sendable () -> Void
     let onStrikethroughTap: @MainActor @Sendable () -> Void
+    let onInlineCodeTap: @MainActor @Sendable () -> Void
+
+    init(
+        isBoldActive: Bool,
+        isItalicActive: Bool,
+        isUnderlineActive: Bool,
+        isStrikethroughActive: Bool,
+        isInlineCodeActive: Bool = false,
+        isEnabled: Bool,
+        onBoldTap: @escaping @MainActor @Sendable () -> Void,
+        onItalicTap: @escaping @MainActor @Sendable () -> Void,
+        onUnderlineTap: @escaping @MainActor @Sendable () -> Void,
+        onStrikethroughTap: @escaping @MainActor @Sendable () -> Void,
+        onInlineCodeTap: @escaping @MainActor @Sendable () -> Void = {}
+    ) {
+        self.isBoldActive = isBoldActive
+        self.isItalicActive = isItalicActive
+        self.isUnderlineActive = isUnderlineActive
+        self.isStrikethroughActive = isStrikethroughActive
+        self.isInlineCodeActive = isInlineCodeActive
+        self.isEnabled = isEnabled
+        self.onBoldTap = onBoldTap
+        self.onItalicTap = onItalicTap
+        self.onUnderlineTap = onUnderlineTap
+        self.onStrikethroughTap = onStrikethroughTap
+        self.onInlineCodeTap = onInlineCodeTap
+    }
 
     static let disabled = NoteFormattingBarConfiguration(
         isBoldActive: false,
@@ -35,6 +63,8 @@ struct NoteFormattingBarConfiguration {
             return isUnderlineActive
         case .strikethrough:
             return isStrikethroughActive
+        case .inlineCode:
+            return isInlineCodeActive
         }
     }
 
@@ -48,6 +78,8 @@ struct NoteFormattingBarConfiguration {
             return onUnderlineTap
         case .strikethrough:
             return onStrikethroughTap
+        case .inlineCode:
+            return onInlineCodeTap
         }
     }
 }

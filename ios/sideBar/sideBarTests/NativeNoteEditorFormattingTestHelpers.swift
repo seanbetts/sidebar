@@ -156,6 +156,27 @@ func noteRangeIsStruckThrough(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func noteRunUsesMonospacedPlatformFont(_ run: AttributedString.Runs.Run) -> Bool {
+    #if os(iOS)
+    guard let font = noteBridgedPlatformFont(from: run) as? UIFont else { return false }
+    return font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace)
+    #elseif os(macOS)
+    guard let font = noteBridgedPlatformFont(from: run) as? NSFont else { return false }
+    return font.fontDescriptor.symbolicTraits.contains(.monoSpace)
+    #endif
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func noteRangeUsesMonospacedPlatformFont(
+    _ text: AttributedString,
+    range: Range<AttributedString.Index>
+) -> Bool {
+    let runs = text[range].runs
+    guard !runs.isEmpty else { return false }
+    return runs.allSatisfy(noteRunUsesMonospacedPlatformFont)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func noteLinkValue(
     in text: AttributedString,
     atCharacterOffset offset: Int

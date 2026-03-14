@@ -10,6 +10,7 @@ import SwiftUI
 struct NoteInlineFormattingTraits: Equatable {
     var bold: Bool = false
     var italic: Bool = false
+    var monospaced: Bool = false
 
     static let plain = NoteInlineFormattingTraits()
 }
@@ -21,8 +22,17 @@ typealias NotePlatformFont = NSFont
 #endif
 
 @available(iOS 26.0, macOS 26.0, *)
-func noteInlineFont(baseFontSize: CGFloat, bold: Bool, italic: Bool) -> Font {
-    var font = Font.system(size: baseFontSize, weight: bold ? .bold : .regular)
+func noteInlineFont(
+    baseFontSize: CGFloat,
+    bold: Bool,
+    italic: Bool,
+    monospaced: Bool = false
+) -> Font {
+    var font = Font.system(
+        size: baseFontSize,
+        weight: bold ? .bold : .regular,
+        design: monospaced ? .monospaced : .default
+    )
     if italic {
         font = font.italic()
     }
@@ -30,13 +40,17 @@ func noteInlineFont(baseFontSize: CGFloat, bold: Bool, italic: Bool) -> Font {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-func notePlatformFont(baseFontSize: CGFloat, bold: Bool, italic: Bool) -> NotePlatformFont {
-    if bold, !italic {
+func notePlatformFont(
+    baseFontSize: CGFloat,
+    bold: Bool,
+    italic: Bool,
+    monospaced: Bool = false
+) -> NotePlatformFont {
+    if bold, !italic, !monospaced {
         return notePlatformBoldBodyFont(baseFontSize: baseFontSize)
     }
     return notePlatformFontApplyingTraits(
-        bold ? notePlatformBoldBodyFont(baseFontSize: baseFontSize)
-            : notePlatformBodyFont(baseFontSize: baseFontSize),
+        notePlatformBodyFont(baseFontSize: baseFontSize, monospaced: monospaced),
         bold: bold,
         italic: italic
     )
@@ -47,14 +61,15 @@ func notePlatformFont(
     baseFontSize: CGFloat,
     blockType: NotesSemanticDocument.BlockType,
     bold: Bool,
-    italic: Bool
+    italic: Bool,
+    inlineCode: Bool = false
 ) -> NotePlatformFont {
     let size = noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType)
     return notePlatformFontApplyingTraits(
         notePlatformSystemFont(
             size: size,
             weight: bold ? .bold : .regular,
-            monospaced: noteBlockUsesMonospacedDesign(blockType)
+            monospaced: noteUsesMonospacedDesign(blockType: blockType, inlineCode: inlineCode)
         ),
         bold: bold,
         italic: italic
@@ -62,8 +77,11 @@ func notePlatformFont(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-func notePlatformBodyFont(baseFontSize: CGFloat) -> NotePlatformFont {
-    notePlatformSystemFont(size: baseFontSize, weight: .regular)
+func notePlatformBodyFont(
+    baseFontSize: CGFloat,
+    monospaced: Bool = false
+) -> NotePlatformFont {
+    notePlatformSystemFont(size: baseFontSize, weight: .regular, monospaced: monospaced)
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -94,7 +112,15 @@ func noteBlockPointSize(
 
 @available(iOS 26.0, macOS 26.0, *)
 func noteBlockUsesMonospacedDesign(_ blockType: NotesSemanticDocument.BlockType) -> Bool {
-    blockType == .codeBlock
+    noteUsesMonospacedDesign(blockType: blockType)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func noteUsesMonospacedDesign(
+    blockType: NotesSemanticDocument.BlockType,
+    inlineCode: Bool = false
+) -> Bool {
+    blockType == .codeBlock || inlineCode
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -167,8 +193,23 @@ func noteExplicitSwiftUIFont(from attributes: AttributeContainer) -> Font? {
 
 @available(iOS 26.0, macOS 26.0, *)
 func noteInlineFormattingTraits(from attributes: AttributeContainer) -> NoteInlineFormattingTraits {
-    let swiftUIFontTraits = noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: attributes))
-    return swiftUIFontTraits
+    var traits = noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: attributes))
+    if let platformFont = noteExplicitPlatformFont(from: attributes) {
+        let platformTraits = notePlatformFontTraits(from: platformFont)
+        traits.bold = traits.bold || platformTraits.bold
+        traits.italic = traits.italic || platformTraits.italic
+        traits.monospaced = traits.monospaced || platformTraits.monospaced
+    }
+    return traits
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func noteExplicitPlatformFont(from attributes: AttributeContainer) -> NotePlatformFont? {
+    #if os(iOS)
+    attributes[AttributeScopes.UIKitAttributes.FontAttribute.self]
+    #elseif os(macOS)
+    attributes[AttributeScopes.AppKitAttributes.FontAttribute.self]
+    #endif
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -176,13 +217,15 @@ func notePlatformFontTraits(from font: NotePlatformFont) -> NoteInlineFormatting
 #if os(iOS)
     return NoteInlineFormattingTraits(
         bold: font.fontDescriptor.symbolicTraits.contains(.traitBold),
-        italic: font.fontDescriptor.symbolicTraits.contains(.traitItalic)
+        italic: font.fontDescriptor.symbolicTraits.contains(.traitItalic),
+        monospaced: font.fontDescriptor.symbolicTraits.contains(.traitMonoSpace)
     )
 #else
     let traitMask = NSFontManager.shared.traits(of: font)
     return NoteInlineFormattingTraits(
         bold: font.fontDescriptor.symbolicTraits.contains(.bold) || traitMask.contains(.boldFontMask),
-        italic: font.fontDescriptor.symbolicTraits.contains(.italic) || traitMask.contains(.italicFontMask)
+        italic: font.fontDescriptor.symbolicTraits.contains(.italic) || traitMask.contains(.italicFontMask),
+        monospaced: font.fontDescriptor.symbolicTraits.contains(.monoSpace)
     )
 #endif
 }

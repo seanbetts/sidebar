@@ -178,6 +178,38 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         try assertMatchingFontTraits(readAttributed, editDocument, at: 5)
         XCTAssertFalse(try attributedNoteEditorContainerMountsSwiftUISurfaceDirectly())
     }
+
+    func testReadAndEditorSurfacesPreserveCodeBlockLiteralNewlinesAndMonospacedTypographyOnIOS() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Snippet", marks: [])]),
+                .init(type: .codeBlock, content: [.init(text: "let x = 1\nprint(x)", marks: [])])
+            ]
+        )
+        let baseFontSize = NoteTextTypography.defaultBodyFontSize
+
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        let editDocument = try constrainedEditorDocument(
+            document: document,
+            baseFontSize: baseFontSize
+        )
+
+        XCTAssertEqual(readAttributed.string, String(editDocument.characters))
+        XCTAssertEqual(readAttributed.string, "Snippet\nlet x = 1\nprint(x)")
+
+        let codeRange = singleCharacterRange(at: 8, in: editDocument)
+        XCTAssertTrue(noteRangeUsesMonospacedPlatformFont(editDocument, range: codeRange))
+
+        let readFont = try fontAttribute(in: readAttributed, at: 8)
+        XCTAssertTrue(notePlatformFontTraits(from: readFont).bold == false)
+        #if os(iOS)
+        XCTAssertTrue(readFont.fontDescriptor.symbolicTraits.contains(.traitMonoSpace))
+        #endif
+    }
 }
 
 private func assertMatchingFontTraits(

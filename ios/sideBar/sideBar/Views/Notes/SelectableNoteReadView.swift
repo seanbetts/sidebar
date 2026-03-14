@@ -96,7 +96,8 @@ struct SelectableNoteReadView: View {
                     baseFontSize: baseFontSize,
                     blockType: blockType,
                     bold: traits.bold,
-                    italic: traits.italic
+                    italic: traits.italic,
+                    inlineCode: traits.monospaced
                 ),
                 range: nsRange
             )

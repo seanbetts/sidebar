@@ -9,6 +9,7 @@ extension NativeNoteEditorViewModel {
         var italic: Bool = false
         var underline: Bool = false
         var strikethrough: Bool = false
+        var inlineCode: Bool = false
 
         static let plain = InlineFormattingState()
 
@@ -22,6 +23,8 @@ extension NativeNoteEditorViewModel {
                 return underline
             case .strikethrough:
                 return strikethrough
+            case .inlineCode:
+                return inlineCode
             }
         }
 
@@ -35,6 +38,8 @@ extension NativeNoteEditorViewModel {
                 underline = enabled
             case .strikethrough:
                 strikethrough = enabled
+            case .inlineCode:
+                inlineCode = enabled
             }
         }
     }
