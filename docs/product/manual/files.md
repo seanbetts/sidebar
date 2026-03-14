@@ -52,7 +52,7 @@ Tap any ready file to open it in the built-in viewer:
 
 - **PDFs**: full-page viewer with page navigation and pinch-to-zoom
 - **Spreadsheets**: scrollable grid view with column headers
-- **YouTube videos**: in-app player alongside the extracted transcript
+- **YouTube videos**: in-app player alongside the extracted plain-text transcript
 - **Images**: full-screen display
 - **Text and Markdown**: rendered preview
 

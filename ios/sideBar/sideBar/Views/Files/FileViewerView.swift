@@ -14,6 +14,12 @@ import QuickLook
 #endif
 
 public struct FileViewerView: View {
+    enum VideoTranscriptPresentation: Equatable {
+        case plainText
+    }
+
+    static let videoTranscriptPresentation: VideoTranscriptPresentation = .plainText
+
     public let state: FileViewerState
     public let pdfController: PDFViewerController?
     @Environment(\.openURL) private var openURL
@@ -147,7 +153,7 @@ public struct FileViewerView: View {
                     ScrollView {
                         VStack(spacing: DesignTokens.Spacing.lg) {
                             VideoPlayerContainer(url: url)
-                            SideBarMarkdownContainer(text: transcript)
+                            videoTranscriptView(text: transcript)
                         }
                         .frame(maxWidth: .infinity, alignment: .top)
                     }
@@ -168,6 +174,20 @@ public struct FileViewerView: View {
             in: .whitespacesAndNewlines
         )
         return transcript.isEmpty ? nil : transcript
+    }
+
+    @ViewBuilder
+    private func videoTranscriptView(text: String) -> some View {
+        switch Self.videoTranscriptPresentation {
+        case .plainText:
+            Text(text)
+                .appFont(.body)
+                .textSelection(.enabled)
+                .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth, alignment: .leading)
+                .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+                .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
+                .frame(maxWidth: .infinity, alignment: .top)
+        }
     }
 
     @ViewBuilder

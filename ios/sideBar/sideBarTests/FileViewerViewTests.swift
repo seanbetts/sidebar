@@ -76,6 +76,13 @@ final class FileViewerViewTests: XCTestCase {
         XCTAssertNil(FileViewerView.videoTranscript(for: markdownState))
     }
 
+    func testVideoTranscriptUsesPlainTextPresentation() {
+        XCTAssertEqual(
+            FileViewerView.videoTranscriptPresentation,
+            .plainText
+        )
+    }
+
     func testVideoPlayHintVisibleBeforePlaybackStarts() {
         XCTAssertTrue(
             VideoPlayerState.shouldShowPlayHint(

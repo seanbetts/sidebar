@@ -6,7 +6,7 @@ import XCTest
 @testable import sideBar
 
 @MainActor
-    @available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, macOS 26.0, *)
 final class FileViewerMountedMacOSTests: XCTestCase {
     func testMountedNativeVideoPlayerCanOpenRepeatedlyWithoutCrashing() {
         for _ in 0..<notesLifetimeSmokeIterations {
