@@ -9,7 +9,7 @@ struct RenameItemSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        let content = NavigationStack {
             Form {
                 TextField(placeholder, text: $text)
                     .submitLabel(.done)
@@ -33,6 +33,13 @@ struct RenameItemSheet: View {
                 }
             }
         }
+        #if os(macOS)
+        MacModalShell(type: renameItemMacPanelType()) {
+            content
+        }
+        #else
+        content
+        #endif
     }
 
     private func confirm() {

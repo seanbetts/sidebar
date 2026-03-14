@@ -21,7 +21,7 @@ struct RenameTaskSheet: View {
     @FocusState private var isTitleFocused: Bool
 
     var body: some View {
-        NavigationStack {
+        let content = NavigationStack {
             Form {
                 Section("Task name") {
                     TextField("Task title", text: $title, axis: .vertical)
@@ -51,6 +51,13 @@ struct RenameTaskSheet: View {
                 isTitleFocused = true
             }
         }
+        #if os(macOS)
+        MacModalShell(type: .compactSheet) {
+            content
+        }
+        #else
+        content
+        #endif
     }
 
     private func handleSave() {
@@ -82,7 +89,7 @@ struct NewTaskSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        let content = NavigationStack {
             Form {
                 Section("Task") {
                     TextField("Task title", text: $title)
@@ -206,12 +213,13 @@ struct NewTaskSheet: View {
             }
         }
         #if os(macOS)
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .background(DesignTokens.Colors.background)
-        .presentationBackground(DesignTokens.Colors.background)
-        .presentationSizing(.fitted)
-        .frame(minWidth: 500, idealWidth: 560, maxWidth: 640, minHeight: 500)
+        MacModalShell(type: .editorSheet) {
+            content
+        }
+        .frame(minHeight: 500)
+        #endif
+        #if !os(macOS)
+        content
         #endif
     }
 
@@ -239,7 +247,7 @@ struct NewGroupSheet: View {
     @FocusState private var isTitleFocused: Bool
 
     var body: some View {
-        NavigationStack {
+        let content = NavigationStack {
             Form {
                 Section("Group") {
                     TextField("Group name", text: $title)
@@ -275,6 +283,13 @@ struct NewGroupSheet: View {
                 isTitleFocused = true
             }
         }
+        #if os(macOS)
+        MacModalShell(type: .compactSheet) {
+            content
+        }
+        #else
+        content
+        #endif
     }
 
     private func handleSave() {
@@ -306,7 +321,7 @@ struct NewProjectSheet: View {
     @FocusState private var isTitleFocused: Bool
 
     var body: some View {
-        NavigationStack {
+        let content = NavigationStack {
             Form {
                 Section("Project") {
                     TextField("Project name", text: $title)
@@ -352,6 +367,13 @@ struct NewProjectSheet: View {
                 isTitleFocused = true
             }
         }
+        #if os(macOS)
+        MacModalShell(type: .compactSheet) {
+            content
+        }
+        #else
+        content
+        #endif
     }
 
     private var groupsSorted: [TaskGroup] {

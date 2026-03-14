@@ -10,7 +10,7 @@ struct DueDateSheet: View {
     @State private var selectedDate: Date = Date()
 
     var body: some View {
-        NavigationStack {
+        let content = NavigationStack {
             Form {
                 Section("Due date") {
                     HStack {
@@ -45,6 +45,13 @@ struct DueDateSheet: View {
             }
             .onAppear { selectedDate = dueDate }
         }
+        #if os(macOS)
+        MacModalShell(type: .compactSheet) {
+            content
+        }
+        #else
+        content
+        #endif
     }
 }
 
@@ -57,8 +64,66 @@ struct MoveTaskSheet: View {
     let onDismiss: () -> Void
 
     @State private var selectedId: String = ""
+    @State private var searchQuery: String = ""
 
     var body: some View {
+        #if os(macOS)
+        MacModalShell(type: .chooserSheet) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                    Text("Move task")
+                        .appFont(.title3Semibold)
+                        .foregroundStyle(DesignTokens.Colors.textPrimary)
+                    Text("Choose where \(task.title) should live.")
+                        .appFont(.caption)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                        .lineLimit(2)
+                }
+
+                if showsSearch {
+                    SearchField(
+                        text: $searchQuery,
+                        placeholder: "Search destinations"
+                    )
+                }
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                        ForEach(filteredSections) { section in
+                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                                Text(section.title)
+                                    .appFont(.captionSemibold)
+                                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+                                VStack(spacing: DesignTokens.Spacing.xxs) {
+                                    ForEach(section.destinations) { destination in
+                                        moveDestinationRow(destination)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    Spacer()
+                    Button("Cancel") {
+                        onDismiss()
+                    }
+                    .keyboardShortcut(.cancelAction)
+
+                    Button("Move") {
+                        let value = selectedId.isEmpty ? nil : selectedId
+                        onSave(value)
+                        onDismiss()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+            .padding(DesignTokens.Spacing.lg)
+            .frame(minHeight: 360, idealHeight: 420)
+            .onAppear { selectedId = selectedListId }
+        }
+        #else
         NavigationStack {
             Form {
                 Section("Move to") {
@@ -87,10 +152,64 @@ struct MoveTaskSheet: View {
             }
             .onAppear { selectedId = selectedListId }
         }
+        #endif
     }
 
     private var listOptions: [TaskListOption] {
         buildListOptions(groups: groups, projects: projects)
+    }
+
+    private var moveSections: [MoveTaskSection] {
+        buildMoveTaskSections(groups: groups, projects: projects)
+    }
+
+    private var filteredSections: [MoveTaskSection] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return moveSections }
+
+        return moveSections.compactMap { section in
+            let destinations = section.destinations.filter {
+                $0.label.localizedCaseInsensitiveContains(query)
+            }
+            guard !destinations.isEmpty else { return nil }
+            return MoveTaskSection(id: section.id, title: section.title, destinations: destinations)
+        }
+    }
+
+    private var showsSearch: Bool {
+        moveSections.reduce(into: 0) { partialResult, section in
+            partialResult += section.destinations.count
+        } > 8
+    }
+
+    @ViewBuilder
+    private func moveDestinationRow(_ destination: MoveTaskDestination) -> some View {
+        Button {
+            selectedId = destination.id
+        } label: {
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                Text(destination.label)
+                    .appFont(.body)
+                    .foregroundStyle(DesignTokens.Colors.textPrimary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if selectedId == destination.id {
+                    Image(systemName: "checkmark")
+                        .appFont(.captionSemibold)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                }
+            }
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                    .fill(selectedId == destination.id ? DesignTokens.Colors.muted : DesignTokens.Colors.surface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                    .stroke(DesignTokens.Colors.border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -107,7 +226,7 @@ struct RepeatTaskSheet: View {
     @State private var startDateValue: Date = Date()
 
     var body: some View {
-        NavigationStack {
+        let content = NavigationStack {
             Form {
                 Section("Repeat") {
                     Picker("Repeat", selection: $selectedType) {
@@ -161,6 +280,13 @@ struct RepeatTaskSheet: View {
                 startDateValue = startDate
             }
         }
+        #if os(macOS)
+        MacModalShell(type: .compactSheet) {
+            content
+        }
+        #else
+        content
+        #endif
     }
 
     private func weekdayLabel(for date: Date) -> String {

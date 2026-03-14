@@ -25,7 +25,7 @@ struct NotesSheet: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        NavigationStack {
+        let content = NavigationStack {
             ZStack(alignment: .topLeading) {
                 if value.isEmpty {
                     Text("Notes")
@@ -73,6 +73,13 @@ struct NotesSheet: View {
                 submitAutosaveIfNeeded()
             }
         }
+        #if os(macOS)
+        MacModalShell(type: taskNotesMacPanelType()) {
+            content
+        }
+        #else
+        content
+        #endif
     }
 
     private func handleSave() {

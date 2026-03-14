@@ -42,8 +42,80 @@ struct NoteFolderPickerSheet: View {
     let options: [FolderOption]
     let onConfirm: (String) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var searchQuery: String = ""
 
     var body: some View {
+        #if os(macOS)
+        MacModalShell(type: .chooserSheet) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                    Text(title)
+                        .appFont(.title3Semibold)
+                        .foregroundStyle(DesignTokens.Colors.textPrimary)
+                    Text("Choose the folder that should contain this note.")
+                        .appFont(.caption)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                }
+
+                if options.count > 8 {
+                    SearchField(text: $searchQuery, placeholder: "Search folders")
+                }
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                        ForEach(filteredOptions) { option in
+                            Button {
+                                selection = option.value
+                            } label: {
+                                HStack(spacing: DesignTokens.Spacing.sm) {
+                                    Text(optionLabel(option))
+                                        .appFont(.body)
+                                        .foregroundStyle(DesignTokens.Colors.textPrimary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    if selection == option.value {
+                                        Image(systemName: "checkmark")
+                                            .appFont(.captionSemibold)
+                                            .foregroundStyle(DesignTokens.Colors.textSecondary)
+                                    }
+                                }
+                                .padding(.horizontal, DesignTokens.Spacing.sm)
+                                .padding(.vertical, DesignTokens.Spacing.xs)
+                                .background(
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                                        .fill(
+                                            selection == option.value
+                                                ? DesignTokens.Colors.muted
+                                                : DesignTokens.Colors.surface
+                                        )
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                                        .stroke(DesignTokens.Colors.border, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    Spacer()
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .keyboardShortcut(.cancelAction)
+                    Button("Move") {
+                        onConfirm(selection)
+                        dismiss()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(options.isEmpty)
+                }
+            }
+            .padding(DesignTokens.Spacing.lg)
+            .frame(minHeight: 360, idealHeight: 420)
+        }
+        #else
         NavigationStack {
             List(options) { option in
                 Button {
@@ -75,10 +147,19 @@ struct NoteFolderPickerSheet: View {
                 }
             }
         }
+        #endif
     }
 
     private func optionLabel(_ option: FolderOption) -> String {
         let indent = String(repeating: "  ", count: max(0, option.depth))
         return indent + option.label
+    }
+
+    private var filteredOptions: [FolderOption] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return options }
+        return options.filter { option in
+            option.label.localizedCaseInsensitiveContains(query)
+        }
     }
 }
