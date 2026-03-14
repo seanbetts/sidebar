@@ -7,13 +7,13 @@
     name: 'About sideBar',
     url: 'https://trysidebar.ai/about',
     description:
-      'sideBar is an AI assistant for iPhone, iPad, Mac, and web. It knows your notes, tasks, websites, and files, and brings that context into every conversation.'
+      'sideBar is an AI assistant for iPhone, iPad, Mac, and web, built around the belief that the assistant should be the foundation of the product, not a feature bolted onto the edge of it.'
   };
 </script>
 
 <Seo
   title="About"
-  description="sideBar is an AI assistant for iPhone, iPad, Mac, and web. It knows your notes, tasks, websites, and files, and brings that context into every conversation."
+  description="sideBar is an AI assistant for iPhone, iPad, Mac, and web, built around the belief that the assistant should be the foundation of the product, not a feature bolted onto the edge of it."
   url="https://trysidebar.ai/about"
   {jsonLd}
 />
@@ -24,9 +24,9 @@
     <header class="page-header">
       <h1>About sideBar</h1>
       <p class="lead">
-        An AI assistant for iPhone, iPad, Mac, and web that actually knows you.
-        Your notes, tasks, saved websites, and files in one place, with an AI that
-        can read all of it.
+        An AI assistant for iPhone, iPad, Mac, and web, built around the belief
+        that the assistant should be the foundation of the product, not a feature
+        bolted onto the edge of it.
       </p>
     </header>
   </div>
@@ -42,22 +42,52 @@
   </div>
 
   <div class="page-inner">
-    <!-- Story -->
+    <!-- Founder story -->
     <section class="story" aria-labelledby="story-heading">
-      <h2 id="story-heading">What makes it different</h2>
+      <h2 id="story-heading">Why I built it</h2>
       <p>
-        Most AI assistants start fresh with every conversation and know nothing about
-        you. sideBar is different: it builds a persistent picture of you from your
-        notes, tasks, saved websites, files, and memories, and brings that context
-        into every conversation automatically. When you ask sideBar a question, it
-        can pull from your notes, check your tasks, or browse the web on your behalf,
-        without you having to switch between apps or copy things around.
+        I got tired of copying things in and out of ChatGPT and Claude. Attaching
+        files. Explaining the same context again and again. Jumping between notes
+        apps, task managers, read-it-later tools, and AI chat windows, trying to
+        stitch everything together into something that actually felt useful.
       </p>
       <p>
-        sideBar also has its own identity and soul: a name, a tone of voice, a set of
-        values, and a sense of purpose that evolve as it learns more about how you
-        work. It is not a generic chat interface. It is an assistant that adapts to
-        you over time.
+        The models kept improving. The product experience around them often still
+        felt wrong.
+      </p>
+      <p>
+        The thing that made it click was Claude Code. You spin it up inside a folder
+        and it can immediately work with the files around it. That sounds simple, but
+        it changes the feeling completely: the AI starts in the right environment and
+        can do something useful with what is already there. I kept thinking: why
+        doesn't personal AI work more like this?
+      </p>
+      <p>
+        So I started building sideBar. I began with a read-it-later service, because
+        that was what I reached for most. Then I added notes, then tasks. Over time,
+        I found I was no longer opening the separate apps I had used for those
+        things. That was the moment it stopped feeling like a side project.
+      </p>
+    </section>
+
+    <!-- What makes it different -->
+    <section class="story" aria-labelledby="different-heading">
+      <h2 id="different-heading">What makes it different</h2>
+      <p>
+        Most AI assistants sit inside a blank chat interface and know nothing about
+        you until you tell them. sideBar is different because it was built the other
+        way around: your content lives alongside your assistant, so it has real
+        context to work with from the start.
+      </p>
+      <p>
+        sideBar also knows what it can do and how it works, which sounds obvious but
+        is rarer than it should be. It can guide you through its own capabilities,
+        rather than leaving you to figure it out.
+      </p>
+      <p>
+        And it has its own identity: a name, a tone of voice, a set of values. Not a
+        generic AI shell. An assistant that is designed to feel like it is on your
+        side.
       </p>
     </section>
 
@@ -66,9 +96,8 @@
       <h2 id="how-heading">How it works</h2>
       <p>
         sideBar works with Anthropic, OpenAI, and Google. You bring your own API key
-        and pay those providers directly for the AI usage you generate. There is no
-        subscription fee for sideBar itself, and you are never locked into a single
-        model or company.
+        and pay those providers directly for the AI usage you generate. You are never
+        locked into a single model or company.
       </p>
       <p>
         The <a href="https://docs.trysidebar.ai/manual/skills-store">Skills Store</a>
