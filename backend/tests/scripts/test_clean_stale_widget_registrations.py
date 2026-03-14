@@ -26,11 +26,18 @@ def _load_fixture_text():
 
 def _stub_pluginkit_run(monkeypatch, helper, stdout, *, allow_removal=True):
     calls = []
+    listing_outputs = stdout if isinstance(stdout, list) else [stdout]
+    listing_call_count = 0
 
     def fake_run(cmd, *args, **kwargs):
+        nonlocal listing_call_count
         calls.append(cmd)
         if cmd[:5] == ["pluginkit", "-m", "-A", "-D", "-v"]:
-            return subprocess.CompletedProcess(cmd, 0, stdout=stdout)
+            response_index = min(listing_call_count, len(listing_outputs) - 1)
+            listing_call_count += 1
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout=listing_outputs[response_index]
+            )
         if cmd[:2] == ["pluginkit", "-r"]:
             if not allow_removal:
                 raise AssertionError(f"Removal should not run during this test: {cmd}")
@@ -155,16 +162,31 @@ def test_cli_dry_run_reports_summary_and_skips_removal(monkeypatch, capsys):
     )
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "before cleanup" in captured.out.lower()
+    assert "Registration summary before cleanup" in captured.out
     assert "Dry run" in captured.out
     assert "Registration summary after cleanup" in captured.out
+    assert "pluginkit -r" in captured.out
     assert not any(cmd[:2] == ["pluginkit", "-r"] for cmd in calls)
 
 
 def test_cli_removes_stale_debug_registrations(monkeypatch):
     helper = _load_helper_module()
     fixture_text = _load_fixture_text()
-    calls = _stub_pluginkit_run(monkeypatch, helper, fixture_text)
+    removed_uuids = {
+        "F437C11D-2B23-4352-A1E9-583D840B315C",
+        "6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3",
+        "1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6",
+    }
+    post_cleanup_listing = "\n".join(
+        line
+        for line in fixture_text.splitlines()
+        if not any(uuid in line for uuid in removed_uuids)
+    )
+    calls = _stub_pluginkit_run(
+        monkeypatch,
+        helper,
+        [fixture_text, post_cleanup_listing],
+    )
     exit_code = helper.run_cleaner(
         [
             "--workspace-root",
@@ -223,3 +245,66 @@ def test_cli_fails_when_conflicting_stale_registrations_remain(monkeypatch, caps
     assert exit_code == 1
     assert "/private/tmp/conflict" in captured.out
     assert not any(cmd[:2] == ["pluginkit", "-r"] for cmd in calls)
+
+
+def test_cli_listing_failure_is_nonfatal(monkeypatch, capsys):
+    helper = _load_helper_module()
+
+    def _raise_listing_error():
+        raise subprocess.CalledProcessError(
+            2,
+            ["pluginkit", "-m", "-A", "-D", "-v"],
+            stderr="Connection invalid",
+        )
+
+    monkeypatch.setattr(helper, "_list_widget_registrations", _raise_listing_error)
+    exit_code = helper.run_cleaner(
+        [
+            "--workspace-root",
+            "/Users/sean/Coding/sideBar",
+            "--bundle-id",
+            "ai.sidebar.sidebar.sideBarWidgets",
+            "--dry-run",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "pluginkit failed to list widget registrations" in captured.out
+    assert "Connection invalid" in captured.out
+
+
+def test_cli_fails_when_stale_debug_remains_after_attempted_cleanup(monkeypatch, capsys):
+    helper = _load_helper_module()
+    fixture_text = _load_fixture_text()
+    post_cleanup_conflict = (
+        "     ai.sidebar.sidebar.sideBarWidgets(0.1)\t693D8320-0F9F-421A-A86B-FF4B669DAB69\t2026-03-14 17:23:48 +0000\t"
+        "/Users/sean/Coding/sideBar/DerivedData/sideBar-gnsqvopaikzkhgcrhxxpjnkkoblk/Build/Products/Debug/sideBar.app/Contents/PlugIns/sideBarWidgetsExtension.appex\n"
+        "     ai.sidebar.sidebar.sideBarWidgets(0.1)\tBADBAD00-1111-2222-3333-444444444444\t2026-03-14 17:18:00 +0000\t"
+        "/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex\n"
+    )
+    calls = _stub_pluginkit_run(
+        monkeypatch,
+        helper,
+        [fixture_text, post_cleanup_conflict],
+    )
+    exit_code = helper.run_cleaner(
+        [
+            "--workspace-root",
+            "/Users/sean/Coding/sideBar",
+            "--bundle-id",
+            "ai.sidebar.sidebar.sideBarWidgets",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "after attempted cleanup" in captured.out.lower()
+    assert (
+        "/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex"
+        in captured.out
+    )
+    removal_cmds = [cmd for cmd in calls if cmd[:2] == ["pluginkit", "-r"]]
+    assert removal_cmds == [
+        ["pluginkit", "-r", "F437C11D-2B23-4352-A1E9-583D840B315C"],
+        ["pluginkit", "-r", "6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3"],
+        ["pluginkit", "-r", "1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6"],
+    ]

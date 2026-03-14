@@ -257,6 +257,12 @@ def _record_matches_bundle_id(record: WidgetRegistration, bundle_id: str) -> boo
     return identifier_base == bundle_id
 
 
+def _filter_records_for_bundle(
+    records: Iterable[WidgetRegistration], bundle_id: str
+) -> List[WidgetRegistration]:
+    return [record for record in records if _record_matches_bundle_id(record, bundle_id)]
+
+
 def _has_workspace_registration_for_bundle(
     classification: ClassificationResult, bundle_id: str
 ) -> bool:
@@ -264,6 +270,15 @@ def _has_workspace_registration_for_bundle(
         _record_matches_bundle_id(record, bundle_id)
         for record in classification.current_workspace
     )
+
+
+def _load_bundle_classification(
+    workspace_root: Path, bundle_id: str
+) -> ClassificationResult:
+    lines = _list_widget_registrations()
+    records = parse_pluginkit_output(lines)
+    bundle_records = _filter_records_for_bundle(records, bundle_id)
+    return classify_registrations(bundle_records, current_workspace=workspace_root)
 
 
 def run_cleaner(argv: Optional[List[str]] = None) -> int:
@@ -291,16 +306,15 @@ def run_cleaner(argv: Optional[List[str]] = None) -> int:
     workspace_root = args.workspace_root
     bundle_id = args.bundle_id
     try:
-        lines = _list_widget_registrations()
+        classification = _load_bundle_classification(workspace_root, bundle_id)
     except subprocess.CalledProcessError as exc:
         stderr_output = exc.stderr.strip() if exc.stderr else "pluginkit command failed"
         print(
-            f"pluginkit failed to list widget registrations "
-            f"(exit {exc.returncode}): {stderr_output}"
+            "Unable to determine current widget registrations, "
+            "treating this as unresolved conflicting state."
         )
-        return exc.returncode or 1
-    records = parse_pluginkit_output(lines)
-    classification = classify_registrations(records, current_workspace=workspace_root)
+        print(f"  pluginkit exit {exc.returncode}: {stderr_output}")
+        return 1
 
     _print_summary("Registration summary before cleanup", classification)
 
@@ -330,18 +344,37 @@ def run_cleaner(argv: Optional[List[str]] = None) -> int:
             if args.dry_run:
                 print(f"  pluginkit -r {record.uuid} ({record.path})")
             else:
-                _remove_widget_registration(record.uuid)
-                print(f"  Removed {record.path}")
+                try:
+                    _remove_widget_registration(record.uuid)
+                    print(f"  Removed {record.path}")
+                except subprocess.CalledProcessError as exc:
+                    stderr_output = exc.stderr.strip() if exc.stderr else "pluginkit command failed"
+                    print(
+                        f"  Failed to remove {record.path}, "
+                        "treating this as unresolved conflicting state."
+                    )
+                    print(f"    pluginkit exit {exc.returncode}: {stderr_output}")
     else:
         print("No stale debug registrations detected.")
 
-    after_summary = ClassificationResult(
-        current_workspace=classification.current_workspace,
-        installed_app=classification.installed_app,
-        stale_debug=[],
-        unknown_non_debug=classification.unknown_non_debug,
-    )
+    try:
+        after_summary = _load_bundle_classification(workspace_root, bundle_id)
+    except subprocess.CalledProcessError as exc:
+        stderr_output = exc.stderr.strip() if exc.stderr else "pluginkit command failed"
+        print(
+            "Unable to verify registrations after cleanup attempt, "
+            "treating this as unresolved conflicting state."
+        )
+        print(f"  pluginkit exit {exc.returncode}: {stderr_output}")
+        return 1
     _print_summary("Registration summary after cleanup", after_summary)
+
+    if not args.dry_run and after_summary.stale_debug:
+        print("Conflicting stale debug registrations remain after attempted cleanup:")
+        for record in after_summary.stale_debug:
+            print(f"  - {record.path} ({record.identifier})")
+        return 1
+
     return 0
 
 
