@@ -67,10 +67,8 @@ public struct ScratchpadPopoverView: View {
                     }
                 }
             }
-            .frame(idealWidth: 450)
-            .padding(.horizontal, DesignTokens.Spacing.md)
-            .padding(.top, DesignTokens.Spacing.md)
-            .padding(.bottom, DesignTokens.Spacing.xl)
+            .frame(minHeight: 280)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .onChange(of: draft) { _, _ in
             guard hasLoaded, !isUpdatingContent else { return }

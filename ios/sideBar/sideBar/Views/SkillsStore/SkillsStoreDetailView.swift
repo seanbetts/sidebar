@@ -433,56 +433,58 @@ public struct SkillsStoreView: View {
 
 private extension SkillsStoreView {
     func storeInstallSheet(_ prompt: StoreInstallPrompt) -> some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Text(viewModel.displayDescription(for: prompt.skill))
-                        .appFont(.caption)
-                        .foregroundStyle(.secondary)
-                } header: {
-                    Text(viewModel.displayName(for: prompt.skill))
-                }
-
-                Section("Required Provider Keys") {
-                    ForEach(prompt.missingProviders, id: \.self) { provider in
-                        SecureField(
-                            "\(SkillsStoreLogic.providerDisplayName(provider)) API key",
-                            text: providerKeyBinding(for: provider)
-                        )
-                        #if os(iOS)
-                        .textInputAutocapitalization(.never)
-                        .disableAutocorrection(true)
-                        #endif
-                    }
-                    if let storeInstallPromptError, !storeInstallPromptError.isEmpty {
-                        Text(storeInstallPromptError)
+        MacModalShell(type: storeInstallPromptPanelType()) {
+            NavigationStack {
+                Form {
+                    Section {
+                        Text(viewModel.displayDescription(for: prompt.skill))
                             .appFont(.caption)
-                            .foregroundStyle(DesignTokens.Colors.error)
+                            .foregroundStyle(.secondary)
+                    } header: {
+                        Text(viewModel.displayName(for: prompt.skill))
                     }
-                }
 
-                Section {
-                    Button {
-                        Task {
-                            await submitStoreInstallPrompt(prompt)
+                    Section("Required Provider Keys") {
+                        ForEach(prompt.missingProviders, id: \.self) { provider in
+                            SecureField(
+                                "\(SkillsStoreLogic.providerDisplayName(provider)) API key",
+                                text: providerKeyBinding(for: provider)
+                            )
+                            #if os(iOS)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            #endif
                         }
-                    } label: {
-                        if isSubmittingStoreInstallPrompt {
-                            ProgressView()
-                        } else {
-                            Text("Install Skill")
+                        if let storeInstallPromptError, !storeInstallPromptError.isEmpty {
+                            Text(storeInstallPromptError)
+                                .appFont(.caption)
+                                .foregroundStyle(DesignTokens.Colors.error)
                         }
                     }
-                    .disabled(isSubmittingStoreInstallPrompt)
-                } footer: {
-                    Text("Keys are saved for future installs and reused automatically.")
+
+                    Section {
+                        Button {
+                            Task {
+                                await submitStoreInstallPrompt(prompt)
+                            }
+                        } label: {
+                            if isSubmittingStoreInstallPrompt {
+                                ProgressView()
+                            } else {
+                                Text("Install Skill")
+                            }
+                        }
+                        .disabled(isSubmittingStoreInstallPrompt)
+                    } footer: {
+                        Text("Keys are saved for future installs and reused automatically.")
+                    }
                 }
-            }
-            .navigationTitle("Install Skill")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        storeInstallPrompt = nil
+                .navigationTitle("Install Skill")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            storeInstallPrompt = nil
+                        }
                     }
                 }
             }

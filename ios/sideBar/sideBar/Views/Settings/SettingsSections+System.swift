@@ -62,8 +62,10 @@ struct UserSettingsView: View {
         .formStyle(.grouped)
         #endif
         .sheet(isPresented: $isPendingWritesPresented) {
-            NavigationStack {
-                PendingWritesView()
+            MacModalShell(type: pendingWritesPanelType()) {
+                NavigationStack {
+                    PendingWritesView()
+                }
             }
             .phoneSheetGrabBarVisible()
         }

@@ -65,3 +65,19 @@ func writeConflictPanelType() -> MacPanelType {
 func storeSkillDetailPanelType() -> MacPanelType {
     .largeInspectorSheet
 }
+
+func ingestionCenterPanelType() -> MacPanelType {
+    .compactPopover
+}
+
+func scratchpadPopoverPanelType() -> MacPanelType {
+    .editorSheet
+}
+
+func pendingWritesPanelType() -> MacPanelType {
+    .chooserSheet
+}
+
+func storeInstallPromptPanelType() -> MacPanelType {
+    .compactSheet
+}

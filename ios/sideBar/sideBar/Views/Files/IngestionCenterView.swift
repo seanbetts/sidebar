@@ -55,8 +55,7 @@ struct IngestionCenterView: View {
                 }
             }
         }
-        .padding(DesignTokens.Spacing.md)
-        .frame(minWidth: 320, maxWidth: 420, maxHeight: 540, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: 540, alignment: .topLeading)
     }
 
     private var emptyState: some View {

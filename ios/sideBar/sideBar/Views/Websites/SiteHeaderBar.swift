@@ -115,7 +115,9 @@ public struct SiteHeaderBar: View {
                 .accessibilityLabel("Show uploads")
                 #if os(macOS)
                 .popover(isPresented: $isIngestionCenterPresented, arrowEdge: .top) {
-                    IngestionCenterView(viewModel: environment.ingestionViewModel)
+                    MacPopoverShell(type: ingestionCenterPanelType()) {
+                        IngestionCenterView(viewModel: environment.ingestionViewModel)
+                    }
                 }
                 #else
                 .sheet(isPresented: $isIngestionCenterPresented) {
@@ -216,12 +218,13 @@ public struct SiteHeaderBar: View {
                         .stroke(buttonBorder, lineWidth: 1)
                 )
                 .popover(isPresented: $isScratchpadPresented) {
-                    ScratchpadPopoverView(
-                        api: environment.container.scratchpadAPI,
-                        cache: environment.container.cacheClient,
-                        scratchpadStore: environment.scratchpadStore
-                    )
-                    .frame(minWidth: 360, minHeight: 280)
+                    MacPopoverShell(type: scratchpadPopoverPanelType()) {
+                        ScratchpadPopoverView(
+                            api: environment.container.scratchpadAPI,
+                            cache: environment.container.cacheClient,
+                            scratchpadStore: environment.scratchpadStore
+                        )
+                    }
                 }
             }
         }

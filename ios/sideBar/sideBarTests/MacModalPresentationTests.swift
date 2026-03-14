@@ -30,4 +30,20 @@ final class MacModalPresentationTests: XCTestCase {
     func testRenameItemUsesCompactSheetPanelType() {
         XCTAssertEqual(renameItemMacPanelType(), .compactSheet)
     }
+
+    func testIngestionCenterUsesCompactPopoverPanelType() {
+        XCTAssertEqual(ingestionCenterPanelType(), .compactPopover)
+    }
+
+    func testScratchpadUsesEditorPanelType() {
+        XCTAssertEqual(scratchpadPopoverPanelType(), .editorSheet)
+    }
+
+    func testPendingWritesUsesChooserPanelType() {
+        XCTAssertEqual(pendingWritesPanelType(), .chooserSheet)
+    }
+
+    func testStoreInstallPromptUsesCompactSheetPanelType() {
+        XCTAssertEqual(storeInstallPromptPanelType(), .compactSheet)
+    }
 }
