@@ -42,6 +42,33 @@ PLATFORM_EXPECTATIONS_BY_TARGET = {
     },
 }
 
+RUNPATH_EXPECTATIONS_BY_TARGET = {
+    "ShareExtension": {
+        "LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]": (
+            "@executable_path/Frameworks "
+            "@executable_path/../../Frameworks "
+            "@executable_path/../../../../Frameworks"
+        ),
+    },
+    "sideBarWidgetsExtension": {
+        "LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]": (
+            "@executable_path/Frameworks "
+            "@executable_path/../../Frameworks "
+            "@executable_path/../../../../Frameworks"
+        ),
+    },
+    "sideBar Safari Extension (macOS)": {
+        "LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]": "@executable_path/../Frameworks",
+    },
+    "sideBar Safari Extension (macOS) Extension": {
+        "LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]": (
+            "@executable_path/Frameworks "
+            "@executable_path/../../Frameworks "
+            "@executable_path/../../../../Frameworks"
+        ),
+    },
+}
+
 SENTINEL_VALUES = {
     "API_BASE_URL": "https://config-resolution.example.invalid/api/v1",
     "SUPABASE_URL": "https://config-resolution.example.invalid",
@@ -396,6 +423,9 @@ def validate_extension_config_resolution(
         platform_expectations = PLATFORM_EXPECTATIONS_BY_TARGET.get(target)
         if platform_expectations:
             expected_keys.update(platform_expectations)
+        runpath_expectations = RUNPATH_EXPECTATIONS_BY_TARGET.get(target)
+        if runpath_expectations:
+            expected_keys.update(runpath_expectations)
         resolved_settings = {
             key: value
             for key in (set(settings) | expected_keys)
@@ -419,6 +449,14 @@ def validate_extension_config_resolution(
                     target=target,
                     settings=resolved_settings,
                     expectations=platform_expectations,
+                )
+            )
+        if runpath_expectations:
+            errors.extend(
+                evaluate_setting_expectations(
+                    target=target,
+                    settings=resolved_settings,
+                    expectations=runpath_expectations,
                 )
             )
         if target in DISALLOWED_FRAMEWORK_EMBED_TARGETS:
