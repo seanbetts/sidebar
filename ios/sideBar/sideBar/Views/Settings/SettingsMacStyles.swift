@@ -213,6 +213,30 @@ struct SettingsMacActionSection<Content: View>: View {
     }
 }
 
+struct SettingsMacPanelCard<Content: View>: View {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            content
+        }
+        .padding(DesignTokens.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
+                .fill(DesignTokens.Colors.settingsFormBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
+                .stroke(DesignTokens.Colors.border.opacity(0.45), lineWidth: 1)
+        )
+    }
+}
+
 struct SettingsMacSkillRow<Trailing: View>: View {
     let title: String
     let subtitle: String

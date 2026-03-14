@@ -5,17 +5,7 @@ struct MemoriesSettingsView: View {
     @ObservedObject var viewModel: MemoriesViewModel
 
     var body: some View {
-        #if os(macOS)
-        Form {
-            Section("Memories") {
-                Text("Manage and view memories in the main workspace.")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)
-        #else
         MemoriesSettingsDetailView(viewModel: viewModel)
-        #endif
     }
 }
 

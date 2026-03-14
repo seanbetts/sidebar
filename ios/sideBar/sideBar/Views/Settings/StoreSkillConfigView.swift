@@ -30,6 +30,9 @@ struct StoreSkillConfigView: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        macInspectorBody
+        #else
         ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 headerCard
@@ -68,7 +71,138 @@ struct StoreSkillConfigView: View {
             .padding(DesignTokens.Spacing.md)
         }
         .background(DesignTokens.Colors.background)
+        #endif
     }
+
+    #if os(macOS)
+    private var macInspectorBody: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                SettingsMacPanelCard {
+                    SettingsMacSectionIntro(
+                        title: viewModel.displayName(for: skill),
+                        message: viewModel.displayDescription(for: skill)
+                    )
+
+                    if let installError, !installError.isEmpty {
+                        SettingsMacStatusBanner(message: installError, tone: .error)
+                    }
+
+                    SettingsMacActionSection(
+                        title: "Availability",
+                        message: "Install the skill here or review its current availability in your workspace."
+                    ) {
+                        HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+                            SkillAppIcon(systemName: SkillIconResolver.iconName(for: skill))
+                            Spacer()
+                            if hasStoreInstallAction {
+                                installActionButton
+                            }
+                        }
+                    }
+                }
+
+                macInfoCard(
+                    title: "About",
+                    message: "What this skill does and when it is useful."
+                ) {
+                    Text(skill.longDescription ?? viewModel.displayDescription(for: skill))
+                        .appFont(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if showsRequirementsSection {
+                    macRequirementsCard
+                }
+
+                macInfoCard(
+                    title: "How It Works",
+                    message: "A quick summary of how the workflow operates when you run it."
+                ) {
+                    Text(skill.howItWorks ?? defaultHowItWorksText)
+                        .appFont(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                macInfoCard(
+                    title: "Details",
+                    message: "Version and update information for this store skill."
+                ) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let version = skill.version, !version.isEmpty {
+                            detailRow(title: "Version", value: version)
+                        }
+                        if let updated = formattedUpdatedAt {
+                            detailRow(title: "Updated", value: updated)
+                        }
+                        if detailRowsAreEmpty {
+                            Text("No version details available.")
+                                .appFont(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .padding(DesignTokens.Spacing.lg)
+        }
+        .background(DesignTokens.Colors.settingsBackground)
+    }
+
+    @ViewBuilder
+    private var macRequirementsCard: some View {
+        macInfoCard(
+            title: "Requirements",
+            message: "Dependencies and credentials this skill needs before it can run."
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                if !userRequirementLines.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(Array(userRequirementLines.enumerated()), id: \.offset) { _, line in
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Image(systemName: "checkmark.circle")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text(line)
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                }
+
+                if hasCredentialRequirements {
+                    if !userRequirementLines.isEmpty {
+                        Divider()
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("API Credentials")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                        StoreSkillCredentialsView(
+                            viewModel: viewModel,
+                            skill: skill,
+                            showHeader: false,
+                            showEmptyState: false
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func macInfoCard<Content: View>(
+        title: String,
+        message: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        SettingsMacPanelCard {
+            SettingsMacSectionIntro(title: title, message: message)
+            content()
+        }
+    }
+    #endif
 
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {

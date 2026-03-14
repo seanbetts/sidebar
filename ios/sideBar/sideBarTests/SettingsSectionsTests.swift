@@ -151,6 +151,32 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
         XCTAssertTrue(normalized.contains("SettingsMacSkillRow("))
     }
+
+    func testMemoriesSettingsMacRoutingUsesInspectorDetailInsteadOfPlaceholderForm() throws {
+        let normalized = try memoriesSettingsRoutingSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("MemoriesSettingsDetailView(viewModel:viewModel)"))
+        XCTAssertFalse(normalized.contains("Form{Section(\"Memories\")"))
+    }
+
+    func testMemoriesSettingsMacSourceUsesInspectorShellInsteadOfPlaceholderForm() throws {
+        let normalized = try memoriesSettingsDetailSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
+        XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
+        XCTAssertTrue(normalized.contains("SettingsMacSkillRow("))
+    }
+
+    func testStoreSkillConfigUsesInspectorCardsAndStatusBanners() throws {
+        let normalized = try storeSkillConfigSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
+        XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
+        XCTAssertTrue(normalized.contains("SettingsMacActionSection("))
+    }
 }
 
 private func settingsSourceRoot(
@@ -183,6 +209,27 @@ private func skillsSettingsSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("SettingsSections+Additional.swift", file: file, line: line)
+}
+
+private func memoriesSettingsRoutingSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsSections+Utilities.swift", file: file, line: line)
+}
+
+private func memoriesSettingsDetailSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("MemoriesSettingsView.swift", file: file, line: line)
+}
+
+private func storeSkillConfigSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("StoreSkillConfigView.swift", file: file, line: line)
 }
 
 private func settingsSourceFile(
