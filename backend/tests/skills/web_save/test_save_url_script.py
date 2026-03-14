@@ -217,6 +217,83 @@ def test_save_url_database_logs_jina_fallback_events(monkeypatch):
     assert any("clean_trunc_markers" in message for message in result_messages)
 
 
+def test_save_url_database_initializes_script_sentry(monkeypatch):
+    module = _load_save_url_module()
+    _stub_db_dependencies(module)
+    initialized: list[str] = []
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "jina")
+    module.initialize_script_sentry = lambda script_name: initialized.append(script_name)
+    module.resolve_apple_news_source_url = lambda url: url
+    module.get_markdown_content = lambda _url, _api_key: (
+        "Title: Story\n"
+        "URL Source: https://example.com/story\n"
+        "Markdown Content:\n"
+        "Body paragraph.\n"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Story",
+            "url_source": "https://example.com/story",
+            "published_time": None,
+        },
+        "Body paragraph.\n",
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    module.save_url_database("https://example.com/story", "user-1")
+
+    assert initialized == ["web-save.save_url"]
+
+
+def test_save_url_database_reports_local_parse_failure_to_sentry(monkeypatch):
+    module = _load_save_url_module()
+    _stub_db_dependencies(module)
+    captured: list[tuple[BaseException, dict | None]] = []
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.initialize_script_sentry = lambda _script_name: None
+    module.capture_script_exception = (
+        lambda exc, *, extras=None: captured.append((exc, extras))
+    )
+    module.resolve_apple_news_source_url = lambda url: url
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        RuntimeError("Browser executable missing")
+    )
+    module.get_markdown_content = lambda _url, _api_key: (
+        "Title: Story\n"
+        "URL Source: https://www.theverge.com/ai/story-id\n"
+        "Markdown Content:\n"
+        "Body paragraph.\n"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Story",
+            "url_source": "https://www.theverge.com/ai/story-id",
+            "published_time": None,
+        },
+        "Body paragraph.\n",
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+    module.logger.exception = lambda *_args, **_kwargs: None
+
+    module.save_url_database("https://www.theverge.com/ai/story-id", "user-1")
+
+    assert len(captured) == 1
+    assert str(captured[0][0]) == "Browser executable missing"
+    assert captured[0][1] == {
+        "target_url": "https://www.theverge.com/ai/story-id",
+        "mode": "local",
+    }
+
+
 def test_save_url_database_jina_uses_youtube_duration_for_reading_time(monkeypatch):
     module = _load_save_url_module()
     captured = _stub_db_dependencies(module)

@@ -32,6 +32,7 @@ from api.config import settings
 from api.db.session import SessionLocal, set_session_user_id
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.services.file_ingestion_service import FileIngestionService
+from api.services.script_sentry import initialize_script_sentry
 from api.services.storage.service import get_storage_backend
 from api.services.website_transcript_service import WebsiteTranscriptService
 from botocore import exceptions as botocore_exceptions
@@ -173,16 +174,14 @@ _COMMON_SHORT_WORDS = {
 
 def _initialize_worker_sentry() -> None:
     global _worker_sentry_initialized
-    if _worker_sentry_initialized or not settings.sentry_dsn:
+    if _worker_sentry_initialized:
         return
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn,
+    initialized = initialize_script_sentry(
+        "workers.ingestion_worker",
+        process_type="worker",
         integrations=[SqlalchemyIntegration()],
-        traces_sample_rate=settings.sentry_traces_sample_rate,
-        profiles_sample_rate=settings.sentry_profiles_sample_rate,
-        environment=settings.app_env or None,
     )
-    _worker_sentry_initialized = True
+    _worker_sentry_initialized = initialized
 
 
 def _report_website_transcript_final_failure(

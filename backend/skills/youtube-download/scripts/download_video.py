@@ -26,6 +26,10 @@ BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
+    from api.services.script_sentry import (
+        capture_script_exception,
+        initialize_script_sentry,
+    )
     from api.services.skill_file_ops import upload_file
     from api.services.skill_file_ops_ingestion import (
         create_ingested_file,
@@ -39,6 +43,17 @@ except Exception:
     finalize_ingested_file = None
     write_ai_markdown = None
     write_derivative = None
+
+    def _noop_initialize_script_sentry(script_name: str) -> bool:
+        return False
+
+    def _noop_capture_script_exception(
+        exc: BaseException, *, extras: dict[str, Any] | None = None
+    ) -> None:
+        return None
+
+    initialize_script_sentry = _noop_initialize_script_sentry
+    capture_script_exception = _noop_capture_script_exception
 
 
 # Default output directory (files workspace)
@@ -796,6 +811,7 @@ def format_human_readable(result: dict[str, Any]) -> str:
 
 def main():
     """Main entry point for download_video script."""
+    initialize_script_sentry("youtube-download.download_video")
     parser = argparse.ArgumentParser(
         description="Download YouTube videos or audio using yt-dlp",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -871,6 +887,10 @@ Requirements:
         sys.exit(0)
 
     except ValueError as e:
+        capture_script_exception(
+            e,
+            extras={"url": args.url, "audio_only": args.audio},
+        )
         error_output = {
             "success": False,
             "error": {
@@ -888,6 +908,10 @@ Requirements:
         sys.exit(1)
 
     except Exception as e:
+        capture_script_exception(
+            e,
+            extras={"url": args.url, "audio_only": args.audio},
+        )
         error_output = {
             "success": False,
             "error": {

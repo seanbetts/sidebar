@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_rules import Rule
+
+_DEFAULT_PLAYWRIGHT_BROWSERS_PATH = Path("/ms-playwright")
 
 
 def requires_js_rendering(html: str) -> bool:
@@ -22,6 +27,23 @@ def has_unrendered_youtube_embed(html: str) -> bool:
     return "youtube.com/embed" in html and "<iframe" not in html
 
 
+def configure_playwright_browsers_path(
+    *,
+    default_path: Path = _DEFAULT_PLAYWRIGHT_BROWSERS_PATH,
+) -> str | None:
+    """Prefer the shared Playwright browser install when available."""
+    current_path = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    if current_path:
+        return current_path
+
+    if default_path.exists():
+        resolved = str(default_path)
+        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = resolved
+        return resolved
+
+    return None
+
+
 def render_html_with_playwright(
     url: str,
     *,
@@ -30,6 +52,7 @@ def render_html_with_playwright(
     wait_until: str = "networkidle",
 ) -> tuple[str, str]:
     """Render HTML using Playwright for JS-heavy pages."""
+    configure_playwright_browsers_path()
     try:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright

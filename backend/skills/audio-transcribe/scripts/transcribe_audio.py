@@ -25,12 +25,27 @@ sys.path.insert(0, str(BACKEND_ROOT))
 try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.notes_service import NotesService
+    from api.services.script_sentry import (
+        capture_script_exception,
+        initialize_script_sentry,
+    )
     from api.services.skill_file_ops import download_file, upload_file
 except Exception:
     SessionLocal = None
     NotesService = None
     upload_file = None
     download_file = None
+
+    def _noop_initialize_script_sentry(script_name: str) -> bool:
+        return False
+
+    def _noop_capture_script_exception(
+        exc: BaseException, *, extras: dict[str, Any] | None = None
+    ) -> None:
+        return None
+
+    initialize_script_sentry = _noop_initialize_script_sentry
+    capture_script_exception = _noop_capture_script_exception
 
 
 # Default R2 output directory
@@ -602,6 +617,7 @@ def transcribe_audio(
 
 def main() -> None:
     """Main entry point for transcribe_audio script."""
+    initialize_script_sentry("audio-transcribe.transcribe_audio")
     parser = argparse.ArgumentParser(
         description="Transcribe audio using OpenAI API",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -750,6 +766,10 @@ Requirements:
         sys.exit(0)
 
     except (RuntimeError, FileNotFoundError) as e:
+        capture_script_exception(
+            e,
+            extras={"file": args.file, "model": args.model},
+        )
         error_output = {
             "success": False,
             "error": {
@@ -767,6 +787,10 @@ Requirements:
         sys.exit(1)
 
     except Exception as e:
+        capture_script_exception(
+            e,
+            extras={"file": args.file, "model": args.model},
+        )
         error_output = {
             "success": False,
             "error": {

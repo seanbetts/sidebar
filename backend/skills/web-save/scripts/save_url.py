@@ -25,6 +25,10 @@ try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.favicon_service import FaviconService
     from api.services.jina_service import JinaService
+    from api.services.script_sentry import (
+        capture_script_exception,
+        initialize_script_sentry,
+    )
     from api.services.url_normalization_service import is_youtube_host
     from api.services.web_save_error_service import classify_web_save_failure
     from api.services.web_save_parser import (
@@ -59,6 +63,17 @@ except Exception:
     fetch_youtube_duration_seconds = None
     normalize_reading_time = None
     reading_time_from_duration_seconds = None
+
+    def _noop_initialize_script_sentry(script_name: str) -> bool:
+        return False
+
+    def _noop_capture_script_exception(
+        exc: BaseException, *, extras: dict[str, Any] | None = None
+    ) -> None:
+        return None
+
+    initialize_script_sentry = _noop_initialize_script_sentry
+    capture_script_exception = _noop_capture_script_exception
 
     def classify_web_save_failure(
         *,
@@ -350,6 +365,8 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
     if SessionLocal is None or WebsitesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
+    initialize_script_sentry("web-save.save_url")
+
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
@@ -384,6 +401,13 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         except Exception as exc:
             local_parse_error = str(exc)
             local_parse_error_type = type(exc).__name__
+            capture_script_exception(
+                exc,
+                extras={
+                    "target_url": target_url,
+                    "mode": web_save_mode,
+                },
+            )
             logger.exception(
                 "web-save script local parse failed target_url=%s error=%s",
                 target_url,

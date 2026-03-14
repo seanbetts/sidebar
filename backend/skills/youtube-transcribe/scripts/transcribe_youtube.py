@@ -27,11 +27,26 @@ sys.path.insert(0, str(BACKEND_ROOT))
 try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.notes_service import NotesService
+    from api.services.script_sentry import (
+        capture_script_exception,
+        initialize_script_sentry,
+    )
     from api.services.skill_file_ops import upload_file
 except Exception:
     SessionLocal = None
     NotesService = None
     upload_file = None
+
+    def _noop_initialize_script_sentry(script_name: str) -> bool:
+        return False
+
+    def _noop_capture_script_exception(
+        exc: BaseException, *, extras: dict[str, Any] | None = None
+    ) -> None:
+        return None
+
+    initialize_script_sentry = _noop_initialize_script_sentry
+    capture_script_exception = _noop_capture_script_exception
 
 
 # Default directories (R2)
@@ -434,6 +449,7 @@ def format_human_readable(result: dict[str, Any]) -> str:
 
 def main():
     """Main entry point for transcribe_youtube script."""
+    initialize_script_sentry("youtube-transcribe.transcribe_youtube")
     parser = argparse.ArgumentParser(
         description="Download YouTube audio and transcribe it",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -546,6 +562,10 @@ Requirements:
         sys.exit(0)
 
     except RuntimeError as e:
+        capture_script_exception(
+            e,
+            extras={"url": args.url, "model": args.model},
+        )
         error_message = str(e)
         stage = "download" if "download" in error_message.lower() else "transcription"
 
@@ -584,6 +604,10 @@ Requirements:
         sys.exit(1)
 
     except Exception as e:
+        capture_script_exception(
+            e,
+            extras={"url": args.url, "model": args.model},
+        )
         error_output = {
             "success": False,
             "error": {
