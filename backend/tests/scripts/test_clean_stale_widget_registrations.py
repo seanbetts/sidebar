@@ -172,15 +172,15 @@ def test_cli_dry_run_reports_summary_and_skips_removal(monkeypatch, capsys):
 def test_cli_removes_stale_debug_registrations(monkeypatch):
     helper = _load_helper_module()
     fixture_text = _load_fixture_text()
-    removed_uuids = {
-        "F437C11D-2B23-4352-A1E9-583D840B315C",
-        "6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3",
-        "1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6",
+    removed_paths = {
+        "/Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        "/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        "/Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex",
     }
     post_cleanup_listing = "\n".join(
         line
         for line in fixture_text.splitlines()
-        if not any(uuid in line for uuid in removed_uuids)
+        if not any(path in line for path in removed_paths)
     )
     calls = _stub_pluginkit_run(
         monkeypatch,
@@ -198,9 +198,21 @@ def test_cli_removes_stale_debug_registrations(monkeypatch):
     assert exit_code == 0
     removal_cmds = [cmd for cmd in calls if cmd[:2] == ["pluginkit", "-r"]]
     assert removal_cmds == [
-        ["pluginkit", "-r", "F437C11D-2B23-4352-A1E9-583D840B315C"],
-        ["pluginkit", "-r", "6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3"],
-        ["pluginkit", "-r", "1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6"],
+        [
+            "pluginkit",
+            "-r",
+            "/Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        ],
+        [
+            "pluginkit",
+            "-r",
+            "/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        ],
+        [
+            "pluginkit",
+            "-r",
+            "/Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        ],
     ]
 
 
@@ -229,15 +241,15 @@ def test_cli_can_skip_workspace_requirement_when_explicitly_allowed(monkeypatch,
     ci_like_listing = "\n".join(
         line for line in fixture_text.splitlines() if workspace_uuid not in line
     )
-    removed_uuids = {
-        "F437C11D-2B23-4352-A1E9-583D840B315C",
-        "6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3",
-        "1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6",
+    removed_paths = {
+        "/Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        "/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        "/Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex",
     }
     post_cleanup_listing = "\n".join(
         line
         for line in ci_like_listing.splitlines()
-        if not any(uuid in line for uuid in removed_uuids)
+        if not any(path in line for path in removed_paths)
     )
     calls = _stub_pluginkit_run(
         monkeypatch,
@@ -259,13 +271,25 @@ def test_cli_can_skip_workspace_requirement_when_explicitly_allowed(monkeypatch,
     assert "continuing because --allow-missing-workspace-registration was set" in captured.out
     removal_cmds = [cmd for cmd in calls if cmd[:2] == ["pluginkit", "-r"]]
     assert removal_cmds == [
-        ["pluginkit", "-r", "F437C11D-2B23-4352-A1E9-583D840B315C"],
-        ["pluginkit", "-r", "6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3"],
-        ["pluginkit", "-r", "1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6"],
+        [
+            "pluginkit",
+            "-r",
+            "/Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        ],
+        [
+            "pluginkit",
+            "-r",
+            "/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        ],
+        [
+            "pluginkit",
+            "-r",
+            "/Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        ],
     ]
 
 
-def test_cli_fails_when_conflicting_stale_registrations_remain(monkeypatch, capsys):
+def test_cli_removes_block_format_stale_registrations_by_path(monkeypatch):
     helper = _load_helper_module()
     workspace_line = _load_fixture_text().splitlines()[0]
     conflict_block = (
@@ -275,7 +299,7 @@ def test_cli_fails_when_conflicting_stale_registrations_remain(monkeypatch, caps
         "\n"
     )
     listing = f"{workspace_line}\n{conflict_block}"
-    calls = _stub_pluginkit_run(monkeypatch, helper, listing, allow_removal=False)
+    calls = _stub_pluginkit_run(monkeypatch, helper, [listing, workspace_line])
     exit_code = helper.run_cleaner(
         [
             "--workspace-root",
@@ -284,10 +308,15 @@ def test_cli_fails_when_conflicting_stale_registrations_remain(monkeypatch, caps
             "ai.sidebar.sidebar.sideBarWidgets",
         ]
     )
-    captured = capsys.readouterr()
-    assert exit_code == 1
-    assert "/private/tmp/conflict" in captured.out
-    assert not any(cmd[:2] == ["pluginkit", "-r"] for cmd in calls)
+    assert exit_code == 0
+    removal_cmds = [cmd for cmd in calls if cmd[:2] == ["pluginkit", "-r"]]
+    assert removal_cmds == [
+        [
+            "pluginkit",
+            "-r",
+            "/private/tmp/conflict/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        ]
+    ]
 
 
 def test_cli_listing_failure_is_nonfatal(monkeypatch, capsys):
@@ -347,9 +376,21 @@ def test_cli_fails_when_stale_debug_remains_after_attempted_cleanup(monkeypatch,
     )
     removal_cmds = [cmd for cmd in calls if cmd[:2] == ["pluginkit", "-r"]]
     assert removal_cmds == [
-        ["pluginkit", "-r", "F437C11D-2B23-4352-A1E9-583D840B315C"],
-        ["pluginkit", "-r", "6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3"],
-        ["pluginkit", "-r", "1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6"],
+        [
+            "pluginkit",
+            "-r",
+            "/Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        ],
+        [
+            "pluginkit",
+            "-r",
+            "/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        ],
+        [
+            "pluginkit",
+            "-r",
+            "/Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex",
+        ],
     ]
 
 
@@ -383,8 +424,8 @@ def test_cli_post_cleanup_verification_failure_is_nonfatal(monkeypatch, capsys):
 
     removal_calls = []
 
-    def fake_remove_widget_registration(uuid):
-        removal_calls.append(uuid)
+    def fake_remove_widget_registration(path):
+        removal_calls.append(path)
 
     monkeypatch.setattr(
         helper, "_load_bundle_classification", fake_load_bundle_classification
@@ -446,8 +487,8 @@ def test_cli_post_cleanup_verification_failure_after_cleanup_is_fatal(
 
     removal_calls = []
 
-    def fake_remove_widget_registration(uuid):
-        removal_calls.append(uuid)
+    def fake_remove_widget_registration(path):
+        removal_calls.append(path)
 
     monkeypatch.setattr(
         helper, "_load_bundle_classification", fake_load_bundle_classification
@@ -466,4 +507,6 @@ def test_cli_post_cleanup_verification_failure_after_cleanup_is_fatal(
 
     assert exit_code == 1
     assert "unresolved conflicting state" in captured.out
-    assert removal_calls == ["STALE-UUID"]
+    assert removal_calls == [
+        Path("/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex")
+    ]

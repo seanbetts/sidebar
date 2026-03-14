@@ -240,8 +240,8 @@ def _list_widget_registrations() -> List[str]:
     return result.stdout.splitlines()
 
 
-def _remove_widget_registration(uuid: str) -> None:
-    subprocess.run(["pluginkit", "-r", uuid], check=True)
+def _remove_widget_registration(path: Path) -> None:
+    subprocess.run(["pluginkit", "-r", str(path)], check=True)
 
 
 def _print_summary(title: str, classification: ClassificationResult) -> None:
@@ -339,13 +339,6 @@ def run_cleaner(argv: Optional[List[str]] = None) -> int:
             )
             return 1
 
-    conflicts = [record for record in classification.stale_debug if not record.uuid]
-    if conflicts:
-        print("Conflicting stale debug registrations remain:")
-        for record in conflicts:
-            print(f"  - {record.path} ({record.identifier})")
-        return 1
-
     cleanup_attempted = False
     removal_failed = False
 
@@ -356,18 +349,22 @@ def run_cleaner(argv: Optional[List[str]] = None) -> int:
             print("Removing stale debug registrations:")
 
         for record in classification.stale_debug:
-            if record.uuid is None:
-                continue
             if args.dry_run:
-                print(f"  pluginkit -r {record.uuid} ({record.path})")
+                print(f"  pluginkit -r {record.path}")
             else:
                 cleanup_attempted = True
                 try:
-                    _remove_widget_registration(record.uuid)
+                    _remove_widget_registration(record.path)
                     print(f"  Removed {record.path}")
                 except subprocess.CalledProcessError as exc:
                     removal_failed = True
-                    stderr_output = exc.stderr.strip() if exc.stderr else "pluginkit command failed"
+                    stderr_output = (
+                        exc.stderr.strip()
+                        if exc.stderr
+                        else exc.stdout.strip()
+                        if exc.stdout
+                        else "pluginkit command failed"
+                    )
                     print(
                         f"  Failed to remove {record.path}, "
                         "treating this as unresolved conflicting state."
