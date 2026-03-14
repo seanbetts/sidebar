@@ -248,7 +248,21 @@ extension AppEnvironment {
             websitesStore.insertItemAtTop(item, persist: true)
         }
         websitesStore.invalidateList()
+        clearQueuedWebsiteEntries(matching: website.url)
         websitesViewModel.removePendingWebsite(for: website.url)
+    }
+
+    private func clearQueuedWebsiteEntries(matching rawURL: String) {
+        let target = websitesViewModel.canonicalWebsiteURLForPendingMatch(rawURL) ?? rawURL
+        let existing = storage.pendingShareStore.loadAll()
+        let filtered = existing.filter { item in
+            guard item.kind == .website, let itemURL = item.url else { return true }
+            let candidate = websitesViewModel.canonicalWebsiteURLForPendingMatch(itemURL) ?? itemURL
+            return candidate != target
+        }
+        guard filtered.count != existing.count else { return }
+        storage.pendingShareStore.replaceAll(filtered)
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(filtered)
     }
 
     private func resolvedSavedWebsiteDetail(from website: ExtensionSavedWebsite) async -> WebsiteDetail? {

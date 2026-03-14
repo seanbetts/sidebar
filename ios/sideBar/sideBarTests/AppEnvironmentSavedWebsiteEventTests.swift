@@ -30,6 +30,26 @@ extension AppEnvironmentDeepLinkTests {
         XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: website.id))
     }
 
+    func testSavedWebsiteEventClearsMatchingQueuedWebsiteEntry() async {
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(NSError(domain: "AppEnvironmentSavedWebsiteEventTests", code: 1))
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+        let website = makeSavedWebsiteEvent(url: "https://example.com/articles/\(UUID().uuidString)")
+
+        _ = storage.pendingShareStore.enqueueWebsite(url: website.url)
+        storage.extensionEventStore.recordWebsiteSaved(website: website)
+
+        await environment.consumeExtensionEvents()
+
+        XCTAssertEqual(environment.websitesViewModel.items.first?.id, website.id)
+        XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: website.id))
+        XCTAssertNil(environment.websitesViewModel.pendingWebsite)
+        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
+    }
+
     func testConsumeExtensionEventsWhenActivePreservesYouTubeTranscriptMetadata() async {
         let environment = requireEnvironment()
         environment.authState = .active
