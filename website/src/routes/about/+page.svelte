@@ -44,7 +44,7 @@
   <div class="page-inner">
     <!-- Founder story -->
     <section class="story" aria-labelledby="story-heading">
-      <h2 id="story-heading">Why I built it</h2>
+      <h2 id="story-heading">Why I built sideBar</h2>
       <p>
         I got tired of copying things in and out of ChatGPT and Claude. Attaching
         files. Explaining the same context again and again. Jumping between notes
@@ -93,7 +93,7 @@
 
     <!-- How it works -->
     <section class="story" aria-labelledby="how-heading">
-      <h2 id="how-heading">How it works</h2>
+      <h2 id="how-heading">How sideBar works</h2>
       <p>
         sideBar works with Anthropic, OpenAI, and Google. You bring your own API key
         and pay those providers directly for the AI usage you generate. You are never
