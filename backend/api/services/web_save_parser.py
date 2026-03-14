@@ -52,10 +52,14 @@ from api.services.web_save_parser_html import (
     decode_html_response,
 )
 from api.services.web_save_parser_openai import cleanup_openai_markdown
+from api.services.web_save_parser_patreon import extract_patreon_post_snapshot
 from api.services.web_save_parser_paywall import (
     build_paywall_frontmatter,
     extract_paywall_preview_markdown,
     is_anti_bot_challenge_page,
+)
+from api.services.web_save_parser_snapshots import (
+    maybe_build_snapshot_render,
 )
 from api.services.web_save_parser_steam import extract_steamcommunity_payload_for_url
 from api.services.web_save_parser_substack import cleanup_substack_markdown
@@ -491,42 +495,27 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             published_at=None,
         )
 
-    twitter_snapshot = fetch_twitter_status_snapshot(final_url)
-    if twitter_snapshot:
-        source_url = twitter_snapshot.source_url
-        title = twitter_snapshot.title
-        domain = urlparse(source_url).netloc
-        markdown = twitter_snapshot.markdown
-        word_count = compute_word_count(markdown)
-        image_count = count_images(markdown)
-        tags = extract_tags(markdown, domain, title)
-        content = build_frontmatter(
-            markdown,
-            meta={
-                "source": source_url,
-                "title": title,
-                "author": twitter_snapshot.author,
-                "domain": domain,
-                "word_count": word_count,
-                "reading_time": page_reading_time(
-                    word_count, image_count, domain, raw_html_original
-                ),
-                "tags": tags,
-                "used_js_rendering": used_js_rendering,
-                "saved_at": datetime.now(UTC).isoformat(),
-            },
-        )
+    if rendered := maybe_build_snapshot_render(
+        final_url,
+        raw_html=raw_html_original,
+        used_js_rendering=used_js_rendering,
+        twitter_fetcher=fetch_twitter_status_snapshot,
+        patreon_extractor=extract_patreon_post_snapshot,
+    ):
+        content = build_frontmatter(rendered.markdown, meta=rendered.meta)
         logger.info(
-            "web-save x snapshot url=%s source=%s markdown_len=%s",
+            "web-save snapshot kind=%s url=%s source=%s markdown_len=%s locked=%s",
+            rendered.kind,
             final_url,
-            source_url,
-            len(markdown),
+            rendered.source,
+            len(rendered.markdown),
+            rendered.locked,
         )
         return ParsedPage(
-            title=title,
+            title=rendered.title,
             content=content,
-            source=source_url,
-            published_at=None,
+            source=rendered.source,
+            published_at=rendered.published_at,
             favicon_url=favicon_url,
         )
 

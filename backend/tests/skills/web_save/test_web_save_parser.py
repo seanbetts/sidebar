@@ -15,6 +15,7 @@ from api.services.web_save_parser_apple_news import (
     resolve_apple_news_source_url,
 )
 from api.services import web_save_parser_steam
+import api.services.web_save_parser_patreon as web_save_parser_patreon
 from api.services.web_save_parser_twitter import TwitterStatusSnapshot
 from api.services.web_save_tagger import calculate_reading_time
 from bs4 import BeautifulSoup
@@ -66,6 +67,95 @@ def _build_steamcommunity_announcement_html() -> str:
           data-partnereventadjacents='[{{"announcementGID":"528746884222682053","adjacents":["528746884222682053"]}}]'
           data-partnereventstore="{store}"
         ></div>
+      </body>
+    </html>
+    """
+
+
+def _build_patreon_post_html() -> str:
+    next_data = {
+        "props": {
+            "pageProps": {
+                "bootstrapEnvelope": {
+                    "pageBootstrap": {
+                        "post": {
+                            "data": {
+                                "id": "152975177",
+                                "attributes": {
+                                    "title": (
+                                        "The Steam Hardware Nightmare Recap - "
+                                        "Gabe Newell vs. the World"
+                                    ),
+                                    "current_user_can_view": False,
+                                    "published_at": "2026-03-13T22:40:20.000+00:00",
+                                    "post_type": "video_external_file",
+                                    "image": {
+                                        "large_url": (
+                                            "https://c10.patreonusercontent.com/4/"
+                                            "patreon-media/p/post/152975177/"
+                                            "478b2b98b80d4e0ab9404841952f9ba0/e30=/1.png"
+                                        )
+                                    },
+                                },
+                            }
+                        },
+                        "campaign": {
+                            "data": {
+                                "attributes": {
+                                    "name": "Tyler McVicker",
+                                    "creation_name": "creating Fun Games Reporting",
+                                }
+                            }
+                        },
+                    }
+                }
+            }
+        }
+    }
+    next_data_json = html.escape(json.dumps(next_data), quote=False)
+    json_ld = {
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        "name": "The Steam Hardware Nightmare Recap - Gabe Newell vs. the World",
+        "author": {"@type": "Person", "name": "Tyler McVicker"},
+        "datePublished": "2026-03-13T22:40:20.000+00:00",
+        "duration": "PT13M37.633S",
+        "thumbnailUrl": (
+            "https://c10.patreonusercontent.com/4/patreon-media/p/post/152975177/"
+            "478b2b98b80d4e0ab9404841952f9ba0/e30=/1.png"
+        ),
+        "isAccessibleForFree": False,
+    }
+    return f"""
+    <html>
+      <head>
+        <title>The Steam Hardware Nightmare Recap - Gabe Newell vs. the World | Patreon</title>
+        <meta property="og:title" content="The Steam Hardware Nightmare Recap - Gabe Newell vs. the World | Tyler McVicker"/>
+        <meta property="og:image" content="https://www.patreon.com/meta-image/post/152975177"/>
+        <link rel="canonical" href="https://www.patreon.com/posts/steam-hardware-152975177"/>
+        <script id="__NEXT_DATA__" type="application/json">{next_data_json}</script>
+        <script type="application/ld+json">{json.dumps(json_ld)}</script>
+      </head>
+      <body>
+        <main>
+          <div data-tag="post-card">
+            <h1 data-tag="post-title">The Steam Hardware Nightmare Recap - Gabe Newell vs. the World</h1>
+            <div data-tag="teaser-post-content">
+              <p>
+                It seems like every few weeks a new world event renders Valve's plans nearly
+                impossible. Back in November we heard that we'd have the hardware in early
+                2026, and now, at GDC, we hear that they hope to ship in 2026. What's a Gaben
+                to do?
+              </p>
+            </div>
+            <div data-tag="paywall-blur">
+              <p>
+                To access this whole post, join Patreon today. When you become a member,
+                you get instant access to exclusive posts and benefits.
+              </p>
+            </div>
+          </div>
+        </main>
       </body>
     </html>
     """
@@ -177,6 +267,62 @@ def test_parse_url_local_steamcommunity_announcement_uses_domain_extractor(monke
     frontmatter = parsed.content.split("---\n", 2)[1]
     data = web_save_parser.yaml.safe_load(frontmatter)
     assert data["title"] == "Steam Year In Review 2025"
+
+
+def test_extract_patreon_post_snapshot_extracts_locked_preview():
+    html_doc = _build_patreon_post_html()
+
+    snapshot = web_save_parser_patreon.extract_patreon_post_snapshot(
+        html_doc,
+        "https://www.patreon.com/posts/steam-hardware-152975177/instant-access",
+    )
+
+    assert snapshot is not None
+    assert snapshot.title == (
+        "The Steam Hardware Nightmare Recap - Gabe Newell vs. the World"
+    )
+    assert snapshot.source_url == "https://www.patreon.com/posts/steam-hardware-152975177"
+    assert snapshot.author == "Tyler McVicker"
+    assert snapshot.published_at == datetime(2026, 3, 13, 22, 40, 20, tzinfo=UTC)
+    assert snapshot.locked is True
+    assert "13m 37s" in snapshot.markdown
+    assert "Only the public preview is available." in snapshot.markdown
+    assert "What's a Gaben to do?" in snapshot.markdown
+    assert "[View on Patreon](https://www.patreon.com/posts/steam-hardware-152975177)" in snapshot.markdown
+
+
+def test_parse_url_local_patreon_post_uses_domain_extractor(monkeypatch):
+    html_doc = _build_patreon_post_html()
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html_doc,
+            "https://www.patreon.com/posts/steam-hardware-152975177/instant-access",
+            True,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://www.patreon.com/posts/steam-hardware-152975177/instant-access"
+    )
+
+    assert parsed.title == "The Steam Hardware Nightmare Recap - Gabe Newell vs. the World"
+    assert parsed.source == "https://www.patreon.com/posts/steam-hardware-152975177"
+    assert parsed.published_at == datetime(2026, 3, 13, 22, 40, 20, tzinfo=UTC)
+    assert "Only the public preview is available." in parsed.content
+    assert "What's a Gaben to do?" in parsed.content
+    assert "[View on Patreon](https://www.patreon.com/posts/steam-hardware-152975177)" in parsed.content
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["title"] == "The Steam Hardware Nightmare Recap - Gabe Newell vs. the World"
+    assert data["published_date"] == "2026-03-13T22:40:20+00:00"
+    assert data["used_js_rendering"] is True
 
 
 def test_parse_url_local_apple_news_fetches_publisher_article(monkeypatch):
