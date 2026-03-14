@@ -1,0 +1,23 @@
++    ai.sidebar.sidebar.sideBarWidgets(1.0)
+Path = /Users/sean/Coding/sideBar/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex
+Flags = current-workspace
+
+!    ai.sidebar.sidebar.sideBarWidgets(1.0)
+Path = /Applications/sideBar AI.app/Contents/PlugIns/sideBarWidgetsExtension.appex
+Flags = installed
+
+  ai.sidebar.sidebar.sideBarWidgets(1.0)
+Path = /Users/sean/Downloads/sideBarWidgets/Release/sideBarWidgetsExtension.appex
+Flags = release
+
+!    ai.sidebar.sidebar.sideBarWidgets(1.0)
+Path = /Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex
+Flags = worktree
+
+?    ai.sidebar.sidebar.sideBarWidgets(1.0)
+Path = /private/tmp/sideBarWidgetStaging/sideBarWidgetsExtension.appex
+Flags = temp
+
+-    ai.sidebar.sidebar.sideBarWidgets(1.0)
+Path = /Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex
+Flags = stale
