@@ -72,7 +72,7 @@
 
     <!-- What makes it different -->
     <section class="story" aria-labelledby="different-heading">
-      <h2 id="different-heading">What makes it different</h2>
+      <h2 id="different-heading">What makes sideBar different</h2>
       <p>
         Most AI assistants sit inside a blank chat interface and know nothing about
         you until you tell them. sideBar is different because it was built the other
