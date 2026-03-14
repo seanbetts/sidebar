@@ -118,6 +118,7 @@ public final class AppEnvironment: ObservableObject {
     var isConsumingPendingShares: Bool = false
     var cancellables = Set<AnyCancellable>()
     var hasPendingForwardedObjectWillChange = false
+    var websiteSaveHandoffObserver: AnyObject?
     #if os(iOS) || os(macOS)
     var deviceToken: String?
     var lastRegisteredDeviceToken: String?
@@ -240,6 +241,8 @@ public final class AppEnvironment: ObservableObject {
         logStep("Stores + view models", storeStart)
         #endif
 
+        configureWebsiteSaveHandoffObserver()
+
         if isTestMode {
             return
         }
@@ -262,6 +265,12 @@ public final class AppEnvironment: ObservableObject {
         #endif
     }
     // swiftlint:enable function_body_length
+
+    deinit {
+        if let websiteSaveHandoffObserver {
+            WebsiteSaveHandoffNotifier.removeObserver(websiteSaveHandoffObserver)
+        }
+    }
 
     /// Indicates whether the current auth state represents a signed-in user.
     public var isAuthenticated: Bool {

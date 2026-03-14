@@ -134,6 +134,7 @@ public final class PendingShareStore {
             var items = existingItems
             items.append(item)
             replaceAll(items)
+            WebsiteSaveHandoffNotifier.post()
             os_log(.default, log: Self.log, "Queued website share %{public}@", url)
             recordDiagnostics(
                 stage: "enqueue_website",

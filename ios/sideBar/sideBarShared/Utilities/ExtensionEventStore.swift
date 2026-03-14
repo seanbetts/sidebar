@@ -189,12 +189,18 @@ public final class ExtensionEventStore {
 
     /// Records a website-saved event from the extension.
     public func recordWebsiteSaved(url: String?) {
-        append(event: ExtensionEvent(type: .websiteSaved, websiteUrl: url))
+        let event = ExtensionEvent(type: .websiteSaved, websiteUrl: url)
+        if append(event: event) {
+            WebsiteSaveHandoffNotifier.post()
+        }
     }
 
     /// Records a website-saved event with canonical detail from the extension.
     public func recordWebsiteSaved(website: ExtensionSavedWebsite) {
-        append(event: ExtensionEvent(type: .websiteSaved, websiteUrl: website.url, website: website))
+        let event = ExtensionEvent(type: .websiteSaved, websiteUrl: website.url, website: website)
+        if append(event: event) {
+            WebsiteSaveHandoffNotifier.post()
+        }
     }
 
     /// Records a file-saved event from the extension.
@@ -251,7 +257,8 @@ public final class ExtensionEventStore {
         )
     }
 
-    private func append(event: ExtensionEvent) {
+    @discardableResult
+    private func append(event: ExtensionEvent) -> Bool {
         guard let defaults = userDefaults else {
             recordDiagnostics(
                 stage: "append_event_missing_store",
@@ -260,7 +267,7 @@ public final class ExtensionEventStore {
                     "event_type": event.type.rawValue
                 ]
             )
-            return
+            return false
         }
         var events = loadEvents(defaults: defaults)
         guard let storedEvent = normalizedEventForStorage(event, existingEvents: events) else {
@@ -271,7 +278,7 @@ public final class ExtensionEventStore {
                     "event_type": event.type.rawValue
                 ]
             )
-            return
+            return false
         }
         events.append(storedEvent)
         let encoder = Self.makeEncoder()
@@ -287,7 +294,9 @@ public final class ExtensionEventStore {
                     "suite": AppGroupConfiguration.appGroupId ?? "nil"
                 ]
             )
+            return true
         }
+        return false
     }
 
     private func loadEvents(defaults: UserDefaults) -> [ExtensionEvent] {

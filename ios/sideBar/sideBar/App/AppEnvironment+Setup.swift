@@ -7,6 +7,16 @@ import UserNotifications
 #endif
 
 extension AppEnvironment {
+    func configureWebsiteSaveHandoffObserver() {
+        guard websiteSaveHandoffObserver == nil else { return }
+        websiteSaveHandoffObserver = WebsiteSaveHandoffNotifier.observe { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.consumeWebsiteSaveHandoff()
+            }
+        }
+    }
+
     func configureSubscriptions() {
         if let authAdapter = container.authSession as? SupabaseAuthAdapter {
             bindAuthAdapter(authAdapter)

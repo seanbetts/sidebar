@@ -226,6 +226,17 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
     }
 
+    func testActiveEnvironmentConsumesQueuedWebsiteAfterLiveHandoffNotification() async {
+        let environment = requireEnvironment()
+        environment.authState = .active
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+
+        _ = storage.pendingShareStore.enqueueWebsite(url: url)
+        await waitForPendingWebsite(url, in: environment)
+
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
+    }
+
     func testConsumeExtensionEventsWhenInactivePreservesEvents() async {
         let environment = requireEnvironment()
         let url = "https://www.youtube.com/watch?v=abc123xyzAA"
@@ -402,6 +413,31 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             await Task.yield()
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
+    }
+
+    func waitForPendingWebsite(_ url: String, in environment: AppEnvironment, attempts: Int = 40) async {
+        for _ in 0..<attempts where environment.websitesViewModel.pendingWebsite?.url != url {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+    }
+
+    func waitForSavedWebsite(
+        id: String,
+        url: String,
+        in environment: AppEnvironment,
+        attempts: Int = 40
+    ) async {
+        for _ in 0..<attempts where !savedWebsiteIsSurfaced(id: id, url: url, in: environment) {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+    }
+
+    func savedWebsiteIsSurfaced(id: String, url: String, in environment: AppEnvironment) -> Bool {
+        guard environment.websitesViewModel.items.first?.id == id else { return false }
+        guard environment.websitesViewModel.items.first?.url == url else { return false }
+        return environment.websitesStore.hasCachedDetail(id: id)
     }
 
     func makeEnvironment(

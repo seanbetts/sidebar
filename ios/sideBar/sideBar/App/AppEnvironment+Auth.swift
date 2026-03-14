@@ -7,6 +7,11 @@ extension AppEnvironment {
         Logger(subsystem: "sideBar", category: "AppEnvironmentAuth")
     }
 
+    func consumeWebsiteSaveHandoff() async {
+        guard authState == .active else { return }
+        await consumeExtensionEvents()
+    }
+
     public func refreshAuthState() {
         let previousAuthState = authState
         authState = container.authSession.authState

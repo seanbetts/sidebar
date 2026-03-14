@@ -18,6 +18,18 @@ extension AppEnvironmentDeepLinkTests {
         XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: website.id))
     }
 
+    func testActiveEnvironmentConsumesSavedWebsiteDetailAfterLiveHandoffNotification() async {
+        let environment = requireEnvironment()
+        environment.authState = .active
+        let website = makeSavedWebsiteEvent(url: "https://example.com/articles/\(UUID().uuidString)")
+
+        storage.extensionEventStore.recordWebsiteSaved(website: website)
+        await waitForSavedWebsite(id: website.id, url: website.url, in: environment)
+
+        XCTAssertEqual(environment.websitesViewModel.items.first?.id, website.id)
+        XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: website.id))
+    }
+
     func testConsumeExtensionEventsWhenActivePreservesYouTubeTranscriptMetadata() async {
         let environment = requireEnvironment()
         environment.authState = .active

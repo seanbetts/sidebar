@@ -19,9 +19,11 @@ anything else you are working on.
 There are three ways:
 
 - **Share sheet**: tap the share button in any app and choose sideBar to save
-  the current page instantly.
+  the current page instantly. If the app is already open, the website appears
+  there immediately while sideBar finishes saving it.
 - **Safari extension**: tap the sideBar button in your Safari toolbar to save
-  without leaving the page.
+  without leaving the page. If the app is already open, the website appears
+  there immediately while sideBar finishes saving it.
 - **Manual entry**: tap **+** in the Websites tab and paste or type the URL.
 
 See [Widgets and Extensions](/manual/extensions) for instructions on setting up
@@ -39,8 +41,9 @@ to save.
 ## What does "saved for later" mean in the share sheet?
 
 It means sideBar could not finish saving the page immediately, usually because
-you were offline or needed to sign in again, but it did queue the URL. Open
-sideBar, sign in if needed, and the app will finish saving the page.
+you were offline or needed to sign in again, but it did queue the URL. On Mac,
+an already-open app shows that queued website immediately. Open sideBar, sign
+in if needed, and the app will finish saving the page.
 
 ## Can sideBar work with saved pages in chat?
 

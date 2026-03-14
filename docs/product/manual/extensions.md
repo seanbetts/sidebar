@@ -74,6 +74,9 @@ You can share:
 3. Find **sideBar** in the list and toggle it on.
 
 sideBar now appears in your share sheet whenever you want to save something.
+If the sideBar app is already open on your Mac, shared websites appear there
+immediately as pending saves, then update automatically when processing
+finishes.
 
 ## Safari Extension
 
@@ -94,4 +97,6 @@ Mac.
 3. Grant permissions for the websites you want it to work on (or all websites).
 
 Once enabled, tap or click the sideBar icon in the toolbar to save the current
-page to your [Websites](/manual/websites) section.
+page to your [Websites](/manual/websites) section. If the sideBar app is
+already open, the website appears in the app immediately and then updates as
+the save completes.
