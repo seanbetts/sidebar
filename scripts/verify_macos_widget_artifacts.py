@@ -16,6 +16,11 @@ XCODE_PROJECT_RELATIVE_PATH = Path("ios/sideBar/sideBar.xcodeproj")
 BUILD_SCHEME = "sideBar"
 DERIVED_DATA_BASE = Path("DerivedData/widget-verification")
 WIDGET_BUNDLE_ID = "ai.sidebar.sidebar.sideBarWidgets"
+UNSIGNED_MACOS_BUILD_ARGS = [
+    "CODE_SIGNING_ALLOWED=NO",
+    "CODE_SIGNING_REQUIRED=NO",
+    "CODE_SIGN_IDENTITY=",
+]
 
 
 def emit(message: str = "") -> None:
@@ -41,6 +46,11 @@ class CommandPlan:
 def mode_output_root(*, workspace_root: Path, mode: str) -> Path:
     """Return the mode-specific output root directory."""
     return workspace_root / DERIVED_DATA_BASE / mode
+
+
+def _unsigned_macos_build_command(command: list[str]) -> list[str]:
+    """Return a macOS build command with signing disabled for CI verification."""
+    return [*command[:-1], *UNSIGNED_MACOS_BUILD_ARGS, command[-1]]
 
 
 def build_command_plan(
@@ -71,20 +81,22 @@ def build_command_plan(
     if mode == "debug":
         derived_data_path = mode_output_root(workspace_root=workspace_root, mode="debug")
         commands.append(
-            [
-                "xcodebuild",
-                "-project",
-                str(project_path),
-                "-scheme",
-                BUILD_SCHEME,
-                "-configuration",
-                "Debug",
-                "-destination",
-                "platform=macOS",
-                "-derivedDataPath",
-                str(derived_data_path),
-                "build",
-            ]
+            _unsigned_macos_build_command(
+                [
+                    "xcodebuild",
+                    "-project",
+                    str(project_path),
+                    "-scheme",
+                    BUILD_SCHEME,
+                    "-configuration",
+                    "Debug",
+                    "-destination",
+                    "platform=macOS",
+                    "-derivedDataPath",
+                    str(derived_data_path),
+                    "build",
+                ]
+            )
         )
         return CommandPlan(
             pre_verification_commands=commands,
@@ -95,20 +107,22 @@ def build_command_plan(
     if mode == "release":
         derived_data_path = mode_output_root(workspace_root=workspace_root, mode="release")
         commands.append(
-            [
-                "xcodebuild",
-                "-project",
-                str(project_path),
-                "-scheme",
-                BUILD_SCHEME,
-                "-configuration",
-                "Release",
-                "-destination",
-                "platform=macOS",
-                "-derivedDataPath",
-                str(derived_data_path),
-                "build",
-            ]
+            _unsigned_macos_build_command(
+                [
+                    "xcodebuild",
+                    "-project",
+                    str(project_path),
+                    "-scheme",
+                    BUILD_SCHEME,
+                    "-configuration",
+                    "Release",
+                    "-destination",
+                    "platform=macOS",
+                    "-derivedDataPath",
+                    str(derived_data_path),
+                    "build",
+                ]
+            )
         )
         return CommandPlan(
             pre_verification_commands=commands,

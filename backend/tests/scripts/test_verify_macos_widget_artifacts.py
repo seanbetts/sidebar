@@ -97,6 +97,9 @@ def test_debug_mode_runs_build_and_verification(monkeypatch, tmp_path: Path, cap
             "platform=macOS",
             "-derivedDataPath",
             str(workspace_root / "DerivedData/widget-verification/debug"),
+            "CODE_SIGNING_ALLOWED=NO",
+            "CODE_SIGNING_REQUIRED=NO",
+            "CODE_SIGN_IDENTITY=",
             "build",
         ],
         [
@@ -149,6 +152,9 @@ def test_release_mode_uses_release_configuration(monkeypatch, tmp_path: Path) ->
         "platform=macOS",
         "-derivedDataPath",
         str(workspace_root / "DerivedData/widget-verification/release"),
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "CODE_SIGN_IDENTITY=",
         "build",
     ]
     assert calls[1] == [
@@ -455,6 +461,7 @@ def test_dry_run_prints_commands_without_running(monkeypatch, tmp_path: Path, ca
         + " -scheme sideBar -configuration Release -destination platform=macOS "
         + "-derivedDataPath "
         + str(workspace_root / "DerivedData/widget-verification/release")
+        + " CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="
         + " build"
     ) in captured.out
     assert (
@@ -499,6 +506,9 @@ def test_fails_when_build_command_errors(monkeypatch, tmp_path: Path, capsys) ->
         "platform=macOS",
         "-derivedDataPath",
         str(workspace_root / "DerivedData/widget-verification/debug"),
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "CODE_SIGN_IDENTITY=",
         "build",
     ]
     _capture_subprocess_calls(monkeypatch, VERIFY_MODULE, fail_for=[failing_command])
