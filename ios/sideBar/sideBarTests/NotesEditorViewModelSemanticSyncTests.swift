@@ -11,7 +11,7 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
 
         let savedDocument = NotesSemanticDocument(
             blocks: [
-                .paragraph([.init(text: "Saved title", marks: [.bold])]),
+                .init(type: .title, content: [.init(text: "Saved title", marks: [.bold])]),
                 .paragraph([.init(text: "Body", marks: [])])
             ]
         )
@@ -157,7 +157,7 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
             payload.document,
             NotesSemanticDocument(
                 blocks: [
-                    .paragraph([.init(text: "Queued title", marks: [])]),
+                    .init(type: .title, content: [.init(text: "Queued title", marks: [])]),
                     .paragraph([.init(text: "Body", marks: [])])
                 ]
             )

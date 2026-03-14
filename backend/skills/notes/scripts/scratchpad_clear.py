@@ -31,7 +31,7 @@ def _title_only_document() -> dict[str, Any]:
         "version": NOTE_DOCUMENT_VERSION,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": SCRATCHPAD_TITLE, "marks": []}],
             }
         ],

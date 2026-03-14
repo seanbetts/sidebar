@@ -33,7 +33,7 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         XCTAssertTrue(noteRangeIsUnderlined(attributed, range: secondParagraphStart..<secondParagraphEnd))
     }
 
-    func testAttributedStringProjectsToSemanticParagraphDocument() {
+    func testAttributedStringProjectsToSemanticDocumentWithTitleFirstBlock() {
         var attributed = AttributedString("Hello world\nAgain")
         let helloRange = noteCharacterRange(length: 5, in: attributed)
         attributed[helloRange].font = noteInlineFont(baseFontSize: 16, bold: true, italic: true)
@@ -49,7 +49,7 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
             NotesSemanticDocument(
                 version: NotesSemanticDocument.currentVersion,
                 blocks: [
-                    .paragraph([
+                    .init(type: .title, content: [
                         .init(text: "Hello", marks: [.bold, .italic]),
                         .init(text: " world", marks: [])
                     ]),

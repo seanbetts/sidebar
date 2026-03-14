@@ -12,6 +12,7 @@ final class NotesEditorViewModelTests: XCTestCase {
     func testUnsupportedContentDetectionIdentifiesNonParagraphBlocks() {
         let document = NotesSemanticDocument(
             blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
                 .paragraph([.init(text: "Intro", marks: [])]),
                 .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
                 .init(type: .table, content: [.init(text: "Cell", marks: [])]),

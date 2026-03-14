@@ -18,7 +18,6 @@ try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.notes_document_types import (
         NOTE_DOCUMENT_VERSION,
-        note_document_from_plain_text,
         validate_note_document,
     )
     from api.services.notes_service import NotesService
@@ -45,22 +44,33 @@ def _title_only_document() -> dict[str, Any]:
         "version": NOTE_DOCUMENT_VERSION,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": SCRATCHPAD_TITLE, "marks": []}],
             }
         ],
     }
 
 
+def _body_paragraph_blocks(plain_text: str) -> list[dict[str, Any]]:
+    return [
+        {
+            "type": "paragraph",
+            "content": [{"text": line, "marks": []}],
+        }
+        for line in plain_text.split("\n")
+    ]
+
+
 def _scratchpad_document(document: dict[str, Any]) -> dict[str, Any]:
-    validated = validate_note_document(document)
-    return {
+    validated = validate_note_document(document, require_title_block=False)
+    combined_document = {
         "version": NOTE_DOCUMENT_VERSION,
         "blocks": [
             *_title_only_document()["blocks"],
             *validated["blocks"],
         ],
     }
+    return validate_note_document(combined_document)
 
 
 def _legacy_body_plain_text(plain_text: str | None) -> str:
@@ -82,7 +92,10 @@ def _migrate_legacy_note_if_needed(db, user_id: str, note) -> Any:
     body_document = (
         {"version": NOTE_DOCUMENT_VERSION, "blocks": []}
         if not body_plain_text
-        else note_document_from_plain_text(body_plain_text)
+        else {
+            "version": NOTE_DOCUMENT_VERSION,
+            "blocks": _body_paragraph_blocks(body_plain_text),
+        }
     )
     return NotesService.update_note(
         db,

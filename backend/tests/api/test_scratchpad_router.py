@@ -20,6 +20,7 @@ def test_scratchpad_get_returns_note(test_client):
     assert body["title"] == scratchpad_router.SCRATCHPAD_TITLE
     assert body["plain_text"] == scratchpad_router.SCRATCHPAD_TITLE
     assert body["content"] == scratchpad_router.SCRATCHPAD_TITLE
+    assert body["document"]["blocks"][0]["type"] == "title"
     assert body["document"]["blocks"][0]["content"][0]["text"] == scratchpad_router.SCRATCHPAD_TITLE
 
 
@@ -37,6 +38,9 @@ def test_scratchpad_update_roundtrip(test_client):
     assert not updated.json()["content"].startswith(
         f"# {scratchpad_router.SCRATCHPAD_TITLE}"
     )
+    assert updated.json()["document"]["blocks"][0]["type"] == "title"
+    assert updated.json()["document"]["blocks"][1]["type"] == "paragraph"
+    assert updated.json()["document"]["blocks"][1]["content"][0]["text"] == "Hello"
 
 
 def test_scratchpad_update_roundtrip_without_write_flag(test_client):
@@ -53,3 +57,33 @@ def test_scratchpad_update_roundtrip_without_write_flag(test_client):
     assert not updated.json()["content"].startswith(
         f"# {scratchpad_router.SCRATCHPAD_TITLE}"
     )
+    assert updated.json()["document"]["blocks"][0]["type"] == "title"
+    assert all(
+        block["type"] == "paragraph"
+        for block in updated.json()["document"]["blocks"][1:]
+    )
+    assert (
+        updated.json()["document"]["blocks"][-1]["content"][0]["text"] == "Strict Hello"
+    )
+
+
+def test_scratchpad_document_keeps_body_as_paragraph_blocks():
+    document = scratchpad_router._scratchpad_document("First line\nSecond line")
+
+    assert document == {
+        "version": 1,
+        "blocks": [
+            {
+                "type": "title",
+                "content": [{"text": scratchpad_router.SCRATCHPAD_TITLE, "marks": []}],
+            },
+            {
+                "type": "paragraph",
+                "content": [{"text": "First line", "marks": []}],
+            },
+            {
+                "type": "paragraph",
+                "content": [{"text": "Second line", "marks": []}],
+            },
+        ],
+    }

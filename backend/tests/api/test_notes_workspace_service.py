@@ -101,6 +101,39 @@ def test_build_note_payload_includes_explicit_state_fields():
     assert payload["is_folder_marker"] is False
 
 
+def test_create_note_fallback_uses_block_zero_title_semantics(monkeypatch):
+    timestamp = datetime(2024, 1, 1, tzinfo=UTC)
+    created = SimpleNamespace(
+        _snapshot_id="note-1",
+        _snapshot_updated_at=timestamp,
+    )
+    document = {
+        "version": 1,
+        "blocks": [
+            {"type": "title", "content": [{"text": "   ", "marks": []}]},
+            {"type": "paragraph", "content": [{"text": "Body title", "marks": []}]},
+        ],
+    }
+
+    monkeypatch.setattr(
+        service_module.NotesService,
+        "create_note",
+        lambda *args, **kwargs: created,
+    )
+
+    def raise_deleted(*args, **kwargs):
+        raise service_module.ObjectDeletedError(None)
+
+    monkeypatch.setattr(NotesWorkspaceService, "build_note_payload", raise_deleted)
+
+    result = NotesWorkspaceService.create_note(FakeDB([]), "user-1", document)
+
+    assert result["title"] == "New Note"
+    assert result["name"] == "New Note"
+    assert result["plain_text"] == "   \nBody title"
+    assert result["document"] == document
+
+
 def test_create_folder_returns_exists_when_present():
     db = FakeDB([_note(folder="Projects/2025")])
     result = NotesWorkspaceService.create_folder(db, "user-1", "Projects")

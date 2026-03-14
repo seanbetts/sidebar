@@ -20,7 +20,7 @@ enum NotesAttributedDocumentCodec {
             }
 
             switch block.type {
-            case .paragraph:
+            case .title, .paragraph:
                 attributed.append(attributedParagraph(from: block.content, baseFontSize: baseFontSize))
             default:
                 assertionFailure("Unsupported block type should have been handled before rendering: \(block.type.rawValue)")
@@ -58,11 +58,12 @@ enum NotesAttributedDocumentCodec {
             }
         }
 
-        func flushParagraph() {
+        func flushBlock() {
             if currentSegments.isEmpty {
                 currentSegments = [.init(text: "", marks: [])]
             }
-            blocks.append(.paragraph(currentSegments))
+            let blockType: NotesSemanticDocument.BlockType = blocks.isEmpty ? .title : .paragraph
+            blocks.append(.init(type: blockType, content: currentSegments))
             currentSegments.removeAll(keepingCapacity: true)
         }
 
@@ -73,7 +74,7 @@ enum NotesAttributedDocumentCodec {
                 if character.isNewline {
                     appendSegmentText(buffer, marks: marks)
                     buffer.removeAll(keepingCapacity: true)
-                    flushParagraph()
+                    flushBlock()
                 } else {
                     buffer.append(character)
                 }
@@ -82,7 +83,7 @@ enum NotesAttributedDocumentCodec {
         }
 
         if blocks.isEmpty || !currentSegments.isEmpty {
-            flushParagraph()
+            flushBlock()
         }
 
         return NotesSemanticDocument(blocks: blocks)
@@ -105,6 +106,7 @@ enum NotesAttributedDocumentCodec {
                     italic: marks.contains(.italic)
                 )
                 piece[range].underlineStyle = marks.contains(.underline) ? .single : nil
+                piece[range].strikethroughStyle = marks.contains(.strikethrough) ? .single : nil
             }
             paragraph.append(piece)
         }
@@ -124,6 +126,10 @@ enum NotesAttributedDocumentCodec {
                 return traits.italic ? .italic : nil
             case .underline:
                 return run.underlineStyle != nil ? .underline : nil
+            case .strikethrough:
+                return run.strikethroughStyle != nil ? .strikethrough : nil
+            case .inlineCode:
+                return nil
             }
         }
     }

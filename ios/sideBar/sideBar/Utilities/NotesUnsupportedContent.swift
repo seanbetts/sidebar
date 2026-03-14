@@ -13,7 +13,7 @@ struct NotesUnsupportedContent: Equatable {
 
     static func detect(in document: NotesSemanticDocument) -> NotesUnsupportedContent? {
         var blockTypes: [NotesSemanticDocument.BlockType] = []
-        for block in document.blocks where block.type != .paragraph {
+        for block in document.blocks where !supportedBlockTypes.contains(block.type) {
             if !blockTypes.contains(block.type) {
                 blockTypes.append(block.type)
             }
@@ -33,6 +33,13 @@ struct NotesUnsupportedContent: Equatable {
         guard !ProcessInfo.processInfo.isRunningTests else { return }
         assertionFailure("Unsupported notes content detected in \(context): \(labels)")
     }
+}
+
+private extension NotesUnsupportedContent {
+    static let supportedBlockTypes: Set<NotesSemanticDocument.BlockType> = [
+        .title,
+        .paragraph
+    ]
 }
 
 private extension NotesSemanticDocument.BlockType {

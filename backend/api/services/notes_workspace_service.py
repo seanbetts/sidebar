@@ -18,7 +18,7 @@ from api.services.notes_document_types import (
 )
 from api.services.notes_helpers import build_notes_tree
 from api.services.notes_service import NotesService
-from api.services.notes_title import derive_note_title
+from api.services.notes_title import derive_note_title_from_document
 from api.services.workspace_service import WorkspaceService
 from api.utils.search import build_text_search_filter
 from api.utils.validation import parse_uuid
@@ -374,7 +374,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             updated_at = getattr(created, "_snapshot_updated_at", None)
             fallback_document = document
             fallback_plain_text = project_plain_text_from_document(document)
-            fallback_title = derive_note_title(fallback_plain_text)
+            fallback_title = derive_note_title_from_document(fallback_document)
             return {
                 "id": str(note_id),
                 "title": fallback_title,

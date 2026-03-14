@@ -33,39 +33,70 @@ def test_parse_note_write_payload_rejects_legacy_content_field():
 
 
 def test_build_canonical_note_write_accepts_canonical_payload():
-    document = note_document_from_plain_text("# strict body")
+    document = {
+        "version": 1,
+        "blocks": [
+            {"type": "title", "content": [{"text": "Strict title", "marks": []}]},
+            {"type": "paragraph", "content": [{"text": "Body", "marks": []}]},
+        ],
+    }
 
     result = build_canonical_note_write(document)
 
     assert result.document == document
     assert result.document_version == 1
-    assert result.plain_text == "# strict body"
-    assert result.title == "# strict body"
+    assert result.plain_text == "Strict title\nBody"
+    assert result.title == "Strict title"
 
 
-def test_build_canonical_note_write_preserves_literal_hash_prefix_from_semantic_document():
-    document = note_document_from_plain_text("## Literal heading markers stay literal")
+def test_build_canonical_note_write_uses_title_block_zero_for_derived_title():
+    document = {
+        "version": 1,
+        "blocks": [
+            {"type": "title", "content": [{"text": "   ", "marks": []}]},
+            {"type": "heading", "content": [{"text": "Heading text", "marks": []}]},
+        ],
+    }
 
     result = build_canonical_note_write(document)
 
-    assert result.plain_text == "## Literal heading markers stay literal"
-    assert result.title == "## Literal heading markers stay literal"
+    assert result.plain_text == "   \nHeading text"
+    assert result.title == "New Note"
 
 
-def test_build_canonical_note_write_rejects_non_paragraph_blocks_for_current_projection():
+def test_build_canonical_note_write_promotes_legacy_paragraph_block_zero_to_title():
+    document = {
+        "version": 1,
+        "blocks": [
+            {"type": "paragraph", "content": [{"text": "Legacy title", "marks": []}]},
+            {"type": "paragraph", "content": [{"text": "Body", "marks": []}]},
+        ],
+    }
+
+    result = build_canonical_note_write(document)
+
+    assert result.document["blocks"][0]["type"] == "title"
+    assert result.plain_text == "Legacy title\nBody"
+    assert result.title == "Legacy title"
+
+
+def test_build_canonical_note_write_rejects_unsupported_blocks():
     document = {
         "version": 1,
         "blocks": [
             {
-                "type": "heading",
-                "level": 1,
-                "content": [{"text": "Unsupported heading", "marks": []}],
+                "type": "title",
+                "content": [{"text": "Strict title", "marks": []}],
+            },
+            {
+                "type": "table",
+                "rows": [],
             }
         ],
     }
 
     with pytest.raises(
         BadRequestError,
-        match="plain_text projection currently supports paragraph blocks only",
+        match="unsupported block type",
     ):
         build_canonical_note_write(document)

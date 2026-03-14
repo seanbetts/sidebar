@@ -9,7 +9,6 @@ from api.auth import bearer_scheme, verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError
-from api.services.notes_document_types import note_document_from_plain_text
 from api.services.notes_service import NotesService
 
 router = APIRouter(prefix="/scratchpad", tags=["scratchpad"])
@@ -22,7 +21,7 @@ SCRATCHPAD_DIVIDER = "\n\n___\n\n"
 def _title_only_blocks() -> list[dict[str, object]]:
     return [
         {
-            "type": "paragraph",
+            "type": "title",
             "content": [{"text": SCRATCHPAD_TITLE, "marks": []}],
         }
     ]
@@ -35,17 +34,26 @@ def _title_only_document() -> dict[str, object]:
     }
 
 
+def _body_paragraph_blocks(plain_text: str) -> list[dict[str, object]]:
+    return [
+        {
+            "type": "paragraph",
+            "content": [{"text": line, "marks": []}],
+        }
+        for line in plain_text.split("\n")
+    ]
+
+
 def _scratchpad_document(body_plain_text: str) -> dict[str, object]:
     stripped_body = body_plain_text.strip()
     if not stripped_body:
         return _title_only_document()
 
-    body_document = note_document_from_plain_text(stripped_body)
     return {
         "version": 1,
         "blocks": [
             *_title_only_blocks(),
-            *body_document["blocks"],
+            *_body_paragraph_blocks(stripped_body),
         ],
     }
 

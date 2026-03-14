@@ -109,14 +109,14 @@ def test_update_note_title(db_session):
     assert updated.plain_text == "# New Title\n\nBody"
 
 
-def test_create_note_derives_title_from_first_non_empty_plain_text_line(db_session):
+def test_create_note_uses_block_zero_plain_text_line_for_title(db_session):
     note = NotesService.create_note(
         db_session,
         "test_user",
         _document("\n\n  ## Derived Title  \nBody"),
     )
 
-    assert note.title == "## Derived Title"
+    assert note.title == "New Note"
     assert note.plain_text == "\n\n  ## Derived Title  \nBody"
 
 
@@ -138,7 +138,7 @@ def test_create_note_derives_title_and_plain_text_from_semantic_document_project
         "version": 1,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": "# Semantic Title", "marks": ["bold"]}],
             },
             {
@@ -160,7 +160,7 @@ def test_create_note_preserves_literal_hash_prefix_from_semantic_document(db_ses
         "version": 1,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": "## Literal heading markers", "marks": []}],
             }
         ],
@@ -185,7 +185,7 @@ def test_update_note_derives_title_and_plain_text_from_semantic_document_project
         "version": 1,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": "# After Title", "marks": ["underline"]}],
             },
             {
@@ -210,7 +210,7 @@ def test_save_note_document_script_create_accepts_semantic_document_without_head
         "version": 1,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": "Semantic Title", "marks": ["bold"]}],
             },
             {
@@ -253,7 +253,7 @@ def test_save_note_document_script_update_accepts_semantic_document(db_session, 
         "version": 1,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": "Updated title", "marks": ["underline"]}],
             },
             {
@@ -291,7 +291,7 @@ def test_save_note_document_script_append_concatenates_document_blocks_in_order(
             "version": 1,
             "blocks": [
                 {
-                    "type": "paragraph",
+                    "type": "title",
                     "content": [{"text": "Original title", "marks": ["bold"]}],
                 }
             ],
@@ -326,7 +326,7 @@ def test_save_note_document_script_append_concatenates_document_blocks_in_order(
         "version": 1,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": "Original title", "marks": ["bold"]}],
             },
             {
@@ -350,9 +350,8 @@ def test_save_note_document_script_append_rejects_documents_outside_phase_one_pr
         "version": 1,
         "blocks": [
             {
-                "type": "heading",
-                "level": 1,
-                "content": [{"text": "Unsupported block", "marks": []}],
+                "type": "table",
+                "rows": [],
             }
         ],
     }
@@ -361,7 +360,7 @@ def test_save_note_document_script_append_rejects_documents_outside_phase_one_pr
 
     with pytest.raises(
         BadRequestError,
-        match="plain_text projection currently supports paragraph blocks only",
+        match="unsupported block type",
     ):
         module.save_note_document_database(
             user_id="test_user",
@@ -428,7 +427,7 @@ def test_scratchpad_update_stores_body_as_semantic_document_without_markdown_hea
         "version": 1,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": module.SCRATCHPAD_TITLE, "marks": []}],
             },
             {
@@ -478,7 +477,7 @@ def test_scratchpad_clear_resets_to_plain_title_document_without_markdown_headin
         "version": 1,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": clear_module.SCRATCHPAD_TITLE, "marks": []}],
             }
         ],
@@ -490,15 +489,15 @@ def test_read_note_script_returns_canonical_document_and_plain_text(db_session, 
         db_session,
         "test_user",
         {
-            "version": 1,
-            "blocks": [
-                {
-                    "type": "paragraph",
-                    "content": [{"text": "Semantic title", "marks": ["bold"]}],
-                },
-                {
-                    "type": "paragraph",
-                    "content": [{"text": "Body line", "marks": ["italic"]}],
+        "version": 1,
+        "blocks": [
+            {
+                "type": "title",
+                "content": [{"text": "Semantic title", "marks": ["bold"]}],
+            },
+            {
+                "type": "paragraph",
+                "content": [{"text": "Body line", "marks": ["italic"]}],
                 },
             ],
         },
@@ -520,7 +519,7 @@ def test_download_note_script_treats_plain_text_as_export_only(db_session, monke
         "version": 1,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": "Export title", "marks": ["underline"]}],
             },
             {

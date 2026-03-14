@@ -83,7 +83,10 @@ def save_note_document_database(
             if existing_note is None:
                 raise ValueError("Note not found")
             existing_document = validate_note_document(existing_note.document)
-            appended_document = validate_note_document(document)
+            appended_document = validate_note_document(
+                document,
+                require_title_block=False,
+            )
             resolved_document = {
                 "version": existing_document["version"],
                 "blocks": [

@@ -16,10 +16,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
-    from api.services.notes_document_types import (
-        NOTE_DOCUMENT_VERSION,
-        note_document_from_plain_text,
-    )
+    from api.services.notes_document_types import NOTE_DOCUMENT_VERSION
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
@@ -34,11 +31,21 @@ def _title_only_document() -> dict[str, Any]:
         "version": NOTE_DOCUMENT_VERSION,
         "blocks": [
             {
-                "type": "paragraph",
+                "type": "title",
                 "content": [{"text": SCRATCHPAD_TITLE, "marks": []}],
             }
         ],
     }
+
+
+def _body_paragraph_blocks(plain_text: str) -> list[dict[str, Any]]:
+    return [
+        {
+            "type": "paragraph",
+            "content": [{"text": line, "marks": []}],
+        }
+        for line in plain_text.split("\n")
+    ]
 
 
 def _legacy_body_plain_text(plain_text: str | None) -> str:
@@ -57,12 +64,11 @@ def _scratchpad_document_from_legacy_note(note) -> dict[str, Any]:
     body_plain_text = _legacy_body_plain_text(note.plain_text)
     if not body_plain_text:
         return _title_only_document()
-    body_document = note_document_from_plain_text(body_plain_text)
     return {
         "version": NOTE_DOCUMENT_VERSION,
         "blocks": [
             *_title_only_document()["blocks"],
-            *body_document["blocks"],
+            *_body_paragraph_blocks(body_plain_text),
         ],
     }
 
