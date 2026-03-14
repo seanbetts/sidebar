@@ -39,6 +39,14 @@ struct WebsitesPanelView: View {
     @State var exportFilename: String = "website"
     @FocusState var isSearchFocused: Bool
 
+    static var shouldSubmitWebsiteAlertFromTextField: Bool {
+        #if os(macOS)
+        false
+        #else
+        true
+        #endif
+    }
+
     var body: some View {
         let base = VStack(spacing: 0) {
             header
@@ -76,18 +84,7 @@ struct WebsitesPanelView: View {
         }
         return base
         .alert("Save a website", isPresented: $isNewWebsitePresented) {
-            TextField("example.com", text: $newWebsiteUrl)
-                #if os(iOS)
-                .textInputAutocapitalization(.never)
-                .keyboardType(.URL)
-                #endif
-                .autocorrectionDisabled()
-                #if os(iOS)
-                .submitLabel(.done)
-                #endif
-                .onSubmit {
-                    saveWebsite()
-                }
+            websiteSaveTextField
             Button(viewModel.isSavingWebsite ? "Saving..." : "Save") {
                 saveWebsite()
             }
@@ -158,6 +155,27 @@ struct WebsitesPanelView: View {
 }
 
 extension WebsitesPanelView {
+    @ViewBuilder
+    var websiteSaveTextField: some View {
+        let textField = TextField("example.com", text: $newWebsiteUrl)
+            #if os(iOS)
+            .textInputAutocapitalization(.never)
+            .keyboardType(.URL)
+            #endif
+            .autocorrectionDisabled()
+            #if os(iOS)
+            .submitLabel(.done)
+            #endif
+
+        if Self.shouldSubmitWebsiteAlertFromTextField {
+            textField.onSubmit {
+                saveWebsite()
+            }
+        } else {
+            textField
+        }
+    }
+
     var header: some View {
         let showsInlineSearch = ContentView.shouldShowCompactPhoneInlineSearch(
             isCompact: isCompact,

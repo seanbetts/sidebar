@@ -3,6 +3,14 @@ import XCTest
 
 @MainActor
 final class WebsitesPanelSparseStateTests: XCTestCase {
+    func testWebsiteSaveAlertTextFieldSubmitIsDisabledOnMacOS() {
+        #if os(macOS)
+        XCTAssertFalse(WebsitesPanelView.shouldSubmitWebsiteAlertFromTextField)
+        #else
+        XCTAssertTrue(WebsitesPanelView.shouldSubmitWebsiteAlertFromTextField)
+        #endif
+    }
+
     func testPanelStatePrefersLoadingBeforeSparseState() {
         XCTAssertEqual(
             WebsitesPanelView.resolvePanelState(
