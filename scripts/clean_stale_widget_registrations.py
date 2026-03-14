@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import argparse
 import re
+import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
@@ -225,3 +228,122 @@ def _has_debug_path_marker(path: Path) -> bool:
     if "/DerivedData/" in path_str and "Debug" in path_str:
         return True
     return False
+
+
+def _list_widget_registrations() -> List[str]:
+    result = subprocess.run(
+        ["pluginkit", "-m", "-A", "-D", "-v"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.splitlines()
+
+
+def _remove_widget_registration(uuid: str) -> None:
+    subprocess.run(["pluginkit", "-r", uuid], check=True)
+
+
+def _print_summary(title: str, classification: ClassificationResult) -> None:
+    print(title)
+    print(f"  current workspace: {len(classification.current_workspace)}")
+    print(f"  installed app: {len(classification.installed_app)}")
+    print(f"  stale debug: {len(classification.stale_debug)}")
+    print(f"  unknown registrations: {len(classification.unknown_non_debug)}")
+
+
+def _record_matches_bundle_id(record: WidgetRegistration, bundle_id: str) -> bool:
+    identifier_base = record.identifier.split("(")[0].strip()
+    return identifier_base == bundle_id
+
+
+def _has_workspace_registration_for_bundle(
+    classification: ClassificationResult, bundle_id: str
+) -> bool:
+    return any(
+        _record_matches_bundle_id(record, bundle_id)
+        for record in classification.current_workspace
+    )
+
+
+def run_cleaner(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Clean stale widget registrations reported by pluginkit."
+    )
+    parser.add_argument(
+        "--workspace-root",
+        type=Path,
+        default=Path.cwd(),
+        help="Current workspace root containing the widget build.",
+    )
+    parser.add_argument(
+        "--bundle-id",
+        required=True,
+        help="Bundle identifier of the widget extension that should remain registered.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be removed without mutating registrations.",
+    )
+    args = parser.parse_args(argv)
+
+    workspace_root = args.workspace_root
+    bundle_id = args.bundle_id
+    try:
+        lines = _list_widget_registrations()
+    except subprocess.CalledProcessError as exc:
+        stderr_output = exc.stderr.strip() if exc.stderr else "pluginkit command failed"
+        print(
+            f"pluginkit failed to list widget registrations "
+            f"(exit {exc.returncode}): {stderr_output}"
+        )
+        return exc.returncode or 1
+    records = parse_pluginkit_output(lines)
+    classification = classify_registrations(records, current_workspace=workspace_root)
+
+    _print_summary("Registration summary before cleanup", classification)
+
+    if not _has_workspace_registration_for_bundle(classification, bundle_id):
+        print(
+            f"Missing current workspace registration for widget bundle {bundle_id}. "
+            "Cleanup requires an active workspace registration."
+        )
+        return 1
+
+    conflicts = [record for record in classification.stale_debug if not record.uuid]
+    if conflicts:
+        print("Conflicting stale debug registrations remain:")
+        for record in conflicts:
+            print(f"  - {record.path} ({record.identifier})")
+        return 1
+
+    if classification.stale_debug:
+        if args.dry_run:
+            print("Dry run: stale debug registrations flagged for removal:")
+        else:
+            print("Removing stale debug registrations:")
+
+        for record in classification.stale_debug:
+            if record.uuid is None:
+                continue
+            if args.dry_run:
+                print(f"  pluginkit -r {record.uuid} ({record.path})")
+            else:
+                _remove_widget_registration(record.uuid)
+                print(f"  Removed {record.path}")
+    else:
+        print("No stale debug registrations detected.")
+
+    after_summary = ClassificationResult(
+        current_workspace=classification.current_workspace,
+        installed_app=classification.installed_app,
+        stale_debug=[],
+        unknown_non_debug=classification.unknown_non_debug,
+    )
+    _print_summary("Registration summary after cleanup", after_summary)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(run_cleaner())
