@@ -4,18 +4,25 @@ import Foundation
 final class DeepLinkWebsitesAPI: WebsitesProviding {
     let saveResult: Result<WebsiteSaveResponse, Error>
     let detailResult: Result<WebsiteDetail, Error>
+    let listResult: Result<WebsitesResponse, Error>
     private(set) var lastSavedURL: String?
+    private(set) var listCallCount = 0
 
     init(
         saveResult: Result<WebsiteSaveResponse, Error>,
+        listResult: Result<WebsitesResponse, Error> = .success(
+            WebsitesResponse(items: [], archivedCount: 0)
+        ),
         detailResult: Result<WebsiteDetail, Error> = .failure(DeepLinkWebsitesAPIError.forced)
     ) {
         self.saveResult = saveResult
+        self.listResult = listResult
         self.detailResult = detailResult
     }
 
     func list() async throws -> WebsitesResponse {
-        WebsitesResponse(items: [], archivedCount: 0)
+        listCallCount += 1
+        return try listResult.get()
     }
 
     func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse {

@@ -140,7 +140,7 @@ extension AppEnvironment {
     }
 
     /// Handles signed-in foreground activation work shared by iOS and macOS.
-    public func handleSignedInActivation() async {
+    public func handleSignedInActivation(includeDeferredRefresh: Bool = true) async {
         ExternalSurfaceDiagnosticsStore.shared.record(
             surface: "app_activation",
             stage: "begin",
@@ -159,15 +159,19 @@ extension AppEnvironment {
             await consumeExtensionEvents()
             await consumeWidgetCompletions()
             await consumeWidgetQuickSave()
-            await refreshWidgetDataBridges()
+            if includeDeferredRefresh {
+                await refreshWidgetDataBridges()
+            }
         }
         consumeWidgetAddTask()
         consumeWidgetAddNote()
         #if os(iOS)
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
-        if authState == .active {
-            await consumeExtensionEvents()
-            await websitesViewModel.load(force: true)
+        if includeDeferredRefresh {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            if authState == .active {
+                await consumeExtensionEvents()
+                await websitesViewModel.load(force: true)
+            }
         }
         runOfflineMaintenance()
         #endif

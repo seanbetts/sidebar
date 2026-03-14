@@ -191,17 +191,26 @@ extension AppEnvironmentDeepLinkTests {
     }
 
     func testHandleSignedInActivationConsumesSavedWebsiteDetailEvent() async {
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(NSError(domain: "AppEnvironmentSavedWebsiteEventTests", code: 1))
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
         let environment = requireEnvironment()
         environment.authState = .active
         let website = makeSavedWebsiteEvent(url: "https://example.com/articles/\(UUID().uuidString)")
 
         storage.extensionEventStore.recordWebsiteSaved(website: website)
 
-        await environment.handleSignedInActivation()
+        await environment.handleSignedInActivation(includeDeferredRefresh: false)
 
         XCTAssertEqual(environment.websitesViewModel.items.first?.id, website.id)
         XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: website.id))
         XCTAssertTrue(storage.extensionEventStore.consumeEvents().isEmpty)
+        XCTAssertEqual(
+            websitesAPI.listCallCount,
+            0,
+            "Saved website activation should not depend on a list refresh to surface the event."
+        )
     }
 
     func testRefreshAuthStateWhenSessionBecomesActiveAppliesSavedWebsiteDetailEvents() async {
