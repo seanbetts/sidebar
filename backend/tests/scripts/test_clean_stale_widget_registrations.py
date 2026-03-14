@@ -24,7 +24,7 @@ def test_widget_registration_parsing_and_classification():
     lines = [line for line in fixture.read_text().splitlines()]
 
     records = helper.parse_pluginkit_output(lines)
-    assert len(records) == 6
+    assert len(records) == 7
 
     assert records[0].flags == ("current-workspace",)
 
@@ -42,9 +42,19 @@ def test_widget_registration_parsing_and_classification():
     }
     assert classification.installed_app[0].flags == ("installed",)
     assert {record.path for record in classification.unknown_non_debug} == {
-        Path("/Users/sean/Downloads/sideBarWidgets/Release/sideBarWidgetsExtension.appex")
+        Path("/Users/sean/Downloads/sideBarWidgets/Release/sideBarWidgetsExtension.appex"),
+        Path(
+            "/Users/sean/Library/Application Support/sideBarWidgets/sideBarWidgetsExtension.appex"
+        ),
     }
-    assert classification.unknown_non_debug[0].flags == ("release",)
+    assert any(record.flags == ("release",) for record in classification.unknown_non_debug)
+    assert any(
+        record.flags == ("debug",)
+        for record in classification.unknown_non_debug
+        if record.path == Path(
+            "/Users/sean/Library/Application Support/sideBarWidgets/sideBarWidgetsExtension.appex"
+        )
+    )
 
     stale_paths = {
         Path(
@@ -78,7 +88,8 @@ def test_widget_registration_parsing_and_classification():
 
     assert helper.should_keep_registration(classification.current_workspace[0], workspace_root)
     assert helper.should_keep_registration(classification.installed_app[0], workspace_root)
-    assert helper.should_keep_registration(classification.unknown_non_debug[0], workspace_root)
+    for record in classification.unknown_non_debug:
+        assert helper.should_keep_registration(record, workspace_root)
     for stale in classification.stale_debug:
         assert not helper.should_keep_registration(stale, workspace_root)
 

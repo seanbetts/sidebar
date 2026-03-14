@@ -73,7 +73,7 @@ def classify_registrations(
             installed_app_bucket.append(record)
             continue
 
-        if _is_debug_registration(record):
+        if _is_debug_registration(record) and _is_stale_path(record.path, workspace_path):
             stale_debug_bucket.append(record)
             continue
 
@@ -93,7 +93,7 @@ def should_keep_registration(record: WidgetRegistration, current_workspace: Path
         return True
     if _is_installed_app(record.path):
         return True
-    if _is_debug_registration(record):
+    if _is_debug_registration(record) and _is_stale_path(record.path, workspace_path):
         return False
     return True
 
@@ -160,6 +160,17 @@ def _is_under_workspace(path: Path, workspace: Path) -> bool:
 
 def _is_installed_app(path: Path) -> bool:
     return str(path).startswith("/Applications/sideBar AI.app")
+
+
+def _is_stale_path(path: Path, workspace: Path) -> bool:
+    path_str = str(path)
+    if path_str.startswith("/private/tmp"):
+        return True
+    if ".git/worktrees" in path_str:
+        return True
+    if "/DerivedData/" in path_str and not _is_under_workspace(path, workspace):
+        return True
+    return False
 
 
 def _is_debug_registration(record: WidgetRegistration) -> bool:

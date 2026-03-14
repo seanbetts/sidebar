@@ -6,9 +6,13 @@ Flags = current-workspace
 Path = /Applications/sideBar AI.app/Contents/PlugIns/sideBarWidgetsExtension.appex
 Flags = installed
 
-  ai.sidebar.sidebar.sideBarWidgets(1.0)
+ ai.sidebar.sidebar.sideBarWidgets(1.0)
 Path = /Users/sean/Downloads/sideBarWidgets/Release/sideBarWidgetsExtension.appex
 Flags = release
+
+  ai.sidebar.sidebar.sideBarWidgets(1.0)
+Path = /Users/sean/Library/Application Support/sideBarWidgets/sideBarWidgetsExtension.appex
+Flags = debug
 
 !    ai.sidebar.sidebar.sideBarWidgets(1.0)
 Path = /Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex
