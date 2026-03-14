@@ -274,7 +274,7 @@ final class MarkdownRenderingTests: XCTestCase {
 
         let processed = MarkdownRendering.preprocessTranscriptMarkdown(input)
 
-        XCTAssertEqual(processed, "Intro\n\nBody\n\nTail")
+        XCTAssertEqual(processed, "Intro\nBody\n\nTail")
     }
 
     func testPlainTextForWebsiteShareRemovesFrontmatterAndMarkdownSyntax() {
