@@ -22,6 +22,7 @@ sys.modules["verify_macos_widget_artifacts"] = VERIFY_MODULE
 MODULE_SPEC.loader.exec_module(VERIFY_MODULE)
 
 run_verifier = VERIFY_MODULE.run_verifier
+WIDGET_BUNDLE_ID = "ai.sidebar.sidebar.sideBarWidgets"
 
 
 def _capture_subprocess_calls(monkeypatch, module, *, fail_for: list[list[str]] | None = None):
@@ -252,6 +253,8 @@ def test_cleanup_is_optional_and_runs_before_build(monkeypatch, tmp_path: Path) 
         str(workspace_root / "scripts/clean_stale_widget_registrations.py"),
         "--workspace-root",
         str(workspace_root),
+        "--bundle-id",
+        WIDGET_BUNDLE_ID,
     ]
 
 
@@ -283,6 +286,8 @@ def test_archive_export_cleanup_runs_before_archive(monkeypatch, tmp_path: Path)
         str(workspace_root / "scripts/clean_stale_widget_registrations.py"),
         "--workspace-root",
         str(workspace_root),
+        "--bundle-id",
+        WIDGET_BUNDLE_ID,
     ]
     assert calls[1][-1] == "archive"
     assert calls[2][1] == "-exportArchive"
@@ -438,6 +443,8 @@ def test_dry_run_prints_commands_without_running(monkeypatch, tmp_path: Path, ca
         + str(workspace_root / "scripts/clean_stale_widget_registrations.py")
         + " --workspace-root "
         + str(workspace_root)
+        + " --bundle-id "
+        + WIDGET_BUNDLE_ID
     ) in captured.out
     assert (
         "xcodebuild -project "

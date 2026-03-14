@@ -15,6 +15,7 @@ APP_NAME = "sideBar.app"
 XCODE_PROJECT_RELATIVE_PATH = Path("ios/sideBar/sideBar.xcodeproj")
 BUILD_SCHEME = "sideBar"
 DERIVED_DATA_BASE = Path("DerivedData/widget-verification")
+WIDGET_BUNDLE_ID = "ai.sidebar.sidebar.sideBarWidgets"
 
 
 def emit(message: str = "") -> None:
@@ -61,6 +62,8 @@ def build_command_plan(
                 str(workspace_root / "scripts/clean_stale_widget_registrations.py"),
                 "--workspace-root",
                 str(workspace_root),
+                "--bundle-id",
+                WIDGET_BUNDLE_ID,
             ]
         )
 
