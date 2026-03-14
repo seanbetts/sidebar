@@ -30,6 +30,17 @@ DISALLOWED_FRAMEWORK_EMBED_TARGETS = (
 )
 
 SHARED_FRAMEWORK_PATH = "sideBarShared.framework"
+BUILT_APP_NAME = "sideBar.app"
+WIDGET_APPEX_RELATIVE_PATH = Path("Contents/PlugIns/sideBarWidgetsExtension.appex")
+APP_FRAMEWORK_RELATIVE_PATH = Path("Contents/Frameworks/sideBarShared.framework")
+WIDGET_EXECUTABLE_NAME = "sideBarWidgetsExtension"
+WIDGET_DEBUG_DYLIB_NAME = "sideBarWidgetsExtension.debug.dylib"
+REQUIRED_WIDGET_RPATH_ENTRIES = (
+    "@executable_path/Frameworks",
+    "@executable_path/../../Frameworks",
+    "@executable_path/../../../../Frameworks",
+)
+REQUIRED_SHARED_FRAMEWORK_LINK_PREFIX = "@rpath/sideBarShared.framework/"
 
 PLATFORM_EXPECTATIONS_BY_TARGET = {
     "sideBar Safari Extension (macOS)": {
@@ -389,6 +400,114 @@ def evaluate_platform_expectations(
     )
 
 
+def parse_otool_rpath_entries(otool_output: str) -> set[str]:
+    """Extract LC_RPATH entries from `otool -l` output."""
+    entries: set[str] = set()
+    lines = otool_output.splitlines()
+    for index, raw_line in enumerate(lines):
+        if raw_line.strip() != "cmd LC_RPATH":
+            continue
+        path_line = next(
+            (
+                candidate.strip()
+                for candidate in lines[index + 1 : index + 5]
+                if candidate.strip().startswith("path ")
+            ),
+            None,
+        )
+        if path_line is None:
+            continue
+        entries.add(path_line[len("path ") :].split(" (", 1)[0].strip())
+    return entries
+
+
+def parse_otool_linked_libraries(otool_output: str) -> set[str]:
+    """Extract linked library paths from `otool -L` output."""
+    linked: set[str] = set()
+    for raw_line in otool_output.splitlines():
+        line = raw_line.strip()
+        if not line or line.endswith(":"):
+            continue
+        linked.add(line.split(" ", 1)[0])
+    return linked
+
+
+def inspect_binary_with_otool(binary_path: Path, mode: str) -> str:
+    """Run `otool` for a binary and return its textual output."""
+    command = ["otool", mode, str(binary_path)]
+    try:
+        return subprocess.check_output(command, text=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            f"{binary_path}: failed `{' '.join(command)}` with exit {exc.returncode}:\n{exc.output}"
+        ) from exc
+
+
+def evaluate_widget_binary_artifact_expectations(binary_path: Path) -> list[str]:
+    """Validate rpath and shared-framework linkage for one widget binary."""
+    errors: list[str] = []
+    rpath_output = inspect_binary_with_otool(binary_path, "-l")
+    actual_rpaths = parse_otool_rpath_entries(rpath_output)
+    for required_rpath in REQUIRED_WIDGET_RPATH_ENTRIES:
+        if required_rpath not in actual_rpaths:
+            errors.append(f"{binary_path}: missing LC_RPATH entry '{required_rpath}'")
+
+    linked_output = inspect_binary_with_otool(binary_path, "-L")
+    linked_libraries = parse_otool_linked_libraries(linked_output)
+    if not any(
+        linked.startswith(REQUIRED_SHARED_FRAMEWORK_LINK_PREFIX)
+        for linked in linked_libraries
+    ):
+        errors.append(
+            f"{binary_path}: missing linked framework '@rpath/sideBarShared.framework/...'"
+        )
+    return errors
+
+
+def validate_built_macos_widget_artifacts(*, app_path: Path) -> list[str]:
+    """Validate the built macOS app layout and widget binary linkage expectations."""
+    errors: list[str] = []
+
+    if app_path.name != BUILT_APP_NAME:
+        return [f"{app_path}: expected built app bundle path ending with '{BUILT_APP_NAME}'"]
+
+    if not app_path.exists():
+        return [f"{app_path}: missing built app bundle"]
+
+    widget_appex_path = app_path / WIDGET_APPEX_RELATIVE_PATH
+    if not widget_appex_path.exists():
+        errors.append(f"{widget_appex_path}: missing widget extension bundle")
+
+    app_framework_path = app_path / APP_FRAMEWORK_RELATIVE_PATH
+    if not app_framework_path.exists():
+        errors.append(f"{app_framework_path}: missing app framework")
+
+    if errors:
+        return errors
+
+    widget_executable_path = (
+        widget_appex_path / "Contents" / "MacOS" / WIDGET_EXECUTABLE_NAME
+    )
+    if not widget_executable_path.exists():
+        errors.append(f"{widget_executable_path}: missing widget executable")
+        return errors
+
+    binary_paths = [widget_executable_path]
+    widget_debug_dylib_path = (
+        widget_appex_path / "Contents" / "MacOS" / WIDGET_DEBUG_DYLIB_NAME
+    )
+    if widget_debug_dylib_path.exists():
+        binary_paths.append(widget_debug_dylib_path)
+
+    for binary_path in binary_paths:
+        try:
+            errors.extend(evaluate_widget_binary_artifact_expectations(binary_path))
+        except RuntimeError as exc:
+            errors.append(str(exc))
+
+    return errors
+
+
 def validate_extension_config_resolution(
     *,
     pbxproj_path: Path,
@@ -495,6 +614,11 @@ def main() -> int:
         default="Debug",
         help="Xcode build configuration to validate",
     )
+    parser.add_argument(
+        "--built-app",
+        type=Path,
+        help="Path to built macOS sideBar.app to validate widget artifact layout",
+    )
     args = parser.parse_args()
 
     if not args.pbxproj.exists():
@@ -512,6 +636,12 @@ def main() -> int:
             configuration=args.configuration,
             targets=TARGETS,
         )
+        if args.built_app is not None:
+            errors.extend(
+                validate_built_macos_widget_artifacts(
+                    app_path=args.built_app,
+                )
+            )
     except RuntimeError as exc:
         emit(str(exc))
         return 1

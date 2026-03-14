@@ -25,6 +25,60 @@ evaluate_embedded_framework_expectations = (
     CONFIG_CHECK_MODULE.evaluate_embedded_framework_expectations
 )
 validate_extension_config_resolution = CONFIG_CHECK_MODULE.validate_extension_config_resolution
+validate_built_macos_widget_artifacts = (
+    CONFIG_CHECK_MODULE.validate_built_macos_widget_artifacts
+)
+
+
+def _create_widget_app_bundle(tmp_path: Path) -> dict[str, Path]:
+    """Create a minimal macOS sideBar.app widget bundle layout for tests."""
+    app = tmp_path / "sideBar.app"
+    appex = app / "Contents" / "PlugIns" / "sideBarWidgetsExtension.appex"
+    widget_macos = appex / "Contents" / "MacOS"
+    frameworks = app / "Contents" / "Frameworks"
+    shared_framework = frameworks / "sideBarShared.framework"
+    widget_executable = widget_macos / "sideBarWidgetsExtension"
+    widget_debug_dylib = widget_macos / "sideBarWidgetsExtension.debug.dylib"
+
+    shared_framework.mkdir(parents=True)
+    widget_macos.mkdir(parents=True)
+    widget_executable.write_text("binary", encoding="utf-8")
+    widget_debug_dylib.write_text("binary", encoding="utf-8")
+
+    return {
+        "app": app,
+        "appex": appex,
+        "shared_framework": shared_framework,
+        "widget_executable": widget_executable,
+        "widget_debug_dylib": widget_debug_dylib,
+    }
+
+
+def _mock_otool_success(monkeypatch, *, missing_rpath: str | None = None, missing_link_for: Path | None = None):
+    """Mock subprocess.check_output for deterministic otool -l and -L responses."""
+    required_rpaths = [
+        "@executable_path/Frameworks",
+        "@executable_path/../../Frameworks",
+        "@executable_path/../../../../Frameworks",
+    ]
+    if missing_rpath is not None:
+        required_rpaths.remove(missing_rpath)
+    rpath_output = "\n".join(f"path {entry} (offset 12)" for entry in required_rpaths)
+
+    def _fake_check_output(command, text, stderr):
+        binary_path = Path(command[-1])
+        if command[:2] == ["otool", "-l"]:
+            return rpath_output
+        if command[:2] == ["otool", "-L"]:
+            if missing_link_for is not None and binary_path == missing_link_for:
+                return "/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1439.100.3)"
+            return (
+                "@rpath/sideBarShared.framework/Versions/A/sideBarShared "
+                "(compatibility version 1.0.0, current version 1.0.0)"
+            )
+        raise AssertionError(f"unexpected command: {command}")
+
+    monkeypatch.setattr(CONFIG_CHECK_MODULE.subprocess, "check_output", _fake_check_output)
 
 
 def test_has_relative_local_include_accepts_expected_line() -> None:
@@ -335,6 +389,97 @@ def test_validate_extension_config_resolution_reports_missing_macos_host_framewo
         "sideBarWidgetsExtension: missing build setting "
         "'LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]'"
     ) in errors
+
+
+def test_validate_built_macos_widget_artifacts_rejects_non_sidebar_app_path(tmp_path: Path) -> None:
+    """Artifact validation should require a sideBar.app bundle path."""
+    app = tmp_path / "NotSideBar.app"
+    app.mkdir(parents=True)
+
+    errors = validate_built_macos_widget_artifacts(app_path=app)
+
+    assert errors == [f"{app}: expected built app bundle path ending with 'sideBar.app'"]
+
+
+def test_validate_built_macos_widget_artifacts_reports_missing_widget_appex(
+    tmp_path: Path,
+) -> None:
+    """Artifact validation should fail when the widget appex is absent."""
+    app = tmp_path / "sideBar.app"
+    (app / "Contents" / "Frameworks" / "sideBarShared.framework").mkdir(parents=True)
+
+    errors = validate_built_macos_widget_artifacts(app_path=app)
+
+    assert (
+        f"{app / 'Contents' / 'PlugIns' / 'sideBarWidgetsExtension.appex'}: missing widget extension bundle"
+        in errors
+    )
+
+
+def test_validate_built_macos_widget_artifacts_reports_missing_shared_framework(
+    tmp_path: Path,
+) -> None:
+    """Artifact validation should fail when sideBarShared is not embedded in the app."""
+    app = tmp_path / "sideBar.app"
+    (app / "Contents" / "PlugIns" / "sideBarWidgetsExtension.appex").mkdir(parents=True)
+
+    errors = validate_built_macos_widget_artifacts(app_path=app)
+
+    assert (
+        f"{app / 'Contents' / 'Frameworks' / 'sideBarShared.framework'}: missing app framework"
+        in errors
+    )
+
+
+def test_validate_built_macos_widget_artifacts_reports_missing_required_rpath(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    """Artifact validation should fail when required LC_RPATH entries are missing."""
+    paths = _create_widget_app_bundle(tmp_path)
+    _mock_otool_success(
+        monkeypatch,
+        missing_rpath="@executable_path/../../../../Frameworks",
+    )
+
+    errors = validate_built_macos_widget_artifacts(app_path=paths["app"])
+
+    assert (
+        f"{paths['widget_executable']}: missing LC_RPATH entry '@executable_path/../../../../Frameworks'"
+        in errors
+    )
+
+
+def test_validate_built_macos_widget_artifacts_reports_missing_shared_framework_linkage_on_executable(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    """Artifact validation should fail when widget executable lacks @rpath sideBarShared linkage."""
+    paths = _create_widget_app_bundle(tmp_path)
+    _mock_otool_success(monkeypatch, missing_link_for=paths["widget_executable"])
+
+    errors = validate_built_macos_widget_artifacts(app_path=paths["app"])
+
+    assert (
+        f"{paths['widget_executable']}: missing linked framework '@rpath/sideBarShared.framework/...'"
+        in errors
+    )
+
+
+def test_validate_built_macos_widget_artifacts_reports_missing_shared_framework_linkage_on_debug_dylib(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    """Artifact validation should fail when widget debug dylib lacks @rpath sideBarShared linkage."""
+    paths = _create_widget_app_bundle(tmp_path)
+    _mock_otool_success(monkeypatch, missing_link_for=paths["widget_debug_dylib"])
+
+    errors = validate_built_macos_widget_artifacts(app_path=paths["app"])
+
+    assert (
+        f"{paths['widget_debug_dylib']}: missing linked framework '@rpath/sideBarShared.framework/...'"
+        in errors
+    )
 
 
 def test_main_returns_failure_when_required_files_missing(monkeypatch, tmp_path: Path) -> None:
