@@ -8,72 +8,18 @@ struct ProfileDateOfBirthField: View {
     #endif
 
     var body: some View {
+        #if os(macOS)
+        SettingsMacFieldRow("Date of Birth") {
+            macContent
+        }
+        #else
         LabeledContent {
-            if dateOfBirthEnabled {
-                #if os(iOS)
-                HStack(spacing: 8) {
-                    Button {
-                        isDatePickerPresented = true
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(dateOfBirth.formatted(date: .abbreviated, time: .omitted))
-                                .appFont(.body)
-                                .foregroundStyle(DesignTokens.Colors.textPrimary)
-                            Image(systemName: "chevron.up.chevron.down")
-                                .appFont(.caption2)
-                                .foregroundStyle(DesignTokens.Colors.textSecondary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        dateOfBirthEnabled = false
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .appFont(.body)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Clear date of birth")
-                }
-                #else
-                HStack(spacing: 8) {
-                    DatePicker(
-                        "Date of Birth",
-                        selection: $dateOfBirth,
-                        displayedComponents: .date
-                    )
-                    .labelsHidden()
-                    .appFont(.body)
-                    #if os(iOS)
-                    .datePickerStyle(.compact)
-                    #endif
-
-                    Button {
-                        dateOfBirthEnabled = false
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .appFont(.body)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Clear date of birth")
-                }
-                #endif
-            } else {
-                Button("Set") {
-                    dateOfBirth = Date()
-                    dateOfBirthEnabled = true
-                    #if os(iOS)
-                    isDatePickerPresented = true
-                    #endif
-                }
-                .appFont(.body)
-            }
+            iosContent
         } label: {
             Text("Date of Birth")
                 .appFont(.body)
         }
+        #endif
         #if os(iOS)
         .sheet(isPresented: $isDatePickerPresented) {
             NavigationStack {
@@ -98,4 +44,76 @@ struct ProfileDateOfBirthField: View {
         }
         #endif
     }
+
+    #if os(macOS)
+    private var macContent: some View {
+        HStack(spacing: 8) {
+            if dateOfBirthEnabled {
+                DatePicker(
+                    "Date of Birth",
+                    selection: $dateOfBirth,
+                    displayedComponents: .date
+                )
+                .labelsHidden()
+                .appFont(.body)
+
+                Button {
+                    dateOfBirthEnabled = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .appFont(.body)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Clear date of birth")
+            } else {
+                Button("Set") {
+                    dateOfBirth = Date()
+                    dateOfBirthEnabled = true
+                }
+                .appFont(.body)
+            }
+        }
+        .frame(maxWidth: 320, alignment: .trailing)
+    }
+    #endif
+
+    #if os(iOS)
+    private var iosContent: some View {
+        HStack(spacing: 8) {
+            if dateOfBirthEnabled {
+                Button {
+                    isDatePickerPresented = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(dateOfBirth.formatted(date: .abbreviated, time: .omitted))
+                            .appFont(.body)
+                            .foregroundStyle(DesignTokens.Colors.textPrimary)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .appFont(.caption2)
+                            .foregroundStyle(DesignTokens.Colors.textSecondary)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    dateOfBirthEnabled = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .appFont(.body)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Clear date of birth")
+            } else {
+                Button("Set") {
+                    dateOfBirth = Date()
+                    dateOfBirthEnabled = true
+                    isDatePickerPresented = true
+                }
+                .appFont(.body)
+            }
+        }
+    }
+    #endif
 }

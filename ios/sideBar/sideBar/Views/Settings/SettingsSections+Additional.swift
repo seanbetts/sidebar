@@ -10,6 +10,109 @@ struct SkillsSettingsView: View {
     @State private var selectedStoreSkill: SkillItem?
 
     var body: some View {
+        #if os(macOS)
+        macSkillsForm
+        #else
+        iosSkillsForm
+        #endif
+    }
+
+    #if os(macOS)
+    private var macSkillsForm: some View {
+        Form {
+            Section {
+                SettingsMacSectionIntro(
+                    title: "Skills",
+                    message: "Choose which built-in and installed skills sideBar can use, grouped by the role they play in the assistant."
+                )
+                Picker("Skill Type", selection: $selectedTier) {
+                    ForEach(SkillsTierFilter.allCases) { tier in
+                        Text(tier.title).tag(tier)
+                    }
+                }
+                .appFont(.body)
+                .pickerStyle(.segmented)
+
+                SettingsMacFieldRow("Bulk actions") {
+                    Toggle("Enable all", isOn: Binding(
+                        get: { allSkillsEnabled },
+                        set: { isEnabled in
+                            Task {
+                                await viewModel.setAllSkillsEnabled(
+                                    isEnabled,
+                                    scopeSkillIds: enableAllScopeSkillIds
+                                )
+                            }
+                        }
+                    ))
+                    .toggleStyle(.switch)
+                    .disabled(
+                        viewModel.isSavingSkills
+                        || viewModel.isLoadingSkills
+                        || viewModel.settings == nil
+                        || !hasToggleableSkills
+                    )
+                }
+            }
+
+            if let error = viewModel.skillsError {
+                Section {
+                    SettingsMacStatusBanner(message: error, tone: .error)
+                }
+            }
+
+            if groupedSkills.isEmpty && !viewModel.isLoadingSkills {
+                Section {
+                    SettingsMacStatusBanner(message: "No skills available.", tone: .info)
+                }
+            } else {
+                ForEach(groupedSkills, id: \.0) { category, skills in
+                    Section {
+                        SettingsMacSectionIntro(
+                            title: category,
+                            message: "Review the skills in this category and decide which ones should be active for your current workspace."
+                        )
+                        ForEach(skills, id: \.id) { skill in
+                            if selectedTier == .store {
+                                storeSkillRow(skill)
+                            } else {
+                                skillToggleRow(skill)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(DesignTokens.Colors.settingsBackground)
+        .sheet(item: $selectedStoreSkill) { skill in
+            NavigationStack {
+                StoreSkillConfigView(viewModel: viewModel, skill: skill)
+                    .navigationTitle(viewModel.displayName(for: skill))
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button {
+                                selectedStoreSkill = nil
+                            } label: {
+                                Image(systemName: "xmark")
+                            }
+                            .accessibilityLabel("Close skill details")
+                            .keyboardShortcut(.cancelAction)
+                        }
+                    }
+            }
+            .settingsSheetGrabBarVisible()
+        }
+        .overlay {
+            if viewModel.isLoadingSkills && viewModel.skills.isEmpty {
+                LoadingIndicatorView(size: LoadingIndicatorSize.page)
+            }
+        }
+    }
+    #endif
+
+    private var iosSkillsForm: some View {
         Form {
             Section {
                 Picker("Skill Type", selection: $selectedTier) {
@@ -66,26 +169,10 @@ struct SkillsSettingsView: View {
                 }
             }
         }
-        #if os(macOS)
-        .formStyle(.grouped)
-        #endif
         .sheet(item: $selectedStoreSkill) { skill in
             NavigationStack {
                 StoreSkillConfigView(viewModel: viewModel, skill: skill)
                     .navigationTitle(viewModel.displayName(for: skill))
-                    #if os(macOS)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button {
-                                selectedStoreSkill = nil
-                            } label: {
-                                Image(systemName: "xmark")
-                            }
-                            .accessibilityLabel("Close skill details")
-                            .keyboardShortcut(.cancelAction)
-                        }
-                    }
-                    #endif
             }
             .settingsSheetGrabBarVisible()
         }
@@ -138,6 +225,27 @@ struct SkillsSettingsView: View {
     }
 
     private func skillToggleRow(_ skill: SkillItem) -> some View {
+        #if os(macOS)
+        SettingsMacSkillRow(
+            title: viewModel.displayName(for: skill),
+            subtitle: viewModel.displayDescription(for: skill),
+            systemImage: SkillIconResolver.iconName(for: skill)
+        ) {
+            Toggle("", isOn: Binding(
+                get: { isSkillEnabled(skill.id) },
+                set: { isEnabled in
+                    Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
+                }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .disabled(
+                viewModel.isSavingSkills
+                || viewModel.settings == nil
+                || !skill.userToggleable
+            )
+        }
+        #else
         Toggle(isOn: Binding(
             get: { isSkillEnabled(skill.id) },
             set: { isEnabled in
@@ -151,9 +259,38 @@ struct SkillsSettingsView: View {
             || viewModel.settings == nil
             || !skill.userToggleable
         )
+        #endif
     }
 
     private func storeSkillRow(_ skill: SkillItem) -> some View {
+        #if os(macOS)
+        SettingsMacSkillRow(
+            title: viewModel.displayName(for: skill),
+            subtitle: viewModel.displayDescription(for: skill),
+            systemImage: SkillIconResolver.iconName(for: skill)
+        ) {
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                Button("Details") {
+                    selectedStoreSkill = skill
+                }
+                .buttonStyle(.bordered)
+
+                Toggle("", isOn: Binding(
+                    get: { isSkillEnabled(skill.id) },
+                    set: { isEnabled in
+                        Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
+                    }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .disabled(
+                    viewModel.isSavingSkills
+                    || viewModel.settings == nil
+                    || !skill.userToggleable
+                )
+            }
+        }
+        #else
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             Button {
                 selectedStoreSkill = skill
@@ -177,6 +314,7 @@ struct SkillsSettingsView: View {
                 || !skill.userToggleable
             )
         }
+        #endif
     }
 
     private var filteredSkills: [SkillItem] {

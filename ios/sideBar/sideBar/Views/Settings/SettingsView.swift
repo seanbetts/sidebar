@@ -49,28 +49,17 @@ public struct SettingsView: View {
             #endif
         }
         .appTextSize()
-        #if os(macOS)
-        .overlay(alignment: .bottom) {
-            if let savePillState {
-                SettingsSaveStatusPill(state: savePillState)
-                    .padding(.horizontal, DesignTokens.Spacing.lg)
-                    .padding(.bottom, 20)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .allowsHitTesting(false)
-            }
-        }
-        #endif
         .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: savePillState)
-            .onAppear {
-                updateSavePillState()
-            }
-            .onChange(of: saveStatusSignature) { _, _ in
-                updateSavePillState()
-            }
-            .onDisappear {
-                savingDelayTask?.cancel()
-                hideSavedTask?.cancel()
-            }
+        .onAppear {
+            updateSavePillState()
+        }
+        .onChange(of: saveStatusSignature) { _, _ in
+            updateSavePillState()
+        }
+        .onDisappear {
+            savingDelayTask?.cancel()
+            hideSavedTask?.cancel()
+        }
 
         #if os(macOS)
         switch presentationStyle {
@@ -79,25 +68,7 @@ public struct SettingsView: View {
         case .macModal:
             MacModalShell(type: settingsMacPresentationPanelType()) {
                 VStack(spacing: 0) {
-                    HStack(spacing: DesignTokens.Spacing.sm) {
-                        Button("Done") {
-                            onClose?()
-                        }
-
-                        Spacer()
-
-                        Button {
-                            onClose?()
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Close settings")
-                    }
-                    .padding(.horizontal, DesignTokens.Spacing.lg)
-                    .padding(.vertical, DesignTokens.Spacing.md)
+                    settingsInspectorHeader
 
                     Divider()
 
@@ -119,6 +90,45 @@ public struct SettingsView: View {
         content
         #endif
     }
+
+    #if os(macOS)
+    private var settingsInspectorHeader: some View {
+        HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Settings")
+                    .appFont(.headline)
+                Text("Tune sideBar for your workspace and assistant.")
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: DesignTokens.Spacing.md)
+
+            inlineSaveStatusView
+
+            Button {
+                onClose?()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close settings")
+        }
+        .padding(.horizontal, DesignTokens.Spacing.lg)
+        .padding(.vertical, DesignTokens.Spacing.md)
+    }
+
+    @ViewBuilder
+    private var inlineSaveStatusView: some View {
+        if let savePillState {
+            SettingsSaveStatusPill(state: savePillState)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+                .allowsHitTesting(false)
+        }
+    }
+    #endif
 
     private var isSavingAnySettings: Bool {
         let viewModel = environment.settingsViewModel
@@ -209,13 +219,13 @@ public struct SettingsView: View {
     }
 }
 
-private enum SettingsSavePillState {
+enum SettingsSavePillState {
     case saving
     case saved
     case error
 }
 
-private struct SettingsSaveStatusPill: View {
+struct SettingsSaveStatusPill: View {
     let state: SettingsSavePillState
 
     var body: some View {
@@ -318,19 +328,25 @@ private struct SettingsSplitView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            List(SettingsSection.allCases, selection: selectionBinding) { section in
-                Label(section.displayTitle(assistantDisplayName: viewModel.assistantDisplayName), systemImage: section.systemImage)
-                    .appFont(.subheadline)
-                    .tag(section)
+            VStack(spacing: 0) {
+                settingsSidebarHeader
+
+                List(SettingsSection.allCases, selection: selectionBinding) { section in
+                    Label(section.displayTitle(assistantDisplayName: viewModel.assistantDisplayName), systemImage: section.systemImage)
+                        .appFont(.subheadline)
+                        .padding(.vertical, DesignTokens.Spacing.xxsPlus)
+                        .tag(section)
+                }
+                .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
+                .background(DesignTokens.Colors.settingsFormBackground)
             }
-            .listStyle(.sidebar)
-            .scrollContentBackground(.hidden)
+            .frame(minWidth: settingsMacSidebarWidth(), idealWidth: settingsMacSidebarWidth(), maxWidth: settingsMacSidebarWidth() + 12)
             .background(DesignTokens.Colors.settingsFormBackground)
             .modifier(SidebarToggleHider())
         } detail: {
             settingsDetailView(for: selectedSection)
                 .appFont(.subheadline)
-                .navigationTitle(selectedSection.displayTitle(assistantDisplayName: viewModel.assistantDisplayName))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .modifier(SidebarToggleHider())
                 .background(DesignTokens.Colors.settingsBackground)
@@ -352,6 +368,22 @@ private struct SettingsSplitView: View {
                 columnVisibility = .all
             }
         }
+    }
+
+    private var settingsSidebarHeader: some View {
+        VStack(alignment: .leading, spacing: settingsMacSectionIntroSpacing()) {
+            Text("Settings")
+                .appFont(.headline)
+            Text("Choose a section to configure your workspace, profile, and assistant.")
+                .appFont(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.top, DesignTokens.Spacing.md)
+        .padding(.bottom, DesignTokens.Spacing.sm)
+        .background(DesignTokens.Colors.settingsFormBackground)
     }
 
     @ViewBuilder
@@ -391,83 +423,3 @@ private struct SettingsSplitView: View {
     }
 }
 #endif
-
-#if os(macOS)
-private struct SidebarToggleHider: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(macOS 13.0, *) {
-            content.toolbar(removing: .sidebarToggle)
-        } else {
-            content
-        }
-    }
-}
-#endif
-
-private struct SettingsTabsView: View {
-    @ObservedObject var viewModel: SettingsViewModel
-    @ObservedObject var memoriesViewModel: MemoriesViewModel
-    let savePillState: SettingsSavePillState?
-    @State private var hasLoaded = false
-
-    var body: some View {
-        TabView {
-            settingsTabContent(ProfileSettingsView(viewModel: viewModel))
-                .tabItem {
-                    Label("Profile", systemImage: "person.crop.circle")
-                }
-            settingsTabContent(UserSettingsView(viewModel: viewModel))
-                .tabItem {
-                    Label("User", systemImage: "person.line.dotted.person")
-                }
-            settingsTabContent(AgentSettingsView(viewModel: viewModel))
-                .tabItem {
-                    Label(viewModel.assistantDisplayName, systemImage: "brain.fill")
-                }
-            settingsTabContent(SkillsSettingsView(viewModel: viewModel))
-                .tabItem {
-                    Label("Skills", systemImage: "command.circle")
-                }
-            settingsTabContent(MemoriesSettingsView(viewModel: memoriesViewModel))
-                .tabItem {
-                    Label("Memories", systemImage: "bookmark")
-                }
-            settingsTabContent(GeneralSettingsView())
-                .tabItem {
-                    Label("App", systemImage: "gearshape")
-                }
-        }
-        .padding(DesignTokens.Spacing.md)
-        .background(DesignTokens.Colors.settingsBackground)
-        .onAppear {
-            if !hasLoaded {
-                hasLoaded = true
-                Task {
-                    await loadSettings()
-                }
-            }
-        }
-    }
-
-    private func loadSettings() async {
-        await viewModel.load()
-        await viewModel.loadSkills()
-        await viewModel.loadShortcutsToken()
-        await viewModel.loadProfileImage()
-    }
-
-    @ViewBuilder
-    private func settingsTabContent<Content: View>(_ content: Content) -> some View {
-        content
-            .appFont(.subheadline)
-            .overlay(alignment: .bottom) {
-                if let savePillState {
-                    SettingsSaveStatusPill(state: savePillState)
-                        .padding(.horizontal, DesignTokens.Spacing.lg)
-                        .padding(.bottom, DesignTokens.Spacing.sm)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .allowsHitTesting(false)
-                }
-            }
-    }
-}

@@ -109,4 +109,93 @@ final class SettingsSectionsTests: XCTestCase {
 
         XCTAssertEqual(title, "Navigator's Tone")
     }
+
+    func testMacSettingsSidebarUsesStableWidth() {
+        XCTAssertEqual(settingsMacSidebarWidth(), 232)
+    }
+
+    func testMacSettingsRowLabelWidthSupportsInspectorLayout() {
+        XCTAssertEqual(settingsMacRowLabelWidth(), 160)
+    }
+
+    func testMacSettingsSectionIntroSpacingUsesInspectorRhythm() {
+        XCTAssertEqual(settingsMacSectionIntroSpacing(), 6)
+    }
+
+    func testProfileSettingsMacSourceUsesInspectorRowsAndStatusBanners() throws {
+        let normalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
+        XCTAssertTrue(normalized.contains("SettingsMacHeroButtonRow("))
+        XCTAssertTrue(normalized.contains("SettingsMacFieldRow("))
+        XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
+        XCTAssertTrue(normalized.contains("SettingsMacActionSection("))
+    }
+
+    func testGeneralSettingsMacSourceUsesInspectorSectionIntrosAndCalmerWeatherControl() throws {
+        let normalized = try generalSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
+        XCTAssertTrue(normalized.contains("SettingsMacActionSection("))
+        XCTAssertTrue(normalized.contains("settingsMacWeatherPickerStyle()"))
+        XCTAssertFalse(normalized.contains(".pickerStyle(.radioGroup)"))
+    }
+
+    func testSkillsSettingsMacSourceUsesInspectorIntroAndCardRows() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
+        XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
+        XCTAssertTrue(normalized.contains("SettingsMacSkillRow("))
+    }
+}
+
+private func settingsSourceRoot(
+    file: StaticString = #filePath
+) -> URL {
+    URL(fileURLWithPath: "\(file)")
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("Settings")
+}
+
+private func profileSettingsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsSections.swift", file: file, line: line)
+}
+
+private func generalSettingsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsSections+General.swift", file: file, line: line)
+}
+
+private func skillsSettingsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsSections+Additional.swift", file: file, line: line)
+}
+
+private func settingsSourceFile(
+    _ filename: String,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let sourceURL = settingsSourceRoot(file: file).appendingPathComponent(filename)
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read \(filename): \(error)", file: file, line: line)
+        throw error
+    }
 }

@@ -31,9 +31,12 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(normalized.contains("enumSettingsPresentationStyle"))
         XCTAssertTrue(normalized.contains("casemacModal"))
         XCTAssertTrue(normalized.contains("MacModalShell(type:settingsMacPresentationPanelType())"))
-        XCTAssertTrue(normalized.contains("Button(\"Done\""))
+        XCTAssertTrue(normalized.contains("settingsInspectorHeader"))
+        XCTAssertTrue(normalized.contains("settingsSidebarHeader"))
+        XCTAssertTrue(normalized.contains("inlineSaveStatusView"))
+        XCTAssertTrue(normalized.contains("Settings"))
         XCTAssertTrue(normalized.contains("Image(systemName:\"xmark.circle.fill\")"))
-        XCTAssertFalse(normalized.contains(".keyboardShortcut(.defaultAction)"))
+        XCTAssertFalse(normalized.contains("Button(\"Done\""))
     }
 
     func testMacSettingsEntryPointsRouteThroughInAppPresenter() throws {

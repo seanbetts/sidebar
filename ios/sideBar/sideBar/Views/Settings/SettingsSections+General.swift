@@ -35,6 +35,88 @@ struct GeneralSettingsView: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        macGeneralForm
+        #else
+        iosGeneralForm
+        #endif
+    }
+
+    #if os(macOS)
+    private var macGeneralForm: some View {
+        Form {
+            Section {
+                SettingsMacSectionIntro(
+                    title: "Text",
+                    message: "Choose how dense sideBar should feel across panels, editors, and assistant surfaces."
+                )
+                textSizeControl
+            }
+
+            Section {
+                SettingsMacActionSection(
+                    title: "Security",
+                    message: "Protect the app when your Mac supports biometric authentication."
+                ) {
+                    Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
+                        .disabled(!canUseDeviceAuth)
+
+                    if !canUseDeviceAuth {
+                        SettingsMacStatusBanner(
+                            message: "Set up Face ID or Touch ID to enable biometric unlock.",
+                            tone: .info
+                        )
+                    }
+                }
+            }
+
+            Section {
+                SettingsMacSectionIntro(
+                    title: "Weather",
+                    message: "Pick the temperature unit sideBar should use when weather context is shown."
+                )
+                Picker("Temperature Units", selection: $weatherUsesFahrenheit) {
+                    Text("Celsius").tag(false)
+                    Text("Fahrenheit").tag(true)
+                }
+                .appFont(.body)
+                .pickerStyle(settingsMacWeatherPickerStyle())
+            }
+
+            Section {
+                SettingsMacActionSection(
+                    title: "Diagnostics",
+                    message: "Capture or clear the external-surface diagnostics used to debug share extensions and related app flows."
+                ) {
+                    HStack(spacing: DesignTokens.Spacing.sm) {
+                        Button("Copy External Surface Diagnostics") {
+                            copyExternalSurfaceDiagnostics()
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button("Clear External Surface Diagnostics") {
+                            clearExternalSurfaceDiagnostics()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    if let diagnosticsStatusMessage {
+                        SettingsMacStatusBanner(message: diagnosticsStatusMessage, tone: .info)
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(DesignTokens.Colors.settingsBackground)
+        .onAppear {
+            appTextSizeRaw = AppTextSizeOption.resolved(from: appTextSizeRaw).rawValue
+            evaluateBiometricSupport()
+        }
+    }
+    #endif
+
+    private var iosGeneralForm: some View {
         Form {
             Section("Text") {
                 textSizeControl
@@ -54,11 +136,7 @@ struct GeneralSettingsView: View {
                     Text("Fahrenheit").tag(true)
                 }
                 .appFont(.body)
-                #if os(macOS)
-                .pickerStyle(.radioGroup)
-                #else
                 .pickerStyle(.segmented)
-                #endif
             }
             Section("Diagnostics") {
                 Button("Copy External Surface Diagnostics") {
@@ -74,9 +152,6 @@ struct GeneralSettingsView: View {
                 }
             }
         }
-        #if os(macOS)
-        .formStyle(.grouped)
-        #endif
         .onAppear {
             appTextSizeRaw = AppTextSizeOption.resolved(from: appTextSizeRaw).rawValue
             evaluateBiometricSupport()
