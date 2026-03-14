@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 @testable import sideBar
 
@@ -148,6 +149,25 @@ final class WorkspaceStoreTests: XCTestCase {
 
         XCTAssertEqual(store.parityDivergenceCount, 1)
         XCTAssertNotNil(store.lastParityDivergence)
+    }
+
+    func testDispatchDoesNotPublishWhenReducerReturnsUnchangedState() {
+        let store = makeStore()
+        let expectation = expectation(description: "workspace state should not republish")
+        expectation.isInverted = true
+        var cancellables = Set<AnyCancellable>()
+
+        store.$state
+            .dropFirst()
+            .sink { _ in
+                expectation.fulfill()
+            }
+            .store(in: &cancellables)
+
+        store.dispatch(.setLeftPanelExpanded(true), source: "unit_test_noop")
+
+        wait(for: [expectation], timeout: 0.1)
+        XCTAssertEqual(store.state.isLeftPanelExpanded, true)
     }
 
     func testReducerSelectSectionUpdatesCompactPrimaryDescriptor() {

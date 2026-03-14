@@ -289,7 +289,9 @@ public final class WorkspaceStore: ObservableObject {
         _ action: WorkspaceAction,
         source: String = "workspace_action"
     ) {
-        state = WorkspaceReducer.reduce(state: state, action: action)
+        let nextState = WorkspaceReducer.reduce(state: state, action: action)
+        guard nextState != state else { return }
+        state = nextState
         guard case .applyLegacySnapshot = action else {
             verifyParityIfNeeded(source: source)
             return
