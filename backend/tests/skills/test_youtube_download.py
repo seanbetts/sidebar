@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import tomllib
 from types import SimpleNamespace
 from typing import Any
 
@@ -68,6 +69,11 @@ def test_resolve_player_clients_from_env(monkeypatch):
     assert module._resolve_player_clients(audio_only=True) == ["ios", "web", "tv"]
 
 
+def test_default_remote_components_stays_enabled():
+    module = _load_download_module()
+    assert module._default_remote_components() == ["ejs:github"]
+
+
 def test_download_youtube_enables_remote_components(monkeypatch, tmp_path):
     module = _load_download_module()
     captured: dict[str, Any] = {}
@@ -106,6 +112,14 @@ def test_download_youtube_enables_remote_components(monkeypatch, tmp_path):
 
     assert result["success"] is True
     assert captured["opts"]["remote_components"] == ["ejs:github"]
+
+
+def test_backend_pyproject_pins_latest_verified_yt_dlp_release():
+    pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    pyproject = tomllib.loads(pyproject_path.read_text())
+    dependencies = pyproject["project"]["dependencies"]
+
+    assert "yt-dlp>=2026.3.13" in dependencies
 
 
 def test_store_downloaded_output_uses_ingestion_helpers(monkeypatch, tmp_path):
