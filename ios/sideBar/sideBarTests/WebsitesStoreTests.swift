@@ -490,6 +490,101 @@ extension WebsitesStoreTests {
         XCTAssertEqual(store.items[0].pinnedOrder, 3)
         XCTAssertEqual(store.items[0].archived, false)
     }
+
+    func testApplyRealtimeUpdateRefreshesActiveTranscriptMetadata() async {
+        let videoId = "abc123xyzAA"
+        let existingItem = WebsiteItem(
+            id: "w1",
+            title: "Video",
+            url: "https://www.youtube.com/watch?v=\(videoId)",
+            domain: "youtube.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: [
+                videoId: WebsiteTranscriptEntry(
+                    status: "queued",
+                    fileId: "file-1",
+                    updatedAt: "2026-03-14T09:55:00Z",
+                    error: nil
+                )
+            ],
+            readingTime: nil,
+            updatedAt: "2026-03-14T09:55:00Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let existingDetail = WebsiteDetail(
+            id: "w1",
+            title: "Video",
+            url: "https://www.youtube.com/watch?v=\(videoId)",
+            urlFull: nil,
+            domain: "youtube.com",
+            content: "Before",
+            source: "youtube",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: existingItem.youtubeTranscripts,
+            readingTime: nil,
+            updatedAt: "2026-03-14T09:55:00Z",
+            lastOpenedAt: nil
+        )
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
+        let store = WebsitesStore(
+            api: api,
+            cache: TestCacheClient(),
+            widgetDataManager: makeWidgetDataManager()
+        )
+        store.updateListItem(existingItem, persist: false)
+        store.applyDetailUpdate(existingDetail, persist: false)
+
+        let payload = RealtimePayload<WebsiteRealtimeRecord>(
+            eventType: .update,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: "w1",
+                title: "Video",
+                url: "https://www.youtube.com/watch?v=\(videoId)",
+                domain: "youtube.com",
+                metadata: [
+                    "youtube_transcripts": AnyCodable([
+                        videoId: [
+                            "status": "ready",
+                            "file_id": "file-1",
+                            "updated_at": "2026-03-14T10:00:00Z",
+                            "error": NSNull()
+                        ]
+                    ])
+                ],
+                savedAt: nil,
+                publishedAt: nil,
+                readingTime: nil,
+                updatedAt: "2026-03-14T10:00:00Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+
+        store.applyRealtimeEvent(payload)
+
+        XCTAssertEqual(store.items.first?.youtubeTranscripts?[videoId]?.status, "ready")
+        XCTAssertEqual(store.active?.youtubeTranscripts?[videoId]?.status, "ready")
+        XCTAssertEqual(store.active?.youtubeTranscripts?[videoId]?.fileId, "file-1")
+    }
 }
 
 @MainActor

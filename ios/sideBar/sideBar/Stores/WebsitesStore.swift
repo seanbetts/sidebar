@@ -288,7 +288,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             archived: hasArchived ? incoming.archived : current.archived,
             faviconUrl: incoming.faviconUrl,
             faviconR2Key: incoming.faviconR2Key,
-            youtubeTranscripts: incoming.youtubeTranscripts,
+            youtubeTranscripts: incoming.youtubeTranscripts ?? current.youtubeTranscripts,
             readingTime: incoming.readingTime,
             updatedAt: incoming.updatedAt,
             lastOpenedAt: incoming.lastOpenedAt,

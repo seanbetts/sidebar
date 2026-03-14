@@ -127,6 +127,7 @@ extension WebsitesStore {
                 || current.deletedAt != item.deletedAt
                 || current.faviconUrl != item.faviconUrl
                 || current.faviconR2Key != item.faviconR2Key
+                || current.youtubeTranscripts != item.youtubeTranscripts
                 || current.readingTime != item.readingTime {
                 return true
             }
@@ -194,7 +195,7 @@ extension WebsitesStore {
             archived: item.archived,
             faviconUrl: item.faviconUrl ?? detail.faviconUrl,
             faviconR2Key: item.faviconR2Key ?? detail.faviconR2Key,
-            youtubeTranscripts: detail.youtubeTranscripts ?? item.youtubeTranscripts,
+            youtubeTranscripts: item.youtubeTranscripts ?? detail.youtubeTranscripts,
             readingTime: item.readingTime ?? detail.readingTime,
             updatedAt: item.updatedAt ?? detail.updatedAt,
             lastOpenedAt: item.lastOpenedAt ?? detail.lastOpenedAt

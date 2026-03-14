@@ -104,6 +104,40 @@ final class RealtimeMappersTests: XCTestCase {
         XCTAssertEqual(mapped?.readingTime, "12 mins")
     }
 
+    func testMapWebsitePreservesYouTubeTranscriptMetadata() {
+        let record = WebsiteRealtimeRecord(
+            id: "w1",
+            title: "Video",
+            url: "https://www.youtube.com/watch?v=abc123xyzAA",
+            domain: "youtube.com",
+            metadata: [
+                "youtube_transcripts": AnyCodable([
+                    "abc123xyzAA": [
+                        "status": "ready",
+                        "file_id": "file-1",
+                        "updated_at": "2026-03-14T10:00:00Z",
+                        "error": NSNull()
+                    ]
+                ])
+            ],
+            savedAt: nil,
+            publishedAt: nil,
+            readingTime: nil,
+            updatedAt: "2026-03-14T10:00:00Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+
+        let mapped = RealtimeMappers.mapWebsite(record)
+
+        XCTAssertEqual(mapped?.youtubeTranscripts?["abc123xyzAA"]?.status, "ready")
+        XCTAssertEqual(mapped?.youtubeTranscripts?["abc123xyzAA"]?.fileId, "file-1")
+        XCTAssertEqual(
+            mapped?.youtubeTranscripts?["abc123xyzAA"]?.updatedAt,
+            "2026-03-14T10:00:00Z"
+        )
+    }
+
     func testMapIngestedFileUsesUpdatedAtWhenCreatedAtMissing() {
         let record = IngestedFileRealtimeRecord(
             id: "f1",

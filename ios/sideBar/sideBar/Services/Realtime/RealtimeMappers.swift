@@ -37,7 +37,7 @@ public struct RealtimeMappers {
             archived: (record.metadata?["archived"]?.value as? Bool) ?? false,
             faviconUrl: record.metadata?["favicon_url"]?.value as? String,
             faviconR2Key: record.metadata?["favicon_r2_key"]?.value as? String,
-            youtubeTranscripts: nil,
+            youtubeTranscripts: websiteTranscriptEntries(from: record.metadata?["youtube_transcripts"]?.value),
             readingTime: record.readingTime ?? (record.metadata?["reading_time"]?.value as? String),
             updatedAt: record.updatedAt,
             lastOpenedAt: record.lastOpenedAt,
@@ -77,5 +77,28 @@ public struct RealtimeMappers {
             attempts: record.attempts ?? 0,
             updatedAt: record.updatedAt
         )
+    }
+
+    private static func websiteTranscriptEntries(
+        from value: Any?
+    ) -> [String: WebsiteTranscriptEntry]? {
+        guard let dictionary = value as? [String: Any], !dictionary.isEmpty else {
+            return nil
+        }
+
+        var entries: [String: WebsiteTranscriptEntry] = [:]
+        entries.reserveCapacity(dictionary.count)
+
+        for (videoId, rawEntry) in dictionary {
+            guard let entryDictionary = rawEntry as? [String: Any] else { continue }
+            entries[videoId] = WebsiteTranscriptEntry(
+                status: entryDictionary["status"] as? String,
+                fileId: entryDictionary["file_id"] as? String,
+                updatedAt: entryDictionary["updated_at"] as? String,
+                error: entryDictionary["error"] as? String
+            )
+        }
+
+        return entries.isEmpty ? nil : entries
     }
 }
