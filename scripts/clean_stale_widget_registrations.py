@@ -10,8 +10,9 @@ from typing import Iterable, List, Optional, Tuple
 class WidgetRegistration:
     identifier: str
     path: Path
-    flags: Tuple[str, ...]
-    status: Optional[str] = None
+    uuid: Optional[str] = None
+    timestamp: Optional[str] = None
+    raw_flags: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -38,26 +39,32 @@ _DEBUG_FLAGS = {
 
 
 def parse_pluginkit_output(lines: Iterable[str]) -> List[WidgetRegistration]:
-    blocks: List[List[str]] = []
+    registrations: List[WidgetRegistration] = []
     current_block: List[str] = []
 
     for raw_line in lines:
         line = raw_line.rstrip("\n")
         if not line.strip():
             if current_block:
-                blocks.append(current_block)
+                block_record = _parse_registration_block(current_block)
+                if block_record:
+                    registrations.append(block_record)
                 current_block = []
             continue
+
+        if "\t" in line:
+            tab_record = _parse_tab_line(line)
+            if tab_record:
+                registrations.append(tab_record)
+            continue
+
         current_block.append(line)
 
     if current_block:
-        blocks.append(current_block)
+        block_record = _parse_registration_block(current_block)
+        if block_record:
+            registrations.append(block_record)
 
-    registrations: List[WidgetRegistration] = []
-    for block in blocks:
-        registration = _parse_registration_block(block)
-        if registration:
-            registrations.append(registration)
     return registrations
 
 
@@ -121,12 +128,34 @@ def _parse_registration_block(block: List[str]) -> Optional[WidgetRegistration]:
         return None
 
     flags = _extract_flags(block[1:])
-    status_char = header[0] if header[0] in "+-!? " else None
     return WidgetRegistration(
         identifier=identifier,
         path=Path(path_value),
-        flags=flags,
-        status=status_char,
+        raw_flags=flags,
+    )
+
+
+def _parse_tab_line(line: str) -> Optional[WidgetRegistration]:
+    parts = line.split("\t")
+    if len(parts) < 4:
+        return None
+
+    identifier = parts[0].strip()
+    if not identifier:
+        return None
+
+    uuid = parts[1].strip()
+    timestamp = parts[2].strip()
+    path_value = parts[3].strip()
+
+    if not path_value:
+        return None
+
+    return WidgetRegistration(
+        identifier=identifier,
+        uuid=uuid or None,
+        timestamp=timestamp or None,
+        path=Path(path_value),
     )
 
 
@@ -180,14 +209,13 @@ def _is_stale_path(path: Path, workspace: Path) -> bool:
 
 
 def _is_stale_debug_registration(record: WidgetRegistration, workspace: Path) -> bool:
-    return _is_debug_registration(record) and _is_stale_path(
-        record.path, workspace
-    )
+    return _is_debug_registration(record) and _is_stale_path(record.path, workspace)
+
 
 def _is_debug_registration(record: WidgetRegistration) -> bool:
-    return bool(set(record.flags) & _DEBUG_FLAGS) or _has_debug_path_marker(
-        record.path
-    )
+    if record.raw_flags and set(record.raw_flags) & _DEBUG_FLAGS:
+        return True
+    return _has_debug_path_marker(record.path)
 
 
 def _has_debug_path_marker(path: Path) -> bool:
@@ -195,5 +223,7 @@ def _has_debug_path_marker(path: Path) -> bool:
     if "/Build/Products/Debug/" in path_str:
         return True
     if "/DerivedData/" in path_str and "Debug" in path_str:
+        return True
+    if path_str.startswith("/private/tmp"):
         return True
     return False

@@ -1,27 +1,7 @@
-+    ai.sidebar.sidebar.sideBarWidgets(1.0)
-Path = /Users/sean/Coding/sideBar/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex
-Flags = current-workspace
-
-!    ai.sidebar.sidebar.sideBarWidgets(1.0)
-Path = /Applications/sideBar AI.app/Contents/PlugIns/sideBarWidgetsExtension.appex
-Flags = installed
-
- ai.sidebar.sidebar.sideBarWidgets(1.0)
-Path = /Users/sean/Downloads/sideBarWidgets/Release/sideBarWidgetsExtension.appex
-Flags = release
-
-  ai.sidebar.sidebar.sideBarWidgets(1.0)
-Path = /Users/sean/Library/Application Support/sideBarWidgets/sideBarWidgetsExtension.appex
-Flags = debug
-
-!    ai.sidebar.sidebar.sideBarWidgets(1.0)
-Path = /Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex
-Flags = worktree, debug
-
-?    ai.sidebar.sidebar.sideBarWidgets(1.0)
-Path = /private/tmp/sideBarWidgetStaging/sideBarWidgetsExtension.appex
-Flags = temp, debug
-
--    ai.sidebar.sidebar.sideBarWidgets(1.0)
-Path = /Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex
-Flags = stale, debug
+     ai.sidebar.sidebar.sideBarWidgets(0.1)	693D8320-0F9F-421A-A86B-FF4B669DAB69	2026-03-14 17:23:48 +0000	/Users/sean/Coding/sideBar/DerivedData/sideBar-gnsqvopaikzkhgcrhxxpjnkkoblk/Build/Products/Debug/sideBar.app/Contents/PlugIns/sideBarWidgetsExtension.appex
+     ai.sidebar.sidebar.sideBarWidgets(0.1)	208C6B03-D7C3-4A06-93CB-E08C8F3B5E02	2026-03-14 17:22:13 +0000	/Applications/sideBar AI.app/Contents/PlugIns/sideBarWidgetsExtension.appex
+     ai.sidebar.sidebar.sideBarWidgets(0.1)	8AEACB55-7B85-4E0F-9C68-B7D913E26A1E	2026-03-14 17:21:02 +0000	/Users/sean/Downloads/sideBarWidgets/Release/sideBarWidgetsExtension.appex
+     ai.sidebar.sidebar.sideBarWidgets(0.1)	44D3B5F6-8FB9-4720-B22C-A28F1AAFD9DE	2026-03-14 17:20:12 +0000	/Users/sean/Library/Application Support/sideBarWidgets/sideBarWidgetsExtension.appex
+     ai.sidebar.sidebar.sideBarWidgets(0.1)	F437C11D-2B23-4352-A1E9-583D840B315C	2026-03-14 17:19:09 +0000	/Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex
+     ai.sidebar.sidebar.sideBarWidgets(0.1)	6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3	2026-03-14 17:18:00 +0000	/private/tmp/sideBarWidgetStaging/sideBarWidgetsExtension.appex
+     ai.sidebar.sidebar.sideBarWidgets(0.1)	1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6	2026-03-14 17:17:01 +0000	/Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex
