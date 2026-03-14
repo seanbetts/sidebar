@@ -24,6 +24,11 @@ NOTES_SHELL_RELATIVE_PATHS = (
 )
 NOTES_EDITOR_GLOB = "ViewModels/NativeNoteEditorViewModel*.swift"
 NOTES_DEPENDENCY_RELATIVE_PATHS = (Path("Utilities/NoteTextDependencies.swift"),)
+NOTES_SEMANTIC_UTILITY_RELATIVE_PATHS = (
+    Path("Utilities/NotesAttributedDocumentCodec.swift"),
+    Path("Utilities/NotesUnsupportedContent.swift"),
+    Path("Utilities/NoteTextFormattingDefinition.swift"),
+)
 NOTES_RUNTIME_CLEANUP_RELATIVE_PATHS = (
     Path("Utilities/NotesRichTextCodec.swift"),
     Path("Utilities/NoteTextBridging.swift"),
@@ -182,6 +187,17 @@ def _notes_dependency_files(repo_root: Path) -> list[Path]:
     return files
 
 
+def _notes_semantic_utility_files(repo_root: Path) -> list[Path]:
+    """Return semantic note utility files that should avoid markdown-named symbols."""
+    root = repo_root / RUNTIME_ROOT
+    files: list[Path] = []
+    for relative_path in NOTES_SEMANTIC_UTILITY_RELATIVE_PATHS:
+        candidate = root / relative_path
+        if candidate.exists() and candidate.is_file():
+            files.append(candidate)
+    return files
+
+
 def _backend_notes_runtime_files(repo_root: Path) -> list[Path]:
     """Return backend notes runtime files that should avoid legacy note storage."""
     root = repo_root / BACKEND_NOTES_ROOT
@@ -244,6 +260,7 @@ def check(repo_root: Path) -> list[Violation]:
     notes_dependency_compiled = tuple(
         re.compile(pattern) for pattern in FORBIDDEN_NOTES_DEPENDENCY_PATTERNS
     )
+    notes_semantic_utility_files = _notes_semantic_utility_files(repo_root)
     notes_runtime_cleanup_files = _notes_runtime_cleanup_files(repo_root)
     notes_runtime_cleanup_compiled = tuple(
         re.compile(pattern) for pattern in FORBIDDEN_NOTES_RUNTIME_CLEANUP_PATTERNS
@@ -257,6 +274,8 @@ def check(repo_root: Path) -> list[Violation]:
         violations.extend(_scan_file(file_path, notes_shell_compiled))
     for file_path in notes_dependency_files:
         violations.extend(_scan_file(file_path, notes_dependency_compiled))
+    for file_path in notes_semantic_utility_files:
+        violations.extend(_scan_file(file_path, notes_shell_compiled))
     for file_path in notes_runtime_cleanup_files:
         violations.extend(_scan_file(file_path, notes_runtime_cleanup_compiled))
     for file_path in backend_notes_runtime_files:

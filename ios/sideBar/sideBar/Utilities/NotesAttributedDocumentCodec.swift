@@ -13,17 +13,25 @@ enum NotesAttributedDocumentCodec {
         }
 
         var attributed = AttributedString()
+        var orderedListIndex = 0
 
         for (index, block) in document.blocks.enumerated() {
             if index > 0 {
                 attributed.append(AttributedString("\n"))
             }
 
-            switch block.type {
-            case .title, .paragraph:
-                attributed.append(attributedParagraph(from: block.content, baseFontSize: baseFontSize))
-            default:
-                assertionFailure("Unsupported block type should have been handled before rendering: \(block.type.rawValue)")
+            attributed.append(
+                attributedBlock(
+                    from: block,
+                    baseFontSize: baseFontSize,
+                    orderedListIndex: orderedListIndex
+                )
+            )
+
+            if block.type == .orderedList {
+                orderedListIndex += 1
+            } else {
+                orderedListIndex = 0
             }
         }
 
@@ -45,6 +53,7 @@ enum NotesAttributedDocumentCodec {
     static func document(from attributed: AttributedString) -> NotesSemanticDocument {
         var blocks: [NotesSemanticDocument.Block] = []
         var currentSegments: [NotesSemanticDocument.InlineSegment] = []
+        var currentBlockMarker: String?
 
         func appendSegmentText(_ text: String, marks: [NotesSemanticDocument.InlineMark]) {
             guard !text.isEmpty else { return }
@@ -59,15 +68,32 @@ enum NotesAttributedDocumentCodec {
         }
 
         func flushBlock() {
-            if currentSegments.isEmpty {
-                currentSegments = [.init(text: "", marks: [])]
+            let resolvedBlockType = NoteTextBlockAttribute.blockType(from: currentBlockMarker)
+                ?? (blocks.isEmpty ? .title : .paragraph)
+            let normalized = normalizedSegmentsAndCheckedState(
+                from: currentSegments,
+                blockType: resolvedBlockType
+            )
+            var segments = normalized.segments
+            if segments.isEmpty {
+                segments = [.init(text: "", marks: [])]
             }
-            let blockType: NotesSemanticDocument.BlockType = blocks.isEmpty ? .title : .paragraph
-            blocks.append(.init(type: blockType, content: currentSegments))
+            blocks.append(
+                .init(
+                    type: resolvedBlockType,
+                    content: segments,
+                    checked: normalized.checked
+                )
+            )
             currentSegments.removeAll(keepingCapacity: true)
+            currentBlockMarker = nil
         }
 
         for run in attributed.runs {
+            let blockMarker = run.noteBlock
+            if currentBlockMarker == nil {
+                currentBlockMarker = blockMarker
+            }
             let marks = inlineMarks(from: run)
             var buffer = ""
             for character in attributed[run.range].characters {
@@ -91,22 +117,47 @@ enum NotesAttributedDocumentCodec {
 
     private static func attributedParagraph(
         from segments: [NotesSemanticDocument.InlineSegment],
-        baseFontSize: CGFloat
+        blockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat,
+        visiblePrefix: String? = nil
     ) -> AttributedString {
         var paragraph = AttributedString()
+
+        if let visiblePrefix {
+            var prefix = AttributedString(visiblePrefix)
+            if !prefix.characters.isEmpty {
+                let range = prefix.startIndex..<prefix.endIndex
+                prefix[range].font = blockFont(
+                    baseFontSize: baseFontSize,
+                    blockType: blockType,
+                    bold: false,
+                    italic: false
+                )
+                prefix[range].paragraphStyle = paragraphStyle(for: blockType, baseFontSize: baseFontSize)
+                if let blockMarker = blockMarker(for: blockType) {
+                    prefix[range].noteBlock = blockMarker
+                }
+            }
+            paragraph.append(prefix)
+        }
 
         for segment in segments {
             var piece = AttributedString(segment.text)
             if !piece.characters.isEmpty {
                 let range = piece.startIndex..<piece.endIndex
                 let marks = Set(segment.marks)
-                piece[range].font = noteInlineFont(
+                piece[range].font = blockFont(
                     baseFontSize: baseFontSize,
+                    blockType: blockType,
                     bold: marks.contains(.bold),
                     italic: marks.contains(.italic)
                 )
                 piece[range].underlineStyle = marks.contains(.underline) ? .single : nil
                 piece[range].strikethroughStyle = marks.contains(.strikethrough) ? .single : nil
+                piece[range].paragraphStyle = paragraphStyle(for: blockType, baseFontSize: baseFontSize)
+                if let blockMarker = blockMarker(for: blockType) {
+                    piece[range].noteBlock = blockMarker
+                }
             }
             paragraph.append(piece)
         }
@@ -154,5 +205,199 @@ enum NotesAttributedDocumentCodec {
         }
 
         return AttributedString(bridged)
+    }
+
+    private static func attributedBlock(
+        from block: NotesSemanticDocument.Block,
+        baseFontSize: CGFloat,
+        orderedListIndex: Int
+    ) -> AttributedString {
+        switch block.type {
+        case .title, .paragraph, .heading, .subheading, .listItem, .codeBlock:
+            return attributedParagraph(
+                from: block.content,
+                blockType: block.type,
+                baseFontSize: baseFontSize
+            )
+        case .unorderedList, .orderedList, .checklist, .blockquote:
+            return attributedParagraph(
+                from: block.content,
+                blockType: block.type,
+                baseFontSize: baseFontSize,
+                visiblePrefix: visiblePrefix(for: block, orderedListIndex: orderedListIndex)
+            )
+        case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
+            assertionFailure("Unsupported block type should have been handled before rendering: \(block.type.rawValue)")
+            return AttributedString("")
+        }
+    }
+
+    private static func visiblePrefix(
+        for block: NotesSemanticDocument.Block,
+        orderedListIndex: Int
+    ) -> String? {
+        switch block.type {
+        case .unorderedList:
+            return "- "
+        case .orderedList:
+            return "\(orderedListIndex + 1). "
+        case .checklist:
+            return "- [\(block.checked == true ? "x" : " ")] "
+        case .blockquote:
+            return "> "
+        default:
+            return nil
+        }
+    }
+
+    private static func blockMarker(
+        for blockType: NotesSemanticDocument.BlockType
+    ) -> String? {
+        switch blockType {
+        case .heading, .subheading, .unorderedList, .orderedList, .checklist, .listItem, .blockquote, .codeBlock:
+            return blockType.rawValue
+        case .title, .paragraph, .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
+            return nil
+        }
+    }
+
+    private static func blockFont(
+        baseFontSize: CGFloat,
+        blockType: NotesSemanticDocument.BlockType,
+        bold: Bool,
+        italic: Bool
+    ) -> Font {
+        let size: CGFloat
+        let design: Font.Design
+        switch blockType {
+        case .title:
+            size = baseFontSize * 1.2
+            design = .default
+        case .heading:
+            size = baseFontSize * 1.15
+            design = .default
+        case .subheading:
+            size = baseFontSize * 1.08
+            design = .default
+        case .codeBlock:
+            size = baseFontSize
+            design = .monospaced
+        default:
+            size = baseFontSize
+            design = .default
+        }
+
+        var font = Font.system(size: size, weight: bold ? .bold : .regular, design: design)
+        if italic {
+            font = font.italic()
+        }
+        return font
+    }
+
+    private static func paragraphStyle(
+        for blockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat
+    ) -> NSParagraphStyle {
+        switch blockType {
+        case .unorderedList, .orderedList, .checklist:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: baseFontSize
+            )
+        case .blockquote:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: baseFontSize * 1.25
+            )
+        case .codeBlock:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: baseFontSize * 0.75,
+                tailIndent: baseFontSize * 0.75
+            )
+        default:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
+        }
+    }
+
+    private static func normalizedSegmentsAndCheckedState(
+        from segments: [NotesSemanticDocument.InlineSegment],
+        blockType: NotesSemanticDocument.BlockType
+    ) -> (segments: [NotesSemanticDocument.InlineSegment], checked: Bool?) {
+        let combinedText = segments.map(\.text).joined()
+        switch blockType {
+        case .unorderedList:
+            return (
+                droppingPrefixCharacters(
+                    count: combinedText.hasPrefix("- ") ? 2 : 0,
+                    from: segments
+                ),
+                nil
+            )
+        case .orderedList:
+            return (
+                droppingPrefixCharacters(
+                    count: orderedListPrefixLength(in: combinedText),
+                    from: segments
+                ),
+                nil
+            )
+        case .checklist:
+            let checked = combinedText.hasPrefix("- [x] ")
+            let prefixLength = (checked || combinedText.hasPrefix("- [ ] ")) ? 6 : 0
+            return (
+                droppingPrefixCharacters(count: prefixLength, from: segments),
+                checked
+            )
+        case .blockquote:
+            return (
+                droppingPrefixCharacters(
+                    count: combinedText.hasPrefix("> ") ? 2 : 0,
+                    from: segments
+                ),
+                nil
+            )
+        default:
+            return (segments, nil)
+        }
+    }
+
+    private static func orderedListPrefixLength(in text: String) -> Int {
+        guard let range = text.range(of: #"^\d+\. "#, options: .regularExpression) else {
+            return 0
+        }
+        return text.distance(from: text.startIndex, to: range.upperBound)
+    }
+
+    private static func droppingPrefixCharacters(
+        count: Int,
+        from segments: [NotesSemanticDocument.InlineSegment]
+    ) -> [NotesSemanticDocument.InlineSegment] {
+        guard count > 0 else { return segments }
+
+        var remaining = count
+        var normalized: [NotesSemanticDocument.InlineSegment] = []
+
+        for segment in segments {
+            guard remaining > 0 else {
+                normalized.append(segment)
+                continue
+            }
+            if segment.text.count <= remaining {
+                remaining -= segment.text.count
+                continue
+            }
+            let start = segment.text.index(segment.text.startIndex, offsetBy: remaining)
+            normalized.append(
+                .init(
+                    text: String(segment.text[start...]),
+                    marks: segment.marks,
+                    link: segment.link
+                )
+            )
+            remaining = 0
+        }
+
+        return normalized
     }
 }

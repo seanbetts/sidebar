@@ -89,4 +89,39 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         let roundTripUnderlineEnd = roundTrip.index(roundTripUnderlineStart, offsetByCharacters: 9)
         XCTAssertTrue(noteRangeIsUnderlined(roundTrip, range: roundTripUnderlineStart..<roundTripUnderlineEnd))
     }
+
+    func testSupportedBlockTypesRoundTripWithoutUnsupportedBoundary() {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [.bold])]),
+                .init(type: .subheading, content: [.init(text: "Subheading", marks: [])]),
+                .init(type: .unorderedList, content: [.init(text: "Bullet item", marks: [])]),
+                .init(type: .orderedList, content: [.init(text: "Ordered item", marks: [])]),
+                .init(type: .checklist, content: [.init(text: "Checked item", marks: [])], checked: true),
+                .init(type: .blockquote, content: [.init(text: "Quoted", marks: [.italic])]),
+                .init(type: .codeBlock, content: [.init(text: "let value = 1", marks: [])])
+            ]
+        )
+
+        XCTAssertNil(NotesUnsupportedContent.detect(in: document))
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(
+            from: document,
+            baseFontSize: 18
+        )
+
+        XCTAssertEqual(NotesAttributedDocumentCodec.document(from: attributed), document)
+    }
+
+    func testTableBlocksRemainUnsupported() {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .table, content: [.init(text: "Cell", marks: [])])
+            ]
+        )
+
+        XCTAssertEqual(NotesUnsupportedContent.detect(in: document)?.blockTypes, [.table])
+    }
 }

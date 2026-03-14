@@ -22,7 +22,7 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         XCTAssertEqual(
             NotesUnsupportedContent.detect(in: document)?.blockTypes,
-            [.heading, .table]
+            [.table]
         )
     }
 
@@ -41,7 +41,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertFalse(context.viewModel.isEditingNote)
         XCTAssertEqual(
             context.viewModel.unsupportedContent?.blockTypes,
-            [.heading]
+            [.table]
         )
         XCTAssertEqual(
             NotesSemanticDocumentCodec.decode(context.viewModel.canonicalContent),
@@ -1502,7 +1502,7 @@ private func makeUnsupportedTestNote(
     let document = NotesSemanticDocument(
         blocks: [
             .paragraph([.init(text: "Intro", marks: [])]),
-            .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+            .init(type: .table, content: [.init(text: "Cell", marks: [])])
         ]
     )
     return NotePayload(

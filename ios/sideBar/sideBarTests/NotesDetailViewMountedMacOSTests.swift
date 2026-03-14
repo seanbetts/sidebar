@@ -7,22 +7,20 @@ final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
     private let mountedNotesLifetimeIterations = 10
 
     func testMountedViewCloseShortcutEventClosesReadModeNote() async throws {
-        let context = await makeNotesDetailViewTestContext()
-        let environment = makeNotesDetailTestEnvironment()
-        _ = mount(context.makeView(), environment: environment)
-        await Task.yield()
-        environment.activeSection = .notes
-        environment.focusedSection = .notes
-        environment.focusedWorkspacePane = .primary
-        await Task.yield()
-
-        environment.emitShortcutAction(.closeItem)
+        let harness = await MountedNotesDetailHarness()
+        harness.mount()
+        await harness.settle()
+        harness.environment.activeSection = .notes
+        harness.environment.focusedSection = .notes
+        harness.environment.focusedWorkspacePane = .primary
+        harness.emitCloseShortcut()
         await waitUntil(timeout: .seconds(2)) {
-            context.editorViewModel.currentNoteId == nil
+            harness.context.editorViewModel.currentNoteId == nil
         }
 
-        XCTAssertNil(context.editorViewModel.currentNoteId)
-        XCTAssertNil(context.notesViewModel.activeNote)
+        XCTAssertNil(harness.context.editorViewModel.currentNoteId)
+        XCTAssertNil(harness.context.notesViewModel.activeNote)
+        harness.dispose()
     }
 
     func testMountedCloseShortcutDoesNotCrashAcrossRepeatedReset() async throws {
@@ -68,7 +66,7 @@ final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
                 document: NotesSemanticDocument(
                     blocks: [
                         .paragraph([.init(text: "Intro", marks: [])]),
-                        .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+                        .init(type: .table, content: [.init(text: "Cell", marks: [])])
                     ]
                 ),
                 plainText: "Intro",

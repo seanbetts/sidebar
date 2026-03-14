@@ -38,7 +38,15 @@ struct NotesUnsupportedContent: Equatable {
 private extension NotesUnsupportedContent {
     static let supportedBlockTypes: Set<NotesSemanticDocument.BlockType> = [
         .title,
-        .paragraph
+        .paragraph,
+        .heading,
+        .subheading,
+        .unorderedList,
+        .orderedList,
+        .checklist,
+        .listItem,
+        .blockquote,
+        .codeBlock
     ]
 }
 

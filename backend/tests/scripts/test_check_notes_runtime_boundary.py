@@ -333,6 +333,37 @@ def test_check_reports_ios_notes_runtime_cleanup_leftovers(
     assert any("attributedNoteTextSurface" in violation.token for violation in violations)
 
 
+def test_check_reports_legacy_markdown_references_in_notes_semantic_utilities(
+    tmp_path: Path,
+) -> None:
+    """Semantic notes runtime utilities should also reject legacy markdown helpers."""
+    _write(
+        tmp_path / "ios/sideBar/sideBar/Utilities/NotesAttributedDocumentCodec.swift",
+        """
+        import Foundation
+        enum NotesAttributedDocumentCodec {
+            static func make() {
+                _ = MarkdownImporter()
+            }
+        }
+        """,
+    )
+    _write(
+        tmp_path / "ios/sideBar/sideBar/Utilities/NoteTextFormattingDefinition.swift",
+        """
+        import Foundation
+        struct NoteTextFormattingDefinition {
+            let definition = MarkdownFormattingDefinition()
+        }
+        """,
+    )
+
+    violations = check(tmp_path)
+
+    assert any("MarkdownImporter" in violation.token for violation in violations)
+    assert any("MarkdownFormattingDefinition" in violation.token for violation in violations)
+
+
 def test_check_passes_without_backend_legacy_note_storage_references(
     tmp_path: Path,
 ) -> None:

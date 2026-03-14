@@ -44,7 +44,7 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
             document: NotesSemanticDocument(
                 blocks: [
                     .paragraph([.init(text: "Intro", marks: [])]),
-                    .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+                    .init(type: .table, content: [.init(text: "Cell", marks: [])])
                 ]
             ),
             plainText: "Intro",
@@ -62,7 +62,7 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(view.unsupportedContentPlaceholderTitle, "Unsupported note content")
         XCTAssertEqual(
             view.unsupportedContentPlaceholderMessage,
-            "This note contains unsupported content blocks: heading."
+            "This note contains unsupported content blocks: table."
         )
     }
 

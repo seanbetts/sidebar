@@ -44,7 +44,7 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
             NotesAttributedDocumentCodec.document(from: content),
             NotesSemanticDocument(
                 blocks: [
-                    .paragraph([.init(text: "hello", marks: [.bold, .italic])])
+                    .init(type: .title, content: [.init(text: "hello", marks: [.bold, .italic])])
                 ]
             )
         )
@@ -68,6 +68,32 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         NoteTextFormattingDefinition(baseFontSize: 20).constrainDocument(&content)
 
         XCTAssertFalse(noteRangeHasBoldTrait(content, range: range))
+    }
+
+    func testConstrainDocumentPreservesAppOwnedBlockMarkerWhileRemovingPlatformListIntent() {
+        var content = AttributedString("- item")
+        let range = content.startIndex..<content.endIndex
+        content[range].noteBlock = NoteTextBlockAttribute.unorderedListRawValue
+        content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+            .paragraph,
+            identity: 1,
+            parent: PresentationIntent(.unorderedList, identity: 2)
+        )
+        content[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "-"
+
+        NoteTextFormattingDefinition(baseFontSize: 18).constrainDocument(&content)
+
+        XCTAssertEqual(content[range].noteBlock, NoteTextBlockAttribute.unorderedListRawValue)
+        XCTAssertNil(content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self])
+        XCTAssertNil(content[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self])
+        XCTAssertEqual(
+            NotesAttributedDocumentCodec.document(from: content),
+            NotesSemanticDocument(
+                blocks: [
+                    .init(type: .unorderedList, content: [.init(text: "item", marks: [])], checked: nil)
+                ]
+            )
+        )
     }
 }
 

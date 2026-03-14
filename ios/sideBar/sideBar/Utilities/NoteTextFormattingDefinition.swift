@@ -30,7 +30,8 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
             return SupportedRunSnapshot(
                 range: lower..<upper,
                 traits: inlineTraits(from: run),
-                underline: run.underlineStyle != nil
+                underline: run.underlineStyle != nil,
+                noteBlock: run.noteBlock
             )
         }
 
@@ -39,32 +40,33 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
             let replacement = normalizedRun(
                 from: text[range],
                 traits: snapshot.traits,
-                underline: snapshot.underline
+                underline: snapshot.underline,
+                noteBlock: snapshot.noteBlock
             )
             text.replaceSubrange(range, with: replacement)
-        }
-        if !text.characters.isEmpty {
-            text[text.startIndex..<text.endIndex].paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
-                baseFontSize: baseFontSize
-            )
         }
     }
 
     private func normalizedRun(
         from slice: AttributedSubstring,
         traits: NoteInlineFormattingTraits,
-        underline: Bool
+        underline: Bool,
+        noteBlock: String?
     ) -> AttributedString {
         var normalized = AttributedString(String(slice.characters))
         guard !normalized.characters.isEmpty else { return normalized }
 
         let range = normalized.startIndex..<normalized.endIndex
-        normalized[range].font = noteInlineFont(
+        let blockType = NoteTextBlockAttribute.blockType(from: noteBlock) ?? .paragraph
+        normalized[range].font = blockFont(
             baseFontSize: baseFontSize,
+            blockType: blockType,
             bold: traits.bold,
             italic: traits.italic
         )
         normalized[range].underlineStyle = underline ? .single : nil
+        normalized[range].paragraphStyle = paragraphStyle(for: blockType)
+        normalized[range].noteBlock = noteBlock
         return normalized
     }
 }
@@ -78,12 +80,48 @@ private struct NormalizeInlineFonts: AttributedTextValueConstraint {
     func constrain(_ container: inout Attributes) {
         guard let font = container.font else { return }
         let traits = noteSwiftUIFontTraits(from: font)
-        container.font = noteInlineFont(
+        let blockType = NoteTextBlockAttribute.blockType(from: container.noteBlock) ?? .paragraph
+        container.font = blockFont(
             baseFontSize: baseFontSize,
+            blockType: blockType,
             bold: traits.bold,
             italic: traits.italic
         )
     }
+
+    private func blockFont(
+        baseFontSize: CGFloat,
+        blockType: NotesSemanticDocument.BlockType,
+        bold: Bool,
+        italic: Bool
+    ) -> Font {
+        let size: CGFloat
+        let design: Font.Design
+        switch blockType {
+        case .title:
+            size = baseFontSize * 1.2
+            design = .default
+        case .heading:
+            size = baseFontSize * 1.15
+            design = .default
+        case .subheading:
+            size = baseFontSize * 1.08
+            design = .default
+        case .codeBlock:
+            size = baseFontSize
+            design = .monospaced
+        default:
+            size = baseFontSize
+            design = .default
+        }
+
+        var font = Font.system(size: size, weight: bold ? .bold : .regular, design: design)
+        if italic {
+            font = font.italic()
+        }
+        return font
+    }
+
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -112,6 +150,7 @@ private extension NoteTextFormattingDefinition {
         let range: Range<Int>
         let traits: NoteInlineFormattingTraits
         let underline: Bool
+        let noteBlock: String?
     }
 
     func inlineTraits(from run: AttributedString.Runs.Run) -> NoteInlineFormattingTraits {
@@ -125,5 +164,61 @@ private extension NoteTextFormattingDefinition {
         let lower = text.index(text.startIndex, offsetByCharacters: range.lowerBound)
         let upper = text.index(text.startIndex, offsetByCharacters: range.upperBound)
         return lower..<upper
+    }
+
+    func blockFont(
+        baseFontSize: CGFloat,
+        blockType: NotesSemanticDocument.BlockType,
+        bold: Bool,
+        italic: Bool
+    ) -> Font {
+        let size: CGFloat
+        let design: Font.Design
+        switch blockType {
+        case .title:
+            size = baseFontSize * 1.2
+            design = .default
+        case .heading:
+            size = baseFontSize * 1.15
+            design = .default
+        case .subheading:
+            size = baseFontSize * 1.08
+            design = .default
+        case .codeBlock:
+            size = baseFontSize
+            design = .monospaced
+        default:
+            size = baseFontSize
+            design = .default
+        }
+
+        var font = Font.system(size: size, weight: bold ? .bold : .regular, design: design)
+        if italic {
+            font = font.italic()
+        }
+        return font
+    }
+
+    func paragraphStyle(for blockType: NotesSemanticDocument.BlockType) -> NSParagraphStyle {
+        switch blockType {
+        case .unorderedList, .orderedList, .checklist:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: baseFontSize
+            )
+        case .blockquote:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: baseFontSize * 1.25
+            )
+        case .codeBlock:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: baseFontSize * 0.75,
+                tailIndent: baseFontSize * 0.75
+            )
+        default:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
+        }
     }
 }
