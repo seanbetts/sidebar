@@ -15,6 +15,7 @@ from api.schemas.filters import NoteFilters
 from api.services.notes_document_types import (
     note_document_from_plain_text,
     project_plain_text_from_document,
+    validate_note_document,
 )
 from api.services.notes_helpers import build_notes_tree
 from api.services.notes_service import NotesService
@@ -372,7 +373,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         except ObjectDeletedError:
             note_id = getattr(created, "_snapshot_id", None)
             updated_at = getattr(created, "_snapshot_updated_at", None)
-            fallback_document = document
+            fallback_document = validate_note_document(document)
             fallback_plain_text = project_plain_text_from_document(document)
             fallback_title = derive_note_title_from_document(fallback_document)
             return {

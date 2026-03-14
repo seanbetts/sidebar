@@ -155,6 +155,31 @@ def test_create_note_derives_title_and_plain_text_from_semantic_document_project
     assert note.document == document
 
 
+def test_create_note_normalizes_block_zero_to_title_before_deriving_title(db_session):
+    document = {
+        "version": 1,
+        "blocks": [
+            {
+                "type": "heading",
+                "content": [{"text": "Semantic Heading", "marks": []}],
+            },
+            {
+                "type": "paragraph",
+                "content": [{"text": "Body line", "marks": []}],
+            },
+        ],
+    }
+
+    note = NotesService.create_note(db_session, "test_user", document)
+
+    assert note.title == "Semantic Heading"
+    assert note.plain_text == "Semantic Heading\nBody line"
+    assert note.document["blocks"][0]["type"] == "title"
+    assert note.document["blocks"][0]["content"] == [
+        {"text": "Semantic Heading", "marks": []}
+    ]
+
+
 def test_create_note_preserves_literal_hash_prefix_from_semantic_document(db_session):
     document = {
         "version": 1,

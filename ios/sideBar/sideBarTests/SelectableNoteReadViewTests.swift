@@ -57,6 +57,29 @@ final class SelectableNoteReadViewTests: XCTestCase {
         )
     }
 
+    func testMakePlatformAttributedContentPreservesDistinctBlockTypography() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .init(type: .subheading, content: [.init(text: "Subheading", marks: [])])
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+        let titleFont = try noteReadPlatformFont(in: attributed, at: 0)
+        let headingFont = try noteReadPlatformFont(in: attributed, at: 6)
+        let subheadingFont = try noteReadPlatformFont(in: attributed, at: 14)
+
+        XCTAssertEqual(attributed.string, "Title\nHeading\nSubheading")
+        XCTAssertGreaterThan(noteReadPlatformFontPointSize(titleFont), noteReadPlatformFontPointSize(headingFont))
+        XCTAssertGreaterThan(noteReadPlatformFontPointSize(headingFont), noteReadPlatformFontPointSize(subheadingFont))
+    }
+
     #if os(iOS)
     func testCharacterOffsetForEditingActivationKeepsReadTextViewOnTextKit2() throws {
         let textView = try makeReadTextView(
@@ -435,6 +458,33 @@ final class SelectableNoteReadViewTests: XCTestCase {
     }
     #endif
 }
+
+private func noteReadPlatformFont(
+    in attributed: NSAttributedString,
+    at location: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> NoteReadPlatformFont {
+    try XCTUnwrap(
+        attributed.attribute(.font, at: location, effectiveRange: nil) as? NoteReadPlatformFont,
+        file: file,
+        line: line
+    )
+}
+
+private func noteReadPlatformFontPointSize(_ font: NoteReadPlatformFont) -> CGFloat {
+    #if os(macOS)
+    font.pointSize
+    #else
+    font.pointSize
+    #endif
+}
+
+#if os(macOS)
+private typealias NoteReadPlatformFont = NSFont
+#else
+private typealias NoteReadPlatformFont = UIFont
+#endif
 
 @available(iOS 26.0, macOS 26.0, *)
 private func makePlatformFont(

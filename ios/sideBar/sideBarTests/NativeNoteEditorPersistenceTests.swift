@@ -17,6 +17,66 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertEqual(NotesSemanticDocumentProjection.plainText(from: canonicalDocument), "hello")
     }
 
+    func testLoadTextEmptySeedsSingleTitleBlock() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("")
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+
+        XCTAssertEqual(
+            snapshot.document.blocks,
+            [.init(type: .title, content: [.init(text: "", marks: [])])]
+        )
+        XCTAssertEqual(snapshot.plainText, "")
+    }
+
+    func testTypingReturnFromTitleCreatesParagraphBodyBlock() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("Title")
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        noteAppendTypedText("\nBody", to: viewModel)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+
+        XCTAssertEqual(
+            snapshot.document.blocks,
+            [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+        XCTAssertEqual(snapshot.plainText, "Title\nBody")
+    }
+
+    func testCurrentPersistenceSnapshotNormalizesBlockZeroToTitle() async throws {
+        let encoded = try XCTUnwrap(
+            NotesSemanticDocumentCodec.encode(
+                NotesSemanticDocument(
+                    blocks: [
+                        .init(type: .heading, content: [.init(text: "Heading first", marks: [])]),
+                        .paragraph([.init(text: "Body", marks: [])])
+                    ]
+                )
+            )
+        )
+        let viewModel = NativeNoteEditorViewModel()
+
+        viewModel.loadDocument(canonicalContent: encoded, plainText: "Heading first\nBody")
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+
+        XCTAssertEqual(
+            snapshot.document.blocks,
+            [
+                .init(type: .title, content: [.init(text: "Heading first", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+        XCTAssertEqual(snapshot.plainText, "Heading first\nBody")
+    }
+
     func testCurrentPersistenceSnapshotPreservesProjectedPlainTextLineBreaks() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("line 1\n\nline 3")

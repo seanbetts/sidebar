@@ -44,6 +44,11 @@ ALLOWED_INLINE_MARKS = {"bold", "italic", "underline", "strikethrough", "inline_
 LEGACY_BLOCK_TYPE_ALIASES = {
     "task_list": "checklist",
 }
+TITLE_NORMALIZABLE_BLOCK_TYPES = {
+    "paragraph",
+    "heading",
+    "subheading",
+}
 
 
 def _invalid_document(message: str) -> BadRequestError:
@@ -80,7 +85,7 @@ def validate_note_document(
         _validate_block(block, index)
 
     if require_title_block and blocks:
-        if blocks[0]["type"] == "paragraph":
+        if blocks[0]["type"] in TITLE_NORMALIZABLE_BLOCK_TYPES:
             blocks[0]["type"] = "title"
         elif blocks[0]["type"] != "title":
             raise _invalid_document("block 0 must be a title")

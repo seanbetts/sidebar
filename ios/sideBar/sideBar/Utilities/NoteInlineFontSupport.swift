@@ -43,6 +43,25 @@ func notePlatformFont(baseFontSize: CGFloat, bold: Bool, italic: Bool) -> NotePl
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func notePlatformFont(
+    baseFontSize: CGFloat,
+    blockType: NotesSemanticDocument.BlockType,
+    bold: Bool,
+    italic: Bool
+) -> NotePlatformFont {
+    let size = noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType)
+    return notePlatformFontApplyingTraits(
+        notePlatformSystemFont(
+            size: size,
+            weight: bold ? .bold : .regular,
+            monospaced: noteBlockUsesMonospacedDesign(blockType)
+        ),
+        bold: bold,
+        italic: italic
+    )
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func notePlatformBodyFont(baseFontSize: CGFloat) -> NotePlatformFont {
     notePlatformSystemFont(size: baseFontSize, weight: .regular)
 }
@@ -54,6 +73,28 @@ func notePlatformBoldBodyFont(baseFontSize: CGFloat) -> NotePlatformFont {
 #else
     NSFont.boldSystemFont(ofSize: baseFontSize)
 #endif
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func noteBlockPointSize(
+    baseFontSize: CGFloat,
+    blockType: NotesSemanticDocument.BlockType
+) -> CGFloat {
+    switch blockType {
+    case .title:
+        return baseFontSize * 1.2
+    case .heading:
+        return baseFontSize * 1.15
+    case .subheading:
+        return baseFontSize * 1.08
+    default:
+        return baseFontSize
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func noteBlockUsesMonospacedDesign(_ blockType: NotesSemanticDocument.BlockType) -> Bool {
+    blockType == .codeBlock
 }
 
 @available(iOS 26.0, macOS 26.0, *)

@@ -113,6 +113,44 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         XCTAssertEqual(readTraits.italic, false)
     }
 
+    func testReadSurfacePreservesTitleHeadingAndSubheadingTypographyParityOnIOS() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .init(type: .subheading, content: [.init(text: "Subheading", marks: [])])
+            ]
+        )
+        let baseFontSize = NoteTextTypography.defaultBodyFontSize
+
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        let editDocument = try constrainedEditorDocument(
+            document: document,
+            baseFontSize: baseFontSize
+        )
+        let bridgedEditDocument = (try? NSAttributedString(editDocument, including: \.noteTextEditor))
+            ?? NSAttributedString(editDocument)
+
+        let titleReadFont = try fontAttribute(in: readAttributed, at: 0)
+        let headingReadFont = try fontAttribute(in: readAttributed, at: 6)
+        let subheadingReadFont = try fontAttribute(in: readAttributed, at: 14)
+        let titleEditFont = try fontAttribute(in: bridgedEditDocument, at: 0)
+        let headingEditFont = try fontAttribute(in: bridgedEditDocument, at: 6)
+        let subheadingEditFont = try fontAttribute(in: bridgedEditDocument, at: 14)
+
+        XCTAssertEqual(readAttributed.string, bridgedEditDocument.string)
+        XCTAssertEqual(titleReadFont.pointSize, titleEditFont.pointSize, accuracy: 0.001)
+        XCTAssertEqual(headingReadFont.pointSize, headingEditFont.pointSize, accuracy: 0.001)
+        XCTAssertEqual(subheadingReadFont.pointSize, subheadingEditFont.pointSize, accuracy: 0.001)
+        XCTAssertGreaterThan(titleReadFont.pointSize, headingReadFont.pointSize)
+        XCTAssertGreaterThan(headingReadFont.pointSize, subheadingReadFont.pointSize)
+        XCTAssertGreaterThan(subheadingReadFont.pointSize, baseFontSize)
+    }
+
     func testIOSCanMoveToUIKitEditorSurfaceWithoutChangingCanonicalParityContracts() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,

@@ -89,14 +89,21 @@ struct SelectableNoteReadView: View {
             let nsRange = nsRange(for: run.range, in: attributed, plainText: plainText)
             guard nsRange.length > 0 else { continue }
 
+            let blockType = blockType(for: run, in: attributed)
             let traits = noteInlineTraits(for: run)
             mutable.addAttribute(
                 .font,
                 value: notePlatformFont(
                     baseFontSize: baseFontSize,
+                    blockType: blockType,
                     bold: traits.bold,
                     italic: traits.italic
                 ),
+                range: nsRange
+            )
+            mutable.addAttribute(
+                .paragraphStyle,
+                value: paragraphStyle(for: blockType, baseFontSize: baseFontSize),
                 range: nsRange
             )
             if run.underlineStyle != nil {
@@ -110,10 +117,6 @@ struct SelectableNoteReadView: View {
             }
         }
 
-        mutable.removeAttribute(
-            .paragraphStyle,
-            range: NSRange(location: 0, length: mutable.length)
-        )
         mutable.addAttribute(
             .foregroundColor,
             value: defaultPlatformTextColor,
@@ -155,6 +158,43 @@ struct SelectableNoteReadView: View {
         noteInlineFormattingTraits(from: run.attributes)
     }
 
+    private static func blockType(
+        for run: AttributedString.Runs.Run,
+        in attributed: AttributedString
+    ) -> NotesSemanticDocument.BlockType {
+        if let explicit = NoteTextBlockAttribute.blockType(from: run.noteBlock) {
+            return explicit
+        }
+        let prefix = attributed[attributed.startIndex..<run.range.lowerBound]
+        return prefix.characters.contains(where: \.isNewline) ? .paragraph : .title
+    }
+
+    private static func paragraphStyle(
+        for blockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat
+    ) -> NSParagraphStyle {
+        switch blockType {
+        case .unorderedList, .orderedList, .checklist:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: baseFontSize
+            )
+        case .blockquote:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: baseFontSize * 1.25
+            )
+        case .codeBlock:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(
+                baseFontSize: baseFontSize,
+                headIndent: baseFontSize * 0.75,
+                tailIndent: baseFontSize * 0.75
+            )
+        default:
+            return NoteTextParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
+        }
+    }
+
     private static func applyingDetectedLinks(to attributed: AttributedString) -> AttributedString {
         let plainText = String(attributed.characters)
         guard !plainText.isEmpty,
@@ -179,7 +219,8 @@ struct SelectableNoteReadView: View {
             bridged.addAttribute(.link, value: url, range: match.range)
         }
 
-        return AttributedString(bridged)
+        return (try? AttributedString(bridged, including: \.noteTextEditor))
+            ?? AttributedString(bridged)
     }
 
     private struct ReadActivationLineMetrics {

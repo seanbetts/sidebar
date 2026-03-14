@@ -68,8 +68,9 @@ enum NotesAttributedDocumentCodec {
         }
 
         func flushBlock() {
-            let resolvedBlockType = NoteTextBlockAttribute.blockType(from: currentBlockMarker)
-                ?? (blocks.isEmpty ? .title : .paragraph)
+            let resolvedBlockType = blocks.isEmpty
+                ? .title
+                : (NoteTextBlockAttribute.blockType(from: currentBlockMarker) ?? .paragraph)
             let normalized = normalizedSegmentsAndCheckedState(
                 from: currentSegments,
                 blockType: resolvedBlockType
@@ -152,6 +153,21 @@ enum NotesAttributedDocumentCodec {
                     bold: marks.contains(.bold),
                     italic: marks.contains(.italic)
                 )
+                #if os(iOS)
+                piece[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = notePlatformFont(
+                    baseFontSize: baseFontSize,
+                    blockType: blockType,
+                    bold: marks.contains(.bold),
+                    italic: marks.contains(.italic)
+                )
+                #elseif os(macOS)
+                piece[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = notePlatformFont(
+                    baseFontSize: baseFontSize,
+                    blockType: blockType,
+                    bold: marks.contains(.bold),
+                    italic: marks.contains(.italic)
+                )
+                #endif
                 piece[range].underlineStyle = marks.contains(.underline) ? .single : nil
                 piece[range].strikethroughStyle = marks.contains(.strikethrough) ? .single : nil
                 piece[range].paragraphStyle = paragraphStyle(for: blockType, baseFontSize: baseFontSize)
@@ -204,7 +220,8 @@ enum NotesAttributedDocumentCodec {
             bridged.addAttribute(.link, value: url, range: match.range)
         }
 
-        return AttributedString(bridged)
+        return (try? AttributedString(bridged, including: \.noteTextEditor))
+            ?? AttributedString(bridged)
     }
 
     private static func attributedBlock(
@@ -254,9 +271,18 @@ enum NotesAttributedDocumentCodec {
         for blockType: NotesSemanticDocument.BlockType
     ) -> String? {
         switch blockType {
-        case .heading, .subheading, .unorderedList, .orderedList, .checklist, .listItem, .blockquote, .codeBlock:
+        case .title,
+             .paragraph,
+             .heading,
+             .subheading,
+             .unorderedList,
+             .orderedList,
+             .checklist,
+             .listItem,
+             .blockquote,
+             .codeBlock:
             return blockType.rawValue
-        case .title, .paragraph, .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
+        case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
             return nil
         }
     }
