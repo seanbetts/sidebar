@@ -91,6 +91,10 @@ struct SidebarCommands: Commands {
                     Toggle("Underline", isOn: formattingBinding(.underline))
                         .keyboardShortcut("u", modifiers: [.command])
                         .disabled(!canFormatNotes)
+
+                    Toggle("Strikethrough", isOn: formattingBinding(.strikethrough))
+                        .keyboardShortcut("x", modifiers: [.command, .shift])
+                        .disabled(!canFormatNotes)
                 }
             }
         }

@@ -146,6 +146,16 @@ func noteRangeIsUnderlined(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func noteRangeIsStruckThrough(
+    _ text: AttributedString,
+    range: Range<AttributedString.Index>
+) -> Bool {
+    let runs = text[range].runs
+    guard !runs.isEmpty else { return false }
+    return runs.allSatisfy { $0.strikethroughStyle == .single }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func noteTypingTraits(from attrs: AttributeContainer) -> (bold: Bool, italic: Bool) {
     let resolved = attrs.font?.resolve(in: EnvironmentValues().fontResolutionContext)
     return (resolved?.isBold == true, resolved?.isItalic == true)

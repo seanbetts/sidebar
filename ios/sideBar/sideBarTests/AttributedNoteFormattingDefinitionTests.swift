@@ -26,7 +26,7 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
 
         XCTAssertNil(content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self])
         XCTAssertNil(content[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self])
-        XCTAssertNil(content[range].strikethroughStyle)
+        XCTAssertEqual(content[range].strikethroughStyle, .single)
         XCTAssertEqual(content[range].underlineStyle, .single)
     }
 

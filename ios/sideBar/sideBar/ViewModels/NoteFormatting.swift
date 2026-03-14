@@ -6,4 +6,5 @@ public enum NoteFormatting: Equatable {
     case bold
     case italic
     case underline
+    case strikethrough
 }

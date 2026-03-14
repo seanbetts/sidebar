@@ -112,6 +112,22 @@ def test_validate_note_document_accepts_inline_link_payload() -> None:
     assert validated == document
 
 
+def test_validate_note_document_accepts_strikethrough_inline_mark_payload() -> None:
+    document = {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            {
+                "type": "title",
+                "content": [{"text": "Done", "marks": ["strikethrough"]}],
+            }
+        ],
+    }
+
+    validated = validate_note_document(document)
+
+    assert validated == document
+
+
 def test_validate_note_document_rejects_invalid_inline_link_payload() -> None:
     document = {
         "version": NOTE_DOCUMENT_VERSION,

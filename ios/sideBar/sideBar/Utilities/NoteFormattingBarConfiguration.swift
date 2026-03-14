@@ -6,19 +6,23 @@ struct NoteFormattingBarConfiguration {
     let isBoldActive: Bool
     let isItalicActive: Bool
     let isUnderlineActive: Bool
+    let isStrikethroughActive: Bool
     let isEnabled: Bool
     let onBoldTap: @MainActor @Sendable () -> Void
     let onItalicTap: @MainActor @Sendable () -> Void
     let onUnderlineTap: @MainActor @Sendable () -> Void
+    let onStrikethroughTap: @MainActor @Sendable () -> Void
 
     static let disabled = NoteFormattingBarConfiguration(
         isBoldActive: false,
         isItalicActive: false,
         isUnderlineActive: false,
+        isStrikethroughActive: false,
         isEnabled: false,
         onBoldTap: {},
         onItalicTap: {},
-        onUnderlineTap: {}
+        onUnderlineTap: {},
+        onStrikethroughTap: {}
     )
 
     func isActive(_ formatting: NoteFormatting) -> Bool {
@@ -29,6 +33,8 @@ struct NoteFormattingBarConfiguration {
             return isItalicActive
         case .underline:
             return isUnderlineActive
+        case .strikethrough:
+            return isStrikethroughActive
         }
     }
 
@@ -40,6 +46,8 @@ struct NoteFormattingBarConfiguration {
             return onItalicTap
         case .underline:
             return onUnderlineTap
+        case .strikethrough:
+            return onStrikethroughTap
         }
     }
 }

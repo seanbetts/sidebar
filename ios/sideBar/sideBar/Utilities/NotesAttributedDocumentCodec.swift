@@ -68,9 +68,18 @@ enum NotesAttributedDocumentCodec {
         }
 
         func flushBlock() {
-            let resolvedBlockType = blocks.isEmpty
-                ? .title
-                : (NoteTextBlockAttribute.blockType(from: currentBlockMarker) ?? .paragraph)
+            let explicitBlockType = NoteTextBlockAttribute.blockType(from: currentBlockMarker)
+            let resolvedBlockType: NotesSemanticDocument.BlockType
+            if blocks.isEmpty {
+                switch explicitBlockType {
+                case .none, .title, .paragraph, .heading, .subheading:
+                    resolvedBlockType = .title
+                case .some(let explicitBlockType):
+                    resolvedBlockType = explicitBlockType
+                }
+            } else {
+                resolvedBlockType = explicitBlockType ?? .paragraph
+            }
             let normalized = normalizedSegmentsAndCheckedState(
                 from: currentSegments,
                 blockType: resolvedBlockType

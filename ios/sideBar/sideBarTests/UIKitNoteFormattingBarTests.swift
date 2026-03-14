@@ -18,7 +18,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
                 version: NotesSemanticDocument.currentVersion,
                 blocks: [
                     .paragraph([
-                        .init(text: "Styled", marks: [.bold, .italic, .underline]),
+                        .init(text: "Styled", marks: [.bold, .italic, .underline, .strikethrough]),
                         .init(text: " plain", marks: [])
                     ])
                 ]
@@ -39,6 +39,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertTrue(configuration.isBoldActive)
         XCTAssertTrue(configuration.isItalicActive)
         XCTAssertTrue(configuration.isUnderlineActive)
+        XCTAssertTrue(configuration.isStrikethroughActive)
     }
 
     func testButtonTapsRouteThroughSharedFormattingCommandLayer() async throws {
@@ -83,6 +84,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertFalse(bar.button(for: .bold).isEnabled)
         XCTAssertFalse(bar.button(for: .italic).isEnabled)
         XCTAssertFalse(bar.button(for: .underline).isEnabled)
+        XCTAssertFalse(bar.button(for: .strikethrough).isEnabled)
     }
 
     func testBarDoesNotComputeFormattingStateFromUIKitOnlyState() async throws {
@@ -96,10 +98,12 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
                 isBoldActive: true,
                 isItalicActive: false,
                 isUnderlineActive: false,
+                isStrikethroughActive: false,
                 isEnabled: true,
                 onBoldTap: {},
                 onItalicTap: {},
-                onUnderlineTap: {}
+                onUnderlineTap: {},
+                onStrikethroughTap: {}
             )
         )
         let range = noteCharacterRange(length: 5, in: context.nativeViewModel.attributedContent)
@@ -113,6 +117,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertFalse(bar.button(for: .bold).isSelected)
         XCTAssertFalse(bar.button(for: .italic).isSelected)
         XCTAssertFalse(bar.button(for: .underline).isSelected)
+        XCTAssertFalse(bar.button(for: .strikethrough).isSelected)
     }
 
     func testBarReportsCompactIntrinsicSizeForFloatingGlassLayout() throws {
@@ -152,7 +157,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         bar.setNeedsLayout()
         bar.layoutIfNeeded()
 
-        for formatting in [NoteFormatting.bold, .italic, .underline] {
+        for formatting in [NoteFormatting.bold, .italic, .underline, .strikethrough] {
             let button = bar.button(for: formatting)
             XCTAssertGreaterThanOrEqual(button.frame.width, 44)
             XCTAssertEqual(button.frame.height, CGFloat(44), accuracy: CGFloat(0.5))
@@ -168,7 +173,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
 
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
 
-        for formatting in [NoteFormatting.bold, .italic, .underline] {
+        for formatting in [NoteFormatting.bold, .italic, .underline, .strikethrough] {
             let configuration = try XCTUnwrap(bar.button(for: formatting).configuration)
 
             XCTAssertEqual(configuration.contentInsets.top, 4)
@@ -185,7 +190,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
 
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
 
-        for formatting in [NoteFormatting.bold, .italic, .underline] {
+        for formatting in [NoteFormatting.bold, .italic, .underline, .strikethrough] {
             let configuration = try XCTUnwrap(bar.button(for: formatting).configuration)
             let backgroundInsets = configuration.background.backgroundInsets
 
@@ -207,6 +212,10 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(bar.button(for: .bold).accessibilityIdentifier, "note-formatting-bold")
         XCTAssertEqual(bar.button(for: .italic).accessibilityIdentifier, "note-formatting-italic")
         XCTAssertEqual(bar.button(for: .underline).accessibilityIdentifier, "note-formatting-underline")
+        XCTAssertEqual(
+            bar.button(for: .strikethrough).accessibilityIdentifier,
+            "note-formatting-strikethrough"
+        )
     }
 
     func testBarAppliesGlassTreatmentAndSelectedButtonStyling() throws {
@@ -219,10 +228,12 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
                 isBoldActive: true,
                 isItalicActive: false,
                 isUnderlineActive: false,
+                isStrikethroughActive: false,
                 isEnabled: true,
                 onBoldTap: {},
                 onItalicTap: {},
-                onUnderlineTap: {}
+                onUnderlineTap: {},
+                onStrikethroughTap: {}
             )
         )
         let effectView = try XCTUnwrap(findGlassEffectView(in: bar))
@@ -249,10 +260,12 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
                 isBoldActive: true,
                 isItalicActive: false,
                 isUnderlineActive: false,
+                isStrikethroughActive: false,
                 isEnabled: true,
                 onBoldTap: {},
                 onItalicTap: {},
-                onUnderlineTap: {}
+                onUnderlineTap: {},
+                onStrikethroughTap: {}
             )
         )
         let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
@@ -261,6 +274,31 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         )
 
         XCTAssertEqual(selectedColor, UIColor.black)
+    }
+
+    func testStrikethroughButtonTapRoutesThroughSharedFormattingCommandLayer() async throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let context = await makeAttachedEditingContext(note: makeTestNote(plainText: "Hello"))
+        let range = noteCharacterRange(length: 5, in: context.nativeViewModel.attributedContent)
+        context.nativeViewModel.selection = AttributedTextSelection(range: range)
+        let bar = UIKitNoteFormattingBar(configuration: context.editorViewModel.noteFormattingBarConfiguration)
+
+        bar.button(for: .strikethrough).sendActions(for: .touchUpInside)
+
+        let paragraph = try XCTUnwrap(context.editorViewModel.currentSemanticDocumentSnapshot().blocks.first)
+        let segment = try XCTUnwrap(paragraph.content.first)
+
+        XCTAssertTrue(segment.marks.contains(.strikethrough))
+        XCTAssertTrue(context.editorViewModel.noteFormattingBarConfiguration.isStrikethroughActive)
+        XCTAssertTrue(
+            noteRangeIsStruckThrough(
+                context.nativeViewModel.attributedContent,
+                range: noteCharacterRange(length: 5, in: context.nativeViewModel.attributedContent)
+            )
+        )
     }
 }
 

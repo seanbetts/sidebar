@@ -20,7 +20,8 @@ extension NativeNoteEditorViewModel {
         return InlineFormattingState(
             bold: noteInlineFormattingTraits(from: attrs).bold,
             italic: noteInlineFormattingTraits(from: attrs).italic,
-            underline: attrs.underlineStyle != nil
+            underline: attrs.underlineStyle != nil,
+            strikethrough: attrs.strikethroughStyle != nil
         )
     }
 
@@ -29,7 +30,8 @@ extension NativeNoteEditorViewModel {
         return InlineFormattingState(
             bold: traits.bold,
             italic: traits.italic,
-            underline: run.underlineStyle != nil
+            underline: run.underlineStyle != nil,
+            strikethrough: run.strikethroughStyle != nil
         )
     }
 
@@ -40,7 +42,7 @@ extension NativeNoteEditorViewModel {
         let font = inlineStyledFont(bold: state.bold, italic: state.italic)
         setFont(font, in: &attrs)
         attrs.underlineStyle = state.underline ? .single : nil
-        attrs.strikethroughStyle = nil
+        attrs.strikethroughStyle = state.strikethrough ? .single : nil
         attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
         attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
     }
@@ -53,7 +55,7 @@ extension NativeNoteEditorViewModel {
         let font = inlineStyledFont(bold: state.bold, italic: state.italic)
         setFont(font, in: &text, range: range)
         text[range].underlineStyle = state.underline ? .single : nil
-        text[range].strikethroughStyle = nil
+        text[range].strikethroughStyle = state.strikethrough ? .single : nil
         text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
         text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
     }

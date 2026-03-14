@@ -10,6 +10,7 @@ final class UIKitNoteFormattingBar: UIView {
     private let boldButton: UIButton
     private let italicButton: UIButton
     private let underlineButton: UIButton
+    private let strikethroughButton: UIButton
     private var currentConfiguration: NoteFormattingBarConfiguration
     private static let barHeight: CGFloat = 48
     private static let minimumButtonTouchTarget: CGFloat = 44
@@ -21,6 +22,7 @@ final class UIKitNoteFormattingBar: UIView {
         self.boldButton = Self.makeButton(for: .bold)
         self.italicButton = Self.makeButton(for: .italic)
         self.underlineButton = Self.makeButton(for: .underline)
+        self.strikethroughButton = Self.makeButton(for: .strikethrough)
         self.currentConfiguration = .disabled
         super.init(frame: frame)
         setUpViewHierarchy()
@@ -68,6 +70,8 @@ final class UIKitNoteFormattingBar: UIView {
             return italicButton
         case .underline:
             return underlineButton
+        case .strikethrough:
+            return strikethroughButton
         }
     }
 }
@@ -151,7 +155,7 @@ struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
 
 @available(iOS 26.0, *)
 private extension UIKitNoteFormattingBar {
-    static let buttonOrder: [NoteFormatting] = [.bold, .italic, .underline]
+    static let buttonOrder: [NoteFormatting] = [.bold, .italic, .underline, .strikethrough]
 
     static func makeButton(for formatting: NoteFormatting) -> UIButton {
         let button = UIButton(type: .system)
@@ -193,6 +197,8 @@ private extension UIKitNoteFormattingBar {
             return "italic"
         case .underline:
             return "underline"
+        case .strikethrough:
+            return "strikethrough"
         }
     }
 
@@ -204,6 +210,8 @@ private extension UIKitNoteFormattingBar {
             return "Italic"
         case .underline:
             return "Underline"
+        case .strikethrough:
+            return "Strikethrough"
         }
     }
 
@@ -215,6 +223,8 @@ private extension UIKitNoteFormattingBar {
             return "note-formatting-italic"
         case .underline:
             return "note-formatting-underline"
+        case .strikethrough:
+            return "note-formatting-strikethrough"
         }
     }
 

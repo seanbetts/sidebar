@@ -128,6 +128,20 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         XCTAssertTrue(noteRangeIsUnderlined(reloaded.attributedContent, range: reloadedRange))
     }
 
+    func testPersistenceSnapshotRoundTripPreservesStrikethroughFormatting() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+
+        let fullRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: fullRange)
+        viewModel.applyFormatting(.strikethrough)
+
+        let reloaded = reloadedViewModel(from: viewModel.currentPersistenceSnapshot())
+        let reloadedRange = noteCharacterRange(length: 5, in: reloaded.attributedContent)
+
+        XCTAssertTrue(noteRangeIsStruckThrough(reloaded.attributedContent, range: reloadedRange))
+    }
+
     func testLoadDocumentPreservesExternallyEncodedBoldFormatting() async throws {
         let encoded = try XCTUnwrap(
             NotesSemanticDocumentCodec.encode(
@@ -235,6 +249,13 @@ final class NativeNoteEditorPersistenceTests: XCTestCase {
         let range = noteCharacterRange(length: 5, in: reloaded.attributedContent)
 
         XCTAssertFalse(noteRangeIsUnderlined(reloaded.attributedContent, range: range))
+    }
+
+    func testPersistenceSnapshotRoundTripRemovesStrikethroughFormattingWhenToggledOff() async {
+        let reloaded = roundTripAfterToggleOff(.strikethrough)
+        let range = noteCharacterRange(length: 5, in: reloaded.attributedContent)
+
+        XCTAssertFalse(noteRangeIsStruckThrough(reloaded.attributedContent, range: range))
     }
 
     func testPersistenceSnapshotRoundTripPreservesBoldFormattingAfterSameSelectionToggleOnOffOn() async {

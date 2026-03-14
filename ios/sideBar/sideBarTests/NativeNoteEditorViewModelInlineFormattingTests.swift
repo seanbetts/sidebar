@@ -36,6 +36,24 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
         )
     }
 
+    func testApplyFormattingStrikethroughTogglesTypingAttributesAtInsertionPoint() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        viewModel.applyFormatting(.strikethrough)
+        XCTAssertEqual(
+            viewModel.selection.typingAttributes(in: viewModel.attributedContent).strikethroughStyle,
+            .single
+        )
+
+        viewModel.applyFormatting(.strikethrough)
+        XCTAssertNil(
+            viewModel.selection.typingAttributes(in: viewModel.attributedContent).strikethroughStyle
+        )
+    }
+
     func testApplyFormattingBoldStylesSelectedRangeImmediately() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("hello")
@@ -56,6 +74,17 @@ final class NativeNoteEditorInlineFormattingTests: XCTestCase {
         viewModel.applyFormatting(.italic)
 
         XCTAssertTrue(noteRangeHasItalicTrait(viewModel.attributedContent, range: range))
+    }
+
+    func testApplyFormattingStrikethroughStylesSelectedRangeImmediately() async {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadText("hello")
+        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: range)
+
+        viewModel.applyFormatting(.strikethrough)
+
+        XCTAssertTrue(noteRangeIsStruckThrough(viewModel.attributedContent, range: range))
     }
 
     func testApplyFormattingPreservesExistingTraitsWhenAddingSecondStyle() async {
