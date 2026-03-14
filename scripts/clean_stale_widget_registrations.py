@@ -140,7 +140,7 @@ def _parse_tab_line(line: str) -> Optional[WidgetRegistration]:
     if len(parts) < 4:
         return None
 
-    identifier = parts[0].strip()
+    identifier = _extract_identifier(parts[0].strip())
     if not identifier:
         return None
 

@@ -33,7 +33,7 @@ def test_widget_registration_parsing_and_classification():
     assert multiple_formats[0].raw_flags == ("worktree", "debug")
 
     records = helper.parse_pluginkit_output(lines)
-    assert len(records) == 7
+    assert len(records) == 8
 
     assert records[0].raw_flags == ()
     assert records[0].uuid == "693D8320-0F9F-421A-A86B-FF4B669DAB69"
@@ -58,12 +58,15 @@ def test_widget_registration_parsing_and_classification():
         Path("/Applications/sideBar AI.app/Contents/PlugIns/sideBarWidgetsExtension.appex")
     }
     assert classification.installed_app[0].raw_flags == ()
+    extra_private_tmp = Path("/private/tmp/sideBarWidgetStaging/sideBarWidgetsExtension.appex")
     assert {record.path for record in classification.unknown_non_debug} == {
         Path("/Users/sean/Downloads/sideBarWidgets/Release/sideBarWidgetsExtension.appex"),
         Path(
             "/Users/sean/Library/Application Support/sideBarWidgets/sideBarWidgetsExtension.appex"
         ),
+        extra_private_tmp,
     }
+    assert any(record.path == extra_private_tmp for record in classification.unknown_non_debug)
     stale_paths = {
         Path(
             "/Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex"
@@ -76,6 +79,9 @@ def test_widget_registration_parsing_and_classification():
         ),
     }
     assert {record.path for record in classification.stale_debug} == stale_paths
+    assert not any(
+        record.path == extra_private_tmp for record in classification.stale_debug
+    )
     assert helper.should_keep_registration(classification.current_workspace[0], workspace_root)
     assert helper.should_keep_registration(classification.installed_app[0], workspace_root)
     for record in classification.unknown_non_debug:
@@ -101,4 +107,5 @@ def test_widget_registration_parsing_and_classification():
         Path(
             "/Users/sean/Library/Application Support/sideBarWidgets/sideBarWidgetsExtension.appex"
         ),
+        extra_private_tmp,
     }
