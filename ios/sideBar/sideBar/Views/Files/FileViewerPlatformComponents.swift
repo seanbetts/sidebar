@@ -9,11 +9,22 @@ import QuickLook
 import SwiftUI
 
 #if os(macOS)
-struct NativeVideoPlayer: View {
+struct NativeVideoPlayer: NSViewRepresentable {
     let player: AVPlayer
 
-    var body: some View {
-        VideoPlayer(player: player)
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.player = player
+        view.controlsStyle = .floating
+        view.showsFullScreenToggleButton = true
+        view.updatesNowPlayingInfoCenter = false
+        return view
+    }
+
+    func updateNSView(_ nsView: AVPlayerView, context: Context) {
+        if nsView.player !== player {
+            nsView.player = player
+        }
     }
 }
 
