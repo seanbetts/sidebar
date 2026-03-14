@@ -3860,6 +3860,68 @@ def test_parse_url_local_preserves_substack_native_video(monkeypatch):
     )
 
 
+def test_parse_url_local_renders_substack_native_video_with_networkidle(monkeypatch):
+    initial_html = """
+    <html>
+      <body>
+        <div data-component-name="VideoEmbedPlayer" id="media-a1ee3a83-e0f4-45f4-a182-ab0a4d872730">
+          <div class="placeholder"></div>
+        </div>
+      </body>
+    </html>
+    """
+    render_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        web_save_parser,
+        "fetch_html",
+        lambda _url, timeout=30: (
+            initial_html,
+            "https://www.oneusefulthing.org/p/the-shape-of-the-thing",
+            False,
+        ),
+    )
+
+    def fake_render(url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"):
+        render_calls.append(
+            {
+                "url": url,
+                "timeout": timeout,
+                "wait_for": wait_for,
+                "wait_until": wait_until,
+            }
+        )
+        return initial_html, "https://www.oneusefulthing.org/p/the-shape-of-the-thing"
+
+    monkeypatch.setattr(web_save_parser, "render_html_with_playwright", fake_render)
+    monkeypatch.setattr(
+        web_save_parser,
+        "fetch_substack_body_html",
+        lambda _url, _html, timeout=30: (
+            "<p>Lead paragraph.</p>",
+            {
+                "title": "The Shape of the Thing",
+                "author": "Ethan Mollick",
+                "published": "2026-03-12T14:10:07.054Z",
+                "canonical": "https://www.oneusefulthing.org/p/the-shape-of-the-thing",
+            },
+        ),
+    )
+
+    web_save_parser.parse_url_local(
+        "https://www.oneusefulthing.org/p/the-shape-of-the-thing"
+    )
+
+    assert render_calls == [
+        {
+            "url": "https://www.oneusefulthing.org/p/the-shape-of-the-thing",
+            "timeout": 30000,
+            "wait_for": None,
+            "wait_until": "networkidle",
+        }
+    ]
+
+
 def test_parse_url_local_scopes_readability_with_selector_override(monkeypatch):
     html = """
     <html>

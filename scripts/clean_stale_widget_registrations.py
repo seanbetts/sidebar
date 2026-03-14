@@ -224,6 +224,4 @@ def _has_debug_path_marker(path: Path) -> bool:
         return True
     if "/DerivedData/" in path_str and "Debug" in path_str:
         return True
-    if path_str.startswith("/private/tmp"):
-        return True
     return False

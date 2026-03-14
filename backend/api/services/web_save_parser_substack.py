@@ -96,7 +96,6 @@ def preserve_substack_native_video_embeds(
         return article_html
 
     article_soup = BeautifulSoup(article_html, "html.parser")
-    raw_soup = BeautifulSoup(raw_html, "html.parser")
 
     for placeholder in article_soup.select(
         ".native-video-embed,[data-component-name='VideoPlaceholder']"
@@ -105,7 +104,7 @@ def preserve_substack_native_video_embeds(
         replacement = article_soup.new_tag("figure")
         replacement["data-native-video"] = "substack"
 
-        poster_url = _extract_rendered_substack_video_poster(raw_soup, media_upload_id)
+        poster_url = _extract_rendered_substack_video_poster(raw_html, media_upload_id)
         if poster_url:
             image = article_soup.new_tag(
                 "img", src=poster_url, alt="Embedded video preview"
@@ -148,18 +147,17 @@ def _extract_media_upload_id(node) -> str | None:
 
 
 def _extract_rendered_substack_video_poster(
-    raw_soup: BeautifulSoup, media_upload_id: str | None
+    raw_html: str, media_upload_id: str | None
 ) -> str | None:
     if not media_upload_id:
         return None
 
-    raw_markup = str(raw_soup)
     container_marker = f'id="media-{media_upload_id}"'
-    marker_index = raw_markup.find(container_marker)
+    marker_index = raw_html.find(container_marker)
     if marker_index == -1:
         return None
 
-    snippet = raw_markup[marker_index : marker_index + 3000]
+    snippet = raw_html[marker_index : marker_index + 3000]
     poster_match = _SUBSTACK_VIDEO_POSTER.search(snippet)
     if poster_match is None:
         return None

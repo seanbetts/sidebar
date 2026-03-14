@@ -55,6 +55,26 @@ def configure_playwright_browsers_path(
     return None
 
 
+def resolve_auto_render_wait_until(html: str) -> str | None:
+    """Return the Playwright wait mode for special auto-render cases."""
+    if has_unrendered_substack_native_video(html):
+        return "networkidle"
+    if has_unrendered_youtube_embed(html):
+        return "domcontentloaded"
+    if requires_js_rendering(html):
+        return "networkidle"
+    return None
+
+
+def should_auto_render_url(url: str, html: str, *, is_playwright_allowed) -> bool:
+    """Return whether auto-rendering should run for the current page."""
+    if has_unrendered_youtube_embed(html) or has_unrendered_substack_native_video(html):
+        return True
+    return resolve_auto_render_wait_until(html) is not None and is_playwright_allowed(
+        url
+    )
+
+
 def render_html_with_playwright(
     url: str,
     *,

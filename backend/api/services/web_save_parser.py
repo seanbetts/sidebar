@@ -96,11 +96,10 @@ from api.services.web_save_parser_youtube import (
     replace_youtube_placeholders,
 )
 from api.services.web_save_rendering import (
-    has_unrendered_substack_native_video,
-    has_unrendered_youtube_embed,
     render_html_with_playwright,
-    requires_js_rendering,
+    resolve_auto_render_wait_until,
     resolve_rendering_settings,
+    should_auto_render_url,
 )
 from api.services.web_save_rules import Rule, RuleEngine, extract_metadata_overrides
 from api.services.web_save_tagger import (
@@ -434,27 +433,23 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             used_js_rendering = True
         except Exception as exc:
             logger.warning("web-save force render skip url=%s err=%s", final_url, exc)
-    elif (
-        not used_js_rendering and render_mode == "auto" and requires_js_rendering(html)
-    ):
-        unrendered_embed = has_unrendered_youtube_embed(html)
-        unrendered_substack_video = has_unrendered_substack_native_video(html)
-        allow_render = is_playwright_allowed(final_url) or (
-            unrendered_embed or unrendered_substack_video
-        )
-        if allow_render:
+    elif not used_js_rendering and render_mode == "auto":
+        wait_until = resolve_auto_render_wait_until(html)
+        if wait_until and should_auto_render_url(
+            final_url, html, is_playwright_allowed=is_playwright_allowed
+        ):
             try:
-                if unrendered_embed or unrendered_substack_video:
-                    html, final_url = render_html_with_playwright(
-                        final_url,
-                        timeout=min(render_timeout, 15000),
-                        wait_for=wait_for,
-                        wait_until="domcontentloaded",
-                    )
-                else:
-                    html, final_url = render_html_with_playwright(
-                        final_url, timeout=render_timeout, wait_for=wait_for
-                    )
+                render_timeout_ms = (
+                    min(render_timeout, 15000)
+                    if wait_until == "domcontentloaded"
+                    else render_timeout
+                )
+                html, final_url = render_html_with_playwright(
+                    final_url,
+                    timeout=render_timeout_ms,
+                    wait_for=wait_for,
+                    wait_until=wait_until,
+                )
                 used_js_rendering = True
             except Exception as exc:
                 logger.warning("web-save auto skip url=%s err=%s", final_url, exc)

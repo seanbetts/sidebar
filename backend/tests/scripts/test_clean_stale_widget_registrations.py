@@ -40,7 +40,13 @@ def test_widget_registration_parsing_and_classification():
     assert records[0].timestamp == "2026-03-14 17:23:48 +0000"
 
     workspace_root = Path("/Users/sean/Coding/sideBar")
-    classification = helper.classify_registrations(records, current_workspace=workspace_root)
+    classification = helper.classify_registrations(
+        records, current_workspace=workspace_root
+    )
+    classification_repeat = helper.classify_registrations(
+        records, current_workspace=workspace_root
+    )
+    assert classification_repeat == classification
 
     assert {record.path for record in classification.current_workspace} == {
         Path(
@@ -62,7 +68,9 @@ def test_widget_registration_parsing_and_classification():
         Path(
             "/Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex"
         ),
-        Path("/private/tmp/sideBarWidgetStaging/sideBarWidgetsExtension.appex"),
+        Path(
+            "/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex"
+        ),
         Path(
             "/Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex"
         ),
@@ -75,9 +83,7 @@ def test_widget_registration_parsing_and_classification():
     for stale in classification.stale_debug:
         assert not helper.should_keep_registration(stale, workspace_root)
 
-    kept_records = [
-        record for record in records if record not in classification.stale_debug
-    ]
+    kept_records = [record for record in records if record not in classification.stale_debug]
     classification_second = helper.classify_registrations(
         kept_records, current_workspace=workspace_root
     )
