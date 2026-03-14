@@ -12,12 +12,12 @@ Flags = release
 
 !    ai.sidebar.sidebar.sideBarWidgets(1.0)
 Path = /Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex
-Flags = worktree
+Flags = worktree, debug
 
 ?    ai.sidebar.sidebar.sideBarWidgets(1.0)
 Path = /private/tmp/sideBarWidgetStaging/sideBarWidgetsExtension.appex
-Flags = temp
+Flags = temp, debug
 
 -    ai.sidebar.sidebar.sideBarWidgets(1.0)
 Path = /Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex
-Flags = stale
+Flags = stale, debug

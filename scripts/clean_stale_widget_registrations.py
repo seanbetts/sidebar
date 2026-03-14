@@ -3,13 +3,14 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 
 
 @dataclass(frozen=True)
 class WidgetRegistration:
     identifier: str
     path: Path
+    flags: Tuple[str, ...]
     status: Optional[str] = None
 
 
@@ -22,6 +23,12 @@ class ClassificationResult:
 
 
 _IDENTIFIER_PATTERN = re.compile(r"^[+\-!? ]*\s*(?P<identifier>[^\s(]+)")
+_DEBUG_FLAGS = {
+    "debug",
+    "stale",
+    "worktree",
+    "temp",
+}
 
 
 def parse_pluginkit_output(lines: Iterable[str]) -> List[WidgetRegistration]:
@@ -66,7 +73,7 @@ def classify_registrations(
             installed_app_bucket.append(record)
             continue
 
-        if _is_stale_debug_path(record.path, workspace_path):
+        if _is_debug_registration(record):
             stale_debug_bucket.append(record)
             continue
 
@@ -86,7 +93,7 @@ def should_keep_registration(record: WidgetRegistration, current_workspace: Path
         return True
     if _is_installed_app(record.path):
         return True
-    if _is_stale_debug_path(record.path, workspace_path):
+    if _is_debug_registration(record):
         return False
     return True
 
@@ -107,8 +114,14 @@ def _parse_registration_block(block: List[str]) -> Optional[WidgetRegistration]:
     if not path_value:
         return None
 
+    flags = _extract_flags(block[1:])
     status_char = header[0] if header[0] in "+-!? " else None
-    return WidgetRegistration(identifier=identifier, path=Path(path_value), status=status_char)
+    return WidgetRegistration(
+        identifier=identifier,
+        path=Path(path_value),
+        flags=flags,
+        status=status_char,
+    )
 
 
 def _extract_identifier(header: str) -> str:
@@ -128,6 +141,17 @@ def _extract_path(lines: List[str]) -> str:
     return ""
 
 
+def _extract_flags(lines: List[str]) -> Tuple[str, ...]:
+    for line in lines:
+        if "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        if key.strip() == "Flags":
+            fragments = re.split(r"[,\s]+", value.strip())
+            return tuple(fragment for fragment in fragments if fragment)
+    return tuple()
+
+
 def _is_under_workspace(path: Path, workspace: Path) -> bool:
     path_str = str(path)
     workspace_str = str(workspace)
@@ -138,15 +162,5 @@ def _is_installed_app(path: Path) -> bool:
     return str(path).startswith("/Applications/sideBar AI.app")
 
 
-def _is_stale_debug_path(path: Path, workspace: Path) -> bool:
-    if _is_under_workspace(path, workspace):
-        return False
-
-    path_str = str(path)
-    if path_str.startswith("/private/tmp"):
-        return True
-    if ".git/worktrees" in path_str:
-        return True
-    if "/DerivedData/" in path_str:
-        return True
-    return False
+def _is_debug_registration(record: WidgetRegistration) -> bool:
+    return bool(set(record.flags) & _DEBUG_FLAGS)

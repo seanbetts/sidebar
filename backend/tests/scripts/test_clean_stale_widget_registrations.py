@@ -26,6 +26,8 @@ def test_widget_registration_parsing_and_classification():
     records = helper.parse_pluginkit_output(lines)
     assert len(records) == 6
 
+    assert records[0].flags == ("current-workspace",)
+
     workspace_root = Path("/Users/sean/Coding/sideBar")
     classification = helper.classify_registrations(records, current_workspace=workspace_root)
 
@@ -34,12 +36,15 @@ def test_widget_registration_parsing_and_classification():
             "/Users/sean/Coding/sideBar/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex"
         )
     }
+    assert classification.current_workspace[0].flags == ("current-workspace",)
     assert {record.path for record in classification.installed_app} == {
         Path("/Applications/sideBar AI.app/Contents/PlugIns/sideBarWidgetsExtension.appex")
     }
+    assert classification.installed_app[0].flags == ("installed",)
     assert {record.path for record in classification.unknown_non_debug} == {
         Path("/Users/sean/Downloads/sideBarWidgets/Release/sideBarWidgetsExtension.appex")
     }
+    assert classification.unknown_non_debug[0].flags == ("release",)
 
     stale_paths = {
         Path(
@@ -51,6 +56,25 @@ def test_widget_registration_parsing_and_classification():
         ),
     }
     assert {record.path for record in classification.stale_debug} == stale_paths
+    assert any(
+        record.flags == ("worktree", "debug")
+        for record in classification.stale_debug
+        if record.path == Path(
+            "/Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex"
+        )
+    )
+    assert any(
+        record.flags == ("temp", "debug")
+        for record in classification.stale_debug
+        if record.path == Path("/private/tmp/sideBarWidgetStaging/sideBarWidgetsExtension.appex")
+    )
+    assert any(
+        record.flags == ("stale", "debug")
+        for record in classification.stale_debug
+        if record.path == Path(
+            "/Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex"
+        )
+    )
 
     assert helper.should_keep_registration(classification.current_workspace[0], workspace_root)
     assert helper.should_keep_registration(classification.installed_app[0], workspace_root)
