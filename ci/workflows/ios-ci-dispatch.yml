@@ -62,8 +62,38 @@ jobs:
           extensions|extensions|sideBarExtensions|AppleExtensions|platform=iOS Simulator,name=iPhone 17 Pro
           EOF
 
-  ios_test_dispatch:
+  ios_widget_verification_dispatch:
     needs: [ios_prepare_packages]
+    timeout-minutes: 60
+    runs-on: [self-hosted, mac]
+    strategy:
+      fail-fast: false
+      matrix:
+        # Widget verification matrix contract for manual runs:
+        # - logic lane runs macOS Debug verification
+        # - surface/ui/extensions lanes run macOS Release verification
+        # - all runs both Debug and Release verification
+        include:
+          - mode: debug
+            label: "macOS Debug widget verification"
+            lanes: "all logic"
+          - mode: release
+            label: "macOS Release widget verification"
+            lanes: "all surface ui extensions"
+    steps:
+      - name: Checkout
+        if: ${{ contains(matrix.lanes, github.event.inputs.lane) }}
+        uses: actions/checkout@v5
+      - name: Verify macOS widget artifacts (${{ matrix.label }})
+        if: ${{ contains(matrix.lanes, github.event.inputs.lane) }}
+        run: |
+          python3 scripts/verify_macos_widget_artifacts.py \
+            --mode "${{ matrix.mode }}" \
+            --workspace-root "${{ github.workspace }}" \
+            --clean-stale-registrations
+
+  ios_test_dispatch:
+    needs: [ios_prepare_packages, ios_widget_verification_dispatch]
     timeout-minutes: 90
     runs-on:
       - self-hosted

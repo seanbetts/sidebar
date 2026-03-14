@@ -16,6 +16,9 @@ on:
       - "scripts/ios_quality_gates.json"
       - "scripts/check-ios-warning-gate.sh"
       - "scripts/test-ios.sh"
+      - "scripts/clean_stale_widget_registrations.py"
+      - "scripts/verify_macos_widget_artifacts.py"
+      - "scripts/check_ios_extension_config_resolution.py"
       - ".swiftlint.yml"
       - ".github/workflows/ios-ci.yml"
       - ".github/workflows/ios-ci-main.yml"
@@ -85,6 +88,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Widget verification matrix contract:
+        # - dev CI runs macOS Debug widget verification
+        # - iPhone/iPad simulator lanes remain unchanged
         include:
           - id: logic-iphone
             lane: logic
@@ -168,6 +174,13 @@ jobs:
             --only-testing "${IOS_ONLY_TESTING}" \
             --skip-testing "${{ matrix.skip_testing }}" \
             --allowed-macos-targets "sideBarLogicTests"
+      - name: Verify macOS widget artifacts (Debug)
+        if: ${{ matrix.id == 'logic-mac' }}
+        run: |
+          python3 scripts/verify_macos_widget_artifacts.py \
+            --mode debug \
+            --workspace-root "${{ github.workspace }}" \
+            --clean-stale-registrations
       - name: Run tests (${{ matrix.label }})
         env:
           IOS_SCHEME: ${{ matrix.scheme }}

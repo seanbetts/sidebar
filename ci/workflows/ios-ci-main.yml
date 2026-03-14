@@ -16,6 +16,9 @@ on:
       - "scripts/ios_quality_gates.json"
       - "scripts/check-ios-warning-gate.sh"
       - "scripts/test-ios.sh"
+      - "scripts/clean_stale_widget_registrations.py"
+      - "scripts/verify_macos_widget_artifacts.py"
+      - "scripts/check_ios_extension_config_resolution.py"
       - ".swiftlint.yml"
       - ".github/workflows/ios-ci.yml"
       - ".github/workflows/ios-ci-main.yml"
@@ -61,8 +64,33 @@ jobs:
           extensions|sideBarExtensions|AppleExtensions|platform=iOS Simulator,name=iPhone 17 Pro
           EOF
 
-  ios_test_main:
+  ios_widget_verification_main:
     needs: [ios_prepare_packages]
+    timeout-minutes: 60
+    runs-on: [self-hosted, mac]
+    strategy:
+      fail-fast: false
+      matrix:
+        # Widget verification matrix contract:
+        # - main CI runs macOS Debug and Release widget verification
+        # - archive/export verification runs in release promotion paths
+        include:
+          - mode: debug
+            label: "macOS Debug widget verification"
+          - mode: release
+            label: "macOS Release widget verification"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Verify macOS widget artifacts (${{ matrix.label }})
+        run: |
+          python3 scripts/verify_macos_widget_artifacts.py \
+            --mode "${{ matrix.mode }}" \
+            --workspace-root "${{ github.workspace }}" \
+            --clean-stale-registrations
+
+  ios_test_main:
+    needs: [ios_prepare_packages, ios_widget_verification_main]
     timeout-minutes: 90
     runs-on:
       - self-hosted

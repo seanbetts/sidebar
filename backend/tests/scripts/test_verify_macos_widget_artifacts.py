@@ -236,6 +236,52 @@ def test_cleanup_is_optional_and_runs_before_build(monkeypatch, tmp_path: Path) 
     ]
 
 
+def test_archive_export_cleanup_runs_before_archive(monkeypatch, tmp_path: Path) -> None:
+    """Cleanup flag should run before archive/export commands in archive-export mode."""
+    workspace_root = tmp_path / "workspace"
+    export_dir = workspace_root / "DerivedData/widget-verification/archive-export/export"
+    exported_app = export_dir / "sideBar.app"
+    exported_app.mkdir(parents=True)
+    export_options_plist = workspace_root / "ExportOptions.plist"
+    export_options_plist.write_text("plist", encoding="utf-8")
+
+    calls = _capture_subprocess_calls(monkeypatch, VERIFY_MODULE)
+    exit_code = run_verifier(
+        [
+            "--mode",
+            "archive-export",
+            "--workspace-root",
+            str(workspace_root),
+            "--clean-stale-registrations",
+            "--export-options-plist",
+            str(export_options_plist),
+        ]
+    )
+
+    assert exit_code == 0
+    assert calls[0] == [
+        "python3",
+        str(workspace_root / "scripts/clean_stale_widget_registrations.py"),
+        "--workspace-root",
+        str(workspace_root),
+    ]
+    assert calls[1][-1] == "archive"
+    assert calls[2][1] == "-exportArchive"
+
+
+def test_ci_widget_matrix_contract_is_documented() -> None:
+    """Document the intended CI/release widget verification matrix for Task 5 wiring."""
+    expected_modes_by_path = {
+        "dev-ci-macos": ["debug"],
+        "main-ci-macos": ["debug", "release"],
+        "release-promotion": ["archive-export"],
+    }
+
+    assert expected_modes_by_path["dev-ci-macos"] == ["debug"]
+    assert expected_modes_by_path["main-ci-macos"] == ["debug", "release"]
+    assert "archive-export" in expected_modes_by_path["release-promotion"]
+
+
 def test_dry_run_prints_commands_without_running(monkeypatch, tmp_path: Path, capsys) -> None:
     """Dry-run should print every command without invoking subprocess.run."""
     workspace_root = tmp_path / "workspace"

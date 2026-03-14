@@ -5,6 +5,7 @@ remote="origin"
 dev_branch="dev"
 main_branch="main"
 run_ios_tests="false"
+export_options_plist=""
 
 usage() {
   cat <<USAGE
@@ -23,6 +24,8 @@ Options:
   --dev <branch>        Dev branch name (default: dev)
   --main <branch>       Main branch name (default: main)
   --run-ios-tests       Run scripts/test-ios.sh before promotion
+  --export-options-plist <path>
+                        ExportOptions.plist for macOS archive/export widget verification
   -h, --help            Show this help
 USAGE
 }
@@ -67,6 +70,10 @@ while [[ $# -gt 0 ]]; do
     --run-ios-tests)
       run_ios_tests="true"
       shift
+      ;;
+    --export-options-plist)
+      export_options_plist="$2"
+      shift 2
       ;;
     --push-dev)
       warn_deprecated_option \
@@ -123,6 +130,29 @@ if [[ "$run_ios_tests" == "true" ]]; then
 else
   echo "Skipping local iOS preflight. Use --run-ios-tests for an explicit release preflight."
 fi
+
+if [[ -z "$export_options_plist" ]]; then
+  default_export_options_plist="ios/sideBar/ExportOptions.plist"
+  if [[ -f "$default_export_options_plist" ]]; then
+    export_options_plist="$default_export_options_plist"
+  else
+    echo "Release blocked: missing --export-options-plist for macOS archive/export widget verification." >&2
+    echo "Provide --export-options-plist <path> or add $default_export_options_plist." >&2
+    exit 1
+  fi
+fi
+
+if [[ ! -f "$export_options_plist" ]]; then
+  echo "Release blocked: export options plist not found at '$export_options_plist'." >&2
+  exit 1
+fi
+
+echo "Running macOS widget archive/export verification..."
+python3 scripts/verify_macos_widget_artifacts.py \
+  --mode archive-export \
+  --workspace-root "$PWD" \
+  --export-options-plist "$export_options_plist" \
+  --clean-stale-registrations
 
 echo "Updating $main_branch..."
 git checkout "$main_branch"
