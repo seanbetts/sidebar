@@ -77,6 +77,8 @@ def _resolve_player_clients(audio_only: bool) -> list[str] | None:
     if value:
         clients = [client.strip() for client in value.split(",") if client.strip()]
         return clients or None
+    if audio_only:
+        return ["default"]
     return None
 
 

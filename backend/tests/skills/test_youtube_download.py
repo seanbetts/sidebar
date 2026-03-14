@@ -54,7 +54,7 @@ def test_resolve_js_runtimes_missing(monkeypatch):
 def test_resolve_player_clients_defaults_for_audio(monkeypatch):
     module = _load_download_module()
     monkeypatch.delenv("YT_DLP_PLAYER_CLIENTS", raising=False)
-    assert module._resolve_player_clients(audio_only=True) is None
+    assert module._resolve_player_clients(audio_only=True) == ["default"]
 
 
 def test_resolve_player_clients_defaults_for_video(monkeypatch):
@@ -112,6 +112,49 @@ def test_download_youtube_enables_remote_components(monkeypatch, tmp_path):
 
     assert result["success"] is True
     assert captured["opts"]["remote_components"] == ["ejs:github"]
+    assert captured["opts"]["extractor_args"] == {
+        "youtube": {"player_client": ["default"]}
+    }
+
+
+def test_download_youtube_leaves_video_player_clients_on_default(monkeypatch, tmp_path):
+    module = _load_download_module()
+    captured: dict[str, Any] = {}
+
+    class FakeYoutubeDL:
+        def __init__(self, opts):
+            captured["opts"] = opts
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def extract_info(self, _url, download=False):
+            assert download is False
+            return {"title": "Video", "duration": 42}
+
+        def prepare_filename(self, _info):
+            return str(tmp_path / "Video.webm")
+
+        def download(self, _urls):
+            (tmp_path / "Video.webm").write_bytes(b"video")
+
+    monkeypatch.setattr(module, "check_ffmpeg", lambda: True)
+    monkeypatch.setattr(module.yt_dlp, "YoutubeDL", FakeYoutubeDL)
+    monkeypatch.setattr(module, "_resolve_js_runtimes", lambda: {"node": {}})
+
+    result = module.download_youtube(
+        url="https://www.youtube.com/watch?v=abc123xyzAA",
+        audio_only=False,
+        quiet=True,
+        upload=False,
+        temp_dir=str(tmp_path),
+    )
+
+    assert result["success"] is True
+    assert "extractor_args" not in captured["opts"]
 
 
 def test_backend_pyproject_pins_latest_verified_yt_dlp_release():
