@@ -1,6 +1,6 @@
 # Apple Sentry Vendor Bundle
 
-This directory owns the vendored Apple Sentry SDK for the main `sideBar` app target.
+This directory owns the vendored Apple Sentry SDK used by the Apple app and extension targets that currently link Sentry.
 
 ## Source
 
@@ -21,5 +21,4 @@ For this release cycle, the SDK is checked into the repo as a direct XCFramework
 
 ## Scope
 
-This vendor path is currently for the main `sideBar` app target only.
-Extension targets are intentionally out of scope for this release cycle.
+This vendor path is currently used by the main `sideBar` app target plus the Apple widget, share extension, and Safari extension targets.

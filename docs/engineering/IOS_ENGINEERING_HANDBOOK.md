@@ -49,7 +49,7 @@ Runtime values come from `.xcconfig` and are exposed via Info.plist build settin
 - `KEYCHAIN_ACCESS_GROUP`
 - `KEYCHAIN_SERVICE`
 - `ASSOCIATED_DOMAINS` (for example `webcredentials:app.trysidebar.ai`)
-- `SENTRY_DSN` (optional reserved key; retained in the config surface, but the Apple bootstrap seam is currently inert)
+- `SENTRY_DSN` (optional runtime key, when present it enables Apple Sentry startup for the app and Apple extension surfaces)
 - `R2_ENDPOINT`
 - `R2_BUCKET`
 - `R2_FAVICON_BUCKET`
@@ -58,8 +58,8 @@ Runtime values come from `.xcconfig` and are exposed via Info.plist build settin
 Notes:
 - Non-production runtime paths fail fast when required configuration is missing or invalid.
 - Non-production builds do not silently fall back to production API endpoints.
-- The Apple Sentry seam remains main-app-only. Share extension, widgets, and Safari targets remain excluded.
-- The Apple Sentry bootstrap is intentionally inert in the current release cycle, so Debug, XCTest, and Release/TestFlight runs all skip Apple SDK startup.
+- Apple Sentry is wired behind `SENTRY_DSN`. If the DSN is unset, the app and extensions skip SDK startup.
+- The repo currently links Sentry into the main app, widget extension, share extension, and Safari extension targets.
 
 ## Architecture Summary
 
@@ -227,17 +227,18 @@ Runners only need to be active when you want CI to process pushes to `dev`.
 - Script: `ios/sideBar/ci_scripts/ci_post_clone.sh`
 - It generates `SideBar.local.xcconfig` from environment variables.
 - Missing required values fail the build early.
-- `SENTRY_DSN` may still be present in the environment to preserve config compatibility, but current Apple builds ignore it because the bootstrap seam is inert.
-- `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_CLI_VERSION` are not used by the current Apple build path.
+- `SENTRY_DSN` controls runtime startup. Empty or unresolved values keep the Apple app and extensions from starting Sentry.
+- `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_CLI_VERSION` are used by the Apple dSYM upload path when present.
 - Xcode Cloud handles `main` branch builds for distribution.
 
 ## Apple Sentry Status
 
 - Runtime bootstrap still lives in `ios/sideBar/sideBar/App/SentryBootstrap.swift` and is invoked from both app delegates.
-- `SentryBootstrap.startIfConfigured(...)` is currently a deliberate no-op that preserves the app launch seam without linking the Apple Sentry SDK.
-- The `sentry-cocoa` package, `Sentry` product linkage, and `Upload Sentry dSYMs` build phase were removed to reduce Apple package-resolution risk before release.
-- `ios/sideBar/ci_scripts/upload_sentry_dsyms.sh` is now an explicit disabled placeholder rather than an active release step.
-- Any future Apple Sentry reintroduction should start with a new design/plan pass rather than reactivating the old upload flow ad hoc.
+- `SentryBootstrap.startIfConfigured(...)` is active. It starts the SDK only when `SENTRY_DSN` resolves to a non-empty value and the process is not running tests or previews.
+- `ExtensionSentryBootstrap.startIfConfigured(...)` is also active for the widget, share extension, and Safari extension surfaces when they are built with a non-empty DSN.
+- The current Apple bootstrap enables app hang tracking, auto session tracking, network tracking, and trace propagation targets derived from the configured backend hosts.
+- The repo uses a vendored `Vendor/Sentry/Sentry.xcframework` instead of Swift Package Manager for Apple builds.
+- `ios/sideBar/ci_scripts/upload_sentry_dsyms.sh` remains an active build-path helper when the Sentry auth/project environment variables are present.
 
 ## Extension Reliability Expectations
 

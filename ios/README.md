@@ -41,6 +41,8 @@ python3 scripts/verify_macos_widget_artifacts.py --mode archive-export --workspa
 
 ## Apple Sentry Status
 - The Apple app links the vendored `sentry-cocoa` XCFramework for the main `sideBar` target.
+- The Apple widget, share extension, and Safari extension targets also link the vendored Sentry XCFramework.
 - `/Users/sean/Coding/sideBar/ios/sideBar/sideBar/App/SentryBootstrap.swift` starts Sentry when `SENTRY_DSN` is configured and the app is not running tests or previews.
+- `/Users/sean/Coding/sideBar/ios/sideBar/sideBarShared/Utilities/ExtensionSentryBootstrap.swift` does the same for the Apple extension surfaces when they are launched with a non-empty DSN.
 - The Apple bootstrap explicitly configures tracing, app hang tracking, auto session tracking, and network tracing.
 - `/Users/sean/Coding/sideBar/ios/sideBar/ci_scripts/upload_sentry_dsyms.sh` uploads release-device dSYMs when Sentry auth/project environment variables are present.

@@ -16,7 +16,7 @@ The Apple app and extensions require runtime configuration from build settings
 - `KEYCHAIN_ACCESS_GROUP`: keychain access group used for shared auth state.
 - `KEYCHAIN_SERVICE`: keychain service name.
 - `ASSOCIATED_DOMAINS`: Apple Associated Domains entitlement entries (for example `webcredentials:app.trysidebar.ai`).
-- `SENTRY_DSN`: optional key that enables Apple Sentry startup when configured for the main app target.
+- `SENTRY_DSN`: optional key that enables Apple Sentry startup when configured for the main app and Apple extension targets.
 - `R2_ENDPOINT`: Cloudflare R2 S3 endpoint.
 - `R2_BUCKET`: R2 bucket for ingestion uploads.
 - `R2_FAVICON_BUCKET`: R2 bucket for favicon assets.
@@ -28,18 +28,18 @@ The Apple app and extensions require runtime configuration from build settings
 2. Fill in all required keys.
 3. Ensure the project uses `/Users/sean/Coding/sideBar/ios/sideBar/Config/SideBar.xcconfig`
    (it includes the local override file).
-4. `SENTRY_DSN` may be left empty. When it is set, the main Apple app initializes Sentry outside tests and previews.
+4. `SENTRY_DSN` may be left empty. When it is set, the main Apple app and Apple extensions initialize Sentry outside tests and previews.
 
 ## CI / Xcode Cloud
 - `/Users/sean/Coding/sideBar/ios/sideBar/ci_scripts/ci_post_clone.sh`
   generates `SideBar.local.xcconfig` from environment variables.
 - Missing required config values fail fast.
-- `SENTRY_DSN` enables Apple Sentry startup for the main app target.
+- `SENTRY_DSN` enables Apple Sentry startup for the main app and Apple extension targets.
 - `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_CLI_VERSION` are used by the Apple dSYM upload path when present.
 
 ## Important Behavior
 - Non-production builds do not silently fall back to production API URLs.
 - If required keys are missing or invalid at runtime, config load fails and the app shows
   a configuration error state.
-- The Apple app initializes Sentry when `SENTRY_DSN` is configured and the process is not running tests or previews.
+- The Apple app and extension surfaces initialize Sentry when `SENTRY_DSN` is configured and the process is not running tests or previews.
 - The Apple bootstrap explicitly enables app hang tracking, auto session tracking, network tracing, and trace propagation to configured app backends.
