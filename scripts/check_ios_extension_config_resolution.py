@@ -340,8 +340,9 @@ def resolve_value(
 
     resolved = normalized
     for source_key in set(settings) | set(xcconfig_values) | set(local_overrides):
-        token = f"$({source_key})"
-        if token not in resolved:
+        parenthesized_token = f"$({source_key})"
+        braced_token = f"${{{source_key}}}"
+        if parenthesized_token not in resolved and braced_token not in resolved:
             continue
         replacement = resolve_value(
             source_key,
@@ -352,7 +353,8 @@ def resolve_value(
         )
         if replacement is None:
             continue
-        resolved = resolved.replace(token, replacement)
+        resolved = resolved.replace(parenthesized_token, replacement)
+        resolved = resolved.replace(braced_token, replacement)
 
     return normalize_value(resolved)
 

@@ -54,7 +54,12 @@ def _create_widget_app_bundle(tmp_path: Path) -> dict[str, Path]:
     }
 
 
-def _mock_otool_success(monkeypatch, *, missing_rpath: str | None = None, missing_link_for: Path | None = None):
+def _mock_otool_success(
+    monkeypatch,
+    *,
+    missing_rpath: str | None = None,
+    missing_link_for: Path | None = None,
+):
     """Mock subprocess.check_output for deterministic otool -l and -L responses."""
     required_rpaths = [
         "@executable_path/Frameworks",
@@ -63,7 +68,15 @@ def _mock_otool_success(monkeypatch, *, missing_rpath: str | None = None, missin
     ]
     if missing_rpath is not None:
         required_rpaths.remove(missing_rpath)
-    rpath_output = "\n".join(f"path {entry} (offset 12)" for entry in required_rpaths)
+    rpath_output = "\n".join(
+        (
+            "Load command 21\n"
+            "          cmd LC_RPATH\n"
+            "      cmdsize 56\n"
+            f"         path {entry} (offset 12)"
+        )
+        for entry in required_rpaths
+    )
 
     def _fake_check_output(command, text, stderr):
         binary_path = Path(command[-1])
@@ -391,6 +404,76 @@ def test_validate_extension_config_resolution_reports_missing_macos_host_framewo
     ) in errors
 
 
+def test_validate_extension_config_resolution_resolves_braced_placeholders(
+    tmp_path: Path,
+) -> None:
+    """Validator should resolve ${VAR} placeholders from project settings."""
+    base_xcconfig = tmp_path / "SideBar.xcconfig"
+    base_xcconfig.write_text(f"{LOCAL_INCLUDE_LINE}\n", encoding="utf-8")
+
+    sentinel_values = CONFIG_CHECK_MODULE.SENTINEL_VALUES
+    debug_settings = {
+        "INFOPLIST_KEY_API_BASE_URL": "${API_BASE_URL}",
+        "INFOPLIST_KEY_SUPABASE_URL": "${SUPABASE_URL}",
+        "INFOPLIST_KEY_SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
+        "APP_GROUP_ID": "group.ai.sidebar.sidebar",
+        "INFOPLIST_KEY_APP_GROUP_ID": "group.ai.sidebar.sidebar",
+    }
+
+    objects = {
+        "project": {
+            "isa": "PBXProject",
+            "buildConfigurationList": "project_configs",
+        },
+        "project_configs": {
+            "isa": "XCConfigurationList",
+            "buildConfigurations": ["project_debug"],
+        },
+        "project_debug": {
+            "isa": "XCBuildConfiguration",
+            "name": "Debug",
+            "buildSettings": {
+                "API_BASE_URL": sentinel_values["API_BASE_URL"],
+                "SUPABASE_URL": sentinel_values["SUPABASE_URL"],
+                "SUPABASE_ANON_KEY": sentinel_values["SUPABASE_ANON_KEY"],
+            },
+        },
+        "target": {
+            "isa": "PBXNativeTarget",
+            "name": "sideBar Safari Extension",
+            "buildConfigurationList": "target_configs",
+            "buildPhases": ["frameworks"],
+        },
+        "target_configs": {
+            "isa": "XCConfigurationList",
+            "buildConfigurations": ["target_debug"],
+        },
+        "target_debug": {
+            "isa": "XCBuildConfiguration",
+            "name": "Debug",
+            "buildSettings": debug_settings,
+        },
+        "frameworks": {
+            "isa": "PBXFrameworksBuildPhase",
+            "files": [],
+        },
+    }
+
+    original_loader = CONFIG_CHECK_MODULE.load_pbxproj_objects
+    try:
+        CONFIG_CHECK_MODULE.load_pbxproj_objects = lambda _path: objects
+        errors = validate_extension_config_resolution(
+            pbxproj_path=tmp_path / "project.pbxproj",
+            base_xcconfig_path=base_xcconfig,
+            configuration="Debug",
+            targets=("sideBar Safari Extension",),
+        )
+    finally:
+        CONFIG_CHECK_MODULE.load_pbxproj_objects = original_loader
+
+    assert errors == []
+
+
 def test_validate_built_macos_widget_artifacts_rejects_non_sidebar_app_path(tmp_path: Path) -> None:
     """Artifact validation should require a sideBar.app bundle path."""
     app = tmp_path / "NotSideBar.app"
@@ -444,10 +527,18 @@ def test_validate_built_macos_widget_artifacts_reports_missing_required_rpath(
 
     errors = validate_built_macos_widget_artifacts(app_path=paths["app"])
 
+    unexpected_rpath_errors = [
+        error
+        for error in errors
+        if "missing LC_RPATH entry" in error
+        and "@executable_path/../../../../Frameworks" not in error
+    ]
+
     assert (
         f"{paths['widget_executable']}: missing LC_RPATH entry '@executable_path/../../../../Frameworks'"
         in errors
     )
+    assert unexpected_rpath_errors == []
 
 
 def test_validate_built_macos_widget_artifacts_reports_missing_shared_framework_linkage_on_executable(
@@ -459,6 +550,7 @@ def test_validate_built_macos_widget_artifacts_reports_missing_shared_framework_
     _mock_otool_success(monkeypatch, missing_link_for=paths["widget_executable"])
 
     errors = validate_built_macos_widget_artifacts(app_path=paths["app"])
+    assert [error for error in errors if "missing LC_RPATH entry" in error] == []
 
     assert (
         f"{paths['widget_executable']}: missing linked framework '@rpath/sideBarShared.framework/...'"
@@ -475,6 +567,7 @@ def test_validate_built_macos_widget_artifacts_reports_missing_shared_framework_
     _mock_otool_success(monkeypatch, missing_link_for=paths["widget_debug_dylib"])
 
     errors = validate_built_macos_widget_artifacts(app_path=paths["app"])
+    assert [error for error in errors if "missing LC_RPATH entry" in error] == []
 
     assert (
         f"{paths['widget_debug_dylib']}: missing linked framework '@rpath/sideBarShared.framework/...'"
