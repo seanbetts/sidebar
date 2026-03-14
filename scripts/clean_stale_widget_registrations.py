@@ -310,11 +310,11 @@ def run_cleaner(argv: Optional[List[str]] = None) -> int:
     except subprocess.CalledProcessError as exc:
         stderr_output = exc.stderr.strip() if exc.stderr else "pluginkit command failed"
         print(
-            "Unable to determine current widget registrations, "
-            "treating this as unresolved conflicting state."
+            "pluginkit failed to list widget registrations "
+            f"(exit {exc.returncode}): {stderr_output}"
         )
-        print(f"  pluginkit exit {exc.returncode}: {stderr_output}")
-        return 1
+        print("Skipping cleanup since widget registration enumeration failed.")
+        return 0
 
     _print_summary("Registration summary before cleanup", classification)
 
