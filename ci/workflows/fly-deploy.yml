@@ -41,15 +41,15 @@ jobs:
       DATABASE_URL: "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: "0.6.0"
           enable-cache: true
@@ -113,10 +113,17 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Setup Flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Install Flyctl
+        env:
+          FLYCTL_VERSION: "0.3.221"
+        run: |
+          curl -fsSL https://fly.io/install.sh | sh -s "${FLYCTL_VERSION}"
+          echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+
+      - name: Show Flyctl version
+        run: flyctl version
 
       - name: Deploy
         working-directory: backend
