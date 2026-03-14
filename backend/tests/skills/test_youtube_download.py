@@ -77,6 +77,7 @@ def test_default_remote_components_stays_enabled():
 def test_download_youtube_enables_remote_components(monkeypatch, tmp_path):
     module = _load_download_module()
     captured: dict[str, Any] = {}
+    log_messages: list[str] = []
 
     class FakeYoutubeDL:
         def __init__(self, opts):
@@ -101,6 +102,11 @@ def test_download_youtube_enables_remote_components(monkeypatch, tmp_path):
     monkeypatch.setattr(module, "check_ffmpeg", lambda: True)
     monkeypatch.setattr(module.yt_dlp, "YoutubeDL", FakeYoutubeDL)
     monkeypatch.setattr(module, "_resolve_js_runtimes", lambda: {"node": {}})
+    monkeypatch.setattr(
+        module.logger,
+        "info",
+        lambda message, *args: log_messages.append(message % args if args else message),
+    )
 
     result = module.download_youtube(
         url="https://www.youtube.com/watch?v=abc123xyzAA",
@@ -115,6 +121,10 @@ def test_download_youtube_enables_remote_components(monkeypatch, tmp_path):
     assert captured["opts"]["extractor_args"] == {
         "youtube": {"player_client": ["default"]}
     }
+    assert (
+        'yt-dlp extractor args: {"youtube": {"player_client": ["default"]}}'
+        in log_messages
+    )
 
 
 def test_download_youtube_leaves_video_player_clients_on_default(monkeypatch, tmp_path):

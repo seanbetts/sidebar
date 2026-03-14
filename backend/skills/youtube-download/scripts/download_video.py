@@ -656,6 +656,12 @@ def download_youtube(
         ",".join(player_clients) if player_clients else "default",
     )
     logger.info(
+        "yt-dlp extractor args: %s",
+        json.dumps(ydl_opts.get("extractor_args"), sort_keys=True)
+        if ydl_opts.get("extractor_args")
+        else "none",
+    )
+    logger.info(
         "yt-dlp js runtimes: %s", ",".join(js_runtimes.keys()) if js_runtimes else "none"
     )
     logger.info("yt-dlp audio_only=%s playlist=%s", audio_only, is_playlist)
