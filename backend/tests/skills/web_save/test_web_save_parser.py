@@ -3785,6 +3785,81 @@ def test_parse_url_local_cleans_substack_custom_domain_when_api_unavailable(
     )
 
 
+def test_parse_url_local_preserves_substack_native_video(monkeypatch):
+    initial_html = """
+    <html>
+      <head>
+        <script id="__NEXT_DATA__" type="application/json">{}</script>
+      </head>
+      <body>
+        <div data-component-name="VideoEmbedPlayer" id="media-a1ee3a83-e0f4-45f4-a182-ab0a4d872730">
+          <div class="placeholder"></div>
+        </div>
+      </body>
+    </html>
+    """
+    rendered_html = """
+    <html>
+      <body>
+        <div data-component-name="VideoEmbedPlayer" id="media-a1ee3a83-e0f4-45f4-a182-ab0a4d872730">
+          <video poster="https://substack-video.s3.amazonaws.com/video_upload/post/190587284/a1ee3a83-e0f4-45f4-a182-ab0a4d872730/transcoded-01012.png"></video>
+        </div>
+      </body>
+    </html>
+    """
+    article_html = """
+    <p>Lead paragraph.</p>
+    <div class="native-video-embed" data-component-name="VideoPlaceholder"
+         data-attrs="{&quot;mediaUploadId&quot;:&quot;a1ee3a83-e0f4-45f4-a182-ab0a4d872730&quot;,&quot;duration&quot;:null}"></div>
+    <p>Tail paragraph.</p>
+    """
+
+    monkeypatch.setattr(
+        web_save_parser,
+        "fetch_html",
+        lambda _url, timeout=30: (
+            initial_html,
+            "https://www.oneusefulthing.org/p/the-shape-of-the-thing",
+            False,
+        ),
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "render_html_with_playwright",
+        lambda *_args, **_kwargs: (
+            rendered_html,
+            "https://www.oneusefulthing.org/p/the-shape-of-the-thing",
+        ),
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "fetch_substack_body_html",
+        lambda _url, _html, timeout=30: (
+            article_html,
+            {
+                "title": "The Shape of the Thing",
+                "author": "Ethan Mollick",
+                "published": "2026-03-12T14:10:07.054Z",
+                "canonical": "https://www.oneusefulthing.org/p/the-shape-of-the-thing",
+            },
+        ),
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://www.oneusefulthing.org/p/the-shape-of-the-thing"
+    )
+
+    assert "Embedded video in original post" in parsed.content
+    assert (
+        "https://substack-video.s3.amazonaws.com/video_upload/post/190587284/"
+        "a1ee3a83-e0f4-45f4-a182-ab0a4d872730/transcoded-01012.png"
+    ) in parsed.content
+    assert (
+        "[View on Substack](https://www.oneusefulthing.org/p/the-shape-of-the-thing)"
+        in parsed.content
+    )
+
+
 def test_parse_url_local_scopes_readability_with_selector_override(monkeypatch):
     html = """
     <html>

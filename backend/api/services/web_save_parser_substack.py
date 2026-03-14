@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import re
+from urllib.parse import urljoin
+
+from bs4 import BeautifulSoup
 
 from api.services.web_save_parser_cleanup import _canonical_image_url
 
@@ -27,6 +31,10 @@ _EMPTY_HEADING_PATTERN = re.compile(r"^#{1,6}$")
 _EMPTY_IMAGE_PATTERN = re.compile(
     r"!\[\]\((?P<image>[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)"
 )
+_SUBSTACK_VIDEO_ATTR_MEDIA_ID = re.compile(
+    r'"mediauploadid":"(?P<id>[^"]+)"', re.IGNORECASE
+)
+_SUBSTACK_VIDEO_POSTER = re.compile(r'poster="(?P<poster>[^"]+)"', re.IGNORECASE)
 
 
 def _normalize_footnotes(markdown: str) -> str:
@@ -75,6 +83,91 @@ def _normalize_footnotes(markdown: str) -> str:
             output.append(f"[^{footnote_number}]:")
 
     return "\n".join(output)
+
+
+def preserve_substack_native_video_embeds(
+    article_html: str, raw_html: str, *, source_url: str
+) -> str:
+    """Replace Substack native video placeholders with a preservable snapshot block."""
+    if not article_html or (
+        'data-component-name="VideoPlaceholder"' not in article_html
+        and 'class="native-video-embed"' not in article_html
+    ):
+        return article_html
+
+    article_soup = BeautifulSoup(article_html, "html.parser")
+    raw_soup = BeautifulSoup(raw_html, "html.parser")
+
+    for placeholder in article_soup.select(
+        ".native-video-embed,[data-component-name='VideoPlaceholder']"
+    ):
+        media_upload_id = _extract_media_upload_id(placeholder)
+        replacement = article_soup.new_tag("figure")
+        replacement["data-native-video"] = "substack"
+
+        poster_url = _extract_rendered_substack_video_poster(raw_soup, media_upload_id)
+        if poster_url:
+            image = article_soup.new_tag(
+                "img", src=poster_url, alt="Embedded video preview"
+            )
+            replacement.append(image)
+
+        caption = article_soup.new_tag("figcaption")
+        strong = article_soup.new_tag("strong")
+        strong.string = "Embedded video in original post"
+        caption.append(strong)
+        caption.append(" ")
+        link = article_soup.new_tag("a", href=source_url)
+        link.string = "View on Substack"
+        caption.append(link)
+        replacement.append(caption)
+        placeholder.replace_with(replacement)
+
+    return str(article_soup)
+
+
+def _extract_media_upload_id(node) -> str | None:
+    data_attrs = node.get("data-attrs")
+    if data_attrs:
+        try:
+            payload = json.loads(data_attrs)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            media_upload_id = payload.get("mediaUploadId")
+            if isinstance(media_upload_id, str) and media_upload_id.strip():
+                return media_upload_id.strip()
+        match = _SUBSTACK_VIDEO_ATTR_MEDIA_ID.search(data_attrs.lower())
+        if match:
+            return match.group("id")
+
+    node_id = (node.get("id") or "").strip()
+    if node_id.startswith("media-"):
+        return node_id.removeprefix("media-").strip() or None
+    return None
+
+
+def _extract_rendered_substack_video_poster(
+    raw_soup: BeautifulSoup, media_upload_id: str | None
+) -> str | None:
+    if not media_upload_id:
+        return None
+
+    raw_markup = str(raw_soup)
+    container_marker = f'id="media-{media_upload_id}"'
+    marker_index = raw_markup.find(container_marker)
+    if marker_index == -1:
+        return None
+
+    snippet = raw_markup[marker_index : marker_index + 3000]
+    poster_match = _SUBSTACK_VIDEO_POSTER.search(snippet)
+    if poster_match is None:
+        return None
+
+    poster = (poster_match.group("poster") or "").strip()
+    if not poster:
+        return None
+    return urljoin("https://substack.com", poster)
 
 
 def cleanup_substack_markdown(markdown: str) -> str:

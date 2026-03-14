@@ -23,6 +23,23 @@ def test_has_unrendered_youtube_embed_false_when_iframe_present():
     assert web_save_rendering.has_unrendered_youtube_embed(html) is False
 
 
+def test_has_unrendered_substack_native_video_detects_placeholder():
+    html = (
+        '<div data-component-name="VideoEmbedPlayer" id="media-abc"></div>'
+        '<div class="native-video-embed" data-component-name="VideoPlaceholder"></div>'
+    )
+    assert web_save_rendering.has_unrendered_substack_native_video(html) is True
+
+
+def test_has_unrendered_substack_native_video_false_when_video_present():
+    html = (
+        '<div data-component-name="VideoEmbedPlayer" id="media-abc">'
+        '<video poster="https://cdn.example.com/poster.png"></video>'
+        "</div>"
+    )
+    assert web_save_rendering.has_unrendered_substack_native_video(html) is False
+
+
 def test_configure_playwright_browsers_path_prefers_shared_install(monkeypatch, tmp_path):
     shared_path = tmp_path / "ms-playwright"
     shared_path.mkdir()

@@ -62,7 +62,10 @@ from api.services.web_save_parser_snapshots import (
     maybe_build_snapshot_render,
 )
 from api.services.web_save_parser_steam import extract_steamcommunity_payload_for_url
-from api.services.web_save_parser_substack import cleanup_substack_markdown
+from api.services.web_save_parser_substack import (
+    cleanup_substack_markdown,
+    preserve_substack_native_video_embeds,
+)
 from api.services.web_save_parser_substack_helpers import (
     is_substack_host,
     match_substack_host_rules,
@@ -93,6 +96,7 @@ from api.services.web_save_parser_youtube import (
     replace_youtube_placeholders,
 )
 from api.services.web_save_rendering import (
+    has_unrendered_substack_native_video,
     has_unrendered_youtube_embed,
     render_html_with_playwright,
     requires_js_rendering,
@@ -434,10 +438,13 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         not used_js_rendering and render_mode == "auto" and requires_js_rendering(html)
     ):
         unrendered_embed = has_unrendered_youtube_embed(html)
-        allow_render = is_playwright_allowed(final_url) or unrendered_embed
+        unrendered_substack_video = has_unrendered_substack_native_video(html)
+        allow_render = is_playwright_allowed(final_url) or (
+            unrendered_embed or unrendered_substack_video
+        )
         if allow_render:
             try:
-                if unrendered_embed:
+                if unrendered_embed or unrendered_substack_video:
                     html, final_url = render_html_with_playwright(
                         final_url,
                         timeout=min(render_timeout, 15000),
@@ -667,6 +674,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         article_html, metadata.get("canonical") or final_url
     )
     article_html = normalize_image_captions(article_html)
+    article_html = preserve_substack_native_video_embeds(
+        article_html,
+        raw_html_original,
+        source_url=metadata.get("canonical") or final_url,
+    )
     article_html = insert_youtube_placeholders(
         article_html, raw_dom_original, metadata.get("canonical") or final_url
     )

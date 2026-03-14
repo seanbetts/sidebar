@@ -27,6 +27,17 @@ def has_unrendered_youtube_embed(html: str) -> bool:
     return "youtube.com/embed" in html and "<iframe" not in html
 
 
+def has_unrendered_substack_native_video(html: str) -> bool:
+    """Return True when a Substack native video placeholder lacks a hydrated player."""
+    lowered = html.lower()
+    has_placeholder = (
+        'data-component-name="videoembedplayer"' in lowered
+        or 'data-component-name="videoplaceholder"' in lowered
+        or 'class="native-video-embed"' in lowered
+    )
+    return has_placeholder and "<video" not in lowered
+
+
 def configure_playwright_browsers_path(
     *,
     default_path: Path = _DEFAULT_PLAYWRIGHT_BROWSERS_PATH,
