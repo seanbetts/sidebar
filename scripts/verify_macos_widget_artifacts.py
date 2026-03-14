@@ -64,6 +64,7 @@ def build_command_plan(
                 str(workspace_root),
                 "--bundle-id",
                 WIDGET_BUNDLE_ID,
+                "--allow-missing-workspace-registration",
             ]
         )
 

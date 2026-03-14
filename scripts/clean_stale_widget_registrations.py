@@ -301,6 +301,14 @@ def run_cleaner(argv: Optional[List[str]] = None) -> int:
         action="store_true",
         help="Show what would be removed without mutating registrations.",
     )
+    parser.add_argument(
+        "--allow-missing-workspace-registration",
+        action="store_true",
+        help=(
+            "Continue cleanup even when the current workspace build is not yet "
+            "registered. Intended for pre-build CI verification flows."
+        ),
+    )
     args = parser.parse_args(argv)
 
     workspace_root = args.workspace_root
@@ -319,11 +327,17 @@ def run_cleaner(argv: Optional[List[str]] = None) -> int:
     _print_summary("Registration summary before cleanup", classification)
 
     if not _has_workspace_registration_for_bundle(classification, bundle_id):
-        print(
-            f"Missing current workspace registration for widget bundle {bundle_id}. "
-            "Cleanup requires an active workspace registration."
-        )
-        return 1
+        if args.allow_missing_workspace_registration:
+            print(
+                f"Missing current workspace registration for widget bundle {bundle_id}, "
+                "continuing because --allow-missing-workspace-registration was set."
+            )
+        else:
+            print(
+                f"Missing current workspace registration for widget bundle {bundle_id}. "
+                "Cleanup requires an active workspace registration."
+            )
+            return 1
 
     conflicts = [record for record in classification.stale_debug if not record.uuid]
     if conflicts:

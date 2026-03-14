@@ -255,6 +255,7 @@ def test_cleanup_is_optional_and_runs_before_build(monkeypatch, tmp_path: Path) 
         str(workspace_root),
         "--bundle-id",
         WIDGET_BUNDLE_ID,
+        "--allow-missing-workspace-registration",
     ]
 
 
@@ -288,6 +289,7 @@ def test_archive_export_cleanup_runs_before_archive(monkeypatch, tmp_path: Path)
         str(workspace_root),
         "--bundle-id",
         WIDGET_BUNDLE_ID,
+        "--allow-missing-workspace-registration",
     ]
     assert calls[1][-1] == "archive"
     assert calls[2][1] == "-exportArchive"
@@ -445,6 +447,7 @@ def test_dry_run_prints_commands_without_running(monkeypatch, tmp_path: Path, ca
         + str(workspace_root)
         + " --bundle-id "
         + WIDGET_BUNDLE_ID
+        + " --allow-missing-workspace-registration"
     ) in captured.out
     assert (
         "xcodebuild -project "

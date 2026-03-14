@@ -222,6 +222,49 @@ def test_cli_requires_current_workspace_registration(monkeypatch, capsys):
     assert not any(cmd[:2] == ["pluginkit", "-r"] for cmd in calls)
 
 
+def test_cli_can_skip_workspace_requirement_when_explicitly_allowed(monkeypatch, capsys):
+    helper = _load_helper_module()
+    fixture_text = _load_fixture_text()
+    workspace_uuid = "693D8320-0F9F-421A-A86B-FF4B669DAB69"
+    ci_like_listing = "\n".join(
+        line for line in fixture_text.splitlines() if workspace_uuid not in line
+    )
+    removed_uuids = {
+        "F437C11D-2B23-4352-A1E9-583D840B315C",
+        "6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3",
+        "1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6",
+    }
+    post_cleanup_listing = "\n".join(
+        line
+        for line in ci_like_listing.splitlines()
+        if not any(uuid in line for uuid in removed_uuids)
+    )
+    calls = _stub_pluginkit_run(
+        monkeypatch,
+        helper,
+        [ci_like_listing, post_cleanup_listing],
+    )
+    exit_code = helper.run_cleaner(
+        [
+            "--workspace-root",
+            "/tmp/other-workspace",
+            "--bundle-id",
+            "ai.sidebar.sidebar.sideBarWidgets",
+            "--allow-missing-workspace-registration",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "continuing because --allow-missing-workspace-registration was set" in captured.out
+    removal_cmds = [cmd for cmd in calls if cmd[:2] == ["pluginkit", "-r"]]
+    assert removal_cmds == [
+        ["pluginkit", "-r", "F437C11D-2B23-4352-A1E9-583D840B315C"],
+        ["pluginkit", "-r", "6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3"],
+        ["pluginkit", "-r", "1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6"],
+    ]
+
+
 def test_cli_fails_when_conflicting_stale_registrations_remain(monkeypatch, capsys):
     helper = _load_helper_module()
     workspace_line = _load_fixture_text().splitlines()[0]
