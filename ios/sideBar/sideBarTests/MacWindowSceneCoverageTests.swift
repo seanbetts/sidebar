@@ -30,6 +30,7 @@ final class MacWindowSceneCoverageTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("enumSettingsPresentationStyle"))
         XCTAssertTrue(normalized.contains("casemacModal"))
+        XCTAssertTrue(normalized.contains("MacModalShell(type:settingsMacPresentationPanelType())"))
         XCTAssertTrue(normalized.contains("Button(\"Done\""))
         XCTAssertTrue(normalized.contains("Image(systemName:\"xmark.circle.fill\")"))
         XCTAssertFalse(normalized.contains(".keyboardShortcut(.defaultAction)"))

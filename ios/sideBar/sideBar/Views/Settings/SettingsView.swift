@@ -77,36 +77,35 @@ public struct SettingsView: View {
         case .standalone:
             content
         case .macModal:
-            VStack(spacing: 0) {
-                HStack(spacing: DesignTokens.Spacing.sm) {
-                    Button("Done") {
-                        onClose?()
-                    }
+            MacModalShell(type: settingsMacPresentationPanelType()) {
+                VStack(spacing: 0) {
+                    HStack(spacing: DesignTokens.Spacing.sm) {
+                        Button("Done") {
+                            onClose?()
+                        }
 
-                    Spacer()
+                        Spacer()
 
-                    Button {
-                        onClose?()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                        Button {
+                            onClose?()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Close settings")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Close settings")
+                    .padding(.horizontal, DesignTokens.Spacing.lg)
+                    .padding(.vertical, DesignTokens.Spacing.md)
+
+                    Divider()
+
+                    content
                 }
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.vertical, DesignTokens.Spacing.md)
-
-                Divider()
-
-                content
             }
-            .frame(maxWidth: 960, maxHeight: 760)
-            .background(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(.regularMaterial)
-            )
+            .frame(maxWidth: macModalFrameWidth(for: settingsMacPresentationPanelType()), maxHeight: 760)
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .stroke(Color.white.opacity(0.18), lineWidth: 1)

@@ -27,42 +27,44 @@ struct StoreSkillDetailSheet: View {
     @State private var showUninstallPrompt = false
 
     var body: some View {
-        NavigationStack {
-            StoreSkillConfigView(
-                viewModel: viewModel,
-                skill: skill,
-                isStoreActionBusy: isStoreActionBusy,
-                isInstalled: isInstalled,
-                installError: installError,
-                onInstallTap: onInstallTap,
-                onInstalledTap: {
-                    showUninstallPrompt = true
-                }
-            )
-            #if os(macOS)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
+        MacModalShell(type: storeSkillDetailPanelType()) {
+            NavigationStack {
+                StoreSkillConfigView(
+                    viewModel: viewModel,
+                    skill: skill,
+                    isStoreActionBusy: isStoreActionBusy,
+                    isInstalled: isInstalled,
+                    installError: installError,
+                    onInstallTap: onInstallTap,
+                    onInstalledTap: {
+                        showUninstallPrompt = true
                     }
-                    .accessibilityLabel("Close skill details")
-                    .keyboardShortcut(.cancelAction)
-                }
-            }
-            #endif
-            .alert("Uninstall skill?", isPresented: $showUninstallPrompt) {
-                Button("Uninstall", role: .destructive) {
-                    Task {
-                        await onConfirmUninstall()
+                )
+                #if os(macOS)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                        .accessibilityLabel("Close skill details")
+                        .keyboardShortcut(.cancelAction)
                     }
                 }
-                Button("Cancel", role: .cancel) {
-                    showUninstallPrompt = false
+                #endif
+                .alert("Uninstall skill?", isPresented: $showUninstallPrompt) {
+                    Button("Uninstall", role: .destructive) {
+                        Task {
+                            await onConfirmUninstall()
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {
+                        showUninstallPrompt = false
+                    }
+                } message: {
+                    Text("This will uninstall \(viewModel.displayName(for: skill)).")
                 }
-            } message: {
-                Text("This will uninstall \(viewModel.displayName(for: skill)).")
             }
         }
         .settingsSheetGrabBarVisible()

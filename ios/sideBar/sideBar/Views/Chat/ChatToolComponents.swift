@@ -22,8 +22,10 @@ struct ToolCallListView: View {
         .fixedSize(horizontal: true, vertical: false)
         .buttonStyle(.plain)
         .popover(isPresented: $showPopover, attachmentAnchor: .rect(.bounds)) {
-            ToolCallPopoverContent(toolCalls: toolCalls)
-                .presentationCompactAdaptation(.sheet)
+            MacPopoverShell(type: toolCallPopoverPanelType()) {
+                ToolCallPopoverContent(toolCalls: toolCalls)
+            }
+            .presentationCompactAdaptation(.sheet)
         }
     }
 
@@ -212,9 +214,8 @@ struct ToolCallPopoverContent: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(DesignTokens.Spacing.xsPlus)
         }
-        .frame(minWidth: 320, idealWidth: 360, maxWidth: 420, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private var selectedToolCall: ToolCall? {

@@ -5,26 +5,28 @@ struct WriteConflictResolutionSheet: View {
     let onResolve: (WriteQueueConflictResolution) -> Void
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                header
+        MacModalShell(type: writeConflictPanelType()) {
+            NavigationStack {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                    header
 
-                if let subtitleText {
-                    Text(subtitleText)
-                        .appFont(.caption)
-                        .foregroundStyle(.secondary)
+                    if let subtitleText {
+                        Text(subtitleText)
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Divider()
+                    detailContent
+                    Divider()
+                    actionsRow
                 }
-
-                Divider()
-                detailContent
-                Divider()
-                actionsRow
+                .padding(DesignTokens.Spacing.lg)
+                .navigationTitle("Conflict")
+                #if !os(macOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
             }
-            .padding(DesignTokens.Spacing.lg)
-            .navigationTitle("Conflict")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
         }
     }
 

@@ -53,3 +53,15 @@ func taskNotesMacPanelType() -> MacPanelType {
 func renameItemMacPanelType() -> MacPanelType {
     .compactSheet
 }
+
+func toolCallPopoverPanelType() -> MacPanelType {
+    .compactPopover
+}
+
+func writeConflictPanelType() -> MacPanelType {
+    .decisionSheet
+}
+
+func storeSkillDetailPanelType() -> MacPanelType {
+    .largeInspectorSheet
+}
