@@ -1,5 +1,9 @@
 import SwiftUI
 
+func taskRowTapGestureMask() -> GestureMask {
+    .gesture
+}
+
 struct TaskPill: View {
     let text: String
     let iconName: String?
@@ -198,12 +202,15 @@ struct TaskRow<MenuContent: View>: View {
         .background(isExpanded ? DesignTokens.Colors.surface : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm))
         .contentShape(Rectangle())
-        .onTapGesture {
-            onSelect()
-            withAnimation(expandAnimation) {
-                onToggleExpanded()
-            }
-        }
+        .gesture(
+            TapGesture().onEnded {
+                onSelect()
+                withAnimation(expandAnimation) {
+                    onToggleExpanded()
+                }
+            },
+            including: taskRowTapGestureMask()
+        )
     }
 
     private var expandedContent: some View {
