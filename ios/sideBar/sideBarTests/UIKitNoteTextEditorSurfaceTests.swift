@@ -167,6 +167,23 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         XCTAssertFalse(textView.allowsEditingTextAttributes)
         XCTAssertNil(textView.textFormattingConfiguration)
     }
+    func testPhoneSurfaceUsesGrayCaretTint() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarConfiguration: .disabled
+        )
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+
+        XCTAssertEqual(
+            textView.tintColor.resolvedColor(with: darkTraits),
+            UIColor.secondaryLabel.resolvedColor(with: darkTraits)
+        )
+    }
     func testPhoneSurfaceCommandBTriggersSharedBoldFormattingCommand() async throws {
         let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Title\nHello"))
         let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()

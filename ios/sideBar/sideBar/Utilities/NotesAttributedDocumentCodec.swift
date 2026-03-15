@@ -109,6 +109,13 @@ enum NotesAttributedDocumentCodec {
                 piece[range].underlineStyle = marks.contains(.underline) ? .single : nil
                 piece[range].strikethroughStyle = marks.contains(.strikethrough) ? .single : nil
                 piece[range].link = segment.link.flatMap { URL(string: $0.url) }
+                #if os(iOS)
+                piece[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
+                    inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+                #elseif os(macOS)
+                piece[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
+                    inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+                #endif
                 piece[range].paragraphStyle = paragraphStyle(for: blockType, baseFontSize: baseFontSize)
                 if let blockMarker = blockMarker(for: blockType) {
                     piece[range].noteBlock = blockMarker

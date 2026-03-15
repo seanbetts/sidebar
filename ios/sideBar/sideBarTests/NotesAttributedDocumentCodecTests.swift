@@ -149,6 +149,7 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
             )
         )
         XCTAssertTrue(noteRangeUsesMonospacedPlatformFont(roundTrip, range: noteCharacterRange(length: 4, in: roundTrip)))
+        XCTAssertTrue(noteRangeHasInlineCodeBackground(roundTrip, range: noteCharacterRange(length: 4, in: roundTrip)))
     }
 
     func testCodeBlockRoundTripsMultilineLiteralContent() {

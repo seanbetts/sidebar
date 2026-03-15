@@ -94,6 +94,13 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         normalized[range].underlineStyle = underline ? .single : nil
         normalized[range].strikethroughStyle = strikethrough ? .single : nil
         normalized[range].link = link
+        #if os(iOS)
+        normalized[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
+            traits.monospaced ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+        #elseif os(macOS)
+        normalized[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
+            traits.monospaced ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+        #endif
         normalized[range].paragraphStyle = paragraphStyle(for: blockType)
         normalized[range].noteBlock = noteBlock
         return normalized

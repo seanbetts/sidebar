@@ -114,6 +114,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.backgroundColor = .clear
         textView.textColor = .label
+        textView.tintColor = NoteTextAppearance.caretTintColor
         textView.accessibilityIdentifier = "notes-editor-text-view"
         textView.textContainer.lineFragmentPadding = 0
         textView.textContainerInset = UIEdgeInsets(

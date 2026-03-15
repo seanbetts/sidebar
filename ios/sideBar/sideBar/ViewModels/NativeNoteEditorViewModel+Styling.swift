@@ -57,6 +57,13 @@ extension NativeNoteEditorViewModel {
             ),
             in: &attrs
         )
+        #if os(iOS)
+        attrs[AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
+            state.inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+        #elseif os(macOS)
+        attrs[AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
+            state.inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+        #endif
         attrs.underlineStyle = state.underline ? .single : nil
         attrs.strikethroughStyle = state.strikethrough ? .single : nil
         attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
@@ -83,6 +90,13 @@ extension NativeNoteEditorViewModel {
             in: &text,
             range: range
         )
+        #if os(iOS)
+        text[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
+            state.inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+        #elseif os(macOS)
+        text[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
+            state.inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+        #endif
         text[range].underlineStyle = state.underline ? .single : nil
         text[range].strikethroughStyle = state.strikethrough ? .single : nil
         text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil

@@ -177,6 +177,35 @@ func noteRangeUsesMonospacedPlatformFont(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func noteRangeHasInlineCodeBackground(
+    _ text: AttributedString,
+    range: Range<AttributedString.Index>
+) -> Bool {
+    let plainText = String(text.characters)
+    let nsRange = noteNSRange(for: range, in: text, plainText: plainText)
+    let bridged = NSAttributedString(text)
+    guard bridged.length > 0, nsRange.length > 0 else { return false }
+
+    var result = true
+    bridged.enumerateAttribute(.backgroundColor, in: nsRange) { value, _, stop in
+        #if os(iOS)
+        guard value is UIColor else {
+            result = false
+            stop.pointee = true
+            return
+        }
+        #elseif os(macOS)
+        guard value is NSColor else {
+            result = false
+            stop.pointee = true
+            return
+        }
+        #endif
+    }
+    return result
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func noteLinkValue(
     in text: AttributedString,
     atCharacterOffset offset: Int

@@ -94,6 +94,32 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(bodyStyle.lineSpacing, 0, accuracy: 0.001)
     }
 
+    #if os(iOS)
+    func testMakePlatformAttributedContentUsesInlineCodeBackgroundOnIOS() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(
+                    type: .title,
+                    content: [.init(text: "code", marks: [.inlineCode])]
+                )
+            ]
+        )
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+        let color = try XCTUnwrap(
+            attributed.attribute(.backgroundColor, at: 0, effectiveRange: nil) as? UIColor
+        )
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+
+        XCTAssertEqual(
+            color.resolvedColor(with: darkTraits),
+            UIColor.secondarySystemFill.resolvedColor(with: darkTraits)
+        )
+    }
+    #endif
+
     private func fontPointSize(in attributed: NSAttributedString, at location: Int) throws -> CGFloat {
         let font = attributed.attribute(.font, at: location, effectiveRange: nil) as? NotePlatformFont
         return try XCTUnwrap(font).pointSize
