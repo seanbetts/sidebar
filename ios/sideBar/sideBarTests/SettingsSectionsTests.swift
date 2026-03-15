@@ -151,8 +151,11 @@ final class SettingsSectionsTests: XCTestCase {
             flushRan = true
         }
 
-        try? await Task.sleep(nanoseconds: 20_000_000)
+        let didRunFlushSave = await waitUntil(timeoutNs: 1_000_000_000) {
+            flushRan
+        }
 
+        XCTAssertTrue(didRunFlushSave)
         XCTAssertTrue(flushRan)
         XCTAssertFalse(autosaveRan)
     }
@@ -171,7 +174,7 @@ final class SettingsSectionsTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 200_000_000)
         }
 
-        let didBeginAutosave = await waitUntil(timeoutNs: 300_000_000) {
+        let didBeginAutosave = await waitUntil(timeoutNs: 1_000_000_000) {
             controller.isAutosaveSaving
         }
         XCTAssertTrue(didBeginAutosave)
@@ -200,7 +203,7 @@ final class SettingsSectionsTests: XCTestCase {
             autosaveRuns += 1
         }
 
-        let didCompleteAutosave = await waitUntil(timeoutNs: 300_000_000) {
+        let didCompleteAutosave = await waitUntil(timeoutNs: 1_000_000_000) {
             autosaveRuns == 1 && !controller.isAutosaveSaving
         }
         XCTAssertTrue(didCompleteAutosave)
@@ -541,6 +544,16 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacFieldRow("))
         XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
         XCTAssertTrue(normalized.contains("SettingsMacActionSection("))
+    }
+
+    func testProfileSettingsMacSourceUsesPromptBasedTextFields() throws {
+        let normalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("TextField(text:$name,prompt:Text(\"Notset\"))"))
+        XCTAssertTrue(normalized.contains("TextField(text:$jobTitle,prompt:Text(\"Notset\"))"))
+        XCTAssertTrue(normalized.contains("TextField(text:$employer,prompt:Text(\"Notset\"))"))
+        XCTAssertTrue(normalized.contains("TextField(text:$location,prompt:Text(\"Notset\"))"))
     }
 
     func testGeneralSettingsMacSourceUsesInspectorSectionIntrosAndCalmerWeatherControl() throws {

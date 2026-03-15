@@ -197,24 +197,28 @@ struct ProfileSettingsView: View {
                 message: "Keep the details your assistant can reference during planning, writing, and personalization up to date."
             )
             SettingsMacFieldRow("Name") {
-                TextField("Not set", text: $name)
+                TextField(text: $name, prompt: Text("Not set")) {
+                }
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 320)
             }
             SettingsMacFieldRow("Job Title") {
-                TextField("Not set", text: $jobTitle)
+                TextField(text: $jobTitle, prompt: Text("Not set")) {
+                }
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 320)
             }
             SettingsMacFieldRow("Employer") {
-                TextField("Not set", text: $employer)
+                TextField(text: $employer, prompt: Text("Not set")) {
+                }
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 320)
             }
             genderField
             pronounsField
             SettingsMacFieldRow("Location") {
-                TextField("Not set", text: $location)
+                TextField(text: $location, prompt: Text("Not set")) {
+                }
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 320)
             }
