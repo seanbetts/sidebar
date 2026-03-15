@@ -4,6 +4,7 @@ import XCTest
 // swiftlint:disable file_length
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class SettingsSectionsTests: XCTestCase {
     func testTextSizeControlModeUsesPickerOnIOS() {
         let mode = GeneralSettingsView.textSizeControlMode(for: .iOS)
@@ -329,6 +330,32 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertEqual(draft.pronouns, "he/him")
     }
 
+    func testProfileDraftHydrationTrimsStoredTextFieldsBeforeDisplay() {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: "",
+            workingRelationship: "",
+            name: " Sean ",
+            jobTitle: " Founder ",
+            employer: " sideBar ",
+            dateOfBirth: "1990-01-01",
+            gender: "male",
+            pronouns: "he/him",
+            location: " London ",
+            profileImageUrl: nil,
+            enabledSkills: [],
+            installedStoreSkills: []
+        )
+
+        let draft = ProfileSettingsView.ProfileDraftState.from(settings: settings)
+
+        XCTAssertEqual(draft.name, "Sean")
+        XCTAssertEqual(draft.jobTitle, "Founder")
+        XCTAssertEqual(draft.employer, "sideBar")
+        XCTAssertEqual(draft.location, "London")
+        XCTAssertFalse(draft.isDirty(comparedTo: settings))
+    }
+
     func testSettingsSaveStatusLogicShowsSavingThenSaved() {
         var timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: false,
@@ -539,10 +566,19 @@ final class SettingsSectionsTests: XCTestCase {
         let normalized = try skillsSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("title:\"SkillType\""))
-        XCTAssertTrue(normalized.contains("SettingsMacFieldRow(\"SkillType\")"))
-        XCTAssertTrue(normalized.contains("SettingsMacFieldRow(\"Bulkactions\")"))
-        XCTAssertTrue(normalized.contains("SettingsMacPanelCard{SettingsMacSectionIntro(title:\"SkillType\""))
+        XCTAssertTrue(normalized.contains("Picker(\"SkillType\",selection:$selectedTier)"))
+        XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity)"))
+        XCTAssertTrue(normalized.contains("Text(\"Enableall\")"))
+        XCTAssertFalse(normalized.contains("SettingsMacFieldRow(\"Bulkactions\")"))
+        XCTAssertFalse(normalized.contains("SettingsMacSectionIntro(title:\"SkillType\""))
+    }
+
+    func testUserSettingsMacSourceUsesTransparentEditors() throws {
+        let normalized = try systemMacSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".fill(.clear)"))
+        XCTAssertTrue(normalized.contains(".scrollContentBackground(.hidden)"))
     }
 
     func testMemoriesSettingsMacRoutingUsesInspectorDetailInsteadOfPlaceholderForm() throws {

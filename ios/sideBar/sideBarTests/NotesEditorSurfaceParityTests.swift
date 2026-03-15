@@ -197,7 +197,7 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         XCTAssertEqual(titleStyle.paragraphSpacing, baseFontSize * 0.25, accuracy: 0.001)
         XCTAssertEqual(headingStyle.paragraphSpacing, baseFontSize * 0.1875, accuracy: 0.001)
         XCTAssertEqual(subheadingStyle.paragraphSpacing, baseFontSize * 0.125, accuracy: 0.001)
-        XCTAssertEqual(bodyStyle.paragraphSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(bodyStyle.paragraphSpacing, 4, accuracy: 0.001)
         XCTAssertEqual(titleStyle.lineSpacing, 0, accuracy: 0.001)
         XCTAssertEqual(headingStyle.lineSpacing, 0, accuracy: 0.001)
         XCTAssertEqual(subheadingStyle.lineSpacing, 0, accuracy: 0.001)

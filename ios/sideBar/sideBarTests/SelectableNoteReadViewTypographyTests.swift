@@ -86,7 +86,7 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(titleStyle.paragraphSpacing, 4, accuracy: 0.001)
         XCTAssertEqual(headingStyle.paragraphSpacing, 3, accuracy: 0.001)
         XCTAssertEqual(subheadingStyle.paragraphSpacing, 2, accuracy: 0.001)
-        XCTAssertEqual(bodyStyle.paragraphSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(bodyStyle.paragraphSpacing, 4, accuracy: 0.001)
 
         XCTAssertEqual(titleStyle.lineSpacing, 0, accuracy: 0.001)
         XCTAssertEqual(headingStyle.lineSpacing, 0, accuracy: 0.001)
