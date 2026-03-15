@@ -148,4 +148,30 @@ final class NativeNoteEditorBlockTransitionTests: XCTestCase {
         XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "let x = 1\n", marks: [])])
         XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "Body", marks: [])])
     }
+
+    func testHandleReturnKeyOnEmptyTrailingParagraphAddsAnotherBlankParagraph() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleReturnKey())
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .paragraph, .paragraph, .paragraph])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "Body", marks: [])])
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "", marks: [])])
+        XCTAssertEqual(snapshot.document.blocks[3].content, [.init(text: "", marks: [])])
+        XCTAssertEqual(snapshot.plainText, "Title\nBody\n\n")
+    }
 }

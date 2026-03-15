@@ -50,88 +50,6 @@ enum NotesAttributedDocumentCodec {
         return applyingDetectedLinks(to: attributed)
     }
 
-    static func document(from attributed: AttributedString) -> NotesSemanticDocument {
-        var blocks: [NotesSemanticDocument.Block] = []
-        var currentSegments: [NotesSemanticDocument.InlineSegment] = []
-        var currentBlockMarker: String?
-
-        for run in attributed.runs {
-            let blockMarker = run.noteBlock
-            let runText = String(attributed[run.range].characters)
-            if shouldFlushCodeBlockBeforeSeparatorRun(
-                currentBlockMarker: currentBlockMarker,
-                blockMarker: blockMarker,
-                runText: runText,
-                hasBufferedContent: !currentSegments.isEmpty
-            ) {
-                flushDecodedBlock(
-                    blocks: &blocks,
-                    currentSegments: &currentSegments,
-                    currentBlockMarker: &currentBlockMarker
-                )
-                continue
-            }
-            if shouldFlushBeforeProcessingRun(
-                currentBlockMarker: currentBlockMarker,
-                blockMarker: blockMarker,
-                hasBufferedContent: !currentSegments.isEmpty
-            ) {
-                flushDecodedBlock(
-                    blocks: &blocks,
-                    currentSegments: &currentSegments,
-                    currentBlockMarker: &currentBlockMarker
-                )
-            }
-            if currentBlockMarker == nil || (!currentSegments.isEmpty && blockMarker != nil) {
-                currentBlockMarker = blockMarker
-            }
-            let marks = inlineMarks(from: run)
-            let link = semanticLink(from: run)
-            let resolvedBlockType = NoteTextBlockAttribute.blockType(
-                from: blockMarker ?? currentBlockMarker
-            )
-            var buffer = ""
-            for character in attributed[run.range].characters {
-                if character.isNewline {
-                    if resolvedBlockType == .codeBlock {
-                        buffer.append(character)
-                    } else {
-                        appendDecodedSegmentText(
-                            buffer,
-                            marks: marks,
-                            link: link,
-                            currentSegments: &currentSegments
-                        )
-                        buffer.removeAll(keepingCapacity: true)
-                        flushDecodedBlock(
-                            blocks: &blocks,
-                            currentSegments: &currentSegments,
-                            currentBlockMarker: &currentBlockMarker
-                        )
-                    }
-                } else {
-                    buffer.append(character)
-                }
-            }
-            appendDecodedSegmentText(
-                buffer,
-                marks: marks,
-                link: link,
-                currentSegments: &currentSegments
-            )
-        }
-
-        if blocks.isEmpty || !currentSegments.isEmpty {
-            flushDecodedBlock(
-                blocks: &blocks,
-                currentSegments: &currentSegments,
-                currentBlockMarker: &currentBlockMarker
-            )
-        }
-
-        return NotesSemanticDocument(blocks: blocks)
-    }
-
     private static func attributedParagraph(
         from segments: [NotesSemanticDocument.InlineSegment],
         blockType: NotesSemanticDocument.BlockType,
@@ -202,7 +120,7 @@ enum NotesAttributedDocumentCodec {
         return paragraph
     }
 
-    private static func inlineMarks(
+    static func inlineMarks(
         from run: AttributedString.Runs.Run
     ) -> [NotesSemanticDocument.InlineMark] {
         let blockType = NoteTextBlockAttribute.blockType(from: run.noteBlock)
@@ -227,7 +145,7 @@ enum NotesAttributedDocumentCodec {
         }
     }
 
-    private static func shouldFlushBeforeProcessingRun(
+    static func shouldFlushBeforeProcessingRun(
         currentBlockMarker: String?,
         blockMarker: String?,
         hasBufferedContent: Bool
@@ -237,7 +155,7 @@ enum NotesAttributedDocumentCodec {
         return blockMarker != currentBlockMarker
     }
 
-    private static func shouldFlushCodeBlockBeforeSeparatorRun(
+    static func shouldFlushCodeBlockBeforeSeparatorRun(
         currentBlockMarker: String?,
         blockMarker: String?,
         runText: String,
@@ -417,7 +335,7 @@ enum NotesAttributedDocumentCodec {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private extension NotesAttributedDocumentCodec {
+extension NotesAttributedDocumentCodec {
     static func semanticLink(
         from run: AttributedString.Runs.Run
     ) -> NotesSemanticDocument.Link? {

@@ -183,6 +183,23 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         XCTAssertEqual(roundTrip, document)
     }
 
+    func testTrailingBlankParagraphRoundTripsAtEndOfAttributedString() {
+        let attributed = AttributedString("Body\n")
+
+        let document = NotesAttributedDocumentCodec.document(from: attributed)
+
+        XCTAssertEqual(
+            document,
+            NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Body", marks: [])]),
+                    .paragraph([.init(text: "", marks: [])])
+                ]
+            )
+        )
+    }
+
     func testSupportedBlockTypesRoundTripWithoutUnsupportedBoundary() {
         let document = NotesSemanticDocument(
             blocks: [
