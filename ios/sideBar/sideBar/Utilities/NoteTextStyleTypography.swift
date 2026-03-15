@@ -42,11 +42,11 @@ enum NoteTextStyleTypography {
     private static func metrics(for style: NoteTextStyle) -> Metrics {
         switch style {
         case .title:
-            return Metrics(scale: 1.2, weight: .bold, platformWeight: .bold)
+            return Metrics(scale: 1.75, weight: .bold, platformWeight: .bold)
         case .heading:
-            return Metrics(scale: 1.15, weight: .semibold, platformWeight: .semibold)
+            return Metrics(scale: 1.5, weight: .bold, platformWeight: .bold)
         case .subheading:
-            return Metrics(scale: 1.08, weight: .medium, platformWeight: .medium)
+            return Metrics(scale: 1.25, weight: .bold, platformWeight: .bold)
         case .body:
             return Metrics(scale: 1.0, weight: .regular, platformWeight: .regular)
         }

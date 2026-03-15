@@ -146,9 +146,10 @@ private func notePlatformFontApplyingTraits(
     italic: Bool
 ) -> NotePlatformFont {
 #if os(iOS)
+    guard bold || italic else { return font }
     var traits = font.fontDescriptor.symbolicTraits
-    if bold { traits.insert(.traitBold) } else { traits.remove(.traitBold) }
-    if italic { traits.insert(.traitItalic) } else { traits.remove(.traitItalic) }
+    if bold { traits.insert(.traitBold) }
+    if italic { traits.insert(.traitItalic) }
     if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) {
         return UIFont(descriptor: descriptor, size: font.pointSize)
     }
@@ -165,15 +166,11 @@ private func notePlatformFontApplyingTraits(
     }
     return font
 #else
+    guard bold || italic else { return font }
     let manager = NSFontManager.shared
-    var result = manager.convert(font, toNotHaveTrait: .boldFontMask)
-    result = manager.convert(result, toNotHaveTrait: .italicFontMask)
-    if bold {
-        result = manager.convert(result, toHaveTrait: .boldFontMask)
-    }
-    if italic {
-        result = manager.convert(result, toHaveTrait: .italicFontMask)
-    }
+    var result = font
+    if bold { result = manager.convert(result, toHaveTrait: .boldFontMask) }
+    if italic { result = manager.convert(result, toHaveTrait: .italicFontMask) }
     return result
 #endif
 }

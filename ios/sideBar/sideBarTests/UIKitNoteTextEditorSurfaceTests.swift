@@ -328,8 +328,8 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     func testInsertionPointFormattingToggleUpdatesUIKitTypingAttributes() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
-            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
-            plainText: "Hello"
+            canonicalContent: canonicalUIKitPlainTextPass("Title\nHello"),
+            plainText: "Title\nHello"
         )
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)

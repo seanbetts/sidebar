@@ -135,12 +135,14 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
             throw XCTSkip("Requires iOS 26")
         }
 
-        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Title\nHello"))
         let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
         context.editorViewModel.attachNativeEditor(nativeViewModel)
         context.editorViewModel.enterEditMode()
+        let selectionStart = nativeViewModel.index(forCharacterOffset: 6, in: nativeViewModel.attributedContent)
+        let selectionEnd = nativeViewModel.index(forCharacterOffset: 11, in: nativeViewModel.attributedContent)
         nativeViewModel.selection = AttributedTextSelection(
-            range: noteCharacterRange(length: 5, in: nativeViewModel.attributedContent)
+            range: selectionStart..<selectionEnd
         )
         let configuration = context.makeView().noteFormattingBarConfiguration
 
@@ -150,14 +152,18 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         configuration.onBoldTap()
 
         let document = context.editorViewModel.currentSemanticDocumentSnapshot()
-        let paragraph = try XCTUnwrap(document.blocks.first)
+        let paragraph = try XCTUnwrap(document.blocks.dropFirst().first)
         let segment = try XCTUnwrap(paragraph.content.first)
 
         XCTAssertTrue(segment.marks.contains(.bold))
         XCTAssertTrue(
             noteRangeHasBoldTrait(
                 nativeViewModel.attributedContent,
-                range: noteCharacterRange(length: 5, in: nativeViewModel.attributedContent)
+                range: {
+                    let lower = nativeViewModel.index(forCharacterOffset: 6, in: nativeViewModel.attributedContent)
+                    let upper = nativeViewModel.index(forCharacterOffset: 11, in: nativeViewModel.attributedContent)
+                    return lower..<upper
+                }()
             )
         )
         XCTAssertTrue(context.makeView().noteFormattingBarConfiguration.isBoldActive)
