@@ -80,24 +80,48 @@ struct SidebarCommands: Commands {
 
             if #available(macOS 26.0, *) {
                 CommandMenu("Format") {
-                    Toggle("Bold", isOn: formattingBinding(.bold))
-                        .keyboardShortcut("b", modifiers: [.command])
-                        .disabled(!canFormatNotes)
+                    Menu("Text Style") {
+                        Button("Body") {
+                            environment.notesRuntime.editorViewModel.setTextStyle(.body)
+                        }
+                        .disabled(!canApplyTextStyle(.body))
 
-                    Toggle("Italic", isOn: formattingBinding(.italic))
-                        .keyboardShortcut("i", modifiers: [.command])
-                        .disabled(!canFormatNotes)
+                        Button("Title") {
+                            environment.notesRuntime.editorViewModel.setTextStyle(.title)
+                        }
+                        .disabled(!canApplyTextStyle(.title))
 
-                    Toggle("Underline", isOn: formattingBinding(.underline))
-                        .keyboardShortcut("u", modifiers: [.command])
-                        .disabled(!canFormatNotes)
+                        Button("Heading") {
+                            environment.notesRuntime.editorViewModel.setTextStyle(.heading)
+                        }
+                        .disabled(!canApplyTextStyle(.heading))
 
-                    Toggle("Strikethrough", isOn: formattingBinding(.strikethrough))
-                        .keyboardShortcut("x", modifiers: [.command, .shift])
-                        .disabled(!canFormatNotes)
+                        Button("Subheading") {
+                            environment.notesRuntime.editorViewModel.setTextStyle(.subheading)
+                        }
+                        .disabled(!canApplyTextStyle(.subheading))
+                    }
 
-                    Toggle("Inline Code", isOn: formattingBinding(.inlineCode))
-                        .disabled(!canFormatNotes)
+                    Menu("Inline") {
+                        Toggle("Bold", isOn: formattingBinding(.bold))
+                            .keyboardShortcut("b", modifiers: [.command])
+                            .disabled(!canFormatNotes)
+
+                        Toggle("Italic", isOn: formattingBinding(.italic))
+                            .keyboardShortcut("i", modifiers: [.command])
+                            .disabled(!canFormatNotes)
+
+                        Toggle("Underline", isOn: formattingBinding(.underline))
+                            .keyboardShortcut("u", modifiers: [.command])
+                            .disabled(!canFormatNotes)
+
+                        Toggle("Strikethrough", isOn: formattingBinding(.strikethrough))
+                            .keyboardShortcut("x", modifiers: [.command, .shift])
+                            .disabled(!canFormatNotes)
+
+                        Toggle("Inline Code", isOn: formattingBinding(.inlineCode))
+                            .disabled(!canFormatNotes)
+                    }
                 }
             }
         }
@@ -134,6 +158,12 @@ struct SidebarCommands: Commands {
     private var canFormatNotes: Bool {
         let editorViewModel = environment.notesRuntime.editorViewModel
         return editorViewModel.isEditingNote && editorViewModel.canApplyFormattingCommands()
+    }
+
+    @available(macOS 26.0, *)
+    private func canApplyTextStyle(_ style: NoteTextStyle) -> Bool {
+        guard canFormatNotes else { return false }
+        return environment.notesRuntime.editorViewModel.canApplyTextStyle(style)
     }
 
     @available(macOS 26.0, *)

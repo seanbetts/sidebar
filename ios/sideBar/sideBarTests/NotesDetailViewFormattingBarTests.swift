@@ -292,6 +292,46 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
 
         XCTAssertGreaterThan(changeCount, 0)
     }
+
+    func testFormattingBarConfigurationAppliesTextStyleSelectionToCurrentBlock() async throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let note = NotePayload(
+            id: "n1",
+            name: "Title",
+            document: NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                    .paragraph([.init(text: "Body", marks: [.bold])])
+                ]
+            ),
+            plainText: "Title\nBody",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+        let bodyStart = nativeViewModel.index(forCharacterOffset: 6, in: nativeViewModel.attributedContent)
+        let bodyEnd = nativeViewModel.index(forCharacterOffset: 10, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: bodyStart..<bodyEnd)
+        nativeViewModel.handleSelectionChange()
+
+        let configuration = context.makeView().noteFormattingBarConfiguration
+        XCTAssertEqual(configuration.activeTextStyle, .body)
+
+        configuration.selectTextStyle(.heading)
+
+        let document = context.editorViewModel.currentSemanticDocumentSnapshot()
+        XCTAssertEqual(document.blocks.map(\.type), [.title, .heading])
+        XCTAssertEqual(context.makeView().noteFormattingBarConfiguration.activeTextStyle, .heading)
+        XCTAssertEqual(document.blocks[1].content.first?.marks, [.bold])
+    }
 #elseif os(macOS)
     func testCustomFormattingBarRemainsHiddenOnMacOS() async throws {
         guard #available(macOS 26.0, *) else {

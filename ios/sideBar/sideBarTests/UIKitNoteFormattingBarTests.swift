@@ -6,7 +6,7 @@ import XCTest
 
 @MainActor
 final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
-    func testActiveStatesReflectCanonicalEditorModel() async throws {
+    func testConfigurationReflectsCanonicalEditorModelIncludingTextStyle() async throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
@@ -17,107 +17,112 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
             document: NotesSemanticDocument(
                 version: NotesSemanticDocument.currentVersion,
                 blocks: [
-                    .paragraph([
-                        .init(text: "Styled", marks: [.bold, .italic, .underline, .strikethrough]),
-                        .init(text: " plain", marks: [])
-                    ])
+                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                    .init(
+                        type: .heading,
+                        content: [
+                            .init(
+                                text: "Styled",
+                                marks: [.bold, .italic, .underline, .strikethrough]
+                            ),
+                            .init(text: " plain", marks: [])
+                        ]
+                    )
                 ]
             ),
-            plainText: "Styled plain",
+            plainText: "Title\nStyled plain",
             path: "/note.md",
             modified: nil,
             created: nil
         )
         let context = await makeAttachedEditingContext(note: note)
-        let styledRange = noteCharacterRange(length: 6, in: context.nativeViewModel.attributedContent)
-        context.nativeViewModel.selection = AttributedTextSelection(range: styledRange)
+        let start = context.nativeViewModel.index(
+            forCharacterOffset: 6,
+            in: context.nativeViewModel.attributedContent
+        )
+        let end = context.nativeViewModel.index(
+            forCharacterOffset: 12,
+            in: context.nativeViewModel.attributedContent
+        )
+        context.nativeViewModel.selection = AttributedTextSelection(range: start..<end)
         context.nativeViewModel.handleSelectionChange()
 
         let configuration = context.editorViewModel.noteFormattingBarConfiguration
 
         XCTAssertTrue(configuration.isEnabled)
+        XCTAssertEqual(configuration.activeTextStyle, .heading)
+        XCTAssertTrue(configuration.isTextStyleSectionEnabled)
         XCTAssertTrue(configuration.isBoldActive)
         XCTAssertTrue(configuration.isItalicActive)
         XCTAssertTrue(configuration.isUnderlineActive)
         XCTAssertTrue(configuration.isStrikethroughActive)
     }
 
-    func testButtonTapsRouteThroughSharedFormattingCommandLayer() async throws {
+    func testBarRendersSingleFormattingMenuButton() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
 
-        let context = await makeAttachedEditingContext(note: makeTestNote(plainText: "Hello"))
-        let range = noteCharacterRange(length: 5, in: context.nativeViewModel.attributedContent)
-        context.nativeViewModel.selection = AttributedTextSelection(range: range)
-        let bar = UIKitNoteFormattingBar(configuration: context.editorViewModel.noteFormattingBarConfiguration)
+        let bar = UIKitNoteFormattingBar(configuration: .disabled)
 
-        bar.button(for: .bold).sendActions(for: .touchUpInside)
-
-        let paragraph = try XCTUnwrap(context.editorViewModel.currentSemanticDocumentSnapshot().blocks.first)
-        let segment = try XCTUnwrap(paragraph.content.first)
-
-        XCTAssertTrue(segment.marks.contains(.bold))
-        XCTAssertTrue(context.editorViewModel.isDirty)
-        XCTAssertTrue(context.nativeViewModel.hasUnsavedChanges)
-        XCTAssertNotNil(context.nativeViewModel.autosaveTask)
-        XCTAssertTrue(
-            noteRangeHasBoldTrait(
-                context.nativeViewModel.attributedContent,
-                range: noteCharacterRange(length: 5, in: context.nativeViewModel.attributedContent)
-            )
-        )
-        XCTAssertTrue(context.editorViewModel.noteFormattingBarConfiguration.isBoldActive)
+        XCTAssertEqual(bar.accessibilityIdentifier, "note-formatting-bar")
+        XCTAssertEqual(bar.menuButton.accessibilityIdentifier, "note-formatting-menu")
+        XCTAssertTrue(bar.menuButton.showsMenuAsPrimaryAction)
+        XCTAssertEqual(bar.menuButton.configuration?.image, UIImage(systemName: "textformat"))
     }
 
-    func testBarRendersDisabledStateWhenEditorIsUnavailable() async throws {
+    func testMenuContainsTextStyleAndInlineSections() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
 
-        let context = await makeNotesDetailViewTestContext()
-        context.editorViewModel.enterEditMode()
-        let configuration = context.editorViewModel.noteFormattingBarConfiguration
-        let bar = UIKitNoteFormattingBar(configuration: configuration)
-
-        XCTAssertFalse(configuration.isEnabled)
-        XCTAssertFalse(bar.button(for: .bold).isEnabled)
-        XCTAssertFalse(bar.button(for: .italic).isEnabled)
-        XCTAssertFalse(bar.button(for: .underline).isEnabled)
-        XCTAssertFalse(bar.button(for: .strikethrough).isEnabled)
-    }
-
-    func testBarDoesNotComputeFormattingStateFromUIKitOnlyState() async throws {
-        guard #available(iOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26")
-        }
-
-        let context = await makeAttachedEditingContext(note: makeTestNote(plainText: "Hello"))
         let bar = UIKitNoteFormattingBar(
             configuration: .init(
-                isBoldActive: true,
+                activeTextStyle: .body,
+                isTextStyleSectionEnabled: true,
+                isBodyTextStyleEnabled: true,
+                isTitleTextStyleEnabled: true,
+                isHeadingTextStyleEnabled: true,
+                isSubheadingTextStyleEnabled: true,
+                isBoldActive: false,
                 isItalicActive: false,
                 isUnderlineActive: false,
                 isStrikethroughActive: false,
+                isInlineCodeActive: false,
                 isEnabled: true,
+                onTextStyleSelection: { _ in },
                 onBoldTap: {},
                 onItalicTap: {},
                 onUnderlineTap: {},
-                onStrikethroughTap: {}
+                onStrikethroughTap: {},
+                onInlineCodeTap: {}
             )
         )
-        let range = noteCharacterRange(length: 5, in: context.nativeViewModel.attributedContent)
-        context.nativeViewModel.selection = AttributedTextSelection(range: range)
-        context.nativeViewModel.handleSelectionChange()
 
-        XCTAssertTrue(bar.button(for: .bold).isSelected)
+        let menu = try XCTUnwrap(bar.menuButton.menu)
+        XCTAssertEqual(menu.children.compactMap(\.title), ["Text Style", "Inline"])
 
-        bar.apply(configuration: context.editorViewModel.noteFormattingBarConfiguration)
+        let textStyleMenu = try XCTUnwrap(menu.children.first as? UIMenu)
+        XCTAssertEqual(
+            textStyleMenu.children.compactMap(\.title),
+            ["Body", "Title", "Heading", "Subheading"]
+        )
 
-        XCTAssertFalse(bar.button(for: .bold).isSelected)
-        XCTAssertFalse(bar.button(for: .italic).isSelected)
-        XCTAssertFalse(bar.button(for: .underline).isSelected)
-        XCTAssertFalse(bar.button(for: .strikethrough).isSelected)
+        let inlineMenu = try XCTUnwrap(menu.children.last as? UIMenu)
+        XCTAssertEqual(
+            inlineMenu.children.compactMap(\.title),
+            ["Bold", "Italic", "Underline", "Strikethrough", "Inline Code"]
+        )
+    }
+
+    func testBarRendersDisabledStateWhenEditorIsUnavailable() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(configuration: .disabled)
+
+        XCTAssertFalse(bar.menuButton.isEnabled)
     }
 
     func testBarReportsCompactIntrinsicSizeForFloatingGlassLayout() throws {
@@ -130,7 +135,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
 
         XCTAssertNotEqual(size.width, UIView.noIntrinsicMetric)
         XCTAssertGreaterThan(size.width, 0)
-        XCTAssertLessThan(size.width, 240)
+        XCTAssertLessThan(size.width, 120)
         XCTAssertEqual(size.height, 48)
     }
 
@@ -147,7 +152,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(fittedSize.height, intrinsicSize.height, accuracy: CGFloat(0.5))
     }
 
-    func testBarButtonsProvideMinimumFortyFourPointHitTargets() throws {
+    func testFormattingMenuButtonProvidesMinimumFortyFourPointHitTarget() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
@@ -157,148 +162,73 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         bar.setNeedsLayout()
         bar.layoutIfNeeded()
 
-        for formatting in [NoteFormatting.bold, .italic, .underline, .strikethrough] {
-            let button = bar.button(for: formatting)
-            XCTAssertGreaterThanOrEqual(button.frame.width, 44)
-            XCTAssertEqual(button.frame.height, CGFloat(44), accuracy: CGFloat(0.5))
-            XCTAssertGreaterThan(bar.bounds.height, button.bounds.height)
-            XCTAssertLessThanOrEqual(button.frame.maxY, bar.bounds.maxY + CGFloat(0.5))
-        }
+        XCTAssertGreaterThanOrEqual(bar.menuButton.frame.width, 44)
+        XCTAssertEqual(bar.menuButton.frame.height, CGFloat(44), accuracy: CGFloat(0.5))
+        XCTAssertGreaterThan(bar.bounds.height, bar.menuButton.bounds.height)
+        XCTAssertLessThanOrEqual(bar.menuButton.frame.maxY, bar.bounds.maxY + CGFloat(0.5))
     }
 
-    func testBarButtonsUseCompactInsetsInsideFortyFourPointHitTargets() throws {
+    func testFormattingMenuButtonUsesCompactInsetsInsideHitTarget() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
 
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
+        let configuration = try XCTUnwrap(bar.menuButton.configuration)
 
-        for formatting in [NoteFormatting.bold, .italic, .underline, .strikethrough] {
-            let configuration = try XCTUnwrap(bar.button(for: formatting).configuration)
-
-            XCTAssertEqual(configuration.contentInsets.top, 4)
-            XCTAssertEqual(configuration.contentInsets.bottom, 4)
-            XCTAssertEqual(configuration.contentInsets.leading, 6)
-            XCTAssertEqual(configuration.contentInsets.trailing, 6)
-        }
+        XCTAssertEqual(configuration.contentInsets.top, 4)
+        XCTAssertEqual(configuration.contentInsets.bottom, 4)
+        XCTAssertEqual(configuration.contentInsets.leading, 6)
+        XCTAssertEqual(configuration.contentInsets.trailing, 6)
     }
 
-    func testBarButtonsInsetGlassBackgroundInsideHitTarget() throws {
+    func testFormattingMenuButtonInsetGlassBackgroundInsideHitTarget() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
 
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
+        let configuration = try XCTUnwrap(bar.menuButton.configuration)
+        let backgroundInsets = configuration.background.backgroundInsets
 
-        for formatting in [NoteFormatting.bold, .italic, .underline, .strikethrough] {
-            let configuration = try XCTUnwrap(bar.button(for: formatting).configuration)
-            let backgroundInsets = configuration.background.backgroundInsets
-
-            XCTAssertEqual(backgroundInsets.top, 4)
-            XCTAssertEqual(backgroundInsets.bottom, 4)
-            XCTAssertEqual(backgroundInsets.leading, 3)
-            XCTAssertEqual(backgroundInsets.trailing, 3)
-        }
+        XCTAssertEqual(backgroundInsets.top, 4)
+        XCTAssertEqual(backgroundInsets.bottom, 4)
+        XCTAssertEqual(backgroundInsets.leading, 3)
+        XCTAssertEqual(backgroundInsets.trailing, 3)
     }
 
-    func testBarPreservesAccessibilityIdentifiersForSharedButtons() throws {
-        guard #available(iOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26")
-        }
-
-        let bar = UIKitNoteFormattingBar(configuration: .disabled)
-
-        XCTAssertEqual(bar.accessibilityIdentifier, "note-formatting-bar")
-        XCTAssertEqual(bar.button(for: .bold).accessibilityIdentifier, "note-formatting-bold")
-        XCTAssertEqual(bar.button(for: .italic).accessibilityIdentifier, "note-formatting-italic")
-        XCTAssertEqual(bar.button(for: .underline).accessibilityIdentifier, "note-formatting-underline")
-        XCTAssertEqual(
-            bar.button(for: .strikethrough).accessibilityIdentifier,
-            "note-formatting-strikethrough"
-        )
-    }
-
-    func testBarAppliesGlassTreatmentAndSelectedButtonStyling() throws {
+    func testBarAppliesGlassTreatmentAndEnabledStateToMenuButton() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
 
         let bar = UIKitNoteFormattingBar(
             configuration: .init(
+                activeTextStyle: .heading,
+                isTextStyleSectionEnabled: true,
+                isBodyTextStyleEnabled: true,
+                isTitleTextStyleEnabled: true,
+                isHeadingTextStyleEnabled: true,
+                isSubheadingTextStyleEnabled: true,
                 isBoldActive: true,
                 isItalicActive: false,
                 isUnderlineActive: false,
                 isStrikethroughActive: false,
+                isInlineCodeActive: false,
                 isEnabled: true,
+                onTextStyleSelection: { _ in },
                 onBoldTap: {},
                 onItalicTap: {},
                 onUnderlineTap: {},
-                onStrikethroughTap: {}
+                onStrikethroughTap: {},
+                onInlineCodeTap: {}
             )
         )
         let effectView = try XCTUnwrap(findGlassEffectView(in: bar))
-        let boldButton = bar.button(for: .bold)
-        let italicButton = bar.button(for: .italic)
 
         XCTAssertTrue(effectView.effect is UIGlassEffect)
-        XCTAssertTrue(boldButton.isSelected)
-        XCTAssertEqual(boldButton.configuration?.cornerStyle, .capsule)
-        XCTAssertEqual(italicButton.configuration?.cornerStyle, .capsule)
-        XCTAssertNotEqual(
-            boldButton.configuration?.baseForegroundColor?.resolvedColor(with: boldButton.traitCollection),
-            italicButton.configuration?.baseForegroundColor?.resolvedColor(with: italicButton.traitCollection)
-        )
-    }
-
-    func testSelectedButtonsUseDarkForegroundColorInDarkMode() throws {
-        guard #available(iOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26")
-        }
-
-        let bar = UIKitNoteFormattingBar(
-            configuration: .init(
-                isBoldActive: true,
-                isItalicActive: false,
-                isUnderlineActive: false,
-                isStrikethroughActive: false,
-                isEnabled: true,
-                onBoldTap: {},
-                onItalicTap: {},
-                onUnderlineTap: {},
-                onStrikethroughTap: {}
-            )
-        )
-        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
-        let selectedColor = try XCTUnwrap(
-            bar.button(for: .bold).configuration?.baseForegroundColor?.resolvedColor(with: darkTraits)
-        )
-
-        XCTAssertEqual(selectedColor, UIColor.black)
-    }
-
-    func testStrikethroughButtonTapRoutesThroughSharedFormattingCommandLayer() async throws {
-        guard #available(iOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26")
-        }
-
-        let context = await makeAttachedEditingContext(note: makeTestNote(plainText: "Hello"))
-        let range = noteCharacterRange(length: 5, in: context.nativeViewModel.attributedContent)
-        context.nativeViewModel.selection = AttributedTextSelection(range: range)
-        let bar = UIKitNoteFormattingBar(configuration: context.editorViewModel.noteFormattingBarConfiguration)
-
-        bar.button(for: .strikethrough).sendActions(for: .touchUpInside)
-
-        let paragraph = try XCTUnwrap(context.editorViewModel.currentSemanticDocumentSnapshot().blocks.first)
-        let segment = try XCTUnwrap(paragraph.content.first)
-
-        XCTAssertTrue(segment.marks.contains(.strikethrough))
-        XCTAssertTrue(context.editorViewModel.noteFormattingBarConfiguration.isStrikethroughActive)
-        XCTAssertTrue(
-            noteRangeIsStruckThrough(
-                context.nativeViewModel.attributedContent,
-                range: noteCharacterRange(length: 5, in: context.nativeViewModel.attributedContent)
-            )
-        )
+        XCTAssertTrue(bar.menuButton.isEnabled)
+        XCTAssertEqual(bar.menuButton.configuration?.cornerStyle, .capsule)
     }
 }
 

@@ -1,7 +1,7 @@
-// swiftlint:disable file_length
 import Foundation
 import Combine
 import OSLog
+import SwiftUI
 
 // MARK: - NotesEditorViewModel
 
@@ -261,62 +261,6 @@ public final class NotesEditorViewModel: ObservableObject {
         await syncFromNativeEditorIfRequested(nativeViewModel)
     }
 
-    @available(iOS 26.0, macOS 26.0, *)
-    public func canApplyFormattingCommands() -> Bool {
-        currentNoteId != nil && nativeEditorViewModel != nil && !isReadOnly && isEditingNote
-    }
-
-    @available(iOS 26.0, macOS 26.0, *)
-    public func isFormattingActive(_ formatting: NoteFormatting) -> Bool {
-        guard let nativeEditorViewModel, canApplyFormattingCommands() else { return false }
-        return nativeEditorViewModel.isFormattingActive(formatting)
-    }
-
-    @available(iOS 26.0, macOS 26.0, *)
-    public func setFormatting(_ formatting: NoteFormatting, enabled: Bool) {
-        guard let nativeEditorViewModel, canApplyFormattingCommands() else { return }
-        let previousContent = nativeEditorViewModel.attributedContent
-        let previousSelection = nativeEditorViewModel.selection
-        nativeEditorViewModel.setFormatting(formatting, enabled: enabled)
-        guard nativeEditorViewModel.attributedContent != previousContent
-            || nativeEditorViewModel.selection != previousSelection else {
-            return
-        }
-        if !nativeEditorViewModel.hasUnsavedChanges {
-            nativeEditorViewModel.hasUnsavedChanges = true
-        }
-        nativeEditorViewModel.scheduleAutosave()
-        nativeEditorViewModel.lastSelectionLineSpan = nativeEditorViewModel.selectionLineSpan(
-            in: nativeEditorViewModel.attributedContent
-        )
-        isDirty = true
-    }
-
-    @available(iOS 26.0, macOS 26.0, *)
-    public func toggleFormatting(_ formatting: NoteFormatting) {
-        guard canApplyFormattingCommands() else { return }
-        setFormatting(formatting, enabled: !isFormattingActive(formatting))
-    }
-
-#if os(iOS)
-    @available(iOS 26.0, *)
-    var noteFormattingBarConfiguration: NoteFormattingBarConfiguration {
-        .init(
-            isBoldActive: isFormattingActive(.bold),
-            isItalicActive: isFormattingActive(.italic),
-            isUnderlineActive: isFormattingActive(.underline),
-            isStrikethroughActive: isFormattingActive(.strikethrough),
-            isInlineCodeActive: isFormattingActive(.inlineCode),
-            isEnabled: canApplyFormattingCommands(),
-            onBoldTap: { [weak self] in self?.toggleFormatting(.bold) },
-            onItalicTap: { [weak self] in self?.toggleFormatting(.italic) },
-            onUnderlineTap: { [weak self] in self?.toggleFormatting(.underline) },
-            onStrikethroughTap: { [weak self] in self?.toggleFormatting(.strikethrough) },
-            onInlineCodeTap: { [weak self] in self?.toggleFormatting(.inlineCode) }
-        )
-    }
-#endif
-
     public func saveIfNeeded() async {
         guard !isSaving else { return }
         if #available(iOS 26.0, macOS 26.0, *) {
@@ -437,6 +381,31 @@ public final class NotesEditorViewModel: ObservableObject {
         )
     }
 
+    @available(iOS 26.0, macOS 26.0, *)
+    var attachedNativeEditorViewModel: NativeNoteEditorViewModel? {
+        nativeEditorViewModel
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    func finalizeNativeEditorMutation(
+        _ nativeEditorViewModel: NativeNoteEditorViewModel,
+        previousContent: AttributedString,
+        previousSelection: AttributedTextSelection
+    ) {
+        guard nativeEditorViewModel.attributedContent != previousContent
+            || nativeEditorViewModel.selection != previousSelection else {
+            return
+        }
+        if !nativeEditorViewModel.hasUnsavedChanges {
+            nativeEditorViewModel.hasUnsavedChanges = true
+        }
+        nativeEditorViewModel.scheduleAutosave()
+        nativeEditorViewModel.lastSelectionLineSpan = nativeEditorViewModel.selectionLineSpan(
+            in: nativeEditorViewModel.attributedContent
+        )
+        isDirty = true
+    }
+
 }
 
 extension NotesEditorViewModel {
@@ -525,4 +494,3 @@ extension NotesEditorViewModel {
         )
     }
 }
-// swiftlint:enable file_length

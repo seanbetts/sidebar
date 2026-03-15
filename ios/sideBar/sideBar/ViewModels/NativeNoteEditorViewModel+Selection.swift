@@ -109,6 +109,24 @@ extension NativeNoteEditorViewModel {
         }
     }
 
+    func selectionStartCharacterOffset(in text: AttributedString) -> Int {
+        switch selectionSnapshot(in: text) {
+        case .insertionPoint(let offset):
+            return offset
+        case .ranges(let ranges):
+            return ranges.first?.lowerBound ?? 0
+        }
+    }
+
+    func selectionCharacterRanges(in text: AttributedString) -> [Range<Int>] {
+        switch selectionSnapshot(in: text) {
+        case .insertionPoint(let offset):
+            return [offset..<offset]
+        case .ranges(let ranges):
+            return ranges.isEmpty ? [0..<0] : ranges
+        }
+    }
+
     func selection(from snapshot: SelectionSnapshot, in text: AttributedString) -> AttributedTextSelection {
         switch snapshot {
         case .insertionPoint(let offset):

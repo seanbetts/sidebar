@@ -1,52 +1,42 @@
 import SwiftUI
 
+#if os(iOS)
 @MainActor
-@available(iOS 26.0, macOS 26.0, *)
+@available(iOS 26.0, *)
 struct NoteFormattingBar: View {
-    let isBoldActive: Bool
-    let isItalicActive: Bool
-    let isUnderlineActive: Bool
-    let isStrikethroughActive: Bool
-    let isInlineCodeActive: Bool
-    let onBoldTap: @MainActor @Sendable () -> Void
-    let onItalicTap: @MainActor @Sendable () -> Void
-    let onUnderlineTap: @MainActor @Sendable () -> Void
-    let onStrikethroughTap: @MainActor @Sendable () -> Void
-    let onInlineCodeTap: @MainActor @Sendable () -> Void
+    let configuration: NoteFormattingBarConfiguration
 
     var body: some View {
-        HStack(spacing: 10) {
-            formattingButton(
-                systemImage: "bold",
-                label: "Bold",
-                isActive: isBoldActive,
-                action: onBoldTap
-            )
-            formattingButton(
-                systemImage: "italic",
-                label: "Italic",
-                isActive: isItalicActive,
-                action: onItalicTap
-            )
-            formattingButton(
-                systemImage: "underline",
-                label: "Underline",
-                isActive: isUnderlineActive,
-                action: onUnderlineTap
-            )
-            formattingButton(
-                systemImage: "strikethrough",
-                label: "Strikethrough",
-                isActive: isStrikethroughActive,
-                action: onStrikethroughTap
-            )
-            formattingButton(
-                systemImage: "chevron.left.forwardslash.chevron.right",
-                label: "Inline Code",
-                isActive: isInlineCodeActive,
-                action: onInlineCodeTap
-            )
+        Menu {
+            Section("Text Style") {
+                ForEach(NoteTextStyle.allCases, id: \.self) { style in
+                    Button {
+                        configuration.selectTextStyle(style)
+                    } label: {
+                        if configuration.activeTextStyle == style {
+                            Label(style.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(style.displayName)
+                        }
+                    }
+                    .disabled(!configuration.canApplyTextStyle(style))
+                }
+            }
+
+            Section("Inline") {
+                inlineButton("Bold", formatting: .bold)
+                inlineButton("Italic", formatting: .italic)
+                inlineButton("Underline", formatting: .underline)
+                inlineButton("Strikethrough", formatting: .strikethrough)
+                inlineButton("Inline Code", formatting: .inlineCode)
+            }
+        } label: {
+            Image(systemName: "textformat")
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: 32, height: 32)
         }
+        .buttonStyle(.plain)
+        .disabled(!configuration.isEnabled)
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -58,27 +48,16 @@ struct NoteFormattingBar: View {
     }
 
     @ViewBuilder
-    private func formattingButton(
-        systemImage: String,
-        label: String,
-        isActive: Bool,
-        action: @escaping @MainActor @Sendable () -> Void
-    ) -> some View {
+    private func inlineButton(_ title: String, formatting: NoteFormatting) -> some View {
         Button {
-            action()
+            configuration.tapHandler(for: formatting)()
         } label: {
-            Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
-                .frame(width: 32, height: 32)
-                .foregroundStyle(isActive ? Color.accentColor : Color.primary)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(isActive ? Color.accentColor.opacity(0.14) : Color.clear)
-                )
+            if configuration.isActive(formatting) {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(isActive ? .isSelected : [])
-        .accessibilityIdentifier("note-formatting-\(label.lowercased())")
     }
 }
+#endif

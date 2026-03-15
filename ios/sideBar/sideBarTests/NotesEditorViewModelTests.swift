@@ -485,6 +485,129 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isFormattingActive(.underline))
     }
 
+    func testFormattingBarConfigurationReportsSelectionStartTextStyleForMultiLineSelection() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Title",
+            document: NotesSemanticDocument(
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                    .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                    .paragraph([.init(text: "Body", marks: [])])
+                ]
+            ),
+            plainText: "Title\nHeading\nBody",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+        context.viewModel.attachNativeEditor(nativeViewModel)
+        context.viewModel.enterEditMode()
+        let selectionStart = nativeViewModel.index(forCharacterOffset: 6, in: nativeViewModel.attributedContent)
+        let selectionEnd = nativeViewModel.index(forCharacterOffset: 18, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
+        nativeViewModel.handleSelectionChange()
+
+        XCTAssertEqual(context.viewModel.noteFormattingBarConfiguration.activeTextStyle, .heading)
+    }
+
+    func testFormattingBarConfigurationDisablesNonTitleTextStylesWhenSelectionTouchesBlockZero() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Title",
+            document: NotesSemanticDocument(
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                    .paragraph([.init(text: "Body", marks: [])])
+                ]
+            ),
+            plainText: "Title\nBody",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+        context.viewModel.attachNativeEditor(nativeViewModel)
+        context.viewModel.enterEditMode()
+        let selectionStart = nativeViewModel.index(forCharacterOffset: 0, in: nativeViewModel.attributedContent)
+        let selectionEnd = nativeViewModel.index(forCharacterOffset: 10, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
+        nativeViewModel.handleSelectionChange()
+
+        let configuration = context.viewModel.noteFormattingBarConfiguration
+        XCTAssertTrue(configuration.isTextStyleSectionEnabled)
+        XCTAssertTrue(configuration.canApplyTextStyle(.title))
+        XCTAssertFalse(configuration.canApplyTextStyle(.body))
+        XCTAssertFalse(configuration.canApplyTextStyle(.heading))
+        XCTAssertFalse(configuration.canApplyTextStyle(.subheading))
+    }
+
+    func testFormattingBarConfigurationDisablesTextStyleSectionForUnsupportedBlocks() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Title",
+            document: NotesSemanticDocument(
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                    .paragraph([.init(text: "Body", marks: [])]),
+                    .init(type: .codeBlock, content: [.init(text: "let x = 1", marks: [])])
+                ]
+            ),
+            plainText: "Title\nBody\nlet x = 1",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+        context.viewModel.attachNativeEditor(nativeViewModel)
+        context.viewModel.enterEditMode()
+        let selectionStart = nativeViewModel.index(forCharacterOffset: 6, in: nativeViewModel.attributedContent)
+        let selectionEnd = nativeViewModel.index(forCharacterOffset: 20, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
+        nativeViewModel.handleSelectionChange()
+
+        let configuration = context.viewModel.noteFormattingBarConfiguration
+        XCTAssertFalse(configuration.isTextStyleSectionEnabled)
+        XCTAssertFalse(configuration.canApplyTextStyle(.title))
+        XCTAssertFalse(configuration.canApplyTextStyle(.body))
+        XCTAssertFalse(configuration.canApplyTextStyle(.heading))
+        XCTAssertFalse(configuration.canApplyTextStyle(.subheading))
+    }
+
     func testSaveIfNeededPersistsFormattingOnlyNativeEditorChange() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")

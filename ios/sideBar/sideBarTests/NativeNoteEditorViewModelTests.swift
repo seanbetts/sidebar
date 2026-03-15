@@ -193,6 +193,51 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isFormattingActive(.underline))
     }
 
+    func testActiveTextStyleUsesSelectionStartBlockForMultiLineSelection() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let selectionStart = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
+        let selectionEnd = viewModel.index(forCharacterOffset: 18, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
+
+        XCTAssertEqual(viewModel.activeTextStyle(), .heading)
+    }
+
+    func testApplyTextStyleConvertsEverySelectedTextStyleFamilyBlock() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [.bold])]),
+                .init(type: .subheading, content: [.init(text: "Tail", marks: [.italic])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let selectionStart = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
+        let selectionEnd = viewModel.index(forCharacterOffset: 15, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
+
+        viewModel.applyTextStyle(.heading)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .heading, .heading])
+        XCTAssertEqual(snapshot.document.blocks[1].content.first?.marks, [.bold])
+        XCTAssertEqual(snapshot.document.blocks[2].content.first?.marks, [.italic])
+    }
+
     func testInsertionPointFormattingStateUpdatesIndividuallyPerControlAndTypedText() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("Hi")

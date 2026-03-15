@@ -36,9 +36,16 @@ come back to a note it's exactly where you left off.
 
 ## Formatting
 
-{/* WORK IN PROGRESS: formatting bar is still in development — revisit once shipped */}
+Notes use rich text. Open the formatting menu from the editor controls to apply
+formatting to the current selection, or to the current line when changing text
+style.
 
-Notes use rich text. Formatting is applied to whatever text you have selected.
+Available formatting includes:
+
+- **Text styles**: Body, Title, Heading, Subheading
+- **Inline formatting**: Bold, Italic, Underline, Strikethrough, Inline Code
+- **Links**: add or edit links on selected text
+- **Code blocks**: format multi-line code or terminal snippets as a block
 
 ## Note Actions
 

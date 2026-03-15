@@ -79,6 +79,24 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
     }
 
+    public func activeTextStyle() -> NoteTextStyle {
+        activeTextStyleAtSelectionStart()
+    }
+
+    public func applyTextStyle(_ style: NoteTextStyle) {
+        guard !isReadOnly else { return }
+        let previousContent = attributedContent
+        let previousSelection = selection
+        setTextStyle(style)
+        guard attributedContent != previousContent || selection != previousSelection else { return }
+
+        if !hasUnsavedChanges {
+            hasUnsavedChanges = true
+        }
+        scheduleAutosave()
+        lastSelectionLineSpan = selectionLineSpan(in: attributedContent)
+    }
+
     public func handleContentChange(previous: AttributedString) {
         handleContentChange(previous: previous, sourceGeneration: nil)
     }

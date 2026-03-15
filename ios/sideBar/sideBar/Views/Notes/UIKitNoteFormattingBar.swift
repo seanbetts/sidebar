@@ -7,24 +7,15 @@ import UIKit
 final class UIKitNoteFormattingBar: UIView {
     private let backgroundEffectView = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
     private let stackView = UIStackView()
-    private let boldButton: UIButton
-    private let italicButton: UIButton
-    private let underlineButton: UIButton
-    private let strikethroughButton: UIButton
-    private let inlineCodeButton: UIButton
+    let menuButton: UIButton
     private var currentConfiguration: NoteFormattingBarConfiguration
     private static let barHeight: CGFloat = 48
     private static let minimumButtonTouchTarget: CGFloat = 44
     private static let horizontalPadding: CGFloat = 8
     private static let verticalPadding: CGFloat = 0
-    private static let buttonSpacing: CGFloat = 6
 
     override init(frame: CGRect) {
-        self.boldButton = Self.makeButton(for: .bold)
-        self.italicButton = Self.makeButton(for: .italic)
-        self.underlineButton = Self.makeButton(for: .underline)
-        self.strikethroughButton = Self.makeButton(for: .strikethrough)
-        self.inlineCodeButton = Self.makeButton(for: .inlineCode)
+        self.menuButton = Self.makeMenuButton()
         self.currentConfiguration = .disabled
         super.init(frame: frame)
         setUpViewHierarchy()
@@ -43,40 +34,15 @@ final class UIKitNoteFormattingBar: UIView {
 
     func apply(configuration: NoteFormattingBarConfiguration) {
         currentConfiguration = configuration
-        for formatting in Self.buttonOrder {
-            let button = button(for: formatting)
-            let isActive = configuration.isActive(formatting)
-            button.isEnabled = configuration.isEnabled
-            button.isSelected = isActive
-            button.configuration = Self.buttonConfiguration(for: formatting, isActive: isActive)
-        }
+        menuButton.isEnabled = configuration.isEnabled
+        menuButton.menu = Self.makeMenu(configuration: configuration)
+        menuButton.configuration = Self.buttonConfiguration()
     }
 
     override var intrinsicContentSize: CGSize {
-        let buttonSizes = Self.buttonOrder.map {
-            button(for: $0).systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
-        }
-        let contentWidth = buttonSizes.reduce(0) {
-            $0 + max($1.width, Self.minimumButtonTouchTarget)
-        }
-        let spacingWidth = CGFloat(max(Self.buttonOrder.count - 1, 0)) * Self.buttonSpacing
-        let totalWidth = contentWidth + spacingWidth + (Self.horizontalPadding * 2)
+        let buttonSize = menuButton.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+        let totalWidth = max(buttonSize.width, Self.minimumButtonTouchTarget) + (Self.horizontalPadding * 2)
         return CGSize(width: ceil(totalWidth), height: Self.barHeight)
-    }
-
-    func button(for formatting: NoteFormatting) -> UIButton {
-        switch formatting {
-        case .bold:
-            return boldButton
-        case .italic:
-            return italicButton
-        case .underline:
-            return underlineButton
-        case .strikethrough:
-            return strikethroughButton
-        case .inlineCode:
-            return inlineCodeButton
-        }
     }
 }
 
@@ -159,82 +125,67 @@ struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
 
 @available(iOS 26.0, *)
 private extension UIKitNoteFormattingBar {
-    static let buttonOrder: [NoteFormatting] = [.bold, .italic, .underline, .strikethrough, .inlineCode]
-
-    static func makeButton(for formatting: NoteFormatting) -> UIButton {
+    static func makeMenuButton() -> UIButton {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.configuration = buttonConfiguration(for: formatting, isActive: false)
-        button.accessibilityLabel = accessibilityLabel(for: formatting)
-        button.accessibilityIdentifier = accessibilityIdentifier(for: formatting)
+        button.configuration = buttonConfiguration()
+        button.accessibilityLabel = "Formatting"
+        button.accessibilityIdentifier = "note-formatting-menu"
+        button.showsMenuAsPrimaryAction = true
         return button
     }
 
-    static func buttonConfiguration(
-        for formatting: NoteFormatting,
-        isActive: Bool
-    ) -> UIButton.Configuration {
-        var configuration: UIButton.Configuration = isActive ? .prominentGlass() : .clearGlass()
-        configuration.buttonSize = UIButton.Configuration.Size.mini
-        configuration.cornerStyle = UIButton.Configuration.CornerStyle.capsule
-        configuration.image = UIImage(systemName: systemImage(for: formatting))
+    static func buttonConfiguration() -> UIButton.Configuration {
+        var configuration: UIButton.Configuration = .clearGlass()
+        configuration.buttonSize = .mini
+        configuration.cornerStyle = .capsule
+        configuration.image = UIImage(systemName: "textformat")
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 6, bottom: 4, trailing: 6)
         var background = configuration.background
         background.backgroundInsets = NSDirectionalEdgeInsets(top: 4, leading: 3, bottom: 4, trailing: 3)
         configuration.background = background
-        configuration.baseForegroundColor = foregroundColor(isActive: isActive)
+        configuration.baseForegroundColor = .label
         return configuration
     }
 
-    static func foregroundColor(isActive: Bool) -> UIColor {
-        guard isActive else { return UIColor.label }
-        return UIColor { traits in
-            traits.userInterfaceStyle == .dark ? UIColor.black : UIColor.white
-        }
+    static func makeMenu(configuration: NoteFormattingBarConfiguration) -> UIMenu {
+        let textStyleMenu = UIMenu(
+            title: "Text Style",
+            children: NoteTextStyle.allCases.map { style in
+                UIAction(
+                    title: style.displayName,
+                    attributes: configuration.canApplyTextStyle(style) ? [] : [.disabled],
+                    state: configuration.activeTextStyle == style ? .on : .off
+                ) { _ in
+                    configuration.selectTextStyle(style)
+                }
+            }
+        )
+
+        let inlineMenu = UIMenu(
+            title: "Inline",
+            children: [
+                inlineAction("Bold", formatting: .bold, configuration: configuration),
+                inlineAction("Italic", formatting: .italic, configuration: configuration),
+                inlineAction("Underline", formatting: .underline, configuration: configuration),
+                inlineAction("Strikethrough", formatting: .strikethrough, configuration: configuration),
+                inlineAction("Inline Code", formatting: .inlineCode, configuration: configuration)
+            ]
+        )
+
+        return UIMenu(children: [textStyleMenu, inlineMenu])
     }
 
-    static func systemImage(for formatting: NoteFormatting) -> String {
-        switch formatting {
-        case .bold:
-            return "bold"
-        case .italic:
-            return "italic"
-        case .underline:
-            return "underline"
-        case .strikethrough:
-            return "strikethrough"
-        case .inlineCode:
-            return "chevron.left.forwardslash.chevron.right"
-        }
-    }
-
-    static func accessibilityLabel(for formatting: NoteFormatting) -> String {
-        switch formatting {
-        case .bold:
-            return "Bold"
-        case .italic:
-            return "Italic"
-        case .underline:
-            return "Underline"
-        case .strikethrough:
-            return "Strikethrough"
-        case .inlineCode:
-            return "Inline Code"
-        }
-    }
-
-    static func accessibilityIdentifier(for formatting: NoteFormatting) -> String {
-        switch formatting {
-        case .bold:
-            return "note-formatting-bold"
-        case .italic:
-            return "note-formatting-italic"
-        case .underline:
-            return "note-formatting-underline"
-        case .strikethrough:
-            return "note-formatting-strikethrough"
-        case .inlineCode:
-            return "note-formatting-inline-code"
+    static func inlineAction(
+        _ title: String,
+        formatting: NoteFormatting,
+        configuration: NoteFormattingBarConfiguration
+    ) -> UIAction {
+        UIAction(
+            title: title,
+            state: configuration.isActive(formatting) ? .on : .off
+        ) { _ in
+            configuration.tapHandler(for: formatting)()
         }
     }
 
@@ -252,7 +203,6 @@ private extension UIKitNoteFormattingBar {
 
         stackView.axis = .horizontal
         stackView.alignment = .center
-        stackView.spacing = Self.buttonSpacing
         stackView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stackView)
 
@@ -268,20 +218,11 @@ private extension UIKitNoteFormattingBar {
             heightAnchor.constraint(equalToConstant: Self.barHeight)
         ])
 
-        for formatting in Self.buttonOrder {
-            let button = button(for: formatting)
-            button.addAction(
-                UIAction { [weak self] _ in
-                    self?.currentConfiguration.tapHandler(for: formatting)()
-                },
-                for: .touchUpInside
-            )
-            stackView.addArrangedSubview(button)
-            NSLayoutConstraint.activate([
-                button.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.minimumButtonTouchTarget),
-                button.heightAnchor.constraint(equalToConstant: Self.minimumButtonTouchTarget)
-            ])
-        }
+        stackView.addArrangedSubview(menuButton)
+        NSLayoutConstraint.activate([
+            menuButton.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.minimumButtonTouchTarget),
+            menuButton.heightAnchor.constraint(equalToConstant: Self.minimumButtonTouchTarget)
+        ])
     }
 }
 
