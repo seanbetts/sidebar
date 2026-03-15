@@ -51,13 +51,6 @@ struct UserSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            if let saveError = viewModel.systemSaveError {
-                Section {
-                    Text(saveError)
-                        .appFont(.caption)
-                        .foregroundStyle(DesignTokens.Colors.error)
-                }
-            }
         }
         #if os(macOS)
         .formStyle(.grouped)
@@ -264,11 +257,6 @@ struct AgentSettingsView: View {
                             }
                         }
                     }
-                }
-                if let providerError = viewModel.primaryProviderError, !providerError.isEmpty {
-                    Text(providerError)
-                        .appFont(.caption)
-                        .foregroundStyle(DesignTokens.Colors.error)
                 }
             } header: {
                 sectionHeader(

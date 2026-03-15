@@ -50,7 +50,6 @@ struct ProfileSettingsView: View {
         Form {
             macProfilePhotoSection
             profileImageErrorSection
-            profileSaveErrorSection
             macProfileDetailsSection
             macSignOutSection
         }
@@ -115,7 +114,6 @@ struct ProfileSettingsView: View {
         Form {
             iosProfilePhotoSection
             profileImageErrorSection
-            profileSaveErrorSection
             iosProfileDetailsSection
             iosSignOutSection
         }
@@ -282,21 +280,6 @@ struct ProfileSettingsView: View {
                 SettingsMacStatusBanner(message: profileImageError, tone: .error)
                 #else
                 Text(profileImageError)
-                    .appFont(.caption)
-                    .foregroundStyle(DesignTokens.Colors.error)
-                #endif
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var profileSaveErrorSection: some View {
-        if let saveError = viewModel.profileSaveError {
-            Section {
-                #if os(macOS)
-                SettingsMacStatusBanner(message: saveError, tone: .error)
-                #else
-                Text(saveError)
                     .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
                 #endif

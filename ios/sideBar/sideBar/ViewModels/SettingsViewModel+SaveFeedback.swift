@@ -9,4 +9,16 @@ extension SettingsViewModel {
         let day = components.day ?? 1
         return String(format: "%04d-%02d-%02d", year, month, day)
     }
+
+    func setPrimaryProviderSaving(_ isSaving: Bool) {
+        isSavingPrimaryProvider = isSaving
+    }
+
+    func setPrimaryProviderError(_ error: String?) {
+        primaryProviderError = error
+    }
+
+    func recordCompletedSettingsSave() {
+        settingsSaveCompletionCount += 1
+    }
 }

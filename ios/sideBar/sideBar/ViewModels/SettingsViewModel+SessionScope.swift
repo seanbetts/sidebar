@@ -10,6 +10,8 @@ struct SettingsRefreshFailure: LocalizedError, Equatable {
 
 @MainActor
 extension SettingsViewModel {
+    private static let settingsSessionExpiredMessage = "Session expired. Please sign in again."
+
     public var assistantDisplayName: String {
         guard let rawName = settings?.assistantIdentity?.name else {
             return Self.defaultAssistantDisplayName
@@ -19,15 +21,16 @@ extension SettingsViewModel {
     }
 
     func isBoundToCurrentAuthUser(settings: UserSettings) -> Bool {
-        guard let authUserId = normalizedAuthUserId else {
-            // Allow non-auth-scoped callers (tests/previews) that do not inject a user id provider.
-            return true
-        }
-        return normalizeUserId(settings.userId) == authUserId
+        isBound(settings: settings, to: normalizedAuthUserId)
     }
 
     var normalizedAuthUserId: String? {
         normalizeUserId(currentAuthUserIdProvider())
+    }
+
+    var normalizedAuthorizedAuthUserId: String? {
+        guard let currentAuthorizedUserIdProvider else { return nil }
+        return normalizeUserId(currentAuthorizedUserIdProvider())
     }
 
     func normalizeUserId(_ value: String?) -> String? {
@@ -36,29 +39,71 @@ extension SettingsViewModel {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    func reloadSettingsForCurrentAuthUser() async -> Result<UserSettings, SettingsRefreshFailure> {
+    func isBound(settings: UserSettings, to expectedUserId: String?) -> Bool {
+        guard let expectedUserId else {
+            // Allow non-auth-scoped callers (tests/previews) that do not inject a user id provider.
+            return true
+        }
+        return normalizeUserId(settings.userId) == expectedUserId
+    }
+
+    func resolveAuthorizedAuthUserIdForSettingsRequest() async -> Result<String?, SettingsRefreshFailure> {
+        guard currentAuthorizedUserIdProvider != nil else {
+            return .success(normalizedAuthUserId)
+        }
+
+        if let authorizedAuthUserId = normalizedAuthorizedAuthUserId {
+            return .success(authorizedAuthUserId)
+        }
+
+        guard normalizedAuthUserId != nil else {
+            return .success(nil)
+        }
+
+        if let refreshAuthorizedSession {
+            await refreshAuthorizedSession()
+        }
+
+        guard let authorizedAuthUserId = normalizedAuthorizedAuthUserId else {
+            return .failure(SettingsRefreshFailure(message: Self.settingsSessionExpiredMessage))
+        }
+
+        return .success(authorizedAuthUserId)
+    }
+
+    func reloadSettingsForCurrentAuthUser(
+        expectedUserId: String?
+    ) async -> Result<UserSettings, SettingsRefreshFailure> {
         do {
             let refreshed = try await settingsAPI.getSettings()
-            applySettingsResponse(refreshed)
-            guard isBoundToCurrentAuthUser(settings: refreshed) else {
+            guard isBound(settings: refreshed, to: expectedUserId) else {
                 return .failure(
                     SettingsRefreshFailure(
                         message: "Couldn't refresh the current account settings. Reopen Settings and try again."
                     )
                 )
             }
+            applySettingsResponse(refreshed)
             return .success(refreshed)
         } catch {
-            return .failure(SettingsRefreshFailure(message: error.localizedDescription))
+            return .failure(SettingsRefreshFailure(message: ErrorMapping.message(for: error)))
         }
     }
 
     func currentSettingsForSave() async -> (settings: UserSettings?, error: String?) {
-        if let loaded = settings, isBoundToCurrentAuthUser(settings: loaded) {
+        let expectedUserId: String?
+        switch await resolveAuthorizedAuthUserIdForSettingsRequest() {
+        case .success(let authorizedAuthUserId):
+            expectedUserId = authorizedAuthUserId
+        case .failure(let failure):
+            return (nil, failure.message)
+        }
+
+        if let loaded = settings, isBound(settings: loaded, to: expectedUserId) {
             return (loaded, nil)
         }
 
-        switch await reloadSettingsForCurrentAuthUser() {
+        switch await reloadSettingsForCurrentAuthUser(expectedUserId: expectedUserId) {
         case .success(let refreshed):
             return (refreshed, nil)
         case .failure(let failure):

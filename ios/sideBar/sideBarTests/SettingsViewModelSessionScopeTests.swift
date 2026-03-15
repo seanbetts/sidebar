@@ -234,6 +234,137 @@ final class SettingsViewModelSessionScopeTests: XCTestCase {
         XCTAssertEqual(viewModel.settingsSaveCompletionCount, 0)
     }
 
+    func testSaveUserSettingsRefreshesAuthorizedSessionBeforeReloadingWhenAuthScopeExistsWithoutToken() async {
+        let stale = UserSettings(
+            userId: "user-1",
+            communicationStyle: "Concise",
+            workingRelationship: "Direct",
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let refreshed = UserSettings(
+            userId: "user-2",
+            communicationStyle: "Concise",
+            workingRelationship: "Direct",
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let updated = UserSettings(
+            userId: "user-2",
+            communicationStyle: "Detailed",
+            workingRelationship: "Direct",
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        var authorizedUserId: String?
+        let api = SessionScopeSettingsAPI(
+            getSettings: {
+                authorizedUserId == nil ? stale : refreshed
+            },
+            updateSettings: { _ in
+                updated
+            }
+        )
+        var refreshCallCount = 0
+        let viewModel = SettingsViewModel(
+            settingsAPI: api,
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: TestCacheClient(),
+            currentAuthUserIdProvider: { "user-2" },
+            currentAuthorizedUserIdProvider: { authorizedUserId },
+            refreshAuthorizedSession: {
+                refreshCallCount += 1
+                authorizedUserId = "user-2"
+            }
+        )
+
+        viewModel.applySettingsResponse(stale)
+        await viewModel.saveUserSettings(
+            communicationStyle: "Detailed",
+            workingRelationship: "Direct"
+        )
+
+        XCTAssertEqual(refreshCallCount, 1)
+        XCTAssertEqual(api.getSettingsCallCount, 1)
+        XCTAssertEqual(api.updateSettingsCallCount, 1)
+        XCTAssertEqual(viewModel.settings?.userId, "user-2")
+        XCTAssertEqual(viewModel.settings?.communicationStyle, "Detailed")
+        XCTAssertNil(viewModel.systemSaveError)
+        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 1)
+    }
+
+    func testSaveUserSettingsSurfacesSessionExpiredWithoutReloadingWhenAuthorizedSessionCannotBeRecovered() async {
+        let stale = UserSettings(
+            userId: "user-1",
+            communicationStyle: "Concise",
+            workingRelationship: "Direct",
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let api = SessionScopeSettingsAPI(
+            getSettings: {
+                XCTFail("Settings reload should not run without an authorized session.")
+                return stale
+            },
+            updateSettings: { _ in
+                XCTFail("Settings update should not run without an authorized session.")
+                return stale
+            }
+        )
+        var refreshCallCount = 0
+        let viewModel = SettingsViewModel(
+            settingsAPI: api,
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: TestCacheClient(),
+            currentAuthUserIdProvider: { "user-2" },
+            currentAuthorizedUserIdProvider: { nil },
+            refreshAuthorizedSession: {
+                refreshCallCount += 1
+            }
+        )
+
+        viewModel.applySettingsResponse(stale)
+        await viewModel.saveUserSettings(
+            communicationStyle: "Detailed",
+            workingRelationship: "Direct"
+        )
+
+        XCTAssertEqual(refreshCallCount, 1)
+        XCTAssertEqual(api.getSettingsCallCount, 0)
+        XCTAssertEqual(api.updateSettingsCallCount, 0)
+        XCTAssertEqual(viewModel.systemSaveError, "Session expired. Please sign in again.")
+        XCTAssertEqual(viewModel.settings?.userId, "user-1")
+        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 0)
+    }
+
     func testResetClearsLoadedSettingsState() async {
         let initial = UserSettings(
             userId: "user-1",
@@ -286,5 +417,69 @@ final class SettingsViewModelSessionScopeTests: XCTestCase {
         XCTAssertNil(viewModel.systemSaveError)
         XCTAssertNil(viewModel.skillsError)
         XCTAssertNil(viewModel.primaryProviderError)
+    }
+}
+
+@MainActor
+private final class SessionScopeSettingsAPI: SettingsProviding {
+    private let getSettingsHandler: () throws -> UserSettings
+    private let updateSettingsHandler: (SettingsUpdate) throws -> UserSettings
+
+    private(set) var getSettingsCallCount: Int = 0
+    private(set) var updateSettingsCallCount: Int = 0
+
+    init(
+        getSettings: @escaping () throws -> UserSettings,
+        updateSettings: @escaping (SettingsUpdate) throws -> UserSettings
+    ) {
+        self.getSettingsHandler = getSettings
+        self.updateSettingsHandler = updateSettings
+    }
+
+    func getSettings() async throws -> UserSettings {
+        getSettingsCallCount += 1
+        return try getSettingsHandler()
+    }
+
+    func getShortcutsToken() async throws -> ShortcutsTokenResponse {
+        throw SettingsViewModelMockError.forced
+    }
+
+    func rotateShortcutsToken() async throws -> ShortcutsTokenResponse {
+        throw SettingsViewModelMockError.forced
+    }
+
+    func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
+        updateSettingsCallCount += 1
+        return try updateSettingsHandler(update)
+    }
+
+    func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        throw SettingsViewModelMockError.forced
+    }
+
+    func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        _ = apiKey
+        throw SettingsViewModelMockError.forced
+    }
+
+    func deleteProviderKey(provider: String?) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        throw SettingsViewModelMockError.forced
+    }
+
+    func getProfileImage() async throws -> Data {
+        throw SettingsViewModelMockError.forced
+    }
+
+    func uploadProfileImage(data: Data, contentType: String, filename: String) async throws {
+        _ = data
+        _ = contentType
+        _ = filename
+    }
+
+    func deleteProfileImage() async throws {
     }
 }

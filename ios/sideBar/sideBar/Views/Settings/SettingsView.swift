@@ -139,21 +139,23 @@ public struct SettingsView: View {
             || viewModel.isSavingPrimaryProvider
     }
 
-    private var currentSaveError: String? {
+    private var currentSavePillError: String? {
         let viewModel = environment.settingsViewModel
-        return viewModel.profileSaveError
-            ?? viewModel.systemSaveError
-            ?? viewModel.skillsError
-            ?? viewModel.primaryProviderError
+        return SettingsSaveErrorPresentation.pillError(
+            profileSaveError: viewModel.profileSaveError,
+            systemSaveError: viewModel.systemSaveError,
+            skillsError: viewModel.skillsError,
+            primaryProviderError: viewModel.primaryProviderError
+        )
     }
 
     private var saveStatusSignature: String {
-        "\(isSavingAnySettings)|\(currentSaveError ?? "")|\(environment.settingsViewModel.settingsSaveCompletionCount)"
+        "\(isSavingAnySettings)|\(currentSavePillError ?? "")|\(environment.settingsViewModel.settingsSaveCompletionCount)"
     }
 
     private func updateSavePillState() {
         let isSaving = isSavingAnySettings
-        let saveError = currentSaveError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let saveError = currentSavePillError?.trimmingCharacters(in: .whitespacesAndNewlines)
         let completionCount = environment.settingsViewModel.settingsSaveCompletionCount
         let didCompleteSaveSinceLastObservation = completionCount != lastObservedSaveCompletionCount
         defer { wasSaving = isSaving }
@@ -192,7 +194,7 @@ public struct SettingsView: View {
         savingDelayTask = Task {
             try? await Task.sleep(nanoseconds: 350_000_000)
             guard !Task.isCancelled else { return }
-            guard isSavingAnySettings, currentSaveError == nil else { return }
+            guard isSavingAnySettings, currentSavePillError == nil else { return }
             await MainActor.run {
                 withAnimation {
                     savePillState = .saving
@@ -293,6 +295,33 @@ struct SettingsSaveStatusLogic {
             return .init(immediateState: .saved)
         }
         return .init(immediateState: nil)
+    }
+}
+
+enum SettingsSaveErrorPresentation {
+    static func pillError(
+        profileSaveError: String?,
+        systemSaveError: String?,
+        skillsError: String?,
+        primaryProviderError: String?
+    ) -> String? {
+        let profileError = profileSaveError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let profileError, !profileError.isEmpty {
+            return profileError
+        }
+        let systemError = systemSaveError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let systemError, !systemError.isEmpty {
+            return systemError
+        }
+        let skillError = skillsError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let skillError, !skillError.isEmpty {
+            return skillError
+        }
+        let providerError = primaryProviderError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let providerError, !providerError.isEmpty {
+            return providerError
+        }
+        return nil
     }
 }
 

@@ -62,10 +62,6 @@ extension UserSettingsView {
                         )
                         .scrollContentBackground(.hidden)
                 }
-
-                if let saveError = viewModel.systemSaveError, !saveError.isEmpty {
-                    SettingsMacStatusBanner(message: saveError, tone: .error)
-                }
             }
             .padding(DesignTokens.Spacing.lg)
         }
@@ -156,10 +152,6 @@ extension AgentSettingsView {
                                     }
                                 }
                         }
-                    }
-
-                    if let providerError = viewModel.primaryProviderError, !providerError.isEmpty {
-                        SettingsMacStatusBanner(message: providerError, tone: .error)
                     }
                 }
 

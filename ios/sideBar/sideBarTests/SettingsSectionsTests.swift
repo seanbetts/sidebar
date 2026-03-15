@@ -493,6 +493,39 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertEqual(timeline.immediateState, .error)
     }
 
+    func testSettingsSaveErrorPresentationReturnsProfileErrorForPill() {
+        let pillError = SettingsSaveErrorPresentation.pillError(
+            profileSaveError: "Session expired. Please sign in again.",
+            systemSaveError: nil,
+            skillsError: nil,
+            primaryProviderError: nil
+        )
+
+        XCTAssertEqual(pillError, "Session expired. Please sign in again.")
+    }
+
+    func testSettingsSaveErrorPresentationReturnsSystemErrorForPill() {
+        let pillError = SettingsSaveErrorPresentation.pillError(
+            profileSaveError: nil,
+            systemSaveError: "Couldn't refresh the current account settings. Reopen settings and try again.",
+            skillsError: nil,
+            primaryProviderError: nil
+        )
+
+        XCTAssertEqual(pillError, "Couldn't refresh the current account settings. Reopen settings and try again.")
+    }
+
+    func testSettingsSaveErrorPresentationReturnsNonInlineSkillError() {
+        let pillError = SettingsSaveErrorPresentation.pillError(
+            profileSaveError: nil,
+            systemSaveError: nil,
+            skillsError: "Couldn't update skills.",
+            primaryProviderError: nil
+        )
+
+        XCTAssertEqual(pillError, "Couldn't update skills.")
+    }
+
     func testPickerOptionsReturnsBaseOptionsWhenCurrentValueIsEmpty() {
         let baseOptions = ["he/him", "she/her"]
 

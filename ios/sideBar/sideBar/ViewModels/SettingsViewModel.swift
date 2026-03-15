@@ -31,17 +31,23 @@ public final class SettingsViewModel: LoadableViewModel {
     let skillsAPI: any SkillsProviding
     let cache: CacheClient
     let currentAuthUserIdProvider: () -> String?
+    let currentAuthorizedUserIdProvider: (() -> String?)?
+    let refreshAuthorizedSession: (() async -> Void)?
 
     public init(
         settingsAPI: any SettingsProviding,
         skillsAPI: any SkillsProviding,
         cache: CacheClient,
-        currentAuthUserIdProvider: @escaping () -> String? = { nil }
+        currentAuthUserIdProvider: @escaping () -> String? = { nil },
+        currentAuthorizedUserIdProvider: (() -> String?)? = nil,
+        refreshAuthorizedSession: (() async -> Void)? = nil
     ) {
         self.settingsAPI = settingsAPI
         self.skillsAPI = skillsAPI
         self.cache = cache
         self.currentAuthUserIdProvider = currentAuthUserIdProvider
+        self.currentAuthorizedUserIdProvider = currentAuthorizedUserIdProvider
+        self.refreshAuthorizedSession = refreshAuthorizedSession
         super.init()
     }
 
@@ -378,14 +384,6 @@ public final class SettingsViewModel: LoadableViewModel {
         isSavingSkills = false
     }
 
-    func setPrimaryProviderSaving(_ isSaving: Bool) {
-        isSavingPrimaryProvider = isSaving
-    }
-
-    func setPrimaryProviderError(_ error: String?) {
-        primaryProviderError = error
-    }
-
     func reset() {
         setLoading(false)
         clearError()
@@ -422,8 +420,6 @@ public final class SettingsViewModel: LoadableViewModel {
             ttlSeconds: CachePolicy.userSettings
         )
     }
-
-    func recordCompletedSettingsSave() { settingsSaveCompletionCount += 1 }
 
     private func invalidateAndRefreshSkillsState() async {
         cache.remove(key: userSettingsCacheKey)

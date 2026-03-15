@@ -28,7 +28,14 @@ extension AppEnvironment {
                 settingsAPI: container.settingsAPI,
                 skillsAPI: container.skillsAPI,
                 cache: container.cacheClient,
-                currentAuthUserIdProvider: { container.authSession.userId }
+                currentAuthUserIdProvider: { container.authSession.userId },
+                currentAuthorizedUserIdProvider: {
+                    guard container.authSession.authorizationToken != nil else { return nil }
+                    return container.authSession.userId
+                },
+                refreshAuthorizedSession: {
+                    await container.authSession.refreshSession()
+                }
             )
         }
 

@@ -59,10 +59,6 @@ struct SkillsSettingsView: View {
                     )
                 }
 
-                if let error = viewModel.skillsError {
-                    SettingsMacStatusBanner(message: error, tone: .error)
-                }
-
                 if groupedSkills.isEmpty && !viewModel.isLoadingSkills {
                     SettingsMacStatusBanner(message: "No skills available.", tone: .info)
                 } else {
@@ -141,14 +137,6 @@ struct SkillsSettingsView: View {
                     || viewModel.settings == nil
                     || !hasToggleableSkills
                 )
-            }
-
-            if let error = viewModel.skillsError {
-                Section {
-                    Text(error)
-                        .appFont(.caption)
-                        .foregroundStyle(DesignTokens.Colors.error)
-                }
             }
 
             if groupedSkills.isEmpty && !viewModel.isLoadingSkills {
