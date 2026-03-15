@@ -202,7 +202,7 @@ def test_validate_note_document_normalizes_legacy_task_list_alias() -> None:
     assert validated["blocks"][1]["checked"] is False
 
 
-def test_validate_note_document_rejects_non_title_block_zero_when_not_legacy_paragraph() -> None:
+def test_validate_note_document_normalizes_heading_block_zero_to_title() -> None:
     document = {
         "version": NOTE_DOCUMENT_VERSION,
         "blocks": [
@@ -213,5 +213,6 @@ def test_validate_note_document_rejects_non_title_block_zero_when_not_legacy_par
         ],
     }
 
-    with pytest.raises(BadRequestError, match="block 0 must be a title"):
-        validate_note_document(document)
+    validated = validate_note_document(document)
+
+    assert validated["blocks"][0]["type"] == "title"

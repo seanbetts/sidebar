@@ -53,7 +53,7 @@ def test_derive_title_falls_back_to_new_note() -> None:
     assert derive_note_title("") == DEFAULT_NOTE_TITLE
 
 
-def test_derive_title_rejects_non_title_block_zero_when_not_legacy_paragraph() -> None:
+def test_derive_title_normalizes_heading_block_zero_to_title() -> None:
     document = {
         "version": NOTE_DOCUMENT_VERSION,
         "blocks": [
@@ -61,8 +61,7 @@ def test_derive_title_rejects_non_title_block_zero_when_not_legacy_paragraph() -
         ],
     }
 
-    with pytest.raises(BadRequestError, match="block 0 must be a title"):
-        derive_note_title_from_document(document)
+    assert derive_note_title_from_document(document) == "Heading"
 
 
 def test_project_plain_text_rejects_unsupported_block_types_cleanly() -> None:
