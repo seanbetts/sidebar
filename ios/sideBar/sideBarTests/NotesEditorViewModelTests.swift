@@ -1270,6 +1270,47 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(context.viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Server body")
     }
 
+    func testNativeEditorSelectionForwardingPublishesAfterSelectionStateUpdates() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+        context.viewModel.attachNativeEditor(nativeViewModel)
+        await Task.yield()
+
+        let expectation = expectation(description: "editor objectWillChange")
+        var observedSelectionOffsets: [Int] = []
+        let cancellable = context.viewModel.objectWillChange.sink {
+            observedSelectionOffsets.append(
+                nativeViewModel.selectionStartCharacterOffset(in: nativeViewModel.attributedContent)
+            )
+            expectation.fulfill()
+        }
+
+        let target = nativeViewModel.index(forCharacterOffset: 5, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: target..<target)
+
+        await fulfillment(of: [expectation], timeout: 1.0)
+
+        XCTAssertEqual(observedSelectionOffsets, [5])
+        _ = cancellable
+    }
+
     func testNotesRuntimeOpenNoteContextUsesProjectedPlainText() async throws {
         let context = makeNotesEditorViewModelTestContext(
             api: MockNotesAPI(updateResult: .failure(MockError.forced))

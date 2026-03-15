@@ -2,7 +2,6 @@ import Foundation
 import Combine
 import OSLog
 import SwiftUI
-
 // MARK: - NotesEditorViewModel
 
 @MainActor
@@ -20,7 +19,6 @@ public final class NotesEditorViewModel: ObservableObject {
         /// UTF-16 text-system offset produced by the read surface hit-testing APIs.
         case characterOffset(Int)
     }
-
     @Published public private(set) var content: String = ""
     @Published public private(set) var canonicalContent: String = ""
     @Published public private(set) var currentNoteId: String?
@@ -453,8 +451,15 @@ extension NotesEditorViewModel {
     @available(iOS 26.0, macOS 26.0, *)
     private func observeNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
         resetNativeEditorObservation()
-        nativeEditorObservation = nativeViewModel.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
+        nativeEditorObservation = nativeViewModel.objectWillChange.sink { [weak self, weak nativeViewModel] _ in
+            DispatchQueue.main.async {
+                guard
+                    let self,
+                    let nativeViewModel,
+                    self.nativeEditorViewModel === nativeViewModel
+                else { return }
+                self.objectWillChange.send()
+            }
         }
     }
 
@@ -463,7 +468,6 @@ extension NotesEditorViewModel {
         nativeEditorObservation?.cancel()
         nativeEditorObservation = nil
     }
-
     public func setDirty(_ dirty: Bool) {
         guard isDirty != dirty else { return }
         DispatchQueue.main.async { [weak self] in
