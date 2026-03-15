@@ -21,51 +21,42 @@ struct SkillsSettingsView: View {
     private var macSkillsForm: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                SettingsMacPanelCard {
-                    SettingsMacSectionIntro(
-                        title: "Skill Type",
-                        message: "Use this selector to switch between the built-in, store,"
-                            + " and required skill collections."
-                    )
-                    SettingsMacFieldRow("Skill Type") {
-                        Picker("Skill Type", selection: $selectedTier) {
-                            ForEach(SkillsTierFilter.allCases) { tier in
-                                Text(tier.title).tag(tier)
-                            }
-                        }
-                        .labelsHidden()
-                        .appFont(.body)
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 320)
+                Picker("Skill Type", selection: $selectedTier) {
+                    ForEach(SkillsTierFilter.allCases) { tier in
+                        Text(tier.title).tag(tier)
                     }
                 }
+                .labelsHidden()
+                .appFont(.body)
+                .pickerStyle(.segmented)
+                .frame(maxWidth: .infinity)
 
-                SettingsMacPanelCard {
-                    SettingsMacSectionIntro(
-                        title: "Skills",
-                        message: "Choose which built-in and installed skills sideBar can use,"
-                            + " grouped by the role they play in the assistant."
-                    )
-                    SettingsMacFieldRow("Bulk actions") {
-                        Toggle("Enable all", isOn: Binding(
-                            get: { allSkillsEnabled },
-                            set: { isEnabled in
-                                Task {
-                                    await viewModel.setAllSkillsEnabled(
-                                        isEnabled,
-                                        scopeSkillIds: enableAllScopeSkillIds
-                                    )
-                                }
+                HStack(spacing: DesignTokens.Spacing.md) {
+                    Text("Enable all")
+                        .appFont(.body)
+                        .foregroundStyle(DesignTokens.Colors.textPrimary)
+
+                    Spacer(minLength: DesignTokens.Spacing.md)
+
+                    Toggle("Enable all", isOn: Binding(
+                        get: { allSkillsEnabled },
+                        set: { isEnabled in
+                            Task {
+                                await viewModel.setAllSkillsEnabled(
+                                    isEnabled,
+                                    scopeSkillIds: enableAllScopeSkillIds
+                                )
                             }
-                        ))
-                        .toggleStyle(.switch)
-                        .disabled(
-                            viewModel.isSavingSkills
-                            || viewModel.isLoadingSkills
-                            || viewModel.settings == nil
-                            || !hasToggleableSkills
-                        )
-                    }
+                        }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .disabled(
+                        viewModel.isSavingSkills
+                        || viewModel.isLoadingSkills
+                        || viewModel.settings == nil
+                        || !hasToggleableSkills
+                    )
                 }
 
                 if let error = viewModel.skillsError {

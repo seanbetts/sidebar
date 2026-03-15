@@ -278,25 +278,29 @@ extension ProfileSettingsView {
 
         static func from(settings: UserSettings) -> ProfileDraftState {
             .init(
-                name: settings.name ?? "",
-                jobTitle: settings.jobTitle ?? "",
-                employer: settings.employer ?? "",
+                name: normalizedTextFieldValue(settings.name),
+                jobTitle: normalizedTextFieldValue(settings.jobTitle),
+                employer: normalizedTextFieldValue(settings.employer),
                 gender: normalizedPickerSelection(currentValue: settings.gender, base: genderOptions),
                 pronouns: normalizedPickerSelection(currentValue: settings.pronouns, base: pronounOptions),
-                location: settings.location ?? "",
+                location: normalizedTextFieldValue(settings.location),
                 dateOfBirth: settings.dateOfBirth
             )
         }
 
         func isDirty(comparedTo settings: UserSettings) -> Bool {
-            if name != (settings.name ?? "") { return true }
-            if jobTitle != (settings.jobTitle ?? "") { return true }
-            if employer != (settings.employer ?? "") { return true }
+            if name != Self.normalizedTextFieldValue(settings.name) { return true }
+            if jobTitle != Self.normalizedTextFieldValue(settings.jobTitle) { return true }
+            if employer != Self.normalizedTextFieldValue(settings.employer) { return true }
             if !ProfileSettingsView.pickerValuesEquivalent(gender, settings.gender) { return true }
             if !ProfileSettingsView.pickerValuesEquivalent(pronouns, settings.pronouns) { return true }
-            if location != (settings.location ?? "") { return true }
+            if location != Self.normalizedTextFieldValue(settings.location) { return true }
             if dateOfBirth != settings.dateOfBirth { return true }
             return false
+        }
+
+        private static func normalizedTextFieldValue(_ value: String?) -> String {
+            value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         }
     }
 

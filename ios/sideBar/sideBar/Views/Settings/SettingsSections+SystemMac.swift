@@ -35,12 +35,13 @@ extension UserSettingsView {
                         .padding(DesignTokens.Spacing.sm)
                         .background(
                             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                                .fill(DesignTokens.Colors.background)
+                                .fill(.clear)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
                         )
+                        .scrollContentBackground(.hidden)
                 }
 
                 SettingsMacPanelCard {
@@ -53,12 +54,13 @@ extension UserSettingsView {
                         .padding(DesignTokens.Spacing.sm)
                         .background(
                             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                                .fill(DesignTokens.Colors.background)
+                                .fill(.clear)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
                         )
+                        .scrollContentBackground(.hidden)
                 }
 
                 if let saveError = viewModel.systemSaveError, !saveError.isEmpty {
