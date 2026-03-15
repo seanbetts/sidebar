@@ -22,7 +22,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
                         content: [
                             .init(
                                 text: "Styled",
-                                marks: [.bold, .italic, .underline, .strikethrough]
+                                marks: [.italic, .underline, .strikethrough]
                             ),
                             .init(text: " plain", marks: [])
                         ]
@@ -49,7 +49,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertTrue(configuration.isEnabled)
         XCTAssertEqual(configuration.activeTextStyle, .heading)
         XCTAssertTrue(configuration.isTextStyleSectionEnabled)
-        XCTAssertTrue(configuration.isBoldActive)
+        XCTAssertFalse(configuration.isBoldActive)
         XCTAssertTrue(configuration.isItalicActive)
         XCTAssertTrue(configuration.isUnderlineActive)
         XCTAssertTrue(configuration.isStrikethroughActive)

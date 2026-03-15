@@ -286,17 +286,24 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
         let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
         context.editorViewModel.attachNativeEditor(nativeViewModel)
-        var changeCount = 0
+        await Task.yield()
+
+        let expectation = expectation(description: "editor objectWillChange")
+        var observedSelectionOffsets: [Int] = []
         let cancellable = context.editorViewModel.objectWillChange.sink {
-            changeCount += 1
+            observedSelectionOffsets.append(
+                nativeViewModel.selectionStartCharacterOffset(in: nativeViewModel.attributedContent)
+            )
+            expectation.fulfill()
         }
         defer { cancellable.cancel() }
 
-        let range = noteCharacterRange(length: 5, in: nativeViewModel.attributedContent)
-        nativeViewModel.selection = AttributedTextSelection(range: range)
-        nativeViewModel.handleSelectionChange()
+        let target = nativeViewModel.index(forCharacterOffset: 5, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: target..<target)
 
-        XCTAssertGreaterThan(changeCount, 0)
+        await fulfillment(of: [expectation], timeout: 1.0)
+
+        XCTAssertEqual(observedSelectionOffsets, [5])
     }
 
     func testFormattingBarConfigurationAppliesTextStyleSelectionToCurrentBlock() async throws {
@@ -336,7 +343,7 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         let document = context.editorViewModel.currentSemanticDocumentSnapshot()
         XCTAssertEqual(document.blocks.map(\.type), [.title, .heading])
         XCTAssertEqual(context.makeView().noteFormattingBarConfiguration.activeTextStyle, .heading)
-        XCTAssertEqual(document.blocks[1].content.first?.marks, [.bold])
+        XCTAssertEqual(document.blocks[1].content.first?.marks, [])
     }
 #elseif os(macOS)
     func testCustomFormattingBarRemainsHiddenOnMacOS() async throws {

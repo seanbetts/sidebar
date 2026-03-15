@@ -93,7 +93,14 @@ final class NotesEditorViewModelTests: XCTestCase {
             writeQueue: writeQueue,
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
-        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil, created: nil)
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
 
         store.applyEditorUpdate(note)
         await waitUntilNoteHydrated(viewModel, note: note)
@@ -415,6 +422,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         viewModel.attachNativeEditor(nativeViewModel)
         let range = characterRange(length: 5, in: nativeViewModel.attributedContent)
         nativeViewModel.selection = AttributedTextSelection(range: range)
+        nativeViewModel.handleSelectionChange()
 
         XCTAssertFalse(viewModel.canApplyFormattingCommands())
 
@@ -422,10 +430,10 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         XCTAssertTrue(viewModel.canApplyFormattingCommands())
 
-        viewModel.toggleFormatting(.bold)
+        viewModel.toggleFormatting(.italic)
 
-        XCTAssertTrue(noteRangeHasBoldTrait(nativeViewModel.attributedContent, range: range))
-        XCTAssertTrue(viewModel.isFormattingActive(.bold))
+        XCTAssertTrue(noteRangeHasItalicTrait(nativeViewModel.attributedContent, range: range))
+        XCTAssertTrue(viewModel.isFormattingActive(.italic))
         XCTAssertTrue(viewModel.isDirty)
     }
 

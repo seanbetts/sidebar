@@ -189,7 +189,7 @@ extension NativeNoteEditorViewModel {
         }
     }
 
-    func replacementMutation(
+    private func replacementMutation(
         in document: NotesSemanticDocument,
         selectionRange: Range<Int>,
         replacementText: String
@@ -230,7 +230,7 @@ extension NativeNoteEditorViewModel {
         }
     }
 
-    func splitTextStyleBlock(
+    private func splitTextStyleBlock(
         in document: NotesSemanticDocument,
         blockInfo: DocumentBlockInfo,
         selectionOffset: Int
@@ -254,7 +254,7 @@ extension NativeNoteEditorViewModel {
         )
     }
 
-    func mutateCodeBlockReturn(
+    private func mutateCodeBlockReturn(
         in document: NotesSemanticDocument,
         blockInfo: DocumentBlockInfo,
         selectionOffset: Int,
@@ -288,7 +288,7 @@ extension NativeNoteEditorViewModel {
         )
     }
 
-    func replaceTextAcrossTextStyleBlocks(
+    private func replaceTextAcrossTextStyleBlocks(
         in document: NotesSemanticDocument,
         startBlockInfo: DocumentBlockInfo,
         endBlockInfo: DocumentBlockInfo,
@@ -365,7 +365,7 @@ extension NativeNoteEditorViewModel {
         )
     }
 
-    func replaceTextInsideCodeBlock(
+    private func replaceTextInsideCodeBlock(
         in document: NotesSemanticDocument,
         blockInfo: DocumentBlockInfo,
         selectionRange: Range<Int>,
