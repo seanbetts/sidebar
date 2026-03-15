@@ -136,14 +136,11 @@ private extension UIKitNoteFormattingBar {
     }
 
     static func buttonConfiguration() -> UIButton.Configuration {
-        var configuration: UIButton.Configuration = .clearGlass()
+        var configuration: UIButton.Configuration = .plain()
         configuration.buttonSize = .mini
-        configuration.cornerStyle = .capsule
         configuration.image = UIImage(systemName: "textformat")
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 6, bottom: 4, trailing: 6)
-        var background = configuration.background
-        background.backgroundInsets = NSDirectionalEdgeInsets(top: 4, leading: 3, bottom: 4, trailing: 3)
-        configuration.background = background
+        configuration.background = .clear()
         configuration.baseForegroundColor = .label
         return configuration
     }

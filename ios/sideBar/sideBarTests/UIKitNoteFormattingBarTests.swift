@@ -182,22 +182,27 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(configuration.contentInsets.trailing, 6)
     }
 
-    func testFormattingMenuButtonInsetGlassBackgroundInsideHitTarget() throws {
+    func testFormattingMenuButtonDoesNotDrawNestedBackgroundInsideContainer() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
 
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
         let configuration = try XCTUnwrap(bar.menuButton.configuration)
-        let backgroundInsets = configuration.background.backgroundInsets
+        let background = configuration.background
 
-        XCTAssertEqual(backgroundInsets.top, 4)
-        XCTAssertEqual(backgroundInsets.bottom, 4)
-        XCTAssertEqual(backgroundInsets.leading, 3)
-        XCTAssertEqual(backgroundInsets.trailing, 3)
+        XCTAssertNil(background.visualEffect)
+        XCTAssertEqual(background.strokeWidth, 0)
+        if let strokeColor = background.strokeColor {
+            XCTAssertEqual(strokeColor.cgColor.alpha, 0, accuracy: CGFloat(0.001))
+        }
+        XCTAssertEqual(background.backgroundInsets.top, 0)
+        XCTAssertEqual(background.backgroundInsets.bottom, 0)
+        XCTAssertEqual(background.backgroundInsets.leading, 0)
+        XCTAssertEqual(background.backgroundInsets.trailing, 0)
     }
 
-    func testBarAppliesGlassTreatmentAndEnabledStateToMenuButton() throws {
+    func testBarUsesOnlyOuterGlassTreatmentAndLeavesMenuButtonPlain() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
@@ -225,10 +230,12 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
             )
         )
         let effectView = try XCTUnwrap(findGlassEffectView(in: bar))
+        let buttonConfiguration = try XCTUnwrap(bar.menuButton.configuration)
 
         XCTAssertTrue(effectView.effect is UIGlassEffect)
         XCTAssertTrue(bar.menuButton.isEnabled)
-        XCTAssertEqual(bar.menuButton.configuration?.cornerStyle, .capsule)
+        XCTAssertNil(buttonConfiguration.background.visualEffect)
+        XCTAssertEqual(buttonConfiguration.background.strokeWidth, 0)
     }
 }
 
