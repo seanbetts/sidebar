@@ -67,16 +67,21 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
 
         XCTAssertEqual(bar.accessibilityIdentifier, "note-formatting-bar")
         XCTAssertEqual(bar.menuButton.accessibilityIdentifier, "note-formatting-menu")
-        XCTAssertTrue(bar.menuButton.showsMenuAsPrimaryAction)
+        XCTAssertFalse(bar.menuButton.showsMenuAsPrimaryAction)
+        XCTAssertNil(bar.menuButton.menu)
         XCTAssertEqual(bar.menuButton.configuration?.image, UIImage(systemName: "textformat"))
     }
 
-    func testMenuContainsTextStyleAndInlineSections() throws {
+    func testNoteTextStyleUsesShortSubheadLabel() {
+        XCTAssertEqual(NoteTextStyle.subheading.displayName, "Subhead")
+    }
+
+    func testPopoverContainsTextStyleStripAndGroupedActionRows() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
 
-        let bar = UIKitNoteFormattingBar(
+        let popoverView = UIKitNoteFormattingPopoverView(
             configuration: .init(
                 activeTextStyle: .body,
                 isTextStyleSectionEnabled: true,
@@ -98,20 +103,24 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
                 onInlineCodeTap: {}
             )
         )
+        popoverView.frame = CGRect(x: 0, y: 0, width: 360, height: 220)
+        popoverView.setNeedsLayout()
+        popoverView.layoutIfNeeded()
 
-        let menu = try XCTUnwrap(bar.menuButton.menu)
-        XCTAssertEqual(menu.children.compactMap(\.title), ["Text Style", "Inline"])
-
-        let textStyleMenu = try XCTUnwrap(menu.children.first as? UIMenu)
-        XCTAssertEqual(
-            textStyleMenu.children.compactMap(\.title),
-            ["Body", "Title", "Heading", "Subheading"]
+        XCTAssertNotNil(
+            findDescendantView(in: popoverView, accessibilityIdentifier: "note-formatting-popover")
         )
-
-        let inlineMenu = try XCTUnwrap(menu.children.last as? UIMenu)
-        XCTAssertEqual(
-            inlineMenu.children.compactMap(\.title),
-            ["Bold", "Italic", "Underline", "Strikethrough", "Inline Code"]
+        XCTAssertNotNil(
+            findDescendantView(in: popoverView, accessibilityIdentifier: "note-formatting-text-style-strip")
+        )
+        XCTAssertNotNil(
+            findDescendantView(in: popoverView, accessibilityIdentifier: "note-formatting-inline-group")
+        )
+        XCTAssertNotNil(
+            findDescendantView(in: popoverView, accessibilityIdentifier: "note-formatting-inline-code-group")
+        )
+        XCTAssertNotNil(
+            findDescendantView(in: popoverView, accessibilityIdentifier: "note-formatting-link-group")
         )
     }
 
@@ -258,6 +267,20 @@ private extension UIKitNoteFormattingBarTests {
 
         for subview in view.subviews {
             if let match = findGlassEffectView(in: subview) {
+                return match
+            }
+        }
+
+        return nil
+    }
+
+    func findDescendantView(in view: UIView, accessibilityIdentifier: String) -> UIView? {
+        if view.accessibilityIdentifier == accessibilityIdentifier {
+            return view
+        }
+
+        for subview in view.subviews {
+            if let match = findDescendantView(in: subview, accessibilityIdentifier: accessibilityIdentifier) {
                 return match
             }
         }

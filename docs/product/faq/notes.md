@@ -38,11 +38,10 @@ where you left off.
 
 ## Can I use rich text formatting in notes?
 
-Yes. Notes support rich text formatting through the formatting menu in the
-editor. You can apply text styles such as Body, Title, Heading, and
-Subheading, along with inline formatting such as bold, italic, underline,
-strikethrough, inline code, links, and code blocks. See
-[Notes](/manual/notes) for the full breakdown.
+Yes. Notes support rich text formatting through the `textformat` popover in the
+editor. You can apply text styles such as Body, Title, Heading, and Subhead,
+along with inline formatting such as bold, italic, underline, strikethrough,
+and inline code. See [Notes](/manual/notes) for the full breakdown.
 
 ## What is the Scratchpad?
 

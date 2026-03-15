@@ -64,13 +64,20 @@ func notePlatformFont(
     italic: Bool,
     inlineCode: Bool = false
 ) -> NotePlatformFont {
-    let size = noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType)
-    return notePlatformFontApplyingTraits(
-        notePlatformSystemFont(
-            size: size,
-            weight: bold ? .bold : .regular,
+    let baseFont = NoteTextStyleTypography.platformFont(for: blockType, baseFontSize: baseFontSize)
+        ?? notePlatformSystemFont(
+            size: noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType),
+            weight: .regular,
             monospaced: noteUsesMonospacedDesign(blockType: blockType, inlineCode: inlineCode)
-        ),
+        )
+    return notePlatformFontApplyingTraits(
+        noteUsesMonospacedDesign(blockType: blockType, inlineCode: inlineCode)
+            ? notePlatformSystemFont(
+                size: baseFont.pointSize,
+                weight: baseFontTraitsWeight(for: baseFont),
+                monospaced: true
+            )
+            : baseFont,
         bold: bold,
         italic: italic
     )
@@ -98,16 +105,8 @@ func noteBlockPointSize(
     baseFontSize: CGFloat,
     blockType: NotesSemanticDocument.BlockType
 ) -> CGFloat {
-    switch blockType {
-    case .title:
-        return baseFontSize * 1.2
-    case .heading:
-        return baseFontSize * 1.15
-    case .subheading:
-        return baseFontSize * 1.08
-    default:
-        return baseFontSize
-    }
+    guard let style = NoteTextStyle(blockType: blockType) else { return baseFontSize }
+    return NoteTextStyleTypography.pointSize(for: style, baseFontSize: baseFontSize)
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -176,6 +175,19 @@ private func notePlatformFontApplyingTraits(
         result = manager.convert(result, toHaveTrait: .italicFontMask)
     }
     return result
+#endif
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func baseFontTraitsWeight(for font: NotePlatformFont) -> NotePlatformFont.Weight {
+#if os(iOS)
+    if font.fontDescriptor.symbolicTraits.contains(.traitBold) {
+        return .bold
+    }
+    return .regular
+#else
+    let traits = NSFontManager.shared.traits(of: font)
+    return traits.contains(.boldFontMask) ? .bold : .regular
 #endif
 }
 

@@ -17,7 +17,7 @@ public enum NoteTextStyle: String, CaseIterable, Equatable {
         case .heading:
             return "Heading"
         case .subheading:
-            return "Subheading"
+            return "Subhead"
         }
     }
 

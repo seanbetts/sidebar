@@ -9,10 +9,12 @@ final class UIKitNoteFormattingBar: UIView {
     private let stackView = UIStackView()
     let menuButton: UIButton
     private var currentConfiguration: NoteFormattingBarConfiguration
+    private var popoverView: UIKitNoteFormattingPopoverView?
     private static let barHeight: CGFloat = 48
     private static let minimumButtonTouchTarget: CGFloat = 44
     private static let horizontalPadding: CGFloat = 8
     private static let verticalPadding: CGFloat = 0
+    private static let popoverSpacing: CGFloat = 10
 
     override init(frame: CGRect) {
         self.menuButton = Self.makeMenuButton()
@@ -35,8 +37,11 @@ final class UIKitNoteFormattingBar: UIView {
     func apply(configuration: NoteFormattingBarConfiguration) {
         currentConfiguration = configuration
         menuButton.isEnabled = configuration.isEnabled
-        menuButton.menu = Self.makeMenu(configuration: configuration)
         menuButton.configuration = Self.buttonConfiguration()
+        popoverView?.apply(configuration: configuration)
+        if !configuration.isEnabled {
+            dismissPopover()
+        }
     }
 
     override var intrinsicContentSize: CGSize {
@@ -131,7 +136,7 @@ private extension UIKitNoteFormattingBar {
         button.configuration = buttonConfiguration()
         button.accessibilityLabel = "Formatting"
         button.accessibilityIdentifier = "note-formatting-menu"
-        button.showsMenuAsPrimaryAction = true
+        button.showsMenuAsPrimaryAction = false
         return button
     }
 
@@ -145,45 +150,46 @@ private extension UIKitNoteFormattingBar {
         return configuration
     }
 
-    static func makeMenu(configuration: NoteFormattingBarConfiguration) -> UIMenu {
-        let textStyleMenu = UIMenu(
-            title: "Text Style",
-            children: NoteTextStyle.allCases.map { style in
-                UIAction(
-                    title: style.displayName,
-                    attributes: configuration.canApplyTextStyle(style) ? [] : [.disabled],
-                    state: configuration.activeTextStyle == style ? .on : .off
-                ) { _ in
-                    configuration.selectTextStyle(style)
-                }
-            }
-        )
-
-        let inlineMenu = UIMenu(
-            title: "Inline",
-            children: [
-                inlineAction("Bold", formatting: .bold, configuration: configuration),
-                inlineAction("Italic", formatting: .italic, configuration: configuration),
-                inlineAction("Underline", formatting: .underline, configuration: configuration),
-                inlineAction("Strikethrough", formatting: .strikethrough, configuration: configuration),
-                inlineAction("Inline Code", formatting: .inlineCode, configuration: configuration)
-            ]
-        )
-
-        return UIMenu(children: [textStyleMenu, inlineMenu])
+    @objc func handleMenuButtonTap() {
+        if popoverView?.isHidden == false {
+            dismissPopover()
+        } else {
+            presentPopover()
+        }
     }
 
-    static func inlineAction(
-        _ title: String,
-        formatting: NoteFormatting,
-        configuration: NoteFormattingBarConfiguration
-    ) -> UIAction {
-        UIAction(
-            title: title,
-            state: configuration.isActive(formatting) ? .on : .off
-        ) { _ in
-            configuration.tapHandler(for: formatting)()
+    func presentPopover() {
+        let popover = ensurePopoverView()
+        popover.apply(configuration: currentConfiguration)
+        popover.isHidden = false
+        bringSubviewToFront(popover)
+    }
+
+    func dismissPopover() {
+        popoverView?.isHidden = true
+    }
+
+    @discardableResult
+    func ensurePopoverView() -> UIKitNoteFormattingPopoverView {
+        if let popoverView {
+            return popoverView
         }
+
+        let popover = UIKitNoteFormattingPopoverView(configuration: currentConfiguration) { [weak self] in
+            self?.dismissPopover()
+        }
+        popover.translatesAutoresizingMaskIntoConstraints = false
+        popover.isHidden = true
+        addSubview(popover)
+
+        NSLayoutConstraint.activate([
+            popover.bottomAnchor.constraint(equalTo: topAnchor, constant: -Self.popoverSpacing),
+            popover.trailingAnchor.constraint(equalTo: trailingAnchor),
+            popover.widthAnchor.constraint(lessThanOrEqualToConstant: 380)
+        ])
+
+        popoverView = popover
+        return popover
     }
 
     func setUpViewHierarchy() {
@@ -220,6 +226,8 @@ private extension UIKitNoteFormattingBar {
             menuButton.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.minimumButtonTouchTarget),
             menuButton.heightAnchor.constraint(equalToConstant: Self.minimumButtonTouchTarget)
         ])
+
+        menuButton.addTarget(self, action: #selector(handleMenuButtonTap), for: .touchUpInside)
     }
 }
 
@@ -229,6 +237,7 @@ private extension UIKitNoteFormattingAccessoryView {
         backgroundColor = .clear
         autoresizingMask = [.flexibleWidth]
         translatesAutoresizingMaskIntoConstraints = false
+        clipsToBounds = false
 
         formattingBar.translatesAutoresizingMaskIntoConstraints = false
         addSubview(formattingBar)
