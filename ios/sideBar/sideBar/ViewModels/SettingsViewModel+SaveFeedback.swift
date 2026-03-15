@@ -10,15 +10,14 @@ extension SettingsViewModel {
         return String(format: "%04d-%02d-%02d", year, month, day)
     }
 
-    func setPrimaryProviderSaving(_ isSaving: Bool) {
-        isSavingPrimaryProvider = isSaving
-    }
-
-    func setPrimaryProviderError(_ error: String?) {
-        primaryProviderError = error
-    }
-
-    func recordCompletedSettingsSave() {
-        settingsSaveCompletionCount += 1
+    func invalidateAndRefreshSkillsState() async {
+        cache.remove(key: userSettingsCacheKey)
+        removeLegacyCacheKeyIfNeeded(
+            currentKey: userSettingsCacheKey,
+            legacyKey: CacheKeys.userSettings
+        )
+        cache.remove(key: CacheKeys.skillsList)
+        await load(force: true)
+        await loadSkills()
     }
 }

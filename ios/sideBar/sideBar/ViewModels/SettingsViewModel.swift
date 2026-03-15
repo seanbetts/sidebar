@@ -384,6 +384,12 @@ public final class SettingsViewModel: LoadableViewModel {
         isSavingSkills = false
     }
 
+    func setPrimaryProviderSaving(_ isSaving: Bool) { isSavingPrimaryProvider = isSaving }
+
+    func setPrimaryProviderError(_ error: String?) { primaryProviderError = error }
+
+    func recordCompletedSettingsSave() { settingsSaveCompletionCount += 1 }
+
     func reset() {
         setLoading(false)
         clearError()
@@ -419,17 +425,6 @@ public final class SettingsViewModel: LoadableViewModel {
             value: response,
             ttlSeconds: CachePolicy.userSettings
         )
-    }
-
-    private func invalidateAndRefreshSkillsState() async {
-        cache.remove(key: userSettingsCacheKey)
-        removeLegacyCacheKeyIfNeeded(
-            currentKey: userSettingsCacheKey,
-            legacyKey: CacheKeys.userSettings
-        )
-        cache.remove(key: CacheKeys.skillsList)
-        await load(force: true)
-        await loadSkills()
     }
 }
 
