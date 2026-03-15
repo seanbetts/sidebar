@@ -363,7 +363,8 @@ final class SettingsSectionsTests: XCTestCase {
         var timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: false,
             isSaving: true,
-            saveError: nil
+            saveError: nil,
+            didCompleteSaveSinceLastObservation: false
         )
 
         XCTAssertEqual(timeline.immediateState, .saving)
@@ -371,7 +372,8 @@ final class SettingsSectionsTests: XCTestCase {
         timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: true,
             isSaving: false,
-            saveError: nil
+            saveError: nil,
+            didCompleteSaveSinceLastObservation: false
         )
 
         XCTAssertEqual(timeline.immediateState, .saved)
@@ -381,7 +383,8 @@ final class SettingsSectionsTests: XCTestCase {
         let timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: true,
             isSaving: false,
-            saveError: "   "
+            saveError: "   ",
+            didCompleteSaveSinceLastObservation: false
         )
 
         XCTAssertEqual(timeline.immediateState, .saved)
@@ -391,7 +394,8 @@ final class SettingsSectionsTests: XCTestCase {
         let timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: true,
             isSaving: false,
-            saveError: "boom"
+            saveError: "boom",
+            didCompleteSaveSinceLastObservation: false
         )
 
         XCTAssertEqual(timeline.immediateState, .error)
@@ -401,7 +405,8 @@ final class SettingsSectionsTests: XCTestCase {
         let timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: true,
             isSaving: true,
-            saveError: nil
+            saveError: nil,
+            didCompleteSaveSinceLastObservation: false
         )
 
         XCTAssertEqual(timeline.immediateState, .saving)
@@ -411,7 +416,8 @@ final class SettingsSectionsTests: XCTestCase {
         let timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: false,
             isSaving: false,
-            saveError: nil
+            saveError: nil,
+            didCompleteSaveSinceLastObservation: false
         )
 
         XCTAssertNil(timeline.immediateState)
@@ -424,7 +430,8 @@ final class SettingsSectionsTests: XCTestCase {
         let first = SettingsSaveStatusLogic.timeline(
             wasSaving: wasSaving,
             isSaving: true,
-            saveError: nil
+            saveError: nil,
+            didCompleteSaveSinceLastObservation: false
         )
         recordedStates.append(first.immediateState)
         wasSaving = true
@@ -432,7 +439,8 @@ final class SettingsSectionsTests: XCTestCase {
         let second = SettingsSaveStatusLogic.timeline(
             wasSaving: wasSaving,
             isSaving: false,
-            saveError: nil
+            saveError: nil,
+            didCompleteSaveSinceLastObservation: false
         )
         recordedStates.append(second.immediateState)
         wasSaving = false
@@ -440,11 +448,23 @@ final class SettingsSectionsTests: XCTestCase {
         let third = SettingsSaveStatusLogic.timeline(
             wasSaving: wasSaving,
             isSaving: false,
-            saveError: nil
+            saveError: nil,
+            didCompleteSaveSinceLastObservation: false
         )
         recordedStates.append(third.immediateState)
 
         XCTAssertEqual(recordedStates, [.saving, .saved, nil])
+    }
+
+    func testSettingsSaveStatusLogicShowsSavedWhenSaveCompletedTooQuicklyToObserveSaving() {
+        let timeline = SettingsSaveStatusLogic.timeline(
+            wasSaving: false,
+            isSaving: false,
+            saveError: nil,
+            didCompleteSaveSinceLastObservation: true
+        )
+
+        XCTAssertEqual(timeline.immediateState, .saved)
     }
 
     private func waitUntil(
@@ -466,7 +486,8 @@ final class SettingsSectionsTests: XCTestCase {
         let timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: false,
             isSaving: true,
-            saveError: "boom"
+            saveError: "boom",
+            didCompleteSaveSinceLastObservation: false
         )
 
         XCTAssertEqual(timeline.immediateState, .error)

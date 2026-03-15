@@ -305,6 +305,7 @@ final class SettingsViewModelTests: XCTestCase {
         )
 
         XCTAssertEqual(recorder.callCount, 0)
+        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 0)
     }
 
     func testSaveUserSettingsSendsPromptUpdates() async throws {
@@ -371,6 +372,7 @@ final class SettingsViewModelTests: XCTestCase {
         let payload = try encodedPayload(update)
         XCTAssertEqual(payload["communication_style"] as? String, "Detailed")
         XCTAssertFalse(payload.keys.contains("assistant_identity"))
+        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 1)
     }
 
     private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {

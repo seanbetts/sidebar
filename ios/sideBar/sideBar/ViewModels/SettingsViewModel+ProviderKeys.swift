@@ -58,6 +58,7 @@ extension SettingsViewModel {
         )
         let refreshed = try await settingsAPI.getSettings()
         applySettingsResponse(refreshed)
+        recordCompletedSettingsSave()
         return ProviderKeyStatusResponse(
             provider: status.provider ?? normalizedProvider,
             hasKey: status.hasKey,
@@ -70,6 +71,7 @@ extension SettingsViewModel {
         let status = try await settingsAPI.deleteProviderKey(provider: normalizedProvider)
         let refreshed = try await settingsAPI.getSettings()
         applySettingsResponse(refreshed)
+        recordCompletedSettingsSave()
         return ProviderKeyStatusResponse(
             provider: status.provider ?? normalizedProvider,
             hasKey: status.hasKey,
@@ -101,6 +103,7 @@ extension SettingsViewModel {
         )
         let refreshed = try await settingsAPI.getSettings()
         applySettingsResponse(refreshed)
+        recordCompletedSettingsSave()
         return response
     }
 

@@ -18,6 +18,7 @@ public struct SettingsView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @State private var savePillState: SettingsSavePillState?
     @State private var wasSaving = false
+    @State private var lastObservedSaveCompletionCount = 0
     @State private var savingDelayTask: Task<Void, Never>?
     @State private var hideSavedTask: Task<Void, Never>?
     private let presentationStyle: SettingsPresentationStyle
@@ -147,18 +148,22 @@ public struct SettingsView: View {
     }
 
     private var saveStatusSignature: String {
-        "\(isSavingAnySettings)|\(currentSaveError ?? "")"
+        "\(isSavingAnySettings)|\(currentSaveError ?? "")|\(environment.settingsViewModel.settingsSaveCompletionCount)"
     }
 
     private func updateSavePillState() {
         let isSaving = isSavingAnySettings
         let saveError = currentSaveError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let completionCount = environment.settingsViewModel.settingsSaveCompletionCount
+        let didCompleteSaveSinceLastObservation = completionCount != lastObservedSaveCompletionCount
         defer { wasSaving = isSaving }
+        defer { lastObservedSaveCompletionCount = completionCount }
 
         let timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: wasSaving,
             isSaving: isSaving,
-            saveError: saveError
+            saveError: saveError,
+            didCompleteSaveSinceLastObservation: didCompleteSaveSinceLastObservation
         )
 
         switch timeline.immediateState {
@@ -271,7 +276,8 @@ struct SettingsSaveStatusLogic {
     static func timeline(
         wasSaving: Bool,
         isSaving: Bool,
-        saveError: String?
+        saveError: String?,
+        didCompleteSaveSinceLastObservation: Bool
     ) -> Timeline {
         let trimmedError = saveError?.trimmingCharacters(in: .whitespacesAndNewlines)
         if let trimmedError, !trimmedError.isEmpty {
@@ -279,6 +285,9 @@ struct SettingsSaveStatusLogic {
         }
         if isSaving {
             return .init(immediateState: .saving)
+        }
+        if didCompleteSaveSinceLastObservation {
+            return .init(immediateState: .saved)
         }
         if wasSaving {
             return .init(immediateState: .saved)

@@ -23,6 +23,7 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var profileSaveError: String?
     @Published public private(set) var isSavingSystem: Bool = false
     @Published public private(set) var systemSaveError: String?
+    @Published public private(set) var settingsSaveCompletionCount: Int = 0
     @Published public private(set) var isSavingPrimaryProvider: Bool = false
     @Published public private(set) var primaryProviderError: String?
 
@@ -203,6 +204,7 @@ public final class SettingsViewModel: LoadableViewModel {
                 value: response,
                 ttlSeconds: CachePolicy.userSettings
             )
+            recordCompletedSettingsSave()
         } catch {
             profileSaveError = error.localizedDescription
         }
@@ -241,6 +243,7 @@ public final class SettingsViewModel: LoadableViewModel {
                 value: response,
                 ttlSeconds: CachePolicy.userSettings
             )
+            recordCompletedSettingsSave()
         } catch {
             systemSaveError = error.localizedDescription
         }
@@ -362,6 +365,7 @@ public final class SettingsViewModel: LoadableViewModel {
             )
             let response = try await settingsAPI.updateSettings(update)
             settings = response
+            recordCompletedSettingsSave()
             await invalidateAndRefreshSkillsState()
         } catch {
             settings = previous
@@ -400,6 +404,7 @@ public final class SettingsViewModel: LoadableViewModel {
 
         isSavingSystem = false
         systemSaveError = nil
+        settingsSaveCompletionCount = 0
 
         isSavingPrimaryProvider = false
         primaryProviderError = nil
@@ -412,14 +417,6 @@ public final class SettingsViewModel: LoadableViewModel {
             value: response,
             ttlSeconds: CachePolicy.userSettings
         )
-    }
-
-    private static func dateOnlyString(from date: Date) -> String {
-        let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
-        let year = components.year ?? 1970
-        let month = components.month ?? 1
-        let day = components.day ?? 1
-        return String(format: "%04d-%02d-%02d", year, month, day)
     }
 
     private func invalidateAndRefreshSkillsState() async {

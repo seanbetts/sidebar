@@ -19,6 +19,7 @@ extension SettingsViewModel {
                 SettingsUpdate(aiPrimaryProvider: provider.rawValue)
             )
             applySettingsResponse(response)
+            recordCompletedSettingsSave()
         } catch {
             setPrimaryProviderError(error.localizedDescription)
         }
