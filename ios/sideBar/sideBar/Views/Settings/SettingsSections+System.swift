@@ -82,7 +82,7 @@ struct UserSettingsView: View {
             syncDraftsFromSettings(viewModel.settings)
         }
         .onDisappear {
-            autosaveTask?.cancel()
+            flushPendingSystemAutosave()
         }
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
@@ -152,6 +152,24 @@ struct UserSettingsView: View {
         }
     }
 
+    func flushPendingSystemAutosave() {
+        autosaveTask?.cancel()
+        guard Self.shouldFlushAutosaveOnDisappear(
+            hasLoadedDrafts: hasLoadedDrafts,
+            isSyncingDrafts: isSyncingDrafts,
+            isDraftDirty: isDraftDirty,
+            isSavingSystem: viewModel.isSavingSystem
+        ) else {
+            return
+        }
+        Task {
+            await viewModel.saveUserSettings(
+                communicationStyle: communicationStyle,
+                workingRelationship: workingRelationship
+            )
+        }
+    }
+
     var pendingStatusText: String {
         if environment.writeQueue.isProcessing {
             return "Syncing \(environment.writeQueue.pendingCount) changes"
@@ -171,6 +189,15 @@ struct UserSettingsView: View {
             previousUserId: previousUserId,
             nextUserId: nextUserId
         )
+    }
+
+    static func shouldFlushAutosaveOnDisappear(
+        hasLoadedDrafts: Bool,
+        isSyncingDrafts: Bool,
+        isDraftDirty: Bool,
+        isSavingSystem: Bool
+    ) -> Bool {
+        hasLoadedDrafts && !isSyncingDrafts && isDraftDirty && !isSavingSystem
     }
 
     private static func normalizedUserId(_ value: String?) -> String? {

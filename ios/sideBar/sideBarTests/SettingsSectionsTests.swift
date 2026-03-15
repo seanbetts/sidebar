@@ -59,6 +59,64 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(shouldSync)
     }
 
+    func testSystemShouldFlushAutosaveOnDisappearWhenDirty() {
+        let shouldFlush = UserSettingsView.shouldFlushAutosaveOnDisappear(
+            hasLoadedDrafts: true,
+            isSyncingDrafts: false,
+            isDraftDirty: true,
+            isSavingSystem: false
+        )
+
+        XCTAssertTrue(shouldFlush)
+    }
+
+    func testSystemShouldNotFlushAutosaveWhileSaving() {
+        let shouldFlush = UserSettingsView.shouldFlushAutosaveOnDisappear(
+            hasLoadedDrafts: true,
+            isSyncingDrafts: false,
+            isDraftDirty: true,
+            isSavingSystem: true
+        )
+
+        XCTAssertFalse(shouldFlush)
+    }
+
+    func testDraftSynchronizerRespectsDirtyDraftsForSameUser() {
+        let shouldSync = SettingsDraftSynchronizer.shouldSyncDrafts(
+            hasLoadedDrafts: true,
+            isDraftDirty: true,
+            previousUserId: "user-1",
+            nextUserId: "user-1"
+        )
+
+        XCTAssertFalse(shouldSync)
+    }
+
+    func testProfileDraftStateNormalizesPickerValuesAndDate() {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: "",
+            workingRelationship: "",
+            name: "  Sean  ",
+            jobTitle: "Founder",
+            employer: "sideBar",
+            dateOfBirth: "1990-01-01",
+            gender: "MALE",
+            pronouns: "He/Him",
+            location: "London",
+            profileImageUrl: nil,
+            enabledSkills: [],
+            installedStoreSkills: []
+        )
+
+        let draft = ProfileSettingsView.ProfileDraftState.from(settings: settings)
+
+        XCTAssertFalse(draft.isDirty(comparedTo: settings))
+        XCTAssertEqual(draft.gender, "male")
+        XCTAssertEqual(draft.pronouns, "he/him")
+        XCTAssertEqual(draft.dateOfBirth, "1990-01-01")
+    }
+
     func testProfileDraftHydrationMatchesStoredSettings() {
         let settings = UserSettings(
             userId: "user-1",
@@ -103,6 +161,26 @@ final class SettingsSectionsTests: XCTestCase {
         let timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: true,
             isSaving: false,
+            saveError: "boom"
+        )
+
+        XCTAssertEqual(timeline.immediateState, .error)
+    }
+
+    func testSettingsSaveStatusLogicReturnsNilWhenIdle() {
+        let timeline = SettingsSaveStatusLogic.timeline(
+            wasSaving: false,
+            isSaving: false,
+            saveError: nil
+        )
+
+        XCTAssertNil(timeline.immediateState)
+    }
+
+    func testSettingsSaveStatusLogicErrorTakesPrecedenceOverSaving() {
+        let timeline = SettingsSaveStatusLogic.timeline(
+            wasSaving: false,
+            isSaving: true,
             saveError: "boom"
         )
 
