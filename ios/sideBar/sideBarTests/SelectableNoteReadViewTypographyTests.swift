@@ -18,7 +18,7 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         let bodyFont = NoteTextStyleTypography.platformFont(for: NoteTextStyle.body, baseFontSize: baseFontSize)
 
         XCTAssertEqual(titleFont.pointSize, baseFontSize * 1.75, accuracy: 0.001)
-        XCTAssertEqual(headingFont.pointSize, baseFontSize * 1.5, accuracy: 0.001)
+        XCTAssertEqual(headingFont.pointSize, baseFontSize * 1.4, accuracy: 0.001)
         XCTAssertEqual(subheadingFont.pointSize, baseFontSize * 1.15, accuracy: 0.001)
         XCTAssertEqual(bodyFont.pointSize, baseFontSize * 1.0, accuracy: 0.001)
 

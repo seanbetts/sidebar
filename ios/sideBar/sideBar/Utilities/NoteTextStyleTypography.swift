@@ -44,7 +44,7 @@ enum NoteTextStyleTypography {
         case .title:
             return Metrics(scale: 1.75, weight: .bold, platformWeight: .bold)
         case .heading:
-            return Metrics(scale: 1.5, weight: .bold, platformWeight: .bold)
+            return Metrics(scale: 1.4, weight: .bold, platformWeight: .bold)
         case .subheading:
             return Metrics(scale: 1.15, weight: .bold, platformWeight: .bold)
         case .body:
