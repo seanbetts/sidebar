@@ -1,6 +1,8 @@
 import XCTest
 @testable import sideBar
 
+// swiftlint:disable file_length
+
 @MainActor
 final class SettingsSectionsTests: XCTestCase {
     func testTextSizeControlModeUsesPickerOnIOS() {
@@ -59,12 +61,35 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(shouldSync)
     }
 
+    func testProfileShouldNotSyncDraftsWhenUserUnchangedAndDirty() {
+        let shouldSync = ProfileSettingsView.shouldSyncDrafts(
+            hasLoadedDrafts: true,
+            isDraftDirty: true,
+            previousUserId: "user-1",
+            nextUserId: "user-1"
+        )
+
+        XCTAssertFalse(shouldSync)
+    }
+
+    func testUserShouldNotSyncDraftsWhenUserUnchangedAndDirty() {
+        let shouldSync = UserSettingsView.shouldSyncDrafts(
+            hasLoadedDrafts: true,
+            isDraftDirty: true,
+            previousUserId: "user-1",
+            nextUserId: "user-1"
+        )
+
+        XCTAssertFalse(shouldSync)
+    }
+
     func testSystemShouldFlushAutosaveOnDisappearWhenDirty() {
         let shouldFlush = UserSettingsView.shouldFlushAutosaveOnDisappear(
             hasLoadedDrafts: true,
             isSyncingDrafts: false,
             isDraftDirty: true,
-            isSavingSystem: false
+            isSavingSystem: false,
+            isAutosaveSaving: false
         )
 
         XCTAssertTrue(shouldFlush)
@@ -75,17 +100,158 @@ final class SettingsSectionsTests: XCTestCase {
             hasLoadedDrafts: true,
             isSyncingDrafts: false,
             isDraftDirty: true,
-            isSavingSystem: true
+            isSavingSystem: true,
+            isAutosaveSaving: false
         )
 
         XCTAssertFalse(shouldFlush)
     }
 
+    func testSystemShouldNotFlushWhileAutosaveSaving() {
+        let shouldFlush = UserSettingsView.shouldFlushAutosaveOnDisappear(
+            hasLoadedDrafts: true,
+            isSyncingDrafts: false,
+            isDraftDirty: true,
+            isSavingSystem: false,
+            isAutosaveSaving: true
+        )
+
+        XCTAssertFalse(shouldFlush)
+    }
+
+    func testSystemShouldNotFlushAutosaveBeforeDraftsLoad() {
+        let shouldFlush = UserSettingsView.shouldFlushAutosaveOnDisappear(
+            hasLoadedDrafts: false,
+            isSyncingDrafts: false,
+            isDraftDirty: true,
+            isSavingSystem: false,
+            isAutosaveSaving: false
+        )
+
+        XCTAssertFalse(shouldFlush)
+    }
+
+    func testSystemAutosaveFlushUsesManualSaveWhenScheduled() async {
+        let controller = SystemAutosaveController(delayNs: 100_000_000)
+        var autosaveRan = false
+        var flushRan = false
+
+        controller.scheduleAutosave(
+            hasLoadedDrafts: true,
+            isSyncingDrafts: false,
+            isDraftDirty: true
+        ) {
+            autosaveRan = true
+        }
+
+        controller.flushPendingAutosave(
+            shouldFlush: true
+        ) {
+            flushRan = true
+        }
+
+        try? await Task.sleep(nanoseconds: 20_000_000)
+
+        XCTAssertTrue(flushRan)
+        XCTAssertFalse(autosaveRan)
+    }
+
+    func testSystemAutosaveFlushSkipsWhenAutosaveInFlight() async {
+        let controller = SystemAutosaveController(delayNs: 0)
+        var autosaveRuns = 0
+        var flushRuns = 0
+
+        controller.scheduleAutosave(
+            hasLoadedDrafts: true,
+            isSyncingDrafts: false,
+            isDraftDirty: true
+        ) {
+            autosaveRuns += 1
+            try? await Task.sleep(nanoseconds: 200_000_000)
+        }
+
+        let didBeginAutosave = await waitUntil(timeoutNs: 300_000_000) {
+            controller.isAutosaveSaving
+        }
+        XCTAssertTrue(didBeginAutosave)
+        controller.flushPendingAutosave(
+            shouldFlush: true
+        ) {
+            flushRuns += 1
+        }
+
+        try? await Task.sleep(nanoseconds: 250_000_000)
+
+        XCTAssertEqual(autosaveRuns, 1)
+        XCTAssertEqual(flushRuns, 0)
+    }
+
+    func testSystemAutosaveFlushSkipsManualSaveWhenAutosaveAlreadyCompleted() async {
+        let controller = SystemAutosaveController(delayNs: 0)
+        var autosaveRuns = 0
+        var flushRuns = 0
+
+        controller.scheduleAutosave(
+            hasLoadedDrafts: true,
+            isSyncingDrafts: false,
+            isDraftDirty: true
+        ) {
+            autosaveRuns += 1
+        }
+
+        let didCompleteAutosave = await waitUntil(timeoutNs: 300_000_000) {
+            autosaveRuns == 1 && !controller.isAutosaveSaving
+        }
+        XCTAssertTrue(didCompleteAutosave)
+        controller.flushPendingAutosave(
+            shouldFlush: true
+        ) {
+            flushRuns += 1
+        }
+
+        try? await Task.sleep(nanoseconds: 10_000_000)
+
+        XCTAssertEqual(autosaveRuns, 1)
+        XCTAssertEqual(flushRuns, 0)
+    }
     func testDraftSynchronizerRespectsDirtyDraftsForSameUser() {
         let shouldSync = SettingsDraftSynchronizer.shouldSyncDrafts(
             hasLoadedDrafts: true,
             isDraftDirty: true,
             previousUserId: "user-1",
+            nextUserId: "user-1"
+        )
+
+        XCTAssertFalse(shouldSync)
+    }
+
+    func testDraftSynchronizerSyncsWhenDraftsUnloadedEvenIfDirty() {
+        let shouldSync = SettingsDraftSynchronizer.shouldSyncDrafts(
+            hasLoadedDrafts: false,
+            isDraftDirty: true,
+            previousUserId: "user-1",
+            nextUserId: "user-1"
+        )
+
+        XCTAssertTrue(shouldSync)
+    }
+
+    func testUserShouldSyncDraftsWhenDraftCleanAndUserUnchanged() {
+        let shouldSync = UserSettingsView.shouldSyncDrafts(
+            hasLoadedDrafts: true,
+            isDraftDirty: false,
+            previousUserId: "user-1",
+            nextUserId: "user-1"
+        )
+
+        XCTAssertTrue(shouldSync)
+    }
+
+    func testSettingsDraftSynchronizerIgnoresWhitespaceWhenUserIdMatches() {
+        let shouldSync = SettingsDraftSynchronizer.shouldSyncDrafts(
+            hasLoadedDrafts: true,
+            isDraftDirty: true,
+            previousUserId: " user-1 ",
             nextUserId: "user-1"
         )
 
@@ -139,6 +305,30 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(draft.isDirty(comparedTo: settings))
     }
 
+    func testProfileDraftHydrationHandlesCaseInsensitivePickerValuesWithWhitespace() {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: "",
+            workingRelationship: "",
+            name: "Sean",
+            jobTitle: "Founder",
+            employer: "sideBar",
+            dateOfBirth: "1990-01-01",
+            gender: " MALE ",
+            pronouns: " He/Him ",
+            location: "London",
+            profileImageUrl: nil,
+            enabledSkills: [],
+            installedStoreSkills: []
+        )
+
+        let draft = ProfileSettingsView.ProfileDraftState.from(settings: settings)
+
+        XCTAssertFalse(draft.isDirty(comparedTo: settings))
+        XCTAssertEqual(draft.gender, "male")
+        XCTAssertEqual(draft.pronouns, "he/him")
+    }
+
     func testSettingsSaveStatusLogicShowsSavingThenSaved() {
         var timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: false,
@@ -157,6 +347,16 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertEqual(timeline.immediateState, .saved)
     }
 
+    func testSettingsSaveStatusLogicTreatsWhitespaceErrorAsNil() {
+        let timeline = SettingsSaveStatusLogic.timeline(
+            wasSaving: true,
+            isSaving: false,
+            saveError: "   "
+        )
+
+        XCTAssertEqual(timeline.immediateState, .saved)
+    }
+
     func testSettingsSaveStatusLogicShowsErrorWhenErrorPresent() {
         let timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: true,
@@ -167,7 +367,17 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertEqual(timeline.immediateState, .error)
     }
 
-    func testSettingsSaveStatusLogicReturnsNilWhenIdle() {
+    func testSettingsSaveStatusLogicContinuesSavingWhenStillInFlight() {
+        let timeline = SettingsSaveStatusLogic.timeline(
+            wasSaving: true,
+            isSaving: true,
+            saveError: nil
+        )
+
+        XCTAssertEqual(timeline.immediateState, .saving)
+    }
+
+    func testSettingsSaveStatusLogicReturnsNilWhenIdleSecondAssertion() {
         let timeline = SettingsSaveStatusLogic.timeline(
             wasSaving: false,
             isSaving: false,
@@ -175,6 +385,51 @@ final class SettingsSectionsTests: XCTestCase {
         )
 
         XCTAssertNil(timeline.immediateState)
+    }
+
+    func testSettingsSaveStatusLogicSequenceTransitionsFromSavingToSavedToNil() {
+        var wasSaving = false
+        var recordedStates: [SettingsSavePillState?] = []
+
+        let first = SettingsSaveStatusLogic.timeline(
+            wasSaving: wasSaving,
+            isSaving: true,
+            saveError: nil
+        )
+        recordedStates.append(first.immediateState)
+        wasSaving = true
+
+        let second = SettingsSaveStatusLogic.timeline(
+            wasSaving: wasSaving,
+            isSaving: false,
+            saveError: nil
+        )
+        recordedStates.append(second.immediateState)
+        wasSaving = false
+
+        let third = SettingsSaveStatusLogic.timeline(
+            wasSaving: wasSaving,
+            isSaving: false,
+            saveError: nil
+        )
+        recordedStates.append(third.immediateState)
+
+        XCTAssertEqual(recordedStates, [.saving, .saved, nil])
+    }
+
+    private func waitUntil(
+        timeoutNs: UInt64,
+        pollNs: UInt64 = 5_000_000,
+        condition: @escaping @MainActor () -> Bool
+    ) async -> Bool {
+        let deadline = DispatchTime.now().uptimeNanoseconds + timeoutNs
+        while DispatchTime.now().uptimeNanoseconds < deadline {
+            if await condition() {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: pollNs)
+        }
+        return false
     }
 
     func testSettingsSaveStatusLogicErrorTakesPrecedenceOverSaving() {
@@ -280,6 +535,16 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacSkillRow("))
     }
 
+    func testSkillsSettingsMacSourceSeparatesTierNavigationFromBulkActions() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("title:\"SkillType\""))
+        XCTAssertTrue(normalized.contains("SettingsMacFieldRow(\"SkillType\")"))
+        XCTAssertTrue(normalized.contains("SettingsMacFieldRow(\"Bulkactions\")"))
+        XCTAssertTrue(normalized.contains("SettingsMacPanelCard{SettingsMacSectionIntro(title:\"SkillType\""))
+    }
+
     func testMemoriesSettingsMacRoutingUsesInspectorDetailInsteadOfPlaceholderForm() throws {
         let normalized = try memoriesSettingsRoutingSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -295,6 +560,15 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
         XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
         XCTAssertTrue(normalized.contains("SettingsMacSkillRow("))
+    }
+
+    func testMemoriesSettingsMacSourceUsesSingleColumnInspectorFlow() throws {
+        let normalized = try memoriesSettingsDetailSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("HStack(alignment:.top"))
+        XCTAssertTrue(normalized.contains("ScrollView{VStack(alignment:.leading"))
+        XCTAssertTrue(normalized.contains("detailInspectorContent"))
     }
 
     func testStoreSkillConfigUsesInspectorCardsAndStatusBanners() throws {
@@ -340,6 +614,13 @@ final class SettingsSectionsTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("SettingsMacSkillRow("))
         XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
+    }
+
+    func testSystemMacSourceFlushesAutosaveOnDisappear() throws {
+        let normalized = try systemMacSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".onDisappear{flushPendingSystemAutosave()"))
     }
 }
 

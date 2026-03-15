@@ -47,28 +47,28 @@ struct MemoriesSettingsDetailView: View {
 
     #if os(macOS)
     private var macInspectorBody: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.lg) {
-            SettingsMacPanelCard {
-                SettingsMacSectionIntro(
-                    title: "Memories",
-                    message: "Browse the saved memories your assistant can reference during future work."
-                )
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                SettingsMacPanelCard {
+                    SettingsMacSectionIntro(
+                        title: "Memories",
+                        message: "Browse the saved memories your assistant can reference during future work."
+                    )
 
-                if let error = viewModel.errorMessage, viewModel.items.isEmpty {
-                    SettingsMacStatusBanner(message: error, tone: .error)
+                    if let error = viewModel.errorMessage, viewModel.items.isEmpty {
+                        SettingsMacStatusBanner(message: error, tone: .error)
+                    }
+
+                    memoryListContent
                 }
 
-                memoryListContent
+                SettingsMacPanelCard {
+                    detailInspectorContent
+                }
             }
-            .frame(minWidth: 280, maxWidth: 320, alignment: .topLeading)
-
-            SettingsMacPanelCard {
-                detailInspectorContent
-            }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(DesignTokens.Spacing.lg)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(DesignTokens.Spacing.lg)
         .background(DesignTokens.Colors.settingsBackground)
         .onAppear {
             if !hasLoaded {

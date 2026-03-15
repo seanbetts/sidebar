@@ -19,72 +19,82 @@ struct SkillsSettingsView: View {
 
     #if os(macOS)
     private var macSkillsForm: some View {
-        Form {
-            Section {
-                SettingsMacSectionIntro(
-                    title: "Skills",
-                    message: "Choose which built-in and installed skills sideBar can use, grouped by the role they play in the assistant."
-                )
-                Picker("Skill Type", selection: $selectedTier) {
-                    ForEach(SkillsTierFilter.allCases) { tier in
-                        Text(tier.title).tag(tier)
-                    }
-                }
-                .appFont(.body)
-                .pickerStyle(.segmented)
-
-                SettingsMacFieldRow("Bulk actions") {
-                    Toggle("Enable all", isOn: Binding(
-                        get: { allSkillsEnabled },
-                        set: { isEnabled in
-                            Task {
-                                await viewModel.setAllSkillsEnabled(
-                                    isEnabled,
-                                    scopeSkillIds: enableAllScopeSkillIds
-                                )
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                SettingsMacPanelCard {
+                    SettingsMacSectionIntro(
+                        title: "Skill Type",
+                        message: "Use this selector to switch between the built-in, store,"
+                            + " and required skill collections."
+                    )
+                    SettingsMacFieldRow("Skill Type") {
+                        Picker("Skill Type", selection: $selectedTier) {
+                            ForEach(SkillsTierFilter.allCases) { tier in
+                                Text(tier.title).tag(tier)
                             }
                         }
-                    ))
-                    .toggleStyle(.switch)
-                    .disabled(
-                        viewModel.isSavingSkills
-                        || viewModel.isLoadingSkills
-                        || viewModel.settings == nil
-                        || !hasToggleableSkills
-                    )
+                        .labelsHidden()
+                        .appFont(.body)
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 320)
+                    }
                 }
-            }
 
-            if let error = viewModel.skillsError {
-                Section {
+                SettingsMacPanelCard {
+                    SettingsMacSectionIntro(
+                        title: "Skills",
+                        message: "Choose which built-in and installed skills sideBar can use,"
+                            + " grouped by the role they play in the assistant."
+                    )
+                    SettingsMacFieldRow("Bulk actions") {
+                        Toggle("Enable all", isOn: Binding(
+                            get: { allSkillsEnabled },
+                            set: { isEnabled in
+                                Task {
+                                    await viewModel.setAllSkillsEnabled(
+                                        isEnabled,
+                                        scopeSkillIds: enableAllScopeSkillIds
+                                    )
+                                }
+                            }
+                        ))
+                        .toggleStyle(.switch)
+                        .disabled(
+                            viewModel.isSavingSkills
+                            || viewModel.isLoadingSkills
+                            || viewModel.settings == nil
+                            || !hasToggleableSkills
+                        )
+                    }
+                }
+
+                if let error = viewModel.skillsError {
                     SettingsMacStatusBanner(message: error, tone: .error)
                 }
-            }
 
-            if groupedSkills.isEmpty && !viewModel.isLoadingSkills {
-                Section {
+                if groupedSkills.isEmpty && !viewModel.isLoadingSkills {
                     SettingsMacStatusBanner(message: "No skills available.", tone: .info)
-                }
-            } else {
-                ForEach(groupedSkills, id: \.0) { category, skills in
-                    Section {
-                        SettingsMacSectionIntro(
-                            title: category,
-                            message: "Review the skills in this category and decide which ones should be active for your current workspace."
-                        )
-                        ForEach(skills, id: \.id) { skill in
-                            if selectedTier == .store {
-                                storeSkillRow(skill)
-                            } else {
-                                skillToggleRow(skill)
+                } else {
+                    ForEach(groupedSkills, id: \.0) { category, skills in
+                        SettingsMacPanelCard {
+                            SettingsMacSectionIntro(
+                                title: category,
+                                message: "Review the skills in this category and decide"
+                                    + " which ones should be active for your current workspace."
+                            )
+                            ForEach(skills, id: \.id) { skill in
+                                if selectedTier == .store {
+                                    storeSkillRow(skill)
+                                } else {
+                                    skillToggleRow(skill)
+                                }
                             }
                         }
                     }
                 }
             }
+            .padding(DesignTokens.Spacing.lg)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
         .background(DesignTokens.Colors.settingsBackground)
         .sheet(item: $selectedStoreSkill) { skill in
             NavigationStack {

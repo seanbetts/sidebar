@@ -198,6 +198,7 @@ public struct SettingsView: View {
 
     private func showSavedPill() {
         hideSavedTask?.cancel()
+        savingDelayTask?.cancel()
         withAnimation {
             savePillState = .saved
         }

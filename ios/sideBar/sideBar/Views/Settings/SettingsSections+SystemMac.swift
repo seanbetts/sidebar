@@ -86,7 +86,7 @@ extension UserSettingsView {
             syncDraftsFromSettings(viewModel.settings)
         }
         .onDisappear {
-            autosaveTask?.cancel()
+            flushPendingSystemAutosave()
         }
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {

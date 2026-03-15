@@ -10,9 +10,7 @@ struct UserSettingsView: View {
     @State var hasLoadedDrafts = false
     @State var isSyncingDrafts = false
     @State var draftsUserId: String?
-    @State var autosaveTask: Task<Void, Never>?
-
-    private static let systemAutosaveDelayNs: UInt64 = 800_000_000
+    @StateObject private var autosaveController = SystemAutosaveController()
 
     var body: some View {
         #if os(macOS)
@@ -128,7 +126,7 @@ struct UserSettingsView: View {
             return
         }
         if SettingsDraftSynchronizer.normalizedUserId(draftsUserId) != SettingsDraftSynchronizer.normalizedUserId(settings.userId) {
-            autosaveTask?.cancel()
+            autosaveController.cancelPendingAutosave()
         }
         isSyncingDrafts = true
         communicationStyle = settings.communicationStyle ?? ""
@@ -139,12 +137,11 @@ struct UserSettingsView: View {
     }
 
     func scheduleAutosave() {
-        guard hasLoadedDrafts, !isSyncingDrafts else { return }
-        autosaveTask?.cancel()
-        guard isDraftDirty else { return }
-        autosaveTask = Task {
-            try? await Task.sleep(nanoseconds: Self.systemAutosaveDelayNs)
-            guard !Task.isCancelled else { return }
+        autosaveController.scheduleAutosave(
+            hasLoadedDrafts: hasLoadedDrafts,
+            isSyncingDrafts: isSyncingDrafts,
+            isDraftDirty: isDraftDirty
+        ) { [communicationStyle, workingRelationship, viewModel] in
             await viewModel.saveUserSettings(
                 communicationStyle: communicationStyle,
                 workingRelationship: workingRelationship
@@ -153,16 +150,16 @@ struct UserSettingsView: View {
     }
 
     func flushPendingSystemAutosave() {
-        autosaveTask?.cancel()
-        guard Self.shouldFlushAutosaveOnDisappear(
+        let canFlush = Self.shouldFlushAutosaveOnDisappear(
             hasLoadedDrafts: hasLoadedDrafts,
             isSyncingDrafts: isSyncingDrafts,
             isDraftDirty: isDraftDirty,
-            isSavingSystem: viewModel.isSavingSystem
-        ) else {
-            return
-        }
-        Task {
+            isSavingSystem: viewModel.isSavingSystem,
+            isAutosaveSaving: autosaveController.isAutosaveSaving
+        )
+        autosaveController.flushPendingAutosave(
+            shouldFlush: canFlush
+        ) { [communicationStyle, workingRelationship, viewModel] in
             await viewModel.saveUserSettings(
                 communicationStyle: communicationStyle,
                 workingRelationship: workingRelationship
@@ -195,9 +192,14 @@ struct UserSettingsView: View {
         hasLoadedDrafts: Bool,
         isSyncingDrafts: Bool,
         isDraftDirty: Bool,
-        isSavingSystem: Bool
+        isSavingSystem: Bool,
+        isAutosaveSaving: Bool = false
     ) -> Bool {
-        hasLoadedDrafts && !isSyncingDrafts && isDraftDirty && !isSavingSystem
+        hasLoadedDrafts
+            && !isSyncingDrafts
+            && isDraftDirty
+            && !isSavingSystem
+            && !isAutosaveSaving
     }
 
     private static func normalizedUserId(_ value: String?) -> String? {
