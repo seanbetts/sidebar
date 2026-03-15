@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -5,6 +6,9 @@ import pytest
 from api.services import notes_workspace_service as service_module
 from api.services.notes_document_types import note_document_from_plain_text
 from api.services.notes_workspace_service import NotesWorkspaceService
+from api.models.note import Note
+from sqlalchemy import inspect
+from sqlalchemy.orm.attributes import NO_VALUE
 
 
 class FakeQuery:
@@ -188,3 +192,31 @@ def test_move_folder_rejects_invalid_destination():
     db = FakeDB([_note(folder="Old/Child")])
     with pytest.raises(ValueError):
         NotesWorkspaceService.move_folder(db, "user-1", "Old", "Old/Sub")
+
+
+def test_list_tree_query_defers_note_content_columns(test_db):
+    note = Note(
+        id=uuid.uuid4(),
+        user_id="user-1",
+        title="Heavy note",
+        document=note_document_from_plain_text("Body"),
+        document_version=1,
+        plain_text="Body",
+        folder_path="",
+        pinned=False,
+        pinned_order=None,
+        is_folder_marker=False,
+        is_archived=False,
+    )
+    test_db.add(note)
+    test_db.commit()
+    test_db.expire_all()
+
+    listed = NotesWorkspaceService._query_items(
+        test_db,
+        "user-1",
+        include_archived=False,
+    )[0]
+
+    assert inspect(listed).attrs.document.loaded_value is NO_VALUE
+    assert inspect(listed).attrs.plain_text.loaded_value is NO_VALUE

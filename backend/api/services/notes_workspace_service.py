@@ -77,9 +77,6 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             load_only(
                 Note.id,
                 Note.title,
-                Note.document,
-                Note.document_version,
-                Note.plain_text,
                 Note.folder_path,
                 Note.pinned,
                 Note.pinned_order,
