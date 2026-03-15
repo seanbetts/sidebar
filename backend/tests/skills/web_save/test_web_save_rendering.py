@@ -1,4 +1,6 @@
 import os
+import sys
+from types import ModuleType
 
 from api.services import web_save_rendering
 
@@ -66,3 +68,129 @@ def test_configure_playwright_browsers_path_preserves_existing_env(monkeypatch, 
 
     assert resolved == "/custom/playwright"
     assert os.environ["PLAYWRIGHT_BROWSERS_PATH"] == "/custom/playwright"
+
+
+def test_classify_rendered_html_detects_challenge_pages():
+    html = (
+        "<html><body><div id=\"cf-browser-verification\"></div></body></html>"
+    )
+    detection = web_save_rendering.classify_rendered_html(
+        html, title="Just a moment..."
+    )
+
+    assert detection is not None
+    assert detection.challenge_kind == "cloudflare"
+    assert "cf-browser-verification" in detection.reason
+
+
+def test_summarize_rendered_page_includes_title_and_classification():
+    class FakePage:
+        def __init__(self, title: str, html: str) -> None:
+            self._title = title
+            self._html = html
+
+        def title(self) -> str:
+            return self._title
+
+        def content(self) -> str:
+            return self._html
+
+    html = (
+        "<html><body><div id=\"cf-browser-verification\"></div></body></html>"
+    )
+    page = FakePage("Just a moment...", html)
+
+    summary = web_save_rendering.summarize_rendered_page(page)
+
+    assert summary.title == "Just a moment..."
+    assert summary.html == html
+    assert summary.antibot_detection is not None
+
+
+def test_render_html_with_playwright_aborts_on_antibot_before_wait(monkeypatch):
+    ops: list[str] = []
+    html = "<html><body><div id=\"cf-browser-verification\"></div></body></html>"
+    challenge_url = "https://example.com/challenge"
+
+    class FakePage:
+        def goto(self, *args, **kwargs):
+            ops.append("goto")
+
+        def wait_for_selector(self, *args, **kwargs):
+            ops.append("wait_for")
+            raise AssertionError("wait_for_selector should not be called for challenges")
+
+        def content(self) -> str:
+            ops.append("content")
+            return html
+
+        def title(self) -> str:
+            ops.append("title")
+            return "Just a moment..."
+
+        @property
+        def url(self) -> str:
+            ops.append("url")
+            return challenge_url
+
+    page = FakePage()
+
+    class FakeContext:
+        def __init__(self, page: FakePage) -> None:
+            self._page = page
+
+        def new_page(self) -> FakePage:
+            ops.append("new_page")
+            return self._page
+
+    class FakeBrowser:
+        def __init__(self, page: FakePage) -> None:
+            self._page = page
+
+        def new_context(self, *, user_agent: str | None = None):
+            ops.append("new_context")
+            return FakeContext(self._page)
+
+        def close(self) -> None:
+            ops.append("browser_close")
+
+    class FakeChromium:
+        def __init__(self, page: FakePage) -> None:
+            self._page = page
+
+        def launch(self, *args, **kwargs):
+            ops.append("launch")
+            return FakeBrowser(self._page)
+
+    class FakePlaywright:
+        def __init__(self, page: FakePage) -> None:
+            self.chromium = FakeChromium(page)
+
+    class FakeSyncPlaywright:
+        def __enter__(self) -> FakePlaywright:
+            ops.append("playwright_enter")
+            return FakePlaywright(page)
+
+        def __exit__(self, exc_type, exc, traceback) -> bool:
+            ops.append("playwright_exit")
+            return False
+
+    fake_sync_module = ModuleType("playwright.sync_api")
+    fake_sync_module.sync_playwright = lambda: FakeSyncPlaywright()
+    fake_sync_module.TimeoutError = TimeoutError
+    fake_playwright_module = ModuleType("playwright")
+    fake_playwright_module.sync_api = fake_sync_module
+
+    monkeypatch.setitem(sys.modules, "playwright", fake_playwright_module)
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", fake_sync_module)
+
+    rendered_html, final_url = web_save_rendering.render_html_with_playwright(
+        "https://example.com",
+        wait_for="#selector",
+    )
+
+    assert rendered_html == html
+    assert final_url == challenge_url
+    assert ops.index("goto") < ops.index("content")
+    assert "wait_for" not in ops
+    assert "browser_close" in ops

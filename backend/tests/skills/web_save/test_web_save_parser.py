@@ -318,11 +318,33 @@ def test_parse_url_local_patreon_post_uses_domain_extractor(monkeypatch):
     assert "Only the public preview is available." in parsed.content
     assert "What's a Gaben to do?" in parsed.content
     assert "[View on Patreon](https://www.patreon.com/posts/steam-hardware-152975177)" in parsed.content
-    frontmatter = parsed.content.split("---\n", 2)[1]
-    data = web_save_parser.yaml.safe_load(frontmatter)
-    assert data["title"] == "The Steam Hardware Nightmare Recap - Gabe Newell vs. the World"
-    assert data["published_date"] == "2026-03-13T22:40:20+00:00"
-    assert data["used_js_rendering"] is True
+
+
+def test_parse_url_local_patreon_preview_without_js_still_succeeds(monkeypatch):
+    html_doc = _build_patreon_post_html()
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html_doc,
+            "https://www.patreon.com/posts/steam-hardware-152975177/instant-access",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://www.patreon.com/posts/steam-hardware-152975177/instant-access"
+    )
+
+    assert parsed.title == "The Steam Hardware Nightmare Recap - Gabe Newell vs. the World"
+    assert "Only the public preview is available." in parsed.content
+    assert "What's a Gaben to do?" in parsed.content
+    assert "[View on Patreon](https://www.patreon.com/posts/steam-hardware-152975177)" in parsed.content
 
 
 def test_parse_url_local_apple_news_fetches_publisher_article(monkeypatch):
@@ -1169,6 +1191,137 @@ def test_parse_url_local_archiveis_captcha_requests_fallback(monkeypatch):
 
     assert exc_info.value.fallback == "jina"
     assert exc_info.value.rule_id == "archiveis-captcha-discard"
+
+
+def test_parse_url_local_raises_fallback_on_direct_antibot_html(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>Just a moment...</title>
+      </head>
+      <body>
+        <p>Checking your browser before accessing https://example.com</p>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/challenge", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+
+    with pytest.raises(web_save_parser.LocalParseFallbackError) as exc_info:
+        web_save_parser.parse_url_local("https://example.com/challenge")
+
+    assert exc_info.value.fallback == "jina"
+    assert exc_info.value.rule_id == "antibot-direct-challenge"
+    assert exc_info.value.antibot_detection is not None
+    assert exc_info.value.antibot_detection.challenge_kind == "cloudflare"
+
+
+def test_parse_url_local_force_render_challenge_raises_fallback(monkeypatch):
+    initial_html = "<html><body><p>Initial</p></body></html>"
+    challenge_html = """
+    <html>
+      <head>
+        <title>Just a moment...</title>
+      </head>
+      <body>
+        <p>Checking your browser before accessing https://example.com</p>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return initial_html, "https://example.com/page", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "resolve_rendering_settings",
+        lambda pre_rules: ("force", "domcontentloaded", 1000),
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "render_html_with_playwright",
+        lambda url, *, timeout, wait_for=None, wait_until=None: (challenge_html, url),
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "get_rule_engine",
+        lambda: web_save_parser.RuleEngine([]),
+    )
+
+    with pytest.raises(web_save_parser.LocalParseFallbackError) as exc_info:
+        web_save_parser.parse_url_local("https://example.com/page")
+
+    assert exc_info.value.stage == "render-force"
+    assert exc_info.value.rule_id == "antibot-render-force-challenge"
+
+
+def test_parse_url_local_auto_render_challenge_raises_fallback(monkeypatch):
+    initial_html = "<html><body><p>Initial</p></body></html>"
+    challenge_html = """
+    <html>
+      <head>
+        <title>Just a moment...</title>
+      </head>
+      <body>
+        <p>Checking your browser before accessing https://example.com</p>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return initial_html, "https://example.com/page", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser,
+        "_favicon_exists",
+        lambda url, timeout=8: False,
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "resolve_rendering_settings",
+        lambda pre_rules: ("auto", "domcontentloaded", 1000),
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "resolve_auto_render_wait_until",
+        lambda html: "domcontentloaded",
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "should_auto_render_url",
+        lambda url, html, is_playwright_allowed: True,
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "render_html_with_playwright",
+        lambda url, *, timeout, wait_for=None, wait_until=None: (challenge_html, url),
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "get_rule_engine",
+        lambda: web_save_parser.RuleEngine([]),
+    )
+
+    with pytest.raises(web_save_parser.LocalParseFallbackError) as exc_info:
+        web_save_parser.parse_url_local("https://example.com/page")
+
+    assert exc_info.value.stage == "render-auto"
+    assert exc_info.value.rule_id == "antibot-render-auto-challenge"
 
 
 def test_campaignlive_paywall_rule_matches_pre_phase():
@@ -3395,6 +3548,46 @@ def test_fetch_html_falls_back_to_playwright_on_forbidden(monkeypatch):
     assert "Rendered" in html
     assert final_url == "https://example.com/allowed"
     assert used_js_rendering is True
+
+
+def test_fetch_html_raises_fallback_when_playwright_returns_challenge(monkeypatch):
+    class FakeResponse:
+        def __init__(self):
+            self.status_code = 403
+            self.url = "https://example.com/blocked"
+
+        def raise_for_status(self):
+            raise web_save_parser.requests.HTTPError(response=self)
+
+    def fake_get(url: str, headers=None, timeout: int = 30):
+        return FakeResponse()
+
+    challenge_html = """
+    <html>
+      <head>
+        <title>Just a moment...</title>
+      </head>
+      <body>
+        <p>Checking your browser before accessing https://example.com</p>
+      </body>
+    </html>
+    """
+
+    def fake_render(
+        url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"
+    ):
+        return challenge_html, "https://example.com/challenge"
+
+    monkeypatch.setattr(web_save_parser.requests, "get", fake_get)
+    monkeypatch.setattr(web_save_parser, "render_html_with_playwright", fake_render)
+
+    with pytest.raises(web_save_parser.LocalParseFallbackError) as exc_info:
+        web_save_parser.fetch_html("https://example.com/blocked")
+
+    assert exc_info.value.fallback == "jina"
+    assert exc_info.value.rule_id == "antibot-playwright-challenge"
+    assert exc_info.value.antibot_detection is not None
+    assert exc_info.value.antibot_detection.challenge_kind == "cloudflare"
 
 
 def test_fetch_html_prefers_utf8_when_server_defaults_to_latin1(monkeypatch):

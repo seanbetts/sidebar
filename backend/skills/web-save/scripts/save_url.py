@@ -30,8 +30,10 @@ try:
         initialize_script_sentry,
     )
     from api.services.url_normalization_service import is_youtube_host
+    from api.services.web_save_antibot import AntibotDetection, detect_antibot_html
     from api.services.web_save_error_service import classify_web_save_failure
     from api.services.web_save_parser import (
+        LocalParseFallbackError,
         ParsedPage,
         build_frontmatter,
         extract_favicon_url,
@@ -101,6 +103,19 @@ except Exception:
                 "Include URL and error message in the bug report.",
             ],
         }
+
+    class LocalParseFallbackError(Exception):
+        """Fallback placeholder for missing parser dependencies."""
+
+    class AntibotDetection:
+        """Placeholder detection payload."""
+
+        def __init__(self, challenge_kind: str, reason: str):
+            self.challenge_kind = challenge_kind
+            self.reason = reason
+
+    def detect_antibot_html(_html: str | None):
+        return None
 
 
 if not logging.getLogger().handlers:
@@ -385,6 +400,9 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
     parsed = None
     local_parse_error: str | None = None
     local_parse_error_type: str | None = None
+    local_antibot_detection: AntibotDetection | None = None
+    local_antibot_stage: str | None = None
+    local_antibot_rule_id: str | None = None
     if web_save_mode in {"local", "compare"}:
         try:
             parsed = parse_url_local(target_url)
@@ -397,6 +415,24 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 target_url,
                 parsed.title,
                 len(parsed.content),
+            )
+        except LocalParseFallbackError as exc:
+            local_antibot_detection = exc.antibot_detection
+            local_antibot_stage = exc.stage
+            local_antibot_rule_id = exc.rule_id
+            local_parse_error = str(exc)
+            local_parse_error_type = type(exc).__name__
+            logger.info(
+                "web-save local parse fallback requested target_url=%s fallback=%s rule=%s "
+                "stage=%s kind=%s reason=%s",
+                target_url,
+                exc.fallback,
+                exc.rule_id,
+                exc.stage,
+                local_antibot_detection.challenge_kind
+                if local_antibot_detection
+                else None,
+                local_antibot_detection.reason if local_antibot_detection else None,
             )
         except Exception as exc:
             local_parse_error = str(exc)
@@ -419,6 +455,8 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         fallback_reason = (
             "forced_mode"
             if web_save_mode == "jina"
+            else "antibot_local_parse"
+            if local_antibot_detection
             else "local_parse_error"
             if local_parse_error
             else "compare_mode"
@@ -426,12 +464,16 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         logger.info(
             (
                 "web-save fallback start url=%s target_url=%s provider=jina "
-                "reason=%s local_error_type=%s"
+                "reason=%s local_error_type=%s antibot_kind=%s antibot_reason=%s"
             ),
             url,
             target_url,
             fallback_reason,
             local_parse_error_type,
+            local_antibot_detection.challenge_kind
+            if local_antibot_detection
+            else None,
+            local_antibot_detection.reason if local_antibot_detection else None,
         )
         logger.info(
             "web-save script using jina url=%s target_url=%s mode=%s",
@@ -442,6 +484,27 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         api_key = os.environ.get("JINA_API_KEY", "")
         try:
             content = get_markdown_content(target_url, api_key)
+            jina_antibot_detection = detect_antibot_html(content)
+            if jina_antibot_detection:
+                raise WebSaveScriptError(
+                    "FetchError",
+                    classify_web_save_failure(
+                        upstream_error_type="FetchError",
+                        upstream_message=(
+                            f"Jina fallback returned anti-bot "
+                            f"challenge: {jina_antibot_detection.reason}"
+                        ),
+                        url=url,
+                        target_url=target_url,
+                        mode=web_save_mode,
+                        local_parse_error=local_parse_error,
+                        local_antibot_detection=local_antibot_detection,
+                        local_antibot_stage=local_antibot_stage,
+                        local_antibot_rule_id=local_antibot_rule_id,
+                        upstream_antibot_detection=jina_antibot_detection,
+                        fallback_outcome="blocked_content",
+                    ),
+                )
             parsed_metadata, cleaned_content = parse_jina_metadata(content)
             source = parsed_metadata.get("url_source") or target_url
             wsj_flags = {"paywalled": False, "truncated": False}
@@ -535,12 +598,19 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                     title,
                     local_parsed.title,
                 )
+        except WebSaveScriptError:
+            raise
         except Exception as exc:
             if web_save_mode == "compare" and local_parsed is not None:
                 logger.info("Compare parse failed for %s: %s", url, str(exc))
                 parsed = local_parsed
             else:
                 if local_parse_error:
+                    fallback_outcome = (
+                        "timeout"
+                        if isinstance(exc, requests.exceptions.Timeout)
+                        else None
+                    )
                     raise WebSaveScriptError(
                         "FetchError",
                         classify_web_save_failure(
@@ -550,6 +620,11 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                             target_url=target_url,
                             mode=web_save_mode,
                             local_parse_error=local_parse_error,
+                            local_antibot_detection=local_antibot_detection,
+                            local_antibot_stage=local_antibot_stage,
+                            local_antibot_rule_id=local_antibot_rule_id,
+                            upstream_antibot_detection=None,
+                            fallback_outcome=fallback_outcome,
                         ),
                     ) from exc
                 raise
@@ -568,6 +643,11 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 target_url=target_url,
                 mode=web_save_mode,
                 local_parse_error=local_parse_error,
+                local_antibot_detection=local_antibot_detection,
+                local_antibot_stage=local_antibot_stage,
+                local_antibot_rule_id=local_antibot_rule_id,
+                upstream_antibot_detection=None,
+                fallback_outcome=None,
             ),
         )
 

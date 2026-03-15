@@ -21,6 +21,41 @@ def test_detects_cloudflare_challenge():
     assert detection is not None
     assert detection.challenge_kind == "cloudflare"
     assert "Just a moment" in detection.reason
+    assert "Checking your browser before accessing" in detection.reason
+
+
+def test_cloudflare_title_only_not_detected():
+    html = textwrap.dedent(
+        """
+        <html>
+          <head><title>Just a moment...</title></head>
+          <body>
+            <p>Redirecting…</p>
+          </body>
+        </html>
+        """
+    )
+
+    assert detect_antibot_html(html) is None
+
+
+def test_detects_generic_challenge_marker():
+    html = textwrap.dedent(
+        """
+        <html>
+          <head><title>Access blocked</title></head>
+          <body>
+            <div class="challenge-form">Please complete the form</div>
+          </body>
+        </html>
+        """
+    )
+
+    detection = detect_antibot_html(html)
+
+    assert detection is not None
+    assert detection.challenge_kind == "generic"
+    assert "challenge-form" in detection.reason
 
 
 def test_returns_none_for_regular_article():

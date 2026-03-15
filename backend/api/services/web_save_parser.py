@@ -20,6 +20,7 @@ try:
 except (ImportError, AttributeError):
     ReadabilityDocument = None
 
+from api.services import web_save_parser_metadata
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_includes import apply_include_reinsertion
 from api.services.web_save_parser_apple_news import maybe_unwrap_apple_news
@@ -44,13 +45,17 @@ from api.services.web_save_parser_cleanup import (
     simplify_linked_images,
     wrap_gallery_blocks,
 )
+from api.services.web_save_parser_fallback import (
+    LocalParseFallbackError,
+    raise_antibot_fallback_if_needed,
+)
 from api.services.web_save_parser_github import cleanup_github_markdown
 from api.services.web_save_parser_hbr import extract_hbr_body_html
 from api.services.web_save_parser_html import (
     _safe_html_tostring,
     _safe_html_tree,
-    decode_html_response,
 )
+from api.services.web_save_parser_metadata import extract_metadata
 from api.services.web_save_parser_openai import cleanup_openai_markdown
 from api.services.web_save_parser_patreon import extract_patreon_post_snapshot
 from api.services.web_save_parser_paywall import (
@@ -74,7 +79,6 @@ from api.services.web_save_parser_substack_helpers import (
 )
 from api.services.web_save_parser_twitter import fetch_twitter_status_snapshot
 from api.services.web_save_parser_utils import (
-    clean_metadata_value,
     ensure_url,
     parse_datetime,
     strip_control_chars,
@@ -128,16 +132,16 @@ class ParsedPage:
     favicon_url: str | None = None
 
 
-class LocalParseFallbackError(RuntimeError):
-    """Signal that local parsing should hand off to an upstream fallback."""
-
-    def __init__(self, *, fallback: str, rule_id: str):
-        """Initialize fallback context used by upstream save flows."""
-        self.fallback = fallback
-        self.rule_id = rule_id
-        super().__init__(
-            f"Local parser requested fallback='{fallback}' via rule '{rule_id}'"
-        )
+def extract_favicon_url(url: str, *, timeout: int = 15) -> str | None:
+    """Fetch HTML and resolve a favicon URL without full parsing."""
+    normalized = ensure_url(url)
+    try:
+        html, final_url, _ = fetch_html(normalized, timeout=timeout)
+    except requests.RequestException:
+        return None
+    html = strip_control_chars(html)
+    metadata = extract_metadata(html, final_url)
+    return resolve_favicon_url(metadata.get("favicon"), final_url)
 
 
 def fetch_html(url: str, *, timeout: int = 30) -> tuple[str, str, bool]:
@@ -146,50 +150,50 @@ def fetch_html(url: str, *, timeout: int = 30) -> tuple[str, str, bool]:
     try:
         response = requests.get(url, headers=headers, timeout=timeout)
         response.raise_for_status()
-        return decode_html_response(response), str(response.url), False
+        return (
+            web_save_parser_metadata.decode_html_response(response),
+            str(response.url),
+            False,
+        )
     except requests.HTTPError as exc:
-        status_code = None
-        if exc.response is not None:
-            status_code = exc.response.status_code
+        status_code = exc.response.status_code if exc.response is not None else None
         if status_code in {401, 403, 429}:
             html, final_url = render_html_with_playwright(
                 url,
                 timeout=timeout * 1000,
                 wait_until="domcontentloaded",
             )
+            raise_antibot_fallback_if_needed(html, stage="playwright")
             return html, final_url, True
         raise
 
 
 def _rel_matches(rel_value: str | list[str] | None, target: str) -> bool:
     """Return True when rel_value includes all tokens from target."""
-    if not rel_value:
-        return False
-    if isinstance(rel_value, str):
-        rel_tokens = rel_value.lower().split()
-    else:
-        rel_tokens = [str(token).lower() for token in rel_value]
-    target_tokens = target.lower().split()
-    return all(token in rel_tokens for token in target_tokens)
+    return web_save_parser_metadata._rel_matches(rel_value, target)
 
 
 def _favicon_exists(url: str, *, timeout: int = 8) -> bool:
     """Return True if a favicon URL responds successfully."""
-    headers = {"User-Agent": USER_AGENT}
-    try:
-        response = requests.head(
-            url, headers=headers, timeout=timeout, allow_redirects=True
-        )
-        if response.status_code == 405:
-            response.close()
-            response = requests.get(
-                url, headers=headers, timeout=timeout, allow_redirects=True, stream=True
-            )
-        ok = 200 <= response.status_code < 400
-        response.close()
-        return ok
-    except requests.RequestException:
-        return False
+    return web_save_parser_metadata._favicon_exists(url, timeout=timeout)
+
+
+def resolve_favicon_url(raw_favicon: str | None, source_url: str) -> str | None:
+    """Resolve a favicon URL relative to the source URL with fallbacks."""
+    if raw_favicon:
+        resolved = urljoin(source_url, raw_favicon)
+        parsed = urlparse(resolved)
+        if parsed.scheme in {"http", "https"}:
+            return resolved
+        return None
+
+    parsed_source = urlparse(source_url)
+    if not parsed_source.scheme or not parsed_source.netloc:
+        return None
+    fallback = f"{parsed_source.scheme}://{parsed_source.netloc}/favicon.ico"
+    if _favicon_exists(fallback):
+        return fallback
+    return None
 
 
 def _discard_frontmatter(
@@ -229,114 +233,6 @@ def _raise_fallback_for_discard_rule(*, rule: Rule, phase: str, url: str) -> Non
         fallback,
     )
     raise LocalParseFallbackError(fallback=fallback, rule_id=rule.id)
-
-
-def extract_metadata(html: str, url: str) -> dict:
-    """Extract basic metadata from HTML."""
-    soup = BeautifulSoup(html, "html.parser")
-
-    def find_meta(names: list[str], attrs: tuple[str, ...]) -> str | None:
-        for name in names:
-            for attr in attrs:
-                tag = soup.find("meta", attrs={attr: name})
-                if tag and tag.get("content"):
-                    return tag["content"].strip()
-        return None
-
-    title = clean_metadata_value(
-        find_meta(["og:title", "twitter:title"], ("property", "name"))
-        or (soup.title.string.strip() if soup.title and soup.title.string else None)
-    )
-    author = clean_metadata_value(
-        find_meta(["author", "article:author", "parsely-author"], ("name", "property"))
-    )
-    published = clean_metadata_value(
-        find_meta(
-            [
-                "article:published_time",
-                "og:pubdate",
-                "pubdate",
-                "date",
-                "parsely-pub-date",
-            ],
-            ("property", "name"),
-        )
-    )
-    if not published:
-        semantic_published = (
-            soup.select_one("article time[datetime]")
-            or soup.select_one("main time[datetime]")
-            or soup.select_one("header time[datetime]")
-            or soup.select_one("time[datetime]")
-            or soup.select_one("[itemprop='datePublished'][datetime]")
-            or soup.select_one("[itemprop='datePublished'][content]")
-        )
-        if semantic_published is not None:
-            published = clean_metadata_value(
-                semantic_published.get("datetime")
-                or semantic_published.get("content")
-                or semantic_published.get_text(" ", strip=True)
-            )
-    image = clean_metadata_value(
-        find_meta(["og:image", "twitter:image"], ("property", "name"))
-    )
-
-    canonical = None
-    canonical_tag = soup.find("link", rel="canonical")
-    if canonical_tag and canonical_tag.get("href"):
-        canonical = clean_metadata_value(canonical_tag["href"])
-
-    favicon = None
-    for rel in (
-        "icon",
-        "shortcut icon",
-        "apple-touch-icon",
-        "apple-touch-icon-precomposed",
-    ):
-        link = soup.find("link", rel=lambda value, rel=rel: _rel_matches(value, rel))
-        if link and link.get("href"):
-            favicon = clean_metadata_value(link["href"])
-            if favicon:
-                break
-
-    return {
-        "title": title,
-        "author": author,
-        "published": published,
-        "canonical": canonical or url,
-        "image": image,
-        "favicon": favicon,
-    }
-
-
-def resolve_favicon_url(raw_favicon: str | None, source_url: str) -> str | None:
-    """Resolve a favicon URL relative to the source URL with fallbacks."""
-    if raw_favicon:
-        resolved = urljoin(source_url, raw_favicon)
-        parsed = urlparse(resolved)
-        if parsed.scheme in {"http", "https"}:
-            return resolved
-        return None
-
-    parsed_source = urlparse(source_url)
-    if not parsed_source.scheme or not parsed_source.netloc:
-        return None
-    fallback = f"{parsed_source.scheme}://{parsed_source.netloc}/favicon.ico"
-    if _favicon_exists(fallback):
-        return fallback
-    return None
-
-
-def extract_favicon_url(url: str, *, timeout: int = 15) -> str | None:
-    """Fetch HTML and resolve a favicon URL without full parsing."""
-    normalized = ensure_url(url)
-    try:
-        html, final_url, _ = fetch_html(normalized, timeout=timeout)
-    except requests.RequestException:
-        return None
-    html = strip_control_chars(html)
-    metadata = extract_metadata(html, final_url)
-    return resolve_favicon_url(metadata.get("favicon"), final_url)
 
 
 def fetch_substack_body_html(
@@ -398,6 +294,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     logger.info("web-save parse start url=%s", normalized)
     html, final_url, used_js_rendering = fetch_html(normalized, timeout=timeout)
     html = strip_control_chars(html)
+    raise_antibot_fallback_if_needed(html, stage="direct")
     html, final_url, used_js_rendering = maybe_unwrap_apple_news(
         html=html,
         final_url=final_url,
@@ -407,6 +304,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         logger=logger,
     )
     html = strip_control_chars(html)
+    raise_antibot_fallback_if_needed(html, stage="apple-unwrapped")
     logger.info(
         "web-save fetched url=%s final_url=%s used_js=%s html_len=%s",
         normalized,
@@ -431,6 +329,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
                 final_url, timeout=render_timeout, wait_for=wait_for
             )
             used_js_rendering = True
+            html = strip_control_chars(html)
+            raise_antibot_fallback_if_needed(html, stage="render-force")
+        except LocalParseFallbackError:
+            raise
         except Exception as exc:
             logger.warning("web-save force render skip url=%s err=%s", final_url, exc)
     elif not used_js_rendering and render_mode == "auto":
@@ -451,6 +353,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
                     wait_until=wait_until,
                 )
                 used_js_rendering = True
+                html = strip_control_chars(html)
+                raise_antibot_fallback_if_needed(html, stage="render-auto")
+            except LocalParseFallbackError:
+                raise
             except Exception as exc:
                 logger.warning("web-save auto skip url=%s err=%s", final_url, exc)
 

@@ -3,12 +3,56 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
+from api.services.web_save_antibot import AntibotDetection, detect_antibot_html
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_rules import Rule
 
 _DEFAULT_PLAYWRIGHT_BROWSERS_PATH = Path("/ms-playwright")
+
+
+@dataclass(frozen=True)
+class RenderedPageClassification:
+    """Classification results for a rendered page snapshot."""
+
+    title: str | None
+    html: str
+    antibot_detection: AntibotDetection | None
+
+
+class RenderedPage(Protocol):
+    """Minimal interface required to summarize a rendered page."""
+
+    def content(self) -> str:
+        """Return the rendered HTML."""
+        ...
+
+    def title(self) -> str:
+        """Return the rendered document title."""
+        ...
+
+
+def classify_rendered_html(
+    html: str,
+    title: str | None = None,
+) -> AntibotDetection | None:
+    """Return any anti-bot detection for the rendered markup plus title."""
+    combined = f"<title>{title}</title>{html}" if title else html
+    return detect_antibot_html(combined)
+
+
+def summarize_rendered_page(page: RenderedPage) -> RenderedPageClassification:
+    """Capture the rendered title, HTML, and anti-bot classification."""
+    html = page.content()
+    title = page.title()
+    return RenderedPageClassification(
+        title=title,
+        html=html,
+        antibot_detection=classify_rendered_html(html, title=title),
+    )
 
 
 def requires_js_rendering(html: str) -> bool:
@@ -85,7 +129,6 @@ def render_html_with_playwright(
     """Render HTML using Playwright for JS-heavy pages."""
     configure_playwright_browsers_path()
     try:
-        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright
     except ImportError as exc:  # pragma: no cover - depends on optional dependency
         raise RuntimeError("Playwright is not installed") from exc
@@ -99,17 +142,17 @@ def render_html_with_playwright(
         page = context.new_page()
         try:
             page.goto(url, wait_until=wait_until, timeout=timeout)
-        except PlaywrightTimeoutError:
-            if wait_until != "domcontentloaded":
-                page.goto(url, wait_until="domcontentloaded", timeout=timeout)
-            else:
-                raise
-        if wait_for:
-            page.wait_for_selector(wait_for, timeout=timeout)
-        html = page.content()
-        final_url = page.url
-        browser.close()
-    return html, final_url
+            preview = summarize_rendered_page(page)
+            final_url = page.url
+            if preview.antibot_detection:
+                return preview.html, final_url
+            if wait_for:
+                page.wait_for_selector(wait_for, timeout=timeout)
+            html = page.content()
+            final_url = page.url
+            return html, final_url
+        finally:
+            browser.close()
 
 
 def resolve_rendering_settings(rules: list[Rule]) -> tuple[str, str | None, int]:

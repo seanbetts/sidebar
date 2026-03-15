@@ -1,5 +1,6 @@
 """Tests for shared web-save error classification helpers."""
 
+from api.services.web_save_antibot import AntibotDetection
 from api.services.web_save_error_service import (
     classify_web_save_failure,
     classify_web_save_result,
@@ -114,3 +115,105 @@ def test_decode_job_error_handles_plain_text():
     message, decoded = decode_job_error("plain failure message")
     assert message == "plain failure message"
     assert decoded is None
+
+
+def test_classify_antibot_blocked_site_code_for_blocked_content():
+    detection = AntibotDetection("cloudflare", "Just a moment challenge")
+    payload = classify_web_save_failure(
+        upstream_error_type="FetchError",
+        upstream_message="Jina returned anti-bot challenge HTML",
+        url="https://example.com",
+        target_url="https://example.com",
+        mode="local",
+        local_parse_error=(
+            "Local parser requested fallback='jina' via rule 'antibot-fetch-challenge' "
+            "antibot=cloudflare:Just a moment challenge stage=fetch"
+        ),
+        local_antibot_detection=detection,
+        local_antibot_stage="fetch",
+        local_antibot_rule_id="antibot-fetch-challenge",
+        upstream_antibot_detection=detection,
+        fallback_outcome="blocked_content",
+    )
+
+    assert payload["code"] == "WEB_SAVE_BLOCKED_SITE"
+    assert payload["details"]["antibot_challenge_kind"] == "cloudflare"
+    assert payload["details"]["antibot_stage"] == "fetch"
+    assert "blocked" in payload["message"].lower()
+    assert payload["details"]["bug_report_context"]["error_code"] == payload["code"]
+
+
+def test_classify_antibot_blocked_site_code_for_timeout():
+    detection = AntibotDetection("generic", "challenge-form detected")
+    payload = classify_web_save_failure(
+        upstream_error_type="FetchError",
+        upstream_message="Failed to fetch content from Jina.ai: request timed out",
+        url="https://example.com",
+        target_url="https://example.com",
+        mode="local",
+        local_parse_error=(
+            "Local parser requested fallback='jina' via rule 'antibot-fetch-challenge' "
+            "antibot=generic:challenge-form detected stage=fetch"
+        ),
+        local_antibot_detection=detection,
+        local_antibot_stage="fetch",
+        local_antibot_rule_id="antibot-fetch-challenge",
+        fallback_outcome="timeout",
+    )
+
+    assert payload["code"] == "WEB_SAVE_BLOCKED_SITE"
+    assert payload["details"]["fallback_outcome"] == "timeout"
+    assert any("anti-bot" in suggestion.lower() for suggestion in payload["suggestions"])
+
+
+def test_classify_antibot_context_with_non_blocked_outcome_is_not_blocked():
+    detection = AntibotDetection("generic", "challenge-form detected")
+    payload = classify_web_save_failure(
+        upstream_error_type="FetchError",
+        upstream_message="Jina returned anti-bot challenge HTML",
+        url="https://example.com",
+        target_url="https://example.com",
+        mode="local",
+        local_parse_error="Local parser fallback triggered but handled gracefully.",
+        local_antibot_detection=detection,
+        local_antibot_stage="fetch",
+        local_antibot_rule_id="antibot-fetch-challenge",
+        fallback_outcome="other",
+    )
+
+    assert payload["code"] != "WEB_SAVE_BLOCKED_SITE"
+    assert payload["details"]["fallback_outcome"] == "other"
+
+
+def test_classify_antibot_context_without_outcome_is_not_blocked():
+    detection = AntibotDetection("generic", "challenge-form detected")
+    payload = classify_web_save_failure(
+        upstream_error_type="FetchError",
+        upstream_message="Jina returned anti-bot challenge HTML",
+        url="https://example.com",
+        target_url="https://example.com",
+        mode="local",
+        local_parse_error="Local parser fallback triggered but no fallback outcome yet.",
+        local_antibot_detection=detection,
+        local_antibot_stage="fetch",
+        local_antibot_rule_id="antibot-fetch-challenge",
+    )
+
+    assert payload["code"] != "WEB_SAVE_BLOCKED_SITE"
+    assert payload["details"].get("fallback_outcome") is None
+
+
+def test_plain_local_parse_failure_with_jina_timeout_stays_generic():
+    payload = classify_web_save_failure(
+        upstream_error_type="Timeout",
+        upstream_message="Failed to fetch content from Jina.ai: request timed out",
+        url="https://example.com",
+        target_url="https://example.com",
+        mode="local",
+        local_parse_error="Local parser failed without antibot detection.",
+        fallback_outcome="timeout",
+    )
+
+    assert payload["code"] == "WEB_SAVE_LOCAL_PARSE_AND_JINA_FETCH_FAILED"
+    assert payload["details"].get("fallback_outcome") == "timeout"
+    assert payload["code"] != "WEB_SAVE_BLOCKED_SITE"

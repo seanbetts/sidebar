@@ -6,6 +6,8 @@ import json
 import re
 from typing import Any
 
+from api.services.web_save_antibot import AntibotDetection
+
 _DEFAULT_SUGGESTIONS: list[str] = [
     "Retry the save once to rule out transient network issues.",
     "If this persists, file a bug report with the provided bug_report_context.",
@@ -38,6 +40,13 @@ _SUGGESTIONS_BY_CODE: dict[str, list[str]] = {
     ],
     "WEB_SAVE_VALIDATION_ERROR": [
         "Verify required parameters and URL formatting.",
+    ],
+    "WEB_SAVE_BLOCKED_SITE": [
+        "Open the URL in a browser to confirm any anti-bot challenge before saving.",
+        (
+            "If the challenge persists, include the blocked-site error code in a "
+            "bug report."
+        ),
     ],
 }
 
@@ -116,6 +125,11 @@ def classify_web_save_failure(
     target_url: str | None = None,
     mode: str | None = None,
     local_parse_error: str | None = None,
+    local_antibot_detection: AntibotDetection | None = None,
+    local_antibot_stage: str | None = None,
+    local_antibot_rule_id: str | None = None,
+    upstream_antibot_detection: AntibotDetection | None = None,
+    fallback_outcome: str | None = None,
 ) -> dict[str, Any]:
     """Classify a web-save failure into a stable error contract."""
     raw_type = (upstream_error_type or "").strip()
@@ -145,7 +159,25 @@ def classify_web_save_failure(
     local_legal_block = "451 unavailable for legal reasons" in combined_error_text
     wsj_preview_detected = "wsj preview detected" in local_error_text
 
-    if local_parse_failed and payment_required:
+    antibot_context = local_antibot_detection or upstream_antibot_detection
+    blocked_site_detected = bool(antibot_context) and fallback_outcome in {
+        "blocked_content",
+        "timeout",
+    }
+
+    if blocked_site_detected:
+        code = "WEB_SAVE_BLOCKED_SITE"
+        if fallback_outcome == "timeout":
+            message = (
+                "Unable to save website: an anti-bot challenge prevented the "
+                "fallback from completing (timeout)."
+            )
+        else:
+            message = (
+                "Unable to save website: an anti-bot challenge blocked the "
+                "fallback content."
+            )
+    elif local_parse_failed and payment_required:
         code = "WEB_SAVE_LOCAL_PARSE_AND_JINA_PAYMENT_REQUIRED"
         if wsj_preview_detected:
             message = (
@@ -182,19 +214,31 @@ def classify_web_save_failure(
         code = "WEB_SAVE_UNEXPECTED_ERROR"
         message = raw_message or "Unable to save website."
 
-    details = _compact_dict(
-        {
-            "reason": code.lower(),
-            "upstream_error_type": raw_type,
-            "upstream_error": raw_message,
-            "http_status_code": http_status_code,
-            "url": url,
-            "target_url": target_url,
-            "mode": mode,
-            "local_parse_error": local_parse_error,
-        }
-    )
-    details["bug_report_context"] = _compact_dict(
+    details_payload: dict[str, Any] = {
+        "reason": code.lower(),
+        "upstream_error_type": raw_type,
+        "upstream_error": raw_message,
+        "http_status_code": http_status_code,
+        "url": url,
+        "target_url": target_url,
+        "mode": mode,
+        "local_parse_error": local_parse_error,
+        "fallback_outcome": fallback_outcome,
+        "antibot_stage": local_antibot_stage,
+        "antibot_rule_id": local_antibot_rule_id,
+    }
+    if local_antibot_detection:
+        details_payload["antibot_challenge_kind"] = (
+            local_antibot_detection.challenge_kind
+        )
+        details_payload["antibot_reason"] = local_antibot_detection.reason
+    if upstream_antibot_detection:
+        details_payload["upstream_antibot_challenge_kind"] = (
+            upstream_antibot_detection.challenge_kind
+        )
+        details_payload["upstream_antibot_reason"] = upstream_antibot_detection.reason
+    details = _compact_dict(details_payload)
+    bug_report_context = _compact_dict(
         {
             "error_code": code,
             "upstream_error_type": raw_type,
@@ -203,8 +247,30 @@ def classify_web_save_failure(
             "target_url": target_url,
             "mode": mode,
             "local_parse_error": local_parse_error,
+            "fallback_outcome": fallback_outcome,
+            "antibot_challenge_kind": (
+                (
+                    local_antibot_detection.challenge_kind
+                    if local_antibot_detection
+                    else None
+                )
+                or (
+                    upstream_antibot_detection.challenge_kind
+                    if upstream_antibot_detection
+                    else None
+                )
+            ),
+            "antibot_reason": (
+                (local_antibot_detection.reason if local_antibot_detection else None)
+                or (
+                    upstream_antibot_detection.reason
+                    if upstream_antibot_detection
+                    else None
+                )
+            ),
         }
     )
+    details["bug_report_context"] = bug_report_context
 
     return {
         "code": code,

@@ -1,5 +1,6 @@
 """Simple heuristics to detect Cloudflare or generic anti-bot HTML before rendering."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 
@@ -11,30 +12,62 @@ class AntibotDetection:
     reason: str
 
 
-Marker = tuple[str, str, str]
+@dataclass(frozen=True)
+class Marker:
+    """Search marker used to classify challenge pages."""
 
-_CLOUDFLARE_MARKERS: tuple[Marker, ...] = (
-    ("cloudflare", "title contains 'Just a moment...'", "just a moment"),
-    (
-        "cloudflare",
-        "body mentions 'Checking your browser before accessing'",
-        "checking your browser before accessing",
+    kind: str
+    description: str
+    phrase: str
+    is_title: bool = False
+
+
+_CLOUDFLARE_TITLE_MARKER = Marker(
+    kind="cloudflare",
+    description="title contains 'Just a moment...'",
+    phrase="just a moment",
+    is_title=True,
+)
+
+_CLOUDFLARE_BODY_MARKERS: tuple[Marker, ...] = (
+    Marker(
+        kind="cloudflare",
+        description="body mentions 'Checking your browser before accessing'",
+        phrase="checking your browser before accessing",
     ),
-    (
-        "cloudflare",
-        "page contains cf-browser-verification marker",
-        "cf-browser-verification",
+    Marker(
+        kind="cloudflare",
+        description="page contains cf-browser-verification marker",
+        phrase="cf-browser-verification",
     ),
-    ("cloudflare", "page contains cf-error-code marker", "cf-error-code"),
+    Marker(
+        kind="cloudflare",
+        description="page contains cf-error-code marker",
+        phrase="cf-error-code",
+    ),
 )
 
 _GENERIC_MARKERS: tuple[Marker, ...] = (
-    ("generic", "page includes a 'challenge-form' element", "challenge-form"),
-    ("generic", "page tells the user to enable cookies", "enable cookies"),
-    ("generic", "page warns to wait while verifying", "please wait while we verify"),
+    Marker(
+        kind="generic",
+        description="page includes a 'challenge-form' element",
+        phrase="challenge-form",
+    ),
+    Marker(
+        kind="generic",
+        description="page tells the user to enable cookies",
+        phrase="enable cookies",
+    ),
+    Marker(
+        kind="generic",
+        description="page warns to wait while verifying",
+        phrase="please wait while we verify",
+    ),
 )
 
-_ALL_MARKERS: tuple[Marker, ...] = _CLOUDFLARE_MARKERS + _GENERIC_MARKERS
+_ALL_MARKERS: tuple[Marker, ...] = (
+    (_CLOUDFLARE_TITLE_MARKER,) + _CLOUDFLARE_BODY_MARKERS + _GENERIC_MARKERS
+)
 
 
 def detect_antibot_html(html: str | None) -> AntibotDetection | None:
@@ -44,10 +77,17 @@ def detect_antibot_html(html: str | None) -> AntibotDetection | None:
 
     lowered = html.lower()
 
-    for kind, description, phrase in _ALL_MARKERS:
-        if phrase in lowered:
-            reason = f"{description} (matched '{phrase}')"
-            return AntibotDetection(challenge_kind=kind, reason=reason)
+    matches = [marker for marker in _ALL_MARKERS if marker.phrase in lowered]
+
+    cloudflare_detection = _detect_cloudflare(matches)
+    if cloudflare_detection:
+        return cloudflare_detection
+
+    for marker in matches:
+        if marker.kind == "cloudflare":
+            continue
+        reason = f"{marker.description} (matched '{marker.phrase}')"
+        return AntibotDetection(challenge_kind=marker.kind, reason=reason)
 
     return None
 
@@ -55,3 +95,20 @@ def detect_antibot_html(html: str | None) -> AntibotDetection | None:
 def is_antibot_html(html: str | None) -> bool:
     """Return True when the HTML matches one of the anti-bot markers."""
     return detect_antibot_html(html) is not None
+
+
+def _detect_cloudflare(matches: Sequence[Marker]) -> AntibotDetection | None:
+    """Return a detection only when both title and body markers are present."""
+    cloudflare_matches = [marker for marker in matches if marker.kind == "cloudflare"]
+    title_hit = next((marker for marker in cloudflare_matches if marker.is_title), None)
+    body_hit = next(
+        (marker for marker in cloudflare_matches if not marker.is_title),
+        None,
+    )
+    if title_hit and body_hit:
+        reason = (
+            f"{title_hit.description}; {body_hit.description} "
+            f"(matched '{body_hit.phrase}')"
+        )
+        return AntibotDetection(challenge_kind="cloudflare", reason=reason)
+    return None

@@ -6,6 +6,9 @@ import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
+from api.services.web_save_antibot import AntibotDetection
+from api.services.web_save_parser import LocalParseFallbackError
+
 import pytest
 
 
@@ -134,6 +137,213 @@ def test_save_url_database_reports_local_and_jina_failure(monkeypatch):
     assert err.error_type == "FetchError"
     assert err.payload["code"] == "WEB_SAVE_LOCAL_PARSE_AND_JINA_PAYMENT_REQUIRED"
     assert "local parser found no readable content" in err.payload["message"].lower()
+
+
+def test_save_url_database_antibot_local_failure_calls_jina_once(monkeypatch):
+    module = _load_save_url_module()
+    captured = _stub_db_dependencies(module)
+    jina_calls: list[str] = []
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    detection = AntibotDetection("cloudflare", "Just a moment... challenge")
+
+    def antibot_parse(_url):
+        raise LocalParseFallbackError(
+            fallback="jina",
+            rule_id="antibot-fetch-challenge",
+            antibot_detection=detection,
+            stage="fetch",
+        )
+
+    module.parse_url_local = antibot_parse
+    module.get_markdown_content = lambda url, _key: jina_calls.append(url) or (
+        "Title: Story\n"
+        "URL Source: https://example.com/story\n"
+        "Markdown Content:\n"
+        "Body paragraph.\n"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Story",
+            "url_source": "https://example.com/story",
+            "published_time": None,
+        },
+        "Body paragraph.\n",
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    module.save_url_database("https://example.com/story", "user-1")
+
+    assert jina_calls == ["https://example.com/story"]
+    assert captured["upsert_kwargs"]["title"] == "Story"
+
+
+def test_save_url_database_antibot_fallback_not_reported_to_sentry(monkeypatch):
+    module = _load_save_url_module()
+    _stub_db_dependencies(module)
+    capture_calls: list[str] = []
+    exception_logs: list[str] = []
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+
+    module.capture_script_exception = lambda exc, **kwargs: capture_calls.append(
+        f"{type(exc).__name__}:{kwargs.get('extras')}"
+    )
+    module.logger.exception = lambda *args, **_kwargs: exception_logs.append(args[0])
+    module.resolve_apple_news_source_url = lambda url: url
+
+    detection = AntibotDetection("cloudflare", "Just a moment... challenge")
+
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        LocalParseFallbackError(
+            fallback="jina",
+            rule_id="antibot-fetch-challenge",
+            antibot_detection=detection,
+            stage="fetch",
+        )
+    )
+    module.get_markdown_content = lambda _url, _key: (
+        "Title: Story\n"
+        "URL Source: https://example.com/story\n"
+        "Markdown Content:\n"
+        "Body paragraph.\n"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Story",
+            "url_source": "https://example.com/story",
+            "published_time": None,
+        },
+        "Body paragraph.\n",
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    module.save_url_database("https://example.com/story", "user-1")
+
+    assert capture_calls == []
+    assert exception_logs == []
+
+
+def test_save_url_database_antibot_jina_blocked_content(monkeypatch):
+    module = _load_save_url_module()
+    _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        LocalParseFallbackError(
+            fallback="jina",
+            rule_id="antibot-fetch-challenge",
+            antibot_detection=AntibotDetection(
+                "generic", "challenge-form detected"
+            ),
+            stage="fetch",
+        )
+    )
+    module.get_markdown_content = lambda _url, _key: (
+        "<html>"
+        "<head><title>Just a moment...</title></head>"
+        "<body>"
+        "<div class=\"cf-browser-verification\">Checking your browser before accessing</div>"
+        "</body></html>"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Blocked Story",
+            "url_source": "https://example.com/story",
+            "published_time": None,
+        },
+        "Body",
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    with pytest.raises(module.WebSaveScriptError) as exc_info:
+        module.save_url_database("https://example.com/story", "user-1")
+
+    err = exc_info.value
+    assert err.payload["code"] == "WEB_SAVE_BLOCKED_SITE"
+
+
+def test_save_url_database_antibot_jina_timeout(monkeypatch):
+    module = _load_save_url_module()
+    _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        LocalParseFallbackError(
+            fallback="jina",
+            rule_id="antibot-fetch-challenge",
+            antibot_detection=AntibotDetection(
+                "generic", "challenge-form detected"
+            ),
+            stage="fetch",
+        )
+    )
+    module.get_markdown_content = lambda _url, _key: (_ for _ in ()).throw(
+        module.requests.exceptions.Timeout("request timed out")
+    )
+    module.logger.exception = lambda *_args, **_kwargs: None
+    module.resolve_website_title = lambda title, url: title
+    module.parse_jina_metadata = lambda _content: ({}, "")
+    module.compute_word_count = lambda _content: 0
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    with pytest.raises(module.WebSaveScriptError) as exc_info:
+        module.save_url_database("https://example.com/story", "user-1")
+
+    err = exc_info.value
+    assert err.payload["code"] == "WEB_SAVE_BLOCKED_SITE"
+
+
+def test_save_url_database_local_parse_failure_with_jina_timeout_stays_generic(
+    monkeypatch,
+):
+    module = _load_save_url_module()
+    _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        ValueError("No readable content extracted")
+    )
+    module.get_markdown_content = lambda _url, _key: (_ for _ in ()).throw(
+        module.requests.exceptions.Timeout(
+            "Failed to fetch content from Jina.ai: request timed out"
+        )
+    )
+    module.logger.exception = lambda *_args, **_kwargs: None
+    module.resolve_website_title = lambda title, url: title
+    module.parse_jina_metadata = lambda _content: ({}, "")
+    module.compute_word_count = lambda _content: 0
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    with pytest.raises(module.WebSaveScriptError) as exc_info:
+        module.save_url_database("https://example.com/story", "user-1")
+
+    err = exc_info.value
+    assert err.payload["code"] == "WEB_SAVE_LOCAL_PARSE_AND_JINA_FETCH_FAILED"
 
 
 def test_save_url_database_jina_wsj_preview_adds_truncation_warning(monkeypatch):
