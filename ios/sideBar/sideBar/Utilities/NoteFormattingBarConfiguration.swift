@@ -21,6 +21,10 @@ struct NoteFormattingBarConfiguration {
     let onUnderlineTap: @MainActor @Sendable () -> Void
     let onStrikethroughTap: @MainActor @Sendable () -> Void
     let onInlineCodeTap: @MainActor @Sendable () -> Void
+    let onTitleShortcut: @MainActor @Sendable () -> Void
+    let onHeadingShortcut: @MainActor @Sendable () -> Void
+    let onSubheadingShortcut: @MainActor @Sendable () -> Void
+    let onBodyShortcut: @MainActor @Sendable () -> Void
 
     init(
         activeTextStyle: NoteTextStyle = .body,
@@ -40,7 +44,11 @@ struct NoteFormattingBarConfiguration {
         onItalicTap: @escaping @MainActor @Sendable () -> Void,
         onUnderlineTap: @escaping @MainActor @Sendable () -> Void,
         onStrikethroughTap: @escaping @MainActor @Sendable () -> Void,
-        onInlineCodeTap: @escaping @MainActor @Sendable () -> Void = {}
+        onInlineCodeTap: @escaping @MainActor @Sendable () -> Void = {},
+        onTitleShortcut: @escaping @MainActor @Sendable () -> Void = {},
+        onHeadingShortcut: @escaping @MainActor @Sendable () -> Void = {},
+        onSubheadingShortcut: @escaping @MainActor @Sendable () -> Void = {},
+        onBodyShortcut: @escaping @MainActor @Sendable () -> Void = {}
     ) {
         self.activeTextStyle = activeTextStyle
         self.isTextStyleSectionEnabled = isTextStyleSectionEnabled
@@ -60,6 +68,10 @@ struct NoteFormattingBarConfiguration {
         self.onUnderlineTap = onUnderlineTap
         self.onStrikethroughTap = onStrikethroughTap
         self.onInlineCodeTap = onInlineCodeTap
+        self.onTitleShortcut = onTitleShortcut
+        self.onHeadingShortcut = onHeadingShortcut
+        self.onSubheadingShortcut = onSubheadingShortcut
+        self.onBodyShortcut = onBodyShortcut
     }
 
     static let disabled = NoteFormattingBarConfiguration(

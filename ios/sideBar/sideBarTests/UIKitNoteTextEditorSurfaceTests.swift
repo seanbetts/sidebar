@@ -205,6 +205,81 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         _ = textView.perform(boldCommand.action)
         XCTAssertTrue(context.editorViewModel.isFormattingActive(.bold))
     }
+    func testIPadSurfaceExposesAppleTextStyleKeyboardShortcuts() async throws {
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Title\nHello"))
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+        let textView = UIKitNoteTextEditorSurface.AccessoryTextView()
+        let configuration = context.editorViewModel.noteFormattingBarConfiguration
+        textView.formattingCommandsEnabled = configuration.isEnabled
+        textView.onBoldCommand = configuration.onBoldTap
+        textView.onItalicCommand = configuration.onItalicTap
+        textView.onUnderlineCommand = configuration.onUnderlineTap
+
+        let commands = try XCTUnwrap(textView.keyCommands)
+
+        XCTAssertNotNil(
+            commands.first {
+                $0.input?.lowercased() == "t" && $0.modifierFlags == [.command, .shift]
+            }
+        )
+        XCTAssertNotNil(
+            commands.first {
+                $0.input?.lowercased() == "h" && $0.modifierFlags == [.command, .shift]
+            }
+        )
+        XCTAssertNotNil(
+            commands.first {
+                $0.input?.lowercased() == "j" && $0.modifierFlags == [.command, .shift]
+            }
+        )
+        XCTAssertNotNil(
+            commands.first {
+                $0.input?.lowercased() == "b" && $0.modifierFlags == [.command, .shift]
+            }
+        )
+    }
+    func testIPadSurfaceAppleTextStyleShortcutsApplyExpectedStyles() async throws {
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Title\nHello"))
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+        let target = nativeViewModel.index(forCharacterOffset: 6, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: target..<target)
+        let textView = UIKitNoteTextEditorSurface.AccessoryTextView()
+        let configuration = context.editorViewModel.noteFormattingBarConfiguration
+        textView.formattingCommandsEnabled = configuration.isEnabled
+        textView.onTitleCommand = configuration.onTitleShortcut
+        textView.onHeadingCommand = configuration.onHeadingShortcut
+        textView.onSubheadingCommand = configuration.onSubheadingShortcut
+        textView.onBodyCommand = configuration.onBodyShortcut
+
+        let headingCommand = try XCTUnwrap(
+            textView.keyCommands?.first {
+                $0.input?.lowercased() == "h" && $0.modifierFlags == [.command, .shift]
+            }
+        )
+        let subheadingCommand = try XCTUnwrap(
+            textView.keyCommands?.first {
+                $0.input?.lowercased() == "j" && $0.modifierFlags == [.command, .shift]
+            }
+        )
+        let bodyCommand = try XCTUnwrap(
+            textView.keyCommands?.first {
+                $0.input?.lowercased() == "b" && $0.modifierFlags == [.command, .shift]
+            }
+        )
+
+        _ = textView.perform(headingCommand.action)
+        XCTAssertEqual(context.editorViewModel.activeTextStyle(), .heading)
+
+        _ = textView.perform(subheadingCommand.action)
+        XCTAssertEqual(context.editorViewModel.activeTextStyle(), .subheading)
+
+        _ = textView.perform(bodyCommand.action)
+        XCTAssertEqual(context.editorViewModel.activeTextStyle(), .body)
+    }
     func testFirstResponderSurfaceReloadsInputViewsWhenAccessoryPresentationChanges() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(

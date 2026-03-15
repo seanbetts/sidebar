@@ -84,21 +84,25 @@ struct SidebarCommands: Commands {
                         Button("Body") {
                             environment.notesRuntime.editorViewModel.setTextStyle(.body)
                         }
+                        .keyboardShortcut("b", modifiers: [.command, .shift])
                         .disabled(!canApplyTextStyle(.body))
 
                         Button("Title") {
                             environment.notesRuntime.editorViewModel.setTextStyle(.title)
                         }
+                        .keyboardShortcut("t", modifiers: [.command, .shift])
                         .disabled(!canApplyTextStyle(.title))
 
                         Button("Heading") {
                             environment.notesRuntime.editorViewModel.setTextStyle(.heading)
                         }
+                        .keyboardShortcut("h", modifiers: [.command, .shift])
                         .disabled(!canApplyTextStyle(.heading))
 
                         Button("Subheading") {
                             environment.notesRuntime.editorViewModel.setTextStyle(.subheading)
                         }
+                        .keyboardShortcut("j", modifiers: [.command, .shift])
                         .disabled(!canApplyTextStyle(.subheading))
                     }
 

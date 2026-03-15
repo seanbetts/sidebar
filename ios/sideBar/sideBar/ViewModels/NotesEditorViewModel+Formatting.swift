@@ -86,7 +86,11 @@ extension NotesEditorViewModel {
             onItalicTap: { [weak self] in self?.toggleFormatting(.italic) },
             onUnderlineTap: { [weak self] in self?.toggleFormatting(.underline) },
             onStrikethroughTap: { [weak self] in self?.toggleFormatting(.strikethrough) },
-            onInlineCodeTap: { [weak self] in self?.toggleFormatting(.inlineCode) }
+            onInlineCodeTap: { [weak self] in self?.toggleFormatting(.inlineCode) },
+            onTitleShortcut: { [weak self] in self?.setTextStyle(.title) },
+            onHeadingShortcut: { [weak self] in self?.setTextStyle(.heading) },
+            onSubheadingShortcut: { [weak self] in self?.setTextStyle(.subheading) },
+            onBodyShortcut: { [weak self] in self?.setTextStyle(.body) }
         )
     }
 }

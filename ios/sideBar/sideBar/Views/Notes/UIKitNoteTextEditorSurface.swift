@@ -15,6 +15,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var onBoldCommand: (() -> Void)?
         var onItalicCommand: (() -> Void)?
         var onUnderlineCommand: (() -> Void)?
+        var onTitleCommand: (() -> Void)?
+        var onHeadingCommand: (() -> Void)?
+        var onSubheadingCommand: (() -> Void)?
+        var onBodyCommand: (() -> Void)?
         var shouldAutofocus = false
 
         override var inputAccessoryView: UIView? {
@@ -25,10 +29,30 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         override var keyCommands: [UIKeyCommand]? {
             guard formattingCommandsEnabled else { return super.keyCommands }
             return [
+                UIKeyCommand(input: "t", modifierFlags: [.command, .shift], action: #selector(handleTitleCommand)),
+                UIKeyCommand(input: "h", modifierFlags: [.command, .shift], action: #selector(handleHeadingCommand)),
+                UIKeyCommand(input: "j", modifierFlags: [.command, .shift], action: #selector(handleSubheadingCommand)),
+                UIKeyCommand(input: "b", modifierFlags: [.command, .shift], action: #selector(handleBodyCommand)),
                 UIKeyCommand(input: "b", modifierFlags: [.command], action: #selector(handleBoldCommand)),
                 UIKeyCommand(input: "i", modifierFlags: [.command], action: #selector(handleItalicCommand)),
                 UIKeyCommand(input: "u", modifierFlags: [.command], action: #selector(handleUnderlineCommand))
             ]
+        }
+
+        @objc private func handleTitleCommand() {
+            onTitleCommand?()
+        }
+
+        @objc private func handleHeadingCommand() {
+            onHeadingCommand?()
+        }
+
+        @objc private func handleSubheadingCommand() {
+            onSubheadingCommand?()
+        }
+
+        @objc private func handleBodyCommand() {
+            onBodyCommand?()
         }
 
         @objc private func handleBoldCommand() {
@@ -179,6 +203,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         configuration: NoteFormattingBarConfiguration?
     ) -> Bool {
         textView.formattingCommandsEnabled = configuration?.isEnabled ?? false
+        textView.onTitleCommand = configuration?.onTitleShortcut
+        textView.onHeadingCommand = configuration?.onHeadingShortcut
+        textView.onSubheadingCommand = configuration?.onSubheadingShortcut
+        textView.onBodyCommand = configuration?.onBodyShortcut
         textView.onBoldCommand = configuration?.onBoldTap
         textView.onItalicCommand = configuration?.onItalicTap
         textView.onUnderlineCommand = configuration?.onUnderlineTap

@@ -11,6 +11,30 @@ final class AppCommandsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("Button(\"Title\")"))
         XCTAssertTrue(normalized.contains("Button(\"Heading\")"))
         XCTAssertTrue(normalized.contains("Button(\"Subheading\")"))
+        XCTAssertTrue(
+            normalized.contains("Button(\"Title\"){environment.notesRuntime.editorViewModel.setTextStyle(.title)}")
+        )
+        XCTAssertTrue(
+            normalized.contains(".keyboardShortcut(\"t\",modifiers:[.command,.shift])")
+        )
+        XCTAssertTrue(
+            normalized.contains("Button(\"Heading\"){environment.notesRuntime.editorViewModel.setTextStyle(.heading)}")
+        )
+        XCTAssertTrue(
+            normalized.contains(".keyboardShortcut(\"h\",modifiers:[.command,.shift])")
+        )
+        XCTAssertTrue(
+            normalized.contains("Button(\"Subheading\"){environment.notesRuntime.editorViewModel.setTextStyle(.subheading)}")
+        )
+        XCTAssertTrue(
+            normalized.contains(".keyboardShortcut(\"j\",modifiers:[.command,.shift])")
+        )
+        XCTAssertTrue(
+            normalized.contains("Button(\"Body\"){environment.notesRuntime.editorViewModel.setTextStyle(.body)}")
+        )
+        XCTAssertTrue(
+            normalized.contains(".keyboardShortcut(\"b\",modifiers:[.command,.shift])")
+        )
         XCTAssertTrue(normalized.contains("Menu(\"Inline\")"))
         XCTAssertTrue(normalized.contains("Toggle(\"Bold\""))
         XCTAssertTrue(normalized.contains("Toggle(\"Italic\""))
