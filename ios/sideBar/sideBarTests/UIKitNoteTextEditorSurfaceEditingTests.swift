@@ -162,6 +162,47 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
         let textView = try mountTextView(viewModel: nativeViewModel)
         XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
     }
+
+    func testPureSelectionChangesDoNotRewriteUIKitAttributedText() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello\nWorld"),
+            plainText: "Hello\nWorld"
+        )
+        let trackingTextView = AttributeMutationTrackingTextView()
+        let controller = UIHostingController<AnyView>(
+            rootView: AnyView(
+                UIKitNoteTextEditorSurface(
+                    viewModel: viewModel,
+                    maxContentWidth: 360,
+                    isEditable: true,
+                    shouldAutofocus: false,
+                    formattingBarConfiguration: .disabled,
+                    formattingBarPresentation: .hidden,
+                    makeTextView: { trackingTextView }
+                )
+            )
+        )
+        let frame = CGRect(x: 0, y: 0, width: 360, height: 320)
+        let window = makeUIKitNoteTextEditorSurfaceHostingWindow(frame: frame)
+        window.rootViewController = controller
+        window.isHidden = false
+        controller.view.frame = frame
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        NotesDetailViewTestRetainer.hostingControllers.append(controller)
+        NotesDetailViewTestRetainer.hostingWindows.append(window)
+
+        let initialAssignmentCount = trackingTextView.attributedTextAssignmentCount
+        let target = viewModel.index(forCharacterOffset: 3, in: viewModel.attributedContent)
+
+        viewModel.selection = AttributedTextSelection(range: target..<target)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(trackingTextView.attributedTextAssignmentCount, initialAssignmentCount)
+        XCTAssertEqual(trackingTextView.selectedRange, NSRange(location: 3, length: 0))
+    }
 }
 
 #endif

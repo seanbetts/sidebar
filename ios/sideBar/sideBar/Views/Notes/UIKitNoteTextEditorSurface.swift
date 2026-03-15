@@ -4,6 +4,11 @@ import UIKit
 
 @available(iOS 26.0, *)
 struct UIKitNoteTextEditorSurface: UIViewRepresentable {
+    private struct RenderSignature: Equatable {
+        let canonicalContent: String
+        let baseFontSize: CGFloat
+    }
+
     class AccessoryTextView: UITextView {
         var formattingAccessoryView: UIView?
         var formattingCommandsEnabled = false
@@ -120,11 +125,16 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 accessoryTextView.reloadInputViews()
             }
         }
+        let renderSignature = RenderSignature(
+            canonicalContent: viewModel.currentCanonicalContent(),
+            baseFontSize: viewModel.baseFontSize
+        )
         let attributedText = bridgedAttributedText(from: viewModel.attributedContent)
-        if textView.attributedText.isEqual(to: attributedText) == false {
+        if context.coordinator.lastAppliedRenderSignature != renderSignature {
             context.coordinator.isApplyingProgrammaticText = true
             textView.attributedText = attributedText
             context.coordinator.isApplyingProgrammaticText = false
+            context.coordinator.lastAppliedRenderSignature = renderSignature
         }
 
         let selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
@@ -220,6 +230,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         let viewModel: NativeNoteEditorViewModel
         var isApplyingProgrammaticText = false
         var isApplyingProgrammaticSelection = false
+        var lastAppliedRenderSignature: RenderSignature?
 
         init(viewModel: NativeNoteEditorViewModel) {
             self.viewModel = viewModel
@@ -271,6 +282,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             isApplyingProgrammaticText = true
             textView.attributedText = bridgedText
             isApplyingProgrammaticText = false
+            lastAppliedRenderSignature = RenderSignature(
+                canonicalContent: viewModel.currentCanonicalContent(),
+                baseFontSize: viewModel.baseFontSize
+            )
 
             isApplyingProgrammaticSelection = true
             textView.selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)

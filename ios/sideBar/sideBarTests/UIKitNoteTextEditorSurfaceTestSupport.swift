@@ -137,6 +137,18 @@ final class ReloadTrackingAccessoryTextView: UIKitNoteTextEditorSurface.Accessor
 
 @MainActor
 @available(iOS 26.0, *)
+final class AttributeMutationTrackingTextView: UIKitNoteTextEditorSurface.AccessoryTextView {
+    private(set) var attributedTextAssignmentCount = 0
+
+    override var attributedText: NSAttributedString! {
+        didSet {
+            attributedTextAssignmentCount += 1
+        }
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
 struct FormattingSurfaceHost: View {
     @ObservedObject var presentationState: FormattingPresentationState
     let viewModel: NativeNoteEditorViewModel
