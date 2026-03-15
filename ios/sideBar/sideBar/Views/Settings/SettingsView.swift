@@ -153,49 +153,45 @@ public struct SettingsView: View {
     private func updateSavePillState() {
         let isSaving = isSavingAnySettings
         let saveError = currentSaveError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        defer { wasSaving = isSaving }
 
-        defer {
-            wasSaving = isSaving
-        }
+        let timeline = SettingsSaveStatusLogic.timeline(
+            wasSaving: wasSaving,
+            isSaving: isSaving,
+            saveError: saveError
+        )
 
-        if let saveError, !saveError.isEmpty {
+        switch timeline.immediateState {
+        case .error:
             savingDelayTask?.cancel()
             hideSavedTask?.cancel()
-            withAnimation {
-                savePillState = .error
-            }
-            return
-        }
-
-        if isSaving {
-            hideSavedTask?.cancel()
-            if case .saving = savePillState {
-                return
-            }
-            savingDelayTask?.cancel()
-            savingDelayTask = Task {
-                try? await Task.sleep(nanoseconds: 350_000_000)
-                guard !Task.isCancelled else { return }
-                guard isSavingAnySettings, currentSaveError == nil else { return }
-                await MainActor.run {
-                    withAnimation {
-                        savePillState = .saving
-                    }
-                }
-            }
-            return
-        }
-
-        savingDelayTask?.cancel()
-
-        if wasSaving {
+            withAnimation { savePillState = .error }
+        case .saving:
+            startSavingDelay()
+        case .saved:
             showSavedPill()
+        case nil:
+            savingDelayTask?.cancel()
+            if savePillState != nil {
+                withAnimation { savePillState = nil }
+            }
+        }
+    }
+
+    private func startSavingDelay() {
+        hideSavedTask?.cancel()
+        if case .saving = savePillState {
             return
         }
-
-        if savePillState != nil {
-            withAnimation {
-                savePillState = nil
+        savingDelayTask?.cancel()
+        savingDelayTask = Task {
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            guard isSavingAnySettings, currentSaveError == nil else { return }
+            await MainActor.run {
+                withAnimation {
+                    savePillState = .saving
+                }
             }
         }
     }
@@ -263,6 +259,30 @@ struct SettingsSaveStatusPill: View {
         case .error:
             return "Couldn't save settings"
         }
+    }
+}
+
+struct SettingsSaveStatusLogic {
+    struct Timeline {
+        let immediateState: SettingsSavePillState?
+    }
+
+    static func timeline(
+        wasSaving: Bool,
+        isSaving: Bool,
+        saveError: String?
+    ) -> Timeline {
+        let trimmedError = saveError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let trimmedError, !trimmedError.isEmpty {
+            return .init(immediateState: .error)
+        }
+        if isSaving {
+            return .init(immediateState: .saving)
+        }
+        if wasSaving {
+            return .init(immediateState: .saved)
+        }
+        return .init(immediateState: nil)
     }
 }
 

@@ -118,7 +118,7 @@ struct UserSettingsView: View {
 
     func syncDraftsFromSettings(_ settings: UserSettings?) {
         guard let settings else { return }
-        let shouldSync = Self.shouldSyncDrafts(
+        let shouldSync = SettingsDraftSynchronizer.shouldSyncDrafts(
             hasLoadedDrafts: hasLoadedDrafts,
             isDraftDirty: isDraftDirty,
             previousUserId: draftsUserId,
@@ -127,7 +127,7 @@ struct UserSettingsView: View {
         if !shouldSync {
             return
         }
-        if Self.normalizedUserId(draftsUserId) != Self.normalizedUserId(settings.userId) {
+        if SettingsDraftSynchronizer.normalizedUserId(draftsUserId) != SettingsDraftSynchronizer.normalizedUserId(settings.userId) {
             autosaveTask?.cancel()
         }
         isSyncingDrafts = true
@@ -165,14 +165,16 @@ struct UserSettingsView: View {
         previousUserId: String?,
         nextUserId: String?
     ) -> Bool {
-        let didChangeUser = normalizedUserId(previousUserId) != normalizedUserId(nextUserId)
-        return didChangeUser || !hasLoadedDrafts || !isDraftDirty
+        SettingsDraftSynchronizer.shouldSyncDrafts(
+            hasLoadedDrafts: hasLoadedDrafts,
+            isDraftDirty: isDraftDirty,
+            previousUserId: previousUserId,
+            nextUserId: nextUserId
+        )
     }
 
     private static func normalizedUserId(_ value: String?) -> String? {
-        guard let value else { return nil }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        SettingsDraftSynchronizer.normalizedUserId(value)
     }
 }
 

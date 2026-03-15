@@ -108,48 +108,57 @@ extension ProfileSettingsView {
 
     var isDraftDirty: Bool {
         guard let settings = viewModel.settings else { return false }
-        let currentDate = settings.dateOfBirth
-        let nextDate = dateOfBirthEnabled ? Self.dateString(from: dateOfBirth) : nil
-        return name != (settings.name ?? "")
-            || jobTitle != (settings.jobTitle ?? "")
-            || employer != (settings.employer ?? "")
-            || !Self.pickerValuesEquivalent(gender, settings.gender)
-            || !Self.pickerValuesEquivalent(pronouns, settings.pronouns)
-            || location != (settings.location ?? "")
-            || nextDate != currentDate
+        return profileDraftState.isDirty(comparedTo: settings)
     }
 
     func syncDraftsFromSettings(_ settings: UserSettings?) {
         guard let settings else { return }
-        let shouldSync = Self.shouldSyncDrafts(
+        let shouldSync = SettingsDraftSynchronizer.shouldSyncDrafts(
             hasLoadedDrafts: hasLoadedDrafts,
-            isDraftDirty: isDraftDirty,
+            isDraftDirty: profileDraftState.isDirty(comparedTo: settings),
             previousUserId: draftsUserId,
             nextUserId: settings.userId
         )
         if !shouldSync {
             return
         }
-        if Self.normalizedUserId(draftsUserId) != Self.normalizedUserId(settings.userId) {
+        if SettingsDraftSynchronizer.normalizedUserId(draftsUserId) != SettingsDraftSynchronizer.normalizedUserId(settings.userId) {
             autosaveTask?.cancel()
         }
         isSyncingDrafts = true
-        name = settings.name ?? ""
-        jobTitle = settings.jobTitle ?? ""
-        employer = settings.employer ?? ""
-        gender = Self.normalizedPickerSelection(currentValue: settings.gender, base: Self.genderOptions)
-        pronouns = Self.normalizedPickerSelection(currentValue: settings.pronouns, base: Self.pronounOptions)
-        location = settings.location ?? ""
-        if let parsedDate = Self.parseDate(settings.dateOfBirth) {
+        applyDraftState(.from(settings: settings))
+        draftsUserId = settings.userId
+        hasLoadedDrafts = true
+        isSyncingDrafts = false
+    }
+
+    private var profileDraftState: ProfileDraftState {
+        .init(
+            name: name,
+            jobTitle: jobTitle,
+            employer: employer,
+            gender: gender,
+            pronouns: pronouns,
+            location: location,
+            dateOfBirth: dateOfBirthEnabled ? Self.dateString(from: dateOfBirth) : nil
+        )
+    }
+
+    private func applyDraftState(_ state: ProfileDraftState) {
+        name = state.name
+        jobTitle = state.jobTitle
+        employer = state.employer
+        gender = state.gender
+        pronouns = state.pronouns
+        location = state.location
+        if let dateString = state.dateOfBirth,
+           let parsedDate = Self.parseDate(dateString) {
             dateOfBirthEnabled = true
             dateOfBirth = parsedDate
         } else {
             dateOfBirthEnabled = false
             dateOfBirth = Date()
         }
-        draftsUserId = settings.userId
-        hasLoadedDrafts = true
-        isSyncingDrafts = false
     }
 
     func scheduleAutosave() {
@@ -211,8 +220,16 @@ extension ProfileSettingsView {
         previousUserId: String?,
         nextUserId: String?
     ) -> Bool {
-        let didChangeUser = normalizedUserId(previousUserId) != normalizedUserId(nextUserId)
-        return didChangeUser || !hasLoadedDrafts || !isDraftDirty
+        SettingsDraftSynchronizer.shouldSyncDrafts(
+            hasLoadedDrafts: hasLoadedDrafts,
+            isDraftDirty: isDraftDirty,
+            previousUserId: previousUserId,
+            nextUserId: nextUserId
+        )
+    }
+
+    static func normalizedUserId(_ value: String?) -> String? {
+        SettingsDraftSynchronizer.normalizedUserId(value)
     }
 
     static func parseDate(_ value: String?) -> Date? {
@@ -220,12 +237,6 @@ extension ProfileSettingsView {
             return nil
         }
         return dateParser.date(from: value)
-    }
-
-    static func normalizedUserId(_ value: String?) -> String? {
-        guard let value else { return nil }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
     }
 
     static func dateString(from date: Date) -> String {
@@ -237,7 +248,58 @@ extension ProfileSettingsView {
     }
 }
 
+struct SettingsDraftSynchronizer {
+    static func shouldSyncDrafts(
+        hasLoadedDrafts: Bool,
+        isDraftDirty: Bool,
+        previousUserId: String?,
+        nextUserId: String?
+    ) -> Bool {
+        let didChangeUser = normalizedUserId(previousUserId) != normalizedUserId(nextUserId)
+        return didChangeUser || !hasLoadedDrafts || !isDraftDirty
+    }
+
+    static func normalizedUserId(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 extension ProfileSettingsView {
+    struct ProfileDraftState {
+        let name: String
+        let jobTitle: String
+        let employer: String
+        let gender: String
+        let pronouns: String
+        let location: String
+        let dateOfBirth: String?
+
+        static func from(settings: UserSettings) -> ProfileDraftState {
+            .init(
+                name: settings.name ?? "",
+                jobTitle: settings.jobTitle ?? "",
+                employer: settings.employer ?? "",
+                gender: normalizedPickerSelection(currentValue: settings.gender, base: genderOptions),
+                pronouns: normalizedPickerSelection(currentValue: settings.pronouns, base: pronounOptions),
+                location: settings.location ?? "",
+                dateOfBirth: settings.dateOfBirth
+            )
+        }
+
+        func isDirty(comparedTo settings: UserSettings) -> Bool {
+            if name != (settings.name ?? "") { return true }
+            if jobTitle != (settings.jobTitle ?? "") { return true }
+            if employer != (settings.employer ?? "") { return true }
+            if !ProfileSettingsView.pickerValuesEquivalent(gender, settings.gender) { return true }
+            if !ProfileSettingsView.pickerValuesEquivalent(pronouns, settings.pronouns) { return true }
+            if location != (settings.location ?? "") { return true }
+            if dateOfBirth != settings.dateOfBirth { return true }
+            return false
+        }
+    }
+
     @ViewBuilder
     var genderField: some View {
         #if os(macOS)

@@ -59,6 +59,56 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(shouldSync)
     }
 
+    func testProfileDraftHydrationMatchesStoredSettings() {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: "",
+            workingRelationship: "",
+            name: "Sean",
+            jobTitle: "Founder",
+            employer: "sideBar",
+            dateOfBirth: "1990-01-01",
+            gender: "male",
+            pronouns: "he/him",
+            location: "London",
+            profileImageUrl: nil,
+            enabledSkills: [],
+            installedStoreSkills: []
+        )
+
+        let draft = ProfileSettingsView.ProfileDraftState.from(settings: settings)
+
+        XCTAssertFalse(draft.isDirty(comparedTo: settings))
+    }
+
+    func testSettingsSaveStatusLogicShowsSavingThenSaved() {
+        var timeline = SettingsSaveStatusLogic.timeline(
+            wasSaving: false,
+            isSaving: true,
+            saveError: nil
+        )
+
+        XCTAssertEqual(timeline.immediateState, .saving)
+
+        timeline = SettingsSaveStatusLogic.timeline(
+            wasSaving: true,
+            isSaving: false,
+            saveError: nil
+        )
+
+        XCTAssertEqual(timeline.immediateState, .saved)
+    }
+
+    func testSettingsSaveStatusLogicShowsErrorWhenErrorPresent() {
+        let timeline = SettingsSaveStatusLogic.timeline(
+            wasSaving: true,
+            isSaving: false,
+            saveError: "boom"
+        )
+
+        XCTAssertEqual(timeline.immediateState, .error)
+    }
+
     func testPickerOptionsReturnsBaseOptionsWhenCurrentValueIsEmpty() {
         let baseOptions = ["he/him", "she/her"]
 
