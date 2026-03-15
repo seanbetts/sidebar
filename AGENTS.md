@@ -155,6 +155,32 @@ User-facing product docs live in `docs/product/` and are deployed via Mintlify t
 - Refactoring within limits
 - Tests and documentation
 
+## Continuation And Minor Tweaks
+
+Superpowers process skills remain the default for new features, new behavior, ambiguous changes, and work that needs fresh design or planning.
+
+Do not restart the full Superpowers workflow for continuation feedback on work already in progress.
+
+Treat the following as continuation work by default:
+- regression fixes in recently completed or in-flight work
+- user feedback on an existing spec, plan, branch, or implementation
+- localized UI polish, including spacing, typography, sizing, alignment, copy, section emphasis, visual hierarchy, and layout cleanup
+- small binding, display, or persistence fixes within the already-approved feature scope
+
+For continuation work:
+- continue using the existing approved spec or plan when one exists
+- update the existing spec or plan only if needed to keep it accurate
+- do not create a new spec or a new plan document unless scope materially expands
+- do not invoke brainstorming for localized polish or corrective changes that stay within the approved scope
+- do not invoke writing-plans solely because the user is giving follow-up tweaks or regression feedback
+- still perform implementation, testing, and verification proportional to the change
+
+Start a new Superpowers design or planning cycle only when the request:
+- adds net-new functionality
+- changes workflow semantics or product behavior beyond the approved scope
+- introduces meaningful architectural, data-flow, or API decisions
+- is ambiguous enough that design tradeoffs need explicit review
+
 ## Sentry Access
 
 When debugging production or pre-release Apple crashes, prefer checking real Sentry issues and events instead of inferring from local logs alone.
