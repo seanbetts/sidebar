@@ -4,7 +4,7 @@ import UIKit
 
 @available(iOS 26.0, *)
 struct UIKitNoteTextEditorSurface: UIViewRepresentable {
-    private struct RenderSignature: Equatable {
+    fileprivate struct RenderSignature: Equatable {
         let canonicalContent: String
         let baseFontSize: CGFloat
     }
@@ -230,7 +230,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         let viewModel: NativeNoteEditorViewModel
         var isApplyingProgrammaticText = false
         var isApplyingProgrammaticSelection = false
-        var lastAppliedRenderSignature: RenderSignature?
+        fileprivate var lastAppliedRenderSignature: RenderSignature?
 
         init(viewModel: NativeNoteEditorViewModel) {
             self.viewModel = viewModel

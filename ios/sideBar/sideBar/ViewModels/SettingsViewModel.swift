@@ -162,7 +162,9 @@ public final class SettingsViewModel: LoadableViewModel {
         pronouns: String,
         location: String
     ) async {
-        guard let current = settings, isBoundToCurrentAuthUser(settings: current) else { return }
+        profileSaveError = nil
+        let resolved = await currentSettingsForSave()
+        guard let current = resolved.settings else { profileSaveError = resolved.error; return }
 
         let nextDateOfBirth = dateOfBirthEnabled ? dateOfBirth.map(Self.dateOnlyString(from:)) : nil
         let nameUpdate = name != (current.name ?? "") ? name : nil
@@ -204,7 +206,7 @@ public final class SettingsViewModel: LoadableViewModel {
                 value: response,
                 ttlSeconds: CachePolicy.userSettings
             )
-            recordCompletedSettingsSave()
+            settingsSaveCompletionCount += 1
         } catch {
             profileSaveError = error.localizedDescription
         }
@@ -215,7 +217,9 @@ public final class SettingsViewModel: LoadableViewModel {
         communicationStyle: String,
         workingRelationship: String
     ) async {
-        guard let current = settings, isBoundToCurrentAuthUser(settings: current) else { return }
+        systemSaveError = nil
+        let resolved = await currentSettingsForSave()
+        guard let current = resolved.settings else { systemSaveError = resolved.error; return }
 
         let communicationStyleUpdate = communicationStyle != (current.communicationStyle ?? "")
             ? communicationStyle
@@ -243,7 +247,7 @@ public final class SettingsViewModel: LoadableViewModel {
                 value: response,
                 ttlSeconds: CachePolicy.userSettings
             )
-            recordCompletedSettingsSave()
+            settingsSaveCompletionCount += 1
         } catch {
             systemSaveError = error.localizedDescription
         }
@@ -365,7 +369,7 @@ public final class SettingsViewModel: LoadableViewModel {
             )
             let response = try await settingsAPI.updateSettings(update)
             settings = response
-            recordCompletedSettingsSave()
+            settingsSaveCompletionCount += 1
             await invalidateAndRefreshSkillsState()
         } catch {
             settings = previous
@@ -418,6 +422,8 @@ public final class SettingsViewModel: LoadableViewModel {
             ttlSeconds: CachePolicy.userSettings
         )
     }
+
+    func recordCompletedSettingsSave() { settingsSaveCompletionCount += 1 }
 
     private func invalidateAndRefreshSkillsState() async {
         cache.remove(key: userSettingsCacheKey)

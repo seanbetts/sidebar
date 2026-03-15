@@ -114,7 +114,7 @@ final class SettingsViewModelProfileTests: XCTestCase {
         XCTAssertNil(viewModel.settings?.dateOfBirth)
     }
 
-    func testSaveProfileSettingsSkipsWhenSettingsBelongToDifferentAuthenticatedUser() async {
+    func testSaveProfileSettingsSurfacesErrorWhenLoadedSettingsAndRefetchDoNotMatchAuthenticatedUser() async {
         let initial = UserSettings(
             userId: "user-1",
             communicationStyle: nil,
@@ -149,7 +149,9 @@ final class SettingsViewModelProfileTests: XCTestCase {
             location: "Seattle"
         )
 
+        XCTAssertEqual(api.getSettingsCallCount, 2)
         XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertNotNil(viewModel.profileSaveError)
     }
 
     private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {
@@ -163,6 +165,7 @@ private final class RecordingSettingsAPI: SettingsProviding {
     let initial: UserSettings
     let updated: UserSettings
     var lastUpdate: SettingsUpdate?
+    var getSettingsCallCount = 0
     var updateCallCount = 0
 
     init(initial: UserSettings, updated: UserSettings) {
@@ -171,7 +174,8 @@ private final class RecordingSettingsAPI: SettingsProviding {
     }
 
     func getSettings() async throws -> UserSettings {
-        initial
+        getSettingsCallCount += 1
+        return initial
     }
 
     func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {

@@ -9,8 +9,4 @@ extension SettingsViewModel {
         let day = components.day ?? 1
         return String(format: "%04d-%02d-%02d", year, month, day)
     }
-
-    func recordCompletedSettingsSave() {
-        settingsSaveCompletionCount += 1
-    }
 }

@@ -1,5 +1,13 @@
 import Foundation
 
+struct SettingsRefreshFailure: LocalizedError, Equatable {
+    let message: String
+
+    var errorDescription: String? {
+        message
+    }
+}
+
 @MainActor
 extension SettingsViewModel {
     public var assistantDisplayName: String {
@@ -26,6 +34,36 @@ extension SettingsViewModel {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    func reloadSettingsForCurrentAuthUser() async -> Result<UserSettings, SettingsRefreshFailure> {
+        do {
+            let refreshed = try await settingsAPI.getSettings()
+            applySettingsResponse(refreshed)
+            guard isBoundToCurrentAuthUser(settings: refreshed) else {
+                return .failure(
+                    SettingsRefreshFailure(
+                        message: "Couldn't refresh the current account settings. Reopen Settings and try again."
+                    )
+                )
+            }
+            return .success(refreshed)
+        } catch {
+            return .failure(SettingsRefreshFailure(message: error.localizedDescription))
+        }
+    }
+
+    func currentSettingsForSave() async -> (settings: UserSettings?, error: String?) {
+        if let loaded = settings, isBoundToCurrentAuthUser(settings: loaded) {
+            return (loaded, nil)
+        }
+
+        switch await reloadSettingsForCurrentAuthUser() {
+        case .success(let refreshed):
+            return (refreshed, nil)
+        case .failure(let failure):
+            return (nil, failure.message)
+        }
     }
 
     func normalizeEnabledSkills(_ enabledSkills: [String]) -> [String] {
