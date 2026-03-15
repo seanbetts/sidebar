@@ -184,8 +184,10 @@ extension ContentView {
         })
         #endif
         content = AnyView(content.onReceive(environment.notesRuntime.viewModel.$selectedNoteId) { newValue in
-            guard newValue != nil else { return }
-            handleNonChatSelection(.notes)
+            #if !os(macOS)
+            if horizontalSizeClass == .compact { environment.notesPhoneDetailRouteId = newValue }
+            #endif
+            if newValue != nil { handleNonChatSelection(.notes) }
         })
         content = AnyView(content.onReceive(environment.ingestionViewModel.$selectedFileId) { newValue in
             guard newValue != nil else { return }

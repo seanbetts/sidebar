@@ -355,6 +355,12 @@ public final class AppEnvironment: ObservableObject {
         set { navigation.shortcutActionEvent = newValue }
     }
 
+    /// Active notes detail route identifier used for compact phone navigation.
+    public var notesPhoneDetailRouteId: String? {
+        get { navigation.notesPhoneDetailRouteId }
+        set { navigation.notesPhoneDetailRouteId = newValue }
+    }
+
     /// Active tasks detail route identifier used for compact phone navigation.
     public var tasksPhoneDetailRouteId: String? {
         get { navigation.tasksPhoneDetailRouteId }

@@ -8,12 +8,22 @@ import UIKit
 // MARK: - NotesPanel+Helpers
 
 extension NotesPanelView {
-    static func shouldHandleSelectionRequest(
+    enum SelectionRequestAction: Equatable {
+        case ignore
+        case select
+    }
+
+    static func selectionRequestAction(
+        isCompactPhone: Bool,
         currentSelectedNoteId: String?,
         activeNoteId: String?,
         requestedNoteId: String
-    ) -> Bool {
-        currentSelectedNoteId != requestedNoteId || activeNoteId != requestedNoteId
+    ) -> SelectionRequestAction {
+        if isCompactPhone { return .select }
+        if currentSelectedNoteId == requestedNoteId, activeNoteId == requestedNoteId {
+            return .ignore
+        }
+        return .select
     }
 
     var header: some View {
@@ -206,11 +216,16 @@ extension NotesPanelView {
     }
 
     func requestNoteSelection(id: String) {
-        guard Self.shouldHandleSelectionRequest(
+        let action = Self.selectionRequestAction(
+            isCompactPhone: isCompactPhone,
             currentSelectedNoteId: viewModel.selectedNoteId,
             activeNoteId: viewModel.activeNote?.path,
             requestedNoteId: id
-        ) else { return }
+        )
+        guard action != .ignore else { return }
+        if isCompactPhone {
+            environment.notesPhoneDetailRouteId = id
+        }
         Task {
             await environment.notesRuntime.editorViewModel.saveIfNeeded()
             await viewModel.selectNote(id: id)

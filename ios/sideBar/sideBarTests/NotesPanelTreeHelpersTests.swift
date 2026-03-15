@@ -116,23 +116,27 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertTrue(actions.contains(.rename))
     }
 
-    func testSelectionRequestIsHandledWhenSelectedNoteIsStale() {
-        XCTAssertTrue(
-            NotesPanelView.shouldHandleSelectionRequest(
+    func testSelectionRequestAlwaysSelectsOnCompactPhone() {
+        XCTAssertEqual(
+            NotesPanelView.selectionRequestAction(
+                isCompactPhone: true,
                 currentSelectedNoteId: "note-1",
-                activeNoteId: nil,
-                requestedNoteId: "note-1"
-            )
+                activeNoteId: "note-1",
+                requestedNoteId: "note-2"
+            ),
+            .select
         )
     }
 
-    func testSelectionRequestIsIgnoredWhenRequestedNoteIsAlreadyOpen() {
-        XCTAssertFalse(
-            NotesPanelView.shouldHandleSelectionRequest(
+    func testSelectionRequestIgnoresAlreadyOpenNoteOffCompactPhone() {
+        XCTAssertEqual(
+            NotesPanelView.selectionRequestAction(
+                isCompactPhone: false,
                 currentSelectedNoteId: "note-1",
                 activeNoteId: "note-1",
                 requestedNoteId: "note-1"
-            )
+            ),
+            .ignore
         )
     }
 }

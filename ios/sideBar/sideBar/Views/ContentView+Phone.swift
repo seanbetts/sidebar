@@ -212,9 +212,10 @@ extension ContentView {
             detailView: { AnyView(NotesView()) },
             phoneSelection: {
                 Binding(
-                    get: { environment.notesRuntime.viewModel.selectedNoteId.map(PhoneDetailRoute.init) },
+                    get: { environment.notesPhoneDetailRouteId.map(PhoneDetailRoute.init) },
                     set: { route in
                         guard route == nil else { return }
+                        environment.notesPhoneDetailRouteId = nil
                         Task {
                             await environment.notesRuntime.editorViewModel.saveIfNeeded()
                             environment.notesRuntime.viewModel.clearSelection()

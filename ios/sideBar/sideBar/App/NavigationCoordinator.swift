@@ -13,6 +13,7 @@ public final class NavigationCoordinator: ObservableObject {
     @Published public var pendingNewNoteDeepLink: Bool = false
     @Published public var pendingScratchpadDeepLink: Bool = false
     @Published public var shortcutActionEvent: ShortcutActionEvent?
+    @Published public var notesPhoneDetailRouteId: String?
     @Published public var tasksPhoneDetailRouteId: String?
 
     public init() {
@@ -28,6 +29,7 @@ public final class NavigationCoordinator: ObservableObject {
         pendingNewNoteDeepLink = false
         pendingScratchpadDeepLink = false
         shortcutActionEvent = nil
+        notesPhoneDetailRouteId = nil
         tasksPhoneDetailRouteId = nil
     }
 }

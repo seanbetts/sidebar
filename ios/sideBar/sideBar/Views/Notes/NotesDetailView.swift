@@ -176,7 +176,10 @@ extension NotesDetailView {
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.activeNote != nil {
+        if isCompactPhoneRoutePendingSelection {
+            LoadingView(message: "Loading note…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.activeNote != nil {
             if isShowingUnsupportedContentPlaceholder {
                 PlaceholderView(
                     title: unsupportedContentPlaceholderTitle,
@@ -270,30 +273,26 @@ extension NotesDetailView {
         #endif
     }
 
-    #if os(iOS)
-    private var noteFormattingBar: some View {
-        let configuration = noteFormattingBarConfiguration
-
-        return UIKitNoteFormattingBarRepresentable(
-            configuration: configuration
-        )
-        .disabled(!configuration.isEnabled)
-    }
-
-    var noteFormattingBarConfiguration: NoteFormattingBarConfiguration {
-        if #available(iOS 26.0, *) {
-            return editorViewModel.noteFormattingBarConfiguration
-        }
-        return .disabled
-    }
-
-    #endif
-
     private struct NoteStatus: Equatable {
         let iconName: String
         let accessibilityLabel: String
         let helpText: String
         let color: Color
+    }
+
+    private var isCompactPhoneRoutePendingSelection: Bool {
+        Self.isCompactPhoneRoutePendingSelection(
+            isCompact: isCompact, routeNoteId: environment.notesPhoneDetailRouteId, selectedNoteId: viewModel.selectedNoteId
+        )
+    }
+
+    static func isCompactPhoneRoutePendingSelection(
+        isCompact: Bool,
+        routeNoteId: String?,
+        selectedNoteId: String?
+    ) -> Bool {
+        guard isCompact, let routeNoteId else { return false }
+        return routeNoteId != selectedNoteId
     }
 
     private var noteStatus: NoteStatus? {

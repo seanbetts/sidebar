@@ -25,6 +25,26 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertFalse(view.isFormattingToolbarVisible)
     }
 
+    func testCompactPhoneRoutePendingSelectionWhenRouteAndSelectedNoteDiffer() {
+        XCTAssertTrue(
+            NotesDetailView.isCompactPhoneRoutePendingSelection(
+                isCompact: true,
+                routeNoteId: "note-2",
+                selectedNoteId: "note-1"
+            )
+        )
+    }
+
+    func testCompactPhoneRouteNotPendingWhenRouteMatchesSelectedNote() {
+        XCTAssertFalse(
+            NotesDetailView.isCompactPhoneRoutePendingSelection(
+                isCompact: true,
+                routeNoteId: "note-1",
+                selectedNoteId: "note-1"
+            )
+        )
+    }
+
     func testActivateReadSurfaceEditingKeepsFormattingToolbarVisibleDuringTransition() async {
         let context = await makeNotesDetailViewTestContext()
 

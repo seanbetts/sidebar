@@ -77,6 +77,16 @@ final class AppEnvironmentShortcutPaneTests: XCTestCase {
         XCTAssertNil(navigation.focusedWorkspacePane)
     }
 
+    func testNavigationResetClearsNotesPhoneDetailRoute() {
+        let navigation = NavigationCoordinator()
+        Self.retainedNavigationCoordinators.append(navigation)
+        navigation.notesPhoneDetailRouteId = "note-1"
+
+        navigation.resetForSignOut()
+
+        XCTAssertNil(navigation.notesPhoneDetailRouteId)
+    }
+
     private func makeEnvironment() -> AppEnvironment {
         let container = ServiceContainer(
             config: .fallbackForTesting(),
