@@ -31,12 +31,13 @@ enum NoteTextTypography {
 
 @available(iOS 26.0, macOS 26.0, *)
 enum NoteTextParagraphMetrics {
-    private static let bodyLineHeightMultiple: CGFloat = 1.7
-    static let bodySpacingRem: CGFloat = 0.5
+    private struct StyleMetrics {
+        let lineSpacing: CGFloat
+        let spacingAfter: CGFloat
+    }
 
     private struct ParagraphStyleConfiguration {
-        let fontSize: CGFloat
-        let lineHeightMultiple: CGFloat
+        let lineSpacing: CGFloat
         let spacingBefore: CGFloat
         let spacingAfter: CGFloat
         let headIndent: CGFloat
@@ -62,13 +63,12 @@ enum NoteTextParagraphMetrics {
         headIndent: CGFloat = 0,
         tailIndent: CGFloat = 0
     ) -> NSParagraphStyle {
-        let resolvedFontSize = noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType)
+        let metrics = styleMetrics(for: blockType, baseFontSize: baseFontSize)
         return paragraphStyle(
             configuration: ParagraphStyleConfiguration(
-                fontSize: resolvedFontSize,
-                lineHeightMultiple: bodyLineHeightMultiple,
-                spacingBefore: bodySpacingRem * resolvedFontSize,
-                spacingAfter: bodySpacingRem * resolvedFontSize,
+                lineSpacing: metrics.lineSpacing,
+                spacingBefore: 0,
+                spacingAfter: metrics.spacingAfter,
                 headIndent: headIndent,
                 tailIndent: tailIndent
             )
@@ -79,8 +79,7 @@ enum NoteTextParagraphMetrics {
         configuration: ParagraphStyleConfiguration
     ) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
-        let desiredLineHeight = configuration.lineHeightMultiple * configuration.fontSize
-        style.lineSpacing = max(0, desiredLineHeight - naturalLineHeight(for: configuration.fontSize))
+        style.lineSpacing = configuration.lineSpacing
         style.paragraphSpacingBefore = configuration.spacingBefore
         style.paragraphSpacing = configuration.spacingAfter
         style.headIndent = configuration.headIndent
@@ -91,15 +90,31 @@ enum NoteTextParagraphMetrics {
         return style
     }
 
-    private static func naturalLineHeight(for fontSize: CGFloat) -> CGFloat {
-#if canImport(UIKit)
-        return UIFont.systemFont(ofSize: fontSize, weight: .regular).lineHeight
-#elseif canImport(AppKit)
-        let font = NSFont.systemFont(ofSize: fontSize, weight: .regular)
-        return font.ascender - font.descender + font.leading
-#else
-        return fontSize
-#endif
+    private static func styleMetrics(
+        for blockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat
+    ) -> StyleMetrics {
+        if let style = NoteTextStyle(blockType: blockType) {
+            switch style {
+            case .title:
+                return StyleMetrics(lineSpacing: 0, spacingAfter: baseFontSize * 0.25)
+            case .heading:
+                return StyleMetrics(lineSpacing: 0, spacingAfter: baseFontSize * 0.1875)
+            case .subheading:
+                return StyleMetrics(lineSpacing: 0, spacingAfter: baseFontSize * 0.125)
+            case .body:
+                return StyleMetrics(lineSpacing: 0, spacingAfter: 0)
+            }
+        }
+
+        switch blockType {
+        case .unorderedList, .orderedList, .checklist, .listItem, .blockquote, .codeBlock:
+            return StyleMetrics(lineSpacing: 0, spacingAfter: 0)
+        case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
+            return StyleMetrics(lineSpacing: 0, spacingAfter: 0)
+        case .title, .paragraph, .heading, .subheading:
+            return StyleMetrics(lineSpacing: 0, spacingAfter: 0)
+        }
     }
 }
 

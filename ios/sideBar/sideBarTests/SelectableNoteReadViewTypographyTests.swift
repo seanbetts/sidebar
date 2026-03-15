@@ -70,6 +70,30 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertGreaterThan(try fontWeight(in: attributed, at: 14), try fontWeight(in: attributed, at: 25))
     }
 
+    func testSharedParagraphMetricsUseCompactStyleSpecificSpacing() throws {
+        let baseFontSize: CGFloat = 16
+
+        let titleStyle = NoteTextParagraphMetrics.paragraphStyle(for: .title, baseFontSize: baseFontSize)
+        let headingStyle = NoteTextParagraphMetrics.paragraphStyle(for: .heading, baseFontSize: baseFontSize)
+        let subheadingStyle = NoteTextParagraphMetrics.paragraphStyle(for: .subheading, baseFontSize: baseFontSize)
+        let bodyStyle = NoteTextParagraphMetrics.paragraphStyle(for: .paragraph, baseFontSize: baseFontSize)
+
+        XCTAssertEqual(titleStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(headingStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(subheadingStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(bodyStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+
+        XCTAssertEqual(titleStyle.paragraphSpacing, 4, accuracy: 0.001)
+        XCTAssertEqual(headingStyle.paragraphSpacing, 3, accuracy: 0.001)
+        XCTAssertEqual(subheadingStyle.paragraphSpacing, 2, accuracy: 0.001)
+        XCTAssertEqual(bodyStyle.paragraphSpacing, 0, accuracy: 0.001)
+
+        XCTAssertEqual(titleStyle.lineSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(headingStyle.lineSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(subheadingStyle.lineSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(bodyStyle.lineSpacing, 0, accuracy: 0.001)
+    }
+
     private func fontPointSize(in attributed: NSAttributedString, at location: Int) throws -> CGFloat {
         let font = attributed.attribute(.font, at: location, effectiveRange: nil) as? NotePlatformFont
         return try XCTUnwrap(font).pointSize

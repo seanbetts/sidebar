@@ -4,7 +4,6 @@ import SwiftUI
 import UIKit
 #endif
 @testable import sideBar
-
 #if os(iOS)
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
@@ -46,14 +45,18 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
             baseFontSize: NoteTextTypography.defaultBodyFontSize
         )
         let attributedEditorDocument = NSAttributedString(editorDocument)
-        let expectedStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
+        let expectedBodyStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
+            baseFontSize: NoteTextTypography.defaultBodyFontSize
+        )
+        let expectedTitleStyle = NoteTextParagraphMetrics.paragraphStyle(
+            for: .title,
             baseFontSize: NoteTextTypography.defaultBodyFontSize
         )
 
         XCTAssertEqual(attributedEditorDocument.string, "Bold\n\nItalic")
-        try assertParagraphStyle(attributedEditorDocument, matches: expectedStyle, at: 0)
-        try assertParagraphStyle(attributedEditorDocument, matches: expectedStyle, at: 4)
-        try assertParagraphStyle(attributedEditorDocument, matches: expectedStyle, at: 6)
+        try assertParagraphStyle(attributedEditorDocument, matches: expectedBodyStyle, at: 0)
+        try assertParagraphStyle(attributedEditorDocument, matches: expectedTitleStyle, at: 4)
+        try assertParagraphStyle(attributedEditorDocument, matches: expectedBodyStyle, at: 6)
     }
 
     func testReadSurfaceFormattingMatchesEditorSurfaceForSameSemanticNoteOnIOS() throws {
@@ -112,7 +115,6 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         XCTAssertEqual(readTraits.bold, true)
         XCTAssertEqual(readTraits.italic, false)
     }
-
     func testReadSurfacePreservesTitleHeadingAndSubheadingTypographyParityOnIOS() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
@@ -188,9 +190,18 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         try assertParagraphStyle(bridgedEditDocument, matches: subheadingStyle, at: 14)
         try assertParagraphStyle(bridgedEditDocument, matches: bodyStyle, at: 25)
 
-        XCTAssertGreaterThan(titleStyle.lineSpacing, bodyStyle.lineSpacing)
-        XCTAssertGreaterThan(headingStyle.lineSpacing, bodyStyle.lineSpacing)
-        XCTAssertGreaterThan(subheadingStyle.lineSpacing, bodyStyle.lineSpacing)
+        XCTAssertEqual(titleStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(headingStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(subheadingStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(bodyStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(titleStyle.paragraphSpacing, baseFontSize * 0.25, accuracy: 0.001)
+        XCTAssertEqual(headingStyle.paragraphSpacing, baseFontSize * 0.1875, accuracy: 0.001)
+        XCTAssertEqual(subheadingStyle.paragraphSpacing, baseFontSize * 0.125, accuracy: 0.001)
+        XCTAssertEqual(bodyStyle.paragraphSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(titleStyle.lineSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(headingStyle.lineSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(subheadingStyle.lineSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(bodyStyle.lineSpacing, 0, accuracy: 0.001)
     }
 
     func testIOSCanMoveToUIKitEditorSurfaceWithoutChangingCanonicalParityContracts() throws {
