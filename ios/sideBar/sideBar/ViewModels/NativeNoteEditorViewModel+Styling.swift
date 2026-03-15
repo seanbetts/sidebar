@@ -103,6 +103,38 @@ extension NativeNoteEditorViewModel {
         text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
     }
 
+    func applySemanticTypingAttributes(
+        blockType: NotesSemanticDocument.BlockType,
+        inlineState: InlineFormattingState,
+        to attrs: inout AttributeContainer
+    ) {
+        applyInlineFormattingState(inlineState, to: &attrs)
+
+        if let style = NoteTextStyle(blockType: blockType) {
+            attrs.font = NoteTextStyleTypography.font(for: style, baseFontSize: baseFontSize)
+        } else {
+            attrs.font = .system(
+                size: noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType),
+                design: noteUsesMonospacedDesign(blockType: blockType) ? .monospaced : .default
+            )
+        }
+        setPlatformFont(
+            notePlatformFont(
+                baseFontSize: baseFontSize,
+                blockType: blockType,
+                bold: inlineState.bold,
+                italic: inlineState.italic
+            ),
+            in: &attrs
+        )
+        attrs.paragraphStyle = paragraphStyle(for: blockType)
+        attrs.noteBlock = blockMarker(for: blockType)
+        attrs.noteStructuralBoundary = nil
+        attrs.link = nil
+        attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
+        attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
+    }
+
     func setPlatformFont(_ font: NotePlatformFont, in attrs: inout AttributeContainer) {
         #if os(iOS)
         attrs[AttributeScopes.UIKitAttributes.FontAttribute.self] = font

@@ -6,7 +6,13 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 /// View model for editing and styling native note content.
 public final class NativeNoteEditorViewModel: ObservableObject {
-    @Published public var attributedContent: AttributedString = AttributedString()
+    @Published public var attributedContent: AttributedString = AttributedString() {
+        didSet {
+            renderGeneration &+= 1
+            cachedPersistenceSnapshot = nil
+            cachedPersistenceSnapshotGeneration = nil
+        }
+    }
     @Published public var selection: AttributedTextSelection = AttributedTextSelection()
     @Published public var isReadOnly: Bool = false
     @Published public internal(set) var hasUnsavedChanges: Bool = false
@@ -24,6 +30,10 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     var lastHandledContentSourceGeneration: Int = 0
     var lastHandledSelectionSourceGeneration: Int = 0
     var lastSelectionLineSpan: ClosedRange<Int>?
+    private(set) var renderGeneration: UInt64 = 0
+    var onPersistenceSnapshotComputedForTesting: (() -> Void)?
+    var cachedPersistenceSnapshot: PersistenceSnapshot?
+    var cachedPersistenceSnapshotGeneration: UInt64?
 
     public init() {}
 
@@ -48,6 +58,28 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         attrs.paragraphStyle = NoteTextParagraphMetrics.paragraphStyle(
             for: .paragraph,
             baseFontSize: baseFontSize
+        )
+        return attrs
+    }
+
+    func typingAttributesForInsertion(in text: AttributedString) -> AttributeContainer {
+        var sourceAttributes = selection.typingAttributes(in: text)
+        sourceAttributes.noteStructuralBoundary = nil
+        let semanticBlockType = semanticBlockTypeAtSelectionStart(
+            in: currentPersistenceSnapshot().document
+        ) ?? .paragraph
+        let blockType = NoteTextBlockResolution.resolvedBlockType(
+            explicitRawValue: sourceAttributes.noteBlock,
+            semanticFallback: semanticBlockType
+        ) ?? semanticBlockType
+        let inlineState = NoteTextBlockAttribute.blockType(from: sourceAttributes.noteBlock) == blockType
+            ? inlineFormattingState(from: sourceAttributes)
+            : .plain
+        var attrs = AttributeContainer()
+        applySemanticTypingAttributes(
+            blockType: blockType,
+            inlineState: inlineState,
+            to: &attrs
         )
         return attrs
     }

@@ -87,6 +87,56 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertFalse(noteTypingTraits(from: viewModel.selection.typingAttributes(in: viewModel.attributedContent)).bold)
     }
 
+    func testEmptyTrailingParagraphAfterHeadingUsesPlainBodyTypingState() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        let typingAttributes = viewModel.typingAttributesForInsertion(in: viewModel.attributedContent)
+
+        XCTAssertFalse(viewModel.isBoldActive())
+        XCTAssertEqual(NoteTextBlockAttribute.blockType(from: typingAttributes.noteBlock), .paragraph)
+        XCTAssertFalse(noteTypingTraits(from: typingAttributes).bold)
+    }
+
+    func testEmptyTrailingParagraphWithMissingBlockMarkerStillUsesPlainBodyTypingState() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let newlineStart = viewModel.index(forCharacterOffset: 13, in: viewModel.attributedContent)
+        let newlineEnd = viewModel.attributedContent.endIndex
+        viewModel.attributedContent[newlineStart..<newlineEnd].noteBlock = nil
+        viewModel.attributedContent[newlineStart..<newlineEnd].noteStructuralBoundary = nil
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        let typingAttributes = viewModel.typingAttributesForInsertion(in: viewModel.attributedContent)
+
+        XCTAssertFalse(viewModel.isBoldActive())
+        XCTAssertEqual(NoteTextBlockAttribute.blockType(from: typingAttributes.noteBlock), .paragraph)
+        XCTAssertFalse(noteTypingTraits(from: typingAttributes).bold)
+    }
+
     func testPersistenceSnapshotRoundTripsAllowedInlineFormattingWithoutLoss() async {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadText("Hello")

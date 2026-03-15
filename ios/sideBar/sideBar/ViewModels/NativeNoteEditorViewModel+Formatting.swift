@@ -63,13 +63,9 @@ extension NativeNoteEditorViewModel {
     func isFormattingActive(_ formatting: NoteFormatting) -> Bool {
         let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
         guard !nonEmptyRanges.isEmpty else {
-            let typingState = inlineFormattingState(
-                from: selection.typingAttributes(in: attributedContent)
-            )
-            if typingState.contains(formatting) {
-                return true
-            }
-            return inheritedFormattingStateAtInsertionPoint().contains(formatting)
+            return inlineFormattingState(
+                from: typingAttributesForInsertion(in: attributedContent)
+            ).contains(formatting)
         }
 
         return nonEmptyRanges.allSatisfy { range in
@@ -84,8 +80,8 @@ extension NativeNoteEditorViewModel {
 
     func activeTextStyleAtSelectionStart() -> NoteTextStyle {
         let document = currentPersistenceSnapshot().document
-        guard let blockInfo = blockInfoContainingSelectionStart(in: document),
-              let style = NoteTextStyle(blockType: blockInfo.block.type) else {
+        guard let blockType = semanticBlockTypeAtSelectionStart(in: document),
+              let style = NoteTextStyle(blockType: blockType) else {
             return .body
         }
         return style
@@ -108,6 +104,12 @@ extension NativeNoteEditorViewModel {
             return style == .title
         }
         return true
+    }
+
+    func semanticBlockTypeAtSelectionStart(
+        in document: NotesSemanticDocument
+    ) -> NotesSemanticDocument.BlockType? {
+        blockInfoContainingSelectionStart(in: document)?.block.type
     }
 
     func setTextStyle(_ style: NoteTextStyle) {
@@ -146,56 +148,11 @@ extension NativeNoteEditorViewModel {
         selection = selection(from: selectionSnapshot, in: updatedContent)
     }
 
-    @discardableResult
-    func handleReturnKey() -> Bool {
-        guard !isReadOnly else { return false }
-        guard case .insertionPoint = selection.indices(in: attributedContent) else { return false }
-
-        let document = currentPersistenceSnapshot().document
-        guard let blockInfo = blockInfoContainingSelectionStart(in: document) else { return false }
-
-        let blockText = blockPlainText(blockInfo.block)
-        let selectionOffset = max(
-            0,
-            min(
-                selectionStartCharacterOffset(in: attributedContent) - blockInfo.range.lowerBound,
-                blockText.count
-            )
-        )
-
-        let mutation: ReturnKeyMutation?
-        switch blockInfo.block.type {
-        case .title, .heading, .subheading, .paragraph:
-            mutation = splitTextStyleBlock(
-                in: document,
-                blockInfo: blockInfo,
-                selectionOffset: selectionOffset
-            )
-        case .codeBlock:
-            mutation = mutateCodeBlockReturn(
-                in: document,
-                blockInfo: blockInfo,
-                selectionOffset: selectionOffset,
-                blockText: blockText
-            )
-        default:
-            mutation = nil
-        }
-
-        guard let mutation else { return false }
-        applyDocumentMutation(
-            mutation.document,
-            insertionCharacterOffset: mutation.insertionOffset,
-            typingBlockType: mutation.typingBlockType
-        )
-        return true
-    }
-
     func toggleFormatting(_ formatting: NoteFormatting) {
         let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
         guard !nonEmptyRanges.isEmpty else {
             let enabled = !inlineFormattingState(
-                from: selection.typingAttributes(in: attributedContent)
+                from: typingAttributesForInsertion(in: attributedContent)
             ).contains(formatting)
             applyFormattingMutation(formatting, enabled: enabled)
             return
@@ -220,11 +177,16 @@ extension NativeNoteEditorViewModel {
                 var state = inlineFormattingState(from: attrs)
                 state.set(formatting, enabled: enabled)
                 applyInlineFormattingState(state, to: &attrs)
-                let blockType = NoteTextBlockAttribute.blockType(from: attrs.noteBlock) ?? fallbackBlockType
+                let blockType = NoteTextBlockResolution.resolvedBlockType(
+                    explicitRawValue: attrs.noteBlock,
+                    semanticFallback: fallbackBlockType
+                ) ?? fallbackBlockType
                 attrs.paragraphStyle = NoteTextParagraphMetrics.paragraphStyle(
                     for: blockType,
                     baseFontSize: baseFontSize
                 )
+                attrs.noteBlock = blockMarker(for: blockType)
+                attrs.noteStructuralBoundary = nil
             }
             return
         }
@@ -235,11 +197,16 @@ extension NativeNoteEditorViewModel {
             var state = inlineFormattingState(from: attrs)
             state.set(formatting, enabled: enabled)
             applyInlineFormattingState(state, to: &attrs)
-            let blockType = NoteTextBlockAttribute.blockType(from: attrs.noteBlock) ?? fallbackBlockType
+            let blockType = NoteTextBlockResolution.resolvedBlockType(
+                explicitRawValue: attrs.noteBlock,
+                semanticFallback: fallbackBlockType
+            ) ?? fallbackBlockType
             attrs.paragraphStyle = NoteTextParagraphMetrics.paragraphStyle(
                 for: blockType,
                 baseFontSize: baseFontSize
             )
+            attrs.noteBlock = blockMarker(for: blockType)
+            attrs.noteStructuralBoundary = nil
         }
         selection = selection(from: selectionSnapshot, in: attributedContent)
     }
@@ -251,26 +218,6 @@ extension NativeNoteEditorViewModel {
         let runSnapshots = formattingRunSnapshots(in: attributedContent, within: range)
         guard !runSnapshots.isEmpty else { return false }
         return runSnapshots.allSatisfy { $0.state.contains(formatting) }
-    }
-
-    private func inheritedFormattingStateAtInsertionPoint() -> InlineFormattingState {
-        let insertionIndex: AttributedString.Index?
-        switch selection.indices(in: attributedContent) {
-        case .insertionPoint(let index):
-            insertionIndex = index
-        case .ranges(let ranges):
-            insertionIndex = ranges.ranges.first?.lowerBound
-        }
-
-        guard let insertionIndex,
-              insertionIndex > attributedContent.startIndex else {
-            return .plain
-        }
-
-        let previousIndex = attributedContent.index(beforeCharacter: insertionIndex)
-        let previousRange = previousIndex..<insertionIndex
-        let runSnapshots = formattingRunSnapshots(in: attributedContent, within: previousRange)
-        return runSnapshots.first?.state ?? .plain
     }
 
     private func formattingRunSnapshots(in text: AttributedString) -> [FormattingRunSnapshot] {
@@ -304,167 +251,6 @@ extension NativeNoteEditorViewModel {
     private struct FormattingRunSnapshot {
         let range: Range<Int>
         let state: InlineFormattingState
-    }
-
-    private struct DocumentBlockInfo {
-        let index: Int
-        let block: NotesSemanticDocument.Block
-        let range: Range<Int>
-        let coverageRange: Range<Int>
-    }
-
-    private func documentBlockInfos(in document: NotesSemanticDocument) -> [DocumentBlockInfo] {
-        var infos: [DocumentBlockInfo] = []
-        var cursor = 0
-
-        for (index, block) in document.blocks.enumerated() {
-            let blockText = NotesSemanticDocumentProjection.plainText(
-                from: NotesSemanticDocument(blocks: [block])
-            )
-            let range = cursor..<(cursor + blockText.count)
-            let coverageUpperBound = index < document.blocks.count - 1
-                ? cursor + blockText.count + 1
-                : cursor + blockText.count
-            infos.append(
-                DocumentBlockInfo(
-                    index: index,
-                    block: block,
-                    range: range,
-                    coverageRange: cursor..<coverageUpperBound
-                )
-            )
-            cursor = coverageUpperBound
-        }
-
-        return infos
-    }
-
-    private func blockInfoContainingSelectionStart(
-        in document: NotesSemanticDocument
-    ) -> DocumentBlockInfo? {
-        let infos = documentBlockInfos(in: document)
-        guard let lastInfo = infos.last else { return nil }
-        let offset = selectionStartCharacterOffset(in: attributedContent)
-
-        if offset >= lastInfo.coverageRange.upperBound {
-            return lastInfo
-        }
-
-        return infos.first { info in
-            if info.coverageRange.isEmpty {
-                return offset == info.coverageRange.lowerBound
-            }
-            return info.coverageRange.contains(offset)
-        }
-    }
-
-    private func touchedBlockInfos(
-        in document: NotesSemanticDocument
-    ) -> [DocumentBlockInfo] {
-        let infos = documentBlockInfos(in: document)
-        guard !infos.isEmpty else { return [] }
-
-        var touchedIndexes = Set<Int>()
-        let selectionRanges = selectionCharacterRanges(in: attributedContent)
-
-        for selectionRange in selectionRanges {
-            if selectionRange.isEmpty {
-                if let blockInfo = blockInfoContainingSelectionStart(in: document) {
-                    touchedIndexes.insert(blockInfo.index)
-                }
-                continue
-            }
-
-            for info in infos where rangesOverlap(selectionRange, info.coverageRange) {
-                touchedIndexes.insert(info.index)
-            }
-        }
-
-        return infos.filter { touchedIndexes.contains($0.index) }
-    }
-
-    private func rangesOverlap(_ lhs: Range<Int>, _ rhs: Range<Int>) -> Bool {
-        lhs.lowerBound < rhs.upperBound && rhs.lowerBound < lhs.upperBound
-    }
-
-    private func applyDocumentMutation(
-        _ document: NotesSemanticDocument,
-        insertionCharacterOffset: Int,
-        typingBlockType: NotesSemanticDocument.BlockType
-    ) {
-        let previousContent = attributedContent
-        let previousSelection = selection
-        var updatedContent = NotesAttributedDocumentCodec.attributedString(
-            from: document,
-            baseFontSize: baseFontSize
-        )
-        constrainEditorDocument(&updatedContent)
-        attributedContent = updatedContent
-        let insertionIndex = index(forCharacterOffset: insertionCharacterOffset, in: updatedContent)
-        selection = AttributedTextSelection(range: insertionIndex..<insertionIndex)
-        applyTypingAttributes(for: typingBlockType)
-        handleContentChange(previous: previousContent)
-        if selection != previousSelection {
-            handleSelectionChange()
-        }
-    }
-
-    private func splitTextStyleBlock(
-        in document: NotesSemanticDocument,
-        blockInfo: DocumentBlockInfo,
-        selectionOffset: Int
-    ) -> ReturnKeyMutation {
-        let split = splitInlineSegments(blockInfo.block.content, at: selectionOffset)
-        var updatedBlocks = document.blocks
-        updatedBlocks[blockInfo.index] = .init(
-            type: blockInfo.block.type,
-            content: normalizedInlineSegments(split.leading),
-            checked: blockInfo.block.checked
-        )
-        updatedBlocks.insert(
-            .paragraph(normalizedInlineSegments(split.trailing)),
-            at: blockInfo.index + 1
-        )
-        let insertionOffset = blockInfo.range.lowerBound + inlineTextLength(split.leading) + 1
-        return ReturnKeyMutation(
-            document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
-            insertionOffset: insertionOffset,
-            typingBlockType: .paragraph
-        )
-    }
-
-    private func mutateCodeBlockReturn(
-        in document: NotesSemanticDocument,
-        blockInfo: DocumentBlockInfo,
-        selectionOffset: Int,
-        blockText: String
-    ) -> ReturnKeyMutation {
-        var updatedBlocks = document.blocks
-        if selectionOffset == blockText.count, blockText.hasSuffix("\n") {
-            updatedBlocks.insert(
-                .paragraph([.init(text: "", marks: [])]),
-                at: blockInfo.index + 1
-            )
-            let insertionOffset = blockInfo.range.lowerBound + blockText.count + 1
-            return ReturnKeyMutation(
-                document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
-                insertionOffset: insertionOffset,
-                typingBlockType: .paragraph
-            )
-        }
-
-        let stringIndex = blockText.index(blockText.startIndex, offsetBy: selectionOffset)
-        let updatedText = String(blockText[..<stringIndex]) + "\n" + String(blockText[stringIndex...])
-        updatedBlocks[blockInfo.index] = .init(
-            type: .codeBlock,
-            content: [.init(text: updatedText, marks: [])],
-            checked: blockInfo.block.checked
-        )
-        return ReturnKeyMutation(
-            document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
-            insertionOffset: blockInfo.range.lowerBound + selectionOffset + 1,
-            typingBlockType: .codeBlock
-        )
     }
 
 }

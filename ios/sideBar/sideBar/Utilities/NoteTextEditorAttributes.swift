@@ -24,11 +24,28 @@ public enum NoteTextBlockAttribute: CodableAttributedStringKey, ObjectiveCConver
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+public enum NoteTextStructuralBoundaryAttribute: CodableAttributedStringKey, ObjectiveCConvertibleAttributedStringKey {
+    public typealias Value = Bool
+    public typealias ObjectiveCValue = NSNumber
+
+    public static let name = "ai.sidebar.notes.structural-boundary"
+
+    public static func objectiveCValue(for value: Bool) throws -> NSNumber {
+        NSNumber(value: value)
+    }
+
+    public static func value(for object: NSNumber) throws -> Bool {
+        object.boolValue
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 public extension AttributeScopes {
     struct NoteTextEditorAttributes: AttributeScope {
         public let foundation: AttributeScopes.FoundationAttributes
         public let swiftUI: AttributeScopes.SwiftUIAttributes
         public let noteBlock: NoteTextBlockAttribute
+        public let noteStructuralBoundary: NoteTextStructuralBoundaryAttribute
         #if os(iOS)
         public let uiKit: AttributeScopes.UIKitAttributes
         #elseif os(macOS)

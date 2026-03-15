@@ -244,6 +244,49 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         XCTAssertEqual(roundTrip, document)
     }
 
+    func testInterBlockNewlinesCarryFollowingBlockOwnership() {
+        let baseFontSize: CGFloat = 18
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .init(type: .subheading, content: [.init(text: "Subhead", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+
+        XCTAssertEqual(String(attributed.characters), "Title\nHeading\nSubhead\n")
+        XCTAssertEqual(
+            noteBlockValue(in: attributed, atCharacterOffset: 5),
+            NotesSemanticDocument.BlockType.heading.rawValue
+        )
+        XCTAssertEqual(
+            noteParagraphStyle(in: attributed, atCharacterOffset: 5),
+            NoteTextParagraphMetrics.paragraphStyle(for: .heading, baseFontSize: baseFontSize)
+        )
+        XCTAssertEqual(
+            noteBlockValue(in: attributed, atCharacterOffset: 13),
+            NotesSemanticDocument.BlockType.subheading.rawValue
+        )
+        XCTAssertEqual(
+            noteParagraphStyle(in: attributed, atCharacterOffset: 13),
+            NoteTextParagraphMetrics.paragraphStyle(for: .subheading, baseFontSize: baseFontSize)
+        )
+        XCTAssertEqual(
+            noteBlockValue(in: attributed, atCharacterOffset: 21),
+            NotesSemanticDocument.BlockType.paragraph.rawValue
+        )
+        XCTAssertEqual(
+            noteParagraphStyle(in: attributed, atCharacterOffset: 21),
+            NoteTextParagraphMetrics.paragraphStyle(for: .paragraph, baseFontSize: baseFontSize)
+        )
+    }
+
     func testTableBlocksRemainUnsupported() {
         let document = NotesSemanticDocument(
             blocks: [

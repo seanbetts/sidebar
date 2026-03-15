@@ -35,7 +35,8 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
                 strikethrough: run.strikethroughStyle != nil,
                 link: run.link,
                 blockType: resolvedBlockType,
-                noteBlock: run.noteBlock
+                noteBlock: run.noteBlock,
+                structuralBoundary: run.noteStructuralBoundary == true
             )
         }
 
@@ -48,7 +49,8 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
                 strikethrough: snapshot.strikethrough,
                 link: snapshot.link,
                 blockType: snapshot.blockType,
-                noteBlock: snapshot.noteBlock
+                noteBlock: snapshot.noteBlock,
+                structuralBoundary: snapshot.structuralBoundary
             )
             text.replaceSubrange(range, with: replacement)
         }
@@ -61,7 +63,8 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         strikethrough: Bool,
         link: URL?,
         blockType: NotesSemanticDocument.BlockType,
-        noteBlock: String?
+        noteBlock: String?,
+        structuralBoundary: Bool
     ) -> AttributedString {
         var normalized = AttributedString(String(slice.characters))
         guard !normalized.characters.isEmpty else { return normalized }
@@ -103,6 +106,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         #endif
         normalized[range].paragraphStyle = paragraphStyle(for: blockType)
         normalized[range].noteBlock = noteBlock
+        normalized[range].noteStructuralBoundary = structuralBoundary ? true : nil
         return normalized
     }
 }
@@ -180,6 +184,7 @@ private extension NoteTextFormattingDefinition {
         let link: URL?
         let blockType: NotesSemanticDocument.BlockType
         let noteBlock: String?
+        let structuralBoundary: Bool
     }
 
     func inlineTraits(
@@ -224,11 +229,7 @@ private extension NoteTextFormattingDefinition {
         for run: AttributedString.Runs.Run,
         in text: AttributedString
     ) -> NotesSemanticDocument.BlockType {
-        if let explicit = NoteTextBlockAttribute.blockType(from: run.noteBlock) {
-            return explicit
-        }
-        let prefix = text[text.startIndex..<run.range.lowerBound]
-        return prefix.characters.contains(where: \.isNewline) ? .paragraph : .title
+        NoteTextBlockResolution.resolvedBlockType(for: run, in: text)
     }
 
     func paragraphStyle(for blockType: NotesSemanticDocument.BlockType) -> NSParagraphStyle {

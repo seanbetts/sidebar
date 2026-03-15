@@ -3,6 +3,21 @@
 **Date:** 2026-03-15
 **Scope:** Caret movement, empty trailing blocks, typing attribute inheritance, block ownership at document boundaries, structural soundness for lists and future block editing.
 
+## Remediation Status
+
+- Chosen remediation plan: [2026-03-15-notes-editor-bridge-stabilization.md](/Users/sean/Coding/sideBar/docs/superpowers/plans/2026-03-15-notes-editor-bridge-stabilization.md)
+- Accepted root-cause signals:
+  - `C1` inter-block separators need explicit block ownership
+  - `H2` fallback block-type resolution must be unified across decode, normalization, and styling
+  - `H4` selection-only UIKit updates must not force fresh full-document normalization or text reapplication
+  - `M2` inherited inline formatting at insertion points is coupled to the old separator bug and must not remain the typing-state fallback
+  - `M7` first-block fallback behavior must come from one shared resolver, not three divergent heuristics
+- Secondary risks kept in view during implementation:
+  - `C2` as an immediate symptom around empty insertion-point typing state
+  - `H1` as a sync-window risk in the UIKit delegate path
+  - `H3` as a trailing-newline regression to keep covered by tests
+- Outcome: this review was treated as a root-cause signal inventory, not as a literal line-by-line implementation plan. The bridge-stabilization plan above is the adopted remediation boundary.
+
 ## Architecture Summary
 
 The editor is a two-layer bridge:
@@ -246,6 +261,11 @@ This is O(n) and is called during selection sync. Not a problem for short notes,
 **Primary cause (H4):** `updateUIView` re-applies `textView.attributedText` after user edits because `constrainedEditorDocument` is not idempotent on live content. The `RenderSignature` comparison sees a different canonical form and triggers a full `attributedText` assignment. UIKit's setter moves the insertion point to end-of-document internally; the programmatic selection restore puts it back, but there's a visible frame in between.
 
 **Contributing cause (H1):** During Return key handling, `textViewDidChangeSelection` can fire in an unguarded window between `handleReturnKey` and the `isApplyingProgrammaticText` flag, causing a stale selection to be applied.
+
+## Follow-up Status
+
+- The remediation plan above is now the prerequisite for the Notes rich-formatting roadmap before ordered lists, unordered lists, checklists, and blockquotes resume.
+- The companion roadmap update lives in [2026-03-08-notes-rich-formatting-implementation-plan.md](/Users/sean/Coding/sideBar/docs/superpowers/plans/2026-03-08-notes-rich-formatting-implementation-plan.md).
 
 ### What causes empty trailing lines inheriting bold/tall caret from prior styled blocks?
 

@@ -77,6 +77,54 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
         XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.traitBold))
     }
 
+    func testUIKitTypingAttributesStayPlainOnEmptyTrailingParagraphAfterHeading() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        let textView = try mountTextView(viewModel: viewModel)
+        let font = try XCTUnwrap(textView.typingAttributes[.font] as? UIFont)
+
+        XCTAssertFalse(font.fontDescriptor.symbolicTraits.contains(.traitBold))
+    }
+
+    func testUIKitTypingAttributesStayPlainWhenTrailingBlockMarkerIsStripped() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let newlineStart = viewModel.index(forCharacterOffset: 13, in: viewModel.attributedContent)
+        let newlineEnd = viewModel.attributedContent.endIndex
+        viewModel.attributedContent[newlineStart..<newlineEnd].noteBlock = nil
+        viewModel.attributedContent[newlineStart..<newlineEnd].noteStructuralBoundary = nil
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        let textView = try mountTextView(viewModel: viewModel)
+        let font = try XCTUnwrap(textView.typingAttributes[.font] as? UIFont)
+
+        XCTAssertFalse(font.fontDescriptor.symbolicTraits.contains(.traitBold))
+    }
+
     func testReturnKeyIsHandledBySharedBlockTransitionLayer() throws {
         let document = NotesSemanticDocument(
             blocks: [
@@ -106,6 +154,62 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
             viewModel.currentPersistenceSnapshot().document.blocks.map(\.type),
             [.title, .heading, .paragraph]
         )
+    }
+
+    func testRangedReturnIsHandledBySharedStructuralMutationLayer() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let textView = try mountTextView(viewModel: viewModel)
+        textView.selectedRange = NSRange(location: 10, length: 1)
+
+        let handled = textView.delegate?.textView?(
+            textView,
+            shouldChangeTextIn: textView.selectedRange,
+            replacementText: "\n"
+        ) ?? true
+
+        XCTAssertFalse(handled)
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .heading, .paragraph])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "Head", marks: [])])
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "ng", marks: [])])
+    }
+
+    func testMultilinePasteIsHandledBySharedStructuralMutationLayer() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let textView = try mountTextView(viewModel: viewModel)
+        textView.selectedRange = NSRange(location: 13, length: 0)
+
+        let handled = textView.delegate?.textView?(
+            textView,
+            shouldChangeTextIn: textView.selectedRange,
+            replacementText: " Alpha\nBeta"
+        ) ?? true
+
+        XCTAssertFalse(handled)
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .heading, .paragraph])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "Heading Alpha", marks: [])])
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "Beta", marks: [])])
     }
 
     func testUIKitSurfaceUsesDynamicLabelColorForExistingAndNewText() throws {
@@ -202,6 +306,49 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
 
         XCTAssertEqual(trackingTextView.attributedTextAssignmentCount, initialAssignmentCount)
         XCTAssertEqual(trackingTextView.selectedRange, NSRange(location: 3, length: 0))
+    }
+
+    func testPureSelectionChangesDoNotRequestFreshPersistenceSnapshots() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello\nWorld"),
+            plainText: "Hello\nWorld"
+        )
+        let trackingTextView = AttributeMutationTrackingTextView()
+        let controller = UIHostingController<AnyView>(
+            rootView: AnyView(
+                UIKitNoteTextEditorSurface(
+                    viewModel: viewModel,
+                    maxContentWidth: 360,
+                    isEditable: true,
+                    shouldAutofocus: false,
+                    formattingBarConfiguration: .disabled,
+                    formattingBarPresentation: .hidden,
+                    makeTextView: { trackingTextView }
+                )
+            )
+        )
+        let frame = CGRect(x: 0, y: 0, width: 360, height: 320)
+        let window = makeUIKitNoteTextEditorSurfaceHostingWindow(frame: frame)
+        window.rootViewController = controller
+        window.isHidden = false
+        controller.view.frame = frame
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        NotesDetailViewTestRetainer.hostingControllers.append(controller)
+        NotesDetailViewTestRetainer.hostingWindows.append(window)
+
+        var persistenceSnapshotCount = 0
+        viewModel.onPersistenceSnapshotComputedForTesting = {
+            persistenceSnapshotCount += 1
+        }
+
+        let target = viewModel.index(forCharacterOffset: 3, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: target..<target)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(persistenceSnapshotCount, 0)
     }
 }
 

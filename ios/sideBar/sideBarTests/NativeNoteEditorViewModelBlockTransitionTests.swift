@@ -73,6 +73,105 @@ final class NativeNoteEditorBlockTransitionTests: XCTestCase {
         XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "Body", marks: [])])
     }
 
+    func testReplaceSelectionWithNewlineInHeadingExitsIntoParagraphBlock() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let lower = viewModel.index(forCharacterOffset: 10, in: viewModel.attributedContent)
+        let upper = viewModel.index(forCharacterOffset: 11, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: lower..<upper)
+
+        XCTAssertTrue(viewModel.handleTextReplacement("\n"))
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .heading, .paragraph])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "Head", marks: [])])
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "ng", marks: [])])
+    }
+
+    func testInsertMultilineTextIntoHeadingCreatesParagraphBlocks() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleTextReplacement(" Alpha\nBeta"))
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .heading, .paragraph])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "Heading Alpha", marks: [])])
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "Beta", marks: [])])
+    }
+
+    func testHandleReturnKeyFromHeadingResetsBoldStateBeforeTyping() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleReturnKey())
+
+        let typingAttributes = viewModel.typingAttributesForInsertion(in: viewModel.attributedContent)
+        XCTAssertFalse(viewModel.isBoldActive())
+        XCTAssertEqual(NoteTextBlockAttribute.blockType(from: typingAttributes.noteBlock), .paragraph)
+        XCTAssertFalse(noteTypingTraits(from: typingAttributes).bold)
+    }
+
+    func testHandleReturnKeyFromHeadingStaysPlainWhenTrailingBlockMarkerIsStripped() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleReturnKey())
+
+        let newlineStart = viewModel.index(forCharacterOffset: 13, in: viewModel.attributedContent)
+        let newlineEnd = viewModel.attributedContent.endIndex
+        viewModel.attributedContent[newlineStart..<newlineEnd].noteBlock = nil
+        viewModel.attributedContent[newlineStart..<newlineEnd].noteStructuralBoundary = nil
+        viewModel.selection = AttributedTextSelection(range: viewModel.attributedContent.endIndex..<viewModel.attributedContent.endIndex)
+
+        let typingAttributes = viewModel.typingAttributesForInsertion(in: viewModel.attributedContent)
+        XCTAssertFalse(viewModel.isBoldActive())
+        XCTAssertEqual(NoteTextBlockAttribute.blockType(from: typingAttributes.noteBlock), .paragraph)
+        XCTAssertFalse(noteTypingTraits(from: typingAttributes).bold)
+    }
+
     func testHandleReturnKeyExitsSubheadingIntoParagraphBlock() async throws {
         let document = NotesSemanticDocument(
             blocks: [
@@ -173,5 +272,32 @@ final class NativeNoteEditorBlockTransitionTests: XCTestCase {
         XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "", marks: [])])
         XCTAssertEqual(snapshot.document.blocks[3].content, [.init(text: "", marks: [])])
         XCTAssertEqual(snapshot.plainText, "Title\nBody\n\n")
+    }
+
+    func testLoadDocumentGivesTrailingEmptyParagraphBoundaryBodyOwnership() async throws {
+        let baseFontSize: CGFloat = 18
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.setBaseFontSize(baseFontSize)
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+
+        XCTAssertEqual(String(viewModel.attributedContent.characters), "Title\nHeading\n")
+        XCTAssertEqual(
+            noteBlockValue(in: viewModel.attributedContent, atCharacterOffset: 13),
+            NotesSemanticDocument.BlockType.paragraph.rawValue
+        )
+        XCTAssertEqual(
+            noteParagraphStyle(in: viewModel.attributedContent, atCharacterOffset: 13),
+            NoteTextParagraphMetrics.paragraphStyle(for: .paragraph, baseFontSize: baseFontSize)
+        )
     }
 }

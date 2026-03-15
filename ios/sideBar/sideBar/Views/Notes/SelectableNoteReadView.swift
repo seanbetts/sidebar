@@ -162,11 +162,7 @@ struct SelectableNoteReadView: View {
         for run: AttributedString.Runs.Run,
         in attributed: AttributedString
     ) -> NotesSemanticDocument.BlockType {
-        if let explicit = NoteTextBlockAttribute.blockType(from: run.noteBlock) {
-            return explicit
-        }
-        let prefix = attributed[attributed.startIndex..<run.range.lowerBound]
-        return prefix.characters.contains(where: \.isNewline) ? .paragraph : .title
+        NoteTextBlockResolution.resolvedBlockType(for: run, in: attributed)
     }
 
     private static func paragraphStyle(

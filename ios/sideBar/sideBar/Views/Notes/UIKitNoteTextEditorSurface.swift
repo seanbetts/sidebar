@@ -5,7 +5,7 @@ import UIKit
 @available(iOS 26.0, *)
 struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     fileprivate struct RenderSignature: Equatable {
-        let canonicalContent: String
+        let renderGeneration: UInt64
         let baseFontSize: CGFloat
     }
 
@@ -151,11 +151,11 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             }
         }
         let renderSignature = RenderSignature(
-            canonicalContent: viewModel.currentCanonicalContent(),
+            renderGeneration: viewModel.renderGeneration,
             baseFontSize: viewModel.baseFontSize
         )
-        let attributedText = bridgedAttributedText(from: viewModel.attributedContent)
         if context.coordinator.lastAppliedRenderSignature != renderSignature {
+            let attributedText = bridgedAttributedText(from: viewModel.attributedContent)
             context.coordinator.isApplyingProgrammaticText = true
             textView.attributedText = attributedText
             context.coordinator.isApplyingProgrammaticText = false
@@ -191,7 +191,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     private func bridgedTypingAttributes(from text: AttributedString) -> [NSAttributedString.Key: Any] {
         var sample = AttributedString("x")
         let range = sample.startIndex..<sample.endIndex
-        sample[range].mergeAttributes(viewModel.selection.typingAttributes(in: text))
+        sample[range].mergeAttributes(viewModel.typingAttributesForInsertion(in: text))
         let bridged = SelectableNoteReadView.bridgedPlatformAttributedString(
             from: sample,
             baseFontSize: viewModel.baseFontSize
@@ -294,16 +294,20 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
-            guard text == "\n" else { return true }
-
             let selection = viewModel.selection(fromUTF16Range: range, in: viewModel.attributedContent)
             if selection != viewModel.selection {
                 viewModel.selection = selection
                 viewModel.handleSelectionChange()
             }
 
-            guard viewModel.handleReturnKey() else { return true }
+            guard text.contains("\n") else { return true }
+            guard viewModel.handleTextReplacement(text) else { return true }
 
+            applyCurrentEditorState(to: textView)
+            return false
+        }
+
+        private func applyCurrentEditorState(to textView: UITextView) {
             let bridgedText = SelectableNoteReadView.bridgedPlatformAttributedString(
                 from: viewModel.attributedContent,
                 baseFontSize: viewModel.baseFontSize
@@ -312,7 +316,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             textView.attributedText = bridgedText
             isApplyingProgrammaticText = false
             lastAppliedRenderSignature = RenderSignature(
-                canonicalContent: viewModel.currentCanonicalContent(),
+                renderGeneration: viewModel.renderGeneration,
                 baseFontSize: viewModel.baseFontSize
             )
 
@@ -322,13 +326,12 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
             var sample = AttributedString("x")
             let sampleRange = sample.startIndex..<sample.endIndex
-            sample[sampleRange].mergeAttributes(viewModel.selection.typingAttributes(in: viewModel.attributedContent))
+            sample[sampleRange].mergeAttributes(viewModel.typingAttributesForInsertion(in: viewModel.attributedContent))
             let bridgedTypingSample = SelectableNoteReadView.bridgedPlatformAttributedString(
                 from: sample,
                 baseFontSize: viewModel.baseFontSize
             )
             textView.typingAttributes = bridgedTypingSample.attributes(at: 0, effectiveRange: nil)
-            return false
         }
     }
 }

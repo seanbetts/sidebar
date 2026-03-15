@@ -17,7 +17,12 @@ enum NotesAttributedDocumentCodec {
 
         for (index, block) in document.blocks.enumerated() {
             if index > 0 {
-                attributed.append(AttributedString("\n"))
+                attributed.append(
+                    attributedBoundary(
+                        for: block.type,
+                        baseFontSize: baseFontSize
+                    )
+                )
             }
 
             attributed.append(
@@ -40,6 +45,39 @@ enum NotesAttributedDocumentCodec {
         }
 
         return attributed
+    }
+
+    private static func attributedBoundary(
+        for blockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat
+    ) -> AttributedString {
+        var boundary = AttributedString("\n")
+        let range = boundary.startIndex..<boundary.endIndex
+        boundary[range].font = blockFont(
+            baseFontSize: baseFontSize,
+            blockType: blockType,
+            bold: false,
+            italic: false
+        )
+        #if os(iOS)
+        boundary[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = notePlatformFont(
+            baseFontSize: baseFontSize,
+            blockType: blockType,
+            bold: false,
+            italic: false
+        )
+        #elseif os(macOS)
+        boundary[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = notePlatformFont(
+            baseFontSize: baseFontSize,
+            blockType: blockType,
+            bold: false,
+            italic: false
+        )
+        #endif
+        boundary[range].paragraphStyle = paragraphStyle(for: blockType, baseFontSize: baseFontSize)
+        boundary[range].noteBlock = blockMarker(for: blockType)
+        boundary[range].noteStructuralBoundary = true
+        return boundary
     }
 
     static func readAttributedString(
@@ -128,9 +166,9 @@ enum NotesAttributedDocumentCodec {
     }
 
     static func inlineMarks(
-        from run: AttributedString.Runs.Run
+        from run: AttributedString.Runs.Run,
+        blockType: NotesSemanticDocument.BlockType?
     ) -> [NotesSemanticDocument.InlineMark] {
-        let blockType = NoteTextBlockAttribute.blockType(from: run.noteBlock)
         let formattingTraits = noteSemanticInlineFormattingTraits(
             from: run.attributes,
             blockType: blockType

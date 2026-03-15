@@ -7,6 +7,8 @@ extension NotesAttributedDocumentCodec {
         var blocks: [NotesSemanticDocument.Block] = []
         var currentSegments: [NotesSemanticDocument.InlineSegment] = []
         var currentBlockMarker: String?
+        var pendingBoundaryMarker: String?
+        var pendingBoundaryCount = 0
         var endedWithStructuralNewline = false
 
         for run in attributed.runs {
@@ -16,8 +18,22 @@ extension NotesAttributedDocumentCodec {
                 blocks: &blocks,
                 currentSegments: &currentSegments,
                 currentBlockMarker: &currentBlockMarker,
+                pendingBoundaryMarker: &pendingBoundaryMarker,
+                pendingBoundaryCount: &pendingBoundaryCount,
                 endedWithStructuralNewline: &endedWithStructuralNewline
             )
+        }
+
+        if pendingBoundaryCount > 0 {
+            flushPendingStructuralBoundaries(
+                blocks: &blocks,
+                currentSegments: &currentSegments,
+                currentBlockMarker: &currentBlockMarker,
+                pendingBoundaryMarker: &pendingBoundaryMarker,
+                pendingBoundaryCount: &pendingBoundaryCount,
+                followedByContent: false
+            )
+            endedWithStructuralNewline = false
         }
 
         if shouldFlushTrailingDecodedBlock(
@@ -98,10 +114,38 @@ extension NotesAttributedDocumentCodec {
         blocks: inout [NotesSemanticDocument.Block],
         currentSegments: inout [NotesSemanticDocument.InlineSegment],
         currentBlockMarker: inout String?,
+        pendingBoundaryMarker: inout String?,
+        pendingBoundaryCount: inout Int,
         endedWithStructuralNewline: inout Bool
     ) {
         let blockMarker = run.noteBlock
         let runText = String(attributed[run.range].characters)
+        if handleStructuralBoundaryRun(
+            blockMarker: blockMarker,
+            runText: runText,
+            isStructuralBoundaryRun: run.noteStructuralBoundary == true && runText.allSatisfy(\.isNewline),
+            blocks: &blocks,
+            currentSegments: &currentSegments,
+            currentBlockMarker: &currentBlockMarker,
+            pendingBoundaryMarker: &pendingBoundaryMarker,
+            pendingBoundaryCount: &pendingBoundaryCount,
+            endedWithStructuralNewline: &endedWithStructuralNewline
+        ) {
+            return
+        }
+
+        if pendingBoundaryCount > 0 {
+            flushPendingStructuralBoundaries(
+                blocks: &blocks,
+                currentSegments: &currentSegments,
+                currentBlockMarker: &currentBlockMarker,
+                pendingBoundaryMarker: &pendingBoundaryMarker,
+                pendingBoundaryCount: &pendingBoundaryCount,
+                followedByContent: true
+            )
+            endedWithStructuralNewline = false
+        }
+
         if shouldFlushCodeBlockBeforeSeparatorRun(
             currentBlockMarker: currentBlockMarker,
             blockMarker: blockMarker,
@@ -132,14 +176,110 @@ extension NotesAttributedDocumentCodec {
             currentBlockMarker = blockMarker
         }
 
-        let marks = inlineMarks(from: run)
-        let link = semanticLink(from: run)
         let resolvedBlockType = NoteTextBlockAttribute.blockType(
             from: blockMarker ?? currentBlockMarker
         )
+        let marks = inlineMarks(from: run, blockType: resolvedBlockType)
+        let link = semanticLink(from: run)
+        decodeRunCharacters(
+            attributed[run.range].characters,
+            marks: marks,
+            link: link,
+            resolvedBlockType: resolvedBlockType,
+            blocks: &blocks,
+            currentSegments: &currentSegments,
+            currentBlockMarker: &currentBlockMarker,
+            endedWithStructuralNewline: &endedWithStructuralNewline
+        )
+    }
+
+    static func resolvedDecodedBlockType(
+        explicitBlockType: NotesSemanticDocument.BlockType?,
+        hasExistingBlocks: Bool
+    ) -> NotesSemanticDocument.BlockType {
+        NoteTextBlockResolution.resolvedDecodedBlockType(
+            explicitBlockType: explicitBlockType,
+            hasExistingBlocks: hasExistingBlocks
+        )
+    }
+
+    static func flushPendingStructuralBoundaries(
+        blocks: inout [NotesSemanticDocument.Block],
+        currentSegments: inout [NotesSemanticDocument.InlineSegment],
+        currentBlockMarker: inout String?,
+        pendingBoundaryMarker: inout String?,
+        pendingBoundaryCount: inout Int,
+        followedByContent: Bool
+    ) {
+        guard pendingBoundaryCount > 0 else { return }
+        let blockMarker = pendingBoundaryMarker
+        let emptyBlockCount = followedByContent ? max(0, pendingBoundaryCount - 1) : pendingBoundaryCount
+
+        for _ in 0..<emptyBlockCount {
+            currentBlockMarker = blockMarker
+            flushDecodedBlock(
+                blocks: &blocks,
+                currentSegments: &currentSegments,
+                currentBlockMarker: &currentBlockMarker
+            )
+        }
+
+        currentBlockMarker = followedByContent ? blockMarker : nil
+        pendingBoundaryMarker = nil
+        pendingBoundaryCount = 0
+    }
+
+    static func handleStructuralBoundaryRun(
+        blockMarker: String?,
+        runText: String,
+        isStructuralBoundaryRun: Bool,
+        blocks: inout [NotesSemanticDocument.Block],
+        currentSegments: inout [NotesSemanticDocument.InlineSegment],
+        currentBlockMarker: inout String?,
+        pendingBoundaryMarker: inout String?,
+        pendingBoundaryCount: inout Int,
+        endedWithStructuralNewline: inout Bool
+    ) -> Bool {
+        guard isStructuralBoundaryRun else { return false }
+        if !currentSegments.isEmpty {
+            flushDecodedBlock(
+                blocks: &blocks,
+                currentSegments: &currentSegments,
+                currentBlockMarker: &currentBlockMarker
+            )
+        }
+        if pendingBoundaryCount > 0, pendingBoundaryMarker != blockMarker {
+            flushPendingStructuralBoundaries(
+                blocks: &blocks,
+                currentSegments: &currentSegments,
+                currentBlockMarker: &currentBlockMarker,
+                pendingBoundaryMarker: &pendingBoundaryMarker,
+                pendingBoundaryCount: &pendingBoundaryCount,
+                followedByContent: false
+            )
+        }
+        if pendingBoundaryMarker != blockMarker {
+            pendingBoundaryMarker = blockMarker
+            pendingBoundaryCount = 0
+        }
+        pendingBoundaryCount += runText.count
+        endedWithStructuralNewline = true
+        return true
+    }
+
+    static func decodeRunCharacters(
+        _ characters: AttributedString.CharacterView,
+        marks: [NotesSemanticDocument.InlineMark],
+        link: NotesSemanticDocument.Link?,
+        resolvedBlockType: NotesSemanticDocument.BlockType?,
+        blocks: inout [NotesSemanticDocument.Block],
+        currentSegments: inout [NotesSemanticDocument.InlineSegment],
+        currentBlockMarker: inout String?,
+        endedWithStructuralNewline: inout Bool
+    ) {
         var buffer = ""
 
-        for character in attributed[run.range].characters {
+        for character in characters {
             if character.isNewline {
                 if resolvedBlockType == .codeBlock {
                     buffer.append(character)
@@ -174,20 +314,5 @@ extension NotesAttributedDocumentCodec {
         if !buffer.isEmpty {
             endedWithStructuralNewline = false
         }
-    }
-
-    static func resolvedDecodedBlockType(
-        explicitBlockType: NotesSemanticDocument.BlockType?,
-        hasExistingBlocks: Bool
-    ) -> NotesSemanticDocument.BlockType {
-        guard hasExistingBlocks else {
-            switch explicitBlockType {
-            case .none, .title, .paragraph, .heading, .subheading:
-                return .title
-            case .some(let explicitBlockType):
-                return explicitBlockType
-            }
-        }
-        return explicitBlockType ?? .paragraph
     }
 }

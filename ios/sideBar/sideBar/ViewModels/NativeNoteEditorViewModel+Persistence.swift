@@ -29,15 +29,24 @@ extension NativeNoteEditorViewModel {
     }
 
     public func currentPersistenceSnapshot() -> PersistenceSnapshot {
+        if let cachedPersistenceSnapshot,
+           cachedPersistenceSnapshotGeneration == renderGeneration {
+            return cachedPersistenceSnapshot
+        }
+
+        onPersistenceSnapshotComputedForTesting?()
         let document = NotesAttributedDocumentCodec.document(
             from: constrainedEditorDocument(from: attributedContent)
         )
         let plainText = NotesSemanticDocumentProjection.plainText(from: document)
-        return PersistenceSnapshot(
+        let snapshot = PersistenceSnapshot(
             document: document,
             canonicalContent: NotesSemanticDocumentCodec.encode(document) ?? "",
             plainText: plainText
         )
+        cachedPersistenceSnapshot = snapshot
+        cachedPersistenceSnapshotGeneration = renderGeneration
+        return snapshot
     }
 
     public func currentCanonicalContent() -> String {

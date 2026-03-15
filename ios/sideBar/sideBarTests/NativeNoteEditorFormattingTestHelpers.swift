@@ -206,6 +206,28 @@ func noteRangeHasInlineCodeBackground(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func noteBlockValue(
+    in text: AttributedString,
+    atCharacterOffset offset: Int
+) -> String? {
+    guard let run = noteRun(in: text, atCharacterOffset: offset) else { return nil }
+    return run.noteBlock
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func noteParagraphStyle(
+    in text: AttributedString,
+    atCharacterOffset offset: Int
+) -> NSParagraphStyle? {
+    let plainText = String(text.characters)
+    guard offset >= 0, offset < plainText.count else { return nil }
+    let stringIndex = plainText.index(plainText.startIndex, offsetBy: offset)
+    let nsLocation = stringIndex.utf16Offset(in: plainText)
+    return NSAttributedString(text).attribute(.paragraphStyle, at: nsLocation, effectiveRange: nil)
+        as? NSParagraphStyle
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func noteLinkValue(
     in text: AttributedString,
     atCharacterOffset offset: Int
@@ -215,6 +237,17 @@ func noteLinkValue(
     let lower = plainText.index(plainText.startIndex, offsetBy: offset)
     let nsLocation = lower.utf16Offset(in: plainText)
     return NSAttributedString(text).attribute(.link, at: nsLocation, effectiveRange: nil) as? URL
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func noteRun(
+    in text: AttributedString,
+    atCharacterOffset offset: Int
+) -> AttributedString.Runs.Run? {
+    guard offset >= 0, offset < text.characters.count else { return nil }
+    let lower = text.index(text.startIndex, offsetByCharacters: offset)
+    let upper = text.index(afterCharacter: lower)
+    return text[lower..<upper].runs.first
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -255,7 +288,7 @@ func noteAppendTypedText(_ string: String, to viewModel: NativeNoteEditorViewMod
     var inserted = AttributedString(string)
     let range = inserted.startIndex..<inserted.endIndex
     inserted[range].mergeAttributes(
-        viewModel.selection.typingAttributes(in: viewModel.attributedContent)
+        viewModel.typingAttributesForInsertion(in: viewModel.attributedContent)
     )
     let insertion = viewModel.attributedContent.endIndex
     viewModel.attributedContent.insert(inserted, at: insertion)

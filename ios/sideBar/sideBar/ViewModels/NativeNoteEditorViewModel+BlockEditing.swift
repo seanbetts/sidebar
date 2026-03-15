@@ -6,33 +6,11 @@ import SwiftUI
 extension NativeNoteEditorViewModel {
     func applyTypingAttributes(for blockType: NotesSemanticDocument.BlockType) {
         transformSelectionAttributes { attrs in
-            let inlineState = InlineFormattingState.plain
-            applyInlineFormattingState(inlineState, to: &attrs)
-
-            if let style = NoteTextStyle(blockType: blockType) {
-                attrs.font = NoteTextStyleTypography.font(for: style, baseFontSize: baseFontSize)
-            } else {
-                attrs.font = .system(
-                    size: noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType),
-                    design: noteUsesMonospacedDesign(blockType: blockType) ? .monospaced : .default
-                )
-            }
-            setPlatformFont(
-                notePlatformFont(
-                    baseFontSize: baseFontSize,
-                    blockType: blockType,
-                    bold: false,
-                    italic: false
-                ),
-                in: &attrs
+            applySemanticTypingAttributes(
+                blockType: blockType,
+                inlineState: .plain,
+                to: &attrs
             )
-            attrs.paragraphStyle = paragraphStyle(for: blockType)
-            attrs.noteBlock = blockMarker(for: blockType)
-            attrs.underlineStyle = nil
-            attrs.strikethroughStyle = nil
-            attrs.link = nil
-            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
-            attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
         }
     }
 
