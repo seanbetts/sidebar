@@ -1,9 +1,16 @@
+import XCTest
+@testable import sideBar
+
+func canonicalUIKitPlainTextPass(_ plainText: String) -> String {
+    NotesSemanticDocumentCodec.encode(
+        NotesSemanticDocumentProjection.document(fromPlainText: plainText)
+    ) ?? plainText
+}
+
 #if os(iOS)
 import Combine
 import SwiftUI
 import UIKit
-import XCTest
-@testable import sideBar
 
 @MainActor
 @available(iOS 26.0, *)
@@ -201,9 +208,4 @@ func findEmbeddedFormattingBar(in view: UIView) -> UIKitNoteFormattingBar? {
     return nil
 }
 
-func canonicalUIKitPlainTextPass(_ plainText: String) -> String {
-    NotesSemanticDocumentCodec.encode(
-        NotesSemanticDocumentProjection.document(fromPlainText: plainText)
-    ) ?? plainText
-}
 #endif

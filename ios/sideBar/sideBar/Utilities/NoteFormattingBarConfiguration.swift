@@ -1,7 +1,6 @@
-#if os(iOS)
 import Foundation
 
-@available(iOS 26.0, *)
+@available(iOS 26.0, macOS 26.0, *)
 struct NoteFormattingBarConfiguration {
     let activeTextStyle: NoteTextStyle
     let isTextStyleSectionEnabled: Bool
@@ -135,4 +134,3 @@ struct NoteFormattingBarConfiguration {
         onTextStyleSelection(style)
     }
 }
-#endif
