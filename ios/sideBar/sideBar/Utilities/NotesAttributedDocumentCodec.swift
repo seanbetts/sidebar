@@ -55,84 +55,78 @@ enum NotesAttributedDocumentCodec {
         var currentSegments: [NotesSemanticDocument.InlineSegment] = []
         var currentBlockMarker: String?
 
-        func appendSegmentText(
-            _ text: String,
-            marks: [NotesSemanticDocument.InlineMark],
-            link: NotesSemanticDocument.Link?
-        ) {
-            guard !text.isEmpty else { return }
-            if let last = currentSegments.last,
-               last.marks == marks,
-               last.link == link {
-                currentSegments[currentSegments.count - 1] = .init(
-                    text: last.text + text,
-                    marks: last.marks,
-                    link: last.link
-                )
-            } else {
-                currentSegments.append(.init(text: text, marks: marks, link: link))
-            }
-        }
-
-        func flushBlock() {
-            let explicitBlockType = NoteTextBlockAttribute.blockType(from: currentBlockMarker)
-            let resolvedBlockType: NotesSemanticDocument.BlockType
-            if blocks.isEmpty {
-                switch explicitBlockType {
-                case .none, .title, .paragraph, .heading, .subheading:
-                    resolvedBlockType = .title
-                case .some(let explicitBlockType):
-                    resolvedBlockType = explicitBlockType
-                }
-            } else {
-                resolvedBlockType = explicitBlockType ?? .paragraph
-            }
-            let normalized = normalizedSegmentsAndCheckedState(
-                from: currentSegments,
-                blockType: resolvedBlockType
-            )
-            var segments = normalized.segments
-            if segments.isEmpty {
-                segments = [.init(text: "", marks: [])]
-            }
-            blocks.append(
-                .init(
-                    type: resolvedBlockType,
-                    content: segments,
-                    checked: normalized.checked
-                )
-            )
-            currentSegments.removeAll(keepingCapacity: true)
-            currentBlockMarker = nil
-        }
-
         for run in attributed.runs {
             let blockMarker = run.noteBlock
-            if currentBlockMarker == nil {
+            let runText = String(attributed[run.range].characters)
+            if shouldFlushCodeBlockBeforeSeparatorRun(
+                currentBlockMarker: currentBlockMarker,
+                blockMarker: blockMarker,
+                runText: runText,
+                hasBufferedContent: !currentSegments.isEmpty
+            ) {
+                flushDecodedBlock(
+                    blocks: &blocks,
+                    currentSegments: &currentSegments,
+                    currentBlockMarker: &currentBlockMarker
+                )
+                continue
+            }
+            if shouldFlushBeforeProcessingRun(
+                currentBlockMarker: currentBlockMarker,
+                blockMarker: blockMarker,
+                hasBufferedContent: !currentSegments.isEmpty
+            ) {
+                flushDecodedBlock(
+                    blocks: &blocks,
+                    currentSegments: &currentSegments,
+                    currentBlockMarker: &currentBlockMarker
+                )
+            }
+            if currentBlockMarker == nil || (!currentSegments.isEmpty && blockMarker != nil) {
                 currentBlockMarker = blockMarker
             }
             let marks = inlineMarks(from: run)
             let link = semanticLink(from: run)
-            let resolvedBlockType = NoteTextBlockAttribute.blockType(from: blockMarker ?? currentBlockMarker)
+            let resolvedBlockType = NoteTextBlockAttribute.blockType(
+                from: blockMarker ?? currentBlockMarker
+            )
             var buffer = ""
             for character in attributed[run.range].characters {
                 if character.isNewline {
                     if resolvedBlockType == .codeBlock {
                         buffer.append(character)
                     } else {
-                        appendSegmentText(buffer, marks: marks, link: link)
+                        appendDecodedSegmentText(
+                            buffer,
+                            marks: marks,
+                            link: link,
+                            currentSegments: &currentSegments
+                        )
                         buffer.removeAll(keepingCapacity: true)
-                        flushBlock()
+                        flushDecodedBlock(
+                            blocks: &blocks,
+                            currentSegments: &currentSegments,
+                            currentBlockMarker: &currentBlockMarker
+                        )
                     }
                 } else {
                     buffer.append(character)
                 }
             }
-            appendSegmentText(buffer, marks: marks, link: link)
+            appendDecodedSegmentText(
+                buffer,
+                marks: marks,
+                link: link,
+                currentSegments: &currentSegments
+            )
         }
 
         if blocks.isEmpty || !currentSegments.isEmpty {
-            flushBlock()
+            flushDecodedBlock(
+                blocks: &blocks,
+                currentSegments: &currentSegments,
+                currentBlockMarker: &currentBlockMarker
+            )
         }
 
         return NotesSemanticDocument(blocks: blocks)
@@ -211,15 +205,17 @@ enum NotesAttributedDocumentCodec {
     private static func inlineMarks(
         from run: AttributedString.Runs.Run
     ) -> [NotesSemanticDocument.InlineMark] {
-        let traits = noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: run.attributes))
-        let formattingTraits = noteInlineFormattingTraits(from: run.attributes)
         let blockType = NoteTextBlockAttribute.blockType(from: run.noteBlock)
+        let formattingTraits = noteSemanticInlineFormattingTraits(
+            from: run.attributes,
+            blockType: blockType
+        )
         return NotesSemanticDocument.InlineMark.storageOrder.compactMap { mark in
             switch mark {
             case .bold:
-                return formattingTraits.bold || traits.bold ? .bold : nil
+                return formattingTraits.bold ? .bold : nil
             case .italic:
-                return formattingTraits.italic || traits.italic ? .italic : nil
+                return formattingTraits.italic ? .italic : nil
             case .underline:
                 return run.underlineStyle != nil ? .underline : nil
             case .strikethrough:
@@ -229,6 +225,28 @@ enum NotesAttributedDocumentCodec {
                 return .inlineCode
             }
         }
+    }
+
+    private static func shouldFlushBeforeProcessingRun(
+        currentBlockMarker: String?,
+        blockMarker: String?,
+        hasBufferedContent: Bool
+    ) -> Bool {
+        guard hasBufferedContent else { return false }
+        guard let blockMarker else { return false }
+        return blockMarker != currentBlockMarker
+    }
+
+    private static func shouldFlushCodeBlockBeforeSeparatorRun(
+        currentBlockMarker: String?,
+        blockMarker: String?,
+        runText: String,
+        hasBufferedContent: Bool
+    ) -> Bool {
+        guard hasBufferedContent else { return false }
+        guard blockMarker == nil else { return false }
+        guard NoteTextBlockAttribute.blockType(from: currentBlockMarker) == .codeBlock else { return false }
+        return !runText.isEmpty && runText.allSatisfy(\.isNewline)
     }
 
     private static func attributedBlock(
@@ -351,7 +369,7 @@ enum NotesAttributedDocumentCodec {
         }
     }
 
-    private static func normalizedSegmentsAndCheckedState(
+    static func normalizedSegmentsAndCheckedState(
         from segments: [NotesSemanticDocument.InlineSegment],
         blockType: NotesSemanticDocument.BlockType
     ) -> (segments: [NotesSemanticDocument.InlineSegment], checked: Bool?) {

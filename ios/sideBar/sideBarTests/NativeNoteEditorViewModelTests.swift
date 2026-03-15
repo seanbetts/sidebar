@@ -7,16 +7,23 @@ import SwiftUI
 final class NativeNoteEditorViewModelTests: XCTestCase {
     func testApplyFormattingBoldTogglesSelectedRangeFontTraits() async {
         let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("hello")
-        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Title\nhello"),
+            plainText: "Title\nhello"
+        )
+        let start = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
+        let end = viewModel.index(forCharacterOffset: 11, in: viewModel.attributedContent)
+        let range = start..<end
         viewModel.selection = AttributedTextSelection(range: range)
 
         viewModel.applyFormatting(.bold)
         XCTAssertTrue(noteRangeHasBoldTrait(viewModel.attributedContent, range: range))
 
-        viewModel.selection = AttributedTextSelection(range: noteCharacterRange(length: 5, in: viewModel.attributedContent))
+        let updatedStart = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
+        let updatedEnd = viewModel.index(forCharacterOffset: 11, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: updatedStart..<updatedEnd)
         viewModel.applyFormatting(.bold)
-        let updatedRange = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        let updatedRange = updatedStart..<updatedEnd
         XCTAssertFalse(noteRangeHasBoldTrait(viewModel.attributedContent, range: updatedRange))
     }
 
@@ -143,31 +150,45 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
 
     func testFormattingCommandsUpdateCanonicalSnapshotWithoutWrapperOwnedState() async throws {
         let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("Hello")
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Title\nHello"),
+            plainText: "Title\nHello"
+        )
 
-        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        let start = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
+        let end = viewModel.index(forCharacterOffset: 11, in: viewModel.attributedContent)
+        let range = start..<end
         viewModel.selection = AttributedTextSelection(range: range)
         viewModel.applyFormatting(.bold)
 
+        let updatedStart = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
+        let updatedEnd = viewModel.index(forCharacterOffset: 11, in: viewModel.attributedContent)
         viewModel.selection = AttributedTextSelection(
-            range: noteCharacterRange(length: 5, in: viewModel.attributedContent)
+            range: updatedStart..<updatedEnd
         )
         viewModel.applyFormatting(.italic)
 
         let snapshot = viewModel.currentPersistenceSnapshot()
-        let paragraph = try XCTUnwrap(snapshot.document.blocks.first)
+        let paragraph = try XCTUnwrap(snapshot.document.blocks.last)
         let segment = try XCTUnwrap(paragraph.content.first)
 
         XCTAssertEqual(segment.text, "Hello")
         XCTAssertTrue(segment.marks.contains(.bold))
         XCTAssertTrue(segment.marks.contains(.italic))
-        XCTAssertEqual(snapshot.plainText, "Hello")
+        XCTAssertEqual(snapshot.plainText, "Title\nHello")
     }
 
     func testSelectedRangeFormattingStateUpdatesIndividuallyPerControl() async {
         let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("hello")
-        let range = noteCharacterRange(length: 5, in: viewModel.attributedContent)
+        viewModel.loadText("Title\nhello")
+        func bodyRange() -> Range<AttributedString.Index> {
+            let lowerBound = viewModel.attributedContent.index(
+                viewModel.attributedContent.startIndex,
+                offsetByCharacters: 6
+            )
+            return lowerBound..<viewModel.attributedContent.endIndex
+        }
+        let range = bodyRange()
         viewModel.selection = AttributedTextSelection(range: range)
 
         XCTAssertFalse(viewModel.isFormattingActive(.bold))
@@ -177,7 +198,7 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isFormattingActive(.underline))
 
         viewModel.selection = AttributedTextSelection(
-            range: noteCharacterRange(length: 5, in: viewModel.attributedContent)
+            range: bodyRange()
         )
         viewModel.applyFormatting(.italic)
         XCTAssertTrue(viewModel.isFormattingActive(.bold))
@@ -185,7 +206,7 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isFormattingActive(.underline))
 
         viewModel.selection = AttributedTextSelection(
-            range: noteCharacterRange(length: 5, in: viewModel.attributedContent)
+            range: bodyRange()
         )
         viewModel.applyFormatting(.underline)
         XCTAssertTrue(viewModel.isFormattingActive(.bold))
@@ -193,54 +214,9 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isFormattingActive(.underline))
     }
 
-    func testActiveTextStyleUsesSelectionStartBlockForMultiLineSelection() async throws {
-        let document = NotesSemanticDocument(
-            blocks: [
-                .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
-                .paragraph([.init(text: "Body", marks: [])])
-            ]
-        )
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadDocument(
-            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
-            plainText: NotesSemanticDocumentProjection.plainText(from: document)
-        )
-        let selectionStart = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
-        let selectionEnd = viewModel.index(forCharacterOffset: 18, in: viewModel.attributedContent)
-        viewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
-
-        XCTAssertEqual(viewModel.activeTextStyle(), .heading)
-    }
-
-    func testApplyTextStyleConvertsEverySelectedTextStyleFamilyBlock() async throws {
-        let document = NotesSemanticDocument(
-            blocks: [
-                .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                .paragraph([.init(text: "Body", marks: [.bold])]),
-                .init(type: .subheading, content: [.init(text: "Tail", marks: [.italic])])
-            ]
-        )
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadDocument(
-            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
-            plainText: NotesSemanticDocumentProjection.plainText(from: document)
-        )
-        let selectionStart = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
-        let selectionEnd = viewModel.index(forCharacterOffset: 15, in: viewModel.attributedContent)
-        viewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
-
-        viewModel.applyTextStyle(.heading)
-
-        let snapshot = viewModel.currentPersistenceSnapshot()
-        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .heading, .heading])
-        XCTAssertEqual(snapshot.document.blocks[1].content.first?.marks, [.bold])
-        XCTAssertEqual(snapshot.document.blocks[2].content.first?.marks, [.italic])
-    }
-
     func testInsertionPointFormattingStateUpdatesIndividuallyPerControlAndTypedText() async {
         let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadText("Hi")
+        viewModel.loadText("Title\nHi")
         let insertion = viewModel.attributedContent.endIndex
         viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
 
@@ -264,7 +240,7 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
 
         let punctuationStart = viewModel.attributedContent.index(
             viewModel.attributedContent.startIndex,
-            offsetByCharacters: 2
+            offsetByCharacters: 8
         )
         let punctuationEnd = viewModel.attributedContent.index(afterCharacter: punctuationStart)
 

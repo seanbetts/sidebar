@@ -49,6 +49,11 @@ Available formatting includes:
 The text-style row is visual rather than text-only, so each style is shown with
 its own note typography instead of a plain menu label.
 
+Pressing Return after a **Title**, **Heading**, or **Subhead** starts a new
+**Body** line. **Body** lines continue as body text when you press Return. Code
+blocks stay multiline, and pressing Return twice on an empty trailing code
+block line exits back to **Body** text.
+
 ## Note Actions
 
 From the context menu (long-press a note in the list) or the toolbar menu when

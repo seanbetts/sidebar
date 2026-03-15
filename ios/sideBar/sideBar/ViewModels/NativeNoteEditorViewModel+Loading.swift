@@ -50,7 +50,8 @@ extension NativeNoteEditorViewModel {
     ) {
         let previousContent = attributedContent
         let previousSelection = selection
-        var updatedContent = AttributedString(text)
+        var updatedContent = (try? AttributedString(text, including: \.noteTextEditor))
+            ?? AttributedString(text)
         constrainEditorDocument(&updatedContent)
         let updatedSelection = selection(fromUTF16Range: selectedUTF16Range, in: updatedContent)
 

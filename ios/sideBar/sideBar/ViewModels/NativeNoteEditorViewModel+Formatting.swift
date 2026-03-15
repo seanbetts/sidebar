@@ -4,6 +4,12 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeNoteEditorViewModel {
+    private struct ReturnKeyMutation {
+        let document: NotesSemanticDocument
+        let insertionOffset: Int
+        let typingBlockType: NotesSemanticDocument.BlockType
+    }
+
     struct InlineFormattingState: Equatable {
         var bold: Bool = false
         var italic: Bool = false
@@ -138,6 +144,51 @@ extension NativeNoteEditorViewModel {
         constrainEditorDocument(&updatedContent)
         attributedContent = updatedContent
         selection = selection(from: selectionSnapshot, in: updatedContent)
+    }
+
+    @discardableResult
+    func handleReturnKey() -> Bool {
+        guard !isReadOnly else { return false }
+        guard case .insertionPoint = selection.indices(in: attributedContent) else { return false }
+
+        let document = currentPersistenceSnapshot().document
+        guard let blockInfo = blockInfoContainingSelectionStart(in: document) else { return false }
+
+        let blockText = blockPlainText(blockInfo.block)
+        let selectionOffset = max(
+            0,
+            min(
+                selectionStartCharacterOffset(in: attributedContent) - blockInfo.range.lowerBound,
+                blockText.count
+            )
+        )
+
+        let mutation: ReturnKeyMutation?
+        switch blockInfo.block.type {
+        case .title, .heading, .subheading, .paragraph:
+            mutation = splitTextStyleBlock(
+                in: document,
+                blockInfo: blockInfo,
+                selectionOffset: selectionOffset
+            )
+        case .codeBlock:
+            mutation = mutateCodeBlockReturn(
+                in: document,
+                blockInfo: blockInfo,
+                selectionOffset: selectionOffset,
+                blockText: blockText
+            )
+        default:
+            mutation = nil
+        }
+
+        guard let mutation else { return false }
+        applyDocumentMutation(
+            mutation.document,
+            insertionCharacterOffset: mutation.insertionOffset,
+            typingBlockType: mutation.typingBlockType
+        )
+        return true
     }
 
     func toggleFormatting(_ formatting: NoteFormatting) {
@@ -328,4 +379,85 @@ extension NativeNoteEditorViewModel {
     private func rangesOverlap(_ lhs: Range<Int>, _ rhs: Range<Int>) -> Bool {
         lhs.lowerBound < rhs.upperBound && rhs.lowerBound < lhs.upperBound
     }
+
+    private func applyDocumentMutation(
+        _ document: NotesSemanticDocument,
+        insertionCharacterOffset: Int,
+        typingBlockType: NotesSemanticDocument.BlockType
+    ) {
+        let previousContent = attributedContent
+        let previousSelection = selection
+        var updatedContent = NotesAttributedDocumentCodec.attributedString(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        constrainEditorDocument(&updatedContent)
+        attributedContent = updatedContent
+        let insertionIndex = index(forCharacterOffset: insertionCharacterOffset, in: updatedContent)
+        selection = AttributedTextSelection(range: insertionIndex..<insertionIndex)
+        applyTypingAttributes(for: typingBlockType)
+        handleContentChange(previous: previousContent)
+        if selection != previousSelection {
+            handleSelectionChange()
+        }
+    }
+
+    private func splitTextStyleBlock(
+        in document: NotesSemanticDocument,
+        blockInfo: DocumentBlockInfo,
+        selectionOffset: Int
+    ) -> ReturnKeyMutation {
+        let split = splitInlineSegments(blockInfo.block.content, at: selectionOffset)
+        var updatedBlocks = document.blocks
+        updatedBlocks[blockInfo.index] = .init(
+            type: blockInfo.block.type,
+            content: normalizedInlineSegments(split.leading),
+            checked: blockInfo.block.checked
+        )
+        updatedBlocks.insert(
+            .paragraph(normalizedInlineSegments(split.trailing)),
+            at: blockInfo.index + 1
+        )
+        let insertionOffset = blockInfo.range.lowerBound + inlineTextLength(split.leading) + 1
+        return ReturnKeyMutation(
+            document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
+            insertionOffset: insertionOffset,
+            typingBlockType: .paragraph
+        )
+    }
+
+    private func mutateCodeBlockReturn(
+        in document: NotesSemanticDocument,
+        blockInfo: DocumentBlockInfo,
+        selectionOffset: Int,
+        blockText: String
+    ) -> ReturnKeyMutation {
+        var updatedBlocks = document.blocks
+        if selectionOffset == blockText.count, blockText.hasSuffix("\n") {
+            updatedBlocks.insert(
+                .paragraph([.init(text: "", marks: [])]),
+                at: blockInfo.index + 1
+            )
+            let insertionOffset = blockInfo.range.lowerBound + blockText.count + 1
+            return ReturnKeyMutation(
+                document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
+                insertionOffset: insertionOffset,
+                typingBlockType: .paragraph
+            )
+        }
+
+        let stringIndex = blockText.index(blockText.startIndex, offsetBy: selectionOffset)
+        let updatedText = String(blockText[..<stringIndex]) + "\n" + String(blockText[stringIndex...])
+        updatedBlocks[blockInfo.index] = .init(
+            type: .codeBlock,
+            content: [.init(text: updatedText, marks: [])],
+            checked: blockInfo.block.checked
+        )
+        return ReturnKeyMutation(
+            document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
+            insertionOffset: blockInfo.range.lowerBound + selectionOffset + 1,
+            typingBlockType: .codeBlock
+        )
+    }
+
 }

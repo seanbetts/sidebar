@@ -43,6 +43,13 @@ editor. You can apply text styles such as Body, Title, Heading, and Subhead,
 along with inline formatting such as bold, italic, underline, strikethrough,
 and inline code. See [Notes](/manual/notes) for the full breakdown.
 
+## What happens when I press Return in a formatted note?
+
+Pressing Return after a Title, Heading, or Subhead starts a new Body line.
+Body lines continue as Body text when you press Return. Code blocks stay
+multiline, and pressing Return twice on an empty trailing code line exits back
+to Body text.
+
 ## What is the Scratchpad?
 
 The Scratchpad is a special note that is always one tap away from anywhere in

@@ -168,11 +168,26 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         XCTAssertEqual(roundTrip, document)
     }
 
+    func testCodeBlockFollowedByParagraphRoundTripsAcrossSeparatorBoundary() {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Snippet", marks: [])]),
+                .init(type: .codeBlock, content: [.init(text: "let x = 1\n", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(from: document, baseFontSize: 16)
+        let roundTrip = NotesAttributedDocumentCodec.document(from: attributed)
+
+        XCTAssertEqual(roundTrip, document)
+    }
+
     func testSupportedBlockTypesRoundTripWithoutUnsupportedBoundary() {
         let document = NotesSemanticDocument(
             blocks: [
                 .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                .init(type: .heading, content: [.init(text: "Heading", marks: [.bold])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
                 .init(type: .subheading, content: [.init(text: "Subheading", marks: [])]),
                 .init(type: .unorderedList, content: [.init(text: "Bullet item", marks: [])]),
                 .init(type: .orderedList, content: [.init(text: "Ordered item", marks: [])]),
@@ -190,6 +205,25 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         )
 
         XCTAssertEqual(NotesAttributedDocumentCodec.document(from: attributed), document)
+    }
+
+    func testBlockTypographyDoesNotRoundTripAsInlineBoldMarks() {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .init(type: .subheading, content: [.init(text: "Subheading", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(
+            from: document,
+            baseFontSize: 18
+        )
+        let roundTrip = NotesAttributedDocumentCodec.document(from: attributed)
+
+        XCTAssertEqual(roundTrip, document)
     }
 
     func testTableBlocksRemainUnsupported() {

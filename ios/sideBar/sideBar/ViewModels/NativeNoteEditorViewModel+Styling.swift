@@ -17,17 +17,19 @@ extension NativeNoteEditorViewModel {
     }
 
     func inlineFormattingState(from attrs: AttributeContainer) -> InlineFormattingState {
+        let blockType = NoteTextBlockAttribute.blockType(from: attrs.noteBlock)
+        let traits = noteSemanticInlineFormattingTraits(from: attrs, blockType: blockType)
         return InlineFormattingState(
-            bold: noteInlineFormattingTraits(from: attrs).bold,
-            italic: noteInlineFormattingTraits(from: attrs).italic,
+            bold: traits.bold,
+            italic: traits.italic,
             underline: attrs.underlineStyle != nil,
             strikethrough: attrs.strikethroughStyle != nil,
-            inlineCode: noteInlineFormattingTraits(from: attrs).monospaced
+            inlineCode: traits.monospaced
         )
     }
 
     func inlineFormattingState(from run: AttributedString.Runs.Run) -> InlineFormattingState {
-        let traits = noteInlineFormattingTraits(from: run.attributes)
+        let traits = noteSemanticInlineFormattingTraits(from: run)
         return InlineFormattingState(
             bold: traits.bold,
             italic: traits.italic,

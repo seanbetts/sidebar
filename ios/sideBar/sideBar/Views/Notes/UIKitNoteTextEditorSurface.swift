@@ -248,6 +248,44 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             viewModel.selection = selection
             viewModel.handleSelectionChange()
         }
+
+        func textView(
+            _ textView: UITextView,
+            shouldChangeTextIn range: NSRange,
+            replacementText text: String
+        ) -> Bool {
+            guard text == "\n" else { return true }
+
+            let selection = viewModel.selection(fromUTF16Range: range, in: viewModel.attributedContent)
+            if selection != viewModel.selection {
+                viewModel.selection = selection
+                viewModel.handleSelectionChange()
+            }
+
+            guard viewModel.handleReturnKey() else { return true }
+
+            let bridgedText = SelectableNoteReadView.bridgedPlatformAttributedString(
+                from: viewModel.attributedContent,
+                baseFontSize: viewModel.baseFontSize
+            )
+            isApplyingProgrammaticText = true
+            textView.attributedText = bridgedText
+            isApplyingProgrammaticText = false
+
+            isApplyingProgrammaticSelection = true
+            textView.selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
+            isApplyingProgrammaticSelection = false
+
+            var sample = AttributedString("x")
+            let sampleRange = sample.startIndex..<sample.endIndex
+            sample[sampleRange].mergeAttributes(viewModel.selection.typingAttributes(in: viewModel.attributedContent))
+            let bridgedTypingSample = SelectableNoteReadView.bridgedPlatformAttributedString(
+                from: sample,
+                baseFontSize: viewModel.baseFontSize
+            )
+            textView.typingAttributes = bridgedTypingSample.attributes(at: 0, effectiveRange: nil)
+            return false
+        }
     }
 }
 #endif

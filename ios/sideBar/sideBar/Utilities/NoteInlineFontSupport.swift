@@ -213,6 +213,27 @@ func noteInlineFormattingTraits(from attributes: AttributeContainer) -> NoteInli
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func noteSemanticInlineFormattingTraits(
+    from attributes: AttributeContainer,
+    blockType: NotesSemanticDocument.BlockType?
+) -> NoteInlineFormattingTraits {
+    noteSemanticInlineFormattingTraits(
+        noteInlineFormattingTraits(from: attributes),
+        blockType: blockType
+    )
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func noteSemanticInlineFormattingTraits(
+    from run: AttributedString.Runs.Run
+) -> NoteInlineFormattingTraits {
+    noteSemanticInlineFormattingTraits(
+        noteInlineFormattingTraits(from: run.attributes),
+        blockType: NoteTextBlockAttribute.blockType(from: run.noteBlock)
+    )
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func noteExplicitPlatformFont(from attributes: AttributeContainer) -> NotePlatformFont? {
     #if os(iOS)
     attributes[AttributeScopes.UIKitAttributes.FontAttribute.self]
@@ -237,4 +258,31 @@ func notePlatformFontTraits(from font: NotePlatformFont) -> NoteInlineFormatting
         monospaced: font.fontDescriptor.symbolicTraits.contains(.monoSpace)
     )
 #endif
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func noteSemanticInlineFormattingTraits(
+    _ traits: NoteInlineFormattingTraits,
+    blockType: NotesSemanticDocument.BlockType?
+) -> NoteInlineFormattingTraits {
+    let defaults = noteDefaultInlineFormattingTraits(for: blockType)
+    return NoteInlineFormattingTraits(
+        bold: defaults.bold ? false : traits.bold,
+        italic: traits.italic,
+        monospaced: defaults.monospaced ? false : traits.monospaced
+    )
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func noteDefaultInlineFormattingTraits(
+    for blockType: NotesSemanticDocument.BlockType?
+) -> NoteInlineFormattingTraits {
+    switch blockType {
+    case .title, .heading, .subheading:
+        return NoteInlineFormattingTraits(bold: true)
+    case .codeBlock:
+        return NoteInlineFormattingTraits(monospaced: true)
+    default:
+        return .plain
+    }
 }

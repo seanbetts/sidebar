@@ -27,13 +27,14 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
             guard !run.range.isEmpty else { return nil }
             let lower = text.characters.distance(from: text.startIndex, to: run.range.lowerBound)
             let upper = text.characters.distance(from: text.startIndex, to: run.range.upperBound)
+            let resolvedBlockType = blockType(for: run, in: text)
             return SupportedRunSnapshot(
                 range: lower..<upper,
-                traits: inlineTraits(from: run),
+                traits: inlineTraits(from: run, blockType: resolvedBlockType),
                 underline: run.underlineStyle != nil,
                 strikethrough: run.strikethroughStyle != nil,
                 link: run.link,
-                blockType: blockType(for: run, in: text),
+                blockType: resolvedBlockType,
                 noteBlock: run.noteBlock
             )
         }
@@ -174,8 +175,11 @@ private extension NoteTextFormattingDefinition {
         let noteBlock: String?
     }
 
-    func inlineTraits(from run: AttributedString.Runs.Run) -> NoteInlineFormattingTraits {
-        noteInlineFormattingTraits(from: run.attributes)
+    func inlineTraits(
+        from run: AttributedString.Runs.Run,
+        blockType: NotesSemanticDocument.BlockType
+    ) -> NoteInlineFormattingTraits {
+        noteSemanticInlineFormattingTraits(from: run.attributes, blockType: blockType)
     }
 
     func attributedRange(
