@@ -10,7 +10,6 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
-
         let note = NotePayload(
             id: "n1",
             name: "Styled",
@@ -46,9 +45,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         )
         context.nativeViewModel.selection = AttributedTextSelection(range: start..<end)
         context.nativeViewModel.handleSelectionChange()
-
         let configuration = context.editorViewModel.noteFormattingBarConfiguration
-
         XCTAssertTrue(configuration.isEnabled)
         XCTAssertEqual(configuration.activeTextStyle, .heading)
         XCTAssertTrue(configuration.isTextStyleSectionEnabled)
@@ -62,9 +59,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
-
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
-
         XCTAssertEqual(bar.accessibilityIdentifier, "note-formatting-bar")
         XCTAssertEqual(bar.menuButton.accessibilityIdentifier, "note-formatting-menu")
         XCTAssertFalse(bar.menuButton.showsMenuAsPrimaryAction)
@@ -84,24 +79,38 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
-
         let popoverView = makePopoverView(activeTextStyle: .body)
         popoverView.frame = CGRect(x: 0, y: 0, width: 360, height: 220)
         popoverView.setNeedsLayout()
         popoverView.layoutIfNeeded()
 
+        let inlineRow: UIStackView = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-inline-actions-row")
+        )
+        let bottomRow: UIStackView = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-bottom-actions-row")
+        )
+
         XCTAssertNotNil(findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-popover") as UIView?)
         XCTAssertNotNil(findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-text-style-strip") as UIView?)
-        XCTAssertNotNil(findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-inline-group") as UIView?)
-        XCTAssertNotNil(findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-inline-code-group") as UIView?)
-        XCTAssertNotNil(findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-link-group") as UIView?)
+        XCTAssertEqual(
+            inlineRow.arrangedSubviews.compactMap(\.accessibilityIdentifier),
+            ["note-formatting-inline-group", "note-formatting-code-group"]
+        )
+        XCTAssertEqual(
+            bottomRow.arrangedSubviews.compactMap(\.accessibilityIdentifier),
+            [
+                "note-formatting-link-group",
+                "note-formatting-future-list-group",
+                "note-formatting-future-blockquote-group"
+            ]
+        )
     }
 
     func testPopoverUsesGlassShellAndGlassGroupedControls() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
-
         let popoverView = makePopoverView(activeTextStyle: .heading)
         popoverView.frame = CGRect(x: 0, y: 0, width: 360, height: 220)
         popoverView.setNeedsLayout()
@@ -114,7 +123,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
             findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-inline-group")
         )
         let codeGroup: UIVisualEffectView = try XCTUnwrap(
-            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-inline-code-group")
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-code-group")
         )
         let linkGroup: UIVisualEffectView = try XCTUnwrap(
             findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-link-group")
@@ -130,7 +139,6 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
-
         let popoverView = makePopoverView(activeTextStyle: .title)
         popoverView.frame = CGRect(x: 0, y: 0, width: 360, height: 220)
         popoverView.setNeedsLayout()
@@ -140,7 +148,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
             findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-text-style-buttons")
         )
         let orderedIdentifiers = strip.arrangedSubviews.compactMap(\.accessibilityIdentifier)
-
+        XCTAssertEqual(strip.spacing, 4, accuracy: CGFloat(0.01))
         XCTAssertEqual(
             orderedIdentifiers,
             [
@@ -159,7 +167,6 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         )
         let titleFont = try XCTUnwrap(titleButton.titleLabel?.font)
         let bodyFont = try XCTUnwrap(bodyButton.titleLabel?.font)
-
         XCTAssertEqual(
             titleFont.pointSize,
             NoteTextStyleTypography.platformFont(
@@ -177,28 +184,29 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
             accuracy: CGFloat(0.01)
         )
         XCTAssertGreaterThan(titleFont.pointSize, bodyFont.pointSize)
+        XCTAssertEqual(titleButton.configuration?.contentInsets.leading, 8)
+        XCTAssertEqual(titleButton.configuration?.contentInsets.trailing, 8)
+        XCTAssertEqual(bodyButton.configuration?.contentInsets.leading, 8)
+        XCTAssertEqual(bodyButton.configuration?.contentInsets.trailing, 8)
+        XCTAssertEqual(titleButton.configuration?.background.backgroundInsets.leading, 0)
+        XCTAssertEqual(titleButton.configuration?.background.backgroundInsets.trailing, 0)
         XCTAssertEqual(titleButton.configuration?.attributedTitle?.characters.map(String.init).joined(), "Title")
         XCTAssertEqual(bodyButton.configuration?.attributedTitle?.characters.map(String.init).joined(), "Body")
+        XCTAssertEqual(strip.frame.minX, 0, accuracy: CGFloat(0.5))
     }
-
     func testBarRendersDisabledStateWhenEditorIsUnavailable() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
-
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
-
         XCTAssertFalse(bar.menuButton.isEnabled)
     }
-
     func testBarReportsCompactIntrinsicSizeForFloatingGlassLayout() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
-
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
         let size = bar.intrinsicContentSize
-
         XCTAssertNotEqual(size.width, UIView.noIntrinsicMetric)
         XCTAssertGreaterThan(size.width, 0)
         XCTAssertLessThan(size.width, 120)
@@ -209,7 +217,6 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
-
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
         let intrinsicSize = bar.intrinsicContentSize
         let fittedSize = bar.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
@@ -413,6 +420,20 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         bar.dismissPopoverIfNeeded(forTapLocation: insidePoint, in: hostView)
 
         XCTAssertFalse(popover.isHidden)
+    }
+
+    func testMovingBarOffWindowDismissesPopover() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(configuration: makeEnabledConfiguration())
+        bar.presentPopover()
+        let popover = try XCTUnwrap(bar.popoverView)
+
+        bar.willMove(toWindow: nil)
+
+        XCTAssertTrue(popover.isHidden)
     }
 }
 

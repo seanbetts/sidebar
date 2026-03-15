@@ -92,23 +92,28 @@ private extension UIKitNoteFormattingPopoverView {
                 ]
             ),
             (
-                "note-formatting-inline-code-group",
+                "note-formatting-code-group",
                 [
                     InlineActionItem(identifier: "note-formatting-inline-code", symbol: "curlybraces") { [weak self] in
                         self?.currentConfiguration.onInlineCodeTap()
                         self?.onDismissRequested()
-                    }
+                    },
+                    InlineActionItem(
+                        identifier: "note-formatting-code-block",
+                        symbol: "chevron.left.forwardslash.chevron.right",
+                        action: nil
+                    )
                 ]
-            ),
-            (
-                "note-formatting-link-group",
-                [InlineActionItem(identifier: "note-formatting-link", symbol: "link", action: nil)]
             )
         ]
     }
 
     private var blockGroupDefinitions: [(String, [InlineActionItem])] {
         [
+            (
+                "note-formatting-link-group",
+                [InlineActionItem(identifier: "note-formatting-link", symbol: "link", action: nil)]
+            ),
             (
                 "note-formatting-future-list-group",
                 [
@@ -120,16 +125,6 @@ private extension UIKitNoteFormattingPopoverView {
             (
                 "note-formatting-future-blockquote-group",
                 [InlineActionItem(identifier: "note-formatting-blockquote", symbol: "text.quote", action: nil)]
-            ),
-            (
-                "note-formatting-future-code-block-group",
-                [
-                    InlineActionItem(
-                        identifier: "note-formatting-code-block",
-                        symbol: "chevron.left.forwardslash.chevron.right",
-                        action: nil
-                    )
-                ]
             )
         ]
     }
@@ -174,7 +169,7 @@ private extension UIKitNoteFormattingPopoverView {
 
         textStyleStrip.axis = .horizontal
         textStyleStrip.alignment = .center
-        textStyleStrip.spacing = 16
+        textStyleStrip.spacing = 4
         textStyleStrip.accessibilityIdentifier = "note-formatting-text-style-buttons"
         textStyleStrip.translatesAutoresizingMaskIntoConstraints = false
         textStyleContentView.addSubview(textStyleStrip)
@@ -189,6 +184,8 @@ private extension UIKitNoteFormattingPopoverView {
     func setUpActionRows() {
         configureActionRow(inlineActionsRow)
         configureActionRow(blockActionsRow)
+        inlineActionsRow.accessibilityIdentifier = "note-formatting-inline-actions-row"
+        blockActionsRow.accessibilityIdentifier = "note-formatting-bottom-actions-row"
 
         inlineGroupDefinitions.forEach { identifier, items in
             inlineActionsRow.addArrangedSubview(makeInlineGroup(identifier: identifier, items: items))
@@ -231,8 +228,7 @@ private extension UIKitNoteFormattingPopoverView {
             textStyleContentView.heightAnchor.constraint(equalTo: textStyleScrollView.frameLayoutGuide.heightAnchor),
             textStyleContentView.widthAnchor.constraint(greaterThanOrEqualTo: textStyleScrollView.frameLayoutGuide.widthAnchor),
 
-            textStyleStrip.centerXAnchor.constraint(equalTo: textStyleContentView.centerXAnchor),
-            textStyleStrip.leadingAnchor.constraint(greaterThanOrEqualTo: textStyleContentView.leadingAnchor),
+            textStyleStrip.leadingAnchor.constraint(equalTo: textStyleContentView.leadingAnchor),
             textStyleStrip.trailingAnchor.constraint(lessThanOrEqualTo: textStyleContentView.trailingAnchor),
             textStyleStrip.topAnchor.constraint(equalTo: textStyleContentView.topAnchor),
             textStyleStrip.bottomAnchor.constraint(equalTo: textStyleContentView.bottomAnchor)
@@ -257,7 +253,7 @@ private extension UIKitNoteFormattingPopoverView {
         isEnabled: Bool
     ) -> UIButton.Configuration {
         var configuration = UIButton.Configuration.plain()
-        configuration.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
         configuration.background = isActive ? selectedButtonBackground() : .clear()
         var titleAttributes = AttributeContainer()
         titleAttributes.font = NoteTextStyleTypography.platformFont(
@@ -285,6 +281,7 @@ private extension UIKitNoteFormattingPopoverView {
         effectView.contentView.addSubview(stack)
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
+        container.accessibilityIdentifier = identifier
         container.addSubview(effectView)
 
         NSLayoutConstraint.activate([
