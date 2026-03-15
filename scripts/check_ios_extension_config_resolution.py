@@ -108,6 +108,13 @@ def normalize_value(value: str) -> str:
     return value.strip().strip('"').replace("\\/", "/")
 
 
+def normalize_build_setting_value(value: object) -> str:
+    """Normalize scalar and list-shaped pbxproj build settings for stable comparison."""
+    if isinstance(value, list):
+        return " ".join(normalize_value(str(item)) for item in value)
+    return normalize_value(str(value))
+
+
 def normalize_sdkroot_value(value: str) -> str:
     """Collapse resolved SDKROOT paths to stable platform identifiers."""
     normalized = normalize_value(value)
@@ -211,7 +218,7 @@ def configuration_settings_for_target(
         if not isinstance(build_settings, dict):
             raise RuntimeError(f"{target}: invalid build settings for {configuration}")
         return {
-            key: normalize_value(str(value))
+            key: normalize_build_setting_value(value)
             for key, value in build_settings.items()
         }
 

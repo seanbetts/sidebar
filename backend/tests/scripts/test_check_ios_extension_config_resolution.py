@@ -474,6 +474,80 @@ def test_validate_extension_config_resolution_resolves_braced_placeholders(
     assert errors == []
 
 
+def test_validate_extension_config_resolution_accepts_list_valued_runpaths(
+    tmp_path: Path,
+) -> None:
+    """Validator should treat pbxproj list-valued runpaths as equivalent to space-delimited strings."""
+    base_xcconfig = tmp_path / "SideBar.xcconfig"
+    base_xcconfig.write_text(f"{LOCAL_INCLUDE_LINE}\n", encoding="utf-8")
+
+    sentinel_values = CONFIG_CHECK_MODULE.SENTINEL_VALUES
+    debug_settings = {
+        "API_BASE_URL": sentinel_values["API_BASE_URL"],
+        "SUPABASE_URL": sentinel_values["SUPABASE_URL"],
+        "SUPABASE_ANON_KEY": sentinel_values["SUPABASE_ANON_KEY"],
+        "INFOPLIST_KEY_API_BASE_URL": sentinel_values["API_BASE_URL"],
+        "INFOPLIST_KEY_SUPABASE_URL": sentinel_values["SUPABASE_URL"],
+        "INFOPLIST_KEY_SUPABASE_ANON_KEY": sentinel_values["SUPABASE_ANON_KEY"],
+        "APP_GROUP_ID": "group.ai.sidebar.sidebar",
+        "INFOPLIST_KEY_APP_GROUP_ID": "group.ai.sidebar.sidebar",
+        "LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]": [
+            "@executable_path/Frameworks",
+            "@executable_path/../../Frameworks",
+            "@executable_path/../../../../Frameworks",
+        ],
+    }
+
+    objects = {
+        "project": {
+            "isa": "PBXProject",
+            "buildConfigurationList": "project_configs",
+        },
+        "project_configs": {
+            "isa": "XCConfigurationList",
+            "buildConfigurations": ["project_debug"],
+        },
+        "project_debug": {
+            "isa": "XCBuildConfiguration",
+            "name": "Debug",
+            "buildSettings": {},
+        },
+        "target": {
+            "isa": "PBXNativeTarget",
+            "name": "ShareExtension",
+            "buildConfigurationList": "target_configs",
+            "buildPhases": ["frameworks"],
+        },
+        "target_configs": {
+            "isa": "XCConfigurationList",
+            "buildConfigurations": ["target_debug"],
+        },
+        "target_debug": {
+            "isa": "XCBuildConfiguration",
+            "name": "Debug",
+            "buildSettings": debug_settings,
+        },
+        "frameworks": {
+            "isa": "PBXFrameworksBuildPhase",
+            "files": [],
+        },
+    }
+
+    original_loader = CONFIG_CHECK_MODULE.load_pbxproj_objects
+    try:
+        CONFIG_CHECK_MODULE.load_pbxproj_objects = lambda _path: objects
+        errors = validate_extension_config_resolution(
+            pbxproj_path=tmp_path / "project.pbxproj",
+            base_xcconfig_path=base_xcconfig,
+            configuration="Debug",
+            targets=("ShareExtension",),
+        )
+    finally:
+        CONFIG_CHECK_MODULE.load_pbxproj_objects = original_loader
+
+    assert errors == []
+
+
 def test_validate_built_macos_widget_artifacts_rejects_non_sidebar_app_path(tmp_path: Path) -> None:
     """Artifact validation should require a sideBar.app bundle path."""
     app = tmp_path / "NotSideBar.app"

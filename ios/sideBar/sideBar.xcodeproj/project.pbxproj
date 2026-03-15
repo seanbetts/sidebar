@@ -1295,7 +1295,11 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/Frameworks @executable_path/../../Frameworks @executable_path/../../../../Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
@@ -1337,7 +1341,11 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/Frameworks @executable_path/../../Frameworks @executable_path/../../../../Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
@@ -1383,7 +1391,11 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/Frameworks @executable_path/../../Frameworks @executable_path/../../../../Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.sideBarWidgets;
@@ -1428,7 +1440,11 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/Frameworks @executable_path/../../Frameworks @executable_path/../../../../Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.sideBarWidgets;
@@ -1555,7 +1571,11 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/Frameworks @executable_path/../../Frameworks @executable_path/../../../../Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
@@ -1600,7 +1620,11 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/Frameworks @executable_path/../../Frameworks @executable_path/../../../../Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
