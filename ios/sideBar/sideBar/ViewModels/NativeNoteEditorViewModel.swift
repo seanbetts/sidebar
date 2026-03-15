@@ -45,7 +45,10 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     func defaultTypingAttributes() -> AttributeContainer {
         var attrs = AttributeContainer()
         applyInlineFormattingState(.plain, to: &attrs)
-        attrs.paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
+        attrs.paragraphStyle = NoteTextParagraphMetrics.paragraphStyle(
+            for: .paragraph,
+            baseFontSize: baseFontSize
+        )
         return attrs
     }
 

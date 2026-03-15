@@ -325,7 +325,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         )
 
         XCTAssertEqual(layout.direction, .below)
-        XCTAssertEqual(layout.frame.minY, 114, accuracy: 0.5)
+        XCTAssertEqual(layout.frame.minY, 60, accuracy: 0.5)
     }
 
     func testPopoverLayoutPrefersAboveForKeyboardAccessoryWhenSpaceAllows() throws {
@@ -342,7 +342,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         )
 
         XCTAssertEqual(layout.direction, .above)
-        XCTAssertEqual(layout.frame.minY, 530, accuracy: 0.5)
+        XCTAssertEqual(layout.frame.minY, 584, accuracy: 0.5)
     }
 
     func testPopoverLayoutFlipsBelowWhenAccessoryPresentationHasInsufficientSpaceAbove() throws {
@@ -359,7 +359,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         )
 
         XCTAssertEqual(layout.direction, .below)
-        XCTAssertEqual(layout.frame.minY, 174, accuracy: 0.5)
+        XCTAssertEqual(layout.frame.minY, 120, accuracy: 0.5)
     }
 
     func testPopoverLayoutClampsHorizontallyWithinSafeArea() throws {

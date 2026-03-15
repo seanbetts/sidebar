@@ -16,7 +16,6 @@ final class UIKitNoteFormattingBar: UIView {
     private static let minimumButtonTouchTarget: CGFloat = 44
     private static let horizontalPadding: CGFloat = 8
     private static let verticalPadding: CGFloat = 0
-    private static let popoverSpacing: CGFloat = 10
     private static let popoverScreenPadding: CGFloat = 8
 
     override init(frame: CGRect) {
@@ -282,8 +281,6 @@ extension UIKitNoteFormattingBar {
 
     func dismissPopoverIfNeeded(forTapLocation location: CGPoint, in hostView: UIView) {
         guard let popover = popoverView, popover.isHidden == false else { return }
-
-        let anchorFrame = menuButton.convert(menuButton.bounds, to: hostView)
         let popoverFrame: CGRect
         if let popoverSuperview = popover.superview, popoverSuperview !== hostView {
             popoverFrame = popoverSuperview.convert(popover.frame, to: hostView)
@@ -291,7 +288,7 @@ extension UIKitNoteFormattingBar {
             popoverFrame = popover.frame
         }
 
-        if popoverFrame.contains(location) || anchorFrame.contains(location) {
+        if popoverFrame.contains(location) {
             return
         }
 
@@ -317,8 +314,7 @@ extension UIKitNoteFormattingBar {
             presentation: popoverPresentation
         )
         popover.frame = layout.frame.integral
-        let anchorExclusionFrame = menuButton.convert(menuButton.bounds.insetBy(dx: -8, dy: -8), to: hostView)
-        dismissBackdropView?.excludedFrames = [anchorExclusionFrame]
+        dismissBackdropView?.excludedFrames = []
     }
 
     static func resolvePopoverLayout(
@@ -335,8 +331,8 @@ extension UIKitNoteFormattingBar {
 
         let topLimit = safeAreaInsets.top + popoverScreenPadding
         let bottomLimit = containerBounds.height - safeAreaInsets.bottom - popoverScreenPadding
-        let availableAbove = anchorFrame.minY - topLimit - popoverSpacing
-        let availableBelow = bottomLimit - anchorFrame.maxY - popoverSpacing
+        let availableAbove = anchorFrame.maxY - topLimit
+        let availableBelow = bottomLimit - anchorFrame.minY
         let preferredDirection: PopoverDirection = presentation == .keyboardAccessory ? .above : .below
 
         let resolvedDirection = resolvePopoverDirection(
@@ -349,9 +345,9 @@ extension UIKitNoteFormattingBar {
         let resolvedY: CGFloat
         switch resolvedDirection {
         case .above:
-            resolvedY = max(anchorFrame.minY - popoverSpacing - popoverSize.height, topLimit)
+            resolvedY = max(anchorFrame.maxY - popoverSize.height, topLimit)
         case .below:
-            resolvedY = min(anchorFrame.maxY + popoverSpacing, bottomLimit - popoverSize.height)
+            resolvedY = min(anchorFrame.minY, bottomLimit - popoverSize.height)
         }
 
         return PopoverLayout(

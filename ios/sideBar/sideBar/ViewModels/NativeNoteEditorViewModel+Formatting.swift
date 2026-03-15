@@ -212,12 +212,17 @@ extension NativeNoteEditorViewModel {
         enabled: Bool
     ) {
         let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
+        let fallbackBlockType = blockInfoContainingSelectionStart(
+            in: currentPersistenceSnapshot().document
+        )?.block.type ?? .paragraph
         guard !nonEmptyRanges.isEmpty else {
             transformSelectionAttributes { attrs in
                 var state = inlineFormattingState(from: attrs)
                 state.set(formatting, enabled: enabled)
                 applyInlineFormattingState(state, to: &attrs)
-                attrs.paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
+                let blockType = NoteTextBlockAttribute.blockType(from: attrs.noteBlock) ?? fallbackBlockType
+                attrs.paragraphStyle = NoteTextParagraphMetrics.paragraphStyle(
+                    for: blockType,
                     baseFontSize: baseFontSize
                 )
             }
@@ -230,7 +235,9 @@ extension NativeNoteEditorViewModel {
             var state = inlineFormattingState(from: attrs)
             state.set(formatting, enabled: enabled)
             applyInlineFormattingState(state, to: &attrs)
-            attrs.paragraphStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
+            let blockType = NoteTextBlockAttribute.blockType(from: attrs.noteBlock) ?? fallbackBlockType
+            attrs.paragraphStyle = NoteTextParagraphMetrics.paragraphStyle(
+                for: blockType,
                 baseFontSize: baseFontSize
             )
         }

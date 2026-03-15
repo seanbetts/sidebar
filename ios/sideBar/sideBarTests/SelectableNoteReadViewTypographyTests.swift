@@ -19,7 +19,7 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
 
         XCTAssertEqual(titleFont.pointSize, baseFontSize * 1.75, accuracy: 0.001)
         XCTAssertEqual(headingFont.pointSize, baseFontSize * 1.5, accuracy: 0.001)
-        XCTAssertEqual(subheadingFont.pointSize, baseFontSize * 1.25, accuracy: 0.001)
+        XCTAssertEqual(subheadingFont.pointSize, baseFontSize * 1.15, accuracy: 0.001)
         XCTAssertEqual(bodyFont.pointSize, baseFontSize * 1.0, accuracy: 0.001)
 
         XCTAssertTrue(fontHasBoldTrait(titleFont))

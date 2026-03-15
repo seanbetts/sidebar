@@ -151,6 +151,48 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         XCTAssertGreaterThan(subheadingReadFont.pointSize, baseFontSize)
     }
 
+    func testReadAndEditorSurfacesUseStyleAwareParagraphMetricsOnIOS() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .init(type: .subheading, content: [.init(text: "Subheading", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+        let baseFontSize = NoteTextTypography.defaultBodyFontSize
+
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        let editDocument = try constrainedEditorDocument(
+            document: document,
+            baseFontSize: baseFontSize
+        )
+        let bridgedEditDocument = (try? NSAttributedString(editDocument, including: \.noteTextEditor))
+            ?? NSAttributedString(editDocument)
+
+        let titleStyle = NoteTextParagraphMetrics.paragraphStyle(for: .title, baseFontSize: baseFontSize)
+        let headingStyle = NoteTextParagraphMetrics.paragraphStyle(for: .heading, baseFontSize: baseFontSize)
+        let subheadingStyle = NoteTextParagraphMetrics.paragraphStyle(for: .subheading, baseFontSize: baseFontSize)
+        let bodyStyle = NoteTextParagraphMetrics.paragraphStyle(for: .paragraph, baseFontSize: baseFontSize)
+
+        try assertParagraphStyle(readAttributed, matches: titleStyle, at: 0)
+        try assertParagraphStyle(readAttributed, matches: headingStyle, at: 6)
+        try assertParagraphStyle(readAttributed, matches: subheadingStyle, at: 14)
+        try assertParagraphStyle(readAttributed, matches: bodyStyle, at: 25)
+        try assertParagraphStyle(bridgedEditDocument, matches: titleStyle, at: 0)
+        try assertParagraphStyle(bridgedEditDocument, matches: headingStyle, at: 6)
+        try assertParagraphStyle(bridgedEditDocument, matches: subheadingStyle, at: 14)
+        try assertParagraphStyle(bridgedEditDocument, matches: bodyStyle, at: 25)
+
+        XCTAssertGreaterThan(titleStyle.lineSpacing, bodyStyle.lineSpacing)
+        XCTAssertGreaterThan(headingStyle.lineSpacing, bodyStyle.lineSpacing)
+        XCTAssertGreaterThan(subheadingStyle.lineSpacing, bodyStyle.lineSpacing)
+    }
+
     func testIOSCanMoveToUIKitEditorSurfaceWithoutChangingCanonicalParityContracts() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,

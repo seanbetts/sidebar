@@ -227,23 +227,26 @@ private extension NoteTextFormattingDefinition {
     func paragraphStyle(for blockType: NotesSemanticDocument.BlockType) -> NSParagraphStyle {
         switch blockType {
         case .unorderedList, .orderedList, .checklist:
-            return NoteTextParagraphMetrics.bodyParagraphStyle(
+            return NoteTextParagraphMetrics.paragraphStyle(
+                for: blockType,
                 baseFontSize: baseFontSize,
                 headIndent: baseFontSize
             )
         case .blockquote:
-            return NoteTextParagraphMetrics.bodyParagraphStyle(
+            return NoteTextParagraphMetrics.paragraphStyle(
+                for: blockType,
                 baseFontSize: baseFontSize,
                 headIndent: baseFontSize * 1.25
             )
         case .codeBlock:
-            return NoteTextParagraphMetrics.bodyParagraphStyle(
+            return NoteTextParagraphMetrics.paragraphStyle(
+                for: blockType,
                 baseFontSize: baseFontSize,
                 headIndent: baseFontSize * 0.75,
                 tailIndent: baseFontSize * 0.75
             )
         default:
-            return NoteTextParagraphMetrics.bodyParagraphStyle(baseFontSize: baseFontSize)
+            return NoteTextParagraphMetrics.paragraphStyle(for: blockType, baseFontSize: baseFontSize)
         }
     }
 }

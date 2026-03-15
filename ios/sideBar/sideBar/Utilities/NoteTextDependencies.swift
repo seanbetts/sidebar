@@ -48,12 +48,27 @@ enum NoteTextParagraphMetrics {
         headIndent: CGFloat = 0,
         tailIndent: CGFloat = 0
     ) -> NSParagraphStyle {
-        paragraphStyle(
+        return paragraphStyle(
+            for: .paragraph,
+            baseFontSize: baseFontSize,
+            headIndent: headIndent,
+            tailIndent: tailIndent
+        )
+    }
+
+    static func paragraphStyle(
+        for blockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat,
+        headIndent: CGFloat = 0,
+        tailIndent: CGFloat = 0
+    ) -> NSParagraphStyle {
+        let resolvedFontSize = noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType)
+        return paragraphStyle(
             configuration: ParagraphStyleConfiguration(
-                fontSize: baseFontSize,
+                fontSize: resolvedFontSize,
                 lineHeightMultiple: bodyLineHeightMultiple,
-                spacingBefore: bodySpacingRem * baseFontSize,
-                spacingAfter: bodySpacingRem * baseFontSize,
+                spacingBefore: bodySpacingRem * resolvedFontSize,
+                spacingAfter: bodySpacingRem * resolvedFontSize,
                 headIndent: headIndent,
                 tailIndent: tailIndent
             )
