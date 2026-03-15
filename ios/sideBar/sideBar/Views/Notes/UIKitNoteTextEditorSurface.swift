@@ -183,7 +183,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         switch (textView.formattingAccessoryView as? UIKitNoteFormattingAccessoryView, configuration) {
         case let (accessoryView?, configuration?):
-            accessoryView.apply(configuration: configuration)
+            accessoryView.apply(
+                configuration: configuration,
+                presentation: formattingBarPresentation
+            )
             return false
         case (nil, let configuration?):
             textView.formattingAccessoryView = makeFormattingAccessoryView(
@@ -201,7 +204,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     private func makeFormattingAccessoryView(
         configuration: NoteFormattingBarConfiguration
     ) -> UIKitNoteFormattingAccessoryView {
-        let accessoryView = UIKitNoteFormattingAccessoryView(configuration: configuration)
+        let accessoryView = UIKitNoteFormattingAccessoryView(
+            configuration: configuration,
+            presentation: formattingBarPresentation
+        )
         accessoryView.autoresizingMask = [.flexibleWidth]
         return accessoryView
     }

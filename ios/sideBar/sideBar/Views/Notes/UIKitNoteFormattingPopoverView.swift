@@ -45,6 +45,18 @@ final class UIKitNoteFormattingPopoverView: UIView {
         }
         updateInlineButtons()
     }
+
+    func preferredSize(maxWidth: CGFloat) -> CGSize {
+        let compressed = systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+        guard compressed.width > maxWidth else { return compressed }
+
+        let constrained = systemLayoutSizeFitting(
+            CGSize(width: maxWidth, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+        return CGSize(width: maxWidth, height: constrained.height)
+    }
 }
 
 @MainActor

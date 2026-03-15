@@ -246,6 +246,74 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertNil(buttonConfiguration.background.visualEffect)
         XCTAssertEqual(buttonConfiguration.background.strokeWidth, 0)
     }
+
+    func testPopoverLayoutPrefersBelowForFloatingPresentationWhenSpaceAllows() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let layout = UIKitNoteFormattingBar.resolvePopoverLayout(
+            anchorFrame: CGRect(x: 320, y: 60, width: 44, height: 44),
+            containerBounds: CGRect(x: 0, y: 0, width: 400, height: 900),
+            safeAreaInsets: UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0),
+            popoverSize: CGSize(width: 280, height: 220),
+            presentation: .floatingTopTrailing
+        )
+
+        XCTAssertEqual(layout.direction, .below)
+        XCTAssertEqual(layout.frame.minY, 114, accuracy: 0.5)
+    }
+
+    func testPopoverLayoutPrefersAboveForKeyboardAccessoryWhenSpaceAllows() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let layout = UIKitNoteFormattingBar.resolvePopoverLayout(
+            anchorFrame: CGRect(x: 320, y: 760, width: 44, height: 44),
+            containerBounds: CGRect(x: 0, y: 0, width: 400, height: 900),
+            safeAreaInsets: UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0),
+            popoverSize: CGSize(width: 280, height: 220),
+            presentation: .keyboardAccessory
+        )
+
+        XCTAssertEqual(layout.direction, .above)
+        XCTAssertEqual(layout.frame.minY, 530, accuracy: 0.5)
+    }
+
+    func testPopoverLayoutFlipsBelowWhenAccessoryPresentationHasInsufficientSpaceAbove() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let layout = UIKitNoteFormattingBar.resolvePopoverLayout(
+            anchorFrame: CGRect(x: 320, y: 120, width: 44, height: 44),
+            containerBounds: CGRect(x: 0, y: 0, width: 400, height: 900),
+            safeAreaInsets: UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0),
+            popoverSize: CGSize(width: 280, height: 220),
+            presentation: .keyboardAccessory
+        )
+
+        XCTAssertEqual(layout.direction, .below)
+        XCTAssertEqual(layout.frame.minY, 174, accuracy: 0.5)
+    }
+
+    func testPopoverLayoutClampsHorizontallyWithinSafeArea() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let layout = UIKitNoteFormattingBar.resolvePopoverLayout(
+            anchorFrame: CGRect(x: 20, y: 60, width: 44, height: 44),
+            containerBounds: CGRect(x: 0, y: 0, width: 400, height: 900),
+            safeAreaInsets: UIEdgeInsets(top: 0, left: 24, bottom: 0, right: 24),
+            popoverSize: CGSize(width: 280, height: 220),
+            presentation: .floatingTopTrailing
+        )
+
+        XCTAssertEqual(layout.frame.minX, 32, accuracy: 0.5)
+        XCTAssertEqual(layout.frame.maxX, 312, accuracy: 0.5)
+    }
 }
 
 @available(iOS 26.0, *)

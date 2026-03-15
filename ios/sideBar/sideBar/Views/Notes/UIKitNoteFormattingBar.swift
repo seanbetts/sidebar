@@ -9,24 +9,30 @@ final class UIKitNoteFormattingBar: UIView {
     private let stackView = UIStackView()
     let menuButton: UIButton
     private var currentConfiguration: NoteFormattingBarConfiguration
+    private var popoverPresentation: NoteFormattingBarPresentation
     private var popoverView: UIKitNoteFormattingPopoverView?
     private static let barHeight: CGFloat = 48
     private static let minimumButtonTouchTarget: CGFloat = 44
     private static let horizontalPadding: CGFloat = 8
     private static let verticalPadding: CGFloat = 0
     private static let popoverSpacing: CGFloat = 10
+    private static let popoverScreenPadding: CGFloat = 8
 
     override init(frame: CGRect) {
         self.menuButton = Self.makeMenuButton()
         self.currentConfiguration = .disabled
+        self.popoverPresentation = .floatingTopTrailing
         super.init(frame: frame)
         setUpViewHierarchy()
-        apply(configuration: .disabled)
+        apply(configuration: .disabled, presentation: .floatingTopTrailing)
     }
 
-    convenience init(configuration: NoteFormattingBarConfiguration) {
+    convenience init(
+        configuration: NoteFormattingBarConfiguration,
+        presentation: NoteFormattingBarPresentation = .floatingTopTrailing
+    ) {
         self.init(frame: .zero)
-        apply(configuration: configuration)
+        apply(configuration: configuration, presentation: presentation)
     }
 
     @available(*, unavailable)
@@ -34,13 +40,21 @@ final class UIKitNoteFormattingBar: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func apply(configuration: NoteFormattingBarConfiguration) {
+    func apply(
+        configuration: NoteFormattingBarConfiguration,
+        presentation: NoteFormattingBarPresentation? = nil
+    ) {
         currentConfiguration = configuration
+        if let presentation {
+            popoverPresentation = presentation
+        }
         menuButton.isEnabled = configuration.isEnabled
         menuButton.configuration = Self.buttonConfiguration()
         popoverView?.apply(configuration: configuration)
         if !configuration.isEnabled {
             dismissPopover()
+        } else if popoverView?.isHidden == false {
+            updatePopoverLayout()
         }
     }
 
@@ -48,6 +62,13 @@ final class UIKitNoteFormattingBar: UIView {
         let buttonSize = menuButton.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
         let totalWidth = max(buttonSize.width, Self.minimumButtonTouchTarget) + (Self.horizontalPadding * 2)
         return CGSize(width: ceil(totalWidth), height: Self.barHeight)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if popoverView?.isHidden == false {
+            updatePopoverLayout()
+        }
     }
 }
 
@@ -60,8 +81,14 @@ final class UIKitNoteFormattingAccessoryView: UIView {
 
     private let formattingBar: UIKitNoteFormattingBar
 
-    init(configuration: NoteFormattingBarConfiguration) {
-        self.formattingBar = UIKitNoteFormattingBar(configuration: configuration)
+    init(
+        configuration: NoteFormattingBarConfiguration,
+        presentation: NoteFormattingBarPresentation = .keyboardAccessory
+    ) {
+        self.formattingBar = UIKitNoteFormattingBar(
+            configuration: configuration,
+            presentation: presentation
+        )
         super.init(frame: .zero)
         setUpViewHierarchy()
     }
@@ -71,8 +98,11 @@ final class UIKitNoteFormattingAccessoryView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func apply(configuration: NoteFormattingBarConfiguration) {
-        formattingBar.apply(configuration: configuration)
+    func apply(
+        configuration: NoteFormattingBarConfiguration,
+        presentation: NoteFormattingBarPresentation
+    ) {
+        formattingBar.apply(configuration: configuration, presentation: presentation)
         invalidateIntrinsicContentSize()
         setNeedsLayout()
     }
@@ -110,13 +140,22 @@ final class UIKitNoteFormattingAccessoryView: UIView {
 @available(iOS 26.0, *)
 struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
     let configuration: NoteFormattingBarConfiguration
+    let presentation: NoteFormattingBarPresentation
+
+    init(
+        configuration: NoteFormattingBarConfiguration,
+        presentation: NoteFormattingBarPresentation = .floatingTopTrailing
+    ) {
+        self.configuration = configuration
+        self.presentation = presentation
+    }
 
     func makeUIView(context: Context) -> UIKitNoteFormattingBar {
-        UIKitNoteFormattingBar(configuration: configuration)
+        UIKitNoteFormattingBar(configuration: configuration, presentation: presentation)
     }
 
     func updateUIView(_ uiView: UIKitNoteFormattingBar, context: Context) {
-        uiView.apply(configuration: configuration)
+        uiView.apply(configuration: configuration, presentation: presentation)
     }
 
     func sizeThatFits(
@@ -129,7 +168,17 @@ struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
 }
 
 @available(iOS 26.0, *)
-private extension UIKitNoteFormattingBar {
+extension UIKitNoteFormattingBar {
+    enum PopoverDirection: Equatable {
+        case above
+        case below
+    }
+
+    struct PopoverLayout: Equatable {
+        let frame: CGRect
+        let direction: PopoverDirection
+    }
+
     static func makeMenuButton() -> UIButton {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -161,8 +210,9 @@ private extension UIKitNoteFormattingBar {
     func presentPopover() {
         let popover = ensurePopoverView()
         popover.apply(configuration: currentConfiguration)
+        updatePopoverLayout()
         popover.isHidden = false
-        bringSubviewToFront(popover)
+        popover.superview?.bringSubviewToFront(popover)
     }
 
     func dismissPopover() {
@@ -171,25 +221,105 @@ private extension UIKitNoteFormattingBar {
 
     @discardableResult
     func ensurePopoverView() -> UIKitNoteFormattingPopoverView {
+        let hostView = window ?? self
         if let popoverView {
+            if popoverView.superview !== hostView {
+                popoverView.removeFromSuperview()
+                hostView.addSubview(popoverView)
+            }
             return popoverView
         }
 
         let popover = UIKitNoteFormattingPopoverView(configuration: currentConfiguration) { [weak self] in
             self?.dismissPopover()
         }
-        popover.translatesAutoresizingMaskIntoConstraints = false
+        popover.translatesAutoresizingMaskIntoConstraints = true
+        popover.autoresizingMask = []
         popover.isHidden = true
-        addSubview(popover)
-
-        NSLayoutConstraint.activate([
-            popover.bottomAnchor.constraint(equalTo: topAnchor, constant: -Self.popoverSpacing),
-            popover.trailingAnchor.constraint(equalTo: trailingAnchor),
-            popover.widthAnchor.constraint(lessThanOrEqualToConstant: 380)
-        ])
+        hostView.addSubview(popover)
 
         popoverView = popover
         return popover
+    }
+
+    func updatePopoverLayout() {
+        guard let popover = popoverView, let hostView = popover.superview else { return }
+        let maxWidth = max(
+            0,
+            min(380, hostView.bounds.width - hostView.safeAreaInsets.left - hostView.safeAreaInsets.right - 16)
+        )
+        guard maxWidth > 0 else { return }
+
+        let popoverSize = popover.preferredSize(maxWidth: maxWidth)
+        let anchorFrame = menuButton.convert(menuButton.bounds, to: hostView)
+        let layout = Self.resolvePopoverLayout(
+            anchorFrame: anchorFrame,
+            containerBounds: hostView.bounds,
+            safeAreaInsets: hostView.safeAreaInsets,
+            popoverSize: popoverSize,
+            presentation: popoverPresentation
+        )
+        popover.frame = layout.frame.integral
+    }
+
+    static func resolvePopoverLayout(
+        anchorFrame: CGRect,
+        containerBounds: CGRect,
+        safeAreaInsets: UIEdgeInsets,
+        popoverSize: CGSize,
+        presentation: NoteFormattingBarPresentation
+    ) -> PopoverLayout {
+        let horizontalMinX = safeAreaInsets.left + popoverScreenPadding
+        let horizontalMaxX = containerBounds.width - safeAreaInsets.right - popoverScreenPadding - popoverSize.width
+        let proposedX = anchorFrame.maxX - popoverSize.width
+        let resolvedX = min(max(proposedX, horizontalMinX), max(horizontalMinX, horizontalMaxX))
+
+        let topLimit = safeAreaInsets.top + popoverScreenPadding
+        let bottomLimit = containerBounds.height - safeAreaInsets.bottom - popoverScreenPadding
+        let availableAbove = anchorFrame.minY - topLimit - popoverSpacing
+        let availableBelow = bottomLimit - anchorFrame.maxY - popoverSpacing
+        let preferredDirection: PopoverDirection = presentation == .keyboardAccessory ? .above : .below
+
+        let resolvedDirection = resolvePopoverDirection(
+            preferredDirection: preferredDirection,
+            availableAbove: availableAbove,
+            availableBelow: availableBelow,
+            popoverHeight: popoverSize.height
+        )
+
+        let resolvedY: CGFloat
+        switch resolvedDirection {
+        case .above:
+            resolvedY = max(anchorFrame.minY - popoverSpacing - popoverSize.height, topLimit)
+        case .below:
+            resolvedY = min(anchorFrame.maxY + popoverSpacing, bottomLimit - popoverSize.height)
+        }
+
+        return PopoverLayout(
+            frame: CGRect(origin: CGPoint(x: resolvedX, y: resolvedY), size: popoverSize),
+            direction: resolvedDirection
+        )
+    }
+
+    static func resolvePopoverDirection(
+        preferredDirection: PopoverDirection,
+        availableAbove: CGFloat,
+        availableBelow: CGFloat,
+        popoverHeight: CGFloat
+    ) -> PopoverDirection {
+        let fitsAbove = availableAbove >= popoverHeight
+        let fitsBelow = availableBelow >= popoverHeight
+
+        switch preferredDirection {
+        case .above:
+            if fitsAbove { return .above }
+            if fitsBelow { return .below }
+        case .below:
+            if fitsBelow { return .below }
+            if fitsAbove { return .above }
+        }
+
+        return availableBelow >= availableAbove ? .below : .above
     }
 
     func setUpViewHierarchy() {
