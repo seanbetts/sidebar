@@ -59,7 +59,7 @@ def list_notes_database(args: argparse.Namespace) -> dict:
             opened_before=parse_datetime(args.opened_before),
             title_search=args.title,
         )
-        notes = NotesService.list_notes(db, args.user_id, filters)
+        notes = NotesService.list_notes(db, args.user_id, filters, metadata_only=True)
         items = []
         for note in notes:
             if note.is_folder_marker:

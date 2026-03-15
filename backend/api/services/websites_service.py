@@ -65,6 +65,16 @@ class WebsitesService:
                     Website.url,
                     Website.url_full,
                     Website.domain,
+                    Website.title,
+                    Website.metadata_,
+                    Website.is_archived,
+                    Website.reading_time,
+                    Website.saved_at,
+                    Website.published_at,
+                    Website.updated_at,
+                    Website.created_at,
+                    Website.last_opened_at,
+                    Website.deleted_at,
                 )
             )
             .filter(
@@ -659,6 +669,7 @@ class WebsitesService:
                     Website.metadata_,
                     Website.is_archived,
                     Website.updated_at,
+                    Website.created_at,
                     Website.last_opened_at,
                     Website.deleted_at,
                 )
@@ -783,6 +794,22 @@ class WebsitesService:
         """
         return (
             db.query(Website)
+            .options(
+                load_only(
+                    Website.id,
+                    Website.title,
+                    Website.url,
+                    Website.domain,
+                    Website.saved_at,
+                    Website.published_at,
+                    Website.reading_time,
+                    Website.metadata_,
+                    Website.is_archived,
+                    Website.updated_at,
+                    Website.last_opened_at,
+                    Website.deleted_at,
+                )
+            )
             .filter(
                 Website.user_id == user_id,
                 Website.deleted_at.is_(None),

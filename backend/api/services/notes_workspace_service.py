@@ -11,7 +11,6 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 
 from api.exceptions import BadRequestError, NoteNotFoundError
 from api.models.note import Note
-from api.schemas.filters import NoteFilters
 from api.services.notes_document_types import (
     note_document_from_plain_text,
     project_plain_text_from_document,
@@ -102,13 +101,33 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         offset: int = 0,
     ) -> dict[str, list[dict[str, object]]]:
         """Return a tree payload for archived notes only."""
-        notes = NotesService.list_notes(
-            db,
-            user_id,
-            NoteFilters(archived=True),
-            limit=limit,
-            offset=offset,
+        query = (
+            db.query(Note)
+            .options(
+                load_only(
+                    Note.id,
+                    Note.title,
+                    Note.folder_path,
+                    Note.pinned,
+                    Note.pinned_order,
+                    Note.is_folder_marker,
+                    Note.updated_at,
+                    Note.created_at,
+                    Note.is_archived,
+                )
+            )
+            .filter(
+                Note.user_id == user_id,
+                Note.deleted_at.is_(None),
+                Note.is_archived.is_(True),
+            )
+            .order_by(Note.updated_at.desc())
         )
+        if offset:
+            query = query.offset(offset)
+        if limit:
+            query = query.limit(limit)
+        notes = query.all()
         tree = build_notes_tree(notes)
         children = tree.get("children")
         if not isinstance(children, list):
@@ -131,6 +150,19 @@ class NotesWorkspaceService(WorkspaceService[Note]):
     ) -> list[Note]:
         return (
             db.query(Note)
+            .options(
+                load_only(
+                    Note.id,
+                    Note.title,
+                    Note.folder_path,
+                    Note.pinned,
+                    Note.pinned_order,
+                    Note.is_folder_marker,
+                    Note.updated_at,
+                    Note.created_at,
+                    Note.is_archived,
+                )
+            )
             .filter(
                 Note.user_id == user_id,
                 Note.deleted_at.is_(None),
@@ -172,6 +204,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         """
         notes = (
             db.query(Note)
+            .options(load_only(Note.id, Note.folder_path))
             .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
             .all()
         )
@@ -219,6 +252,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
 
         notes = (
             db.query(Note)
+            .options(
+                load_only(Note.id, Note.folder_path, Note.is_archived, Note.updated_at)
+            )
             .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
             .all()
         )
@@ -260,6 +296,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
 
         notes = (
             db.query(Note)
+            .options(
+                load_only(Note.id, Note.folder_path, Note.is_archived, Note.updated_at)
+            )
             .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
             .all()
         )
@@ -289,6 +328,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         """
         notes = (
             db.query(Note)
+            .options(
+                load_only(Note.id, Note.folder_path, Note.updated_at, Note.deleted_at)
+            )
             .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
             .all()
         )

@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import func
 from sqlalchemy.exc import InvalidRequestError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from api.exceptions import NoteNotFoundError
@@ -488,6 +488,7 @@ class NotesService:
         *,
         limit: int | None = None,
         offset: int | None = None,
+        metadata_only: bool = False,
     ) -> Iterable[Note]:
         """List notes using optional filters.
 
@@ -497,12 +498,32 @@ class NotesService:
             filters: Optional filters object.
             limit: Max results to return when provided.
             offset: Offset for pagination when provided.
+            metadata_only: When True, excludes large content fields (document,
+                plain_text) from the query. Use when document content is not
+                needed, e.g. list/tree views.
 
         Returns:
             List of matching notes ordered by updated_at desc.
         """
         filters = filters or NoteFilters()
-        query = db.query(Note).filter(
+        query = db.query(Note)
+        if metadata_only:
+            query = query.options(
+                load_only(
+                    Note.id,
+                    Note.title,
+                    Note.folder_path,
+                    Note.pinned,
+                    Note.pinned_order,
+                    Note.is_folder_marker,
+                    Note.updated_at,
+                    Note.created_at,
+                    Note.last_opened_at,
+                    Note.is_archived,
+                    Note.deleted_at,
+                )
+            )
+        query = query.filter(
             Note.user_id == user_id,
             Note.deleted_at.is_(None),
         )

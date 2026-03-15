@@ -3,6 +3,7 @@
 import logging
 import os
 import time
+import traceback
 from collections.abc import Generator
 
 from fastapi import Depends
@@ -99,6 +100,19 @@ def _set_app_user_id(session: Session, transaction, connection) -> None:
     except OperationalError:
         connection.invalidate()
         _apply_session_settings(connection, user_id, force_public)
+
+
+if os.getenv("TRACE_WEBSITE_CONTENT_LAZY_LOAD"):
+    from api.models.website import Website  # noqa: PLC0415
+
+    @event.listens_for(Website.content, "load")
+    def _trace_website_content_load(target, context) -> None:
+        stack = "".join(traceback.format_stack(limit=12)[:-1])
+        logger.warning(
+            "LAZY LOAD: websites.content id=%s\n%s",
+            getattr(target, "id", "?"),
+            stack,
+        )
 
 
 def get_db(

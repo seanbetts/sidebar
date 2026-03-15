@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from api.exceptions import BadRequestError, ConflictError, WebsiteNotFoundError
 from api.models.website import Website
@@ -72,7 +72,25 @@ class WebsitesSyncService:
         db: Session, user_id: str, last_sync: datetime | None
     ) -> list[Website]:
         """List websites updated since the provided timestamp."""
-        query = db.query(Website).filter(Website.user_id == user_id)
+        query = (
+            db.query(Website)
+            .options(
+                load_only(
+                    Website.id,
+                    Website.title,
+                    Website.url,
+                    Website.domain,
+                    Website.saved_at,
+                    Website.published_at,
+                    Website.reading_time,
+                    Website.metadata_,
+                    Website.is_archived,
+                    Website.updated_at,
+                    Website.deleted_at,
+                )
+            )
+            .filter(Website.user_id == user_id)
+        )
         if last_sync is None:
             query = query.filter(Website.deleted_at.is_(None))
         else:
