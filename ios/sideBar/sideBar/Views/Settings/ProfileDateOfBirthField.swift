@@ -13,35 +13,7 @@ struct ProfileDateOfBirthField: View {
             macContent
         }
         #else
-        LabeledContent {
-            iosContent
-        } label: {
-            Text("Date of Birth")
-                .appFont(.body)
-        }
-        #endif
-        #if os(iOS)
-        .sheet(isPresented: $isDatePickerPresented) {
-            NavigationStack {
-                Form {
-                    DatePicker(
-                        "Date of Birth",
-                        selection: $dateOfBirth,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.graphical)
-                }
-                .navigationTitle("Date of Birth")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") {
-                            isDatePickerPresented = false
-                        }
-                    }
-                }
-            }
-        }
+        iosBody
         #endif
     }
 
@@ -79,6 +51,36 @@ struct ProfileDateOfBirthField: View {
     #endif
 
     #if os(iOS)
+    private var iosBody: some View {
+        LabeledContent {
+            iosContent
+        } label: {
+            Text("Date of Birth")
+                .appFont(.body)
+        }
+        .sheet(isPresented: $isDatePickerPresented) {
+            NavigationStack {
+                Form {
+                    DatePicker(
+                        "Date of Birth",
+                        selection: $dateOfBirth,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.graphical)
+                }
+                .navigationTitle("Date of Birth")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            isDatePickerPresented = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private var iosContent: some View {
         HStack(spacing: 8) {
             if dateOfBirthEnabled {
