@@ -10,7 +10,9 @@ final class UIKitNoteFormattingBar: UIView {
     let menuButton: UIButton
     private var currentConfiguration: NoteFormattingBarConfiguration
     private var popoverPresentation: NoteFormattingBarPresentation
-    private var popoverView: UIKitNoteFormattingPopoverView?
+    private(set) var popoverView: UIKitNoteFormattingPopoverView?
+    private weak var outsideTapHostView: UIView?
+    private var outsideTapRecognizer: UITapGestureRecognizer?
     private static let barHeight: CGFloat = 48
     private static let minimumButtonTouchTarget: CGFloat = 44
     private static let horizontalPadding: CGFloat = 8
@@ -212,11 +214,13 @@ extension UIKitNoteFormattingBar {
         popover.apply(configuration: currentConfiguration)
         updatePopoverLayout()
         popover.isHidden = false
+        installOutsideTapRecognizerIfNeeded()
         popover.superview?.bringSubviewToFront(popover)
     }
 
     func dismissPopover() {
         popoverView?.isHidden = true
+        removeOutsideTapRecognizer()
     }
 
     @discardableResult
@@ -226,6 +230,9 @@ extension UIKitNoteFormattingBar {
             if popoverView.superview !== hostView {
                 popoverView.removeFromSuperview()
                 hostView.addSubview(popoverView)
+            }
+            if outsideTapHostView !== hostView {
+                removeOutsideTapRecognizer()
             }
             return popoverView
         }
@@ -240,6 +247,30 @@ extension UIKitNoteFormattingBar {
 
         popoverView = popover
         return popover
+    }
+
+    @objc func handleOutsideTap(_ recognizer: UITapGestureRecognizer) {
+        guard let hostView = recognizer.view else { return }
+        let location = recognizer.location(in: hostView)
+        dismissPopoverIfNeeded(forTapLocation: location, in: hostView)
+    }
+
+    func dismissPopoverIfNeeded(forTapLocation location: CGPoint, in hostView: UIView) {
+        guard let popover = popoverView, popover.isHidden == false else { return }
+
+        let anchorFrame = menuButton.convert(menuButton.bounds, to: hostView)
+        let popoverFrame: CGRect
+        if let popoverSuperview = popover.superview, popoverSuperview !== hostView {
+            popoverFrame = popoverSuperview.convert(popover.frame, to: hostView)
+        } else {
+            popoverFrame = popover.frame
+        }
+
+        if popoverFrame.contains(location) || anchorFrame.contains(location) {
+            return
+        }
+
+        dismissPopover()
     }
 
     func updatePopoverLayout() {
@@ -260,6 +291,27 @@ extension UIKitNoteFormattingBar {
             presentation: popoverPresentation
         )
         popover.frame = layout.frame.integral
+    }
+
+    func installOutsideTapRecognizerIfNeeded() {
+        guard let hostView = popoverView?.superview else { return }
+        if outsideTapHostView !== hostView {
+            removeOutsideTapRecognizer()
+            let recognizer = UITapGestureRecognizer(target: self, action: #selector(handleOutsideTap(_:)))
+            recognizer.cancelsTouchesInView = false
+            recognizer.name = "note-formatting-dismiss-tap"
+            hostView.addGestureRecognizer(recognizer)
+            outsideTapRecognizer = recognizer
+            outsideTapHostView = hostView
+        }
+    }
+
+    func removeOutsideTapRecognizer() {
+        if let outsideTapRecognizer, let hostView = outsideTapHostView {
+            hostView.removeGestureRecognizer(outsideTapRecognizer)
+        }
+        outsideTapRecognizer = nil
+        outsideTapHostView = nil
     }
 
     static func resolvePopoverLayout(

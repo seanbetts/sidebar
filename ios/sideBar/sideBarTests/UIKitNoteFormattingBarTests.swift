@@ -76,52 +76,109 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(NoteTextStyle.subheading.displayName, "Subhead")
     }
 
+    func testNoteTextStyleAllCasesFollowVisualPickerOrder() {
+        XCTAssertEqual(NoteTextStyle.allCases, [.title, .heading, .subheading, .body])
+    }
+
     func testPopoverContainsTextStyleStripAndGroupedActionRows() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
         }
 
-        let popoverView = UIKitNoteFormattingPopoverView(
-            configuration: .init(
-                activeTextStyle: .body,
-                isTextStyleSectionEnabled: true,
-                isBodyTextStyleEnabled: true,
-                isTitleTextStyleEnabled: true,
-                isHeadingTextStyleEnabled: true,
-                isSubheadingTextStyleEnabled: true,
-                isBoldActive: false,
-                isItalicActive: false,
-                isUnderlineActive: false,
-                isStrikethroughActive: false,
-                isInlineCodeActive: false,
-                isEnabled: true,
-                onTextStyleSelection: { _ in },
-                onBoldTap: {},
-                onItalicTap: {},
-                onUnderlineTap: {},
-                onStrikethroughTap: {},
-                onInlineCodeTap: {}
-            )
-        )
+        let popoverView = makePopoverView(activeTextStyle: .body)
         popoverView.frame = CGRect(x: 0, y: 0, width: 360, height: 220)
         popoverView.setNeedsLayout()
         popoverView.layoutIfNeeded()
 
-        XCTAssertNotNil(
-            findDescendantView(in: popoverView, accessibilityIdentifier: "note-formatting-popover")
+        XCTAssertNotNil(findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-popover") as UIView?)
+        XCTAssertNotNil(findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-text-style-strip") as UIView?)
+        XCTAssertNotNil(findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-inline-group") as UIView?)
+        XCTAssertNotNil(findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-inline-code-group") as UIView?)
+        XCTAssertNotNil(findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-link-group") as UIView?)
+    }
+
+    func testPopoverUsesGlassShellAndGlassGroupedControls() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let popoverView = makePopoverView(activeTextStyle: .heading)
+        popoverView.frame = CGRect(x: 0, y: 0, width: 360, height: 220)
+        popoverView.setNeedsLayout()
+        popoverView.layoutIfNeeded()
+
+        let shell: UIVisualEffectView = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-popover-glass")
         )
-        XCTAssertNotNil(
-            findDescendantView(in: popoverView, accessibilityIdentifier: "note-formatting-text-style-strip")
+        let inlineGroup: UIVisualEffectView = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-inline-group")
         )
-        XCTAssertNotNil(
-            findDescendantView(in: popoverView, accessibilityIdentifier: "note-formatting-inline-group")
+        let codeGroup: UIVisualEffectView = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-inline-code-group")
         )
-        XCTAssertNotNil(
-            findDescendantView(in: popoverView, accessibilityIdentifier: "note-formatting-inline-code-group")
+        let linkGroup: UIVisualEffectView = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-link-group")
         )
-        XCTAssertNotNil(
-            findDescendantView(in: popoverView, accessibilityIdentifier: "note-formatting-link-group")
+
+        XCTAssertTrue(shell.effect is UIGlassEffect)
+        XCTAssertTrue(inlineGroup.effect is UIGlassEffect)
+        XCTAssertTrue(codeGroup.effect is UIGlassEffect)
+        XCTAssertTrue(linkGroup.effect is UIGlassEffect)
+    }
+
+    func testPopoverTextStylesUseCanonicalOrderAndTypographyTokens() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let popoverView = makePopoverView(activeTextStyle: .title)
+        popoverView.frame = CGRect(x: 0, y: 0, width: 360, height: 220)
+        popoverView.setNeedsLayout()
+        popoverView.layoutIfNeeded()
+
+        let strip: UIStackView = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-text-style-buttons")
         )
+        let orderedIdentifiers = strip.arrangedSubviews.compactMap(\.accessibilityIdentifier)
+
+        XCTAssertEqual(
+            orderedIdentifiers,
+            [
+                "note-formatting-text-style-title",
+                "note-formatting-text-style-heading",
+                "note-formatting-text-style-subheading",
+                "note-formatting-text-style-body"
+            ]
+        )
+
+        let titleButton: UIButton = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-text-style-title")
+        )
+        let bodyButton: UIButton = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-text-style-body")
+        )
+        let titleFont = try XCTUnwrap(titleButton.titleLabel?.font)
+        let bodyFont = try XCTUnwrap(bodyButton.titleLabel?.font)
+
+        XCTAssertEqual(
+            titleFont.pointSize,
+            NoteTextStyleTypography.platformFont(
+                for: .title,
+                baseFontSize: NoteTextTypography.defaultBodyFontSize
+            ).pointSize,
+            accuracy: CGFloat(0.01)
+        )
+        XCTAssertEqual(
+            bodyFont.pointSize,
+            NoteTextStyleTypography.platformFont(
+                for: .body,
+                baseFontSize: NoteTextTypography.defaultBodyFontSize
+            ).pointSize,
+            accuracy: CGFloat(0.01)
+        )
+        XCTAssertGreaterThan(titleFont.pointSize, bodyFont.pointSize)
+        XCTAssertEqual(titleButton.configuration?.attributedTitle?.characters.map(String.init).joined(), "Title")
+        XCTAssertEqual(bodyButton.configuration?.attributedTitle?.characters.map(String.init).joined(), "Body")
     }
 
     func testBarRendersDisabledStateWhenEditorIsUnavailable() throws {
@@ -238,7 +295,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
                 onInlineCodeTap: {}
             )
         )
-        let effectView = try XCTUnwrap(findGlassEffectView(in: bar))
+        let effectView: UIVisualEffectView = try XCTUnwrap(findDescendant(in: bar, accessibilityIdentifier: nil))
         let buttonConfiguration = try XCTUnwrap(bar.menuButton.configuration)
 
         XCTAssertTrue(effectView.effect is UIGlassEffect)
@@ -314,10 +371,80 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(layout.frame.minX, 32, accuracy: 0.5)
         XCTAssertEqual(layout.frame.maxX, 312, accuracy: 0.5)
     }
+
+    func testTapOutsidePopoverDismissesIt() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 500, height: 900))
+        let bar = UIKitNoteFormattingBar(configuration: makeEnabledConfiguration())
+        bar.frame = CGRect(x: 420, y: 760, width: 60, height: 48)
+        hostView.addSubview(bar)
+        bar.setNeedsLayout()
+        bar.layoutIfNeeded()
+
+        bar.presentPopover()
+        let popover = try XCTUnwrap(bar.popoverView)
+        XCTAssertFalse(popover.isHidden)
+
+        bar.dismissPopoverIfNeeded(forTapLocation: CGPoint(x: 24, y: 24), in: hostView)
+
+        XCTAssertTrue(popover.isHidden)
+    }
+
+    func testTapInsidePopoverDoesNotDismissIt() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 500, height: 900))
+        let bar = UIKitNoteFormattingBar(configuration: makeEnabledConfiguration())
+        bar.frame = CGRect(x: 420, y: 760, width: 60, height: 48)
+        hostView.addSubview(bar)
+        bar.setNeedsLayout()
+        bar.layoutIfNeeded()
+
+        bar.presentPopover()
+        let popover = try XCTUnwrap(bar.popoverView)
+        XCTAssertFalse(popover.isHidden)
+
+        let insidePoint = bar.convert(CGPoint(x: popover.frame.midX, y: popover.frame.midY), to: hostView)
+        bar.dismissPopoverIfNeeded(forTapLocation: insidePoint, in: hostView)
+
+        XCTAssertFalse(popover.isHidden)
+    }
 }
 
 @available(iOS 26.0, *)
 private extension UIKitNoteFormattingBarTests {
+    func makeEnabledConfiguration(activeTextStyle: NoteTextStyle = .body) -> NoteFormattingBarConfiguration {
+        .init(
+            activeTextStyle: activeTextStyle,
+            isTextStyleSectionEnabled: true,
+            isBodyTextStyleEnabled: true,
+            isTitleTextStyleEnabled: true,
+            isHeadingTextStyleEnabled: true,
+            isSubheadingTextStyleEnabled: true,
+            isBoldActive: false,
+            isItalicActive: false,
+            isUnderlineActive: false,
+            isStrikethroughActive: false,
+            isInlineCodeActive: false,
+            isEnabled: true,
+            onTextStyleSelection: { _ in },
+            onBoldTap: {},
+            onItalicTap: {},
+            onUnderlineTap: {},
+            onStrikethroughTap: {},
+            onInlineCodeTap: {}
+        )
+    }
+
+    func makePopoverView(activeTextStyle: NoteTextStyle) -> UIKitNoteFormattingPopoverView {
+        UIKitNoteFormattingPopoverView(configuration: makeEnabledConfiguration(activeTextStyle: activeTextStyle))
+    }
+
     func makeAttachedEditingContext(
         note: NotePayload
     ) async -> (editorViewModel: NotesEditorViewModel, nativeViewModel: NativeNoteEditorViewModel) {
@@ -328,27 +455,17 @@ private extension UIKitNoteFormattingBarTests {
         return (context.editorViewModel, nativeViewModel)
     }
 
-    func findGlassEffectView(in view: UIView) -> UIVisualEffectView? {
-        if let effectView = view as? UIVisualEffectView {
-            return effectView
+    func findDescendant<T: UIView>(
+        in view: UIView,
+        accessibilityIdentifier: String? = nil
+    ) -> T? {
+        let identifierMatches = accessibilityIdentifier == nil || view.accessibilityIdentifier == accessibilityIdentifier
+        if identifierMatches, let typedView = view as? T {
+            return typedView
         }
 
         for subview in view.subviews {
-            if let match = findGlassEffectView(in: subview) {
-                return match
-            }
-        }
-
-        return nil
-    }
-
-    func findDescendantView(in view: UIView, accessibilityIdentifier: String) -> UIView? {
-        if view.accessibilityIdentifier == accessibilityIdentifier {
-            return view
-        }
-
-        for subview in view.subviews {
-            if let match = findDescendantView(in: subview, accessibilityIdentifier: accessibilityIdentifier) {
+            if let match: T = findDescendant(in: subview, accessibilityIdentifier: accessibilityIdentifier) {
                 return match
             }
         }

@@ -3,10 +3,10 @@ import Foundation
 @available(iOS 26.0, macOS 26.0, *)
 /// Supported block-level text styles for rich note editing.
 public enum NoteTextStyle: String, CaseIterable, Equatable {
-    case body
     case title
     case heading
     case subheading
+    case body
 
     var displayName: String {
         switch self {

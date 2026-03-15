@@ -5,7 +5,7 @@ import UIKit
 @MainActor
 @available(iOS 26.0, *)
 final class UIKitNoteFormattingPopoverView: UIView {
-    private let backgroundEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
+    private let backgroundEffectView = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
     private let contentStack = UIStackView()
     private let textStyleScrollView = UIScrollView()
     private let textStyleContentView = UIView()
@@ -147,6 +147,7 @@ private extension UIKitNoteFormattingPopoverView {
 
     func setUpBackground() {
         backgroundEffectView.translatesAutoresizingMaskIntoConstraints = false
+        backgroundEffectView.accessibilityIdentifier = "note-formatting-popover-glass"
         backgroundEffectView.clipsToBounds = true
         backgroundEffectView.layer.cornerCurve = .continuous
         backgroundEffectView.layer.cornerRadius = 26
@@ -174,6 +175,7 @@ private extension UIKitNoteFormattingPopoverView {
         textStyleStrip.axis = .horizontal
         textStyleStrip.alignment = .center
         textStyleStrip.spacing = 16
+        textStyleStrip.accessibilityIdentifier = "note-formatting-text-style-buttons"
         textStyleStrip.translatesAutoresizingMaskIntoConstraints = false
         textStyleContentView.addSubview(textStyleStrip)
 
@@ -256,26 +258,46 @@ private extension UIKitNoteFormattingPopoverView {
     ) -> UIButton.Configuration {
         var configuration = UIButton.Configuration.plain()
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
-        var title = AttributedString(style.displayName)
-        title.font = NoteTextStyleTypography.font(for: style, baseFontSize: NoteTextTypography.defaultBodyFontSize)
-        title.foregroundColor = isEnabled ? .primary : .secondary
-        configuration.attributedTitle = title
         configuration.background = isActive ? selectedButtonBackground() : .clear()
+        var titleAttributes = AttributeContainer()
+        titleAttributes.font = NoteTextStyleTypography.platformFont(
+            for: style,
+            baseFontSize: NoteTextTypography.defaultBodyFontSize
+        )
+        titleAttributes.foregroundColor = isEnabled ? UIColor.label : UIColor.secondaryLabel
+        configuration.attributedTitle = AttributedString(style.displayName, attributes: titleAttributes)
         return configuration
     }
 
     private func makeInlineGroup(identifier: String, items: [InlineActionItem]) -> UIView {
-        let buttons = items.map(makeButton(for:))
-        let container = UIStackView(arrangedSubviews: buttons)
-        container.axis = .horizontal
-        container.alignment = .center
-        container.spacing = 0
-        container.accessibilityIdentifier = identifier
+        let stack = UIStackView(arrangedSubviews: items.map(makeButton(for:)))
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.spacing = 0
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        let effectView = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
+        effectView.accessibilityIdentifier = identifier
+        effectView.translatesAutoresizingMaskIntoConstraints = false
+        effectView.clipsToBounds = true
+        effectView.layer.cornerRadius = 22
+        effectView.layer.cornerCurve = .continuous
+        effectView.contentView.addSubview(stack)
+        let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.backgroundColor = UIColor.secondaryLabel.withAlphaComponent(0.08)
-        container.layer.cornerRadius = 22
-        container.layer.cornerCurve = .continuous
-        container.clipsToBounds = true
+        container.addSubview(effectView)
+
+        NSLayoutConstraint.activate([
+            effectView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            effectView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            effectView.topAnchor.constraint(equalTo: container.topAnchor),
+            effectView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: effectView.contentView.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: effectView.contentView.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor)
+        ])
+
         return container
     }
 
