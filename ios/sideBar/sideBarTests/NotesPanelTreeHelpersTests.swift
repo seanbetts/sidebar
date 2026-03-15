@@ -115,6 +115,26 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertFalse(actions.contains(.shareText))
         XCTAssertTrue(actions.contains(.rename))
     }
+
+    func testSelectionRequestIsHandledWhenSelectedNoteIsStale() {
+        XCTAssertTrue(
+            NotesPanelView.shouldHandleSelectionRequest(
+                currentSelectedNoteId: "note-1",
+                activeNoteId: nil,
+                requestedNoteId: "note-1"
+            )
+        )
+    }
+
+    func testSelectionRequestIsIgnoredWhenRequestedNoteIsAlreadyOpen() {
+        XCTAssertFalse(
+            NotesPanelView.shouldHandleSelectionRequest(
+                currentSelectedNoteId: "note-1",
+                activeNoteId: "note-1",
+                requestedNoteId: "note-1"
+            )
+        )
+    }
 }
 
 @MainActor

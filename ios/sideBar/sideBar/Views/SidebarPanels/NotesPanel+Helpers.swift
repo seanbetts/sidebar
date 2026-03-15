@@ -8,6 +8,14 @@ import UIKit
 // MARK: - NotesPanel+Helpers
 
 extension NotesPanelView {
+    static func shouldHandleSelectionRequest(
+        currentSelectedNoteId: String?,
+        activeNoteId: String?,
+        requestedNoteId: String
+    ) -> Bool {
+        currentSelectedNoteId != requestedNoteId || activeNoteId != requestedNoteId
+    }
+
     var header: some View {
         let showsInlineSearch = ContentView.shouldShowCompactPhoneInlineSearch(
             isCompact: isCompact,
@@ -198,7 +206,11 @@ extension NotesPanelView {
     }
 
     func requestNoteSelection(id: String) {
-        guard viewModel.selectedNoteId != id else { return }
+        guard Self.shouldHandleSelectionRequest(
+            currentSelectedNoteId: viewModel.selectedNoteId,
+            activeNoteId: viewModel.activeNote?.path,
+            requestedNoteId: id
+        ) else { return }
         Task {
             await environment.notesRuntime.editorViewModel.saveIfNeeded()
             await viewModel.selectNote(id: id)
