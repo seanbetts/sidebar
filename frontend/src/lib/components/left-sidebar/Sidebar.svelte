@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invokeSnippetClick } from '$lib/utils/svelteEvents';
 	import { onDestroy, onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
 	import { Plus, Folder, FileVideoCamera, Layers, List, CheckCircle } from 'lucide-svelte';
 	import { conversationListStore } from '$lib/stores/conversations';
 	import { chatStore } from '$lib/stores/chat';
@@ -32,6 +33,7 @@
 	} from '$lib/components/ui/dropdown-menu';
 	import { TOOLTIP_COPY } from '$lib/constants/tooltips';
 	import { sidebarSectionStore } from '$lib/stores/sidebar-section';
+	import { user } from '$lib/stores/auth';
 	import { logError } from '$lib/utils/errorHandling';
 	import { canShowTooltips } from '$lib/utils/tooltip';
 
@@ -74,6 +76,8 @@
 	let tooltipsEnabled = false;
 	let lastConversationId: string | null = null;
 	let lastMessageCount = 0;
+	let removeOnlineListener: (() => void) | null = null;
+	let removeUserListener: (() => void) | null = null;
 	const { loadSectionData } = useSidebarSectionLoader();
 	const panelActionClasses = `${buttonVariants({ variant: 'ghost', size: 'icon' })} panel-action`;
 	const {
@@ -130,13 +134,31 @@
 	}
 
 	onMount(() => {
+		const flushQueuedWebsiteSaves = async () => {
+			const flushed = await websitesStore.flushQueuedSaves?.();
+			if (flushed?.length) {
+				dispatchCacheEvent('website.saved');
+			}
+		};
+
 		// Mark as mounted to enable reactive data loading
 		isMounted = true;
 		tooltipsEnabled = canShowTooltips();
 
 		if (typeof window !== 'undefined') {
 			window.addEventListener('keydown', handleSectionShortcut);
+			const handleOnline = () => {
+				void flushQueuedWebsiteSaves();
+			};
+			window.addEventListener('online', handleOnline);
+			removeOnlineListener = () => window.removeEventListener('online', handleOnline);
 		}
+
+		removeUserListener = user.subscribe((currentUser) => {
+			if (currentUser?.id) {
+				void flushQueuedWebsiteSaves();
+			}
+		});
 	});
 
 	onDestroy(() => {
@@ -144,6 +166,8 @@
 		if (typeof window !== 'undefined') {
 			window.removeEventListener('keydown', handleSectionShortcut);
 		}
+		removeOnlineListener?.();
+		removeUserListener?.();
 		chatStore.cleanup?.();
 	});
 
@@ -264,8 +288,16 @@
 		isSavingWebsite = true;
 		try {
 			const result = await websitesStore.saveWebsite(url);
-			if (!result.success || !result.id || !result.website) {
+			if (!result.success) {
 				throw new Error(result.error || 'Failed to save website');
+			}
+			if (result.queued) {
+				isNewWebsiteDialogOpen = false;
+				toast.message(result.message || 'Website queued until you sign in again.');
+				return;
+			}
+			if (!result.id || !result.website) {
+				throw new Error('Failed to save website');
 			}
 
 			dispatchCacheEvent('website.saved');

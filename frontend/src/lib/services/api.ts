@@ -424,7 +424,15 @@ class WebsitesAPI {
 			favicon_url?: string | null;
 			favicon_r2_key?: string | null;
 			favicon_extracted_at?: string | null;
-			youtube_transcripts?: Record<string, unknown>;
+			youtube_transcripts?: Record<
+				string,
+				{
+					status?: string;
+					file_id?: string;
+					updated_at?: string;
+					error?: string;
+				}
+			>;
 			reading_time?: string | null;
 			updated_at: string | null;
 			last_opened_at: string | null;
@@ -436,7 +444,22 @@ class WebsitesAPI {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ url })
 		});
-		if (!response.ok) throw new Error('Failed to save website');
+		if (!response.ok) {
+			let message = 'Failed to save website';
+			try {
+				const data = await response.json();
+				if (typeof data?.detail === 'string' && data.detail.trim()) {
+					message = data.detail;
+				} else if (typeof data?.error === 'string' && data.error.trim()) {
+					message = data.error;
+				}
+			} catch {
+				// Ignore parse failures and use the default message.
+			}
+			const error = new Error(message) as Error & { status?: number };
+			error.status = response.status;
+			throw error;
+		}
 		return response.json();
 	}
 

@@ -14,7 +14,35 @@ const { websitesAPI } = vi.hoisted(() => ({
 	}
 }));
 
+const { enqueueWebsiteSave, flushQueuedWebsiteSaves } = vi.hoisted(() => ({
+	enqueueWebsiteSave: vi.fn(),
+	flushQueuedWebsiteSaves: vi.fn()
+}));
+
+const { user } = vi.hoisted(() => ({
+	user: (() => {
+		let value: { id: string } | null = { id: 'user-1' };
+		const subscribers = new Set<(next: { id: string } | null) => void>();
+		return {
+			subscribe(run: (next: { id: string } | null) => void) {
+				run(value);
+				subscribers.add(run);
+				return () => subscribers.delete(run);
+			},
+			set(next: { id: string } | null) {
+				value = next;
+				subscribers.forEach((run) => run(value));
+			}
+		};
+	})()
+}));
+
 vi.mock('$lib/services/api', () => ({ websitesAPI }));
+vi.mock('$lib/services/website_save_sync', () => ({
+	enqueueWebsiteSave,
+	flushQueuedWebsiteSaves
+}));
+vi.mock('$lib/stores/auth', () => ({ user }));
 vi.mock('$lib/utils/cache', () => ({
 	getCachedData: vi.fn((key: string) => cacheState.get(key) ?? null),
 	setCachedData: vi.fn((key: string, value: unknown) => cacheState.set(key, value)),
@@ -25,6 +53,13 @@ describe('websitesStore', () => {
 	beforeEach(() => {
 		cacheState.clear();
 		vi.clearAllMocks();
+		user.set({ id: 'user-1' });
+		enqueueWebsiteSave.mockResolvedValue({
+			operationId: 'queued-1',
+			url: 'https://example.com',
+			queuedAt: '2026-03-16T12:00:00Z'
+		});
+		flushQueuedWebsiteSaves.mockResolvedValue([]);
 		websitesStore.reset();
 	});
 
@@ -324,6 +359,70 @@ describe('websitesStore', () => {
 			}
 		});
 		expect(get(websitesStore).saveError).toBeNull();
+	});
+
+	it('queues website saves while signed out instead of reporting a completed save', async () => {
+		user.set(null);
+
+		const result = await websitesStore.saveWebsite('example.com');
+
+		expect(enqueueWebsiteSave).toHaveBeenCalledWith('https://example.com/');
+		expect(websitesAPI.save).not.toHaveBeenCalled();
+		expect(result).toMatchObject({
+			success: true,
+			queued: true,
+			message: 'Website queued until you sign in again.'
+		});
+		expect(get(websitesStore).items).toEqual([]);
+		expect(get(websitesStore).saveError).toBeNull();
+	});
+
+	it('queues website saves after an unauthorized response', async () => {
+		const error = new Error('Unauthorized') as Error & { status?: number };
+		error.status = 401;
+		websitesAPI.save.mockRejectedValue(error);
+
+		const result = await websitesStore.saveWebsite('https://example.com/private');
+
+		expect(websitesAPI.save).toHaveBeenCalledWith('https://example.com/private');
+		expect(enqueueWebsiteSave).toHaveBeenCalledWith('https://example.com/private');
+		expect(result).toMatchObject({
+			success: true,
+			queued: true,
+			message: 'Website queued until you sign in again.'
+		});
+		expect(get(websitesStore).items).toEqual([]);
+		expect(get(websitesStore).saveError).toBeNull();
+	});
+
+	it('flushes queued website saves into the store when replay succeeds', async () => {
+		flushQueuedWebsiteSaves.mockResolvedValue([
+			{
+				id: 'saved-queued-1',
+				title: 'Queued Website',
+				url: 'https://example.com/queued',
+				domain: 'example.com',
+				content: 'Queued content',
+				source: 'readability',
+				url_full: 'https://example.com/queued',
+				saved_at: '2026-03-16T12:10:00Z',
+				published_at: null,
+				pinned: false,
+				archived: false,
+				youtube_transcripts: {},
+				updated_at: '2026-03-16T12:10:00Z',
+				last_opened_at: null
+			}
+		]);
+
+		const flushed = await websitesStore.flushQueuedSaves();
+
+		expect(flushQueuedWebsiteSaves).toHaveBeenCalledTimes(1);
+		expect(flushed).toHaveLength(1);
+		expect(get(websitesStore).items[0]).toMatchObject({
+			id: 'saved-queued-1',
+			title: 'Queued Website'
+		});
 	});
 
 	it('can set a saved website as active without refetching', async () => {

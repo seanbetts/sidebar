@@ -1,5 +1,7 @@
 import { get, writable } from 'svelte/store';
 import { websitesAPI } from '$lib/services/api';
+import { user } from '$lib/stores/auth';
+import { enqueueWebsiteSave, flushQueuedWebsiteSaves } from '$lib/services/website_save_sync';
 import { getCachedData, invalidateCache, setCachedData } from '$lib/utils/cache';
 import { logError } from '$lib/utils/errorHandling';
 
@@ -47,9 +49,11 @@ interface WebsiteSaveResponse {
 
 interface SaveWebsiteResult {
 	success: boolean;
+	queued?: boolean;
 	id?: string;
 	website?: WebsiteDetail;
 	error?: string;
+	message?: string;
 }
 
 export interface PendingWebsiteItem {
@@ -151,6 +155,13 @@ const buildPendingWebsite = (normalizedUrl: URL): PendingWebsiteItem => {
 
 const LOCAL_SAVE_RECONCILIATION_WINDOW_MS = 30_000;
 const LOCAL_SAVE_RECONCILIATION_LIMIT = 50;
+const QUEUED_WEBSITE_MESSAGE = 'Website queued until you sign in again.';
+
+const getErrorStatus = (error: unknown): number | null => {
+	if (!error || typeof error !== 'object') return null;
+	const status = (error as { status?: unknown }).status;
+	return typeof status === 'number' ? status : null;
+};
 
 function createWebsitesStore() {
 	const freshWebsiteExpirations = new Map<string, number>();
@@ -454,6 +465,26 @@ function createWebsitesStore() {
 			update((state) => ({ ...state, saveError: null }));
 		},
 
+		async flushQueuedSaves(): Promise<WebsiteDetail[]> {
+			try {
+				const queuedWebsites = await flushQueuedWebsiteSaves();
+				if (!queuedWebsites.length) {
+					return [];
+				}
+
+				for (const website of queuedWebsites) {
+					noteFreshWebsite(website.id);
+					this.upsertFromRealtime(buildWebsiteSummary(website));
+				}
+				return queuedWebsites;
+			} catch (error) {
+				logError('Failed to flush queued website saves', error, {
+					scope: 'websitesStore.flushQueuedSaves'
+				});
+				return [];
+			}
+		},
+
 		async saveWebsite(url: string): Promise<SaveWebsiteResult> {
 			const normalized = normalizeWebsiteUrl(url);
 			if (!normalized) {
@@ -470,7 +501,26 @@ function createWebsitesStore() {
 				saveError: null
 			}));
 
+			const finishQueuedSave = async (): Promise<SaveWebsiteResult> => {
+				await enqueueWebsiteSave(normalized.href);
+				update((state) => ({
+					...state,
+					isSavingWebsite: false,
+					pendingWebsite: null,
+					saveError: null
+				}));
+				return {
+					success: true,
+					queued: true,
+					message: QUEUED_WEBSITE_MESSAGE
+				};
+			};
+
 			try {
+				if (!get(user)) {
+					return finishQueuedSave();
+				}
+
 				const result = await websitesAPI.save(normalized.href);
 				const website = parseSavedWebsite(result);
 				if (!website) {
@@ -487,6 +537,9 @@ function createWebsitesStore() {
 				}));
 				return { success: true, id: website.id, website };
 			} catch (error) {
+				if (getErrorStatus(error) === 401) {
+					return finishQueuedSave();
+				}
 				const message =
 					error instanceof Error && error.message ? error.message : 'Failed to save website';
 				update((state) => ({
