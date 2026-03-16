@@ -15,7 +15,7 @@ on:
       - "scripts/check_ios_quality_gates.py"
       - "scripts/ios_quality_gates.json"
       - "scripts/check-ios-warning-gate.sh"
-      - "scripts/test-ios.sh"
+      - "scripts/test-ios*.sh"
       - "scripts/clean_stale_widget_registrations.py"
       - "scripts/verify_macos_widget_artifacts.py"
       - "scripts/check_ios_extension_config_resolution.py"
