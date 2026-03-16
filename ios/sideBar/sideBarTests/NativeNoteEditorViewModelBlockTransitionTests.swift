@@ -46,7 +46,7 @@ final class NativeNoteEditorBlockTransitionTests: XCTestCase {
 
         let snapshot = viewModel.currentPersistenceSnapshot()
         XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .heading, .heading])
-        XCTAssertEqual(snapshot.document.blocks[1].content.first?.marks, [])
+        XCTAssertEqual(snapshot.document.blocks[1].content.first?.marks, [.bold])
         XCTAssertEqual(snapshot.document.blocks[2].content.first?.marks, [.italic])
     }
 
