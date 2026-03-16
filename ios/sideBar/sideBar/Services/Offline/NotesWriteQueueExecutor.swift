@@ -35,8 +35,11 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
 
     private func handleUpdate(_ write: PendingWriteRecord) async throws {
         guard let noteId = write.entityId else { return }
-        try await checkForConflictIfNeeded(noteId: noteId, write: write)
         let payload = try decoder.decode(NoteUpdateRequest.self, from: write.payload)
+        // Note content edits are local-authoritative when replayed from the queue.
+        // The live API update path does not send a conflict timestamp, so queued
+        // note edits should also overwrite the latest server copy instead of pausing
+        // the entire write queue behind a manual conflict sheet.
         let updated = try await api.updateNote(id: noteId, document: payload.document)
         store.applyEditorUpdate(updated)
     }

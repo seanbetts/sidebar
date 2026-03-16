@@ -75,12 +75,49 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
         XCTAssertEqual(store.appliedNotes[0].name, "Queued Title")
         XCTAssertEqual(store.appliedNotes[0].plainText, "Queued Title\nBody line")
     }
+
+    func testExecuteUpdatePrefersLocalQueuedNoteWhenServerSnapshotIsStale() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .paragraph([.init(text: "Local draft wins", marks: [])])
+            ]
+        )
+        let api = NotesWriteQueueExecutorAPISpy()
+        let store = NotesWriteQueueExecutorStoreSpy()
+        let executor = NotesWriteQueueExecutor(api: api, store: store)
+        let serverSnapshot = ServerSnapshot(
+            entityType: .note,
+            entityId: "note-4",
+            capturedAt: Date(),
+            payload: .note(
+                NoteSnapshot(
+                    modified: 100,
+                    name: "Server",
+                    path: "/note-4.md",
+                    pinned: nil,
+                    pinnedOrder: nil,
+                    archived: nil
+                )
+            )
+        )
+        let write = try queuedUpdateWrite(
+            document: document,
+            noteId: "note-4",
+            serverSnapshot: serverSnapshot
+        )
+
+        try await executor.execute(write: write)
+
+        XCTAssertEqual(api.updatedDocuments, [document])
+        XCTAssertEqual(store.appliedNotes, api.updatedNotes)
+    }
 }
 
 @MainActor
 private func queuedUpdateWrite(
     document: NotesSemanticDocument,
-    noteId: String
+    noteId: String,
+    serverSnapshot: ServerSnapshot? = nil
 ) throws -> PendingWriteRecord {
     let payload = try JSONEncoder().encode(NoteUpdateRequest(document: document))
     return PendingWriteRecord(
@@ -89,7 +126,7 @@ private func queuedUpdateWrite(
         entityType: WriteEntityType.note.rawValue,
         entityId: noteId,
         payload: payload,
-        serverSnapshot: nil,
+        serverSnapshot: try serverSnapshot.map { try JSONEncoder().encode($0) },
         attempts: 0
     )
 }
