@@ -223,53 +223,6 @@ public struct SettingsView: View {
     }
 }
 
-enum SettingsSavePillState {
-    case saving
-    case saved
-    case error
-}
-
-struct SettingsSaveStatusPill: View {
-    let state: SettingsSavePillState
-
-    var body: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            switch state {
-            case .saving:
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(.primary)
-            case .saved:
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.primary)
-            case .error:
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(DesignTokens.Colors.error)
-            }
-            Text(title)
-                .appFont(.labelMd)
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, DesignTokens.Spacing.md)
-        .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .glassEffect(.regular.interactive(), in: Capsule())
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(title)
-    }
-
-    private var title: String {
-        switch state {
-        case .saving:
-            return "Saving settings..."
-        case .saved:
-            return "Saved"
-        case .error:
-            return "Couldn't save settings"
-        }
-    }
-}
-
 struct SettingsSaveStatusLogic {
     struct Timeline {
         let immediateState: SettingsSavePillState?

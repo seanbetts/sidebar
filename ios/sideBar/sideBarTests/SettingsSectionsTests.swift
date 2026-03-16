@@ -640,6 +640,26 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(normalized.contains("SettingsMacSectionIntro(title:\"SkillType\""))
     }
 
+    func testProfileStringSelectorSourceUsesPickerInsteadOfMenu() throws {
+        let normalized = try profileStringSelectorSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Picker(selectionLabel,selection:$selection)"))
+        XCTAssertFalse(normalized.contains("Menu{"))
+    }
+
+    func testSettingsSaveStatusPillChromeUsesMaterialOnIOS() {
+        let chrome = SettingsSaveStatusPill.chrome(for: .iOS)
+
+        XCTAssertEqual(chrome, .material)
+    }
+
+    func testSettingsSaveStatusPillChromeUsesGlassOnMacOS() {
+        let chrome = SettingsSaveStatusPill.chrome(for: .macOS)
+
+        XCTAssertEqual(chrome, .glass)
+    }
+
     func testUserSettingsMacSourceUsesTransparentEditors() throws {
         let normalized = try systemMacSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -780,6 +800,13 @@ private func profileSettingsSource(
     try settingsSourceFile("SettingsSections.swift", file: file, line: line)
 }
 
+private func profileStringSelectorSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("ProfileStringSelectorMenu.swift", file: file, line: line)
+}
+
 private func generalSettingsSource(
     file: StaticString = #filePath,
     line: UInt = #line
@@ -841,6 +868,13 @@ private func storeSkillCredentialsSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("StoreSkillCredentialsView.swift", file: file, line: line)
+}
+
+private func settingsViewSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsView.swift", file: file, line: line)
 }
 
 private func settingsSourceFile(

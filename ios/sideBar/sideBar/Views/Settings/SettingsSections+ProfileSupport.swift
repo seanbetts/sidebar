@@ -321,7 +321,11 @@ extension ProfileSettingsView {
         .appFont(.body)
         #else
         LabeledContent("Gender") {
-            ProfileStringSelectorMenu(selection: $gender, options: genderPickerOptions)
+            ProfileStringSelectorMenu(
+                selection: $gender,
+                options: genderPickerOptions,
+                selectionLabel: "Gender"
+            )
         }
         .appFont(.body)
         #endif
@@ -344,7 +348,11 @@ extension ProfileSettingsView {
         .appFont(.body)
         #else
         LabeledContent("Pronouns") {
-            ProfileStringSelectorMenu(selection: $pronouns, options: pronounPickerOptions)
+            ProfileStringSelectorMenu(
+                selection: $pronouns,
+                options: pronounPickerOptions,
+                selectionLabel: "Pronouns"
+            )
         }
         .appFont(.body)
         #endif
