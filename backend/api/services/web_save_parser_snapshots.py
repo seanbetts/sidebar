@@ -9,6 +9,11 @@ from api.services.web_save_parser_patreon import (
     PatreonPostSnapshot,
     extract_patreon_post_snapshot,
 )
+from api.services.web_save_parser_tiktok import (
+    TikTokVideoSnapshot,
+    build_tiktok_snapshot_markdown,
+    fetch_tiktok_video_snapshot,
+)
 from api.services.web_save_parser_twitter import (
     TwitterStatusSnapshot,
     fetch_twitter_status_snapshot,
@@ -110,15 +115,59 @@ def build_patreon_snapshot_render(
     )
 
 
+def build_tiktok_snapshot_render(
+    snapshot: TikTokVideoSnapshot,
+    *,
+    raw_html: str,
+    used_js_rendering: bool,
+) -> SnapshotRender:
+    """Build metadata for a TikTok video snapshot page."""
+    source_url = snapshot.source_url
+    title = snapshot.title
+    domain = source_url.split("/", 3)[2]
+    markdown = build_tiktok_snapshot_markdown(snapshot)
+    word_count = compute_word_count(markdown)
+    image_count = count_images(markdown)
+    return SnapshotRender(
+        title=title,
+        source=source_url,
+        markdown=markdown,
+        published_at=None,
+        meta={
+            "source": source_url,
+            "title": title,
+            "author": snapshot.author_name,
+            "domain": domain,
+            "word_count": word_count,
+            "reading_time": page_reading_time(
+                word_count, image_count, domain, raw_html
+            ),
+            "tags": extract_tags(markdown, domain, title),
+            "used_js_rendering": used_js_rendering,
+            "saved_at": datetime.now(UTC).isoformat(),
+        },
+        kind="tiktok",
+    )
+
+
 def maybe_build_snapshot_render(
     final_url: str,
     *,
     raw_html: str,
     used_js_rendering: bool,
+    tiktok_fetcher=fetch_tiktok_video_snapshot,
     twitter_fetcher=fetch_twitter_status_snapshot,
     patreon_extractor=extract_patreon_post_snapshot,
 ) -> SnapshotRender | None:
     """Return a rendered snapshot payload for supported domain-specific previews."""
+    tiktok_snapshot = tiktok_fetcher(final_url)
+    if tiktok_snapshot:
+        return build_tiktok_snapshot_render(
+            tiktok_snapshot,
+            raw_html=raw_html,
+            used_js_rendering=used_js_rendering,
+        )
+
     twitter_snapshot = twitter_fetcher(final_url)
     if twitter_snapshot:
         return build_twitter_snapshot_render(

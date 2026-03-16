@@ -108,6 +108,8 @@ struct SideBarMarkdown: View, Equatable {
                             text: text,
                             context: youtubeTranscriptContext
                         )
+                    case .tiktok(let embed):
+                        SideBarTikTokEmbedBlock(embed: embed)
                     case .suppressedSVG:
                         SideBarSuppressedSVGBlock()
                     }

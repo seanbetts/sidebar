@@ -22,6 +22,8 @@ extension MarkdownRendering {
                 textBlocks.append(caption)
             case .youtube(let embed):
                 textBlocks.append(embed.sourceURL)
+            case .tiktok(let embed):
+                textBlocks.append(embed.sourceURL)
             case .suppressedSVG:
                 continue
             }

@@ -77,6 +77,10 @@ from api.services.web_save_parser_substack_helpers import (
     merge_rules,
     should_apply_substack_cleanup,
 )
+from api.services.web_save_parser_tiktok import (
+    fetch_tiktok_video_snapshot,
+    is_tiktok_video_url,
+)
 from api.services.web_save_parser_twitter import fetch_twitter_status_snapshot
 from api.services.web_save_parser_utils import (
     ensure_url,
@@ -293,8 +297,33 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     normalized = ensure_url(url)
     logger.info("web-save parse start url=%s", normalized)
     html, final_url, used_js_rendering = fetch_html(normalized, timeout=timeout)
+    is_initial_tiktok_video = is_tiktok_video_url(final_url)
     html = strip_control_chars(html)
-    raise_antibot_fallback_if_needed(html, stage="direct")
+    if rendered := maybe_build_snapshot_render(
+        final_url,
+        raw_html=html,
+        used_js_rendering=used_js_rendering,
+        tiktok_fetcher=fetch_tiktok_video_snapshot,
+        twitter_fetcher=fetch_twitter_status_snapshot,
+        patreon_extractor=extract_patreon_post_snapshot,
+    ):
+        content = build_frontmatter(rendered.markdown, meta=rendered.meta)
+        logger.info(
+            "web-save snapshot kind=%s url=%s source=%s markdown_len=%s locked=%s",
+            rendered.kind,
+            final_url,
+            rendered.source,
+            len(rendered.markdown),
+            rendered.locked,
+        )
+        return ParsedPage(
+            title=rendered.title,
+            content=content,
+            source=rendered.source,
+            published_at=rendered.published_at,
+        )
+    if not is_initial_tiktok_video:
+        raise_antibot_fallback_if_needed(html, stage="direct")
     html, final_url, used_js_rendering = maybe_unwrap_apple_news(
         html=html,
         final_url=final_url,
@@ -304,7 +333,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         logger=logger,
     )
     html = strip_control_chars(html)
-    raise_antibot_fallback_if_needed(html, stage="apple-unwrapped")
+    if not is_tiktok_video_url(final_url):
+        raise_antibot_fallback_if_needed(html, stage="apple-unwrapped")
     logger.info(
         "web-save fetched url=%s final_url=%s used_js=%s html_len=%s",
         normalized,
@@ -330,7 +360,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             )
             used_js_rendering = True
             html = strip_control_chars(html)
-            raise_antibot_fallback_if_needed(html, stage="render-force")
+            if not is_tiktok_video_url(final_url):
+                raise_antibot_fallback_if_needed(html, stage="render-force")
         except LocalParseFallbackError:
             raise
         except Exception as exc:
@@ -354,7 +385,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
                 )
                 used_js_rendering = True
                 html = strip_control_chars(html)
-                raise_antibot_fallback_if_needed(html, stage="render-auto")
+                if not is_tiktok_video_url(final_url):
+                    raise_antibot_fallback_if_needed(html, stage="render-auto")
             except LocalParseFallbackError:
                 raise
             except Exception as exc:
@@ -407,6 +439,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         final_url,
         raw_html=raw_html_original,
         used_js_rendering=used_js_rendering,
+        tiktok_fetcher=fetch_tiktok_video_snapshot,
         twitter_fetcher=fetch_twitter_status_snapshot,
         patreon_extractor=extract_patreon_post_snapshot,
     ):

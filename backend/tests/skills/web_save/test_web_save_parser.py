@@ -15,7 +15,9 @@ from api.services.web_save_parser_apple_news import (
     resolve_apple_news_source_url,
 )
 from api.services import web_save_parser_steam
+import api.services.web_save_parser_tiktok as web_save_parser_tiktok
 import api.services.web_save_parser_patreon as web_save_parser_patreon
+from api.services.web_save_parser_tiktok import TikTokVideoSnapshot
 from api.services.web_save_parser_twitter import TwitterStatusSnapshot
 from api.services.web_save_tagger import calculate_reading_time
 from bs4 import BeautifulSoup
@@ -590,6 +592,52 @@ def test_parse_url_local_uses_x_status_snapshot(monkeypatch):
     assert data["domain"] == "x.com"
 
 
+def test_parse_url_local_tiktok_video_uses_oembed_snapshot(monkeypatch):
+    challenge_html = """
+    <html>
+      <head><title>Just a moment...</title></head>
+      <body>
+        <p>Checking your browser before accessing https://www.tiktok.com</p>
+      </body>
+    </html>
+    """
+
+    snapshot = TikTokVideoSnapshot(
+        title="Deadline Video",
+        source_url="https://www.tiktok.com/@deadline/video/7617916854463499550",
+        video_id="7617916854463499550",
+        author_name="Deadline",
+        author_url="https://www.tiktok.com/@deadline",
+        thumbnail_url="https://example.com/thumbnail.jpg",
+    )
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return challenge_html, snapshot.source_url, False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+    monkeypatch.setattr(
+        web_save_parser,
+        "fetch_tiktok_video_snapshot",
+        lambda url, *, timeout=8: snapshot,
+    )
+
+    parsed = web_save_parser.parse_url_local(snapshot.source_url)
+
+    assert parsed.title == snapshot.title
+    assert parsed.source == snapshot.source_url
+    assert "TIKTOK_EMBED" in parsed.content
+    assert "[Open on TikTok]" in parsed.content
+
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["author"] == snapshot.author_name
+    assert data["domain"] == "www.tiktok.com"
+    assert data["used_js_rendering"] is False
+
+
 def test_parse_url_local_falls_back_when_x_status_snapshot_missing(monkeypatch):
     html = """
     <html>
@@ -702,6 +750,45 @@ def test_fetch_twitter_status_snapshot_formats_command_lines(monkeypatch):
     assert "```bash" in snapshot.markdown
     assert "$ npm i -g @googleworkspace/cli" in snapshot.markdown
     assert "$ npx skills add github:googleworkspace/cli" in snapshot.markdown
+
+
+def test_fetch_tiktok_video_snapshot_from_oembed(monkeypatch):
+    payload = {
+        "title": "Example TikTok",
+        "author_name": "Deadline",
+        "author_url": "https://www.tiktok.com/@deadline",
+        "thumbnail_url": "https://example.com/thumb.jpg",
+        "embed_product_id": "7617916854463499550",
+    }
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return payload
+
+    monkeypatch.setattr(
+        web_save_parser_tiktok.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse(),
+    )
+
+    snapshot = web_save_parser_tiktok.fetch_tiktok_video_snapshot(
+        "https://www.tiktok.com/@deadline/video/7617916854463499550"
+    )
+
+    assert snapshot is not None
+    assert snapshot.title == payload["title"]
+    assert snapshot.source_url == "https://www.tiktok.com/@deadline/video/7617916854463499550"
+    assert snapshot.video_id == payload["embed_product_id"]
+    assert snapshot.author_name == payload["author_name"]
+    assert snapshot.thumbnail_url == payload["thumbnail_url"]
+
+    markdown = web_save_parser_tiktok.build_tiktok_snapshot_markdown(snapshot)
+    assert "![TikTok thumbnail](https://example.com/thumb.jpg)" in markdown
+    assert "TIKTOK_EMBED" in markdown
+    assert "[Open on TikTok](https://www.tiktok.com/@deadline/video/7617916854463499550)" in markdown
 
 
 def test_extract_metadata_finds_favicon():

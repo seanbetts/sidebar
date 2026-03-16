@@ -226,6 +226,60 @@ final class MarkdownRenderingTests: XCTestCase {
         XCTAssertEqual(markdown, input)
     }
 
+    func testNormalizedWebsiteBlocksConvertsTikTokMarkerToEmbedBlock() {
+        let marker = [
+            "<!-- TIKTOK_EMBED: {",
+            "\"source_url\":\"https://www.tiktok.com/@deadline/video/7617916854463499550\",",
+            "\"video_id\":\"7617916854463499550\",",
+            "\"author_name\":\"Deadline\",",
+            "\"author_url\":\"https://www.tiktok.com/@deadline\",",
+            "\"title\":\"TikTok title\",",
+            "\"thumbnail_url\":\"https://example.com/thumb.jpg\"",
+            "} -->",
+        ].joined()
+        let input = """
+        ![TikTok thumbnail](https://example.com/thumb.jpg)
+
+        \(marker)
+
+        [Open on TikTok](https://www.tiktok.com/@deadline/video/7617916854463499550)
+        """
+
+        let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
+
+        XCTAssertEqual(blocks.count, 1)
+        guard case .tiktok(let embed)? = blocks.first else {
+            XCTFail("Expected TikTok block")
+            return
+        }
+        XCTAssertEqual(embed.sourceURL, "https://www.tiktok.com/@deadline/video/7617916854463499550")
+        XCTAssertEqual(embed.videoId, "7617916854463499550")
+        XCTAssertEqual(embed.authorName, "Deadline")
+        XCTAssertEqual(embed.authorURL, "https://www.tiktok.com/@deadline")
+        XCTAssertEqual(embed.title, "TikTok title")
+        XCTAssertEqual(embed.thumbnailURL, "https://example.com/thumb.jpg")
+    }
+
+    func testNormalizedWebsiteBlocksLeavesMalformedTikTokMarkerAsMarkdown() {
+        let input = """
+        ![TikTok thumbnail](https://example.com/thumb.jpg)
+
+        <!-- TIKTOK_EMBED: {"source_url":"https://www.tiktok.com/@deadline/video/7617916854463499550","video_id":} -->
+
+        [Open on TikTok](https://www.tiktok.com/@deadline/video/7617916854463499550)
+        """
+
+        let blocks = MarkdownRendering.normalizedWebsiteBlocks(from: input)
+
+        XCTAssertEqual(blocks.count, 1)
+        guard case .markdown(let markdown)? = blocks.first else {
+            XCTFail("Expected markdown block")
+            return
+        }
+        XCTAssertTrue(markdown.contains("TIKTOK_EMBED"))
+        XCTAssertTrue(markdown.contains("Open on TikTok"))
+    }
+
     func testStripWebsiteTranscriptArtifactsRemovesMarkerAndLegacyTitle() {
         let input = """
         ___
@@ -337,6 +391,30 @@ final class MarkdownRenderingTests: XCTestCase {
         XCTAssertFalse(sharedText.contains("SKIP ADVERTISEMENT"))
         XCTAssertFalse(sharedText.contains("Credit Credit"))
         XCTAssertFalse(sharedText.contains("Subscribe to The Times"))
+    }
+
+    func testPlainTextForWebsiteShareIncludesTikTokSourceURL() {
+        let marker = [
+            "<!-- TIKTOK_EMBED: {",
+            "\"source_url\":\"https://www.tiktok.com/@deadline/video/7617916854463499550\",",
+            "\"video_id\":\"7617916854463499550\",",
+            "\"author_name\":\"Deadline\",",
+            "\"author_url\":\"https://www.tiktok.com/@deadline\",",
+            "\"title\":\"TikTok title\",",
+            "\"thumbnail_url\":\"https://example.com/thumb.jpg\"",
+            "} -->",
+        ].joined()
+        let input = """
+        ![TikTok thumbnail](https://example.com/thumb.jpg)
+
+        \(marker)
+
+        [Open on TikTok](https://www.tiktok.com/@deadline/video/7617916854463499550)
+        """
+
+        let sharedText = MarkdownRendering.plainTextForWebsiteShare(input)
+
+        XCTAssertEqual(sharedText, "https://www.tiktok.com/@deadline/video/7617916854463499550")
     }
 
     func testNormalizedWebsiteBlocksSuppressesInlineSVG() {
