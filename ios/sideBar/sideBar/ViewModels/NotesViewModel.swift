@@ -174,7 +174,9 @@ public final class NotesViewModel: ObservableObject {
         do {
             let created = try await api.createNote(
                 request: NoteCreateRequest(
-                    document: NotesSemanticDocumentProjection.document(fromPlainText: ""),
+                    document: NotesSemanticDocument(
+                        blocks: [.paragraph([.init(text: "", marks: [])])]
+                    ),
                     plainText: ""
                 )
             )

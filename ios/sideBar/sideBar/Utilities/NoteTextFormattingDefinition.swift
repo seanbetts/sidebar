@@ -23,21 +23,28 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
     }
 
     func constrainDocument(_ text: inout AttributedString) {
-        let snapshots = text.runs.compactMap { run -> SupportedRunSnapshot? in
-            guard !run.range.isEmpty else { return nil }
-            let lower = text.characters.distance(from: text.startIndex, to: run.range.lowerBound)
-            let upper = text.characters.distance(from: text.startIndex, to: run.range.upperBound)
-            let resolvedBlockType = blockType(for: run, in: text)
-            return SupportedRunSnapshot(
-                range: lower..<upper,
-                traits: inlineTraits(from: run, blockType: resolvedBlockType),
-                underline: run.underlineStyle != nil,
-                strikethrough: run.strikethroughStyle != nil,
-                link: run.link,
-                blockType: resolvedBlockType,
-                noteBlock: run.noteBlock,
-                structuralBoundary: run.noteStructuralBoundary == true
-            )
+        let snapshots = text.runs.flatMap { run -> [SupportedRunSnapshot] in
+            guard !run.range.isEmpty else { return [] }
+            return segmentRanges(for: run.range, in: text).map { range in
+                let lower = text.characters.distance(from: text.startIndex, to: range.lowerBound)
+                let upper = text.characters.distance(from: text.startIndex, to: range.upperBound)
+                let resolvedBlockType = displayBlockType(
+                    for: range,
+                    noteBlock: run.noteBlock,
+                    structuralBoundary: run.noteStructuralBoundary == true,
+                    in: text
+                )
+                return SupportedRunSnapshot(
+                    range: lower..<upper,
+                    traits: inlineTraits(from: run, blockType: resolvedBlockType),
+                    underline: run.underlineStyle != nil,
+                    strikethrough: run.strikethroughStyle != nil,
+                    link: run.link,
+                    blockType: resolvedBlockType,
+                    noteBlock: run.noteBlock,
+                    structuralBoundary: run.noteStructuralBoundary == true
+                )
+            }
         }
 
         for snapshot in snapshots {
@@ -78,7 +85,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
             inlineCode: traits.monospaced
         )
         #if os(iOS)
-        normalized[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = notePlatformFont(
+        normalized[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = noteEditorPlatformFont(
             baseFontSize: baseFontSize,
             blockType: blockType,
             bold: traits.bold,
@@ -86,7 +93,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
             inlineCode: traits.monospaced
         )
         #elseif os(macOS)
-        normalized[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = notePlatformFont(
+        normalized[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = noteEditorPlatformFont(
             baseFontSize: baseFontSize,
             blockType: blockType,
             bold: traits.bold,
@@ -137,30 +144,13 @@ private struct NormalizeInlineFonts: AttributedTextValueConstraint {
         italic: Bool,
         inlineCode: Bool
     ) -> Font {
-        let traits = noteResolvedInlineFormattingTraits(
-            NoteInlineFormattingTraits(
-                bold: bold,
-                italic: italic,
-                monospaced: inlineCode
-            ),
-            blockType: blockType
+        noteEditorInlineFont(
+            baseFontSize: baseFontSize,
+            blockType: blockType,
+            bold: bold,
+            italic: italic,
+            inlineCode: inlineCode
         )
-        let design: Font.Design = traits.monospaced ? .monospaced : .default
-        let baseSize = noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType)
-        var resolvedFont: Font
-        if let style = NoteTextStyle(blockType: blockType), !traits.monospaced {
-            resolvedFont = NoteTextStyleTypography.font(for: style, baseFontSize: baseFontSize)
-        } else {
-            resolvedFont = Font.system(
-                size: baseSize,
-                weight: traits.bold ? .bold : .regular,
-                design: design
-            )
-        }
-        if traits.italic {
-            resolvedFont = resolvedFont.italic()
-        }
-        return resolvedFont
     }
 
 }
@@ -202,7 +192,10 @@ private extension NoteTextFormattingDefinition {
         from run: AttributedString.Runs.Run,
         blockType: NotesSemanticDocument.BlockType
     ) -> NoteInlineFormattingTraits {
-        noteSemanticInlineFormattingTraitsFromSwiftUIFont(
+        guard noteExplicitSwiftUIFont(from: run.attributes) != nil else {
+            return .plain
+        }
+        return noteSemanticInlineFormattingTraits(
             from: run.attributes,
             blockType: blockType
         )
@@ -224,30 +217,13 @@ private extension NoteTextFormattingDefinition {
         italic: Bool,
         inlineCode: Bool
     ) -> Font {
-        let traits = noteResolvedInlineFormattingTraits(
-            NoteInlineFormattingTraits(
-                bold: bold,
-                italic: italic,
-                monospaced: inlineCode
-            ),
-            blockType: blockType
+        noteEditorInlineFont(
+            baseFontSize: baseFontSize,
+            blockType: blockType,
+            bold: bold,
+            italic: italic,
+            inlineCode: inlineCode
         )
-        let design: Font.Design = traits.monospaced ? .monospaced : .default
-        let baseSize = noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType)
-        var resolvedFont: Font
-        if let style = NoteTextStyle(blockType: blockType), !traits.monospaced {
-            resolvedFont = NoteTextStyleTypography.font(for: style, baseFontSize: baseFontSize)
-        } else {
-            resolvedFont = Font.system(
-                size: baseSize,
-                weight: traits.bold ? .bold : .regular,
-                design: design
-            )
-        }
-        if traits.italic {
-            resolvedFont = resolvedFont.italic()
-        }
-        return resolvedFont
     }
 
     func blockType(
@@ -255,6 +231,69 @@ private extension NoteTextFormattingDefinition {
         in text: AttributedString
     ) -> NotesSemanticDocument.BlockType {
         NoteTextBlockResolution.resolvedBlockType(for: run, in: text)
+    }
+
+    func blockType(
+        for range: Range<AttributedString.Index>,
+        noteBlock: String?,
+        in text: AttributedString
+    ) -> NotesSemanticDocument.BlockType {
+        NoteTextBlockResolution.resolvedBlockType(
+            for: range,
+            in: text,
+            explicitRawValue: noteBlock
+        )
+    }
+
+    func displayBlockType(
+        for range: Range<AttributedString.Index>,
+        noteBlock: String?,
+        structuralBoundary: Bool,
+        in text: AttributedString
+    ) -> NotesSemanticDocument.BlockType {
+        if structuralBoundary,
+           isSingleNewline(range, in: text),
+           range.upperBound < text.endIndex,
+           text.characters[range.upperBound].isNewline {
+            return .title
+        }
+        return blockType(for: range, noteBlock: noteBlock, in: text)
+    }
+
+    func segmentRanges(
+        for range: Range<AttributedString.Index>,
+        in text: AttributedString
+    ) -> [Range<AttributedString.Index>] {
+        var segments: [Range<AttributedString.Index>] = []
+        var segmentStart = range.lowerBound
+        var cursor = range.lowerBound
+
+        while cursor < range.upperBound {
+            let next = text.index(afterCharacter: cursor)
+            if text.characters[cursor].isNewline {
+                if segmentStart < cursor {
+                    segments.append(segmentStart..<cursor)
+                }
+                segments.append(cursor..<next)
+                segmentStart = next
+            }
+            cursor = next
+        }
+
+        if segmentStart < range.upperBound {
+            segments.append(segmentStart..<range.upperBound)
+        }
+
+        return segments
+    }
+
+    func isSingleNewline(
+        _ range: Range<AttributedString.Index>,
+        in text: AttributedString
+    ) -> Bool {
+        guard range.lowerBound < range.upperBound else { return false }
+        let next = text.index(afterCharacter: range.lowerBound)
+        return next == range.upperBound && text.characters[range.lowerBound].isNewline
     }
 
     func paragraphStyle(for blockType: NotesSemanticDocument.BlockType) -> NSParagraphStyle {

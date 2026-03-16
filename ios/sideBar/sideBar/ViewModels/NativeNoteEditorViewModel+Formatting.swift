@@ -176,17 +176,15 @@ extension NativeNoteEditorViewModel {
             transformSelectionAttributes { attrs in
                 var state = inlineFormattingState(from: attrs)
                 state.set(formatting, enabled: enabled)
-                applyInlineFormattingState(state, to: &attrs)
                 let blockType = NoteTextBlockResolution.resolvedBlockType(
                     explicitRawValue: attrs.noteBlock,
                     semanticFallback: fallbackBlockType
                 ) ?? fallbackBlockType
-                attrs.paragraphStyle = NoteTextParagraphMetrics.paragraphStyle(
-                    for: blockType,
-                    baseFontSize: baseFontSize
+                applySemanticTypingAttributes(
+                    blockType: blockType,
+                    inlineState: state,
+                    to: &attrs
                 )
-                attrs.noteBlock = blockMarker(for: blockType)
-                attrs.noteStructuralBoundary = nil
             }
             return
         }
@@ -196,17 +194,15 @@ extension NativeNoteEditorViewModel {
         attributedContent.transformAttributes(in: &updatedSelection) { attrs in
             var state = inlineFormattingState(from: attrs)
             state.set(formatting, enabled: enabled)
-            applyInlineFormattingState(state, to: &attrs)
             let blockType = NoteTextBlockResolution.resolvedBlockType(
                 explicitRawValue: attrs.noteBlock,
                 semanticFallback: fallbackBlockType
             ) ?? fallbackBlockType
-            attrs.paragraphStyle = NoteTextParagraphMetrics.paragraphStyle(
-                for: blockType,
-                baseFontSize: baseFontSize
+            applySemanticTypingAttributes(
+                blockType: blockType,
+                inlineState: state,
+                to: &attrs
             )
-            attrs.noteBlock = blockMarker(for: blockType)
-            attrs.noteStructuralBoundary = nil
         }
         selection = selection(from: selectionSnapshot, in: attributedContent)
     }

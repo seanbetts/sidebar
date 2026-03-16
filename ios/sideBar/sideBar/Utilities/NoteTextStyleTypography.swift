@@ -17,6 +17,14 @@ enum NoteTextStyleTypography {
         baseFontSize * metrics(for: style).scale
     }
 
+    static func fontWeight(for style: NoteTextStyle) -> Font.Weight {
+        metrics(for: style).weight
+    }
+
+    static func platformWeight(for style: NoteTextStyle) -> NotePlatformFont.Weight {
+        metrics(for: style).platformWeight
+    }
+
     static func font(for style: NoteTextStyle, baseFontSize: CGFloat) -> Font {
         let metrics = metrics(for: style)
         return .system(size: baseFontSize * metrics.scale, weight: metrics.weight)
@@ -42,11 +50,11 @@ enum NoteTextStyleTypography {
     private static func metrics(for style: NoteTextStyle) -> Metrics {
         switch style {
         case .title:
-            return Metrics(scale: 1.75, weight: .bold, platformWeight: .bold)
+            return Metrics(scale: 1.75, weight: .semibold, platformWeight: .semibold)
         case .heading:
-            return Metrics(scale: 1.4, weight: .bold, platformWeight: .bold)
+            return Metrics(scale: 1.4, weight: .semibold, platformWeight: .semibold)
         case .subheading:
-            return Metrics(scale: 1.15, weight: .bold, platformWeight: .bold)
+            return Metrics(scale: 1.15, weight: .semibold, platformWeight: .semibold)
         case .body:
             return Metrics(scale: 1.0, weight: .regular, platformWeight: .regular)
         }

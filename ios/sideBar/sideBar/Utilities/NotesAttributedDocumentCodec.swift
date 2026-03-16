@@ -60,14 +60,14 @@ enum NotesAttributedDocumentCodec {
             italic: false
         )
         #if os(iOS)
-        boundary[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = notePlatformFont(
+        boundary[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = noteEditorPlatformFont(
             baseFontSize: baseFontSize,
             blockType: blockType,
             bold: false,
             italic: false
         )
         #elseif os(macOS)
-        boundary[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = notePlatformFont(
+        boundary[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = noteEditorPlatformFont(
             baseFontSize: baseFontSize,
             blockType: blockType,
             bold: false,
@@ -128,7 +128,7 @@ enum NotesAttributedDocumentCodec {
                     inlineCode: inlineCode
                 )
                 #if os(iOS)
-                piece[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = notePlatformFont(
+                piece[range][AttributeScopes.UIKitAttributes.FontAttribute.self] = noteEditorPlatformFont(
                     baseFontSize: baseFontSize,
                     blockType: blockType,
                     bold: marks.contains(.bold),
@@ -136,7 +136,7 @@ enum NotesAttributedDocumentCodec {
                     inlineCode: inlineCode
                 )
                 #elseif os(macOS)
-                piece[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = notePlatformFont(
+                piece[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = noteEditorPlatformFont(
                     baseFontSize: baseFontSize,
                     blockType: blockType,
                     bold: marks.contains(.bold),
@@ -282,28 +282,13 @@ enum NotesAttributedDocumentCodec {
         italic: Bool,
         inlineCode: Bool = false
     ) -> Font {
-        let size: CGFloat
-        let monospaced = noteUsesMonospacedDesign(blockType: blockType, inlineCode: inlineCode)
-        switch blockType {
-        case .title:
-            size = baseFontSize * 1.2
-        case .heading:
-            size = baseFontSize * 1.15
-        case .subheading:
-            size = baseFontSize * 1.08
-        default:
-            size = baseFontSize
-        }
-
-        var font = Font.system(
-            size: size,
-            weight: bold ? .bold : .regular,
-            design: monospaced ? .monospaced : .default
+        noteEditorInlineFont(
+            baseFontSize: baseFontSize,
+            blockType: blockType,
+            bold: bold,
+            italic: italic,
+            inlineCode: inlineCode
         )
-        if italic {
-            font = font.italic()
-        }
-        return font
     }
 
     private static func paragraphStyle(

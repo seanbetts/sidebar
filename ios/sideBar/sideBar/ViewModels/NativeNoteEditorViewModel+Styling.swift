@@ -109,21 +109,20 @@ extension NativeNoteEditorViewModel {
         to attrs: inout AttributeContainer
     ) {
         applyInlineFormattingState(inlineState, to: &attrs)
-
-        if let style = NoteTextStyle(blockType: blockType) {
-            attrs.font = NoteTextStyleTypography.font(for: style, baseFontSize: baseFontSize)
-        } else {
-            attrs.font = .system(
-                size: noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType),
-                design: noteUsesMonospacedDesign(blockType: blockType) ? .monospaced : .default
-            )
-        }
+        attrs.font = noteEditorInlineFont(
+            baseFontSize: baseFontSize,
+            blockType: blockType,
+            bold: inlineState.bold,
+            italic: inlineState.italic,
+            inlineCode: inlineState.inlineCode
+        )
         setPlatformFont(
-            notePlatformFont(
+            noteEditorPlatformFont(
                 baseFontSize: baseFontSize,
                 blockType: blockType,
                 bold: inlineState.bold,
-                italic: inlineState.italic
+                italic: inlineState.italic,
+                inlineCode: inlineState.inlineCode
             ),
             in: &attrs
         )

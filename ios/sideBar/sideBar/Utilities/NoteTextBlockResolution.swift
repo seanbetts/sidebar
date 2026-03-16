@@ -30,6 +30,24 @@ enum NoteTextBlockResolution {
         return semanticFallback
     }
 
+    static func resolvedBlockType(
+        for range: Range<AttributedString.Index>,
+        in text: AttributedString,
+        explicitRawValue: String?,
+        semanticFallback: NotesSemanticDocument.BlockType? = nil
+    ) -> NotesSemanticDocument.BlockType {
+        if let explicit = NoteTextBlockAttribute.blockType(from: explicitRawValue) {
+            return explicit
+        }
+        if let semanticFallback {
+            return semanticFallback
+        }
+        if let lineOwnedBlockType = lineOwnedBlockType(containing: range, in: text) {
+            return lineOwnedBlockType
+        }
+        return positionalFallback(for: range.lowerBound, in: text)
+    }
+
     static func resolvedDecodedBlockType(
         explicitBlockType: NotesSemanticDocument.BlockType?,
         hasExistingBlocks: Bool
@@ -58,11 +76,31 @@ enum NoteTextBlockResolution {
         return nil
     }
 
+    private static func lineOwnedBlockType(
+        containing range: Range<AttributedString.Index>,
+        in text: AttributedString
+    ) -> NotesSemanticDocument.BlockType? {
+        let lineRange = lineRange(containing: range, in: text)
+        for lineRun in text[lineRange].runs {
+            if let explicit = NoteTextBlockAttribute.blockType(from: lineRun.noteBlock) {
+                return explicit
+            }
+        }
+        return nil
+    }
+
     private static func positionalFallback(
         for run: AttributedString.Runs.Run,
         in text: AttributedString
     ) -> NotesSemanticDocument.BlockType {
-        let prefix = text[text.startIndex..<run.range.lowerBound]
+        positionalFallback(for: run.range.lowerBound, in: text)
+    }
+
+    private static func positionalFallback(
+        for index: AttributedString.Index,
+        in text: AttributedString
+    ) -> NotesSemanticDocument.BlockType {
+        let prefix = text[text.startIndex..<index]
         return prefix.characters.contains(where: \.isNewline) ? .paragraph : .title
     }
 
