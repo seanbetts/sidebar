@@ -26,9 +26,9 @@ struct NotesDetailView: View {
     @State private var activeFormattingBarPresentation: NoteFormattingBarPresentation?
     #endif
     @Environment(\.workspaceColumn) private var workspaceColumn
-    @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
+    @AppStorage(AppStorageKeys.workspaceExpanded) var isWorkspaceExpanded: Bool = false
     #if os(iOS)
-    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
+    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) var isWorkspaceExpandedByRotation: Bool = false
     #endif
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
