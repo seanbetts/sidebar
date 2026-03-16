@@ -119,6 +119,7 @@ public final class AppEnvironment: ObservableObject {
     var cancellables = Set<AnyCancellable>()
     var hasPendingForwardedObjectWillChange = false
     var websiteSaveHandoffObserver: AnyObject?
+    var widgetTaskCompletionObserver: AnyObject?
     #if os(iOS) || os(macOS)
     var deviceToken: String?
     var lastRegisteredDeviceToken: String?
@@ -255,6 +256,7 @@ public final class AppEnvironment: ObservableObject {
         logStep("Subscriptions", subscriptionsStart)
         #endif
 
+        configureWidgetTaskCompletionObserver()
         configureRealtimeClient()
         observeSelectionChanges()
         if isAuthenticated {
@@ -269,6 +271,9 @@ public final class AppEnvironment: ObservableObject {
     deinit {
         if let websiteSaveHandoffObserver {
             WebsiteSaveHandoffNotifier.removeObserver(websiteSaveHandoffObserver)
+        }
+        if let widgetTaskCompletionObserver {
+            WidgetTaskCompletionHandoffNotifier.removeObserver(widgetTaskCompletionObserver)
         }
     }
 

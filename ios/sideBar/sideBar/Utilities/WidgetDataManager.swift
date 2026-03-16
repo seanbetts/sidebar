@@ -370,6 +370,14 @@ public final class WidgetDataManager {
 // MARK: - Quick Save
 
 extension WidgetDataManager {
+  /// Records a task completion from a widget and notifies a running app process.
+  public func recordTaskCompletion(taskId: String) {
+    guard IdentifierValidation.isServerTaskID(taskId) else { return }
+    let operation = WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete)
+    recordPendingOperation(operation, for: .tasks)
+    WidgetTaskCompletionHandoffNotifier.post()
+  }
+
   private static let pendingQuickSaveKey = "pendingQuickSaveURL"
 
   /// Records a URL to be saved when the app opens

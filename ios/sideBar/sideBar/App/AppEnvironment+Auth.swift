@@ -7,6 +7,10 @@ extension AppEnvironment {
         Logger(subsystem: "sideBar", category: "AppEnvironmentAuth")
     }
 
+    func consumeWidgetTaskCompletionHandoff() async {
+        await consumeWidgetCompletions()
+    }
+
     func consumeWebsiteSaveHandoff() async {
         guard authState == .active else { return }
         await consumeExtensionEvents()
@@ -43,6 +47,7 @@ extension AppEnvironment {
             Task { [weak self] in
                 if self?.authState == .active {
                     await self?.consumeExtensionEvents()
+                    await self?.consumeWidgetCompletions()
                 }
             }
         } else {
@@ -305,6 +310,7 @@ extension AppEnvironment {
 
     /// Consumes pending task completions from widgets and syncs them with the server
     public func consumeWidgetCompletions() async {
+        guard authState == .active else { return }
         let operations = storage.widgetDataManager.consumePendingOperations(
             for: .tasks,
             actionType: TaskWidgetAction.self,
@@ -312,10 +318,14 @@ extension AppEnvironment {
         )
         let taskIds = operations
             .map { $0.itemId.trimmingCharacters(in: .whitespacesAndNewlines) }
-        guard !taskIds.isEmpty, authState == .active else { return }
+        guard !taskIds.isEmpty else { return }
+
+        var appliedAny = false
+        var failedOperations: [WidgetPendingOperation<TaskWidgetAction>] = []
 
         // Complete each task that was marked done in the widget
-        for taskId in taskIds {
+        for operation in operations {
+            let taskId = operation.itemId.trimmingCharacters(in: .whitespacesAndNewlines)
             guard IdentifierValidation.isServerTaskID(taskId) else {
                 authLogger.error(
                     "Skipping widget completion with invalid task ID \(taskId, privacy: .public)"
@@ -323,17 +333,25 @@ extension AppEnvironment {
                 continue
             }
             if let task = tasksStore.tasks.first(where: { $0.id == taskId }) {
-                await tasksViewModel.completeTask(task: task)
+                let didApply = await tasksViewModel.completeTask(task: task)
+                if didApply {
+                    appliedAny = true
+                } else {
+                    failedOperations.append(operation)
+                }
             } else {
                 // Task not in current store, try to complete directly via API
-                let operation = TaskOperationPayload(
+                let applyOperation = TaskOperationPayload(
                     operationId: TaskOperationId.make(),
                     op: "complete",
                     id: taskId,
                     clientUpdatedAt: nil
                 )
                 do {
-                    _ = try await container.tasksAPI.apply(TaskOperationBatch(operations: [operation]))
+                    _ = try await container.tasksAPI.apply(
+                        TaskOperationBatch(operations: [applyOperation])
+                    )
+                    appliedAny = true
                 } catch {
                     authLogger.error(
                         "Failed to apply widget completion for task \(taskId, privacy: .public)"
@@ -341,11 +359,17 @@ extension AppEnvironment {
                     authLogger.error(
                         "Widget completion apply error: \(error.localizedDescription, privacy: .public)"
                     )
+                    failedOperations.append(operation)
                 }
             }
         }
 
+        for failedOperation in failedOperations {
+            storage.widgetDataManager.recordPendingOperation(failedOperation, for: .tasks)
+        }
+
         // Refresh tasks to get updated state
+        guard appliedAny else { return }
         await tasksViewModel.load(selection: .today, force: true)
         await tasksViewModel.loadCounts(force: true)
     }

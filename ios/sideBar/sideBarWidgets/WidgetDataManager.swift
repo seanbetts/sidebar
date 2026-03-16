@@ -299,6 +299,7 @@ extension WidgetDataManager {
     guard UUID(uuidString: taskId) != nil else { return }
     let operation = WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete)
     recordPendingOperation(operation, for: .tasks)
+    WidgetTaskCompletionHandoffNotifier.post()
   }
 
   /// Backward compatible method for recording add task intent

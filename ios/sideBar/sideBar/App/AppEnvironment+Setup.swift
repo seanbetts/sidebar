@@ -17,6 +17,16 @@ extension AppEnvironment {
         }
     }
 
+    func configureWidgetTaskCompletionObserver() {
+        guard widgetTaskCompletionObserver == nil else { return }
+        widgetTaskCompletionObserver = WidgetTaskCompletionHandoffNotifier.observe { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.consumeWidgetTaskCompletionHandoff()
+            }
+        }
+    }
+
     func configureSubscriptions() {
         if let authAdapter = container.authSession as? SupabaseAuthAdapter {
             bindAuthAdapter(authAdapter)

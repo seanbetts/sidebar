@@ -24,7 +24,8 @@ extension TasksViewModel {
         setLocalErrorMessage(message)
     }
 
-    public func completeTask(task: TaskItem) async {
+    @discardableResult
+    public func completeTask(task: TaskItem) async -> Bool {
         let operation = TaskOperationPayload(
             operationId: TaskOperationId.make(),
             op: "complete",
@@ -33,7 +34,7 @@ extension TasksViewModel {
         )
         if shouldQueueTaskWrites {
             await queueOfflineOperation(operation)
-            return
+            return true
         }
         // Optimistically remove the task immediately
         let removedTask = store.removeTask(id: task.id)
@@ -48,12 +49,14 @@ extension TasksViewModel {
                 await loadCounts(force: true)
                 await refreshWidgetData()
             }
+            return true
         } catch {
             // Restore the task if the API call failed
             if let removedTask {
                 store.restoreTask(removedTask)
             }
             setLocalErrorMessage(ErrorMapping.message(for: error))
+            return false
         }
     }
 

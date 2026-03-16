@@ -178,6 +178,27 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertTrue(environment.pendingNewTaskDeepLink)
     }
 
+    func testConsumeWidgetCompletionsPreservesPendingCompletionWhenSignedOut() async {
+        let environment = requireEnvironment()
+        let taskId = UUID().uuidString
+
+        storage.widgetDataManager.recordPendingOperation(
+            WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete),
+            for: .tasks
+        )
+
+        environment.authState = .signedOut
+        await environment.consumeWidgetCompletions()
+
+        let remaining = storage.widgetDataManager.consumePendingOperations(
+            for: .tasks,
+            actionType: TaskWidgetAction.self
+        )
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.action, .complete)
+        XCTAssertEqual(remaining.first?.itemId, taskId)
+    }
+
     func testWidgetPendingTaskSanitizationRemovesInvalidCompletionID() async {
         storage.widgetDataManager.recordPendingOperation(
             WidgetPendingOperation(itemId: "task_1", action: TaskWidgetAction.complete),
