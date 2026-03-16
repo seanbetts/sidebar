@@ -335,7 +335,7 @@ extension TasksViewModel {
         if case .upcoming = baseSelection {
             dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
         } else {
-            dueDate = nil
+            dueDate = Date()
         }
         var listId: String?
         var listName: String?

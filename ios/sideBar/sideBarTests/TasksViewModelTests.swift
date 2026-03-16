@@ -311,19 +311,6 @@ final class TasksViewModelTests: XCTestCase {
 
     // MARK: - New task creation
 
-    func testStartNewTaskLeavesDueDateUnsetForTodaySelection() async {
-        let api = TasksViewModelAPIStub()
-        api.enqueueListResponse(scope: "today", tasks: [])
-
-        let sut = makeSUT(api: api, networkAvailable: true)
-        await sut.viewModel.load(selection: .today)
-        sut.viewModel.startNewTask()
-
-        let draft = sut.viewModel.newTaskDraft
-        XCTAssertNotNil(draft)
-        XCTAssertNil(draft?.dueDate)
-    }
-
     func testCreateTaskOnlineCallsApplyAndRefreshes() async {
         let api = TasksViewModelAPIStub()
         api.enqueueListResponse(scope: "today", tasks: [])
