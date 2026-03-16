@@ -34,7 +34,8 @@ final class AppKitNoteFormattingPopoverView: NSView {
         }
     }
 
-    private let backgroundEffectView = NSVisualEffectView()
+    private let backgroundEffectView = NSGlassEffectView()
+    private let contentContainerView = NSView()
     private let contentStack = NSStackView()
     private let textStyleScrollView = NSScrollView()
     private let textStyleDocumentView = NSView()
@@ -171,22 +172,19 @@ private extension AppKitNoteFormattingPopoverView {
     private func setUpBackground() {
         backgroundEffectView.identifier = NSUserInterfaceItemIdentifier("note-formatting-popover-glass")
         backgroundEffectView.translatesAutoresizingMaskIntoConstraints = false
-        backgroundEffectView.material = .hudWindow
-        backgroundEffectView.state = .active
-        backgroundEffectView.blendingMode = .withinWindow
-        backgroundEffectView.wantsLayer = true
-        backgroundEffectView.layer?.cornerRadius = 26
-        backgroundEffectView.layer?.cornerCurve = .continuous
-        backgroundEffectView.layer?.masksToBounds = true
+        backgroundEffectView.style = .regular
+        backgroundEffectView.cornerRadius = 26
+        backgroundEffectView.contentView = contentContainerView
         addSubview(backgroundEffectView)
     }
 
     private func setUpContentStack() {
+        contentContainerView.translatesAutoresizingMaskIntoConstraints = false
         contentStack.orientation = .vertical
         contentStack.alignment = .centerX
         contentStack.spacing = 14
         contentStack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(contentStack)
+        contentContainerView.addSubview(contentStack)
     }
 
     private func setUpTextStyleStrip() {
@@ -310,31 +308,29 @@ private extension AppKitNoteFormattingPopoverView {
     }
 
     private func makeInlineGroup(identifier: String, items: [InlineActionItem]) -> NSView {
-        let container = NSVisualEffectView()
+        let container = NSGlassEffectView()
+        let contentView = NSView()
         container.identifier = NSUserInterfaceItemIdentifier(identifier)
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.material = .menu
-        container.state = .active
-        container.blendingMode = .withinWindow
-        container.wantsLayer = true
-        container.layer?.cornerRadius = 22
-        container.layer?.cornerCurve = .continuous
-        container.layer?.masksToBounds = true
+        container.style = .regular
+        container.cornerRadius = 22
+        container.contentView = contentView
 
         let stack = NSStackView()
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 0
         stack.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(stack)
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(stack)
 
         items.map(makeButton(for:)).forEach { stack.addArrangedSubview($0) }
 
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stack.topAnchor.constraint(equalTo: container.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: contentView.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
         ])
 
         return container

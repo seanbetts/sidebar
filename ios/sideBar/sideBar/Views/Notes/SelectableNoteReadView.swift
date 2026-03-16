@@ -267,6 +267,8 @@ struct SelectableNoteReadView: View {
         textView.minSize = .zero
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.autoresizingMask = [.width]
+        textView.textContainerInset = .zero
+        textView.textContainer?.lineFragmentPadding = 0
         textView.linkTextAttributes = [
             .foregroundColor: NSColor.linkColor,
             .underlineStyle: NSUnderlineStyle.single.rawValue

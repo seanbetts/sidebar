@@ -68,6 +68,16 @@ final class SelectableNoteReadViewMountedMacOSTests: XCTestCase {
         )
     }
 
+    func testMountedReadSurfaceUsesZeroInternalTextViewPaddingOnMacOS() throws {
+        let textView = try makeReadTextView(
+            plainText: "One\nTwo",
+            frame: NSRect(x: 0, y: 0, width: 420, height: 240)
+        )
+
+        XCTAssertEqual(textView.textContainer?.lineFragmentPadding, 0)
+        XCTAssertEqual(textView.textContainerInset, .zero)
+    }
+
     func testMountedReadSurfaceCanUnmountRepeatedlyWithoutCrashing() throws {
         let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\nTwo")
 

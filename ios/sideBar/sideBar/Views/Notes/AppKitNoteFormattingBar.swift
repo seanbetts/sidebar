@@ -28,8 +28,8 @@ final class AppKitNoteFormattingBar: NSView {
         }
     }
 
-    private let barContainerView = NSView()
-    private let backgroundEffectView = NSVisualEffectView()
+    private let barContainerView = NSGlassEffectView()
+    private let barContentView = NSView()
     private let menuButton = MenuButton()
     private var currentConfiguration: NoteFormattingBarConfiguration
     private var popoverPresentation: NoteFormattingBarPresentation
@@ -161,18 +161,11 @@ private extension AppKitNoteFormattingBar {
 
         barContainerView.identifier = NSUserInterfaceItemIdentifier("note-formatting-bar")
         barContainerView.translatesAutoresizingMaskIntoConstraints = false
-        barContainerView.wantsLayer = true
+        barContainerView.style = .regular
+        barContainerView.cornerRadius = 18
+        barContainerView.contentView = barContentView
         addSubview(barContainerView)
-
-        backgroundEffectView.translatesAutoresizingMaskIntoConstraints = false
-        backgroundEffectView.material = .menu
-        backgroundEffectView.state = .active
-        backgroundEffectView.blendingMode = .withinWindow
-        backgroundEffectView.wantsLayer = true
-        backgroundEffectView.layer?.cornerRadius = 18
-        backgroundEffectView.layer?.cornerCurve = .continuous
-        backgroundEffectView.layer?.masksToBounds = true
-        barContainerView.addSubview(backgroundEffectView)
+        barContentView.translatesAutoresizingMaskIntoConstraints = false
 
         menuButton.identifier = NSUserInterfaceItemIdentifier("note-formatting-menu")
         menuButton.setAccessibilityLabel("Formatting")
@@ -180,7 +173,7 @@ private extension AppKitNoteFormattingBar {
         menuButton.onClick = { [weak self] in
             self?.handleMenuButtonTap()
         }
-        barContainerView.addSubview(menuButton)
+        barContentView.addSubview(menuButton)
 
         NSLayoutConstraint.activate([
             barContainerView.topAnchor.constraint(equalTo: topAnchor),
@@ -188,15 +181,10 @@ private extension AppKitNoteFormattingBar {
             barContainerView.widthAnchor.constraint(equalToConstant: Self.barWidth),
             barContainerView.heightAnchor.constraint(equalToConstant: Self.barHeight),
 
-            backgroundEffectView.leadingAnchor.constraint(equalTo: barContainerView.leadingAnchor),
-            backgroundEffectView.trailingAnchor.constraint(equalTo: barContainerView.trailingAnchor),
-            backgroundEffectView.topAnchor.constraint(equalTo: barContainerView.topAnchor),
-            backgroundEffectView.bottomAnchor.constraint(equalTo: barContainerView.bottomAnchor),
-
-            menuButton.leadingAnchor.constraint(equalTo: barContainerView.leadingAnchor, constant: Self.horizontalPadding),
-            menuButton.trailingAnchor.constraint(equalTo: barContainerView.trailingAnchor, constant: -Self.horizontalPadding),
-            menuButton.topAnchor.constraint(equalTo: barContainerView.topAnchor),
-            menuButton.bottomAnchor.constraint(equalTo: barContainerView.bottomAnchor)
+            menuButton.leadingAnchor.constraint(equalTo: barContentView.leadingAnchor, constant: Self.horizontalPadding),
+            menuButton.trailingAnchor.constraint(equalTo: barContentView.trailingAnchor, constant: -Self.horizontalPadding),
+            menuButton.topAnchor.constraint(equalTo: barContentView.topAnchor),
+            menuButton.bottomAnchor.constraint(equalTo: barContentView.bottomAnchor)
         ])
     }
 

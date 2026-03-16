@@ -151,6 +151,42 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertFalse(dismissBackdrop.superview === contentView)
     }
 
+    func testFormattingBarUsesLiquidGlassBackgroundOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        let glassView = try XCTUnwrap(findFormattingBarGlassView())
+        let resolvedGlassView = try XCTUnwrap(glassView as? NSGlassEffectView)
+
+        XCTAssertEqual(resolvedGlassView.style, .regular)
+    }
+
+    func testFormattingPopoverUsesLiquidGlassBackgroundOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        try await openFormattingPopover()
+
+        let glassView = try XCTUnwrap(findFormattingPopoverGlassView())
+        let resolvedGlassView = try XCTUnwrap(glassView as? NSGlassEffectView)
+
+        XCTAssertEqual(resolvedGlassView.style, .regular)
+    }
+
     private func openFormattingPopover() async throws {
         let button = try await waitForFormattingButton()
         button.performClick(nil)
@@ -185,6 +221,20 @@ private func findFormattingButton() -> NSButton? {
 }
 
 @MainActor
+private func findFormattingBarGlassView() -> NSView? {
+    layoutMountedNoteWindows()
+    for window in NotesDetailViewTestRetainer.hostingWindows.reversed() {
+        guard let contentView = window.contentView else { continue }
+        if let match = findDescendantView(in: contentView, identifier: "note-formatting-bar"),
+           !match.isHidden {
+            return match
+        }
+    }
+
+    return nil
+}
+
+@MainActor
 private func findFormattingPopover() -> NSView? {
     layoutMountedNoteWindows()
     for window in NotesDetailViewTestRetainer.hostingWindows.reversed() {
@@ -197,6 +247,15 @@ private func findFormattingPopover() -> NSView? {
     }
 
     return nil
+}
+
+@MainActor
+private func findFormattingPopoverGlassView() -> NSView? {
+    guard let popover = findFormattingPopover() else {
+        return nil
+    }
+
+    return findDescendantView(in: popover, identifier: "note-formatting-popover-glass")
 }
 
 @MainActor
