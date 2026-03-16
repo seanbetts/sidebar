@@ -1,5 +1,8 @@
 import XCTest
 @testable import sideBar
+#if os(iOS)
+import UIKit
+#endif
 
 @MainActor
 final class ContentViewWorkspaceBehaviorTests: XCTestCase {
@@ -86,6 +89,43 @@ final class ContentViewWorkspaceBehaviorTests: XCTestCase {
 
         XCTAssertEqual(action, .collapseLeftPanel)
     }
+
+    #if os(iOS)
+    func testWorkspaceSidebarSwipeCaptureIgnoresTouchesInsideNoteFormattingHierarchy() {
+        let anchorView = UIView(frame: CGRect(x: 0, y: 0, width: 1100, height: 900))
+        let formattingPopover = UIView(frame: CGRect(x: 720, y: 40, width: 320, height: 220))
+        formattingPopover.accessibilityIdentifier = "note-formatting-popover"
+        anchorView.addSubview(formattingPopover)
+
+        let formattingScrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 60))
+        formattingScrollView.accessibilityIdentifier = "note-formatting-text-style-strip"
+        formattingPopover.addSubview(formattingScrollView)
+
+        XCTAssertFalse(
+            WorkspaceSidebarSwipeCaptureView.Coordinator.shouldCaptureTouch(
+                touchedView: formattingScrollView,
+                locationInAnchor: CGPoint(x: 760, y: 72),
+                anchorBounds: anchorView.bounds,
+                regionWidth: 1100
+            )
+        )
+    }
+
+    func testWorkspaceSidebarSwipeCaptureAcceptsTouchesOutsideNoteFormattingHierarchy() {
+        let anchorView = UIView(frame: CGRect(x: 0, y: 0, width: 1100, height: 900))
+        let contentView = UIView(frame: CGRect(x: 0, y: 0, width: 1100, height: 900))
+        anchorView.addSubview(contentView)
+
+        XCTAssertTrue(
+            WorkspaceSidebarSwipeCaptureView.Coordinator.shouldCaptureTouch(
+                touchedView: contentView,
+                locationInAnchor: CGPoint(x: 420, y: 240),
+                anchorBounds: anchorView.bounds,
+                regionWidth: 1100
+            )
+        )
+    }
+    #endif
 
     func testWorkspaceBehaviorPolicyExpandedChangeCollapsesLeftPanelWhenExpanded() {
         let plan = WorkspaceBehaviorPolicy.makeWorkspaceExpandedChangePlan(

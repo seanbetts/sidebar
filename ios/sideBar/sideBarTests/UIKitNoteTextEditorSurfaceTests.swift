@@ -372,6 +372,26 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(textView.textContainerInset.top, NoteTextLayout.verticalPadding)
         XCTAssertEqual(textView.textContainerInset.bottom, NoteTextLayout.verticalPadding)
     }
+
+    func testKeyboardViewportInsetAddsKeyboardOverlapAndAccessoryHeight() {
+        let bottomInset = UIKitNoteTextEditorSurface.resolvedBottomViewportInset(
+            textViewBounds: CGRect(x: 0, y: 0, width: 360, height: 640),
+            keyboardFrameInView: CGRect(x: 0, y: 420, width: 360, height: 220),
+            accessoryHeight: 56
+        )
+
+        XCTAssertEqual(bottomInset, 276, accuracy: 0.5)
+    }
+
+    func testKeyboardViewportInsetIgnoresNonIntersectingKeyboardFrames() {
+        let bottomInset = UIKitNoteTextEditorSurface.resolvedBottomViewportInset(
+            textViewBounds: CGRect(x: 0, y: 0, width: 360, height: 640),
+            keyboardFrameInView: CGRect(x: 0, y: 700, width: 360, height: 220),
+            accessoryHeight: 56
+        )
+
+        XCTAssertEqual(bottomInset, 0, accuracy: 0.5)
+    }
 }
 
 #endif

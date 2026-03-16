@@ -49,6 +49,7 @@ struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        private static let excludedAccessibilityPrefixes = ["note-formatting"]
         weak var anchorView: UIView?
         weak var hostWindow: UIWindow?
         weak var panRecognizer: UIPanGestureRecognizer?
@@ -146,10 +147,40 @@ struct WorkspaceSidebarSwipeCaptureView: UIViewRepresentable {
 
             let locationInAnchor = touch.location(in: anchorView)
             let regionWidth = regionWidthProvider?() ?? anchorView.bounds.width
-            return locationInAnchor.y >= 0 &&
-                locationInAnchor.y <= anchorView.bounds.height &&
-                locationInAnchor.x >= 0 &&
-                locationInAnchor.x <= regionWidth
+            return Self.shouldCaptureTouch(
+                touchedView: touch.view,
+                locationInAnchor: locationInAnchor,
+                anchorBounds: anchorView.bounds,
+                regionWidth: regionWidth
+            )
+        }
+
+        static func shouldCaptureTouch(
+            touchedView: UIView?,
+            locationInAnchor: CGPoint,
+            anchorBounds: CGRect,
+            regionWidth: CGFloat
+        ) -> Bool {
+            guard locationInAnchor.y >= 0,
+                  locationInAnchor.y <= anchorBounds.height,
+                  locationInAnchor.x >= 0,
+                  locationInAnchor.x <= regionWidth else {
+                return false
+            }
+
+            return !touchOriginatesInExcludedHierarchy(touchedView)
+        }
+
+        private static func touchOriginatesInExcludedHierarchy(_ touchedView: UIView?) -> Bool {
+            var currentView = touchedView
+            while let view = currentView {
+                if let identifier = view.accessibilityIdentifier,
+                   excludedAccessibilityPrefixes.contains(where: { identifier.hasPrefix($0) }) {
+                    return true
+                }
+                currentView = view.superview
+            }
+            return false
         }
     }
 }
