@@ -1,11 +1,11 @@
 import SwiftUI
 
-struct WriteConflictResolutionSheet: View {
-    let conflict: PendingWriteSummary
-    let onResolve: (WriteQueueConflictResolution) -> Void
+struct QueuedChangeResolutionSheet: View {
+    let queuedChange: PendingWriteSummary
+    let onResolveQueuedChange: (WriteQueueConflictResolution) -> Void
 
     var body: some View {
-        MacModalShell(type: writeConflictPanelType()) {
+        MacModalShell(type: queuedChangeResolutionPanelType()) {
             NavigationStack {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                     header
@@ -22,7 +22,7 @@ struct WriteConflictResolutionSheet: View {
                     actionsRow
                 }
                 .padding(DesignTokens.Spacing.lg)
-                .navigationTitle("Conflict")
+                .navigationTitle("Queued Change")
                 #if !os(macOS)
                 .navigationBarTitleDisplayMode(.inline)
                 #endif
@@ -35,7 +35,7 @@ struct WriteConflictResolutionSheet: View {
             Image(systemName: "arrow.triangle.2.circlepath")
                 .appFont(.subheadlineSemibold)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
-            Text("Resolve Sync Conflict")
+            Text("Resolve Queued Change")
                 .appFont(.title3Semibold)
         }
     }
@@ -45,10 +45,10 @@ struct WriteConflictResolutionSheet: View {
             Text("\(operationLabel) \(entityLabel)")
                 .appFont(.subheadlineSemibold)
                 .foregroundStyle(.primary)
-            Text("Queued \(conflict.createdAt.formatted(date: .abbreviated, time: .shortened))")
+            Text("Queued \(queuedChange.createdAt.formatted(date: .abbreviated, time: .shortened))")
                 .appFont(.caption)
                 .foregroundStyle(.secondary)
-            if let conflictReason = conflict.conflictReason {
+            if let conflictReason = queuedChange.conflictReason {
                 Text(conflictReason)
                     .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
@@ -60,29 +60,29 @@ struct WriteConflictResolutionSheet: View {
     private var actionsRow: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Spacer(minLength: 0)
-            Button("Keep Local") {
-                onResolve(.keepLocal)
+            Button("Keep Queued Change") {
+                onResolveQueuedChange(.keepLocal)
             }
             .buttonStyle(ConflictActionButtonStyle())
-            Button("Keep Server") {
-                onResolve(.keepServer)
+            Button("Use Server Version") {
+                onResolveQueuedChange(.keepServer)
             }
             .buttonStyle(ConflictActionButtonStyle())
         }
     }
 
     private var subtitleText: String? {
-        conflict.conflictReason == nil
-            ? "This change couldn’t sync because the server has newer data."
+        queuedChange.conflictReason == nil
+            ? "This queued change couldn't sync because the server has newer data."
             : nil
     }
 
     private var operationLabel: String {
-        conflict.operationType.replacingOccurrences(of: "_", with: " ").capitalized
+        queuedChange.operationType.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     private var entityLabel: String {
-        conflict.entityType.capitalized
+        queuedChange.entityType.capitalized
     }
 }
 

@@ -10,15 +10,15 @@ extension UserSettingsView {
                     SettingsMacPanelCard {
                         SettingsMacSectionIntro(
                             title: "Sync status",
-                            message: "Review pending settings writes before they finish syncing."
+                            message: "Review queued changes before they finish syncing."
                         )
-                        SettingsMacStatusBanner(message: pendingStatusText, tone: .info)
+                        SettingsMacStatusBanner(message: queuedChangeStatusText, tone: .info)
                         SettingsMacActionSection(
-                            title: "Pending changes",
-                            message: "Open the pending changes view if you need to inspect or debug the current write queue."
+                            title: "Queued changes",
+                            message: "Open the queued changes view if you need to inspect or debug the current write queue."
                         ) {
-                            Button("View pending changes") {
-                                isPendingWritesPresented = true
+                            Button("View queued changes") {
+                                isQueuedChangesPresented = true
                             }
                             .buttonStyle(.borderedProminent)
                         }
@@ -66,10 +66,10 @@ extension UserSettingsView {
             .padding(DesignTokens.Spacing.lg)
         }
         .background(DesignTokens.Colors.settingsBackground)
-        .sheet(isPresented: $isPendingWritesPresented) {
-            MacModalShell(type: pendingWritesPanelType()) {
+        .sheet(isPresented: $isQueuedChangesPresented) {
+            MacModalShell(type: queuedChangesPanelType()) {
                 NavigationStack {
-                    PendingWritesView()
+                    QueuedChangesView()
                 }
             }
             .phoneSheetGrabBarVisible()

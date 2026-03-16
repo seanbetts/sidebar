@@ -4,7 +4,7 @@ import sideBarShared
 struct UserSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @EnvironmentObject var environment: AppEnvironment
-    @State var isPendingWritesPresented = false
+    @State var isQueuedChangesPresented = false
     @State var communicationStyle: String = ""
     @State var workingRelationship: String = ""
     @State var hasLoadedDrafts = false
@@ -21,11 +21,11 @@ struct UserSettingsView: View {
                 Section("Sync Status") {
                     HStack(spacing: 8) {
                         SyncStatusIndicator()
-                        Text(pendingStatusText)
+                        Text(queuedChangeStatusText)
                             .appFont(.labelMd)
                     }
-                    Button("View pending changes") {
-                        isPendingWritesPresented = true
+                    Button("View queued changes") {
+                        isQueuedChangesPresented = true
                     }
                 }
             }
@@ -55,10 +55,10 @@ struct UserSettingsView: View {
         #if os(macOS)
         .formStyle(.grouped)
         #endif
-        .sheet(isPresented: $isPendingWritesPresented) {
-            MacModalShell(type: pendingWritesPanelType()) {
+        .sheet(isPresented: $isQueuedChangesPresented) {
+            MacModalShell(type: queuedChangesPanelType()) {
                 NavigationStack {
-                    PendingWritesView()
+                    QueuedChangesView()
                 }
             }
             .phoneSheetGrabBarVisible()
@@ -160,11 +160,11 @@ struct UserSettingsView: View {
         }
     }
 
-    var pendingStatusText: String {
+    var queuedChangeStatusText: String {
         if environment.writeQueue.isProcessing {
-            return "Syncing \(environment.writeQueue.pendingCount) changes"
+            return "Syncing \(environment.writeQueue.pendingCount) queued changes"
         }
-        return "\(environment.writeQueue.pendingCount) pending changes"
+        return "\(environment.writeQueue.pendingCount) queued changes"
     }
 
     static func shouldSyncDrafts(

@@ -2,9 +2,9 @@ import XCTest
 @testable import sideBar
 
 @MainActor
-final class WriteConflictResolutionSheetTests: XCTestCase {
-    func testWriteConflictUsesDecisionSheetPanelType() {
-        XCTAssertEqual(writeConflictPanelType(), .decisionSheet)
+final class QueuedChangeResolutionSheetTests: XCTestCase {
+    func testQueuedChangeResolutionUsesDecisionSheetPanelType() {
+        XCTAssertEqual(queuedChangeResolutionPanelType(), .decisionSheet)
     }
 
     func testStoreSkillDetailUsesLargeInspectorPanelType() {

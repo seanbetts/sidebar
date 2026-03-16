@@ -43,8 +43,8 @@ however you like, from casual and conversational to formal and precise.
 collaborative partner, a coach, a teacher, or something else is yours to define.
 
 If you made changes while offline, a **Sync status** panel appears here showing
-how many writes are pending. They queue up and sync automatically once your
-connection returns. Tap **View pending changes** to see exactly what's waiting.
+how many queued changes are waiting. They sync automatically once your
+connection returns. Tap **View queued changes** to see exactly what's waiting.
 
 ## sideBar
 

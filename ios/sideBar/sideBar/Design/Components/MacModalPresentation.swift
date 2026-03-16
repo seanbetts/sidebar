@@ -58,7 +58,7 @@ func toolCallPopoverPanelType() -> MacPanelType {
     .compactPopover
 }
 
-func writeConflictPanelType() -> MacPanelType {
+func queuedChangeResolutionPanelType() -> MacPanelType {
     .decisionSheet
 }
 
@@ -74,7 +74,7 @@ func scratchpadPopoverPanelType() -> MacPanelType {
     .editorSheet
 }
 
-func pendingWritesPanelType() -> MacPanelType {
+func queuedChangesPanelType() -> MacPanelType {
     .chooserSheet
 }
 

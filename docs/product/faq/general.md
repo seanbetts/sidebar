@@ -92,7 +92,7 @@ Create a note on your iPhone, and it appears on your iPad and Mac within
 seconds. Complete a task on the web, and it updates everywhere else immediately.
 Sync is automatic and there is nothing to configure. If you make changes while
 offline, they queue up and sync as soon as your connection returns. You can see
-pending changes in Settings under the User tab.
+queued changes in Settings under the User tab.
 
 ## Does sideBar work offline?
 

@@ -25,11 +25,11 @@ extension ContentView {
                 .phoneSheetGrabBarVisible()
         })
         #endif
-        content = AnyView(content.sheet(item: $pendingWriteConflict) { conflict in
-            WriteConflictResolutionSheet(conflict: conflict) { resolution in
+        content = AnyView(content.sheet(item: $pendingWriteResolution) { queuedChange in
+            QueuedChangeResolutionSheet(queuedChange: queuedChange) { resolution in
                 Task {
-                    await environment.writeQueue.resolveConflict(id: conflict.id, resolution: resolution)
-                    await refreshPendingWriteConflict()
+                    await environment.writeQueue.resolveConflict(id: queuedChange.id, resolution: resolution)
+                    await refreshPendingWriteResolution()
                 }
             }
             .phoneSheetGrabBarVisible()
@@ -268,10 +268,10 @@ extension ContentView {
         content = AnyView(content.onReceive(environment.writeQueue.$isPausedForConflict) { isPaused in
             if isPaused {
                 Task {
-                    await refreshPendingWriteConflict()
+                    await refreshPendingWriteResolution()
                 }
             } else {
-                pendingWriteConflict = nil
+                pendingWriteResolution = nil
             }
         })
         content = AnyView(content.onChange(of: environment.authState) { oldValue, newValue in
@@ -484,17 +484,17 @@ extension ContentView {
     }
 
     @MainActor
-    private func refreshPendingWriteConflict() async {
+    private func refreshPendingWriteResolution() async {
         if environment.writeQueue.isPausedForConflict {
             do {
-                pendingWriteConflict = try await environment.writeQueue.fetchNextConflict()
+                pendingWriteResolution = try await environment.writeQueue.fetchNextConflict()
             } catch {
                 let logger = Logger(subsystem: "sideBar", category: "ContentView")
-                logger.error("Failed to fetch write conflict: \(error.localizedDescription, privacy: .public)")
-                pendingWriteConflict = nil
+                logger.error("Failed to fetch queued change resolution: \(error.localizedDescription, privacy: .public)")
+                pendingWriteResolution = nil
             }
         } else {
-            pendingWriteConflict = nil
+            pendingWriteResolution = nil
         }
     }
 }

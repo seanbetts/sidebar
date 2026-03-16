@@ -40,8 +40,8 @@ final class MacModalPresentationTests: XCTestCase {
         XCTAssertEqual(scratchpadPopoverPanelType(), .editorSheet)
     }
 
-    func testPendingWritesUsesChooserPanelType() {
-        XCTAssertEqual(pendingWritesPanelType(), .chooserSheet)
+    func testQueuedChangesUsesChooserPanelType() {
+        XCTAssertEqual(queuedChangesPanelType(), .chooserSheet)
     }
 
     func testStoreInstallPromptUsesCompactSheetPanelType() {

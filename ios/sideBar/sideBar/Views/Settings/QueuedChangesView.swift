@@ -1,38 +1,38 @@
 import SwiftUI
 import OSLog
 
-struct PendingWritesView: View {
+struct QueuedChangesView: View {
     @EnvironmentObject private var environment: AppEnvironment
-    @State private var pendingWrites: [PendingWriteSummary] = []
-    private let logger = Logger(subsystem: "sideBar", category: "PendingWritesView")
+    @State private var queuedChanges: [PendingWriteSummary] = []
+    private let logger = Logger(subsystem: "sideBar", category: "QueuedChangesView")
 
     var body: some View {
         List {
-            if pendingWrites.isEmpty {
+            if queuedChanges.isEmpty {
                 ContentUnavailableView(
                     "All Synced",
                     systemImage: "checkmark.circle",
-                    description: Text("No pending changes")
+                    description: Text("No queued changes")
                 )
             } else {
-                ForEach(pendingWrites) { write in
-                    PendingWriteRow(write: write) { resolution in
+                ForEach(queuedChanges) { queuedChange in
+                    QueuedChangeRow(queuedChange: queuedChange) { resolution in
                         Task {
-                            await environment.writeQueue.resolveConflict(id: write.id, resolution: resolution)
-                            await reloadPendingWrites()
+                            await environment.writeQueue.resolveConflict(id: queuedChange.id, resolution: resolution)
+                            await reloadQueuedChanges()
                         }
                     }
                 }
-                .onDelete(perform: deletePendingWrites)
+                .onDelete(perform: deleteQueuedChanges)
             }
         }
-        .navigationTitle("Pending Changes")
+        .navigationTitle("Queued Changes")
         .toolbar {
-            if !pendingWrites.isEmpty {
+            if !queuedChanges.isEmpty {
                 Button("Retry All") {
                     Task {
                         await environment.writeQueue.processQueue()
-                        await reloadPendingWrites()
+                        await reloadQueuedChanges()
                     }
                 }
             }
@@ -42,30 +42,30 @@ struct PendingWritesView: View {
                         await environment.writeQueue.pruneOldestWrites(
                             keeping: environment.writeQueue.maxPendingWrites
                         )
-                        await reloadPendingWrites()
+                        await reloadQueuedChanges()
                     }
                 }
             }
         }
         .task {
-            await reloadPendingWrites()
+            await reloadQueuedChanges()
         }
     }
 
-    private func reloadPendingWrites() async {
+    private func reloadQueuedChanges() async {
         do {
-            pendingWrites = try await environment.writeQueue.fetchPendingWrites()
+            queuedChanges = try await environment.writeQueue.fetchPendingWrites()
         } catch {
-            logger.error("Failed to reload pending writes: \(error.localizedDescription, privacy: .public)")
-            pendingWrites = []
+            logger.error("Failed to reload queued changes: \(error.localizedDescription, privacy: .public)")
+            queuedChanges = []
         }
     }
 
-    private func deletePendingWrites(at offsets: IndexSet) {
-        let ids = offsets.map { pendingWrites[$0].id }
+    private func deleteQueuedChanges(at offsets: IndexSet) {
+        let ids = offsets.map { queuedChanges[$0].id }
         Task {
             await environment.writeQueue.deleteWrites(ids: ids)
-            await reloadPendingWrites()
+            await reloadQueuedChanges()
         }
     }
 
@@ -74,9 +74,9 @@ struct PendingWritesView: View {
     }
 }
 
-private struct PendingWriteRow: View {
-    let write: PendingWriteSummary
-    let onResolveConflict: (WriteQueueConflictResolution) -> Void
+private struct QueuedChangeRow: View {
+    let queuedChange: PendingWriteSummary
+    let onResolveQueuedChange: (WriteQueueConflictResolution) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -89,29 +89,29 @@ private struct PendingWriteRow: View {
                     .appFont(.captionSemibold)
                     .foregroundStyle(statusColor)
             }
-            if let conflictReason = write.conflictReason {
+            if let conflictReason = queuedChange.conflictReason {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Text(conflictReason)
                         .appFont(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
                         .lineLimit(2)
                     Spacer(minLength: 0)
-                    Button("Keep Local") {
-                        onResolveConflict(.keepLocal)
+                    Button("Keep Queued Change") {
+                        onResolveQueuedChange(.keepLocal)
                     }
                     .buttonStyle(PendingWriteActionButtonStyle())
-                    Button("Keep Server") {
-                        onResolveConflict(.keepServer)
+                    Button("Use Server Version") {
+                        onResolveQueuedChange(.keepServer)
                     }
                     .buttonStyle(PendingWriteActionButtonStyle())
                 }
             }
-            if write.conflictReason == nil, let error = write.lastError {
+            if queuedChange.conflictReason == nil, let error = queuedChange.lastError {
                 Text(error)
                     .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
             }
-            Text("Attempts: \(write.attempts)")
+            Text("Attempts: \(queuedChange.attempts)")
                 .appFont(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -119,13 +119,13 @@ private struct PendingWriteRow: View {
     }
 
     private var titleText: String {
-        let entity = write.entityType.capitalized
-        let operation = write.operationType.capitalized
+        let entity = queuedChange.entityType.capitalized
+        let operation = queuedChange.operationType.capitalized
         return "\(operation) \(entity)"
     }
 
     private var iconName: String {
-        switch write.entityType {
+        switch queuedChange.entityType {
         case "note":
             return "note.text"
         case "message":
@@ -142,17 +142,17 @@ private struct PendingWriteRow: View {
     }
 
     private var statusText: String {
-        if write.conflictReason != nil {
-            return "Conflict"
+        if queuedChange.conflictReason != nil {
+            return "Needs Review"
         }
-        return write.status.capitalized
+        return queuedChange.status.capitalized
     }
 
     private var statusColor: Color {
-        if write.conflictReason != nil {
+        if queuedChange.conflictReason != nil {
             return DesignTokens.Colors.error
         }
-        switch write.status {
+        switch queuedChange.status {
         case WriteQueueStatus.failed.rawValue:
             return DesignTokens.Colors.error
         case WriteQueueStatus.inProgress.rawValue:
