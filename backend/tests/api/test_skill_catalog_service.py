@@ -33,7 +33,6 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
         "audio-transcribe",
         "youtube-download",
         "youtube-transcribe",
-        "skill-creator",
         "prompt-preview",
         "settings-other-preferences",
         "assistant-identity",
@@ -80,7 +79,23 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     assert by_id["audio-transcribe"]["upvotes"] is None
     assert by_id["audio-transcribe"]["downvotes"] is None
     assert by_id["audio-transcribe"]["current_user_vote"] is None
-    assert "skill-creator" not in by_id
+    expected_ids = {
+        "assistant-identity",
+        "assistant-soul",
+        "audio-transcribe",
+        "files",
+        "memory",
+        "notes",
+        "prompt-preview",
+        "settings-other-preferences",
+        "tasks",
+        "ui-theme",
+        "web-save",
+        "web-search",
+        "youtube-download",
+        "youtube-transcribe",
+    }
+    assert set(by_id) == expected_ids
     assert by_id["prompt-preview"]["tier"] == "standard"
     assert by_id["prompt-preview"]["installable"] is False
     assert by_id["settings-other-preferences"]["tier"] == "standard"

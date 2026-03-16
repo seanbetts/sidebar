@@ -15,7 +15,6 @@ enum SkillIconResolver {
         "prompt-preview": "eye",
         "settings-other-preferences": "gearshape",
         "settings-profile-user": "person.crop.circle",
-        "skill-creator": "hammer",
         "subdomain-discover": "globe",
         "tasks": "checkmark.square",
         "ui-theme": "paintpalette",

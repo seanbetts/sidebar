@@ -1,7 +1,7 @@
 # sideBar Skills Catalog
 
-**Last Updated:** 2026-02-22 16:43:41
-**Total Skills:** 16
+**Last Updated:** 2026-03-16 18:14:42
+**Total Skills:** 15
 
 This file is auto-generated from skill frontmatter. Do not edit manually.
 
@@ -40,11 +40,6 @@ Download YouTube videos (MP4) or audio (MP3) using yt-dlp with automatic quality
 
 #### [youtube-transcribe](./skills/youtube-transcribe/SKILL.md)
 Transcribe YouTube videos to text by downloading audio and using OpenAI's Whisper API. Use when you need transcripts stored in the files workspace.
-
-### Development
-
-#### [skill-creator](./skills/skill-creator/SKILL.md)
-Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations.
 
 ### Other
 

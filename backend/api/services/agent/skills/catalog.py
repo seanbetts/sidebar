@@ -312,7 +312,6 @@ class SkillCatalogService:
             "audio-transcribe": "Media",
             "youtube-download": "Media",
             "youtube-transcribe": "Media",
-            "skill-creator": "Development",
             "ui-theme": "System",
             "prompt-preview": "System",
         }

@@ -35,7 +35,6 @@ STORE_SKILL_IDS: set[str] = {
     "youtube-transcribe",
     "subdomain-discover",
     "web-crawler-policy",
-    "skill-creator",
     "prompt-preview",
     "settings-other-preferences",
 }
@@ -58,7 +57,6 @@ EXPOSED_SKILL_IDS: list[str] = [
     "youtube-transcribe",
     "subdomain-discover",
     "web-crawler-policy",
-    "skill-creator",
     "prompt-preview",
     "settings-other-preferences",
 ]

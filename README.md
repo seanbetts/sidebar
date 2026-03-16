@@ -187,7 +187,7 @@ For skill validation and testing:
 uv sync
 
 # Verify installation - validate a single skill
-.venv/bin/skills-ref validate skills/skill-creator
+.venv/bin/skills-ref validate skills/files
 
 # Validate all skills
 ./backend/scripts/validate-all.sh
@@ -215,17 +215,17 @@ All endpoints require Bearer token authentication (except `/api/health`). For co
 
 ## Creating Skills
 
-Use the included skill-creator skill to scaffold new skills:
+Create new skills by adding a folder under `backend/skills/` and authoring `SKILL.md` directly:
 
 ```bash
-# Create a new skill
-python skills/skill-creator/scripts/init_skill.py my-new-skill --path ./skills
+# Create a new skill folder
+mkdir -p backend/skills/my-new-skill
 
 # Edit the skill definition
-vim skills/my-new-skill/SKILL.md
+vim backend/skills/my-new-skill/SKILL.md
 
 # Validate the new skill
-.venv/bin/skills-ref validate skills/my-new-skill
+.venv/bin/skills-ref validate backend/skills/my-new-skill
 
 # Or validate all skills
 ./backend/scripts/validate-all.sh

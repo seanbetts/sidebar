@@ -36,7 +36,6 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["files"]["installable"] is False
 
     assert "audio-transcribe" in by_id
-    assert "skill-creator" not in by_id
     assert by_id["audio-transcribe"]["tier"] == "store"
     assert by_id["audio-transcribe"]["provider_dependency"] == "openai"
     assert by_id["audio-transcribe"]["credential_requirements"]
@@ -56,6 +55,27 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["settings-other-preferences"]["name"] == "Settings"
     assert by_id["product-feedback"]["tier"] == "required"
     assert by_id["product-feedback"]["installable"] is False
+    expected_ids = {
+        "assistant-identity",
+        "assistant-soul",
+        "audio-transcribe",
+        "files",
+        "memory",
+        "notes",
+        "product-feedback",
+        "prompt-preview",
+        "settings-other-preferences",
+        "settings-profile-user",
+        "subdomain-discover",
+        "tasks",
+        "ui-theme",
+        "web-crawler-policy",
+        "web-save",
+        "web-search",
+        "youtube-download",
+        "youtube-transcribe",
+    }
+    assert set(by_id) == expected_ids
 
 
 def test_list_skills_exposes_capability_availability_contract(test_client) -> None:

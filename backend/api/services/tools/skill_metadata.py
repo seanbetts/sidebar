@@ -52,10 +52,6 @@ SKILL_DISPLAY = {
         "name": "YouTube Transcription",
         "description": "Transcribe YouTube videos into text and save the transcripts",
     },
-    "skill-creator": {
-        "name": "Skill Creator",
-        "description": "Guide for creating and updating skills",
-    },
     "ui-theme": {
         "name": "UI Theme",
         "description": "Allow {name} to switch between light and dark mode",

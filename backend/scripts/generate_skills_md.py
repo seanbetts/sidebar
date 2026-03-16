@@ -71,7 +71,7 @@ def generate_skills_md():
         "Web": ["web-save", "web-crawler-policy", "subdomain-discover", "jina-reader"],
         "Media": ["youtube-download", "youtube-transcribe", "audio-transcribe"],
         "Google Drive": ["drive-search", "drive-write"],
-        "Development": ["skill-creator", "list-skills"],
+        "Development": ["list-skills"],
         "Security": ["doppler-secrets"],
     }
 

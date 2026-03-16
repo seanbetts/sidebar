@@ -1,4 +1,4 @@
-"""Tests for skills/skill-creator/scripts/quick_validate.py
+"""Tests for backend/scripts/skill_quick_validate.py
 
 Tests YAML frontmatter validation, name/description rules,
 and error message generation.
@@ -7,13 +7,13 @@ and error message generation.
 import sys
 from pathlib import Path
 
-# Add project root and skill script to path
-project_root = Path(__file__).parent.parent.parent.parent
-skill_script_path = project_root / "skills" / "skill-creator" / "scripts"
+# Add project root and validator script to path
+project_root = Path(__file__).parent.parent.parent
+skill_script_path = project_root / "scripts"
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(skill_script_path))
 
-from quick_validate import validate_skill  # noqa: E402
+from skill_quick_validate import validate_skill  # noqa: E402
 
 
 class TestValidSkills:

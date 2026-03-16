@@ -92,7 +92,7 @@ Do not rely on hardcoded fallback maps for long-term content.
 
 ### Validation Rules For Detail Metadata
 
-`backend/skills/skill-creator/scripts/quick_validate.py` validates these metadata fields when present:
+`backend/scripts/skill_quick_validate.py` validates these metadata fields when present:
 
 - `metadata.long_description`: non-empty string
 - `metadata.how_it_works`: non-empty string
@@ -260,13 +260,13 @@ If a rename is unavoidable pre-release, perform a full sweep:
 1. Initialize a new skeleton (optional but recommended):
 
 ```bash
-python backend/skills/skill-creator/scripts/init_skill.py <skill-id> --path backend/skills
+mkdir -p backend/skills/<skill-id>
 ```
 
 2. Validate the skill:
 
 ```bash
-python backend/skills/skill-creator/scripts/quick_validate.py backend/skills/<skill-id>
+python backend/scripts/skill_quick_validate.py backend/skills/<skill-id>
 ```
 
 To validate all skills at once:
@@ -274,7 +274,7 @@ To validate all skills at once:
 ```bash
 for d in backend/skills/*; do
   [ -f "$d/SKILL.md" ] || continue
-  python backend/skills/skill-creator/scripts/quick_validate.py "$d"
+  python backend/scripts/skill_quick_validate.py "$d"
 done
 ```
 
