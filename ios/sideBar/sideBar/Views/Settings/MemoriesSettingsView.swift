@@ -128,8 +128,8 @@ struct MemoriesSettingsDetailView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .top)
         }
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 
     private var memorySearchField: some View {

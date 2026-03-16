@@ -30,8 +30,7 @@ extension UserSettingsView {
                         title: "Communication style",
                         message: "Set the tone and level of directness your assistant should use when it responds."
                     )
-                    TextEditor(text: $communicationStyle)
-                        .frame(minHeight: 160)
+                    SettingsMacPlainTextEditor(text: $communicationStyle, minHeight: 160)
                         .padding(DesignTokens.Spacing.sm)
                         .background(
                             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
@@ -41,7 +40,6 @@ extension UserSettingsView {
                             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
                         )
-                        .scrollContentBackground(.hidden)
                 }
 
                 SettingsMacPanelCard {
@@ -49,8 +47,7 @@ extension UserSettingsView {
                         title: "Working relationship",
                         message: "Describe how you want sideBar to collaborate with you during planning and execution."
                     )
-                    TextEditor(text: $workingRelationship)
-                        .frame(minHeight: 160)
+                    SettingsMacPlainTextEditor(text: $workingRelationship, minHeight: 160)
                         .padding(DesignTokens.Spacing.sm)
                         .background(
                             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
@@ -60,7 +57,6 @@ extension UserSettingsView {
                             RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
                                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
                         )
-                        .scrollContentBackground(.hidden)
                 }
             }
             .padding(DesignTokens.Spacing.lg)

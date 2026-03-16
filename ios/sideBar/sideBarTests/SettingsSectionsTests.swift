@@ -262,6 +262,36 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(shouldSync)
     }
 
+    #if os(macOS)
+    func testSettingsMacPlainTextEditorConfiguresEditableTransparentTextView() {
+        let textView = SettingsMacPlainTextEditor.makeConfiguredTextView(
+            text: "Hello",
+            delegate: nil
+        )
+
+        XCTAssertEqual(textView.string, "Hello")
+        XCTAssertTrue(textView.isEditable)
+        XCTAssertTrue(textView.isSelectable)
+        XCTAssertTrue(textView.allowsUndo)
+        XCTAssertFalse(textView.drawsBackground)
+        XCTAssertEqual(textView.textContainer?.lineFragmentPadding, 0)
+    }
+
+    func testSettingsMacPlainTextEditorConfiguresTransparentScrollView() {
+        let textView = NSTextView()
+        let scrollView = SettingsMacPlainTextEditor.makeConfiguredScrollView(
+            textView: textView,
+            minHeight: 160
+        )
+
+        XCTAssertTrue(scrollView.documentView === textView)
+        XCTAssertFalse(scrollView.drawsBackground)
+        XCTAssertFalse(scrollView.hasHorizontalScroller)
+        XCTAssertTrue(scrollView.hasVerticalScroller)
+        XCTAssertEqual(scrollView.scrollerStyle, .overlay)
+    }
+    #endif
+
     func testProfileDraftStateNormalizesPickerValuesAndDate() {
         let settings = UserSettings(
             userId: "user-1",
@@ -664,8 +694,10 @@ final class SettingsSectionsTests: XCTestCase {
         let normalized = try systemMacSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
+        XCTAssertTrue(normalized.contains("SettingsMacPlainTextEditor(text:$communicationStyle,minHeight:160)"))
+        XCTAssertTrue(normalized.contains("SettingsMacPlainTextEditor(text:$workingRelationship,minHeight:160)"))
         XCTAssertTrue(normalized.contains(".fill(.clear)"))
-        XCTAssertTrue(normalized.contains(".scrollContentBackground(.hidden)"))
+        XCTAssertFalse(normalized.contains(".scrollContentBackground(.hidden)"))
     }
 
     func testMemoriesSettingsMacRoutingUsesInspectorDetailInsteadOfPlaceholderForm() throws {
