@@ -67,7 +67,7 @@ export function createMarkdownExtensions(
 	options: { enableHtml?: boolean } = {}
 ) {
 	const markdownExtension =
-		options.enableHtml === false ? modules.Markdown : modules.Markdown.configure({ html: true });
+		options.enableHtml === true ? modules.Markdown.configure({ html: true }) : modules.Markdown;
 
 	return [
 		modules.StarterKit,

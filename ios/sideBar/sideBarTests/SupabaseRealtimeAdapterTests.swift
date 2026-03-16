@@ -186,6 +186,12 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
             XCTAssertTrue(adapter.taskGroupsSubscriptions.isEmpty)
         }
     }
+
+    func testSubscribeToFileJobsScopesCallbacksToCurrentUser() async {
+        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting())
+
+        XCTAssertEqual(adapter.fileJobsFilter(userId: "user-123"), "user_id=eq.user-123")
+    }
 }
 
 private final class RecordingRealtimeHandler: RealtimeEventHandler {

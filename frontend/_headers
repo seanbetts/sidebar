@@ -1,3 +1,11 @@
+/*
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'sha256-MBC4KOLVLO8TzzMtpAtulV8sxVQ/gJcs6Se/LwyafLE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com; font-src 'self' data:; form-action 'self'
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self)
+
 /.well-known/apple-app-site-association
   Content-Type: application/json
 

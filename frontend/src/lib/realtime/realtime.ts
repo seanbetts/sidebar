@@ -295,7 +295,8 @@ export async function startRealtime(userId: string | null) {
 		{
 			event: '*',
 			schema: 'public',
-			table: 'file_processing_jobs'
+			table: 'file_processing_jobs',
+			filter: `user_id=eq.${userId}`
 		},
 		handleFileJobChange
 	);

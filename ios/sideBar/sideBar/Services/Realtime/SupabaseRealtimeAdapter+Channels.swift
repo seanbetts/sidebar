@@ -26,7 +26,7 @@ extension SupabaseRealtimeAdapter {
             await subscribeToIngestedFiles(userId: userId)
         }
         if shouldResubscribeFileJobs {
-            await subscribeToFileJobs()
+            await subscribeToFileJobs(userId: userId)
         }
         if shouldResubscribeTasks {
             await subscribeToTasks(userId: userId)
@@ -84,6 +84,10 @@ extension SupabaseRealtimeAdapter {
 }
 
 extension SupabaseRealtimeAdapter {
+    func fileJobsFilter(userId: String) -> String {
+        "user_id=eq.\(userId)"
+    }
+
     func subscribeToNotes(userId: String) async {
         if let existingChannel = notesChannel {
             await client.realtimeV2.removeChannel(existingChannel)
@@ -243,17 +247,19 @@ extension SupabaseRealtimeAdapter {
         }
     }
 
-    func subscribeToFileJobs() async {
+    func subscribeToFileJobs(userId: String) async {
         if let existingChannel = fileJobsChannel {
             await client.realtimeV2.removeChannel(existingChannel)
         }
         fileJobsSubscriptions.removeAll()
         let channel = client.realtimeV2.channel("public:\(RealtimeTable.fileJobs)")
+        let filter = fileJobsFilter(userId: userId)
         fileJobsSubscriptions.append(
             channel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
-                table: RealtimeTable.fileJobs
+                table: RealtimeTable.fileJobs,
+                filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
                     self?.handleFileJobInsert(SupabaseInsertActionAdapter(action: action))
@@ -264,7 +270,8 @@ extension SupabaseRealtimeAdapter {
             channel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
-                table: RealtimeTable.fileJobs
+                table: RealtimeTable.fileJobs,
+                filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
                     self?.handleFileJobUpdate(SupabaseUpdateActionAdapter(action: action))
@@ -275,7 +282,8 @@ extension SupabaseRealtimeAdapter {
             channel.onPostgresChange(
                 DeleteAction.self,
                 schema: "public",
-                table: RealtimeTable.fileJobs
+                table: RealtimeTable.fileJobs,
+                filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
                     self?.handleFileJobDelete(SupabaseDeleteActionAdapter(action: action))
