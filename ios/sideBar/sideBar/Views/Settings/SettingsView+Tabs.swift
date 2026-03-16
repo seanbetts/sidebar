@@ -36,13 +36,13 @@ struct SettingsTabsView: View {
                 .tabItem {
                     Label("Skills", systemImage: "command.circle")
                 }
-            settingsTabContent(MemoriesSettingsView(viewModel: memoriesViewModel))
+            settingsTabContent(
+                SettingsMoreTabView(
+                    memoriesViewModel: memoriesViewModel
+                )
+            )
                 .tabItem {
-                    Label("Memories", systemImage: "bookmark")
-                }
-            settingsTabContent(GeneralSettingsView())
-                .tabItem {
-                    Label("App", systemImage: "gearshape")
+                    Label("More", systemImage: "ellipsis.circle")
                 }
         }
         .padding(DesignTokens.Spacing.md)

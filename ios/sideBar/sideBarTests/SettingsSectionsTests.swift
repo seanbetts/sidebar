@@ -738,6 +738,41 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(normalized.contains("TextEditor(text:$workingRelationship)"))
     }
 
+    func testSettingsTabsIOSUsesExplicitMoreTabInsteadOfOverflowTabs() throws {
+        let normalized = try settingsTabsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        let tabItemCount = normalized.components(separatedBy: ".tabItem{").count - 1
+
+        XCTAssertEqual(tabItemCount, 5)
+        XCTAssertTrue(normalized.contains("settingsTabContent(SettingsMoreTabView("))
+        XCTAssertFalse(normalized.contains("Label(\"Memories\",systemImage:\"bookmark\")"))
+        XCTAssertFalse(normalized.contains("Label(\"App\",systemImage:\"gearshape\")"))
+        XCTAssertTrue(normalized.contains("Label(\"More\",systemImage:\"ellipsis.circle\")"))
+    }
+
+    func testSettingsMoreTabRoutesToMemoriesAndAppWithSettingsChrome() throws {
+        let normalized = try settingsMoreTabSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("NavigationStack"))
+        XCTAssertTrue(normalized.contains("NavigationLink(value:Destination.memories)"))
+        XCTAssertTrue(normalized.contains("NavigationLink(value:Destination.app)"))
+        XCTAssertTrue(normalized.contains("SettingsMoreMemoriesBrowser(viewModel:memoriesViewModel)"))
+        XCTAssertTrue(normalized.contains("GeneralSettingsView()"))
+        XCTAssertTrue(normalized.contains("DesignTokens.Colors.settingsBackground"))
+        XCTAssertFalse(normalized.contains("MemoriesSettingsView(viewModel:memoriesViewModel)"))
+    }
+
+    func testSettingsMoreMemoriesBrowserUsesSingleNavigationStackFlow() throws {
+        let normalized = try settingsMoreTabSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("NavigationLink(value:item.id)"))
+        XCTAssertTrue(normalized.contains("SettingsMoreMemoryDetailView(viewModel:viewModel,memoryId:memoryId)"))
+        XCTAssertFalse(normalized.contains("NavigationSplitView"))
+    }
+
     func testMemoriesSettingsMacRoutingUsesInspectorDetailInsteadOfPlaceholderForm() throws {
         let normalized = try memoriesSettingsRoutingSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -976,6 +1011,20 @@ private func systemSettingsSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("SettingsSections+System.swift", file: file, line: line)
+}
+
+private func settingsTabsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsView+Tabs.swift", file: file, line: line)
+}
+
+private func settingsMoreTabSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsMoreTabView.swift", file: file, line: line)
 }
 
 private func systemMacSettingsSource(
