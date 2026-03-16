@@ -6,6 +6,24 @@ import XCTest
 final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
     private let mountedNotesLifetimeIterations = 10
 
+    @available(iOS 26.0, macOS 26.0, *)
+    func testMountedEditModeRoutesThroughAppKitHostInsteadOfSwiftUISurface() async throws {
+        let harness = await MountedNotesDetailHarness()
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        let view = harness.context.makeView()
+        XCTAssertTrue(view.isShowingEditorSurface)
+        XCTAssertTrue(try attributedNoteEditorContainerMountsAppKitSurfaceDirectly())
+        XCTAssertFalse(try attributedNoteEditorContainerMountsSwiftUISurfaceDirectly())
+        harness.dispose()
+    }
+
     func testMountedViewCloseShortcutEventClosesReadModeNote() async throws {
         let harness = await MountedNotesDetailHarness()
         harness.mount()

@@ -8,6 +8,17 @@ import AppKit
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class SelectableNoteReadViewMountedMacOSTests: XCTestCase {
+    func testMountedReadSurfaceKeepsSelectableReadRenderer() throws {
+        let textView = try makeReadTextView(
+            plainText: "One\nTwo",
+            frame: NSRect(x: 0, y: 0, width: 420, height: 240)
+        )
+
+        XCTAssertEqual(textView.string, "One\nTwo")
+        XCTAssertFalse(textView.isEditable)
+        XCTAssertTrue(textView.isSelectable)
+    }
+
     func testMountedReadSurfaceCanUnmountRepeatedlyWithoutCrashing() throws {
         let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\nTwo")
 
