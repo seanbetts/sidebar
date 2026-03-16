@@ -106,6 +106,191 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
 
         XCTAssertEqual(textView.insertionPointColor, .secondaryLabelColor)
     }
+
+    func testReturnKeyCreatesExpectedFollowupBlocksForTitleSubheadingAndBody() throws {
+        let titleTextView = try mountEditorTextView(
+            document: NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Title", marks: [])])
+                ]
+            ),
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+        titleTextView.setSelectedRange(NSRange(location: titleTextView.string.utf16.count, length: 0))
+
+        let titleHandled = titleTextView.delegate?.textView?(
+            titleTextView,
+            doCommandBy: #selector(NSResponder.insertNewline(_:))
+        ) ?? false
+
+        XCTAssertTrue(titleHandled)
+        XCTAssertEqual(
+            mountedEditorSnapshot(from: titleTextView)?.document.blocks.map(\.type),
+            [.title, .paragraph]
+        )
+
+        let subheadingTextView = try mountEditorTextView(
+            document: NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                    .init(type: .subheading, content: [.init(text: "Subheading", marks: [])])
+                ]
+            ),
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+        subheadingTextView.setSelectedRange(NSRange(location: subheadingTextView.string.utf16.count, length: 0))
+
+        let subheadingHandled = subheadingTextView.delegate?.textView?(
+            subheadingTextView,
+            doCommandBy: #selector(NSResponder.insertNewline(_:))
+        ) ?? false
+
+        XCTAssertTrue(subheadingHandled)
+        XCTAssertEqual(
+            mountedEditorSnapshot(from: subheadingTextView)?.document.blocks.map(\.type),
+            [.title, .subheading, .paragraph]
+        )
+
+        let bodyTextView = try mountEditorTextView(
+            document: NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                    .paragraph([.init(text: "Body", marks: [])])
+                ]
+            ),
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+        bodyTextView.setSelectedRange(NSRange(location: bodyTextView.string.utf16.count, length: 0))
+
+        let bodyHandled = bodyTextView.delegate?.textView?(
+            bodyTextView,
+            doCommandBy: #selector(NSResponder.insertNewline(_:))
+        ) ?? false
+
+        XCTAssertTrue(bodyHandled)
+        XCTAssertEqual(
+            mountedEditorSnapshot(from: bodyTextView)?.document.blocks.map(\.type),
+            [.title, .paragraph, .paragraph]
+        )
+    }
+
+    func testRangedReturnIsHandledBySharedStructuralMutationLayerOnMacOS() throws {
+        let textView = try mountEditorTextView(
+            document: NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                    .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+                ]
+            ),
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+        textView.setSelectedRange(NSRange(location: 10, length: 1))
+
+        let handled = textView.delegate?.textView?(
+            textView,
+            shouldChangeTextIn: textView.selectedRange(),
+            replacementString: "\n"
+        ) ?? true
+
+        XCTAssertFalse(handled)
+        let snapshot = try XCTUnwrap(mountedEditorSnapshot(from: textView))
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .heading, .paragraph])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "Head", marks: [])])
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "ng", marks: [])])
+    }
+
+    func testMultilinePasteIsHandledBySharedStructuralMutationLayerOnMacOS() throws {
+        let textView = try mountEditorTextView(
+            document: NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                    .init(type: .heading, content: [.init(text: "Heading", marks: [])])
+                ]
+            ),
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+        textView.setSelectedRange(NSRange(location: 13, length: 0))
+
+        let handled = textView.delegate?.textView?(
+            textView,
+            shouldChangeTextIn: textView.selectedRange(),
+            replacementString: " Alpha\nBeta"
+        ) ?? true
+
+        XCTAssertFalse(handled)
+        let snapshot = try XCTUnwrap(mountedEditorSnapshot(from: textView))
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .heading, .paragraph])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "Heading Alpha", marks: [])])
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "Beta", marks: [])])
+    }
+
+    func testDoubleReturnExitsCodeBlockIntoParagraphBlockOnMacOS() throws {
+        let textView = try mountEditorTextView(
+            document: NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Snippet", marks: [])]),
+                    .init(type: .codeBlock, content: [.init(text: "let x = 1", marks: [])])
+                ]
+            ),
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+        textView.setSelectedRange(NSRange(location: textView.string.utf16.count, length: 0))
+
+        XCTAssertTrue(
+            textView.delegate?.textView?(
+                textView,
+                doCommandBy: #selector(NSResponder.insertNewline(_:))
+            ) ?? false
+        )
+        XCTAssertTrue(
+            textView.delegate?.textView?(
+                textView,
+                doCommandBy: #selector(NSResponder.insertNewline(_:))
+            ) ?? false
+        )
+
+        let snapshot = try XCTUnwrap(mountedEditorSnapshot(from: textView))
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .codeBlock, .paragraph])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "let x = 1\n", marks: [])])
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "", marks: [])])
+    }
+
+    func testTypingAttributesStayPlainOnEmptyTrailingParagraphAfterHeadingOnMacOS() throws {
+        let textView = try mountEditorTextView(
+            document: NotesSemanticDocument(
+                version: NotesSemanticDocument.currentVersion,
+                blocks: [
+                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                    .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                    .paragraph([.init(text: "", marks: [])])
+                ]
+            ),
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+        let font = try XCTUnwrap(textView.typingAttributes[.font] as? NSFont)
+
+        XCTAssertFalse(notePlatformFontTraits(from: font).bold)
+    }
+}
+
+@MainActor
+private func mountedEditorSnapshot(
+    from textView: NSTextView
+) -> NativeNoteEditorViewModel.PersistenceSnapshot? {
+    (textView.delegate as? AppKitNoteTextEditorSurface.Coordinator)?.viewModel.currentPersistenceSnapshot()
 }
 
 private func fontAttribute(

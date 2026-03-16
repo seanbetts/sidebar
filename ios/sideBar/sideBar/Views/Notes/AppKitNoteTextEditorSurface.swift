@@ -197,7 +197,51 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
                 return false
             }
-            guard viewModel.handleTextReplacement("\n") else { return false }
+            guard handleStructuralReplacement(
+                in: textView,
+                selectedRange: textView.selectedRange(),
+                replacementText: "\n"
+            ) else {
+                return false
+            }
+
+            return true
+        }
+
+        func textView(
+            _ textView: NSTextView,
+            shouldChangeTextIn affectedCharRange: NSRange,
+            replacementString: String?
+        ) -> Bool {
+            guard let replacementString else { return true }
+
+            if handleStructuralReplacement(
+                in: textView,
+                selectedRange: affectedCharRange,
+                replacementText: replacementString
+            ) {
+                return false
+            }
+
+            return true
+        }
+
+        private func handleStructuralReplacement(
+            in textView: NSTextView,
+            selectedRange: NSRange,
+            replacementText: String
+        ) -> Bool {
+            let selection = viewModel.selection(
+                fromUTF16Range: selectedRange,
+                in: viewModel.attributedContent
+            )
+            if selection != viewModel.selection {
+                viewModel.selection = selection
+                viewModel.handleSelectionChange()
+            }
+
+            guard replacementText.contains("\n") else { return false }
+            guard viewModel.handleTextReplacement(replacementText) else { return false }
 
             applyCurrentEditorState(to: textView)
             return true

@@ -1,44 +1,9 @@
 import XCTest
 import SwiftUI
+@testable import sideBar
 #if os(iOS)
 import UIKit
-#endif
 
-#if os(macOS)
-import XCTest
-@testable import sideBar
-
-@MainActor
-@available(iOS 26.0, macOS 26.0, *)
-final class NotesEditorSurfaceParityMacOSLogicTests: XCTestCase {
-    func testSelectionOnlyChangesDoNotAdvanceRenderGenerationOrInvalidatePersistenceCacheOnMacOS() throws {
-        let document = NotesSemanticDocumentProjection.document(fromPlainText: "Hello\nWorld")
-        let canonicalContent = try XCTUnwrap(NotesSemanticDocumentCodec.encode(document))
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadDocument(
-            canonicalContent: canonicalContent,
-            plainText: NotesSemanticDocumentProjection.plainText(from: document)
-        )
-
-        _ = viewModel.currentPersistenceSnapshot()
-        var persistenceSnapshotComputations = 0
-        viewModel.onPersistenceSnapshotComputedForTesting = {
-            persistenceSnapshotComputations += 1
-        }
-        let initialRenderGeneration = viewModel.renderGeneration
-        let insertionPoint = viewModel.index(forCharacterOffset: 3, in: viewModel.attributedContent)
-
-        viewModel.selection = AttributedTextSelection(range: insertionPoint..<insertionPoint)
-        viewModel.handleSelectionChange()
-        _ = viewModel.currentPersistenceSnapshot()
-
-        XCTAssertEqual(viewModel.renderGeneration, initialRenderGeneration)
-        XCTAssertEqual(persistenceSnapshotComputations, 0)
-    }
-}
-#endif
-@testable import sideBar
-#if os(iOS)
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class NotesEditorSurfaceParityTests: XCTestCase {

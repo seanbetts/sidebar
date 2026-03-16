@@ -78,5 +78,22 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
         }
     }
 
+    @available(iOS 26.0, macOS 26.0, *)
+    func testMountedDetailEditActivationKeepsPendingCaretAtRequestedEndOfNoteOffset() async throws {
+        let harness = await MountedNotesDetailHarness(
+            note: makeTestNote(id: "caret-note", plainText: "A👍🏽B")
+        )
+        harness.mount()
+        await harness.settle()
+
+        let nativeViewModel = harness.activateReadSurfaceEditing(at: .characterOffset(5))
+
+        XCTAssertEqual(
+            nativeViewModel.utf16SelectedRange(in: nativeViewModel.attributedContent),
+            NSRange(location: 5, length: 0)
+        )
+        harness.dispose()
+    }
+
 }
 #endif
