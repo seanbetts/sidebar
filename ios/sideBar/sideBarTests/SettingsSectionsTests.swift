@@ -134,43 +134,43 @@ final class SettingsSectionsTests: XCTestCase {
 
     func testSystemAutosaveFlushUsesManualSaveWhenScheduled() async {
         let controller = SystemAutosaveController(delayNs: 100_000_000)
-        var autosaveRan = false
-        var flushRan = false
+        let autosaveRan = LockedFlag()
+        let flushRan = LockedFlag()
 
         controller.scheduleAutosave(
             hasLoadedDrafts: true,
             isSyncingDrafts: false,
             isDraftDirty: true
         ) {
-            autosaveRan = true
+            autosaveRan.setTrue()
         }
 
         controller.flushPendingAutosave(
             shouldFlush: true
         ) {
-            flushRan = true
+            flushRan.setTrue()
         }
 
         let didRunFlushSave = await waitUntil(timeoutNs: 1_000_000_000) {
-            flushRan
+            flushRan.value
         }
 
         XCTAssertTrue(didRunFlushSave)
-        XCTAssertTrue(flushRan)
-        XCTAssertFalse(autosaveRan)
+        XCTAssertTrue(flushRan.value)
+        XCTAssertFalse(autosaveRan.value)
     }
 
     func testSystemAutosaveFlushSkipsWhenAutosaveInFlight() async {
         let controller = SystemAutosaveController(delayNs: 0)
-        var autosaveRuns = 0
-        var flushRuns = 0
+        let autosaveRuns = LockedCounter()
+        let flushRuns = LockedCounter()
 
         controller.scheduleAutosave(
             hasLoadedDrafts: true,
             isSyncingDrafts: false,
             isDraftDirty: true
         ) {
-            autosaveRuns += 1
+            _ = autosaveRuns.increment()
             try? await Task.sleep(nanoseconds: 200_000_000)
         }
 
@@ -181,42 +181,42 @@ final class SettingsSectionsTests: XCTestCase {
         controller.flushPendingAutosave(
             shouldFlush: true
         ) {
-            flushRuns += 1
+            _ = flushRuns.increment()
         }
 
         try? await Task.sleep(nanoseconds: 250_000_000)
 
-        XCTAssertEqual(autosaveRuns, 1)
-        XCTAssertEqual(flushRuns, 0)
+        XCTAssertEqual(autosaveRuns.value, 1)
+        XCTAssertEqual(flushRuns.value, 0)
     }
 
     func testSystemAutosaveFlushSkipsManualSaveWhenAutosaveAlreadyCompleted() async {
         let controller = SystemAutosaveController(delayNs: 0)
-        var autosaveRuns = 0
-        var flushRuns = 0
+        let autosaveRuns = LockedCounter()
+        let flushRuns = LockedCounter()
 
         controller.scheduleAutosave(
             hasLoadedDrafts: true,
             isSyncingDrafts: false,
             isDraftDirty: true
         ) {
-            autosaveRuns += 1
+            _ = autosaveRuns.increment()
         }
 
         let didCompleteAutosave = await waitUntil(timeoutNs: 1_000_000_000) {
-            autosaveRuns == 1 && !controller.isAutosaveSaving
+            autosaveRuns.value == 1 && !controller.isAutosaveSaving
         }
         XCTAssertTrue(didCompleteAutosave)
         controller.flushPendingAutosave(
             shouldFlush: true
         ) {
-            flushRuns += 1
+            _ = flushRuns.increment()
         }
 
         try? await Task.sleep(nanoseconds: 10_000_000)
 
-        XCTAssertEqual(autosaveRuns, 1)
-        XCTAssertEqual(flushRuns, 0)
+        XCTAssertEqual(autosaveRuns.value, 1)
+        XCTAssertEqual(flushRuns.value, 0)
     }
     func testDraftSynchronizerRespectsDirtyDraftsForSameUser() {
         let shouldSync = SettingsDraftSynchronizer.shouldSyncDrafts(
@@ -470,11 +470,11 @@ final class SettingsSectionsTests: XCTestCase {
     private func waitUntil(
         timeoutNs: UInt64,
         pollNs: UInt64 = 5_000_000,
-        condition: @escaping @MainActor () -> Bool
+        condition: @escaping () -> Bool
     ) async -> Bool {
         let deadline = DispatchTime.now().uptimeNanoseconds + timeoutNs
         while DispatchTime.now().uptimeNanoseconds < deadline {
-            if await condition() {
+            if condition() {
                 return true
             }
             try? await Task.sleep(nanoseconds: pollNs)
@@ -724,6 +724,41 @@ final class SettingsSectionsTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains(".onDisappear{flushPendingSystemAutosave()"))
+    }
+}
+
+private final class LockedFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage = false
+
+    var value: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+
+    func setTrue() {
+        lock.lock()
+        storage = true
+        lock.unlock()
+    }
+}
+
+private final class LockedCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage = 0
+
+    var value: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+
+    func increment() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        storage += 1
+        return storage
     }
 }
 

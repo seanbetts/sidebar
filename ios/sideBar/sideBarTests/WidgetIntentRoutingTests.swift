@@ -4,7 +4,7 @@ import XCTest
 
 final class WidgetIntentRoutingTests: XCTestCase {
     func testAppWidgetIntentsReturnOpenResults() async throws {
-        var quickSaveIntent = QuickSaveIntent()
+        let quickSaveIntent = QuickSaveIntent()
         quickSaveIntent.url = URL(string: "https://example.com")!
 
         assertOpensIntent(try await AddTaskIntent().perform())

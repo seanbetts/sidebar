@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class MacModalPresentationTests: XCTestCase {
     func testChooserPanelsUseMediumWidthPreset() {
         XCTAssertEqual(

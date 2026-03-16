@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class FileViewerViewTests: XCTestCase {
     func testShouldShowYouTubeEmbedFalseForVideoKind() {
         let state = FileViewerState(

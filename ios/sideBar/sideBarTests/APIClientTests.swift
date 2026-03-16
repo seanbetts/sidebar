@@ -17,11 +17,17 @@ final class APIClientTests: XCTestCase {
         super.tearDown()
     }
 
-    private func waitForSignal(
+    private static func waitForSignal(
         _ semaphore: DispatchSemaphore,
         timeout seconds: TimeInterval
-    ) -> DispatchTimeoutResult {
-        semaphore.wait(timeout: .now() + seconds)
+    ) async -> DispatchTimeoutResult {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                continuation.resume(
+                    returning: semaphore.wait(timeout: .now() + seconds)
+                )
+            }
+        }
     }
 
     func testInjectsAuthorizationHeader() async throws {
@@ -248,7 +254,7 @@ final class APIClientTests: XCTestCase {
             accessTokenProvider: { tokenBox.get() },
             refreshAuthIfNeeded: {
                 _ = refreshCalls.increment()
-                let released = releaseRefresh.wait(timeout: .now() + 0.25)
+                let released = await Self.waitForSignal(releaseRefresh, timeout: 0.25)
                 XCTAssertEqual(
                     released,
                     .success,
@@ -281,8 +287,9 @@ final class APIClientTests: XCTestCase {
         }
 
         async let first: EmptyResponse = client.request("ping", method: "GET")
+        let firstUnauthorizedResult = await Self.waitForSignal(firstUnauthorized, timeout: 0.25)
         XCTAssertEqual(
-            waitForSignal(firstUnauthorized, timeout: 0.25),
+            firstUnauthorizedResult,
             .success,
             "Expected the first request to reach the unauthorized response"
         )
@@ -318,7 +325,7 @@ final class APIClientTests: XCTestCase {
                 accessTokenProvider: { tokenBox.get() },
                 refreshAuthIfNeeded: {
                     _ = refreshCalls.increment()
-                    let released = releaseRefresh.wait(timeout: .now() + 0.25)
+                    let released = await Self.waitForSignal(releaseRefresh, timeout: 0.25)
                     XCTAssertEqual(
                         released,
                         .success,

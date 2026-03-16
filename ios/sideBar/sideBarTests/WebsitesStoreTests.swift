@@ -307,6 +307,91 @@ private extension WebsitesStoreTests {
             lastOpenedAt: nil
         )
     }
+
+    func makeTranscriptWebsiteItem(videoId: String) -> WebsiteItem {
+        WebsiteItem(
+            id: "w1",
+            title: "Video",
+            url: "https://www.youtube.com/watch?v=\(videoId)",
+            domain: "youtube.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: [
+                videoId: WebsiteTranscriptEntry(
+                    status: "queued",
+                    fileId: "file-1",
+                    updatedAt: "2026-03-14T09:55:00Z",
+                    error: nil
+                )
+            ],
+            readingTime: nil,
+            updatedAt: "2026-03-14T09:55:00Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+    }
+
+    func makeTranscriptWebsiteDetail(
+        videoId: String,
+        transcripts: [String: WebsiteTranscriptEntry]?
+    ) -> WebsiteDetail {
+        WebsiteDetail(
+            id: "w1",
+            title: "Video",
+            url: "https://www.youtube.com/watch?v=\(videoId)",
+            urlFull: nil,
+            domain: "youtube.com",
+            content: "Before",
+            source: "youtube",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: transcripts,
+            readingTime: nil,
+            updatedAt: "2026-03-14T09:55:00Z",
+            lastOpenedAt: nil
+        )
+    }
+
+    func makeTranscriptRealtimePayload(videoId: String) -> RealtimePayload<WebsiteRealtimeRecord> {
+        RealtimePayload<WebsiteRealtimeRecord>(
+            eventType: .update,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: "w1",
+                title: "Video",
+                url: "https://www.youtube.com/watch?v=\(videoId)",
+                domain: "youtube.com",
+                metadata: [
+                    "youtube_transcripts": AnyCodable([
+                        videoId: [
+                            "status": "ready",
+                            "file_id": "file-1",
+                            "updated_at": "2026-03-14T10:00:00Z",
+                            "error": NSNull()
+                        ]
+                    ])
+                ],
+                savedAt: nil,
+                publishedAt: nil,
+                readingTime: nil,
+                updatedAt: "2026-03-14T10:00:00Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+    }
 }
 
 @MainActor
@@ -493,50 +578,10 @@ extension WebsitesStoreTests {
 
     func testApplyRealtimeUpdateRefreshesActiveTranscriptMetadata() async {
         let videoId = "abc123xyzAA"
-        let existingItem = WebsiteItem(
-            id: "w1",
-            title: "Video",
-            url: "https://www.youtube.com/watch?v=\(videoId)",
-            domain: "youtube.com",
-            savedAt: nil,
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: false,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: [
-                videoId: WebsiteTranscriptEntry(
-                    status: "queued",
-                    fileId: "file-1",
-                    updatedAt: "2026-03-14T09:55:00Z",
-                    error: nil
-                )
-            ],
-            readingTime: nil,
-            updatedAt: "2026-03-14T09:55:00Z",
-            lastOpenedAt: nil,
-            deletedAt: nil
-        )
-        let existingDetail = WebsiteDetail(
-            id: "w1",
-            title: "Video",
-            url: "https://www.youtube.com/watch?v=\(videoId)",
-            urlFull: nil,
-            domain: "youtube.com",
-            content: "Before",
-            source: "youtube",
-            savedAt: nil,
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: false,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: existingItem.youtubeTranscripts,
-            readingTime: nil,
-            updatedAt: "2026-03-14T09:55:00Z",
-            lastOpenedAt: nil
+        let existingItem = makeTranscriptWebsiteItem(videoId: videoId)
+        let existingDetail = makeTranscriptWebsiteDetail(
+            videoId: videoId,
+            transcripts: existingItem.youtubeTranscripts
         )
         let api = WebsitesStoreMockWebsitesAPI(
             listResult: .failure(WebsitesStoreMockError.forced),
@@ -550,34 +595,7 @@ extension WebsitesStoreTests {
         store.updateListItem(existingItem, persist: false)
         store.applyDetailUpdate(existingDetail, persist: false)
 
-        let payload = RealtimePayload<WebsiteRealtimeRecord>(
-            eventType: .update,
-            table: RealtimeTable.websites,
-            schema: "public",
-            record: WebsiteRealtimeRecord(
-                id: "w1",
-                title: "Video",
-                url: "https://www.youtube.com/watch?v=\(videoId)",
-                domain: "youtube.com",
-                metadata: [
-                    "youtube_transcripts": AnyCodable([
-                        videoId: [
-                            "status": "ready",
-                            "file_id": "file-1",
-                            "updated_at": "2026-03-14T10:00:00Z",
-                            "error": NSNull()
-                        ]
-                    ])
-                ],
-                savedAt: nil,
-                publishedAt: nil,
-                readingTime: nil,
-                updatedAt: "2026-03-14T10:00:00Z",
-                lastOpenedAt: nil,
-                deletedAt: nil
-            ),
-            oldRecord: nil
-        )
+        let payload = makeTranscriptRealtimePayload(videoId: videoId)
 
         store.applyRealtimeEvent(payload)
 

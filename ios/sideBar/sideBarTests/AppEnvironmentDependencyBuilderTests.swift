@@ -141,7 +141,11 @@ final class AppEnvironmentDependencyBuilderTests: XCTestCase {
         let dependencies = AppEnvironment.buildDependencies(
             container: Self.sharedContainer,
             isTestMode: true,
-            widgetDataManager: WidgetDataManager(userDefaults: UserDefaults(suiteName: "AppEnvironmentDependencyBuilderTests.\(UUID().uuidString)")!),
+            widgetDataManager: WidgetDataManager(
+                userDefaults: UserDefaults(
+                    suiteName: "AppEnvironmentDependencyBuilderTests.\(UUID().uuidString)"
+                )!
+            ),
             workspaceStateProvider: workspaceStateProvider
         )
         Self.retainedDependencies.append(dependencies)

@@ -206,6 +206,7 @@ func noteRangeHasInlineCodeBackground(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+@MainActor
 func noteBlockValue(
     in text: AttributedString,
     atCharacterOffset offset: Int

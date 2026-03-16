@@ -1280,10 +1280,6 @@ extension NotesEditorViewModelTests {
     }
 
     func testNativeEditorSelectionForwardingPublishesAfterSelectionStateUpdates() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-
         let context = makeNotesEditorViewModelTestContext(
             api: MockNotesAPI(updateResult: .failure(MockError.forced))
         )
