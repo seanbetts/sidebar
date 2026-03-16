@@ -180,7 +180,12 @@ public final class WebsitesViewModel: ObservableObject {
         isLoading = false
     }
 
+    /// Force-refresh after a Share Extension save. Always bypasses the rate
+    /// limit because the user explicitly saved a new item and expects it to
+    /// appear immediately. Updates lastForcedLoadAt so the next lifecycle-
+    /// triggered load(force: true) is still suppressed for the cooldown window.
     public func refreshFromExtension() async {
+        lastForcedLoadAt = Date()
         errorMessage = nil
         do {
             try await store.loadList(force: true)
