@@ -187,6 +187,38 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(resolvedGlassView.style, .regular)
     }
 
+    func testFormattingPopoverTextStylesMatchIOSHorizontalPaddingOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        try await openFormattingPopover()
+
+        let popover = try XCTUnwrap(findFormattingPopover())
+        let strip = try XCTUnwrap(
+            findDescendantView(in: popover, identifier: "note-formatting-text-style-buttons") as? NSStackView
+        )
+        let titleButton = try XCTUnwrap(
+            findTextStyleButton(in: popover, identifier: "note-formatting-text-style-title")
+        )
+        let headingButton = try XCTUnwrap(
+            findTextStyleButton(in: popover, identifier: "note-formatting-text-style-heading")
+        )
+
+        XCTAssertEqual(strip.spacing, 4, accuracy: 0.01)
+        XCTAssertGreaterThanOrEqual(titleButton.frame.width, ceil(titleButton.attributedTitle.size().width) + 16 - 0.5)
+        XCTAssertGreaterThanOrEqual(
+            headingButton.frame.width,
+            ceil(headingButton.attributedTitle.size().width) + 16 - 0.5
+        )
+    }
+
     private func openFormattingPopover() async throws {
         let button = try await waitForFormattingButton()
         button.performClick(nil)
@@ -319,6 +351,11 @@ private func findTextStyleButtonTitles(in popover: NSView) -> [String] {
     }
 
     return strip.subviews.compactMap { ($0 as? NSButton)?.title }
+}
+
+@MainActor
+private func findTextStyleButton(in popover: NSView, identifier: String) -> NSButton? {
+    findDescendantView(in: popover, identifier: identifier) as? NSButton
 }
 
 @MainActor

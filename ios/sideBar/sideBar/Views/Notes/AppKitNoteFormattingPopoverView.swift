@@ -13,6 +13,30 @@ final class AppKitNoteFormattingPopoverView: NSView {
 
     private final class ActionButton: NSButton {
         var onClick: (@MainActor @Sendable () -> Void)?
+        var contentInsets = NSEdgeInsetsZero {
+            didSet {
+                invalidateIntrinsicContentSize()
+            }
+        }
+
+        override var title: String {
+            didSet {
+                invalidateIntrinsicContentSize()
+            }
+        }
+
+        override var attributedTitle: NSAttributedString {
+            didSet {
+                invalidateIntrinsicContentSize()
+            }
+        }
+
+        override var intrinsicContentSize: NSSize {
+            var size = attributedTitle.length > 0 ? attributedTitle.size() : super.intrinsicContentSize
+            size.width = ceil(size.width + contentInsets.left + contentInsets.right)
+            size.height = ceil(size.height + contentInsets.top + contentInsets.bottom)
+            return size
+        }
 
         init() {
             super.init(frame: .zero)
@@ -285,6 +309,7 @@ private extension AppKitNoteFormattingPopoverView {
         button.setButtonType(.momentaryPushIn)
         button.bezelStyle = .texturedRounded
         button.isBordered = false
+        button.contentInsets = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
         button.font = NoteTextStyleTypography.platformFont(
             for: style,
             baseFontSize: NoteTextTypography.defaultBodyFontSize
