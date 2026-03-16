@@ -78,13 +78,6 @@ final class UIKitNoteFormattingBar: UIView {
         super.willMove(toWindow: newWindow)
     }
 
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        let previousStyle = previousTraitCollection?.userInterfaceStyle
-        let currentStyle = traitCollection.userInterfaceStyle
-        guard previousStyle != currentStyle else { return }
-        applyGlassChrome()
-    }
 }
 
 @MainActor
@@ -398,6 +391,7 @@ extension UIKitNoteFormattingBar {
         accessibilityIdentifier = "note-formatting-bar"
         backgroundColor = .clear
         clipsToBounds = false
+        registerForAppearanceChanges()
 
         backgroundEffectView.translatesAutoresizingMaskIntoConstraints = false
         backgroundEffectView.isUserInteractionEnabled = false
@@ -436,6 +430,12 @@ extension UIKitNoteFormattingBar {
     func applyGlassChrome() {
         backgroundEffectView.layer.borderWidth = 1
         backgroundEffectView.layer.borderColor = Self.glassBorderColor(for: traitCollection).cgColor
+    }
+
+    func registerForAppearanceChanges() {
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _) in
+            self.applyGlassChrome()
+        }
     }
 }
 
