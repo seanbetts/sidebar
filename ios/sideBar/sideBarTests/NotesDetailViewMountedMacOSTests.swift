@@ -28,6 +28,30 @@ final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
         harness.dispose()
     }
 
+    @available(iOS 26.0, macOS 26.0, *)
+    func testMountedEditModeShowsFloatingFormattingButtonOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        XCTAssertNotNil(findMountedFormattingButton())
+        harness.dispose()
+    }
+
+    func testMountedReadModeDoesNotShowFloatingFormattingButtonOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        harness.mount()
+        await harness.settle()
+
+        XCTAssertNil(findMountedFormattingButton())
+        harness.dispose()
+    }
+
     func testMountedViewCloseShortcutEventClosesReadModeNote() async throws {
         let harness = await MountedNotesDetailHarness()
         harness.mount()
@@ -106,5 +130,35 @@ final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
             harness.dispose()
         }
     }
+}
+
+@MainActor
+private func findMountedFormattingButton() -> NSButton? {
+    for window in NotesDetailViewTestRetainer.hostingWindows {
+        guard let contentView = window.contentView else { continue }
+        if let match = findDescendantView(in: contentView, identifier: "note-formatting-menu") as? NSButton {
+            return match
+        }
+    }
+
+    return nil
+}
+
+@MainActor
+private func findDescendantView(
+    in view: NSView,
+    identifier: String
+) -> NSView? {
+    if view.identifier?.rawValue == identifier {
+        return view
+    }
+
+    for subview in view.subviews {
+        if let match = findDescendantView(in: subview, identifier: identifier) {
+            return match
+        }
+    }
+
+    return nil
 }
 #endif
