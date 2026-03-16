@@ -1,0 +1,100 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sidebar
+          POSTGRES_PASSWORD: sidebar_dev
+          POSTGRES_DB: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U sidebar -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TESTING: "1"
+      AUTH_DEV_MODE: "true"
+      TEST_USER_ID: "test-user-id"
+      DATABASE_URL: "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.6.0"
+          enable-cache: true
+
+      - name: Install dependencies
+        working-directory: backend
+        run: uv sync --dev --frozen
+
+      - name: Create test database
+        working-directory: backend
+        run: |
+          uv run python - <<'PY'
+          import psycopg2
+          conn = psycopg2.connect("postgresql://sidebar:sidebar_dev@localhost:5433/postgres")
+          conn.autocommit = True
+          with conn.cursor() as cur:
+              cur.execute("SELECT 1 FROM pg_database WHERE datname = 'sidebar_test'")
+              if cur.fetchone() is None:
+                  cur.execute("CREATE DATABASE sidebar_test OWNER sidebar")
+          conn.close()
+          PY
+
+      - name: Add Supabase auth.uid shim for vanilla Postgres
+        working-directory: backend
+        run: |
+          uv run python - <<'PY'
+          import psycopg2
+
+          conn = psycopg2.connect("postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test")
+          conn.autocommit = True
+          with conn.cursor() as cur:
+              cur.execute("CREATE SCHEMA IF NOT EXISTS auth")
+              cur.execute(
+                  """
+                  CREATE OR REPLACE FUNCTION auth.uid()
+                  RETURNS uuid
+                  LANGUAGE sql
+                  STABLE
+                  AS $$
+                    SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid
+                  $$;
+                  """
+              )
+          conn.close()
+          PY
+
+      - name: Apply migrations
+        working-directory: backend
+        run: DATABASE_URL_DIRECT="${DATABASE_URL}" uv run alembic -c api/alembic.ini upgrade head
+
+      - name: Run tests
+        working-directory: backend
+        run: uv run pytest -m "not integration"
