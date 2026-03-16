@@ -179,6 +179,14 @@ if [[ -n "${IOS_TEST_PLAN}" ]]; then
 fi
 
 if [[ -n "${IOS_RESULT_BUNDLE_PATH}" ]]; then
+  if [[ "${IOS_RESULT_BUNDLE_PATH}" == "/" ]]; then
+    echo "Error: IOS_RESULT_BUNDLE_PATH cannot be '/'."
+    exit 1
+  fi
+  if [[ -e "${IOS_RESULT_BUNDLE_PATH}" ]]; then
+    echo "Removing existing result bundle at ${IOS_RESULT_BUNDLE_PATH}..."
+    rm -rf "${IOS_RESULT_BUNDLE_PATH}"
+  fi
   mkdir -p "$(dirname "${IOS_RESULT_BUNDLE_PATH}")"
   XCODEBUILD_ARGS+=(-resultBundlePath "${IOS_RESULT_BUNDLE_PATH}")
 fi

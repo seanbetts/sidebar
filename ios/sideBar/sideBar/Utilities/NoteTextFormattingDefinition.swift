@@ -137,19 +137,30 @@ private struct NormalizeInlineFonts: AttributedTextValueConstraint {
         italic: Bool,
         inlineCode: Bool
     ) -> Font {
-        let design: Font.Design = noteUsesMonospacedDesign(
-            blockType: blockType,
-            inlineCode: inlineCode
-        ) ? .monospaced : .default
-        var font = Font.system(
-            size: noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType),
-            weight: bold ? .bold : .regular,
-            design: design
+        let traits = noteResolvedInlineFormattingTraits(
+            NoteInlineFormattingTraits(
+                bold: bold,
+                italic: italic,
+                monospaced: inlineCode
+            ),
+            blockType: blockType
         )
-        if italic {
-            font = font.italic()
+        let design: Font.Design = traits.monospaced ? .monospaced : .default
+        let baseSize = noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType)
+        var resolvedFont: Font
+        if let style = NoteTextStyle(blockType: blockType), !traits.monospaced {
+            resolvedFont = NoteTextStyleTypography.font(for: style, baseFontSize: baseFontSize)
+        } else {
+            resolvedFont = Font.system(
+                size: baseSize,
+                weight: traits.bold ? .bold : .regular,
+                design: design
+            )
         }
-        return font
+        if traits.italic {
+            resolvedFont = resolvedFont.italic()
+        }
+        return resolvedFont
     }
 
 }
@@ -191,7 +202,10 @@ private extension NoteTextFormattingDefinition {
         from run: AttributedString.Runs.Run,
         blockType: NotesSemanticDocument.BlockType
     ) -> NoteInlineFormattingTraits {
-        noteSemanticInlineFormattingTraits(from: run.attributes, blockType: blockType)
+        noteSemanticInlineFormattingTraitsFromSwiftUIFont(
+            from: run.attributes,
+            blockType: blockType
+        )
     }
 
     func attributedRange(
@@ -210,19 +224,30 @@ private extension NoteTextFormattingDefinition {
         italic: Bool,
         inlineCode: Bool
     ) -> Font {
-        let design: Font.Design = noteUsesMonospacedDesign(
-            blockType: blockType,
-            inlineCode: inlineCode
-        ) ? .monospaced : .default
-        var font = Font.system(
-            size: noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType),
-            weight: bold ? .bold : .regular,
-            design: design
+        let traits = noteResolvedInlineFormattingTraits(
+            NoteInlineFormattingTraits(
+                bold: bold,
+                italic: italic,
+                monospaced: inlineCode
+            ),
+            blockType: blockType
         )
-        if italic {
-            font = font.italic()
+        let design: Font.Design = traits.monospaced ? .monospaced : .default
+        let baseSize = noteBlockPointSize(baseFontSize: baseFontSize, blockType: blockType)
+        var resolvedFont: Font
+        if let style = NoteTextStyle(blockType: blockType), !traits.monospaced {
+            resolvedFont = NoteTextStyleTypography.font(for: style, baseFontSize: baseFontSize)
+        } else {
+            resolvedFont = Font.system(
+                size: baseSize,
+                weight: traits.bold ? .bold : .regular,
+                design: design
+            )
         }
-        return font
+        if traits.italic {
+            resolvedFont = resolvedFont.italic()
+        }
+        return resolvedFont
     }
 
     func blockType(

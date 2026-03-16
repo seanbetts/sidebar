@@ -39,10 +39,8 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
     func testExecuteUpdateRoundTripsQueuedSemanticDocumentToStore() async throws {
         let document = NotesSemanticDocument(
             blocks: [
-                .paragraph([
-                    .init(text: "Round-trip", marks: [.bold]),
-                    .init(text: " body", marks: [])
-                ])
+                .init(type: .title, content: [.init(text: "Round-trip body", marks: [])]),
+                .paragraph([.init(text: "Queued follow-up", marks: [.bold])])
             ]
         )
 
@@ -54,14 +52,14 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
 
         XCTAssertEqual(store.appliedNotes.count, 1)
         XCTAssertEqual(store.appliedNotes[0].document, document)
-        XCTAssertEqual(store.appliedNotes[0].plainText, "Round-trip body")
+        XCTAssertEqual(store.appliedNotes[0].plainText, "Round-trip body\nQueued follow-up")
         XCTAssertEqual(store.appliedNotes[0].name, "Round-trip body")
     }
 
     func testExecuteUpdateDerivesProjectedTitleAndPlainTextFromQueuedSemanticDocument() async throws {
         let document = NotesSemanticDocument(
             blocks: [
-                .paragraph([.init(text: "# Queued Title", marks: [])]),
+                .init(type: .title, content: [.init(text: "Queued Title", marks: [])]),
                 .paragraph([.init(text: "Body line", marks: [.italic])])
             ]
         )
@@ -75,7 +73,7 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
         XCTAssertEqual(api.updatedDocuments, [document])
         XCTAssertEqual(store.appliedNotes.count, 1)
         XCTAssertEqual(store.appliedNotes[0].name, "Queued Title")
-        XCTAssertEqual(store.appliedNotes[0].plainText, "# Queued Title\nBody line")
+        XCTAssertEqual(store.appliedNotes[0].plainText, "Queued Title\nBody line")
     }
 }
 

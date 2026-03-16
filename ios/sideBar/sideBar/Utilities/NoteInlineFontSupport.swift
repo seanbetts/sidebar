@@ -234,6 +234,17 @@ func noteSemanticInlineFormattingTraits(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func noteSemanticInlineFormattingTraitsFromSwiftUIFont(
+    from attributes: AttributeContainer,
+    blockType: NotesSemanticDocument.BlockType?
+) -> NoteInlineFormattingTraits {
+    noteSemanticInlineFormattingTraits(
+        noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: attributes)),
+        blockType: blockType
+    )
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 func noteExplicitPlatformFont(from attributes: AttributeContainer) -> NotePlatformFont? {
     #if os(iOS)
     attributes[AttributeScopes.UIKitAttributes.FontAttribute.self]
@@ -261,6 +272,19 @@ func notePlatformFontTraits(from font: NotePlatformFont) -> NoteInlineFormatting
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+func noteResolvedInlineFormattingTraits(
+    _ traits: NoteInlineFormattingTraits,
+    blockType: NotesSemanticDocument.BlockType?
+) -> NoteInlineFormattingTraits {
+    let defaults = noteDefaultInlineFormattingTraits(for: blockType)
+    return NoteInlineFormattingTraits(
+        bold: defaults.bold || traits.bold,
+        italic: traits.italic,
+        monospaced: defaults.monospaced || traits.monospaced
+    )
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 private func noteSemanticInlineFormattingTraits(
     _ traits: NoteInlineFormattingTraits,
     blockType: NotesSemanticDocument.BlockType?
@@ -274,7 +298,7 @@ private func noteSemanticInlineFormattingTraits(
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func noteDefaultInlineFormattingTraits(
+func noteDefaultInlineFormattingTraits(
     for blockType: NotesSemanticDocument.BlockType?
 ) -> NoteInlineFormattingTraits {
     switch blockType {

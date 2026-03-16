@@ -64,10 +64,19 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
             range: range
         )
         content[range].font = nil
+        content[range].noteBlock = NotesSemanticDocument.BlockType.paragraph.rawValue
 
         NoteTextFormattingDefinition(baseFontSize: 20).constrainDocument(&content)
 
         XCTAssertFalse(noteRangeHasBoldTrait(content, range: range))
+        XCTAssertEqual(
+            NotesAttributedDocumentCodec.document(from: content),
+            NotesSemanticDocument(
+                blocks: [
+                    .init(type: .title, content: [.init(text: "hello", marks: [])])
+                ]
+            )
+        )
     }
 
     func testConstrainDocumentPreservesAppOwnedBlockMarkerWhileRemovingPlatformListIntent() {
