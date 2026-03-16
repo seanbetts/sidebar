@@ -20,6 +20,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentPendingWebsiteQueueTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/AppEnvironmentDeepLinkAuthStateTests.swift",
       "bucket": "surface",
       "feature_area": "app_shell",
@@ -860,6 +866,12 @@
       "branch_policy": "main"
     },
     {
+      "path": "ios/sideBar/sideBarTests/SettingsViewModelSessionScopeSaveTests.swift",
+      "bucket": "surface",
+      "feature_area": "settings",
+      "branch_policy": "main"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/SettingsViewModelStoreInstallTests.swift",
       "bucket": "surface",
       "feature_area": "settings",
@@ -999,6 +1011,12 @@
     },
     {
       "path": "ios/sideBar/sideBarTests/TasksViewModelRecurringToastTests.swift",
+      "bucket": "surface",
+      "feature_area": "tasks",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/TasksViewModelNewTaskDefaultsTests.swift",
       "bucket": "surface",
       "feature_area": "tasks",
       "branch_policy": "main"
