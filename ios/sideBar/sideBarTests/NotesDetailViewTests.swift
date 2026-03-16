@@ -100,6 +100,31 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertNil(context.notesViewModel.activeNote)
     }
 
+    func testRequestCloseNoteCollapsesWorkspaceStateAfterClose() async {
+        let defaults = UserDefaults.standard
+        defaults.set(true, forKey: AppStorageKeys.workspaceExpanded)
+        #if os(iOS)
+        defaults.set(true, forKey: AppStorageKeys.workspaceExpandedByRotation)
+        #endif
+        defer {
+            defaults.removeObject(forKey: AppStorageKeys.workspaceExpanded)
+            #if os(iOS)
+            defaults.removeObject(forKey: AppStorageKeys.workspaceExpandedByRotation)
+            #endif
+        }
+
+        let context = await makeNotesDetailViewTestContext()
+        context.makeView().requestCloseNote()
+        await waitUntil {
+            context.notesViewModel.activeNote == nil
+        }
+
+        XCTAssertFalse(defaults.bool(forKey: AppStorageKeys.workspaceExpanded))
+        #if os(iOS)
+        XCTAssertFalse(defaults.bool(forKey: AppStorageKeys.workspaceExpandedByRotation))
+        #endif
+    }
+
     func testHandleCloseShortcutSyncsUnsavedEditorContentBeforeReturningToReadMode() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")

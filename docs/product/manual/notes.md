@@ -32,7 +32,8 @@ Create a new note from the menu. A note's title comes from its first line, so
 whatever you write first becomes the title, no separate naming step required.
 Changes save automatically as you write; a **Saved** indicator appears briefly
 to confirm each save. The editor remembers your cursor position, so when you
-come back to a note it's exactly where you left off.
+come back to a note it's exactly where you left off. On iPad, closing a note
+also exits the expanded note view and returns you to the normal split layout.
 
 ## Formatting
 

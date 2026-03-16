@@ -32,6 +32,10 @@ struct WorkspaceRotationPlan: Equatable {
     let isWorkspaceExpanded: Bool?
     let isWorkspaceExpandedByRotation: Bool?
 }
+struct WorkspaceItemClosePlan: Equatable {
+    let isWorkspaceExpanded: Bool
+    let isWorkspaceExpandedByRotation: Bool
+}
 enum WorkspaceBehaviorPolicy {
     static func makeWorkspaceExpandedChangePlan(
         isExpanded: Bool,
@@ -108,6 +112,16 @@ enum WorkspaceBehaviorPolicy {
     ) -> Bool {
         guard workspaceColumn == .primary else { return false }
         return !isPhoneIdiom
+    }
+
+    static func makeWorkspaceItemClosePlan(
+        isWorkspaceExpanded: Bool,
+        isWorkspaceExpandedByRotation: Bool
+    ) -> WorkspaceItemClosePlan {
+        WorkspaceItemClosePlan(
+            isWorkspaceExpanded: false,
+            isWorkspaceExpandedByRotation: false
+        )
     }
 }
 

@@ -39,7 +39,7 @@ struct WebsitesDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onKeyPress(.escape) {
             guard viewModel.active != nil else { return .ignored }
-            viewModel.clearSelection()
+            closeWebsite()
             return .handled
         }
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
@@ -51,7 +51,7 @@ struct WebsitesDetailView: View {
             switch event.action {
             case .closeItem:
                 guard viewModel.active != nil else { return }
-                viewModel.clearSelection()
+                closeWebsite()
             case .renameItem:
                 guard viewModel.active != nil else { return }
                 renameValue = displayTitle
@@ -300,7 +300,7 @@ extension WebsitesDetailView {
         HeaderActionButton(
             systemName: "xmark",
             accessibilityLabel: "Close website",
-            action: { viewModel.clearSelection() },
+            action: closeWebsite,
             isDisabled: viewModel.active == nil
         )
         .keyboardShortcut(.escape, modifiers: [])

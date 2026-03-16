@@ -229,4 +229,49 @@ final class ContentViewWorkspaceBehaviorTests: XCTestCase {
             )
         )
     }
+
+    func testWorkspaceBehaviorPolicyItemCloseCollapsesManualExpandedMode() {
+        let plan = WorkspaceBehaviorPolicy.makeWorkspaceItemClosePlan(
+            isWorkspaceExpanded: true,
+            isWorkspaceExpandedByRotation: false
+        )
+
+        XCTAssertEqual(
+            plan,
+            WorkspaceItemClosePlan(
+                isWorkspaceExpanded: false,
+                isWorkspaceExpandedByRotation: false
+            )
+        )
+    }
+
+    func testWorkspaceBehaviorPolicyItemCloseCollapsesRotationExpandedMode() {
+        let plan = WorkspaceBehaviorPolicy.makeWorkspaceItemClosePlan(
+            isWorkspaceExpanded: true,
+            isWorkspaceExpandedByRotation: true
+        )
+
+        XCTAssertEqual(
+            plan,
+            WorkspaceItemClosePlan(
+                isWorkspaceExpanded: false,
+                isWorkspaceExpandedByRotation: false
+            )
+        )
+    }
+
+    func testWorkspaceBehaviorPolicyItemCloseLeavesCollapsedWorkspaceCollapsed() {
+        let plan = WorkspaceBehaviorPolicy.makeWorkspaceItemClosePlan(
+            isWorkspaceExpanded: false,
+            isWorkspaceExpandedByRotation: false
+        )
+
+        XCTAssertEqual(
+            plan,
+            WorkspaceItemClosePlan(
+                isWorkspaceExpanded: false,
+                isWorkspaceExpandedByRotation: false
+            )
+        )
+    }
 }

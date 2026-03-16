@@ -90,7 +90,8 @@ to delete it.
 
 Open any saved page to see its full content. Tap the page title to open the
 original URL in your default browser. Text is selectable if you want to copy
-a passage.
+a passage. On iPad, closing a page also exits the expanded reading view and
+returns you to the normal split layout.
 
 ## Working with sideBar on a Page
 

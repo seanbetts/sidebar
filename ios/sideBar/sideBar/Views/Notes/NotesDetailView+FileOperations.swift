@@ -92,11 +92,4 @@ extension NotesDetailView {
         SystemSharePresenter.share(text: text)
     }
 
-    func requestCloseNote() {
-        Task {
-            await editorViewModel.saveIfNeeded()
-            viewModel.clearSelection()
-        }
-    }
-
 }

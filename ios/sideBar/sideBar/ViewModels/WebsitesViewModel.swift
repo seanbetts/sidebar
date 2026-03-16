@@ -46,7 +46,7 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public internal(set) var isLoading: Bool = false
     @Published public internal(set) var isLoadingDetail: Bool = false
     @Published public internal(set) var isLoadingArchived: Bool = false
-    private var lastForcedLoadAt: Date?
+    var lastForcedLoadAt: Date?
     private let minForcedLoadInterval: TimeInterval = 30
     @Published public var panelSearchQuery: String = ""
     @Published public internal(set) var errorMessage: String?
