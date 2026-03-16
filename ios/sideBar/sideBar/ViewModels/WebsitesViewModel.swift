@@ -46,6 +46,8 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public internal(set) var isLoading: Bool = false
     @Published public internal(set) var isLoadingDetail: Bool = false
     @Published public internal(set) var isLoadingArchived: Bool = false
+    private var lastForcedLoadAt: Date?
+    private let minForcedLoadInterval: TimeInterval = 30
     @Published public var panelSearchQuery: String = ""
     @Published public internal(set) var errorMessage: String?
     @Published public internal(set) var isSavingWebsite: Bool = false
@@ -155,12 +157,21 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func load(force: Bool = false) async {
+        var effectiveForce = force
+        if force {
+            let now = Date()
+            if let last = lastForcedLoadAt, now.timeIntervalSince(last) < minForcedLoadInterval {
+                effectiveForce = false
+            } else {
+                lastForcedLoadAt = now
+            }
+        }
         if items.isEmpty {
             isLoading = true
         }
         errorMessage = nil
         do {
-            try await store.loadList(force: force)
+            try await store.loadList(force: effectiveForce)
         } catch {
             if items.isEmpty {
                 errorMessage = ErrorMapping.message(for: error)

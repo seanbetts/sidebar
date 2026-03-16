@@ -111,6 +111,48 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
         XCTAssertEqual(api.updatedDocuments, [document])
         XCTAssertEqual(store.appliedNotes, api.updatedNotes)
     }
+
+    func testExecuteMovePrefersLocalQueuedMoveWhenServerSnapshotIsStale() async throws {
+        let api = NotesWriteQueueExecutorAPISpy()
+        api.fetchedNote = NotePayload(
+            id: "note-5",
+            name: "Server",
+            content: "Server copy",
+            path: "/folder/note-5.md",
+            modified: 200,
+            created: nil
+        )
+        let store = NotesWriteQueueExecutorStoreSpy()
+        let executor = NotesWriteQueueExecutor(api: api, store: store)
+        let serverSnapshot = ServerSnapshot(
+            entityType: .note,
+            entityId: "note-5",
+            capturedAt: Date(),
+            payload: .note(
+                NoteSnapshot(
+                    modified: 100,
+                    name: "Server",
+                    path: "/folder/note-5.md",
+                    pinned: nil,
+                    pinnedOrder: nil,
+                    archived: nil
+                )
+            )
+        )
+        let write = try queuedMoveWrite(
+            noteId: "note-5",
+            folder: "archive",
+            serverSnapshot: serverSnapshot
+        )
+
+        try await executor.execute(write: write)
+
+        XCTAssertEqual(api.movedNotes.count, 1)
+        XCTAssertEqual(api.movedNotes.first?.id, "note-5")
+        XCTAssertEqual(api.movedNotes.first?.folder, "archive")
+        XCTAssertEqual(store.appliedNotes, api.moveResults)
+        XCTAssertEqual(store.loadTreeCallCount, 1)
+    }
 }
 
 @MainActor
@@ -123,6 +165,24 @@ private func queuedUpdateWrite(
     return PendingWriteRecord(
         id: UUID(),
         operationType: WriteOperation.update.rawValue,
+        entityType: WriteEntityType.note.rawValue,
+        entityId: noteId,
+        payload: payload,
+        serverSnapshot: try serverSnapshot.map { try JSONEncoder().encode($0) },
+        attempts: 0
+    )
+}
+
+@MainActor
+private func queuedMoveWrite(
+    noteId: String,
+    folder: String,
+    serverSnapshot: ServerSnapshot? = nil
+) throws -> PendingWriteRecord {
+    let payload = try JSONEncoder().encode(MoveRequest(folder: folder))
+    return PendingWriteRecord(
+        id: UUID(),
+        operationType: WriteOperation.move.rawValue,
         entityType: WriteEntityType.note.rawValue,
         entityId: noteId,
         payload: payload,
@@ -157,8 +217,11 @@ private final class NotesWriteQueueExecutorStoreSpy: NotesWriteQueueApplying {
 
 @MainActor
 private final class NotesWriteQueueExecutorAPISpy: NotesProviding {
+    var fetchedNote: NotePayload?
     private(set) var updatedDocuments: [NotesSemanticDocument] = []
     private(set) var updatedNotes: [NotePayload] = []
+    private(set) var movedNotes: [(id: String, folder: String)] = []
+    private(set) var moveResults: [NotePayload] = []
 
     func listTree() async throws -> FileTree {
         throw NotesWriteQueueExecutorTestError.forced
@@ -172,7 +235,10 @@ private final class NotesWriteQueueExecutorAPISpy: NotesProviding {
 
     func getNote(id: String) async throws -> NotePayload {
         _ = id
-        throw NotesWriteQueueExecutorTestError.forced
+        guard let fetchedNote else {
+            throw NotesWriteQueueExecutorTestError.forced
+        }
+        return fetchedNote
     }
 
     func search(query: String, limit: Int) async throws -> [FileNode] {
@@ -222,9 +288,17 @@ private final class NotesWriteQueueExecutorAPISpy: NotesProviding {
     }
 
     func moveNote(id: String, folder: String) async throws -> NotePayload {
-        _ = id
-        _ = folder
-        throw NotesWriteQueueExecutorTestError.forced
+        movedNotes.append((id, folder))
+        let note = NotePayload(
+            id: id,
+            name: "Moved",
+            content: "Moved body",
+            path: "/\(folder)/\(id).md",
+            modified: nil,
+            created: nil
+        )
+        moveResults.append(note)
+        return note
     }
 
     func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
