@@ -210,14 +210,27 @@ extension AppEnvironment {
         isConsumingPendingShares = true
         defer { isConsumingPendingShares = false }
 
-        let pending = storage.pendingShareStore.loadAll()
-        websitesViewModel.syncPendingWebsitesFromQueuedShares(pending)
-        guard !pending.isEmpty else { return }
-        guard !connectivityMonitor.isOffline else { return }
+        guard !connectivityMonitor.isOffline else {
+            let pending = storage.pendingShareStore.loadAll()
+            websitesViewModel.syncPendingWebsitesFromQueuedShares(pending)
+            return
+        }
 
-        let retainedItems = await processPendingShares(pending)
-        storage.pendingShareStore.replaceAll(retainedItems)
-        websitesViewModel.syncPendingWebsitesFromQueuedShares(retainedItems)
+        var pending = storage.pendingShareStore.loadAll()
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(pending)
+
+        while !pending.isEmpty {
+            let retainedItems = await processPendingShares(pending)
+            let reconciled = reconcilePendingShareResults(
+                processedSnapshot: pending,
+                retainedItems: retainedItems
+            )
+            storage.pendingShareStore.replaceAll(reconciled.items)
+            websitesViewModel.syncPendingWebsitesFromQueuedShares(reconciled.items)
+
+            guard reconciled.hadConcurrentQueuedItems else { break }
+            pending = reconciled.items
+        }
     }
 
     public func retryPendingQueuedWebsite(_ queueItemId: UUID) async {
@@ -374,5 +387,18 @@ extension AppEnvironment {
                 return true
             }
         )
+    }
+
+    private func reconcilePendingShareResults(
+        processedSnapshot: [PendingShareItem],
+        retainedItems: [PendingShareItem]
+    ) -> (items: [PendingShareItem], hadConcurrentQueuedItems: Bool) {
+        let processedIds = Set(processedSnapshot.map(\.id))
+        let retainedIds = Set(retainedItems.map(\.id))
+        let latestItems = storage.pendingShareStore.loadAll()
+        let concurrentItems = latestItems.filter { item in
+            !processedIds.contains(item.id) && !retainedIds.contains(item.id)
+        }
+        return (retainedItems + concurrentItems, !concurrentItems.isEmpty)
     }
 }
