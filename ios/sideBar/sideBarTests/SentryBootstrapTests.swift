@@ -1,4 +1,5 @@
 import XCTest
+import Sentry
 import sideBarShared
 @testable import sideBar
 
@@ -201,6 +202,63 @@ final class SentryBootstrapTests: XCTestCase {
         XCTAssertTrue(firstStart)
         XCTAssertFalse(secondStart)
         XCTAssertEqual(client.startCallCount, 1)
+    }
+
+    func testFilteredBreadcrumbKeepsAutomaticHTTPBreadcrumbWithoutMessage() {
+        let breadcrumb = Breadcrumb()
+        breadcrumb.category = "http"
+        breadcrumb.data = [
+            "method": "GET",
+            "url": "https://api.example.com/health"
+        ]
+
+        let filtered = SentryBootstrap.filteredBreadcrumb(breadcrumb)
+
+        XCTAssertNotNil(filtered)
+        XCTAssertEqual(filtered?.category, "http")
+    }
+
+    func testFilteredBreadcrumbDropsBreadcrumbWithoutMessageCategoryOrData() {
+        let breadcrumb = Breadcrumb()
+
+        let filtered = SentryBootstrap.filteredBreadcrumb(breadcrumb)
+
+        XCTAssertNil(filtered)
+    }
+
+    func testStartIfConfiguredFlushesBufferedStartupBreadcrumbs() {
+        let client = RecordingSentryBootstrapClient()
+        let recorder = RecordingAppSentryRecorder()
+
+        SentryBootstrap.recordStartupBreadcrumb(
+            name: "Config load",
+            data: ["duration_ms": "18"],
+            recorder: recorder
+        )
+
+        XCTAssertTrue(recorder.breadcrumbs.isEmpty)
+
+        let didStart = SentryBootstrap.startIfConfigured(
+            config: makeConfig(sentryDsn: "https://example@sentry.io/123"),
+            isDebugBuild: false,
+            isRunningTestsOrPreviews: false,
+            bundle: TestSentryBundleInfo(),
+            client: client,
+            recorder: recorder
+        )
+
+        XCTAssertTrue(didStart)
+        XCTAssertEqual(
+            recorder.breadcrumbs,
+            [
+                BreadcrumbRecord(
+                    level: "info",
+                    category: "startup",
+                    message: "Config load",
+                    data: ["duration_ms": "18"]
+                )
+            ]
+        )
     }
 
     private func makeConfig(sentryDsn: String?) -> EnvironmentConfig {

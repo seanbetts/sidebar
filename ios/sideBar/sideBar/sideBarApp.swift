@@ -40,6 +40,10 @@ struct SideBarApp: App {
         let logStep: (String, Double, Double) -> Void = { name, start, end in
             let elapsedMs = Int((end - start) * 1000)
             logger.info("\(name, privacy: .public) took \(elapsedMs, privacy: .public)ms")
+            SentryBootstrap.recordStartupBreadcrumb(
+                name: name,
+                data: ["duration_ms": String(elapsedMs)]
+            )
         }
 
         let config: EnvironmentConfig

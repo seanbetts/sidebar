@@ -30,8 +30,14 @@ enum SentryBootstrap {
         let tracePropagationTargets: [String]
     }
 
+    private struct PendingStartupBreadcrumb {
+        let name: String
+        let data: [String: String]
+    }
+
     private static let stateLock = NSLock()
     private static var hasStarted = false
+    private static var pendingStartupBreadcrumbs: [PendingStartupBreadcrumb] = []
 
     static var isStarted: Bool {
         stateLock.lock()
@@ -45,7 +51,8 @@ enum SentryBootstrap {
         isDebugBuild: Bool = defaultIsDebugBuild,
         isRunningTestsOrPreviews: Bool = EnvironmentConfig.isRunningTestsOrPreviews(),
         bundle: SentryBundleInfo = Bundle.main,
-        client: SentryBootstrapClient = DefaultSentryBootstrapClient.shared
+        client: SentryBootstrapClient = DefaultSentryBootstrapClient.shared,
+        recorder: AppSentryRecording = DefaultAppSentryRecorder.shared
     ) -> Bool {
         guard let options = makeOptions(
             config: config,
@@ -57,13 +64,17 @@ enum SentryBootstrap {
         }
 
         stateLock.lock()
-        defer { stateLock.unlock() }
         guard hasStarted == false else {
+            stateLock.unlock()
             return false
         }
 
         client.start(options: options)
         hasStarted = true
+        let pending = pendingStartupBreadcrumbs
+        pendingStartupBreadcrumbs.removeAll()
+        stateLock.unlock()
+        flushStartupBreadcrumbs(pending, recorder: recorder)
         return true
     }
 
@@ -111,7 +122,50 @@ enum SentryBootstrap {
     static func resetForTesting() {
         stateLock.lock()
         hasStarted = false
+        pendingStartupBreadcrumbs.removeAll()
         stateLock.unlock()
+    }
+
+    static func filteredBreadcrumb(_ breadcrumb: Breadcrumb) -> Breadcrumb? {
+        let message = breadcrumb.message?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let category = breadcrumb.category.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasMeaningfulCategory = !category.isEmpty && category != "default"
+        let hasData = !(breadcrumb.data?.isEmpty ?? true)
+
+        guard (message?.isEmpty == false) || hasMeaningfulCategory || hasData else {
+            return nil
+        }
+
+        breadcrumb.message = message?.isEmpty == false ? message : nil
+        breadcrumb.category = category
+        return breadcrumb
+    }
+
+    static func recordStartupBreadcrumb(
+        name: String,
+        data: [String: String] = [:],
+        recorder: AppSentryRecording = DefaultAppSentryRecorder.shared
+    ) {
+        stateLock.lock()
+        if hasStarted == false {
+            pendingStartupBreadcrumbs.append(
+                PendingStartupBreadcrumb(
+                    name: name,
+                    data: data
+                )
+            )
+            stateLock.unlock()
+            return
+        }
+        stateLock.unlock()
+
+        AppSentry.recordAction(
+            category: "startup",
+            name: name,
+            data: data,
+            recorder: recorder,
+            isEnabled: true
+        )
     }
 
     private static func tracePropagationTargets(config: EnvironmentConfig) -> [String] {
@@ -121,6 +175,22 @@ enum SentryBootstrap {
             targets.append(host)
         }
         return targets
+    }
+
+    private static func flushStartupBreadcrumbs(
+        _ breadcrumbs: [PendingStartupBreadcrumb],
+        recorder: AppSentryRecording
+    ) {
+        guard !breadcrumbs.isEmpty else { return }
+        for breadcrumb in breadcrumbs {
+            AppSentry.recordAction(
+                category: "startup",
+                name: breadcrumb.name,
+                data: breadcrumb.data,
+                recorder: recorder,
+                isEnabled: true
+            )
+        }
     }
 }
 
@@ -139,11 +209,7 @@ private final class DefaultSentryBootstrapClient: SentryBootstrapClient {
             sdkOptions.enableNetworkTracking = options.enableNetworkTracking
             sdkOptions.tracePropagationTargets = options.tracePropagationTargets
             sdkOptions.beforeBreadcrumb = { breadcrumb in
-                guard let message = breadcrumb.message?.trimmingCharacters(in: .whitespacesAndNewlines),
-                      message.isEmpty == false else {
-                    return nil
-                }
-                return breadcrumb
+                SentryBootstrap.filteredBreadcrumb(breadcrumb)
             }
         }
     }
