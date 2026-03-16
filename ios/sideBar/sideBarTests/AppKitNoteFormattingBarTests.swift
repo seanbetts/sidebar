@@ -183,6 +183,8 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
 
         XCTAssertEqual(try XCTUnwrap(glassView.layer?.borderWidth), 1, accuracy: 0.01)
         XCTAssertNotNil(glassView.layer?.borderColor)
+        XCTAssertEqual(try XCTUnwrap(glassView.layer?.cornerRadius), 18, accuracy: 0.01)
+        XCTAssertTrue(try XCTUnwrap(glassView.layer?.masksToBounds))
     }
 
     func testFormattingPopoverUsesLiquidGlassBackgroundOnMacOS() async throws {

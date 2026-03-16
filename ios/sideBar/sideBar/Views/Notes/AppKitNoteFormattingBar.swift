@@ -197,8 +197,11 @@ private extension AppKitNoteFormattingBar {
 
     func applyGlassChrome() {
         guard let layer = barContainerView.layer else { return }
+        layer.cornerRadius = barContainerView.cornerRadius
+        layer.cornerCurve = .continuous
         layer.borderWidth = 1
         layer.borderColor = glassBorderColor.cgColor
+        layer.masksToBounds = true
     }
 
     var glassBorderColor: NSColor {
