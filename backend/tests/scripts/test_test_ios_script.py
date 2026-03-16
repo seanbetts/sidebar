@@ -171,7 +171,8 @@ def test_default_scheme_uses_canonical_sidebar_app_tests(tmp_path: Path) -> None
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "Running Apple tests for scheme sideBar " in result.stdout
+    assert "Routing Apple tests from scheme sideBar to sideBarLogicHost" in result.stdout
+    assert "Running Apple tests for scheme sideBarLogicHost " in result.stdout
 
 
 def test_ui_only_lane_fails_when_backend_config_is_missing(tmp_path: Path) -> None:
@@ -550,6 +551,105 @@ def test_skip_package_resolution_mode_runs_tests_without_explicit_resolve(
     assert len(log_lines) == 1
     assert "-resolvePackageDependencies" not in log_lines[0]
     assert " test" in log_lines[0]
+
+
+def test_transient_simulator_runner_crash_retries_test_action(tmp_path: Path) -> None:
+    """Known simulator-host crashes should trigger one full xcodebuild test retry."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+    test_attempts = tmp_path / "test-attempts.txt"
+
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$*\" >> \"{xcodebuild_log}\"\n"
+        "if [[ \"$*\" == *\"-resolvePackageDependencies\"* ]]; then\n"
+        "  exit 0\n"
+        "fi\n"
+        f"attempt=$(cat \"{test_attempts}\" 2>/dev/null || echo 0)\n"
+        "attempt=$((attempt + 1))\n"
+        f"printf '%s' \"$attempt\" > \"{test_attempts}\"\n"
+        "if [[ \"$attempt\" -eq 1 ]]; then\n"
+        "  cat <<'EOF'\n"
+        "Testing failed:\n"
+        "    The operation couldn’t be completed. (Mach error -308 - (ipc/mig) server died)\n"
+        "    sideBar encountered an error (Failed to install or launch the test runner. "
+        "(Underlying Error: The operation couldn’t be completed. "
+        "(Mach error -308 - (ipc/mig) server died)))\n"
+        "EOF\n"
+        "  exit 65\n"
+        "fi\n"
+        "exit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_DESTINATION": "platform=iOS Simulator,name=iPhone 17 Pro",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+        }
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    log_lines = xcodebuild_log.read_text().splitlines()
+    assert len(log_lines) == 3
+    assert sum(" test" in line for line in log_lines) == 2
+    assert "Detected transient simulator infrastructure failure" in result.stdout
+
+
+def test_non_transient_simulator_failures_do_not_retry_test_action(tmp_path: Path) -> None:
+    """Ordinary test failures should still fail immediately without rerunning xcodebuild."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$*\" >> \"{xcodebuild_log}\"\n"
+        "if [[ \"$*\" == *\"-resolvePackageDependencies\"* ]]; then\n"
+        "  exit 0\n"
+        "fi\n"
+        "cat <<'EOF'\n"
+        "Test Case '-[ShareExtensionTests.ExampleTests testFailure]' failed (0.001 seconds).\n"
+        "EOF\n"
+        "exit 65\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_DESTINATION": "platform=iOS Simulator,name=iPhone 17 Pro",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+        }
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 65, result.stdout + result.stderr
+    log_lines = xcodebuild_log.read_text().splitlines()
+    assert len(log_lines) == 2
+    assert sum(" test" in line for line in log_lines) == 1
+    assert "Detected transient simulator infrastructure failure" not in result.stdout
 
 
 def test_test_ios_script_has_no_apple_sentry_package_manager_bootstrap() -> None:

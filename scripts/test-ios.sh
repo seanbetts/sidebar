@@ -126,6 +126,8 @@ fi
 IOS_PREPARE_SIMULATOR_BEFORE_TESTS="${IOS_PREPARE_SIMULATOR_BEFORE_TESTS:-NO}"
 IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE="${IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE:-NO}"
 IOS_SIMULATOR_DIAGNOSTICS_DIR="${IOS_SIMULATOR_DIAGNOSTICS_DIR:-}"
+IOS_RETRY_TRANSIENT_SIMULATOR_FAILURES="${IOS_RETRY_TRANSIENT_SIMULATOR_FAILURES:-YES}"
+IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT="${IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT:-2}"
 IOS_TARGET_SIMULATOR_UDID=""
 
 if [[ "${SIDEBAR_PRE_PUSH_MODE}" == "YES" ]]; then
@@ -166,6 +168,13 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
   export GIT_CONFIG_GLOBAL="${ios_ci_git_config}"
 fi
 
+remove_existing_result_bundle() {
+  if [[ -n "${IOS_RESULT_BUNDLE_PATH}" && -e "${IOS_RESULT_BUNDLE_PATH}" ]]; then
+    echo "Removing existing result bundle at ${IOS_RESULT_BUNDLE_PATH}..."
+    rm -rf "${IOS_RESULT_BUNDLE_PATH}"
+  fi
+}
+
 XCODEBUILD_ARGS=(
   -project "${IOS_PROJECT}"
   -scheme "${IOS_EXECUTION_SCHEME}"
@@ -183,10 +192,7 @@ if [[ -n "${IOS_RESULT_BUNDLE_PATH}" ]]; then
     echo "Error: IOS_RESULT_BUNDLE_PATH cannot be '/'."
     exit 1
   fi
-  if [[ -e "${IOS_RESULT_BUNDLE_PATH}" ]]; then
-    echo "Removing existing result bundle at ${IOS_RESULT_BUNDLE_PATH}..."
-    rm -rf "${IOS_RESULT_BUNDLE_PATH}"
-  fi
+  remove_existing_result_bundle
   mkdir -p "$(dirname "${IOS_RESULT_BUNDLE_PATH}")"
   XCODEBUILD_ARGS+=(-resultBundlePath "${IOS_RESULT_BUNDLE_PATH}")
 fi
@@ -710,30 +716,78 @@ XCODEBUILD_ARGS+=(-disableAutomaticPackageResolution)
 
 prepare_target_simulator
 
-set +e
-xcodebuild "${XCODEBUILD_ARGS[@]}" test
-status=$?
-set -e
+is_transient_simulator_infrastructure_failure() {
+  local output_path="$1"
+  local test_results_summary="$2"
+  local build_results_summary="$3"
 
-if [[ ${status} -ne 0 ]]; then
-  collect_simulator_diagnostics
-  if [[ -n "${IOS_RESULT_BUNDLE_PATH}" && -d "${IOS_RESULT_BUNDLE_PATH}" ]]; then
-    test_results_summary="$(xcrun xcresulttool get test-results summary --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true)"
-    build_results_summary="$(xcrun xcresulttool get build-results --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true)"
+  [[ "${IOS_RETRY_TRANSIENT_SIMULATOR_FAILURES}" == "YES" ]] || return 1
+  is_ios_simulator_destination || return 1
 
-    if [[ ${status} -eq 73 ]] \
-      && [[ "${build_results_summary}" == *"\"status\":\"succeeded\""* ]] \
-      && [[ "${build_results_summary}" == *"\"errorCount\":0"* ]]; then
-      echo "xcodebuild exited 73, but xcresult reports a successful build/test action with zero errors; continuing."
-      status=0
-    else
-      echo "xcodebuild failed (exit ${status}). xcresult summary:"
-      echo "${test_results_summary}"
-      echo "${build_results_summary}"
+  local combined_output
+  combined_output="$(
+    {
+      cat "${output_path}" 2>/dev/null || true
+      printf '%s\n' "${test_results_summary}"
+      printf '%s\n' "${build_results_summary}"
+    }
+  )"
+
+  [[ "${combined_output}" == *"Failed to install or launch the test runner"* ]] || return 1
+  [[ "${combined_output}" == *"Mach error -308"* || "${combined_output}" == *"(ipc/mig) server died"* ]] || return 1
+}
+
+test_status=0
+test_attempt=1
+while [[ ${test_attempt} -le ${IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT} ]]; do
+  xcodebuild_output_file="$(mktemp "${TMPDIR:-/tmp}/sidebar-test-ios-xcodebuild.XXXXXX")"
+  set +e
+  xcodebuild "${XCODEBUILD_ARGS[@]}" test 2>&1 | tee "${xcodebuild_output_file}"
+  test_status=${PIPESTATUS[0]}
+  set -e
+
+  test_results_summary=""
+  build_results_summary=""
+  if [[ ${test_status} -ne 0 ]]; then
+    collect_simulator_diagnostics
+    if [[ -n "${IOS_RESULT_BUNDLE_PATH}" && -d "${IOS_RESULT_BUNDLE_PATH}" ]]; then
+      test_results_summary="$(xcrun xcresulttool get test-results summary --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true)"
+      build_results_summary="$(xcrun xcresulttool get build-results --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true)"
+
+      if [[ ${test_status} -eq 73 ]] \
+        && [[ "${build_results_summary}" == *"\"status\":\"succeeded\""* ]] \
+        && [[ "${build_results_summary}" == *"\"errorCount\":0"* ]]; then
+        echo "xcodebuild exited 73, but xcresult reports a successful build/test action with zero errors; continuing."
+        test_status=0
+      fi
     fi
   fi
-fi
 
-if [[ ${status} -ne 0 ]]; then
-  exit "${status}"
+  if [[ ${test_status} -eq 0 ]]; then
+    rm -f "${xcodebuild_output_file}"
+    break
+  fi
+
+  if [[ ${test_attempt} -lt ${IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT} ]] \
+    && is_transient_simulator_infrastructure_failure "${xcodebuild_output_file}" "${test_results_summary}" "${build_results_summary}"; then
+    echo "Detected transient simulator infrastructure failure (attempt ${test_attempt}/${IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT}); retrying xcodebuild test."
+    remove_existing_result_bundle
+    prepare_target_simulator
+    rm -f "${xcodebuild_output_file}"
+    test_attempt=$((test_attempt + 1))
+    continue
+  fi
+
+  if [[ -n "${test_results_summary}" || -n "${build_results_summary}" ]]; then
+    echo "xcodebuild failed (exit ${test_status}). xcresult summary:"
+    echo "${test_results_summary}"
+    echo "${build_results_summary}"
+  fi
+
+  rm -f "${xcodebuild_output_file}"
+  break
+done
+
+if [[ ${test_status} -ne 0 ]]; then
+  exit "${test_status}"
 fi
