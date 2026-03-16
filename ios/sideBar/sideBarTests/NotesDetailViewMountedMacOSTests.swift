@@ -6,6 +6,10 @@ import XCTest
 final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
     private let mountedNotesLifetimeIterations = 10
 
+    func testMacOSEditorContainerNoLongerPrefersRetiredSwiftUISurface() {
+        XCTAssertNotEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .swiftUI)
+    }
+
     @available(iOS 26.0, macOS 26.0, *)
     func testMountedEditModeRoutesThroughAppKitHostInsteadOfSwiftUISurface() async throws {
         let harness = await MountedNotesDetailHarness()

@@ -8,6 +8,7 @@ import UIKit
 struct AttributedNoteEditorContainer: View {
     enum EditorSurfaceKind: Equatable {
         case swiftUI
+        case appKit
         case uiKit
     }
 
@@ -102,7 +103,7 @@ struct AttributedNoteEditorContainer: View {
         #if os(iOS)
         .uiKit
         #else
-        .swiftUI
+        .appKit
         #endif
     }
 
@@ -165,11 +166,15 @@ struct AttributedNoteEditorContainer: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
         #else
-        SwiftUINoteTextEditorSurface(
+        AppKitNoteTextEditorSurface(
             viewModel: nativeViewModel,
             maxContentWidth: maxContentWidth,
-            isEditable: true
+            isEditable: true,
+            shouldAutofocus: autofocusEnabled
         )
+        .frame(maxWidth: maxContentWidth)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(DesignTokens.Colors.background)
         #endif
     }
 

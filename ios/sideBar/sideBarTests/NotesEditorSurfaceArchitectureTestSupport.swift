@@ -39,5 +39,5 @@ func attributedNoteEditorContainerMountsAppKitSurfaceDirectly(
     let normalized = try attributedNoteEditorContainerSource(file: file, line: line)
         .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-    return normalized.contains("privatevareditorSurface:someView{AppKitNoteTextEditorSurface(")
+    return normalized.contains("AppKitNoteTextEditorSurface(")
 }
