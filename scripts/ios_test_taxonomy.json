@@ -8,6 +8,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/AppCommandsTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/AppEnvironmentAuthCacheScopeTests.swift",
       "bucket": "logic",
       "feature_area": "app_shell",
@@ -56,10 +62,34 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentWidgetAuthPreservationTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentWidgetIntentHandoffTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/AppFontStyleTests.swift",
       "bucket": "logic",
       "feature_area": "shared_infra",
       "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppKitNoteFormattingBarTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/AppKitNoteTextEditorSurfaceTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
     },
     {
       "path": "ios/sideBar/sideBarTests/AppTextSizeOptionTests.swift",
@@ -284,6 +314,18 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/ExtensionDiagnosticsReporterTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/ExtensionSentryBootstrapTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/ExtensionUserMessageCatalogTests.swift",
       "bucket": "logic",
       "feature_area": "extensions",
@@ -306,6 +348,12 @@
       "bucket": "logic",
       "feature_area": "files",
       "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/FileViewerMountedMacOSTests.swift",
+      "bucket": "surface",
+      "feature_area": "files",
+      "branch_policy": "main"
     },
     {
       "path": "ios/sideBar/sideBarTests/FileViewerViewTests.swift",
@@ -410,6 +458,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/MacModalPresentationTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/MacWindowSceneCoverageTests.swift",
       "bucket": "surface",
       "feature_area": "app_shell",
@@ -440,10 +494,22 @@
       "branch_policy": "main"
     },
     {
+      "path": "ios/sideBar/sideBarTests/MoveTaskSheetTests.swift",
+      "bucket": "logic",
+      "feature_area": "tasks",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/NativeNoteEditorPersistenceTests.swift",
       "bucket": "surface",
       "feature_area": "notes",
       "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NativeNoteEditorViewModelBlockTransitionTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
     },
     {
       "path": "ios/sideBar/sideBarTests/NativeNoteEditorViewModelFormattingRegressionTests.swift",
@@ -467,6 +533,12 @@
       "path": "ios/sideBar/sideBarTests/NavigationStateTests.swift",
       "bucket": "logic",
       "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NoteFolderPickerSheetTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
       "branch_policy": "dev"
     },
     {
@@ -504,6 +576,18 @@
       "bucket": "surface",
       "feature_area": "notes",
       "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesEditorFallbackSurfaceTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesEditorSurfaceParityMacOSLogicTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
     },
     {
       "path": "ios/sideBar/sideBarTests/NotesEditorSurfaceParityTests.swift",
@@ -626,6 +710,12 @@
       "branch_policy": "main"
     },
     {
+      "path": "ios/sideBar/sideBarTests/QueuedChangeResolutionSheetTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/RealtimeMappersTests.swift",
       "bucket": "logic",
       "feature_area": "shared_infra",
@@ -686,6 +776,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/SelectableNoteReadViewLinkTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/SelectableNoteReadViewMountedMacOSTests.swift",
       "bucket": "surface",
       "feature_area": "notes",
@@ -696,6 +792,12 @@
       "bucket": "surface",
       "feature_area": "notes",
       "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/SelectableNoteReadViewTypographyTests.swift",
+      "bucket": "logic",
+      "feature_area": "notes",
+      "branch_policy": "dev"
     },
     {
       "path": "ios/sideBar/sideBarTests/SentryBootstrapTests.swift",
@@ -848,6 +950,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/TaskRowTests.swift",
+      "bucket": "logic",
+      "feature_area": "tasks",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/TasksAPITests.swift",
       "bucket": "surface",
       "feature_area": "tasks",
@@ -920,6 +1028,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/ToolCallPopoverTests.swift",
+      "bucket": "logic",
+      "feature_area": "app_shell",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/ToolResultWorkspaceSurfaceParserTests.swift",
       "bucket": "logic",
       "feature_area": "shared_infra",
@@ -927,6 +1041,12 @@
     },
     {
       "path": "ios/sideBar/sideBarTests/UIKitNoteFormattingBarTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/UIKitNoteTextEditorSurfaceEditingTests.swift",
       "bucket": "surface",
       "feature_area": "notes",
       "branch_policy": "main"
@@ -960,6 +1080,12 @@
       "bucket": "surface",
       "feature_area": "weather",
       "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WebsiteSaveHandoffNotifierTests.swift",
+      "bucket": "logic",
+      "feature_area": "websites",
+      "branch_policy": "dev"
     },
     {
       "path": "ios/sideBar/sideBarTests/WebsiteURLValidatorTests.swift",
@@ -1022,6 +1148,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/WidgetIntentHandoffNotifierTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/WidgetIntentRoutingTests.swift",
       "bucket": "logic",
       "feature_area": "extensions",
@@ -1029,6 +1161,12 @@
     },
     {
       "path": "ios/sideBar/sideBarTests/WidgetModelConversionTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WidgetTaskCompletionHandoffNotifierTests.swift",
       "bucket": "logic",
       "feature_area": "extensions",
       "branch_policy": "dev"
