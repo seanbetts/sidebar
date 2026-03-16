@@ -130,6 +130,27 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertNil(findFormattingPopover())
     }
 
+    func testFormattingPopoverUsesAppKitOverlayHostOutsideSwiftUIContentViewOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        try await openFormattingPopover()
+
+        let popover = try XCTUnwrap(findFormattingPopover())
+        let dismissBackdrop = try XCTUnwrap(findDismissBackdrop())
+        let contentView = try XCTUnwrap(popover.window?.contentView)
+
+        XCTAssertFalse(popover.superview === contentView)
+        XCTAssertFalse(dismissBackdrop.superview === contentView)
+    }
+
     private func openFormattingPopover() async throws {
         let button = try await waitForFormattingButton()
         button.performClick(nil)
@@ -167,10 +188,11 @@ private func findFormattingButton() -> NSButton? {
 private func findFormattingPopover() -> NSView? {
     layoutMountedNoteWindows()
     for window in NotesDetailViewTestRetainer.hostingWindows.reversed() {
-        guard let contentView = window.contentView else { continue }
-        if let match = findDescendantView(in: contentView, identifier: "note-formatting-popover"),
-           !match.isHidden {
-            return match
+        for rootView in overlaySearchRoots(for: window) {
+            if let match = findDescendantView(in: rootView, identifier: "note-formatting-popover"),
+               !match.isHidden {
+                return match
+            }
         }
     }
 
@@ -181,14 +203,27 @@ private func findFormattingPopover() -> NSView? {
 private func findDismissBackdrop() -> NSButton? {
     layoutMountedNoteWindows()
     for window in NotesDetailViewTestRetainer.hostingWindows.reversed() {
-        guard let contentView = window.contentView else { continue }
-        if let match = findDescendantView(in: contentView, identifier: "note-formatting-dismiss-backdrop") as? NSButton,
-           !match.isHidden {
-            return match
+        for rootView in overlaySearchRoots(for: window) {
+            if let match = findDescendantView(in: rootView, identifier: "note-formatting-dismiss-backdrop") as? NSButton,
+               !match.isHidden {
+                return match
+            }
         }
     }
 
     return nil
+}
+
+@MainActor
+private func overlaySearchRoots(for window: NSWindow) -> [NSView] {
+    var roots: [NSView] = []
+    if let contentSuperview = window.contentView?.superview {
+        roots.append(contentSuperview)
+    }
+    if let contentView = window.contentView {
+        roots.append(contentView)
+    }
+    return roots
 }
 
 @MainActor

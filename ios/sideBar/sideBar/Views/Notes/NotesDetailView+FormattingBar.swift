@@ -18,11 +18,10 @@ extension NotesDetailView {
         )
         .disabled(!configuration.isEnabled)
         #elseif os(macOS)
-        return AppKitNoteFormattingBarRepresentable(
+        return AppKitNoteFormattingOverlay(
             configuration: configuration,
             presentation: formattingBarPresentation
         )
-        .frame(width: 60, height: 48)
         #endif
     }
 }

@@ -430,12 +430,10 @@ private struct FloatingFormattingBarHost: View {
         Color.clear
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay(alignment: .topTrailing) {
-                AppKitNoteFormattingBarRepresentable(
+                AppKitNoteFormattingOverlay(
                     configuration: configuration,
                     presentation: .floatingTopTrailing
                 )
-                .frame(width: 60, height: 48)
-                .fixedSize()
                 .padding(.top, DesignTokens.Spacing.sm)
                 .padding(.trailing, DesignTokens.Spacing.md)
             }

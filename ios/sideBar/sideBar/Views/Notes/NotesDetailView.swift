@@ -262,7 +262,6 @@ extension NotesDetailView {
             .overlay(alignment: .topTrailing) {
                 if isCustomFormattingBarVisible {
                     noteFormattingBar
-                        .fixedSize()
                         .padding(.top, DesignTokens.Spacing.sm)
                         .padding(.trailing, DesignTokens.Spacing.md)
                 }

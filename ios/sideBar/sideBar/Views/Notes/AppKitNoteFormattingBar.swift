@@ -28,15 +28,18 @@ final class AppKitNoteFormattingBar: NSView {
         }
     }
 
+    private let barContainerView = NSView()
     private let backgroundEffectView = NSVisualEffectView()
     private let menuButton = MenuButton()
     private var currentConfiguration: NoteFormattingBarConfiguration
     private var popoverPresentation: NoteFormattingBarPresentation
     private weak var popoverView: AppKitNoteFormattingPopoverView?
     private weak var dismissBackdropButton: NSButton?
-    private static let barHeight: CGFloat = 48
+    private static let barHeight: CGFloat = 52
+    private static let barWidth: CGFloat = 60
     private static let horizontalPadding: CGFloat = 8
     private static let popoverScreenPadding: CGFloat = 8
+    private static let topOverlapAllowance: CGFloat = 2
 
     override init(frame frameRect: NSRect) {
         self.currentConfiguration = .disabled
@@ -82,10 +85,6 @@ final class AppKitNoteFormattingBar: NSView {
         }
     }
 
-    override var intrinsicContentSize: CGSize {
-        CGSize(width: 44 + (Self.horizontalPadding * 2), height: Self.barHeight)
-    }
-
     override func layout() {
         super.layout()
         if popoverView?.isHidden == false {
@@ -98,6 +97,11 @@ final class AppKitNoteFormattingBar: NSView {
         if window == nil {
             dismissPopover()
         }
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let hitView = super.hitTest(point)
+        return hitView === self ? nil : hitView
     }
 }
 
@@ -126,10 +130,39 @@ struct AppKitNoteFormattingBarRepresentable: NSViewRepresentable {
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
+struct AppKitNoteFormattingOverlay: View {
+    let configuration: NoteFormattingBarConfiguration
+    let presentation: NoteFormattingBarPresentation
+
+    init(
+        configuration: NoteFormattingBarConfiguration,
+        presentation: NoteFormattingBarPresentation = .floatingTopTrailing
+    ) {
+        self.configuration = configuration
+        self.presentation = presentation
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            AppKitNoteFormattingBarRepresentable(
+                configuration: configuration,
+                presentation: presentation
+            )
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topTrailing)
+        }
+    }
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
 private extension AppKitNoteFormattingBar {
     func setUpViewHierarchy() {
-        identifier = NSUserInterfaceItemIdentifier("note-formatting-bar")
-        wantsLayer = true
+        identifier = NSUserInterfaceItemIdentifier("note-formatting-bar-host")
+
+        barContainerView.identifier = NSUserInterfaceItemIdentifier("note-formatting-bar")
+        barContainerView.translatesAutoresizingMaskIntoConstraints = false
+        barContainerView.wantsLayer = true
+        addSubview(barContainerView)
 
         backgroundEffectView.translatesAutoresizingMaskIntoConstraints = false
         backgroundEffectView.material = .menu
@@ -139,7 +172,7 @@ private extension AppKitNoteFormattingBar {
         backgroundEffectView.layer?.cornerRadius = 18
         backgroundEffectView.layer?.cornerCurve = .continuous
         backgroundEffectView.layer?.masksToBounds = true
-        addSubview(backgroundEffectView)
+        barContainerView.addSubview(backgroundEffectView)
 
         menuButton.identifier = NSUserInterfaceItemIdentifier("note-formatting-menu")
         menuButton.setAccessibilityLabel("Formatting")
@@ -147,18 +180,23 @@ private extension AppKitNoteFormattingBar {
         menuButton.onClick = { [weak self] in
             self?.handleMenuButtonTap()
         }
-        addSubview(menuButton)
+        barContainerView.addSubview(menuButton)
 
         NSLayoutConstraint.activate([
-            backgroundEffectView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            backgroundEffectView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            backgroundEffectView.topAnchor.constraint(equalTo: topAnchor),
-            backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            barContainerView.topAnchor.constraint(equalTo: topAnchor),
+            barContainerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            barContainerView.widthAnchor.constraint(equalToConstant: Self.barWidth),
+            barContainerView.heightAnchor.constraint(equalToConstant: Self.barHeight),
 
-            menuButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontalPadding),
-            menuButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontalPadding),
-            menuButton.topAnchor.constraint(equalTo: topAnchor),
-            menuButton.bottomAnchor.constraint(equalTo: bottomAnchor)
+            backgroundEffectView.leadingAnchor.constraint(equalTo: barContainerView.leadingAnchor),
+            backgroundEffectView.trailingAnchor.constraint(equalTo: barContainerView.trailingAnchor),
+            backgroundEffectView.topAnchor.constraint(equalTo: barContainerView.topAnchor),
+            backgroundEffectView.bottomAnchor.constraint(equalTo: barContainerView.bottomAnchor),
+
+            menuButton.leadingAnchor.constraint(equalTo: barContainerView.leadingAnchor, constant: Self.horizontalPadding),
+            menuButton.trailingAnchor.constraint(equalTo: barContainerView.trailingAnchor, constant: -Self.horizontalPadding),
+            menuButton.topAnchor.constraint(equalTo: barContainerView.topAnchor),
+            menuButton.bottomAnchor.constraint(equalTo: barContainerView.bottomAnchor)
         ])
     }
 
@@ -179,7 +217,6 @@ private extension AppKitNoteFormattingBar {
         backdrop.isHidden = false
         popover.isHidden = false
         updatePopoverLayout()
-        popover.superview?.addSubview(backdrop, positioned: .below, relativeTo: popover)
     }
 
     func dismissPopover() {
@@ -189,11 +226,10 @@ private extension AppKitNoteFormattingBar {
 
     @discardableResult
     func ensurePopoverView() -> AppKitNoteFormattingPopoverView {
-        let hostView = hostingView()
         if let popoverView {
-            if popoverView.superview !== hostView {
+            if popoverView.superview !== self {
                 popoverView.removeFromSuperview()
-                hostView.addSubview(popoverView)
+                addSubview(popoverView, positioned: .above, relativeTo: barContainerView)
             }
             return popoverView
         }
@@ -204,20 +240,19 @@ private extension AppKitNoteFormattingBar {
         popover.translatesAutoresizingMaskIntoConstraints = true
         popover.autoresizingMask = []
         popover.isHidden = true
-        hostView.addSubview(popover)
+        addSubview(popover, positioned: .above, relativeTo: barContainerView)
         self.popoverView = popover
         return popover
     }
 
     @discardableResult
     func ensureDismissBackdropButton() -> NSButton {
-        let hostView = hostingView()
         if let dismissBackdropButton {
-            if dismissBackdropButton.superview !== hostView {
+            if dismissBackdropButton.superview !== self {
                 dismissBackdropButton.removeFromSuperview()
-                hostView.addSubview(dismissBackdropButton)
+                addSubview(dismissBackdropButton, positioned: .below, relativeTo: barContainerView)
             }
-            dismissBackdropButton.frame = hostView.bounds
+            dismissBackdropButton.frame = bounds
             return dismissBackdropButton
         }
 
@@ -226,11 +261,11 @@ private extension AppKitNoteFormattingBar {
         button.isBordered = false
         button.translatesAutoresizingMaskIntoConstraints = true
         button.autoresizingMask = [.width, .height]
-        button.frame = hostView.bounds
+        button.frame = bounds
         button.wantsLayer = true
         button.layer?.backgroundColor = NSColor.clear.cgColor
         button.isHidden = true
-        hostView.addSubview(button)
+        addSubview(button, positioned: .below, relativeTo: barContainerView)
         dismissBackdropButton = button
         return button
     }
@@ -241,33 +276,29 @@ private extension AppKitNoteFormattingBar {
 
     func updatePopoverLayout() {
         guard let popover = popoverView else { return }
-        let hostView = hostingView()
-        let buttonFrame = menuButton.convert(menuButton.bounds, to: hostView)
+        let buttonFrame = menuButton.convert(menuButton.bounds, to: self)
         let preferredSize = popover.preferredSize(
-            maxWidth: max(hostView.bounds.width - (Self.popoverScreenPadding * 2), 240)
+            maxWidth: max(bounds.width - (Self.popoverScreenPadding * 2), 240)
         )
 
         let originX = max(
             Self.popoverScreenPadding,
             min(
                 buttonFrame.maxX - preferredSize.width,
-                hostView.bounds.width - preferredSize.width - Self.popoverScreenPadding
+                bounds.width - preferredSize.width
             )
         )
+        let anchoredOriginY = buttonFrame.maxY - preferredSize.height
         let originY = max(
             Self.popoverScreenPadding,
             min(
-                buttonFrame.minY,
-                hostView.bounds.height - preferredSize.height - Self.popoverScreenPadding
+                anchoredOriginY,
+                bounds.height - preferredSize.height + Self.topOverlapAllowance
             )
         )
 
         popover.frame = CGRect(origin: CGPoint(x: originX, y: originY), size: preferredSize)
-        dismissBackdropButton?.frame = hostView.bounds
-    }
-
-    func hostingView() -> NSView {
-        window?.contentView ?? superview ?? self
+        dismissBackdropButton?.frame = bounds
     }
 }
 #endif
