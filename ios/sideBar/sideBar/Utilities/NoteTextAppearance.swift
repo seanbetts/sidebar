@@ -11,6 +11,7 @@ enum NoteTextAppearance {
     static var caretTintColor: UIColor { .secondaryLabel }
     static var inlineCodeBackgroundColor: UIColor { .secondarySystemFill }
     #elseif canImport(AppKit)
+    static var caretTintColor: NSColor { .secondaryLabelColor }
     static var inlineCodeBackgroundColor: NSColor { .quaternaryLabelColor.withAlphaComponent(0.18) }
     #endif
 }

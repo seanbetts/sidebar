@@ -160,13 +160,31 @@ func mountEditorTextView(
     baseFontSize: CGFloat,
     frame: NSRect
 ) throws -> NSTextView {
+    let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
+    return try mountEditorTextView(
+        document: document,
+        baseFontSize: baseFontSize,
+        frame: frame
+    )
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+func mountEditorTextView(
+    document: NotesSemanticDocument,
+    baseFontSize: CGFloat,
+    frame: NSRect
+) throws -> NSTextView {
     let nativeViewModel = NativeNoteEditorViewModel()
     nativeViewModel.setBaseFontSize(baseFontSize)
-    nativeViewModel.loadText(plainText)
+    nativeViewModel.loadDocument(
+        canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+        plainText: NotesSemanticDocumentProjection.plainText(from: document)
+    )
 
     let controller = NSHostingController(
         rootView: AnyView(
-            SwiftUINoteTextEditorSurface(
+            AppKitNoteTextEditorSurface(
                 viewModel: nativeViewModel,
                 maxContentWidth: frame.width,
                 isEditable: true
@@ -184,6 +202,9 @@ func mountEditorTextView(
     let rootView = controller.view
     rootView.frame = frame
     rootView.layoutSubtreeIfNeeded()
+    NotesDetailViewTestRetainer.hostingControllers.append(controller)
+    NotesDetailViewTestRetainer.hostingWindows.append(window)
+    drainNotesHostingRunLoop()
 
     return try XCTUnwrap(findDescendantTextView(in: rootView))
 }

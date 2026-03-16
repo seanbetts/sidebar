@@ -19,6 +19,55 @@ final class SelectableNoteReadViewMountedMacOSTests: XCTestCase {
         XCTAssertTrue(textView.isSelectable)
     }
 
+    func testMountedReadSurfaceTypographyMatchesMountedAppKitEditorForSameSemanticDocument() throws {
+        let baseFontSize = NoteTextTypography.defaultBodyFontSize
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .init(type: .subheading, content: [.init(text: "Subheading", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+        let readTextView = SelectableNoteReadView.makePlatformTextView(
+            attributedContent: SelectableNoteReadView.makePlatformAttributedContent(
+                from: document,
+                baseFontSize: baseFontSize
+            )
+        )
+        readTextView.frame = NSRect(x: 0, y: 0, width: 420, height: 280)
+        readTextView.layoutSubtreeIfNeeded()
+
+        let editorTextView = try mountEditorTextView(
+            document: document,
+            baseFontSize: baseFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 280)
+        )
+
+        XCTAssertEqual(readTextView.string, editorTextView.string)
+        XCTAssertEqual(
+            try XCTUnwrap(readTextView.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont).pointSize,
+            try XCTUnwrap(editorTextView.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont).pointSize,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(readTextView.textStorage?.attribute(.font, at: 6, effectiveRange: nil) as? NSFont).pointSize,
+            try XCTUnwrap(editorTextView.textStorage?.attribute(.font, at: 6, effectiveRange: nil) as? NSFont).pointSize,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(readTextView.textStorage?.attribute(.font, at: 14, effectiveRange: nil) as? NSFont).pointSize,
+            try XCTUnwrap(editorTextView.textStorage?.attribute(.font, at: 14, effectiveRange: nil) as? NSFont).pointSize,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(readTextView.textStorage?.attribute(.font, at: 25, effectiveRange: nil) as? NSFont).pointSize,
+            try XCTUnwrap(editorTextView.textStorage?.attribute(.font, at: 25, effectiveRange: nil) as? NSFont).pointSize,
+            accuracy: 0.001
+        )
+    }
+
     func testMountedReadSurfaceCanUnmountRepeatedlyWithoutCrashing() throws {
         let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\nTwo")
 

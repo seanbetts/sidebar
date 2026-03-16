@@ -53,7 +53,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         textView.allowsUndo = true
         textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.textColor = .labelColor
-        textView.insertionPointColor = .labelColor
+        textView.insertionPointColor = NoteTextAppearance.caretTintColor
         textView.textContainerInset = NSSize(
             width: NoteTextLayout.horizontalPadding,
             height: NoteTextLayout.verticalPadding
