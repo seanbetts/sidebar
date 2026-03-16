@@ -265,6 +265,16 @@ def _ensure_user_settings_columns(connection) -> None:
     )
 
 
+def _truncate_all_tables(connection) -> None:
+    """Clear all ORM-backed tables to keep API tests isolated."""
+    from api.db.base import Base
+    from sqlalchemy import text
+
+    connection.execute(text("SET search_path TO public"))
+    for table in reversed(Base.metadata.sorted_tables):
+        connection.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
+
+
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for test files."""
@@ -513,7 +523,6 @@ def test_db(test_db_engine):
     This fixture provides a database session and ensures that all changes
     are rolled back after each test, maintaining test isolation.
     """
-    from api.db.base import Base
     from sqlalchemy import text
     from sqlalchemy.orm import sessionmaker
 
@@ -544,6 +553,10 @@ def test_db(test_db_engine):
 
     # Local lane keeps deterministic table cleanup between tests because API
     # requests run in separate sessions and can otherwise leak state.
+    with test_db_engine.connect() as cleanup_connection:
+        _truncate_all_tables(cleanup_connection)
+        cleanup_connection.commit()
+
     TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_db_engine)
     db = TestSessionLocal()
     db.info["force_public_search_path"] = True
@@ -556,9 +569,7 @@ def test_db(test_db_engine):
         db.close()
 
         with test_db_engine.connect() as cleanup_connection:
-            cleanup_connection.execute(text("SET search_path TO public"))
-            for table in reversed(Base.metadata.sorted_tables):
-                cleanup_connection.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
+            _truncate_all_tables(cleanup_connection)
             cleanup_connection.commit()
 
 
@@ -578,3 +589,16 @@ def test_client(test_db_engine):
 
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture(autouse=True)
+def _ensure_db_isolation_for_api_tests(request):
+    """Force per-test database cleanup for tests that exercise app sessions.
+
+    The shared FastAPI ``test_client`` fixture is session-scoped for startup cost
+    reasons, so API requests would otherwise leak persisted state across tests.
+    Pulling in ``test_db`` here preserves test isolation without changing the
+    client lifecycle.
+    """
+    if "test_client" in request.fixturenames or "test_db" in request.fixturenames:
+        request.getfixturevalue("test_db")

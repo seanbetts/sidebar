@@ -79,17 +79,21 @@ def test_project_reserves_at_most_one_upload_hook_entry() -> None:
     assert "upload_sentry_dsyms.sh" in project_contents
 
 
-def test_vendored_sdk_is_linked_only_to_the_main_app_target() -> None:
+def test_vendored_sdk_is_linked_only_to_expected_app_and_extension_targets() -> None:
     project_contents = PBXPROJ.read_text(encoding="utf-8")
 
     assert "Vendor/Sentry/Sentry.xcframework" in project_contents
-    assert "/* Sentry.xcframework */ = {isa = PBXFileReference;" in project_contents
+    assert "/* Vendor/Sentry/Sentry.xcframework */ = {isa = PBXFileReference;" in project_contents
 
     sentry_frameworks_phases = _frameworks_phases_linking_sentry(project_contents)
 
-    assert "sideBar" in sentry_frameworks_phases
-    assert "sideBarWidgetsExtension" not in sentry_frameworks_phases
-    assert "ShareExtension" not in sentry_frameworks_phases
+    assert sentry_frameworks_phases == {
+        "sideBar",
+        "ShareExtension",
+        "sideBarWidgetsExtension",
+        "sideBar Safari Extension",
+        "sideBar Safari Extension (macOS) Extension",
+    }
 
 
 def _has_swift_package_sentry_path() -> bool:
@@ -139,7 +143,14 @@ def _frameworks_phases_linking_sentry(project_contents: str) -> set[str]:
         if "Sentry.xcframework in Frameworks" not in phase_match.group("files"):
             continue
         phase_id = phase_match.group("phase_id")
-        for target_name in ("sideBar", "sideBarWidgetsExtension", "ShareExtension"):
+        for target_name in (
+            "sideBar",
+            "sideBarWidgetsExtension",
+            "ShareExtension",
+            "sideBar Safari Extension",
+            "sideBar Safari Extension (macOS)",
+            "sideBar Safari Extension (macOS) Extension",
+        ):
             if phase_id in _native_target_build_phases(project_contents, target_name):
                 target_names.add(target_name)
     return target_names

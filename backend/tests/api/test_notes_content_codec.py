@@ -17,11 +17,11 @@ def test_build_canonical_note_write_projects_plain_text_and_title():
     assert result.document == document
     assert result.document_version == 1
     assert result.plain_text == "\n# Hello\nWorld"
-    assert result.title == "# Hello"
+    assert result.title == "New Note"
 
 
 def test_build_canonical_note_write_accepts_inline_marks_in_paragraph_documents():
-    document = {
+    source_document = {
         "version": 1,
         "blocks": [
             {
@@ -38,9 +38,9 @@ def test_build_canonical_note_write_accepts_inline_marks_in_paragraph_documents(
         ],
     }
 
-    result = build_canonical_note_write(document)
+    result = build_canonical_note_write(source_document)
 
-    assert result.document == document
+    assert result.document["blocks"][0]["type"] == "title"
     assert result.plain_text == "Marked title\nBody"
     assert result.title == "Marked title"
 

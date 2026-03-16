@@ -27,3 +27,13 @@ def test_backend_workflow_triggers_on_backend_and_script_inputs() -> None:
         "scripts/ios_test_taxonomy.json",
         ".github/workflows/backend-ci.yml",
     }
+
+
+def test_backend_workflow_uses_auth_and_health_safe_test_env() -> None:
+    """Backend CI should not force auth-dev mode and should satisfy health config."""
+    workflow = _workflow()
+    env = workflow["jobs"]["test"]["env"]
+
+    assert env["TESTING"] == "1"
+    assert env["AUTH_DEV_MODE"] == "false"
+    assert env["SUPABASE_URL"] == "https://example.supabase.co"

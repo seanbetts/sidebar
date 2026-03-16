@@ -193,7 +193,10 @@ def test_push_workflows_watch_relevant_ios_inputs_and_workflow_files() -> None:
         "scripts/check_ios_quality_gates.py",
         "scripts/ios_quality_gates.json",
         "scripts/check-ios-warning-gate.sh",
-        "scripts/test-ios.sh",
+        "scripts/test-ios*.sh",
+        "scripts/clean_stale_widget_registrations.py",
+        "scripts/verify_macos_widget_artifacts.py",
+        "scripts/check_ios_extension_config_resolution.py",
         ".swiftlint.yml",
         ".github/workflows/ios-ci.yml",
         ".github/workflows/ios-ci-main.yml",
@@ -228,7 +231,11 @@ def test_main_workflow_contains_only_release_jobs() -> None:
     """Main workflow should materialize only the broader release lanes."""
     workflow = _main_workflow()
 
-    assert set(workflow["jobs"]) == {"ios_prepare_packages", "ios_test_main"}
+    assert set(workflow["jobs"]) == {
+        "ios_prepare_packages",
+        "ios_widget_verification_main",
+        "ios_test_main",
+    }
     assert {entry["id"] for entry in _job_matrix(workflow, "ios_test_main")} == {
         "surface",
         "ui",
@@ -242,7 +249,11 @@ def test_dispatch_workflow_contains_all_lane_options() -> None:
     options = workflow["on"]["workflow_dispatch"]["inputs"]["lane"]["options"]
     matrix_lanes = {entry["lane"] for entry in _dispatch_matrix()}
 
-    assert set(workflow["jobs"]) == {"ios_prepare_packages", "ios_test_dispatch"}
+    assert set(workflow["jobs"]) == {
+        "ios_prepare_packages",
+        "ios_widget_verification_dispatch",
+        "ios_test_dispatch",
+    }
     assert set(options) == {"all"} | matrix_lanes
 
 
@@ -423,8 +434,20 @@ def test_ios_ci_prewarms_packages_before_parallel_lanes() -> None:
     dispatch_workflow = _dispatch_workflow()
 
     assert dev_workflow["jobs"]["ios_test_dev"]["needs"] == ["ios_quality", "ios_prepare_packages"]
-    assert main_workflow["jobs"]["ios_test_main"]["needs"] == ["ios_prepare_packages"]
-    assert dispatch_workflow["jobs"]["ios_test_dispatch"]["needs"] == ["ios_prepare_packages"]
+    assert main_workflow["jobs"]["ios_widget_verification_main"]["needs"] == [
+        "ios_prepare_packages"
+    ]
+    assert main_workflow["jobs"]["ios_test_main"]["needs"] == [
+        "ios_prepare_packages",
+        "ios_widget_verification_main",
+    ]
+    assert dispatch_workflow["jobs"]["ios_widget_verification_dispatch"]["needs"] == [
+        "ios_prepare_packages"
+    ]
+    assert dispatch_workflow["jobs"]["ios_test_dispatch"]["needs"] == [
+        "ios_prepare_packages",
+        "ios_widget_verification_dispatch",
+    ]
 
     for workflow, job_name in (
         (dev_workflow, "ios_test_dev"),

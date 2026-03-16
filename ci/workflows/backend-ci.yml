@@ -33,8 +33,9 @@ jobs:
           --health-retries 10
     env:
       TESTING: "1"
-      AUTH_DEV_MODE: "true"
+      AUTH_DEV_MODE: "false"
       TEST_USER_ID: "test-user-id"
+      SUPABASE_URL: "https://example.supabase.co"
       DATABASE_URL: "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test"
     steps:
       - name: Checkout
