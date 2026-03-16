@@ -285,7 +285,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             saveResult: .success(
                 WebsiteSaveResponse(success: true, website: savedWebsite)
             ),
-            onSave: { [storage] url in
+            onSave: { [storage = storage!] url in
                 guard url == firstURL else { return }
                 _ = storage.pendingShareStore.enqueueWebsite(url: secondURL)
             }

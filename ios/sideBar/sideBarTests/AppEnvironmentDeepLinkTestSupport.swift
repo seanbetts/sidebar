@@ -1,4 +1,6 @@
 import Foundation
+import XCTest
+import sideBarShared
 @testable import sideBar
 
 final class DeepLinkWebsitesAPI: WebsitesProviding {

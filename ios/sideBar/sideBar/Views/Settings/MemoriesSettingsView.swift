@@ -90,72 +90,74 @@ struct MemoriesSettingsDetailView: View {
 
     @ViewBuilder
     private var memoryListContent: some View {
-        if viewModel.isLoading && viewModel.items.isEmpty {
-            LoadingView(message: "Loading memories…")
-                .frame(maxWidth: .infinity, minHeight: 220)
-        } else if filteredItems.isEmpty {
-            SettingsMacStatusBanner(
-                message: searchQuery.trimmed.isEmpty
-                    ? "No memories saved yet."
-                    : "No memories match that search.",
-                tone: .info
-            )
-        } else {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
-                    TextField("Search memories", text: $searchQuery)
-                        .textFieldStyle(.plain)
-                    if !searchQuery.isEmpty {
-                        Button {
-                            searchQuery = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(DesignTokens.Colors.textSecondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, DesignTokens.Spacing.sm)
-                .padding(.vertical, DesignTokens.Spacing.xs)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(DesignTokens.Colors.background)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(DesignTokens.Colors.border, lineWidth: 1)
-                )
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            memorySearchField
 
-                ScrollView {
-                    LazyVStack(spacing: DesignTokens.Spacing.sm) {
-                        ForEach(filteredItems) { item in
-                            SettingsMacSkillRow(
-                                title: displayName(item.path),
-                                subtitle: item.content,
-                                systemImage: selection == item.id ? "bookmark.fill" : "bookmark"
-                            ) {
-                                EmptyView()
-                            }
-                            .onTapGesture {
-                                selection = item.id
-                            }
-                            .overlay(
-                                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                                    .stroke(
-                                        selection == item.id
-                                            ? DesignTokens.Colors.textPrimary.opacity(0.18)
-                                            : .clear,
-                                        lineWidth: 1
-                                    )
-                            )
+            if viewModel.isLoading && viewModel.items.isEmpty {
+                LoadingView(message: "Loading memories…")
+                    .frame(maxWidth: .infinity, minHeight: 220)
+            } else if filteredItems.isEmpty {
+                SettingsMacStatusBanner(
+                    message: searchQuery.trimmed.isEmpty
+                        ? "No memories saved yet."
+                        : "No memories match that search.",
+                    tone: .info
+                )
+            } else {
+                LazyVStack(spacing: DesignTokens.Spacing.sm) {
+                    ForEach(filteredItems) { item in
+                        SettingsMacSkillRow(
+                            title: displayName(item.path),
+                            subtitle: item.content,
+                            systemImage: selection == item.id ? "bookmark.fill" : "bookmark"
+                        ) {
+                            EmptyView()
                         }
+                        .onTapGesture {
+                            selection = item.id
+                        }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                                .stroke(
+                                    selection == item.id
+                                        ? DesignTokens.Colors.textPrimary.opacity(0.18)
+                                        : .clear,
+                                    lineWidth: 1
+                                )
+                        )
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+            .frame(maxWidth: .infinity, alignment: .top)
+        }
+    }
+
+    private var memorySearchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+            TextField("Search memories", text: $searchQuery)
+                .textFieldStyle(.plain)
+            if !searchQuery.isEmpty {
+                Button {
+                    searchQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                }
+                .buttonStyle(.plain)
             }
         }
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.vertical, DesignTokens.Spacing.xs)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(DesignTokens.Colors.background)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        )
     }
 
     @ViewBuilder
@@ -166,10 +168,8 @@ struct MemoriesSettingsDetailView: View {
                 message: "Review the memory content currently available to the assistant."
             )
 
-            ScrollView {
-                SideBarMarkdown(text: memory.content)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            SideBarMarkdown(text: memory.content)
+                .frame(maxWidth: .infinity, alignment: .leading)
         } else if viewModel.isLoadingDetail {
             LoadingView(message: "Loading memory…")
                 .frame(maxWidth: .infinity, minHeight: 260)

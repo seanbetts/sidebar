@@ -694,6 +694,65 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("detailInspectorContent"))
     }
 
+    func testMemoriesSettingsInspectorHelpersDoNotCreateNestedScrollViews() throws {
+        let source = try memoriesSettingsDetailSource()
+
+        guard
+            let listStart = source.range(of: "private var memoryListContent"),
+            let detailStart = source.range(
+                of: "private var detailInspectorContent",
+                range: listStart.upperBound..<source.endIndex
+            ),
+            let detailEnd = source.range(of: "#endif", range: detailStart.upperBound..<source.endIndex)
+        else {
+            XCTFail("Unable to locate memories inspector helper boundaries")
+            return
+        }
+
+        let listSection = source[listStart.lowerBound..<detailStart.lowerBound]
+        XCTAssertFalse(listSection.contains("ScrollView"), "memoryListContent still references ScrollView")
+
+        let detailSection = source[detailStart.lowerBound..<detailEnd.lowerBound]
+        XCTAssertFalse(detailSection.contains("ScrollView"), "detailInspectorContent still references ScrollView")
+    }
+
+    func testMemoriesSettingsMacSearchFieldRemainsVisibleForEmptyResults() throws {
+        let source = try memoriesSettingsDetailSource()
+
+        guard
+            let listStart = source.range(of: "private var memoryListContent"),
+            let detailStart = source.range(
+                of: "private var detailInspectorContent",
+                range: listStart.upperBound..<source.endIndex
+            )
+        else {
+            XCTFail("Unable to locate memoryListContent")
+            return
+        }
+
+        let listSection = source[listStart.lowerBound..<detailStart.lowerBound]
+        XCTAssertTrue(
+            listSection.contains("memorySearchField"),
+            "memoryListContent should render the search UI even when filteredItems is empty"
+        )
+    }
+
+    func testUtilitiesShortcutsTokenUsesReadOnlyText() throws {
+        let normalized = try utilitiesSettingsSource()
+        XCTAssertFalse(
+            normalized.contains("text: .constant(viewModel.shortcutsToken)"),
+            "Shortcuts token UI should not use a TextField bound to a constant"
+        )
+        XCTAssertTrue(
+            normalized.contains("Text(viewModel.shortcutsToken)"),
+            "Shortcuts token UI should render read-only text"
+        )
+        XCTAssertTrue(
+            normalized.contains(".textSelection(.enabled)"),
+            "Shortcuts token UI should keep the token selectable"
+        )
+    }
+
     func testStoreSkillConfigUsesInspectorCardsAndStatusBanners() throws {
         let normalized = try storeSkillConfigSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

@@ -22,9 +22,17 @@ struct ShortcutsSettingsView: View {
                     message: "Use this token in Apple Shortcuts to authorize quick capture on this account."
                 )
                 SettingsMacFieldRow("Token") {
-                    TextField("Token", text: .constant(viewModel.shortcutsToken))
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 360)
+                    Group {
+                        if viewModel.shortcutsToken.isEmpty {
+                            Text("No token generated yet.")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(viewModel.shortcutsToken)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .appFont(.body)
+                    .frame(maxWidth: 360, alignment: .leading)
                 }
                 SettingsMacFieldRow("Actions") {
                     HStack(spacing: 12) {
@@ -56,8 +64,18 @@ struct ShortcutsSettingsView: View {
             Section("Shortcuts") {
                 Text("Use this token in Apple Shortcuts to authorize quick capture.")
                     .foregroundStyle(.secondary)
-                TextField("Token", text: .constant(viewModel.shortcutsToken))
-                    .textFieldStyle(.roundedBorder)
+                Group {
+                    if viewModel.shortcutsToken.isEmpty {
+                        Text("No token generated yet.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(viewModel.shortcutsToken)
+                            .textSelection(.enabled)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+                .appFont(.body)
                 HStack(spacing: 12) {
                     Button(copied ? "Copied" : "Copy") {
                         copyToken()
