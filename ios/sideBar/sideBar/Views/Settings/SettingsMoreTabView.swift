@@ -20,17 +20,17 @@ struct SettingsMoreTabView: View {
                         destinationRow(for: .app)
                     }
                 }
-                .listStyle(.insetGrouped)
+                .settingsMoreListStyle()
                 .scrollContentBackground(.hidden)
                 .background(DesignTokens.Colors.settingsBackground)
             }
             .navigationTitle("More")
-            .navigationBarTitleDisplayMode(.inline)
+            .settingsMoreInlineNavigationTitleDisplayMode()
             .navigationDestination(for: Destination.self) { destination in
                 destinationView(for: destination)
                     .background(DesignTokens.Colors.settingsBackground)
                     .navigationTitle(destination.title)
-                    .navigationBarTitleDisplayMode(.inline)
+                    .settingsMoreInlineNavigationTitleDisplayMode()
             }
         }
     }
@@ -120,7 +120,7 @@ private struct SettingsMoreMemoriesBrowser: View {
                             }
                         }
                     }
-                    .listStyle(.insetGrouped)
+                    .settingsMoreListStyle()
                     .scrollContentBackground(.hidden)
                     .background(DesignTokens.Colors.settingsBackground)
                     .refreshable {
@@ -132,7 +132,7 @@ private struct SettingsMoreMemoriesBrowser: View {
         .searchable(text: $searchQuery, prompt: "Search memories")
         .navigationDestination(for: String.self) { memoryId in
             SettingsMoreMemoryDetailView(viewModel: viewModel, memoryId: memoryId)
-                .navigationBarTitleDisplayMode(.inline)
+                .settingsMoreInlineNavigationTitleDisplayMode()
         }
         .onAppear {
             if !hasLoaded {
@@ -237,5 +237,25 @@ private struct SettingsMoreMemoryRow: View {
             trimmed = String(trimmed.dropLast(3))
         }
         return trimmed.isEmpty ? "untitled" : trimmed
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func settingsMoreListStyle() -> some View {
+        #if os(macOS)
+        self.listStyle(.sidebar)
+        #else
+        self.listStyle(.insetGrouped)
+        #endif
+    }
+
+    @ViewBuilder
+    func settingsMoreInlineNavigationTitleDisplayMode() -> some View {
+        #if os(macOS)
+        self
+        #else
+        self.navigationBarTitleDisplayMode(.inline)
+        #endif
     }
 }
