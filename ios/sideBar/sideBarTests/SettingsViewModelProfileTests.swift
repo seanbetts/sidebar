@@ -154,6 +154,45 @@ final class SettingsViewModelProfileTests: XCTestCase {
         XCTAssertNotNil(viewModel.profileSaveError)
     }
 
+    func testSaveProfileSettingsMapsUpdateAuthFailureIntoSessionExpiredMessage() async {
+        let initial = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "Sam",
+            jobTitle: "Founder",
+            employer: "sideBar",
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: "Boston",
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let api = FailingProfileUpdateSettingsAPI(initial: initial, error: APIClientError.requestFailed(401))
+        let viewModel = SettingsViewModel(
+            settingsAPI: api,
+            skillsAPI: EmptySkillsAPI(),
+            cache: TestCacheClient()
+        )
+
+        await viewModel.load()
+        await viewModel.saveProfileSettings(
+            name: "Sam",
+            jobTitle: "Founder",
+            employer: "sideBar",
+            dateOfBirth: nil,
+            dateOfBirthEnabled: false,
+            gender: "",
+            pronouns: "",
+            location: "Seattle"
+        )
+
+        XCTAssertEqual(api.updateCallCount, 1)
+        XCTAssertEqual(viewModel.profileSaveError, "Session expired. Please sign in again.")
+        XCTAssertEqual(viewModel.settingsSaveCompletionCount, 0)
+    }
+
     private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {
         let data = try JSONEncoder().encode(update)
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -225,5 +264,77 @@ private final class RecordingSettingsAPI: SettingsProviding {
 private struct EmptySkillsAPI: SkillsProviding {
     func list() async throws -> SkillsResponse {
         SkillsResponse(skills: [])
+    }
+}
+
+@MainActor
+private final class FailingProfileUpdateSettingsAPI: SettingsProviding {
+    let initial: UserSettings
+    let error: Error
+    var getSettingsCallCount = 0
+    var updateCallCount = 0
+
+    init(initial: UserSettings, error: Error) {
+        self.initial = initial
+        self.error = error
+    }
+
+    func getSettings() async throws -> UserSettings {
+        getSettingsCallCount += 1
+        return initial
+    }
+
+    func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
+        _ = update
+        updateCallCount += 1
+        throw error
+    }
+
+    func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        throw SettingsViewModelMockError.forced
+    }
+
+    func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        _ = apiKey
+        throw SettingsViewModelMockError.forced
+    }
+
+    func deleteProviderKey(provider: String?) async throws -> ProviderKeyStatusResponse {
+        _ = provider
+        throw SettingsViewModelMockError.forced
+    }
+
+    func disconnectProviderConsumer(
+        provider: String,
+        source: ProviderKeyDisconnectSource,
+        skillId: String?
+    ) async throws -> ProviderKeyDisconnectResponse {
+        _ = provider
+        _ = source
+        _ = skillId
+        throw SettingsViewModelMockError.forced
+    }
+
+    func getShortcutsToken() async throws -> ShortcutsTokenResponse {
+        throw SettingsViewModelMockError.forced
+    }
+
+    func rotateShortcutsToken() async throws -> ShortcutsTokenResponse {
+        throw SettingsViewModelMockError.forced
+    }
+
+    func uploadProfileImage(data: Data, contentType: String, filename: String) async throws {
+        _ = data
+        _ = contentType
+        _ = filename
+    }
+
+    func getProfileImage() async throws -> Data {
+        Data()
+    }
+
+    func deleteProfileImage() async throws {
     }
 }

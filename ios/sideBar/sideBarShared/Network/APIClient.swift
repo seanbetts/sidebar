@@ -1,8 +1,6 @@
 import Foundation
 import os
-
 // MARK: - APIClient
-
 public extension Notification.Name {
     static let apiClientRequestFailed = Notification.Name("sideBar.apiClient.requestFailed")
     static let apiClientRequestSucceeded = Notification.Name("sideBar.apiClient.requestSucceeded")
@@ -13,10 +11,8 @@ public struct APIClientConfig {
     public let baseUrl: URL
     public let accessTokenProvider: () -> String?
     /// Optional hook to refresh auth state when a request fails with 401.
-    ///
     /// Should return true only if auth is now available for new requests.
     public let refreshAuthIfNeeded: (() async -> Bool)?
-
     public init(
         baseUrl: URL,
         accessTokenProvider: @escaping () -> String?,
@@ -49,7 +45,6 @@ public final class APIClient {
         self.config = config
         self.session = session
     }
-
     public func request<T: Decodable>(
         _ path: String,
         method: String = "GET",
@@ -184,7 +179,22 @@ public final class APIClient {
         guard (200...299).contains(http.statusCode) else {
             if http.statusCode == 401,
                shouldAttemptAuthRefresh(for: request) {
-                if await attemptAuthRefreshIfNeeded() || shouldRetryWithUpdatedToken(for: request) {
+                let method = request.httpMethod ?? "GET"
+                let url = request.url?.absoluteString ?? "?"
+                let hadToken = request.value(forHTTPHeaderField: "Authorization") != nil
+                let retryableRequestDescription =
+                    "Response 401 for \(method) \(url); hadToken=\(hadToken) retrying auth refresh"
+                logger.notice(
+                    "\(retryableRequestDescription, privacy: .public)"
+                )
+                let refreshed = await attemptAuthRefreshIfNeeded()
+                let tokenChanged = shouldRetryWithUpdatedToken(for: request)
+                if refreshed || tokenChanged {
+                    let retryDescription =
+                        "Retrying \(method) \(url) after auth refresh; refreshed=\(refreshed) tokenChanged=\(tokenChanged)"
+                    logger.notice(
+                        "\(retryDescription, privacy: .public)"
+                    )
                     var retry = request
                     if let token = config.accessTokenProvider() {
                         retry.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -192,6 +202,12 @@ public final class APIClient {
                         retry.setValue(nil, forHTTPHeaderField: "Authorization")
                     }
                     return try await performRequestWithoutAuthRetry(retry)
+                } else {
+                    let refreshUnavailableDescription =
+                        "Auth refresh unavailable for \(method) \(url); no retry token available"
+                    logger.notice(
+                        "\(refreshUnavailableDescription, privacy: .public)"
+                    )
                 }
             }
 
@@ -260,7 +276,7 @@ public final class APIClient {
     private func shouldAttemptAuthRefresh(for request: URLRequest) -> Bool {
         guard config.refreshAuthIfNeeded != nil else { return false }
         let method = request.httpMethod?.uppercased() ?? "GET"
-        let retryableMethods = Set(["GET", "PUT", "DELETE"])
+        let retryableMethods = Set(["GET", "PUT", "PATCH", "DELETE"])
         return retryableMethods.contains(method)
     }
 
@@ -435,7 +451,6 @@ public final class APIClient {
         return "\(path)?\(query)"
     }
 }
-
 /// Type-erases Encodable values so they can be encoded uniformly.
 public struct AnyEncodable: Encodable {
     private let encodeFunc: (Encoder) throws -> Void
@@ -448,19 +463,15 @@ public struct AnyEncodable: Encodable {
         try encodeFunc(encoder)
     }
 }
-
 private struct APIErrorResponse: Decodable {
     let detail: String?
 }
-
 private struct APIErrorEnvelope: Decodable {
     let error: APIErrorMessage
 }
-
 private struct APIErrorMessage: Decodable {
     let message: String
 }
-
 private actor AuthRefreshCoordinator {
     private let minimumInterval: TimeInterval
     private var lastAttempt: Date?

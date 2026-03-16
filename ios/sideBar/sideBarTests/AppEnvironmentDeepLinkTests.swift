@@ -258,6 +258,88 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
     }
 
+    func testConsumePendingSharesPreservesWebsiteQueuedDuringInFlightSave() async {
+        let firstURL = "https://example.com/articles/\(UUID().uuidString)"
+        let secondURL = "https://example.com/articles/\(UUID().uuidString)"
+        let savedWebsite = WebsiteDetail(
+            id: "website-\(UUID().uuidString)",
+            title: "Saved First Website",
+            url: firstURL,
+            urlFull: firstURL,
+            domain: "example.com",
+            content: "Saved content",
+            source: "web",
+            savedAt: "2026-03-16T15:37:50Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2026-03-16T15:37:50Z",
+            lastOpenedAt: nil
+        )
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveResponse(success: true, website: savedWebsite)
+            ),
+            onSave: { [storage] url in
+                guard url == firstURL else { return }
+                _ = storage.pendingShareStore.enqueueWebsite(url: secondURL)
+            }
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        _ = storage.pendingShareStore.enqueueWebsite(url: firstURL)
+
+        await environment.consumePendingShares()
+
+        XCTAssertEqual(environment.websitesViewModel.items.first?.url, firstURL)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().compactMap(\.url), [secondURL])
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, secondURL)
+    }
+
+    func testConsumeWebsiteSaveHandoffRefreshesListAfterQueuedWebsiteEventOnMacOS() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let savedItem = WebsiteItem(
+            id: "website-\(UUID().uuidString)",
+            title: "Saved by Refresh",
+            url: url,
+            domain: "example.com",
+            savedAt: "2026-03-16T15:37:50Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2026-03-16T15:37:50Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(NSError(domain: "AppEnvironmentDeepLinkTests", code: 1)),
+            listResult: .success(WebsitesResponse(items: [savedItem], archivedCount: 0))
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        storage.extensionEventStore.recordWebsiteSaved(url: url)
+
+        await environment.consumeWebsiteSaveHandoff()
+
+        XCTAssertGreaterThan(websitesAPI.listCallCount, 0)
+        XCTAssertEqual(environment.websitesViewModel.items.first?.url, url)
+        XCTAssertNil(environment.websitesViewModel.pendingWebsite)
+    }
+
     func testConsumeExtensionEventsWhenInactivePreservesEvents() async {
         let environment = requireEnvironment()
         let url = "https://www.youtube.com/watch?v=abc123xyzAA"
@@ -403,109 +485,6 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         let after: WidgetWebsiteData = storage.widgetDataManager.load(for: .websites)
         XCTAssertEqual(after.totalCount, 1)
         XCTAssertEqual(after.websites.first?.url, item.url)
-    }
-
-    func clearWidgetPendingOperations() {
-        _ = storage.widgetDataManager.consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
-        _ = storage.widgetDataManager.consumePendingOperations(for: .notes, actionType: NoteWidgetAction.self)
-        _ = storage.widgetDataManager.consumePendingQuickSave()
-    }
-
-    func clearExtensionEvents() {
-        _ = storage.extensionEventStore.consumeEvents()
-        storage.pendingShareStore.replaceAll([])
-    }
-
-    func websiteEventIsSurfaced(_ url: String, in environment: AppEnvironment) -> Bool {
-        if environment.websitesViewModel.pendingWebsite?.url == url {
-            return true
-        }
-        if environment.websitesViewModel.store.active?.url == url {
-            return true
-        }
-        if storage.pendingShareStore.loadAll().contains(where: { $0.url == url }) {
-            return true
-        }
-        return environment.websitesViewModel.items.contains(where: { $0.url == url })
-    }
-
-    func waitForWebsiteEventSurface(_ url: String, in environment: AppEnvironment, attempts: Int = 40) async {
-        for _ in 0..<attempts where !websiteEventIsSurfaced(url, in: environment) {
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 50_000_000)
-        }
-    }
-
-    func waitForPendingWebsite(_ url: String, in environment: AppEnvironment, attempts: Int = 40) async {
-        for _ in 0..<attempts where environment.websitesViewModel.pendingWebsite?.url != url {
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 50_000_000)
-        }
-    }
-
-    func waitForSavedWebsite(
-        id: String,
-        url: String,
-        in environment: AppEnvironment,
-        attempts: Int = 40
-    ) async {
-        for _ in 0..<attempts where !savedWebsiteIsSurfaced(id: id, url: url, in: environment) {
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 50_000_000)
-        }
-    }
-
-    func savedWebsiteIsSurfaced(id: String, url: String, in environment: AppEnvironment) -> Bool {
-        guard environment.websitesViewModel.items.first?.id == id else { return false }
-        guard environment.websitesViewModel.items.first?.url == url else { return false }
-        return environment.websitesStore.hasCachedDetail(id: id)
-    }
-
-    func makeEnvironment(
-        storage: AppEnvironmentStorage,
-        websitesAPI: (any WebsitesProviding)? = nil
-    ) -> AppEnvironment {
-        let authSession = PlaceholderAuthSession(authState: .signedOut)
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
-            authSession: authSession,
-            cacheClient: InMemoryCacheClient(),
-            websitesAPI: websitesAPI
-        )
-        let environment = AppEnvironment(container: container, storage: storage)
-        retainedEnvironments.append(environment)
-        return environment
-    }
-
-    func requireEnvironment(
-        storage: AppEnvironmentStorage? = nil,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) -> AppEnvironment {
-        guard let environment else {
-            XCTFail("Expected test environment", file: file, line: line)
-            return AppEnvironment.shared!
-        }
-        if let storage, environment.storage.userDefaults != storage.userDefaults {
-            XCTFail("Expected environment storage to match test storage", file: file, line: line)
-        }
-        return environment
-    }
-
-    func resetDeepLinkState(_ environment: AppEnvironment) {
-        environment.authState = .signedOut
-        environment.isMacSettingsPresented = false
-        environment.commandSelection = nil
-        environment.focusedSection = nil
-        environment.isTasksFocused = false
-        environment.pendingNewTaskDeepLink = false
-        environment.pendingNewNoteDeepLink = false
-        environment.pendingScratchpadDeepLink = false
-        environment.tasksPhoneDetailRouteId = nil
-        environment.tasksViewModel.cancelNewTask()
-        environment.tasksViewModel.reset()
-        environment.chatViewModel.reset()
-        environment.websitesViewModel.pendingWebsite = nil
     }
 
 }

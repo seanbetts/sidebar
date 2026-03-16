@@ -15,13 +15,22 @@ extension SettingsViewModel {
         setPrimaryProviderSaving(true)
         setPrimaryProviderError(nil)
         do {
+            logSettingsSaveAttempt(
+                operation: "primary_provider",
+                changedFields: ["ai_primary_provider"]
+            )
             let response = try await settingsAPI.updateSettings(
                 SettingsUpdate(aiPrimaryProvider: provider.rawValue)
             )
             applySettingsResponse(response)
             recordCompletedSettingsSave()
         } catch {
-            setPrimaryProviderError(error.localizedDescription)
+            setPrimaryProviderError(
+                recordSettingsSaveFailure(
+                    error,
+                    operation: "primary_provider"
+                )
+            )
         }
         setPrimaryProviderSaving(false)
     }
@@ -37,7 +46,12 @@ extension SettingsViewModel {
             setPrimaryProviderSaving(false)
             return true
         } catch {
-            setPrimaryProviderError(error.localizedDescription)
+            setPrimaryProviderError(
+                recordSettingsSaveFailure(
+                    error,
+                    operation: "primary_provider_key"
+                )
+            )
             setPrimaryProviderSaving(false)
             return false
         }
@@ -52,7 +66,12 @@ extension SettingsViewModel {
                 source: .aiProvider
             )
         } catch {
-            setPrimaryProviderError(error.localizedDescription)
+            setPrimaryProviderError(
+                recordSettingsSaveFailure(
+                    error,
+                    operation: "primary_provider_key_delete"
+                )
+            )
         }
         setPrimaryProviderSaving(false)
     }

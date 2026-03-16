@@ -193,6 +193,15 @@ public final class SettingsViewModel: LoadableViewModel {
 
         isSavingProfile = true
         profileSaveError = nil
+        logSettingsSaveAttempt(operation: "profile", changedFields: [
+            nameUpdate == nil ? nil : "name",
+            jobTitleUpdate == nil ? nil : "job_title",
+            employerUpdate == nil ? nil : "employer",
+            didChangeDateOfBirth ? "date_of_birth" : nil,
+            genderUpdate == nil ? nil : "gender",
+            pronounsUpdate == nil ? nil : "pronouns",
+            locationUpdate == nil ? nil : "location"
+        ].compactMap { $0 })
         do {
             let response = try await settingsAPI.updateSettings(
                 SettingsUpdate(
@@ -214,7 +223,10 @@ public final class SettingsViewModel: LoadableViewModel {
             )
             settingsSaveCompletionCount += 1
         } catch {
-            profileSaveError = error.localizedDescription
+            profileSaveError = recordSettingsSaveFailure(
+                error,
+                operation: "profile"
+            )
         }
         isSavingProfile = false
     }
@@ -240,6 +252,10 @@ public final class SettingsViewModel: LoadableViewModel {
 
         isSavingSystem = true
         systemSaveError = nil
+        logSettingsSaveAttempt(operation: "user", changedFields: [
+            communicationStyleUpdate == nil ? nil : "communication_style",
+            workingRelationshipUpdate == nil ? nil : "working_relationship"
+        ].compactMap { $0 })
         do {
             let response = try await settingsAPI.updateSettings(
                 SettingsUpdate(
@@ -255,7 +271,10 @@ public final class SettingsViewModel: LoadableViewModel {
             )
             settingsSaveCompletionCount += 1
         } catch {
-            systemSaveError = error.localizedDescription
+            systemSaveError = recordSettingsSaveFailure(
+                error,
+                operation: "user"
+            )
         }
         isSavingSystem = false
     }
@@ -287,57 +306,6 @@ public final class SettingsViewModel: LoadableViewModel {
         next.formUnion(requiredSkillIds)
         let ordered = skills.map(\.id).filter { next.contains($0) }
         await updateEnabledSkills(ordered)
-    }
-
-    func applyAssistantSettingsUpdate(_ update: AssistantSettingsRealtimeUpdate) {
-        guard let current = settings else {
-            Task { [weak self] in
-                await self?.load(force: true)
-            }
-            return
-        }
-        if update.requiresRefresh {
-            Task { [weak self] in
-                await self?.load(force: true)
-            }
-            return
-        }
-        let hasIdentity = update.assistantIdentity != nil || update.assistantIdentityMeta != nil
-        let hasSoul = update.assistantSoul != nil || update.assistantSoulMeta != nil
-        guard hasIdentity || hasSoul else {
-            Task { [weak self] in
-                await self?.load(force: true)
-            }
-            return
-        }
-        let next = UserSettings(
-            userId: current.userId,
-            communicationStyle: current.communicationStyle,
-            workingRelationship: current.workingRelationship,
-            name: current.name,
-            jobTitle: current.jobTitle,
-            employer: current.employer,
-            dateOfBirth: current.dateOfBirth,
-            gender: current.gender,
-            pronouns: current.pronouns,
-            location: current.location,
-            profileImageUrl: current.profileImageUrl,
-            assistantIdentity: update.assistantIdentity ?? current.assistantIdentity,
-            assistantIdentityMeta: update.assistantIdentityMeta ?? current.assistantIdentityMeta,
-            assistantSoul: update.assistantSoul ?? current.assistantSoul,
-            assistantSoulMeta: update.assistantSoulMeta ?? current.assistantSoulMeta,
-            aiPrimaryProvider: current.aiPrimaryProvider,
-            aiPrimaryProviderHasKey: current.aiPrimaryProviderHasKey,
-            aiPrimaryProviderKeyLast4: current.aiPrimaryProviderKeyLast4,
-            enabledSkills: current.enabledSkills,
-            installedStoreSkills: current.installedStoreSkills
-        )
-        settings = next
-        cache.set(
-            key: userSettingsCacheKey,
-            value: next,
-            ttlSeconds: CachePolicy.userSettings
-        )
     }
 
     private func updateEnabledSkills(_ enabledSkills: [String]) async {
@@ -373,13 +341,20 @@ public final class SettingsViewModel: LoadableViewModel {
             let update = SettingsUpdate(
                 enabledSkills: normalized
             )
+            logSettingsSaveAttempt(
+                operation: "skills",
+                changedFields: ["enabled_skills"]
+            )
             let response = try await settingsAPI.updateSettings(update)
             settings = response
             settingsSaveCompletionCount += 1
             await invalidateAndRefreshSkillsState()
         } catch {
             settings = previous
-            skillsError = error.localizedDescription
+            skillsError = recordSettingsSaveFailure(
+                error,
+                operation: "skills"
+            )
         }
         isSavingSkills = false
     }

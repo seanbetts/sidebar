@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 struct SettingsRefreshFailure: LocalizedError, Equatable {
     let message: String
@@ -11,6 +12,7 @@ struct SettingsRefreshFailure: LocalizedError, Equatable {
 @MainActor
 extension SettingsViewModel {
     private static let settingsSessionExpiredMessage = "Session expired. Please sign in again."
+    private static let settingsScopeLogger = Logger(subsystem: "sideBar", category: "SettingsSessionScope")
 
     public var assistantDisplayName: String {
         guard let rawName = settings?.assistantIdentity?.name else {
@@ -60,11 +62,13 @@ extension SettingsViewModel {
             return .success(nil)
         }
 
+        Self.settingsScopeLogger.notice("Authorized settings session missing, attempting auth refresh before save")
         if let refreshAuthorizedSession {
             await refreshAuthorizedSession()
         }
 
         guard let authorizedAuthUserId = normalizedAuthorizedAuthUserId else {
+            Self.settingsScopeLogger.error("Authorized settings session could not be recovered before save")
             return .failure(SettingsRefreshFailure(message: Self.settingsSessionExpiredMessage))
         }
 
@@ -75,8 +79,10 @@ extension SettingsViewModel {
         expectedUserId: String?
     ) async -> Result<UserSettings, SettingsRefreshFailure> {
         do {
+            Self.settingsScopeLogger.notice("Reloading settings for current auth user before save")
             let refreshed = try await settingsAPI.getSettings()
             guard isBound(settings: refreshed, to: expectedUserId) else {
+                Self.settingsScopeLogger.error("Reloaded settings do not match the active auth user")
                 return .failure(
                     SettingsRefreshFailure(
                         message: "Couldn't refresh the current account settings. Reopen Settings and try again."
@@ -86,6 +92,10 @@ extension SettingsViewModel {
             applySettingsResponse(refreshed)
             return .success(refreshed)
         } catch {
+            let mappedError = ErrorMapping.message(for: error)
+            Self.settingsScopeLogger.error(
+                "Settings reload before save failed: \(mappedError, privacy: .public)"
+            )
             return .failure(SettingsRefreshFailure(message: ErrorMapping.message(for: error)))
         }
     }
@@ -93,6 +103,12 @@ extension SettingsViewModel {
     func currentSettingsForSave() async -> (settings: UserSettings?, error: String?) {
         if let loaded = settings, isBound(settings: loaded, to: normalizedAuthUserId) {
             return (loaded, nil)
+        }
+
+        if settings != nil {
+            Self.settingsScopeLogger.notice("Loaded settings snapshot is stale for current auth user, reloading before save")
+        } else {
+            Self.settingsScopeLogger.notice("No loaded settings snapshot available, reloading before save")
         }
 
         let expectedUserId: String?

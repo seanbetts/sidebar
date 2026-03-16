@@ -109,6 +109,10 @@ final class APIClientTests: XCTestCase {
         try await assertAuthRefreshRetry(for: "DELETE")
     }
 
+    func test401TriggersRefreshAndRetriesPatchOnce() async throws {
+        try await assertAuthRefreshRetry(for: "PATCH")
+    }
+
     private func assertAuthRefreshRetry(for method: String) async throws {
         final class TokenBox: @unchecked Sendable {
             var token: String
