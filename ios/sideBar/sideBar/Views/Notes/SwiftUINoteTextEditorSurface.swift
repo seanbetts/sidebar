@@ -1,6 +1,12 @@
 import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
+@available(
+    *,
+    deprecated,
+    message: "Retained only for migration audit/reference. Normal notes editing uses UIKit on iOS and AppKit on macOS."
+)
+/// Legacy SwiftUI notes editor surface retained for migration auditing.
 struct SwiftUINoteTextEditorSurface: View {
     @ObservedObject var viewModel: NativeNoteEditorViewModel
     let maxContentWidth: CGFloat

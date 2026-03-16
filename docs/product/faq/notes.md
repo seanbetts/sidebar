@@ -39,9 +39,12 @@ where you left off.
 ## Can I use rich text formatting in notes?
 
 Yes. Notes support rich text formatting through the `textformat` popover in the
-editor. You can apply text styles such as Body, Title, Heading, and Subhead,
-along with inline formatting such as bold, italic, underline, strikethrough,
-and inline code. See [Notes](/manual/notes) for the full breakdown.
+editor. On iPhone and iPad, open it from the editor controls. On macOS, click
+the floating `textformat` button in the top right of the editor or use the
+top-level **Format** menu. You can apply text styles such as Body, Title,
+Heading, and Subhead, along with inline formatting such as bold, italic,
+underline, strikethrough, and inline code. See [Notes](/manual/notes) for the
+full breakdown.
 
 ## What happens when I press Return in a formatted note?
 

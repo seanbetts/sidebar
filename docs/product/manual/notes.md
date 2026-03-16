@@ -36,10 +36,11 @@ come back to a note it's exactly where you left off.
 
 ## Formatting
 
-Notes use rich text. Tap the `textformat` button in the editor controls to open
-the formatting popover. It appears from the existing formatting control area
-and lets you change the current line's text style or apply inline formatting to
-the current selection.
+Notes use rich text. On iPhone and iPad, tap the `textformat` button in the
+editor controls to open the formatting popover. On macOS, click the floating
+`textformat` button at the top right of the editor. The popover lets you change
+the current line's text style or apply inline formatting to the current
+selection.
 
 Available formatting includes:
 
@@ -48,6 +49,9 @@ Available formatting includes:
 
 The text-style row is visual rather than text-only, so each style is shown with
 its own note typography instead of a plain menu label.
+
+On macOS, the same note formatting actions are also available as top-level
+items in the **Format** menu instead of nested submenus.
 
 Pressing Return after a **Title**, **Heading**, or **Subhead** starts a new
 **Body** line. **Body** lines continue as body text when you press Return. Code
@@ -97,6 +101,11 @@ nothing is pinned. See [Widgets & Extensions](/manual/extensions) to set it up.
 | Cmd+Shift+A | Archive or unarchive |
 | Cmd+Shift+Delete | Delete |
 | Esc | Close note |
+| Cmd+Shift+T | Title style (macOS) |
+| Cmd+Shift+H | Heading style (macOS) |
+| Cmd+Shift+J | Subheading style (macOS) |
+| Cmd+Shift+B | Body style (macOS) |
 | Cmd+B | Bold (macOS) |
 | Cmd+I | Italic (macOS) |
 | Cmd+U | Underline (macOS) |
+| Cmd+Shift+X | Strikethrough (macOS) |
