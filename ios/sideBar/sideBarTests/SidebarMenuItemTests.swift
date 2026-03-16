@@ -2,6 +2,18 @@ import XCTest
 @testable import sideBar
 
 final class SidebarMenuItemTests: XCTestCase {
+    func testDeleteMenuItemUsesSystemDestructiveTintPolicy() {
+        let item = SidebarMenuItem.delete {}
+
+        XCTAssertEqual(sidebarMenuItemTintPolicy(for: item), .systemRole)
+    }
+
+    func testCopyMenuItemUsesSidebarTextTintPolicy() {
+        let item = SidebarMenuItem.copy {}
+
+        XCTAssertEqual(sidebarMenuItemTintPolicy(for: item), .sidebarText)
+    }
+
     func testCopyTranscriptMenuItemFactoryUsesExpectedMetadata() {
         var didInvoke = false
         let item = SidebarMenuItem.copyTranscript {

@@ -8,6 +8,15 @@ struct SidebarMenuItem: Identifiable {
     let handler: () -> Void
 }
 
+enum SidebarMenuItemTintPolicy: Equatable {
+    case sidebarText
+    case systemRole
+}
+
+func sidebarMenuItemTintPolicy(for item: SidebarMenuItem) -> SidebarMenuItemTintPolicy {
+    item.role == .destructive ? .systemRole : .sidebarText
+}
+
 extension SidebarMenuItem {
     static func pin(isPinned: Bool, handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(
@@ -76,15 +85,28 @@ extension SidebarMenuItem {
 @ViewBuilder
 func sidebarMenuItemsView(_ items: [SidebarMenuItem]) -> some View {
     ForEach(items) { item in
-        Button(role: item.role) {
-            item.handler()
-        } label: {
-            if let systemImage = item.systemImage {
-                Label(item.title, systemImage: systemImage)
-            } else {
-                Text(item.title)
+        switch sidebarMenuItemTintPolicy(for: item) {
+        case .sidebarText:
+            Button(role: item.role) {
+                item.handler()
+            } label: {
+                if let systemImage = item.systemImage {
+                    Label(item.title, systemImage: systemImage)
+                } else {
+                    Text(item.title)
+                }
+            }
+            .foregroundStyle(DesignTokens.Colors.textPrimary)
+        case .systemRole:
+            Button(role: item.role) {
+                item.handler()
+            } label: {
+                if let systemImage = item.systemImage {
+                    Label(item.title, systemImage: systemImage)
+                } else {
+                    Text(item.title)
+                }
             }
         }
-        .foregroundStyle(item.role == .destructive ? DesignTokens.Colors.error : DesignTokens.Colors.textPrimary)
     }
 }
