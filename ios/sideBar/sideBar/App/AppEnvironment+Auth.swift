@@ -377,6 +377,7 @@ extension AppEnvironment {
     /// Consumes pending add task intent from widget and opens the add task UI
     @MainActor
     public func consumeWidgetAddTask() {
+        guard isAuthenticated else { return }
         let operations = storage.widgetDataManager.consumePendingOperations(
             for: .tasks,
             actionType: TaskWidgetAction.self,
@@ -388,7 +389,7 @@ extension AppEnvironment {
             message: "Consumed widget add-task operations.",
             metadata: ["count": "\(operations.count)"]
         )
-        guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
+        guard operations.contains(where: { $0.action == .addNew }) else { return }
 
         // Navigate to tasks section and start new task
         AppSentry.recordAction(
@@ -411,6 +412,7 @@ extension AppEnvironment {
     /// Consumes pending add note intent from widget and opens the add note UI
     @MainActor
     public func consumeWidgetAddNote() {
+        guard isAuthenticated else { return }
         let operations = storage.widgetDataManager.consumePendingOperations(
             for: .notes,
             actionType: NoteWidgetAction.self,
@@ -422,7 +424,7 @@ extension AppEnvironment {
             message: "Consumed widget add-note operations.",
             metadata: ["count": "\(operations.count)"]
         )
-        guard operations.contains(where: { $0.action == .addNew }), isAuthenticated else { return }
+        guard operations.contains(where: { $0.action == .addNew }) else { return }
 
         // Navigate to notes section and trigger new note creation
         AppSentry.recordAction(
@@ -437,8 +439,8 @@ extension AppEnvironment {
     /// Consumes pending quick save URL from widget and saves the website
     @MainActor
     public func consumeWidgetQuickSave() async {
-        guard let url = storage.widgetDataManager.consumePendingQuickSave(),
-              authState == .active else { return }
+        guard authState == .active,
+              let url = storage.widgetDataManager.consumePendingQuickSave() else { return }
         ExternalSurfaceDiagnosticsStore.shared.record(
             surface: "widget_bridge_app",
             stage: "consume_quick_save",
