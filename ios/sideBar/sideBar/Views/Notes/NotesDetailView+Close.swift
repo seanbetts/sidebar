@@ -2,26 +2,12 @@ import SwiftUI
 
 extension NotesDetailView {
     func requestCloseNote() {
-        let closePlan = WorkspaceBehaviorPolicy.makeWorkspaceItemClosePlan(
-            isWorkspaceExpanded: isWorkspaceExpanded,
-            isWorkspaceExpandedByRotation: currentWorkspaceExpandedByRotation
-        )
+        let closePlan = makeWorkspaceItemClosePlan()
 
         Task {
             await editorViewModel.saveIfNeeded()
-            isWorkspaceExpanded = closePlan.isWorkspaceExpanded
-            #if os(iOS)
-            isWorkspaceExpandedByRotation = closePlan.isWorkspaceExpandedByRotation
-            #endif
+            applyWorkspaceItemClosePlan(closePlan)
             viewModel.clearSelection()
         }
-    }
-
-    private var currentWorkspaceExpandedByRotation: Bool {
-        #if os(iOS)
-        isWorkspaceExpandedByRotation
-        #else
-        false
-        #endif
     }
 }
