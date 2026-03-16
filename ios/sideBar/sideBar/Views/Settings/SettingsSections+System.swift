@@ -30,8 +30,7 @@ struct UserSettingsView: View {
                 }
             }
             Section {
-                TextEditor(text: $communicationStyle)
-                .frame(minHeight: 120)
+                SettingsIOSPlainTextEditor(text: $communicationStyle, minHeight: 120)
             } header: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Communication Style")
@@ -41,8 +40,7 @@ struct UserSettingsView: View {
                 }
             }
             Section {
-                TextEditor(text: $workingRelationship)
-                    .frame(minHeight: 120)
+                SettingsIOSPlainTextEditor(text: $workingRelationship, minHeight: 120)
             } header: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Working Relationship")

@@ -292,6 +292,21 @@ final class SettingsSectionsTests: XCTestCase {
     }
     #endif
 
+    #if os(iOS)
+    func testSettingsIOSPlainTextEditorConfiguresEditableTransparentTextView() {
+        let textView = SettingsIOSPlainTextEditor.makeConfiguredTextView(
+            text: "Hello",
+            delegate: nil
+        )
+
+        XCTAssertEqual(textView.text, "Hello")
+        XCTAssertTrue(textView.isEditable)
+        XCTAssertTrue(textView.isSelectable)
+        XCTAssertEqual(textView.backgroundColor, .clear)
+        XCTAssertEqual(textView.textContainer.lineFragmentPadding, 0)
+    }
+    #endif
+
     func testProfileDraftStateNormalizesPickerValuesAndDate() {
         let settings = UserSettings(
             userId: "user-1",
@@ -698,6 +713,16 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacPlainTextEditor(text:$workingRelationship,minHeight:160)"))
         XCTAssertTrue(normalized.contains(".fill(.clear)"))
         XCTAssertFalse(normalized.contains(".scrollContentBackground(.hidden)"))
+    }
+
+    func testUserSettingsIOSSourceUsesUIKitBackedEditors() throws {
+        let source = try systemSettingsSource()
+        let normalized = source.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsIOSPlainTextEditor(text:$communicationStyle,minHeight:120)"))
+        XCTAssertTrue(normalized.contains("SettingsIOSPlainTextEditor(text:$workingRelationship,minHeight:120)"))
+        XCTAssertFalse(normalized.contains("TextEditor(text:$communicationStyle)"))
+        XCTAssertFalse(normalized.contains("TextEditor(text:$workingRelationship)"))
     }
 
     func testMemoriesSettingsMacRoutingUsesInspectorDetailInsteadOfPlaceholderForm() throws {
