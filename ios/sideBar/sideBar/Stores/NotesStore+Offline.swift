@@ -139,25 +139,6 @@ extension NotesStore {
         applyLocalDelete(notePath: notePath)
     }
 
-    /// Resolves a note sync conflict by keeping local content or restoring server content.
-    public func resolveConflict(_ conflict: SyncConflict<NotePayload>, keepLocal: Bool) async {
-        guard let writeQueue else { return }
-        await writeQueue.deleteWrites(entityType: .note, entityId: conflict.entityId)
-        if keepLocal {
-            applyEditorUpdate(conflict.local)
-            do {
-                try await enqueueUpdate(noteId: conflict.entityId, document: conflict.local.document)
-            } catch {
-                offlineLogger.error(
-                    "Failed to re-enqueue local note conflict resolution write: \(error.localizedDescription, privacy: .public)"
-                )
-            }
-        } else {
-            applyEditorUpdate(conflict.server)
-        }
-        writeQueue.resumeProcessing()
-    }
-
     private func applyLocalMove(notePath: String, folder: String) {
         let newPath = movingPath(notePath, to: folder)
         guard let updatedTree = updatedTree(in: tree, notePath: notePath, transform: { node in

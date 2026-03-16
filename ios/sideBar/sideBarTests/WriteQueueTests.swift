@@ -297,15 +297,15 @@ final class WriteQueueTests: XCTestCase {
         let context = persistence.container.viewContext
         let write = PendingWrite.insertNew(in: context)
         write.id = writeId
-        write.operationType = WriteOperation.update.rawValue
-        write.entityType = WriteEntityType.note.rawValue
-        write.entityId = "note-1"
+        write.operationType = WriteOperation.rename.rawValue
+        write.entityType = WriteEntityType.file.rawValue
+        write.entityId = "file-1"
         write.payload = Data()
         write.createdAt = Date()
         write.attempts = 2
         write.status = WriteQueueStatus.failed.rawValue
         write.lastError = "Conflict"
-        write.conflictReason = "Note changed"
+        write.conflictReason = "File changed"
         write.serverSnapshot = Data("snapshot".utf8)
         try context.save()
 
@@ -337,9 +337,9 @@ final class WriteQueueTests: XCTestCase {
         let context = persistence.container.viewContext
         let write = PendingWrite.insertNew(in: context)
         write.id = writeId
-        write.operationType = WriteOperation.update.rawValue
-        write.entityType = WriteEntityType.note.rawValue
-        write.entityId = "note-1"
+        write.operationType = WriteOperation.rename.rawValue
+        write.entityType = WriteEntityType.file.rawValue
+        write.entityId = "file-1"
         write.payload = Data()
         write.createdAt = Date()
         write.attempts = 1
