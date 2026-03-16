@@ -82,14 +82,14 @@ extension MarkdownRendering {
         )
     }
 
-    private static func markdownImageURL(from line: String) -> String? {
+    private nonisolated static func markdownImageURL(from line: String) -> String? {
         firstCapture(
             pattern: #"^!\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)$"#,
             in: line.trimmingCharacters(in: .whitespacesAndNewlines)
         )
     }
 
-    private static func isTikTokOpenLink(_ line: String, sourceURL: String) -> Bool {
+    private nonisolated static func isTikTokOpenLink(_ line: String, sourceURL: String) -> Bool {
         guard let linkURL = firstCapture(
             pattern: #"^\[Open on TikTok\]\(([^)]+)\)$"#,
             in: line.trimmingCharacters(in: .whitespacesAndNewlines),
