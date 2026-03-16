@@ -1005,9 +1005,9 @@
     },
     {
       "path": "ios/sideBar/sideBarTests/TasksViewModelRealtimeTests.swift",
-      "bucket": "surface",
+      "bucket": "logic",
       "feature_area": "tasks",
-      "branch_policy": "main"
+      "branch_policy": "dev"
     },
     {
       "path": "ios/sideBar/sideBarTests/TasksViewModelRecurringToastTests.swift",
