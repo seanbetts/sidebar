@@ -5,27 +5,13 @@ import XCTest
 @testable import sideBar
 
 final class IngestionUploadManagerTests: XCTestCase {
-    private static let protocolIsolationLock = NSLock()
-
     override func setUp() {
         super.setUp()
-        Self.protocolIsolationLock.lock()
-        URLProtocol.registerClass(IngestionUploadURLProtocolMock.self)
-        IngestionUploadURLProtocolMock.requestHandler = { request in
-            let response = HTTPURLResponse(
-                url: request.url ?? URL(string: "https://example.com/files")!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            return (response, Data("{\"file_id\":\"mock-file\"}".utf8))
-        }
+        IngestionUploadURLProtocolMock.resetHandler()
     }
 
     override func tearDown() {
-        IngestionUploadURLProtocolMock.requestHandler = nil
-        URLProtocol.unregisterClass(IngestionUploadURLProtocolMock.self)
-        Self.protocolIsolationLock.unlock()
+        IngestionUploadURLProtocolMock.resetHandler()
         super.tearDown()
     }
 
@@ -201,6 +187,20 @@ final class IngestionUploadManagerTests: XCTestCase {
         XCTAssertTrue(output.contains("Hello"))
     }
 
+    func testURLProtocolMockUsesDefaultResponseAfterHandlerReset() {
+        IngestionUploadURLProtocolMock.requestHandler = nil
+        let request = URLRequest(url: URL(string: "https://example.com/files")!)
+        let client = URLProtocolClientSpy()
+        let mock = IngestionUploadURLProtocolMock(request: request, cachedResponse: nil, client: client)
+
+        mock.startLoading()
+
+        XCTAssertEqual(client.response?.statusCode, 200)
+        XCTAssertEqual(client.loadedData, Data("{\"file_id\":\"mock-file\"}".utf8))
+        XCTAssertTrue(client.didFinishLoading)
+        XCTAssertNil(client.failure)
+    }
+
     private func makeManager() -> IngestionUploadManager {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
@@ -217,7 +217,35 @@ final class IngestionUploadManagerTests: XCTestCase {
 }
 
 class IngestionUploadURLProtocolMock: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    private static let handlerLock = NSLock()
+    private static var _requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))? = defaultHandler
+
+    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))? {
+        get {
+            handlerLock.lock()
+            defer { handlerLock.unlock() }
+            return _requestHandler
+        }
+        set {
+            handlerLock.lock()
+            _requestHandler = newValue
+            handlerLock.unlock()
+        }
+    }
+
+    static func resetHandler() {
+        requestHandler = defaultHandler
+    }
+
+    private static func defaultHandler(_ request: URLRequest) throws -> (HTTPURLResponse, Data) {
+        let response = HTTPURLResponse(
+            url: request.url ?? URL(string: "https://example.com/files")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (response, Data("{\"file_id\":\"mock-file\"}".utf8))
+    }
 
     override class func canInit(with request: URLRequest) -> Bool {
         true
@@ -228,10 +256,7 @@ class IngestionUploadURLProtocolMock: URLProtocol {
     }
 
     override func startLoading() {
-        guard let handler = IngestionUploadURLProtocolMock.requestHandler else {
-            XCTFail("IngestionUploadURLProtocolMock requestHandler not set")
-            return
-        }
+        let handler = IngestionUploadURLProtocolMock.requestHandler ?? IngestionUploadURLProtocolMock.defaultHandler
         do {
             let (response, data) = try handler(request)
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -243,5 +268,41 @@ class IngestionUploadURLProtocolMock: URLProtocol {
     }
 
     override func stopLoading() {
+    }
+}
+
+private final class URLProtocolClientSpy: NSObject, URLProtocolClient {
+    var response: HTTPURLResponse?
+    var loadedData = Data()
+    var didFinishLoading = false
+    var failure: Error?
+
+    func urlProtocol(_ protocol: URLProtocol, wasRedirectedTo request: URLRequest, redirectResponse: URLResponse) {
+    }
+
+    func urlProtocol(_ protocol: URLProtocol, cachedResponseIsValid cachedResponse: CachedURLResponse) {
+    }
+
+    func urlProtocol(_ protocol: URLProtocol, didReceive response: URLResponse, cacheStoragePolicy policy: URLCache.StoragePolicy) {
+        self.response = response as? HTTPURLResponse
+    }
+
+    func urlProtocol(_ protocol: URLProtocol, didLoad data: Data) {
+        loadedData.append(data)
+    }
+
+    func urlProtocolDidFinishLoading(_ protocol: URLProtocol) {
+        didFinishLoading = true
+    }
+
+    func urlProtocol(_ protocol: URLProtocol, didFailWithError error: Error) {
+        failure = error
+    }
+
+    func urlProtocol(_ protocol: URLProtocol, didReceive challenge: URLAuthenticationChallenge) {
+        challenge.sender?.cancel(challenge)
+    }
+
+    func urlProtocol(_ protocol: URLProtocol, didCancel challenge: URLAuthenticationChallenge) {
     }
 }
