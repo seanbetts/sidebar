@@ -1,47 +1,109 @@
 import XCTest
 
 final class AppCommandsTests: XCTestCase {
-    func testMacFormatMenuGroupsTextStyleAndInlineCommands() throws {
-        let normalized = try appCommandsSourceForFormattingTests()
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+    func testMacFormatMenuFlattensNotesFormattingCommands() throws {
+        let normalized = try normalizedAppCommandsSource()
 
         XCTAssertTrue(normalized.contains("CommandMenu(\"Format\")"))
-        XCTAssertTrue(normalized.contains("Menu(\"TextStyle\")"))
-        XCTAssertTrue(normalized.contains("Button(\"Body\")"))
-        XCTAssertTrue(normalized.contains("Button(\"Title\")"))
-        XCTAssertTrue(normalized.contains("Button(\"Heading\")"))
-        XCTAssertTrue(normalized.contains("Button(\"Subheading\")"))
+        XCTAssertFalse(normalized.contains("Menu(\"TextStyle\")"))
+        XCTAssertFalse(normalized.contains("Menu(\"Inline\")"))
+
         XCTAssertTrue(
             normalized.contains("Button(\"Title\"){environment.notesRuntime.editorViewModel.setTextStyle(.title)}")
-        )
-        XCTAssertTrue(
-            normalized.contains(".keyboardShortcut(\"t\",modifiers:[.command,.shift])")
         )
         XCTAssertTrue(
             normalized.contains("Button(\"Heading\"){environment.notesRuntime.editorViewModel.setTextStyle(.heading)}")
         )
         XCTAssertTrue(
-            normalized.contains(".keyboardShortcut(\"h\",modifiers:[.command,.shift])")
-        )
-        XCTAssertTrue(
             normalized.contains("Button(\"Subheading\"){environment.notesRuntime.editorViewModel.setTextStyle(.subheading)}")
-        )
-        XCTAssertTrue(
-            normalized.contains(".keyboardShortcut(\"j\",modifiers:[.command,.shift])")
         )
         XCTAssertTrue(
             normalized.contains("Button(\"Body\"){environment.notesRuntime.editorViewModel.setTextStyle(.body)}")
         )
-        XCTAssertTrue(
-            normalized.contains(".keyboardShortcut(\"b\",modifiers:[.command,.shift])")
-        )
-        XCTAssertTrue(normalized.contains("Menu(\"Inline\")"))
-        XCTAssertTrue(normalized.contains("Toggle(\"Bold\""))
-        XCTAssertTrue(normalized.contains("Toggle(\"Italic\""))
-        XCTAssertTrue(normalized.contains("Toggle(\"Underline\""))
-        XCTAssertTrue(normalized.contains("Toggle(\"Strikethrough\""))
-        XCTAssertTrue(normalized.contains("Toggle(\"InlineCode\""))
+
+        XCTAssertTrue(normalized.contains("Toggle(\"Bold\",isOn:formattingBinding(.bold))"))
+        XCTAssertTrue(normalized.contains("Toggle(\"Italic\",isOn:formattingBinding(.italic))"))
+        XCTAssertTrue(normalized.contains("Toggle(\"Underline\",isOn:formattingBinding(.underline))"))
+        XCTAssertTrue(normalized.contains("Toggle(\"Strikethrough\",isOn:formattingBinding(.strikethrough))"))
+        XCTAssertTrue(normalized.contains("Toggle(\"InlineCode\",isOn:formattingBinding(.inlineCode))"))
     }
+
+    func testMacFormatMenuPreservesNotesFormattingShortcuts() throws {
+        let normalized = try normalizedAppCommandsSource()
+        let editor = "environment.notesRuntime.editorViewModel"
+
+        XCTAssertTrue(
+            normalized.contains(
+                "Button(\"Title\"){"
+                    + editor
+                    + ".setTextStyle(.title)}.keyboardShortcut(\"t\",modifiers:[.command,.shift])"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "Button(\"Heading\"){"
+                    + editor
+                    + ".setTextStyle(.heading)}.keyboardShortcut(\"h\",modifiers:[.command,.shift])"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "Button(\"Subheading\"){"
+                    + editor
+                    + ".setTextStyle(.subheading)}.keyboardShortcut(\"j\",modifiers:[.command,.shift])"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "Button(\"Body\"){"
+                    + editor
+                    + ".setTextStyle(.body)}.keyboardShortcut(\"b\",modifiers:[.command,.shift])"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "Toggle(\"Bold\",isOn:formattingBinding(.bold)).keyboardShortcut(\"b\",modifiers:[.command])"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "Toggle(\"Italic\",isOn:formattingBinding(.italic)).keyboardShortcut(\"i\",modifiers:[.command])"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "Toggle(\"Underline\",isOn:formattingBinding(.underline)).keyboardShortcut(\"u\",modifiers:[.command])"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "Toggle(\"Strikethrough\",isOn:formattingBinding(.strikethrough)).keyboardShortcut(\"x\",modifiers:[.command,.shift])"
+            )
+        )
+    }
+
+    func testMacFormatMenuKeepsNotesFormattingCommandsContextGated() throws {
+        let normalized = try normalizedAppCommandsSource()
+
+        XCTAssertTrue(normalized.contains(".disabled(!canApplyTextStyle(.title))"))
+        XCTAssertTrue(normalized.contains(".disabled(!canApplyTextStyle(.heading))"))
+        XCTAssertTrue(normalized.contains(".disabled(!canApplyTextStyle(.subheading))"))
+        XCTAssertTrue(normalized.contains(".disabled(!canApplyTextStyle(.body))"))
+        XCTAssertTrue(
+            normalized.contains(
+                "Toggle(\"Bold\",isOn:formattingBinding(.bold)).keyboardShortcut(\"b\",modifiers:[.command]).disabled(!canFormatNotes)"
+            )
+        )
+        XCTAssertTrue(normalized.contains("Toggle(\"InlineCode\",isOn:formattingBinding(.inlineCode)).disabled(!canFormatNotes)"))
+    }
+}
+
+private func normalizedAppCommandsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try appCommandsSourceForFormattingTests(file: file, line: line)
+        .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 }
 
 private func appCommandsSourceForFormattingTests(
