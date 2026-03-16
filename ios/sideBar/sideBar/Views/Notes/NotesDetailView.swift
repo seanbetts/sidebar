@@ -258,7 +258,6 @@ extension NotesDetailView {
 
     @ViewBuilder
     private var contentOverlayRegion: some View {
-        #if os(iOS)
         content
             .overlay(alignment: .topTrailing) {
                 if isCustomFormattingBarVisible {
@@ -268,9 +267,6 @@ extension NotesDetailView {
                         .padding(.trailing, DesignTokens.Spacing.md)
                 }
             }
-        #else
-        content
-        #endif
     }
 
     private struct NoteStatus: Equatable {
@@ -420,14 +416,14 @@ extension NotesDetailView {
     }
 
     var formattingBarPresentation: NoteFormattingBarPresentation {
-        #if os(iOS)
         guard isShowingEditorSurface else { return .hidden }
+        #if os(iOS)
         if let formattingBarPresentationOverride {
             return formattingBarPresentationOverride
         }
         return activeFormattingBarPresentation ?? defaultEditingFormattingBarPresentation
         #else
-        .hidden
+        return .floatingTopTrailing
         #endif
     }
 

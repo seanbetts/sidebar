@@ -49,21 +49,30 @@ final class MountedNotesDetailHarness {
         let controller = NSHostingController(
             rootView: AnyView(context.makeView().environmentObject(environment))
         )
+        let frame = NSRect(x: 0, y: 0, width: 900, height: 700)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
+            contentRect: frame,
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.contentViewController = controller
-        window.orderFront(nil)
-        _ = controller.view
+        window.makeKeyAndOrderFront(nil)
+        let rootView = controller.view
+        rootView.frame = frame
+        rootView.layoutSubtreeIfNeeded()
+        window.contentView?.layoutSubtreeIfNeeded()
+        drainNotesHostingRunLoop()
         hostingController = controller
         self.window = window
+        NotesDetailViewTestRetainer.hostingControllers.append(controller)
+        NotesDetailViewTestRetainer.hostingWindows.append(window)
     }
 
     func settle() async {
         await Task.yield()
+        hostingController?.view.layoutSubtreeIfNeeded()
+        window?.contentView?.layoutSubtreeIfNeeded()
         drainNotesHostingRunLoop()
     }
 
@@ -99,6 +108,9 @@ final class MountedNotesDetailHarness {
               let window else {
             return
         }
+
+        NotesDetailViewTestRetainer.hostingControllers.removeAll { $0 === hostingController }
+        NotesDetailViewTestRetainer.hostingWindows.removeAll { $0 === window }
 
         // Parking avoids a macOS XCTest/AppKit teardown crash in NSTextView
         // deallocation while still letting the test exercise repeated mounted

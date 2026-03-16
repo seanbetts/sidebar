@@ -8,6 +8,7 @@ import XCTest
 final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
     func testFormattingButtonOpensAnchoredPopoverOnMacOS() async throws {
         let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
         harness.mount()
         await harness.settle()
 
@@ -16,9 +17,11 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
             harness.context.editorViewModel.presentationMode == .edit
         }
 
-        let button = try XCTUnwrap(findFormattingButton())
+        let button = try await waitForFormattingButton()
         button.performClick(nil)
-        drainNotesHostingRunLoop()
+        _ = await waitUntil(timeout: .seconds(2)) {
+            findFormattingPopover() != nil
+        }
 
         let popover = try XCTUnwrap(findFormattingPopover())
         let buttonFrame = button.convert(button.bounds, to: nil)
@@ -26,11 +29,11 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
 
         XCTAssertGreaterThan(popoverFrame.width, buttonFrame.width)
         XCTAssertLessThan(abs(popoverFrame.maxX - buttonFrame.maxX), 160)
-        harness.dispose()
     }
 
-    func testClickOutsideFormattingPopoverDismissesItOnMacOS() async throws {
+    func testFormattingPopoverMatchesIOSSectionStructureOnMacOS() async throws {
         let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
         harness.mount()
         await harness.settle()
 
@@ -39,9 +42,84 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
             harness.context.editorViewModel.presentationMode == .edit
         }
 
-        let button = try XCTUnwrap(findFormattingButton())
-        button.performClick(nil)
+        try await openFormattingPopover()
+
+        let popover = try XCTUnwrap(findFormattingPopover())
+        XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-text-style-strip"))
+        XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-inline-group"))
+        XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-code-group"))
+        XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-link-group"))
+        XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-future-list-group"))
+        XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-future-blockquote-group"))
+        XCTAssertEqual(findTextStyleButtonIdentifiers(in: popover), [
+            "note-formatting-text-style-title",
+            "note-formatting-text-style-heading",
+            "note-formatting-text-style-subheading",
+            "note-formatting-text-style-body"
+        ])
+        XCTAssertEqual(findTextStyleButtonTitles(in: popover), ["Title", "Heading", "Subhead", "Body"])
+    }
+
+    func testFormattingActionDismissesPopoverOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        try await openFormattingPopover()
+
+        let boldButton = try XCTUnwrap(findActionButton(identifier: "note-formatting-bold"))
+        boldButton.performClick(nil)
         drainNotesHostingRunLoop()
+
+        XCTAssertNil(findFormattingPopover())
+    }
+
+    func testFormattingPopoverCoversTriggerButtonFootprintOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        let button = try await waitForFormattingButton()
+        button.performClick(nil)
+        _ = await waitUntil(timeout: .seconds(2)) {
+            findFormattingPopover() != nil
+        }
+
+        let popover = try XCTUnwrap(findFormattingPopover())
+        let buttonFrame = button.convert(button.bounds, to: nil)
+        let popoverFrame = popover.convert(popover.bounds, to: nil)
+
+        XCTAssertTrue(popoverFrame.contains(buttonFrame))
+    }
+
+    func testClickOutsideFormattingPopoverDismissesItOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        let button = try await waitForFormattingButton()
+        button.performClick(nil)
+        _ = await waitUntil(timeout: .seconds(2)) {
+            findFormattingPopover() != nil
+        }
 
         XCTAssertNotNil(findFormattingPopover())
 
@@ -50,13 +128,32 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         drainNotesHostingRunLoop()
 
         XCTAssertNil(findFormattingPopover())
-        harness.dispose()
+    }
+
+    private func openFormattingPopover() async throws {
+        let button = try await waitForFormattingButton()
+        button.performClick(nil)
+        _ = await waitUntil(timeout: .seconds(2)) {
+            findFormattingPopover() != nil
+        }
+        XCTAssertNotNil(findFormattingPopover())
+    }
+
+    private func waitForFormattingButton() async throws -> NSButton {
+        _ = await waitUntil(timeout: .seconds(2)) {
+            guard let button = findFormattingButton() else {
+                return false
+            }
+            return button.isEnabled
+        }
+        return try XCTUnwrap(findFormattingButton())
     }
 }
 
 @MainActor
 private func findFormattingButton() -> NSButton? {
-    for window in NotesDetailViewTestRetainer.hostingWindows {
+    layoutMountedNoteWindows()
+    for window in NotesDetailViewTestRetainer.hostingWindows.reversed() {
         guard let contentView = window.contentView else { continue }
         if let match = findDescendantView(in: contentView, identifier: "note-formatting-menu") as? NSButton {
             return match
@@ -68,9 +165,11 @@ private func findFormattingButton() -> NSButton? {
 
 @MainActor
 private func findFormattingPopover() -> NSView? {
-    for window in NSApp.windows {
+    layoutMountedNoteWindows()
+    for window in NotesDetailViewTestRetainer.hostingWindows.reversed() {
         guard let contentView = window.contentView else { continue }
-        if let match = findDescendantView(in: contentView, identifier: "note-formatting-popover") {
+        if let match = findDescendantView(in: contentView, identifier: "note-formatting-popover"),
+           !match.isHidden {
             return match
         }
     }
@@ -80,14 +179,52 @@ private func findFormattingPopover() -> NSView? {
 
 @MainActor
 private func findDismissBackdrop() -> NSButton? {
-    for window in NSApp.windows {
+    layoutMountedNoteWindows()
+    for window in NotesDetailViewTestRetainer.hostingWindows.reversed() {
         guard let contentView = window.contentView else { continue }
-        if let match = findDescendantView(in: contentView, identifier: "note-formatting-dismiss-backdrop") as? NSButton {
+        if let match = findDescendantView(in: contentView, identifier: "note-formatting-dismiss-backdrop") as? NSButton,
+           !match.isHidden {
             return match
         }
     }
 
     return nil
+}
+
+@MainActor
+private func layoutMountedNoteWindows() {
+    for window in NotesDetailViewTestRetainer.hostingWindows {
+        window.contentViewController?.view.layoutSubtreeIfNeeded()
+        window.contentView?.layoutSubtreeIfNeeded()
+    }
+    drainNotesHostingRunLoop()
+}
+
+@MainActor
+private func findActionButton(identifier: String) -> NSButton? {
+    guard let popover = findFormattingPopover() else {
+        return nil
+    }
+
+    return findDescendantView(in: popover, identifier: identifier) as? NSButton
+}
+
+@MainActor
+private func findTextStyleButtonIdentifiers(in popover: NSView) -> [String] {
+    guard let strip = findDescendantView(in: popover, identifier: "note-formatting-text-style-buttons") else {
+        return []
+    }
+
+    return strip.subviews.compactMap { $0.identifier?.rawValue }
+}
+
+@MainActor
+private func findTextStyleButtonTitles(in popover: NSView) -> [String] {
+    guard let strip = findDescendantView(in: popover, identifier: "note-formatting-text-style-buttons") else {
+        return []
+    }
+
+    return strip.subviews.compactMap { ($0 as? NSButton)?.title }
 }
 
 @MainActor

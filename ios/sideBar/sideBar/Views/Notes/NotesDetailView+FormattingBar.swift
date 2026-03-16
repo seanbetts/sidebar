@@ -1,9 +1,8 @@
 import SwiftUI
 
 extension NotesDetailView {
-    #if os(iOS)
     var noteFormattingBarConfiguration: NoteFormattingBarConfiguration {
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, macOS 26.0, *) {
             return editorViewModel.noteFormattingBarConfiguration
         }
         return .disabled
@@ -12,11 +11,18 @@ extension NotesDetailView {
     var noteFormattingBar: some View {
         let configuration = noteFormattingBarConfiguration
 
+        #if os(iOS)
         return UIKitNoteFormattingBarRepresentable(
             configuration: configuration,
             presentation: formattingBarPresentation
         )
         .disabled(!configuration.isEnabled)
+        #elseif os(macOS)
+        return AppKitNoteFormattingBarRepresentable(
+            configuration: configuration,
+            presentation: formattingBarPresentation
+        )
+        .frame(width: 60, height: 48)
+        #endif
     }
-    #endif
 }

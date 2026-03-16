@@ -138,24 +138,40 @@ func makeNotesDetailTestEnvironment(
 @MainActor
 @discardableResult
 func mount(
-    _ view: NotesDetailView,
-    environment: AppEnvironment
+    _ view: some View,
+    frame: CGRect = CGRect(x: 0, y: 0, width: 900, height: 700)
 ) -> NSHostingController<AnyView> {
     let controller = NSHostingController(
-        rootView: AnyView(view.environmentObject(environment))
+        rootView: AnyView(view)
     )
     let window = NSWindow(
-        contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
+        contentRect: frame,
         styleMask: [.titled, .closable, .resizable],
         backing: .buffered,
         defer: false
     )
     window.contentViewController = controller
-    window.orderFront(nil)
-    _ = controller.view
+    window.makeKeyAndOrderFront(nil)
+    let rootView = controller.view
+    rootView.frame = frame
+    rootView.layoutSubtreeIfNeeded()
+    window.contentView?.layoutSubtreeIfNeeded()
+    drainNotesHostingRunLoop()
     NotesDetailViewTestRetainer.hostingControllers.append(controller)
     NotesDetailViewTestRetainer.hostingWindows.append(window)
     return controller
+}
+
+@MainActor
+@discardableResult
+func mount(
+    _ view: NotesDetailView,
+    environment: AppEnvironment
+) -> NSHostingController<AnyView> {
+    mount(
+        view.environmentObject(environment),
+        frame: CGRect(x: 0, y: 0, width: 900, height: 700)
+    )
 }
 #elseif os(iOS)
 @MainActor

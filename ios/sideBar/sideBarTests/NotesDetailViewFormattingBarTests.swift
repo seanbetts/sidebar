@@ -346,7 +346,7 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(document.blocks[1].content.first?.marks, [.bold])
     }
 #elseif os(macOS)
-    func testCustomFormattingBarRemainsHiddenOnMacOS() async throws {
+    func testCustomFormattingBarIsVisibleOnMacOSInEditMode() async throws {
         guard #available(macOS 26.0, *) else {
             throw XCTSkip("Requires macOS 26")
         }
@@ -354,7 +354,34 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.enterEditMode()
 
-        XCTAssertFalse(context.makeView().isCustomFormattingBarVisible)
+        XCTAssertTrue(context.makeView().isCustomFormattingBarVisible)
+    }
+
+    func testFloatingFormattingBarHostMountsFormattingButtonOnMacOS() throws {
+        guard #available(macOS 26.0, *) else {
+            throw XCTSkip("Requires macOS 26")
+        }
+
+        let controller = mount(
+            FloatingFormattingBarHost(
+                configuration: .disabled
+            )
+        )
+        let barView = try XCTUnwrap(
+            findDescendantView(
+                in: controller.view,
+                identifier: "note-formatting-bar"
+            )
+        )
+        let buttonView = try XCTUnwrap(
+            findDescendantView(
+                in: controller.view,
+                identifier: "note-formatting-menu"
+            )
+        )
+
+        XCTAssertGreaterThan(barView.bounds.width, 0)
+        XCTAssertGreaterThan(buttonView.bounds.width, 0)
     }
 #endif
 }
@@ -387,6 +414,42 @@ private func findDescendantView(in view: UIView, accessibilityIdentifier: String
 
     for subview in view.subviews {
         if let match = findDescendantView(in: subview, accessibilityIdentifier: accessibilityIdentifier) {
+            return match
+        }
+    }
+
+    return nil
+}
+#elseif os(macOS)
+@MainActor
+@available(macOS 26.0, *)
+private struct FloatingFormattingBarHost: View {
+    let configuration: NoteFormattingBarConfiguration
+
+    var body: some View {
+        Color.clear
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .topTrailing) {
+                AppKitNoteFormattingBarRepresentable(
+                    configuration: configuration,
+                    presentation: .floatingTopTrailing
+                )
+                .frame(width: 60, height: 48)
+                .fixedSize()
+                .padding(.top, DesignTokens.Spacing.sm)
+                .padding(.trailing, DesignTokens.Spacing.md)
+            }
+    }
+}
+
+@MainActor
+private func findDescendantView(in view: NSView, identifier: String) -> NSView? {
+    if view.identifier?.rawValue == identifier {
+        return view
+    }
+
+    for subview in view.subviews {
+        if let match = findDescendantView(in: subview, identifier: identifier) {
             return match
         }
     }

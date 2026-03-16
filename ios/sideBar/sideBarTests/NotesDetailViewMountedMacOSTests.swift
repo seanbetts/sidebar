@@ -13,6 +13,7 @@ final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
     @available(iOS 26.0, macOS 26.0, *)
     func testMountedEditModeRoutesThroughAppKitHostInsteadOfSwiftUISurface() async throws {
         let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
         harness.mount()
         await harness.settle()
 
@@ -25,12 +26,12 @@ final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
         XCTAssertTrue(view.isShowingEditorSurface)
         XCTAssertTrue(try attributedNoteEditorContainerMountsAppKitSurfaceDirectly())
         XCTAssertFalse(try attributedNoteEditorContainerMountsSwiftUISurfaceDirectly())
-        harness.dispose()
     }
 
     @available(iOS 26.0, macOS 26.0, *)
     func testMountedEditModeShowsFloatingFormattingButtonOnMacOS() async throws {
         let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
         harness.mount()
         await harness.settle()
 
@@ -40,20 +41,20 @@ final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
         }
 
         XCTAssertNotNil(findMountedFormattingButton())
-        harness.dispose()
     }
 
     func testMountedReadModeDoesNotShowFloatingFormattingButtonOnMacOS() async throws {
         let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
         harness.mount()
         await harness.settle()
 
         XCTAssertNil(findMountedFormattingButton())
-        harness.dispose()
     }
 
     func testMountedViewCloseShortcutEventClosesReadModeNote() async throws {
         let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
         harness.mount()
         await harness.settle()
         harness.environment.activeSection = .notes
@@ -66,7 +67,6 @@ final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
 
         XCTAssertNil(harness.context.editorViewModel.currentNoteId)
         XCTAssertNil(harness.context.notesViewModel.activeNote)
-        harness.dispose()
     }
 
     func testMountedCloseShortcutDoesNotCrashAcrossRepeatedReset() async throws {
@@ -134,7 +134,8 @@ final class NotesDetailViewMountedMacOSTests: NotesDetailViewHostingTestCase {
 
 @MainActor
 private func findMountedFormattingButton() -> NSButton? {
-    for window in NotesDetailViewTestRetainer.hostingWindows {
+    layoutMountedNoteWindows()
+    for window in NotesDetailViewTestRetainer.hostingWindows.reversed() {
         guard let contentView = window.contentView else { continue }
         if let match = findDescendantView(in: contentView, identifier: "note-formatting-menu") as? NSButton {
             return match
@@ -142,6 +143,15 @@ private func findMountedFormattingButton() -> NSButton? {
     }
 
     return nil
+}
+
+@MainActor
+private func layoutMountedNoteWindows() {
+    for window in NotesDetailViewTestRetainer.hostingWindows {
+        window.contentViewController?.view.layoutSubtreeIfNeeded()
+        window.contentView?.layoutSubtreeIfNeeded()
+    }
+    drainNotesHostingRunLoop()
 }
 
 @MainActor
