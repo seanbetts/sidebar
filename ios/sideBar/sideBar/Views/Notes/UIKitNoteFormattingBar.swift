@@ -77,6 +77,14 @@ final class UIKitNoteFormattingBar: UIView {
         }
         super.willMove(toWindow: newWindow)
     }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        let previousStyle = previousTraitCollection?.userInterfaceStyle
+        let currentStyle = traitCollection.userInterfaceStyle
+        guard previousStyle != currentStyle else { return }
+        applyGlassChrome()
+    }
 }
 
 @MainActor
@@ -204,6 +212,15 @@ extension UIKitNoteFormattingBar {
         configuration.background = .clear()
         configuration.baseForegroundColor = .label
         return configuration
+    }
+
+    static func glassBorderColor(for traitCollection: UITraitCollection) -> UIColor {
+        switch traitCollection.userInterfaceStyle {
+        case .dark:
+            UIColor.white.withAlphaComponent(0.22)
+        default:
+            UIColor.black.withAlphaComponent(0.12)
+        }
     }
 
     @objc func handleMenuButtonTap() {
@@ -387,6 +404,7 @@ extension UIKitNoteFormattingBar {
         backgroundEffectView.clipsToBounds = true
         backgroundEffectView.layer.cornerCurve = .continuous
         backgroundEffectView.layer.cornerRadius = Self.barHeight / 2
+        applyGlassChrome()
         addSubview(backgroundEffectView)
 
         stackView.axis = .horizontal
@@ -413,6 +431,11 @@ extension UIKitNoteFormattingBar {
         ])
 
         menuButton.addTarget(self, action: #selector(handleMenuButtonTap), for: .touchUpInside)
+    }
+
+    func applyGlassChrome() {
+        backgroundEffectView.layer.borderWidth = 1
+        backgroundEffectView.layer.borderColor = Self.glassBorderColor(for: traitCollection).cgColor
     }
 }
 

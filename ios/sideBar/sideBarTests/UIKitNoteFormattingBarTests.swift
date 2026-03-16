@@ -306,9 +306,31 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         let buttonConfiguration = try XCTUnwrap(bar.menuButton.configuration)
 
         XCTAssertTrue(effectView.effect is UIGlassEffect)
+        XCTAssertEqual(effectView.layer.cornerRadius, 24, accuracy: CGFloat(0.01))
+        XCTAssertEqual(effectView.layer.borderWidth, 1, accuracy: CGFloat(0.01))
+        XCTAssertEqual(
+            UIColor(cgColor: try XCTUnwrap(effectView.layer.borderColor))
+                .resolvedColor(with: UITraitCollection(userInterfaceStyle: .light)),
+            UIKitNoteFormattingBar.glassBorderColor(for: UITraitCollection(userInterfaceStyle: .light))
+        )
         XCTAssertTrue(bar.menuButton.isEnabled)
         XCTAssertNil(buttonConfiguration.background.visualEffect)
         XCTAssertEqual(buttonConfiguration.background.strokeWidth, 0)
+    }
+
+    func testGlassBorderColorAdaptsToLightAndDarkAppearance() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        XCTAssertEqual(
+            UIKitNoteFormattingBar.glassBorderColor(for: UITraitCollection(userInterfaceStyle: .light)),
+            UIColor.black.withAlphaComponent(0.12)
+        )
+        XCTAssertEqual(
+            UIKitNoteFormattingBar.glassBorderColor(for: UITraitCollection(userInterfaceStyle: .dark)),
+            UIColor.white.withAlphaComponent(0.22)
+        )
     }
 
     func testPopoverLayoutPrefersBelowForFloatingPresentationWhenSpaceAllows() throws {
