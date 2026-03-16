@@ -168,6 +168,23 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(resolvedGlassView.style, .regular)
     }
 
+    func testFormattingBarUsesVisibleGlassBorderOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        let glassView = try XCTUnwrap(findFormattingBarGlassView())
+
+        XCTAssertEqual(try XCTUnwrap(glassView.layer?.borderWidth), 1, accuracy: 0.01)
+        XCTAssertNotNil(glassView.layer?.borderColor)
+    }
+
     func testFormattingPopoverUsesLiquidGlassBackgroundOnMacOS() async throws {
         let harness = await MountedNotesDetailHarness()
         defer { harness.dispose() }
@@ -216,6 +233,39 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertGreaterThanOrEqual(
             headingButton.frame.width,
             ceil(headingButton.attributedTitle.size().width) + 16 - 0.5
+        )
+    }
+
+    func testFormattingPopoverTextStyleRowCentersAcrossAvailableWidthOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness()
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .start)
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .edit
+        }
+
+        try await openFormattingPopover()
+
+        let popover = try XCTUnwrap(findFormattingPopover())
+        let strip = try XCTUnwrap(findTextStyleStrip(in: popover))
+        let scrollView = try XCTUnwrap(findTextStyleScrollView(in: popover))
+        let titleButton = try XCTUnwrap(
+            findTextStyleButton(in: popover, identifier: "note-formatting-text-style-title")
+        )
+        let bodyButton = try XCTUnwrap(
+            findTextStyleButton(in: popover, identifier: "note-formatting-text-style-body")
+        )
+
+        XCTAssertEqual(strip.frame.width, scrollView.contentView.bounds.width, accuracy: 0.5)
+        XCTAssertGreaterThan(titleButton.frame.minX, 0)
+        XCTAssertLessThan(bodyButton.frame.maxX, strip.frame.width)
+        XCTAssertEqual(
+            titleButton.frame.minX,
+            strip.frame.width - bodyButton.frame.maxX,
+            accuracy: 1.0
         )
     }
 
@@ -356,6 +406,16 @@ private func findTextStyleButtonTitles(in popover: NSView) -> [String] {
 @MainActor
 private func findTextStyleButton(in popover: NSView, identifier: String) -> NSButton? {
     findDescendantView(in: popover, identifier: identifier) as? NSButton
+}
+
+@MainActor
+private func findTextStyleStrip(in popover: NSView) -> NSStackView? {
+    findDescendantView(in: popover, identifier: "note-formatting-text-style-buttons") as? NSStackView
+}
+
+@MainActor
+private func findTextStyleScrollView(in popover: NSView) -> NSScrollView? {
+    findDescendantView(in: popover, identifier: "note-formatting-text-style-strip") as? NSScrollView
 }
 
 @MainActor

@@ -64,6 +64,8 @@ final class AppKitNoteFormattingPopoverView: NSView {
     private let textStyleScrollView = NSScrollView()
     private let textStyleDocumentView = NSView()
     private let textStyleStrip = NSStackView()
+    private let leadingTextStyleSpacer = NSView()
+    private let trailingTextStyleSpacer = NSView()
     private let inlineActionsRow = NSStackView()
     private let blockActionsRow = NSStackView()
     private let onDismissRequested: @MainActor @Sendable () -> Void
@@ -226,15 +228,22 @@ private extension AppKitNoteFormattingPopoverView {
         textStyleStrip.identifier = NSUserInterfaceItemIdentifier("note-formatting-text-style-buttons")
         textStyleStrip.orientation = .horizontal
         textStyleStrip.alignment = .centerY
+        textStyleStrip.distribution = .equalSpacing
         textStyleStrip.spacing = 4
         textStyleStrip.translatesAutoresizingMaskIntoConstraints = false
         textStyleDocumentView.addSubview(textStyleStrip)
+
+        configureTextStyleSpacer(leadingTextStyleSpacer)
+        configureTextStyleSpacer(trailingTextStyleSpacer)
+        textStyleStrip.addArrangedSubview(leadingTextStyleSpacer)
 
         for style in orderedTextStyles {
             let button = makeTextStyleButton(for: style)
             textStyleButtons[style] = button
             textStyleStrip.addArrangedSubview(button)
         }
+
+        textStyleStrip.addArrangedSubview(trailingTextStyleSpacer)
     }
 
     private func setUpActionRows() {
@@ -259,6 +268,13 @@ private extension AppKitNoteFormattingPopoverView {
         row.alignment = .centerY
         row.spacing = 12
         row.translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    private func configureTextStyleSpacer(_ spacer: NSView) {
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        spacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 0).isActive = true
     }
 
     private func setUpConstraints() {
@@ -287,9 +303,11 @@ private extension AppKitNoteFormattingPopoverView {
             textStyleDocumentView.widthAnchor.constraint(greaterThanOrEqualTo: textStyleScrollView.contentView.widthAnchor),
 
             textStyleStrip.leadingAnchor.constraint(equalTo: textStyleDocumentView.leadingAnchor),
-            textStyleStrip.trailingAnchor.constraint(lessThanOrEqualTo: textStyleDocumentView.trailingAnchor),
+            textStyleStrip.trailingAnchor.constraint(equalTo: textStyleDocumentView.trailingAnchor),
             textStyleStrip.topAnchor.constraint(equalTo: textStyleDocumentView.topAnchor),
-            textStyleStrip.bottomAnchor.constraint(equalTo: textStyleDocumentView.bottomAnchor)
+            textStyleStrip.bottomAnchor.constraint(equalTo: textStyleDocumentView.bottomAnchor),
+
+            leadingTextStyleSpacer.widthAnchor.constraint(equalTo: trailingTextStyleSpacer.widthAnchor)
         ])
     }
 

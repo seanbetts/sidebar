@@ -99,6 +99,11 @@ final class AppKitNoteFormattingBar: NSView {
         }
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyGlassChrome()
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         let hitView = super.hitTest(point)
         return hitView === self ? nil : hitView
@@ -163,7 +168,9 @@ private extension AppKitNoteFormattingBar {
         barContainerView.translatesAutoresizingMaskIntoConstraints = false
         barContainerView.style = .regular
         barContainerView.cornerRadius = 18
+        barContainerView.wantsLayer = true
         barContainerView.contentView = barContentView
+        applyGlassChrome()
         addSubview(barContainerView)
         barContentView.translatesAutoresizingMaskIntoConstraints = false
 
@@ -186,6 +193,21 @@ private extension AppKitNoteFormattingBar {
             menuButton.topAnchor.constraint(equalTo: barContentView.topAnchor),
             menuButton.bottomAnchor.constraint(equalTo: barContentView.bottomAnchor)
         ])
+    }
+
+    func applyGlassChrome() {
+        guard let layer = barContainerView.layer else { return }
+        layer.borderWidth = 1
+        layer.borderColor = glassBorderColor.cgColor
+    }
+
+    var glassBorderColor: NSColor {
+        switch effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) {
+        case .darkAqua:
+            NSColor.white.withAlphaComponent(0.22)
+        default:
+            NSColor.black.withAlphaComponent(0.12)
+        }
     }
 
     func handleMenuButtonTap() {
