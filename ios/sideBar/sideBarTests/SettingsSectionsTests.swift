@@ -303,7 +303,20 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(textView.isEditable)
         XCTAssertTrue(textView.isSelectable)
         XCTAssertEqual(textView.backgroundColor, .clear)
+        XCTAssertFalse(textView.isScrollEnabled)
         XCTAssertEqual(textView.textContainer.lineFragmentPadding, 0)
+    }
+
+    func testSettingsIOSPlainTextEditorResolvedHeightUsesMinimum() {
+        let height = SettingsIOSPlainTextEditor.resolvedHeight(fitting: 44, minHeight: 120)
+
+        XCTAssertEqual(height, 120)
+    }
+
+    func testSettingsIOSPlainTextEditorResolvedHeightExpandsForLargerContent() {
+        let height = SettingsIOSPlainTextEditor.resolvedHeight(fitting: 164.2, minHeight: 120)
+
+        XCTAssertEqual(height, 165)
     }
     #endif
 

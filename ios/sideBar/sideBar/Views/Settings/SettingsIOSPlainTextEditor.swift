@@ -30,6 +30,21 @@ struct SettingsIOSPlainTextEditor: UIViewRepresentable {
         }
     }
 
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        uiView: UITextView,
+        context: Context
+    ) -> CGSize? {
+        let targetWidth = proposal.width ?? uiView.bounds.width
+        let fittingSize = uiView.sizeThatFits(
+            CGSize(width: targetWidth, height: CGFloat.greatestFiniteMagnitude)
+        )
+        return CGSize(
+            width: targetWidth,
+            height: Self.resolvedHeight(fitting: fittingSize.height, minHeight: minHeight)
+        )
+    }
+
     static func makeConfiguredTextView(
         text: String,
         delegate: UITextViewDelegate?
@@ -39,7 +54,8 @@ struct SettingsIOSPlainTextEditor: UIViewRepresentable {
         textView.backgroundColor = .clear
         textView.isEditable = true
         textView.isSelectable = true
-        textView.alwaysBounceVertical = true
+        textView.isScrollEnabled = false
+        textView.alwaysBounceVertical = false
         textView.font = UIFont.preferredFont(forTextStyle: .body)
         textView.adjustsFontForContentSizeCategory = true
         textView.textColor = .label
@@ -47,6 +63,10 @@ struct SettingsIOSPlainTextEditor: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0
         textView.delegate = delegate
         return textView
+    }
+
+    static func resolvedHeight(fitting contentHeight: CGFloat, minHeight: CGFloat) -> CGFloat {
+        max(minHeight, ceil(contentHeight))
     }
 
     static func dismantleUIView(_ uiView: UITextView, coordinator: Coordinator) {
