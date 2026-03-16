@@ -13,7 +13,7 @@ final class NotesStoreWidgetDataTests: XCTestCase {
         )
     }
 
-    func testUpdateWidgetDataFallsBackToRecentNotesWhenNoPinnedNotes() async {
+    func testUpdateWidgetDataShowsEmptySnapshotWhenNoPinnedNotes() async {
         let api = NotesStoreTestsSupport.MockNotesAPI(
             treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
             noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
@@ -52,11 +52,11 @@ final class NotesStoreWidgetDataTests: XCTestCase {
 
         let snapshot = store.makeWidgetData(from: tree)
 
-        XCTAssertEqual(snapshot.totalCount, 2)
-        XCTAssertEqual(snapshot.notes.map(\.path), ["/newer.md", "/older.md"])
+        XCTAssertEqual(snapshot.totalCount, 0)
+        XCTAssertTrue(snapshot.notes.isEmpty)
     }
 
-    func testUpdateWidgetDataPrefersPinnedNotesButFillsWithRecentUnpinnedNotes() async {
+    func testUpdateWidgetDataIncludesOnlyPinnedNotes() async {
         let api = NotesStoreTestsSupport.MockNotesAPI(
             treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
             noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
@@ -95,8 +95,8 @@ final class NotesStoreWidgetDataTests: XCTestCase {
 
         let snapshot = store.makeWidgetData(from: tree)
 
-        XCTAssertEqual(snapshot.totalCount, 2)
-        XCTAssertEqual(snapshot.notes.map(\.path), ["/pinned.md", "/recent.md"])
+        XCTAssertEqual(snapshot.totalCount, 1)
+        XCTAssertEqual(snapshot.notes.map(\.path), ["/pinned.md"])
     }
 
     func testApplyTreeUpdateRepairsWidgetSnapshotEvenWhenTreeIsUnchanged() async {

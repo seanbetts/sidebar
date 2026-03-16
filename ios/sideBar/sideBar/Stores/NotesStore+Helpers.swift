@@ -358,13 +358,8 @@ extension NotesStore {
         let pinnedNotes = allNotes
             .filter { $0.pinned }
             .sorted { ($0.pinnedOrder ?? Int.max) < ($1.pinnedOrder ?? Int.max) }
-        let fallbackNotes = allNotes
-            .filter { !$0.pinned }
-            .sorted { lhs, rhs in
-                (lhs.modifiedAt ?? .distantPast) > (rhs.modifiedAt ?? .distantPast)
-            }
-        let widgetNotes = Array((pinnedNotes + fallbackNotes).prefix(10))
-        return WidgetNoteData(notes: widgetNotes, totalCount: allNotes.count)
+        let widgetNotes = Array(pinnedNotes.prefix(10))
+        return WidgetNoteData(notes: widgetNotes, totalCount: pinnedNotes.count)
     }
 
     func flattenNotes(from nodes: [FileNode]) -> [WidgetNote] {
