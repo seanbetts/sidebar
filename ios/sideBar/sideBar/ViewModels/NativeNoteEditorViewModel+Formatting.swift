@@ -126,10 +126,7 @@ extension NativeNoteEditorViewModel {
             guard block.type != style.blockType else { continue }
             updatedBlocks[blockInfo.index] = .init(
                 type: style.blockType,
-                content: normalizedInlineSegments(
-                    block.content,
-                    for: style
-                ),
+                content: block.content,
                 checked: block.checked
             )
             didMutate = true
@@ -251,20 +248,4 @@ extension NativeNoteEditorViewModel {
         let range: Range<Int>
         let state: InlineFormattingState
     }
-
-    private func normalizedInlineSegments(
-        _ segments: [NotesSemanticDocument.InlineSegment],
-        for style: NoteTextStyle
-    ) -> [NotesSemanticDocument.InlineSegment] {
-        guard style != .body else { return segments }
-
-        return segments.map { segment in
-            .init(
-                text: segment.text,
-                marks: segment.marks.filter { $0 != .bold },
-                link: segment.link
-            )
-        }
-    }
-
 }

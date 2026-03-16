@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 #if os(macOS)
 import AppKit
 #else
@@ -21,6 +22,12 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(headingFont.pointSize, baseFontSize * 1.4, accuracy: 0.001)
         XCTAssertEqual(subheadingFont.pointSize, baseFontSize * 1.15, accuracy: 0.001)
         XCTAssertEqual(bodyFont.pointSize, baseFontSize * 1.0, accuracy: 0.001)
+        XCTAssertEqual(NoteTextStyleTypography.fontWeight(for: .title), .bold)
+        XCTAssertEqual(NoteTextStyleTypography.fontWeight(for: .heading), .bold)
+        XCTAssertEqual(NoteTextStyleTypography.fontWeight(for: .subheading), .bold)
+        XCTAssertEqual(NoteTextStyleTypography.platformWeight(for: .title), .bold)
+        XCTAssertEqual(NoteTextStyleTypography.platformWeight(for: .heading), .bold)
+        XCTAssertEqual(NoteTextStyleTypography.platformWeight(for: .subheading), .bold)
 
         XCTAssertTrue(fontHasBoldTrait(titleFont))
         XCTAssertTrue(fontHasBoldTrait(headingFont))

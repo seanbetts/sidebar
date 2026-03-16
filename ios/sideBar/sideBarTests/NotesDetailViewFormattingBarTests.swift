@@ -343,7 +343,7 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         let document = context.editorViewModel.currentSemanticDocumentSnapshot()
         XCTAssertEqual(document.blocks.map(\.type), [.title, .heading])
         XCTAssertEqual(context.makeView().noteFormattingBarConfiguration.activeTextStyle, .heading)
-        XCTAssertEqual(document.blocks[1].content.first?.marks, [])
+        XCTAssertEqual(document.blocks[1].content.first?.marks, [.bold])
     }
 #elseif os(macOS)
     func testCustomFormattingBarRemainsHiddenOnMacOS() async throws {
