@@ -28,15 +28,35 @@ extension AppEnvironment {
                 settingsAPI: container.settingsAPI,
                 skillsAPI: container.skillsAPI,
                 cache: container.cacheClient,
-                currentAuthUserIdProvider: { container.authSession.userId },
+                currentAuthUserIdProvider: {
+                    settingsRequestUserId(
+                        authSession: container.authSession,
+                        requireAuthorization: false
+                    )
+                },
                 currentAuthorizedUserIdProvider: {
-                    guard container.authSession.authorizationToken != nil else { return nil }
-                    return container.authSession.userId
+                    settingsRequestUserId(
+                        authSession: container.authSession,
+                        requireAuthorization: true
+                    )
                 },
                 refreshAuthorizedSession: {
                     await container.authSession.refreshSession()
                 }
             )
+        }
+
+        static func settingsRequestUserId(
+            authSession: AuthSession,
+            requireAuthorization: Bool
+        ) -> String? {
+            guard let authorizationToken = authSession.authorizationToken else {
+                return requireAuthorization ? nil : authSession.userId
+            }
+            if let tokenSubject = SupabaseAuthAdapter.jwtSubject(from: authorizationToken) {
+                return tokenSubject
+            }
+            return authSession.userId
         }
 
         static func orderedWorkspaceContextSections(

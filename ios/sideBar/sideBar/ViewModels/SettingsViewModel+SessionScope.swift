@@ -82,7 +82,14 @@ extension SettingsViewModel {
             Self.settingsScopeLogger.notice("Reloading settings for current auth user before save")
             let refreshed = try await settingsAPI.getSettings()
             guard isBound(settings: refreshed, to: expectedUserId) else {
-                Self.settingsScopeLogger.error("Reloaded settings do not match the active auth user")
+                let expectedDescription = expectedUserId ?? "<none>"
+                let actualDescription = normalizeUserId(refreshed.userId) ?? "<none>"
+                let mismatchMessage =
+                    "Reloaded settings do not match the active auth user " +
+                    "expected=\(expectedDescription) actual=\(actualDescription)"
+                Self.settingsScopeLogger.error(
+                    "\(mismatchMessage, privacy: .private)"
+                )
                 return .failure(
                     SettingsRefreshFailure(
                         message: "Couldn't refresh the current account settings. Reopen Settings and try again."

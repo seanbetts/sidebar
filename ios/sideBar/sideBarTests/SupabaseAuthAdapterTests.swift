@@ -86,6 +86,17 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertNil(date)
     }
 
+    func testJwtSubjectUsesSubClaim() async {
+        let exp: TimeInterval = 1_800_000_000
+        let header = base64UrlEncode(["alg": "none", "typ": "JWT"])
+        let payload = base64UrlEncode(["exp": exp, "sub": "user-123"])
+        let token = "\(header).\(payload)."
+
+        let subject = SupabaseAuthAdapter.jwtSubject(from: token)
+
+        XCTAssertEqual(subject, "user-123")
+    }
+
     func testMakeAuthOptionsUsesInMemoryStorageForNonKeychainStore() {
         let options = SupabaseAuthAdapter.makeAuthOptions(stateStore: InMemoryAuthStateStore())
         XCTAssertTrue(options.storage is SupabaseInMemoryStorage)

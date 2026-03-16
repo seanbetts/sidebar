@@ -97,6 +97,36 @@ final class AppEnvironmentDependencyBuilderTests: XCTestCase {
         XCTAssertEqual(ordered, [.init(pane: .primary, section: .websites)])
     }
 
+    func testSettingsRequestUserIdPrefersAuthorizedTokenSubjectOverCachedUserId() {
+        let session = FakeAuthSession(
+            accessToken: makeJwt(sub: "token-user"),
+            userId: "cached-user",
+            authState: .active
+        )
+
+        let resolved = AppEnvironment.ViewModelDependencyBuilder.settingsRequestUserId(
+            authSession: session,
+            requireAuthorization: false
+        )
+
+        XCTAssertEqual(resolved, "token-user")
+    }
+
+    func testSettingsRequestUserIdRequiresAuthorizationWhenRequested() {
+        let session = FakeAuthSession(
+            accessToken: nil,
+            userId: "cached-user",
+            authState: .stale
+        )
+
+        let resolved = AppEnvironment.ViewModelDependencyBuilder.settingsRequestUserId(
+            authSession: session,
+            requireAuthorization: true
+        )
+
+        XCTAssertNil(resolved)
+    }
+
     func testRequestContextIncludesOnlyVisibleWorkspaceSections() {
         var workspaceState = WorkspaceState(
             layout: .split,
@@ -206,5 +236,43 @@ final class AppEnvironmentDependencyBuilderTests: XCTestCase {
             derivatives: [],
             recommendedViewer: nil
         )
+    }
+
+    private func makeJwt(sub: String) -> String {
+        let header = Data("{\"alg\":\"none\",\"typ\":\"JWT\"}".utf8)
+            .base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        let payload = Data("{\"sub\":\"\(sub)\",\"exp\":4102444800}".utf8)
+            .base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        return "\(header).\(payload)."
+    }
+}
+
+private struct FakeAuthSession: AuthSession {
+    let accessToken: String?
+    let userId: String?
+    let authState: AuthState
+
+    var authorizationToken: String? {
+        authState == .active ? accessToken : nil
+    }
+
+    func signIn(email: String, password: String) async throws {
+        _ = email
+        _ = password
+    }
+
+    func refreshSession() async {
+    }
+
+    func refreshSessionIfStale() async {
+    }
+
+    func signOut() async {
     }
 }

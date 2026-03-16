@@ -370,14 +370,14 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         return nil
     }
 
-    private static func decodeJwtPayload(_ token: String) -> Data? {
+    static func decodeJwtPayload(_ token: String) -> Data? {
         let segments = token.split(separator: ".")
         guard segments.count >= 2 else { return nil }
         let payload = String(segments[1])
         return base64UrlDecode(payload)
     }
 
-    private static func base64UrlDecode(_ value: String) -> Data? {
+    static func base64UrlDecode(_ value: String) -> Data? {
         var base64 = value
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
