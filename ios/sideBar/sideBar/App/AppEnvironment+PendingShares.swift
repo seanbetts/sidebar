@@ -229,22 +229,18 @@ extension AppEnvironment {
             return
         }
 
-        var pending = initialPending
+        let pending = initialPending
         websitesViewModel.syncPendingWebsitesFromQueuedShares(pending)
+        guard !pending.isEmpty else { return }
 
-        while !pending.isEmpty {
-            let retainedItems = await processPendingShares(pending)
-            let reconciled = reconcilePendingShareResults(
-                processedSnapshot: pending,
-                retainedItems: retainedItems
-            )
-            let prunedItems = prunedQueuedWebsiteItems(reconciled.items)
-            storage.pendingShareStore.replaceAll(prunedItems)
-            websitesViewModel.syncPendingWebsitesFromQueuedShares(prunedItems)
-
-            guard reconciled.hadConcurrentQueuedItems else { break }
-            pending = prunedItems
-        }
+        let retainedItems = await processPendingShares(pending)
+        let reconciled = reconcilePendingShareResults(
+            processedSnapshot: pending,
+            retainedItems: retainedItems
+        )
+        let prunedItems = prunedQueuedWebsiteItems(reconciled.items)
+        storage.pendingShareStore.replaceAll(prunedItems)
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(prunedItems)
     }
 
     public func retryPendingQueuedWebsite(_ queueItemId: UUID) async {

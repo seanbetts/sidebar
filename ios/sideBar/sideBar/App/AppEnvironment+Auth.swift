@@ -20,10 +20,8 @@ extension AppEnvironment {
     func consumeWebsiteSaveHandoff() async {
         guard authState == .active else { return }
         await consumeExtensionEvents()
-        #if os(macOS)
         await websitesViewModel.refreshFromExtension()
         reconcileQueuedWebsitesWithSavedItems()
-        #endif
     }
 
     public func refreshAuthState() {
