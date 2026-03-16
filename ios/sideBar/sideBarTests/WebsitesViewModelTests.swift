@@ -449,6 +449,36 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.pendingWebsites.first?.status, .reading)
     }
 
+    func testSyncPendingWebsitesFromQueuedSharesSkipsWebsiteAlreadyInSavedList() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let saved = makeItem(
+            id: "site-existing",
+            url: "https://example.com/articles/already-saved",
+            domain: "example.com"
+        )
+        store.insertItemAtTop(saved, persist: false)
+
+        viewModel.syncPendingWebsitesFromQueuedShares([
+            PendingShareItem(
+                id: UUID(),
+                kind: .website,
+                createdAt: Date(),
+                url: "https://example.com/articles/already-saved"
+            )
+        ])
+
+        XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
+    }
+
     func testSaveWebsiteWithoutSelectionPreservesCurrentDetail() async {
         let existing = makeItem(id: "site-existing")
         let existingDetail = makeDetail(id: "site-existing")
@@ -520,6 +550,41 @@ final class WebsitesViewModelTests: XCTestCase {
 
         _ = await saveTask.value
         XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
+    }
+
+    func testSaveWebsiteWithoutSelectionRecoversFromSuccessWithoutWebsitePayload() async {
+        let savedItem = makeItem(
+            id: "site-queued-1",
+            url: "https://queued.example/path",
+            domain: "queued.example"
+        )
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [savedItem])),
+            saveResult: .success(
+                WebsiteSaveResponse(
+                    success: true,
+                    website: nil
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let saved = await viewModel.saveWebsite(
+            url: "https://queued.example/path",
+            selectAfterSave: false
+        )
+
+        XCTAssertTrue(saved)
+        XCTAssertEqual(viewModel.items.first?.url, "https://queued.example/path")
+        XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
+        XCTAssertNil(viewModel.saveErrorMessage)
     }
 
     func testLoadArchivedTracksLoadingState() async {
@@ -1403,12 +1468,17 @@ private final class MockIngestionAPI: IngestionProviding {
     }
 }
 
-private func makeItem(id: String, updatedAt: String? = nil) -> WebsiteItem {
+private func makeItem(
+    id: String,
+    url: String = "https://example.com",
+    domain: String = "example.com",
+    updatedAt: String? = nil
+) -> WebsiteItem {
     WebsiteItem(
         id: id,
         title: "Site",
-        url: "https://example.com",
-        domain: "example.com",
+        url: url,
+        domain: domain,
         savedAt: nil,
         publishedAt: nil,
         pinned: false,

@@ -12,6 +12,32 @@ private func makeStoreForExtensionURLHandlerTests() -> PendingShareStore {
 }
 
 extension PendingShareStoreTests {
+    func testExtensionURLMessageHandlerQueuesImmediatelyWhenQueueOnlyIsPreferred() async {
+        let store = makeStoreForExtensionURLHandlerTests()
+        var saveCalled = false
+
+        let response = await ExtensionURLMessageHandler.handleSaveURLMessage(
+            action: "save_url",
+            urlString: "https://example.com",
+            pendingStore: store,
+            saveStrategy: .queueOnly,
+            saveWebsite: { _ in
+                saveCalled = true
+            }
+        )
+
+        XCTAssertFalse(saveCalled)
+        XCTAssertEqual(response["ok"] as? Bool, true)
+        XCTAssertEqual(response["code"] as? String, ExtensionMessageCode.savedForLater.rawValue)
+        XCTAssertEqual(
+            response["message"] as? String,
+            ExtensionUserMessageCatalog.message(for: .savedForLater)
+        )
+        XCTAssertEqual(response["queued"] as? String, "website")
+        XCTAssertEqual(store.loadAll().count, 1)
+        XCTAssertEqual(store.loadAll().first?.url, "https://example.com")
+    }
+
     func testExtensionURLMessageHandlerRejectsUnsupportedAction() async {
         let store = makeStoreForExtensionURLHandlerTests()
         let response = await ExtensionURLMessageHandler.handleSaveURLMessage(

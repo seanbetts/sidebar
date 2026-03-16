@@ -154,6 +154,14 @@ func shouldKeepPendingShareItem(
 }
 
 extension AppEnvironment {
+    func reconcileQueuedWebsitesWithSavedItems() {
+        let existing = storage.pendingShareStore.loadAll()
+        let pruned = prunedQueuedWebsiteItems(existing)
+        guard pruned.count != existing.count else { return }
+        storage.pendingShareStore.replaceAll(pruned)
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(pruned)
+    }
+
     public func enqueueWebsiteSave(
         url: String,
         selectAfterSave: Bool = true
@@ -210,13 +218,18 @@ extension AppEnvironment {
         isConsumingPendingShares = true
         defer { isConsumingPendingShares = false }
 
+        let loadedPending = storage.pendingShareStore.loadAll()
+        let initialPending = prunedQueuedWebsiteItems(loadedPending)
+        if initialPending.count != loadedPending.count {
+            storage.pendingShareStore.replaceAll(initialPending)
+        }
+
         guard !connectivityMonitor.isOffline else {
-            let pending = storage.pendingShareStore.loadAll()
-            websitesViewModel.syncPendingWebsitesFromQueuedShares(pending)
+            websitesViewModel.syncPendingWebsitesFromQueuedShares(initialPending)
             return
         }
 
-        var pending = storage.pendingShareStore.loadAll()
+        var pending = initialPending
         websitesViewModel.syncPendingWebsitesFromQueuedShares(pending)
 
         while !pending.isEmpty {
@@ -225,11 +238,12 @@ extension AppEnvironment {
                 processedSnapshot: pending,
                 retainedItems: retainedItems
             )
-            storage.pendingShareStore.replaceAll(reconciled.items)
-            websitesViewModel.syncPendingWebsitesFromQueuedShares(reconciled.items)
+            let prunedItems = prunedQueuedWebsiteItems(reconciled.items)
+            storage.pendingShareStore.replaceAll(prunedItems)
+            websitesViewModel.syncPendingWebsitesFromQueuedShares(prunedItems)
 
             guard reconciled.hadConcurrentQueuedItems else { break }
-            pending = reconciled.items
+            pending = prunedItems
         }
     }
 
@@ -400,5 +414,17 @@ extension AppEnvironment {
             !processedIds.contains(item.id) && !retainedIds.contains(item.id)
         }
         return (retainedItems + concurrentItems, !concurrentItems.isEmpty)
+    }
+
+    private func prunedQueuedWebsiteItems(_ items: [PendingShareItem]) -> [PendingShareItem] {
+        let savedKeys = Set(websitesViewModel.items.map {
+            websitesViewModel.canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url
+        })
+        guard !savedKeys.isEmpty else { return items }
+        return items.filter { item in
+            guard item.kind == .website, let rawURL = item.url else { return true }
+            let candidate = websitesViewModel.canonicalWebsiteURLForPendingMatch(rawURL) ?? rawURL
+            return !savedKeys.contains(candidate)
+        }
     }
 }

@@ -22,10 +22,9 @@ about it, take notes, or dig deeper with further research.
 There are three ways to save a web page:
 
 - **Share sheet**: tap the share button in any app and choose sideBar to save
-  the current page instantly. If sideBar cannot finish the save in the share
-  sheet, it tells you whether the page was queued for later or failed to save.
-  When the sideBar app is already open, the pending website appears there
-  immediately while the save continues.
+  the current page instantly. sideBar queues the page right away, then finishes
+  processing in the app. When the sideBar app is already open, the pending
+  website appears there immediately while the save continues.
   See [Widgets & Extensions](/manual/extensions) to enable it.
 - **Safari extension**: tap the sideBar button in your browser toolbar to
   save the page without leaving it. When the sideBar app is already open, the

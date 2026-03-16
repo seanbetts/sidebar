@@ -22,6 +22,7 @@ extension AppEnvironment {
         await consumeExtensionEvents()
         #if os(macOS)
         await websitesViewModel.refreshFromExtension()
+        reconcileQueuedWebsitesWithSavedItems()
         #endif
     }
 
@@ -190,6 +191,7 @@ extension AppEnvironment {
             if authState == .active {
                 await consumeExtensionEvents()
                 await websitesViewModel.load(force: true)
+                reconcileQueuedWebsitesWithSavedItems()
             }
         }
         runOfflineMaintenance()

@@ -180,41 +180,11 @@ public final class WebsitesViewModel: ObservableObject {
         isLoading = false
     }
 
-    /// Force-refresh after a Share Extension save. Always bypasses the rate
-    /// limit because the user explicitly saved a new item and expects it to
-    /// appear immediately. Updates lastForcedLoadAt so the next lifecycle-
-    /// triggered load(force: true) is still suppressed for the cooldown window.
-    public func refreshFromExtension() async {
-        lastForcedLoadAt = Date()
-        errorMessage = nil
-        do {
-            try await store.loadList(force: true)
-        } catch {
-            if items.isEmpty {
-                errorMessage = ErrorMapping.message(for: error)
-            }
-        }
-    }
-
     public func loadArchived(force: Bool = false) async {
         guard !isLoadingArchived else { return }
         isLoadingArchived = true
         defer { isLoadingArchived = false }
         await store.loadArchivedList(force: force)
-    }
-
-    public func showPendingFromExtension(url: String) {
-        guard let normalized = WebsiteURLValidator.normalizedCandidate(url) else {
-            return
-        }
-        _ = upsertPendingWebsite(from: normalized, source: .queuedShare)
-    }
-
-    public func syncPendingWebsitesFromQueuedShares(
-        _ queuedItems: [PendingShareItem],
-        readingQueueItemId: UUID? = nil
-    ) {
-        syncQueuedPendingWebsites(with: queuedItems, readingQueueItemId: readingQueueItemId)
     }
 
     public func loadById(id: String) async {
@@ -258,6 +228,13 @@ public final class WebsitesViewModel: ObservableObject {
             saveErrorMessage = nil
             do {
                 let response = try await api.save(url: normalized.absoluteString)
+                if response.success, let website = response.website {
+                    applySavedWebsiteWithoutSelection(website, pendingURL: normalized)
+                    return true
+                }
+                if response.success, await recoverSavedWebsiteWithoutSelection(pendingURL: normalized) {
+                    return true
+                }
                 guard response.success, let website = response.website else {
                     saveErrorMessage = "Failed to save website"
                     return false

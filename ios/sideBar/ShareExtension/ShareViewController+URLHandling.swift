@@ -52,58 +52,11 @@ extension ShareViewController {
 
     @MainActor
     func saveOrQueueWebsite(_ url: URL) async {
-        if !(await ShareNetworkMonitor.isOnline()) {
-            queuePendingWebsite(url)
-            return
-        }
-
-        guard let environment else {
-            let queueCode: ExtensionMessageCode
-            if let initializationError = environmentInitializationError as? ShareExtensionError,
-               case .notAuthenticated = initializationError {
-                queueCode = .savedForLaterSignInRequired
-            } else {
-                queueCode = .savedForLater
-            }
-            queuePendingWebsite(url, successCode: queueCode)
-            return
-        }
-
         let payload = await ExtensionURLMessageHandler.handleSaveURLMessage(
             action: "save_url",
             urlString: normalizedWebsiteEventURL(url),
             pendingStore: pendingShareStore,
-            saveWebsite: { normalizedURL in
-                let response = try await environment.websitesAPI.save(url: normalizedURL)
-                guard response.success, let website = response.website else {
-                    throw APIClientError.apiError("Failed to save website")
-                }
-                ExtensionEventStore.shared.recordWebsiteSaved(
-                    website: ExtensionSavedWebsite(
-                        id: website.id,
-                        title: website.title,
-                        url: website.url,
-                        urlFull: website.urlFull,
-                        domain: website.domain,
-                        content: website.content,
-                        source: website.source,
-                        savedAt: website.savedAt,
-                        publishedAt: website.publishedAt,
-                        pinned: website.pinned,
-                        pinnedOrder: website.pinnedOrder,
-                        archived: website.archived,
-                        faviconUrl: website.faviconUrl,
-                        faviconR2Key: website.faviconR2Key,
-                        youtubeTranscripts: website.youtubeTranscripts,
-                        readingTime: website.readingTime,
-                        updatedAt: website.updatedAt,
-                        lastOpenedAt: website.lastOpenedAt
-                    )
-                )
-            },
-            refreshAccessToken: {
-                await environment.ensureValidAccessToken(forceRefresh: true)
-            }
+            saveStrategy: .queueOnly
         )
 
         showSaveURLResult(payload)

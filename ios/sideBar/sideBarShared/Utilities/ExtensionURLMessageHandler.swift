@@ -1,6 +1,11 @@
 import Foundation
 
 public enum ExtensionURLMessageHandler {
+    public enum SaveStrategy: Equatable {
+        case immediate
+        case queueOnly
+    }
+
     private enum SaveFailureDisposition {
         case queue(ExtensionMessageCode)
         case fail(ExtensionMessageCode)
@@ -255,6 +260,7 @@ public enum ExtensionURLMessageHandler {
         action: String?,
         urlString: String?,
         pendingStore: PendingShareStore = .shared,
+        saveStrategy: SaveStrategy = .immediate,
         saveWebsite: ((String) async throws -> Void)? = nil,
         refreshAccessToken: (() async -> Bool)? = nil
     ) async -> [String: Any] {
@@ -266,6 +272,9 @@ public enum ExtensionURLMessageHandler {
         }
         guard let normalized = normalizeQueuedURL(urlString) else {
             return failureResponse(.invalidURL)
+        }
+        if saveStrategy == .queueOnly {
+            return queuedWebsiteResponse(for: normalized, pendingStore: pendingStore)
         }
         guard let saveWebsite else {
             return queuedWebsiteResponse(for: normalized, pendingStore: pendingStore)

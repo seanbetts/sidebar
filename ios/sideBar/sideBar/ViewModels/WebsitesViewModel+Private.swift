@@ -98,6 +98,25 @@ extension WebsitesViewModel {
         store.invalidateList()
     }
 
+    func recoverSavedWebsiteWithoutSelection(pendingURL: URL) async -> Bool {
+        do {
+            try await store.loadList(force: true)
+        } catch {
+            return false
+        }
+
+        let target = canonicalWebsiteURLForPendingMatch(pendingURL.absoluteString) ?? pendingURL.absoluteString
+        guard items.contains(where: {
+            (canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url) == target
+        }) else {
+            return false
+        }
+
+        removePendingWebsite(for: pendingURL.absoluteString)
+        saveErrorMessage = nil
+        return true
+    }
+
     func failWebsiteSave(previousSelectedId: String?, pendingURL: URL, message: String) {
         removePendingWebsite(for: pendingURL.absoluteString)
         selectedWebsiteId = previousSelectedId

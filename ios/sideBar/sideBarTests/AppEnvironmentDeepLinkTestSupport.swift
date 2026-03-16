@@ -9,6 +9,7 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
     let listResult: Result<WebsitesResponse, Error>
     let onSave: ((String) async -> Void)?
     private(set) var lastSavedURL: String?
+    private(set) var saveCallCount = 0
     private(set) var listCallCount = 0
 
     init(
@@ -42,6 +43,7 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
     }
 
     func save(url: String) async throws -> WebsiteSaveResponse {
+        saveCallCount += 1
         lastSavedURL = url
         await onSave?(url)
         return try saveResult.get()

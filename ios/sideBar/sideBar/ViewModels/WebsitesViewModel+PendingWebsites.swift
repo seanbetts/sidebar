@@ -144,12 +144,15 @@ extension WebsitesViewModel {
             )
         }
         let queuedCanonical = Set(orderedQueuedEntries.map { $0.canonical })
+        let savedCanonical = Set(items.map { canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url })
 
         pendingWebsites.removeAll {
-            $0.source == .queuedShare && !queuedCanonical.contains($0.canonicalURL)
+            $0.source == .queuedShare &&
+            (!queuedCanonical.contains($0.canonicalURL) || savedCanonical.contains($0.canonicalURL))
         }
 
         for entry in orderedQueuedEntries {
+            guard !savedCanonical.contains(entry.canonical) else { continue }
             let status = pendingWebsiteStatus(
                 for: entry.item,
                 readingQueueItemId: readingQueueItemId

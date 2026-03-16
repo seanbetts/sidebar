@@ -40,10 +40,10 @@ to save.
 
 ## What does "saved for later" mean in the share sheet?
 
-It means sideBar could not finish saving the page immediately, usually because
-you were offline or needed to sign in again, but it did queue the URL. On Mac,
-an already-open app shows that queued website immediately. Open sideBar, sign
-in if needed, and the app will finish saving the page.
+It means the URL was added to sideBar's save queue. sideBar then finishes
+fetching and processing the page in the app. If the app is already open, the
+queued website appears there immediately. Open sideBar, sign in if needed, and
+the app will finish saving the page.
 
 ## Can sideBar work with saved pages in chat?
 

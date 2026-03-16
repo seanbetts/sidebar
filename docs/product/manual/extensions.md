@@ -74,8 +74,9 @@ You can share:
 3. Find **sideBar** in the list and toggle it on.
 
 sideBar now appears in your share sheet whenever you want to save something.
-If the sideBar app is already open on your Mac, shared websites appear there
-immediately as pending saves, then update automatically when processing
+Shared website URLs are queued immediately, so the share sheet can finish
+quickly. If the sideBar app is already open, the website appears there
+immediately as a pending save, then updates automatically when processing
 finishes.
 
 ## Safari Extension
