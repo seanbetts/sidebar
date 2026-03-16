@@ -139,6 +139,11 @@ User-facing product docs live in `docs/product/` and are deployed via Mintlify t
 ## Autonomy and check-ins
 - Work in multi-step batches. Do not stop after each small change.
 - For tasks that trigger superpowers process skills, follow their required sequence. In practice that usually means: approved design, written plan, implementation, verification.
+- Planning vocabulary for this repo:
+  - `Task` is the execution unit in an implementation plan. Implementers and subagents pick up one task at a time.
+  - `Step` is a checkbox-sized action inside a task, usually the TDD loop or a verification action.
+  - `Phase` is optional rollout or reporting language only. Use it to describe broad sequencing or status when helpful, but do not use phases as the unit of execution.
+  - If a plan uses phases, every executable item should still be written as tasks with steps. Do not treat phase names and task names as interchangeable.
 - Only ask me a question when blocked by:
   - a missing requirement that changes behaviour
   - a risky choice with multiple reasonable options
@@ -171,6 +176,7 @@ For continuation work:
 - continue using the existing approved spec or plan when one exists
 - update the existing spec or plan only if needed to keep it accurate
 - do not create a new spec or a new plan document unless scope materially expands
+- when updating an existing plan, preserve the repo vocabulary above: phases are optional status buckets, tasks are the executable units, and steps are the checkbox actions
 - do not invoke brainstorming for localized polish or corrective changes that stay within the approved scope
 - do not invoke writing-plans solely because the user is giving follow-up tweaks or regression feedback
 - still perform implementation, testing, and verification proportional to the change
