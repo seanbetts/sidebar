@@ -7,15 +7,17 @@ import traceback
 from collections.abc import Generator
 
 from fastapi import Depends
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from api.config import settings
 from api.db.dependencies import get_current_user_id
 from api.metrics import db_connections_active
+from api.models.website import Website
 
 logger = logging.getLogger(__name__)
+_pending_website_content_lazy_loads: dict[int, dict[str, str]] = {}
 
 # Create engine - Always use PostgreSQL
 use_pooler = "pooler." in settings.database_url
@@ -102,17 +104,48 @@ def _set_app_user_id(session: Session, transaction, connection) -> None:
         _apply_session_settings(connection, user_id, force_public)
 
 
-if os.getenv("TRACE_WEBSITE_CONTENT_LAZY_LOAD"):
-    from api.models.website import Website  # noqa: PLC0415
+def _record_website_content_lazy_load(orm_execute_state) -> None:
+    """Record SQL and stack for an upcoming deferred Website.content load."""
+    if not getattr(orm_execute_state, "is_column_load", False):
+        return
+    mapper = (getattr(orm_execute_state, "bind_arguments", {}) or {}).get("mapper")
+    if mapper is None or mapper.class_ is not Website:
+        return
+    load_options = getattr(orm_execute_state, "load_options", None)
+    refresh_state = getattr(load_options, "_refresh_state", None)
+    if refresh_state is None:
+        return
+    _pending_website_content_lazy_loads[id(refresh_state)] = {
+        "sql": " ".join(str(orm_execute_state.statement).split()),
+        "stack": "".join(traceback.format_stack(limit=12)[:-1]),
+    }
 
-    @event.listens_for(Website.content, "load")
-    def _trace_website_content_load(target, context) -> None:
-        stack = "".join(traceback.format_stack(limit=12)[:-1])
-        logger.warning(
-            "LAZY LOAD: websites.content id=%s\n%s",
-            getattr(target, "id", "?"),
-            stack,
-        )
+
+def _log_website_content_refresh(target: Website, context, attrs) -> None:
+    """Log a deferred Website.content load with SQL and stack context."""
+    if target.__class__ is not Website:
+        return
+    if not attrs or "content" not in attrs:
+        return
+    state = inspect(target)
+    pending_trace = _pending_website_content_lazy_loads.pop(id(state), None)
+    sql = pending_trace["sql"] if pending_trace else "<unknown>"
+    stack = (
+        pending_trace["stack"]
+        if pending_trace
+        else "".join(traceback.format_stack(limit=12)[:-1])
+    )
+    logger.warning(
+        "LAZY LOAD: websites.content id=%s sql=%s\n%s",
+        getattr(target, "id", "?"),
+        sql,
+        stack,
+    )
+
+
+if os.getenv("TRACE_WEBSITE_CONTENT_LAZY_LOAD"):
+    event.listen(Session, "do_orm_execute", _record_website_content_lazy_load)
+    event.listen(Website, "refresh", _log_website_content_refresh)
 
 
 def get_db(
