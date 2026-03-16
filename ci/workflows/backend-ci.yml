@@ -6,6 +6,8 @@ on:
       - dev
     paths:
       - "backend/**"
+      - "scripts/validate_ios_test_taxonomy.py"
+      - "scripts/ios_test_taxonomy.json"
       - ".github/workflows/backend-ci.yml"
 
 concurrency:
