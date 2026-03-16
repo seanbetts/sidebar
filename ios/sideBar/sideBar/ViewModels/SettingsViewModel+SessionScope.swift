@@ -91,16 +91,16 @@ extension SettingsViewModel {
     }
 
     func currentSettingsForSave() async -> (settings: UserSettings?, error: String?) {
+        if let loaded = settings, isBound(settings: loaded, to: normalizedAuthUserId) {
+            return (loaded, nil)
+        }
+
         let expectedUserId: String?
         switch await resolveAuthorizedAuthUserIdForSettingsRequest() {
         case .success(let authorizedAuthUserId):
             expectedUserId = authorizedAuthUserId
         case .failure(let failure):
             return (nil, failure.message)
-        }
-
-        if let loaded = settings, isBound(settings: loaded, to: expectedUserId) {
-            return (loaded, nil)
         }
 
         switch await reloadSettingsForCurrentAuthUser(expectedUserId: expectedUserId) {
