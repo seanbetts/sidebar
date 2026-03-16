@@ -137,8 +137,7 @@ struct AddTaskIntent: AppIntent {
         logger.info("AddTaskIntent recording pending add task (app process)")
         await MainActor.run {
             let widgetDataManager = AppEnvironment.shared?.storage.widgetDataManager ?? WidgetDataManager.shared
-            let operation = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
-            widgetDataManager.recordPendingOperation(operation, for: .tasks)
+            widgetDataManager.recordAddTaskIntent()
             if let environment = AppEnvironment.shared {
                 #if os(macOS)
                 NSApplication.shared.activate(ignoringOtherApps: true)
@@ -195,8 +194,7 @@ struct CreateNoteIntent: AppIntent {
     func perform() async throws -> some IntentResult & OpensIntent {
         await MainActor.run {
             let widgetDataManager = AppEnvironment.shared?.storage.widgetDataManager ?? WidgetDataManager.shared
-            let operation = WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew)
-            widgetDataManager.recordPendingOperation(operation, for: .notes)
+            widgetDataManager.recordAddNoteIntent()
             if let environment = AppEnvironment.shared {
                 #if os(macOS)
                 NSApplication.shared.activate(ignoringOtherApps: true)
@@ -242,7 +240,8 @@ struct QuickSaveIntent: AppIntent {
         if let url {
             logger.info("QuickSaveIntent recording pending save for URL: \(url.absoluteString)")
             await MainActor.run {
-                WidgetDataManager.shared.recordPendingQuickSave(url: url)
+                let widgetDataManager = AppEnvironment.shared?.storage.widgetDataManager ?? WidgetDataManager.shared
+                widgetDataManager.recordQuickSaveIntent(url: url)
             }
         }
         guard let deepLink = URL(string: "sidebar://websites") else {

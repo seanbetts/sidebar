@@ -11,6 +11,12 @@ extension AppEnvironment {
         await consumeWidgetCompletions()
     }
 
+    func consumeWidgetIntentHandoff() async {
+        await consumeWidgetQuickSave()
+        consumeWidgetAddTask()
+        consumeWidgetAddNote()
+    }
+
     func consumeWebsiteSaveHandoff() async {
         guard authState == .active else { return }
         await consumeExtensionEvents()

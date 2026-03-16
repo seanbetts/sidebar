@@ -378,6 +378,20 @@ extension WidgetDataManager {
     WidgetTaskCompletionHandoffNotifier.post()
   }
 
+  /// Records an add-task widget intent and notifies a running app process.
+  public func recordAddTaskIntent() {
+    let operation = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
+    recordPendingOperation(operation, for: .tasks)
+    WidgetIntentHandoffNotifier.post()
+  }
+
+  /// Records an add-note widget intent and notifies a running app process.
+  public func recordAddNoteIntent() {
+    let operation = WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew)
+    recordPendingOperation(operation, for: .notes)
+    WidgetIntentHandoffNotifier.post()
+  }
+
   private static let pendingQuickSaveKey = "pendingQuickSaveURL"
 
   /// Records a URL to be saved when the app opens
@@ -390,6 +404,12 @@ extension WidgetDataManager {
       message: "Recorded widget quick save URL.",
       metadata: ["url": url.absoluteString]
     )
+  }
+
+  /// Records a quick-save widget intent and notifies a running app process.
+  public func recordQuickSaveIntent(url: URL) {
+    recordPendingQuickSave(url: url)
+    WidgetIntentHandoffNotifier.post()
   }
 
   /// Consumes the pending quick save URL (called by main app)

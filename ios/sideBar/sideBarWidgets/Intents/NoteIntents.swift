@@ -39,10 +39,7 @@ struct CreateNoteIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & OpensIntent {
         logger.info("CreateNoteIntent recording pending create note")
-        WidgetDataManager.shared.recordPendingOperation(
-            WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew),
-            for: .notes
-        )
+        WidgetDataManager.shared.recordAddNoteIntent()
         guard let url = URL(string: "sidebar://notes") else {
             logger.error("CreateNoteIntent failed: invalid deep link URL")
             return .result()

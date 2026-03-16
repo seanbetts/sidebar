@@ -306,6 +306,14 @@ extension WidgetDataManager {
   public func recordAddTaskIntent() {
     let operation = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
     recordPendingOperation(operation, for: .tasks)
+    WidgetIntentHandoffNotifier.post()
+  }
+
+  /// Backward compatible method for recording add note intent
+  public func recordAddNoteIntent() {
+    let operation = WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew)
+    recordPendingOperation(operation, for: .notes)
+    WidgetIntentHandoffNotifier.post()
   }
 
   // MARK: - Quick Save
@@ -322,6 +330,12 @@ extension WidgetDataManager {
       message: "Recorded widget quick save URL.",
       metadata: ["url": url.absoluteString]
     )
+  }
+
+  /// Backward compatible method for recording a quick-save intent with live handoff.
+  public func recordQuickSaveIntent(url: URL) {
+    recordPendingQuickSave(url: url)
+    WidgetIntentHandoffNotifier.post()
   }
 
   /// Consumes the pending quick save URL (called by main app)

@@ -119,6 +119,7 @@ public final class AppEnvironment: ObservableObject {
     var cancellables = Set<AnyCancellable>()
     var hasPendingForwardedObjectWillChange = false
     var websiteSaveHandoffObserver: AnyObject?
+    var widgetIntentObserver: AnyObject?
     var widgetTaskCompletionObserver: AnyObject?
     #if os(iOS) || os(macOS)
     var deviceToken: String?
@@ -243,6 +244,7 @@ public final class AppEnvironment: ObservableObject {
         #endif
 
         configureWebsiteSaveHandoffObserver()
+        configureWidgetIntentObserver()
 
         if isTestMode {
             return
@@ -271,6 +273,9 @@ public final class AppEnvironment: ObservableObject {
     deinit {
         if let websiteSaveHandoffObserver {
             WebsiteSaveHandoffNotifier.removeObserver(websiteSaveHandoffObserver)
+        }
+        if let widgetIntentObserver {
+            WidgetIntentHandoffNotifier.removeObserver(widgetIntentObserver)
         }
         if let widgetTaskCompletionObserver {
             WidgetTaskCompletionHandoffNotifier.removeObserver(widgetTaskCompletionObserver)

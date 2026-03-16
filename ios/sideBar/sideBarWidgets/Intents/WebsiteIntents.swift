@@ -67,7 +67,7 @@ struct QuickSaveIntent: AppIntent {
             return .result()
         }
         logger.info("QuickSaveIntent recording pending save for URL: \(url.absoluteString)")
-        WidgetDataManager.shared.recordPendingQuickSave(url: url)
+        WidgetDataManager.shared.recordQuickSaveIntent(url: url)
         guard let deepLink = URL(string: "sidebar://websites") else {
             logger.error("QuickSaveIntent failed: invalid deep link URL")
             return .result()
