@@ -212,6 +212,11 @@ jobs:
           SIDEBAR_UI_TEST_EMAIL: ${{ secrets.SIDEBAR_UI_TEST_EMAIL }}
           SIDEBAR_UI_TEST_PASSWORD: ${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}
         run: scripts/test-ios.sh
+      - name: Run logic quality gates (${{ matrix.label }})
+        run: |
+          python3 scripts/check_ios_quality_gates.py \
+            --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult" \
+            --profile logic
       - name: Upload xcresult bundle (${{ matrix.id }})
         if: ${{ failure() }}
         continue-on-error: true

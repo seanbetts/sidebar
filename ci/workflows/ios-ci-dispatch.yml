@@ -271,6 +271,17 @@ jobs:
           SIDEBAR_UI_TEST_EMAIL: ${{ secrets.SIDEBAR_UI_TEST_EMAIL }}
           SIDEBAR_UI_TEST_PASSWORD: ${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}
         run: scripts/test-ios.sh
+      - name: Run quality gates (${{ matrix.label }})
+        if: ${{ github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane }}
+        run: |
+          if [[ "${{ matrix.lane }}" == "logic" ]]; then
+            python3 scripts/check_ios_quality_gates.py \
+              --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult" \
+              --profile logic
+          else
+            python3 scripts/check_ios_quality_gates.py \
+              --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"
+          fi
       - name: Upload xcresult bundle (${{ matrix.id }})
         if: ${{ failure() && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane) }}
         continue-on-error: true
