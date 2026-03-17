@@ -457,6 +457,39 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
 
         XCTAssertTrue(popover.isHidden)
     }
+
+    func testMovingBarOffWindowRemovesWindowHostedPopoverAndBackdrop() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let window = makeUIKitNoteTextEditorSurfaceHostingWindow(
+            frame: CGRect(x: 0, y: 0, width: 500, height: 900)
+        )
+        let rootViewController = UIViewController()
+        window.rootViewController = rootViewController
+        window.isHidden = false
+
+        let bar = UIKitNoteFormattingBar(configuration: makeEnabledConfiguration())
+        bar.frame = CGRect(x: 420, y: 760, width: 60, height: 48)
+        rootViewController.view.addSubview(bar)
+        bar.setNeedsLayout()
+        bar.layoutIfNeeded()
+
+        bar.presentPopover()
+        let popover = try XCTUnwrap(bar.popoverView)
+        let backdrop: UIView = try XCTUnwrap(
+            findDescendant(in: window, accessibilityIdentifier: "note-formatting-dismiss-backdrop")
+        )
+
+        XCTAssertTrue(popover.superview === window)
+        XCTAssertTrue(backdrop.superview === window)
+
+        bar.willMove(toWindow: nil)
+
+        XCTAssertNil(popover.superview)
+        XCTAssertNil(backdrop.superview)
+    }
 }
 
 @available(iOS 26.0, *)

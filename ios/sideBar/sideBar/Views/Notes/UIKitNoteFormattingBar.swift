@@ -73,7 +73,7 @@ final class UIKitNoteFormattingBar: UIView {
 
     override func willMove(toWindow newWindow: UIWindow?) {
         if newWindow == nil {
-            dismissPopover()
+            tearDownPopoverHostViews()
         }
         super.willMove(toWindow: newWindow)
     }
@@ -238,6 +238,14 @@ extension UIKitNoteFormattingBar {
     func dismissPopover() {
         popoverView?.isHidden = true
         dismissBackdropView?.isHidden = true
+    }
+
+    func tearDownPopoverHostViews() {
+        dismissPopover()
+        popoverView?.removeFromSuperview()
+        dismissBackdropView?.removeFromSuperview()
+        popoverView = nil
+        dismissBackdropView = nil
     }
 
     @discardableResult

@@ -57,16 +57,20 @@ enum NotesDetailViewTestRetainer {
             window.rootViewController = nil
         }
         drainNotesHostingRunLoop()
+        hostingControllers.removeAll()
+        hostingWindows.removeAll()
+        drainNotesHostingRunLoop()
         #elseif os(macOS)
         hostingWindows.forEach { window in
             window.orderOut(nil)
             window.contentViewController = nil
         }
         drainNotesHostingRunLoop()
-        #endif
-        environments.removeAll()
         hostingControllers.removeAll()
         hostingWindows.removeAll()
+        drainNotesHostingRunLoop()
+        #endif
+        environments.removeAll()
     }
 }
 
