@@ -46,9 +46,9 @@ final class ConnectivityMonitor: ObservableObject {
                 }
             }
             monitor.start(queue: queue)
+            startScheduler()
         }
         observeRequestFailures()
-        startScheduler()
     }
 
     deinit {
