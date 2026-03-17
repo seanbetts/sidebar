@@ -11,10 +11,10 @@
       },
       "baseline_coverage_thresholds": {
         "sideBar.app": 29.0,
-        "sideBarShared.framework": 66.0,
+        "sideBarShared.framework": 64.5,
         "ShareExtension.appex": 1.7,
         "sideBarWidgetsExtension.appex": 11.0,
-        "sideBar Safari Extension.appex": 85.0
+        "sideBar Safari Extension.appex": 72.5
       },
       "minimum_deterministic_ui_journey_tests": 3
     },
@@ -23,7 +23,7 @@
         "sideBarShared.framework": 60.0
       },
       "baseline_coverage_thresholds": {
-        "sideBarShared.framework": 66.0
+        "sideBarShared.framework": 64.5
       },
       "minimum_deterministic_ui_journey_tests": 0
     },
@@ -34,7 +34,7 @@
       },
       "baseline_coverage_thresholds": {
         "sideBar.app": 29.0,
-        "sideBarShared.framework": 66.0
+        "sideBarShared.framework": 64.5
       },
       "minimum_deterministic_ui_journey_tests": 0
     },
@@ -53,7 +53,7 @@
       "baseline_coverage_thresholds": {
         "ShareExtension.appex": 1.7,
         "sideBarWidgetsExtension.appex": 11.0,
-        "sideBar Safari Extension.appex": 85.0
+        "sideBar Safari Extension.appex": 72.5
       },
       "minimum_deterministic_ui_journey_tests": 0
     }

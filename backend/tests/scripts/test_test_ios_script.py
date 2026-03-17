@@ -652,6 +652,63 @@ def test_non_transient_simulator_failures_do_not_retry_test_action(tmp_path: Pat
     assert "Detected transient simulator infrastructure failure" not in result.stdout
 
 
+def test_exit_73_with_zero_executed_tests_does_not_pass(tmp_path: Path) -> None:
+    """Exit 73 should remain fatal when the xcresult contains no executed tests."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    result_bundle = tmp_path / "empty-tests.xcresult"
+
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        "if [[ \"$*\" == *\"-resolvePackageDependencies\"* ]]; then\n"
+        "  exit 0\n"
+        "fi\n"
+        "mkdir -p \"$IOS_RESULT_BUNDLE_PATH\"\n"
+        "exit 73\n",
+    )
+    write_executable(
+        bin_dir / "xcrun",
+        "#!/bin/bash\n"
+        "if [[ \"$1 $2 $3\" == \"xcresulttool get test-results\" && \"$4\" == \"summary\" ]]; then\n"
+        "  cat <<'EOF'\n"
+        '{"totalTestCount":0,"passedTests":0,"failedTests":0,"skippedTests":0,"result":"Passed"}\n'
+        "EOF\n"
+        "  exit 0\n"
+        "fi\n"
+        "if [[ \"$1 $2\" == \"xcresulttool get\" && \"$3\" == \"build-results\" ]]; then\n"
+        "  cat <<'EOF'\n"
+        '{"status":"succeeded","errorCount":0}\n'
+        "EOF\n"
+        "  exit 0\n"
+        "fi\n"
+        "exit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_DESTINATION": "platform=macOS",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+            "IOS_RESULT_BUNDLE_PATH": str(result_bundle),
+        }
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 73, result.stdout + result.stderr
+    assert "xcodebuild exited 73, and xcresult reports zero executed tests; treating this as a failure." in result.stdout
+    assert "xcodebuild failed (exit 73). xcresult summary:" in result.stdout
+
+
 def test_test_ios_script_has_no_apple_sentry_package_manager_bootstrap() -> None:
     """The Apple test harness should not bootstrap Sentry through a package manager."""
     script = SCRIPT_PATH.read_text(encoding="utf-8").lower()

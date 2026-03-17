@@ -398,8 +398,12 @@ while [[ ${test_attempt} -le ${IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT} ]]; 
       if [[ ${test_status} -eq 73 ]] \
         && [[ "${build_results_summary}" == *"\"status\":\"succeeded\""* ]] \
         && [[ "${build_results_summary}" == *"\"errorCount\":0"* ]]; then
-        echo "xcodebuild exited 73, but xcresult reports a successful build/test action with zero errors; continuing."
-        test_status=0
+        if [[ "${test_results_summary}" == *"\"totalTestCount\":0"* ]] || [[ -z "${test_results_summary}" ]]; then
+          echo "xcodebuild exited 73, and xcresult reports zero executed tests; treating this as a failure."
+        else
+          echo "xcodebuild exited 73, but xcresult reports a successful build/test action with zero errors and executed tests; continuing."
+          test_status=0
+        fi
       fi
     fi
   fi
