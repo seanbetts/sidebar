@@ -48,5 +48,8 @@ def test_fly_deploy_workflow_verifies_ingestion_machine_is_started() -> None:
     assert matching_steps, "Missing ingestion worker verification step"
     run_script = matching_steps[0]["run"]
     assert '"machine", "list", "--json"' in run_script
-    assert 'machine.get("process_group") == "ingestion"' in run_script
+    assert "def machine_process_group" in run_script
+    assert 'metadata.get("fly_process_group")' in run_script
+    assert 'env.get("FLY_PROCESS_GROUP")' in run_script
+    assert 'machine_process_group(machine) == "ingestion"' in run_script
     assert 'machine.get("state") == "started"' in run_script
