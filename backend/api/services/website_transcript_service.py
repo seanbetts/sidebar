@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.services.file_ingestion_service import FileIngestionService
+from api.services.ingestion_job_health_service import IngestionJobHealthService
 from api.services.url_normalization_service import (
     extract_youtube_video_id,
 )
@@ -315,6 +316,9 @@ class WebsiteTranscriptService:
         website_id: uuid.UUID,
     ) -> bool:
         """Sync transcript statuses for a website from ingestion jobs."""
+        IngestionJobHealthService.fail_stale_queued_jobs_when_worker_unavailable(
+            db, user_id
+        )
         website = WebsitesService.get_website(
             db, user_id, website_id, mark_opened=False
         )

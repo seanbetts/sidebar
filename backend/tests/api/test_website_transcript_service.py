@@ -1,4 +1,5 @@
 import pytest
+from datetime import UTC, datetime, timedelta
 from api.models.file_ingestion import IngestedFile
 from api.services.file_ingestion_service import FileIngestionService
 from api.services.website_transcript_service import (
@@ -78,6 +79,47 @@ def test_sync_transcripts_for_website_updates_failed_status(db_session):
     entry = (refreshed.metadata_ or {}).get("youtube_transcripts", {}).get(video_id)
     assert entry["status"] == "failed"
     assert entry["error"] == "boom"
+
+
+def test_sync_transcripts_for_website_fails_stale_queued_jobs(db_session):
+    website = WebsitesService.save_website(
+        db_session,
+        "user-1",
+        url="https://example.com/path",
+        title="Example",
+        content="Content",
+        source="https://example.com/path",
+    )
+
+    result = WebsiteTranscriptService.enqueue_youtube_transcript(
+        db_session,
+        "user-1",
+        website.id,
+        "https://www.youtube.com/watch?v=FUq9qRwrDrI",
+    )
+
+    job = FileIngestionService.get_job(db_session, result.file_id)
+    assert job is not None
+    job.updated_at = datetime.now(UTC) - timedelta(minutes=5)
+    db_session.commit()
+
+    updated = WebsiteTranscriptService.sync_transcripts_for_website(
+        db_session,
+        user_id="user-1",
+        website_id=website.id,
+    )
+    assert updated is True
+
+    refreshed = WebsitesService.get_website(
+        db_session, "user-1", website.id, mark_opened=False
+    )
+    video_id = extract_youtube_id("https://www.youtube.com/watch?v=FUq9qRwrDrI")
+    entry = (refreshed.metadata_ or {}).get("youtube_transcripts", {}).get(video_id)
+    assert entry["status"] == "failed"
+    assert (
+        entry["error"]
+        == "Processing is temporarily unavailable. Please retry in a few minutes."
+    )
 
 
 def test_update_transcript_status_clears_error_on_ready(db_session):
