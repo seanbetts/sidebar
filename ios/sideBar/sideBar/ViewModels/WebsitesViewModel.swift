@@ -220,31 +220,7 @@ public final class WebsitesViewModel: ObservableObject {
         }
 
         if !selectAfterSave {
-            _ = upsertPendingWebsite(
-                from: normalized,
-                source: .queuedShare,
-                status: .reading
-            )
-            saveErrorMessage = nil
-            do {
-                let response = try await api.save(url: normalized.absoluteString)
-                if response.success, let website = response.website {
-                    applySavedWebsiteWithoutSelection(website, pendingURL: normalized)
-                    return true
-                }
-                if response.success, await recoverSavedWebsiteWithoutSelection(pendingURL: normalized) {
-                    return true
-                }
-                guard response.success, let website = response.website else {
-                    saveErrorMessage = "Failed to save website"
-                    return false
-                }
-                applySavedWebsiteWithoutSelection(website, pendingURL: normalized)
-                return true
-            } catch {
-                saveErrorMessage = ErrorMapping.message(for: error)
-                return false
-            }
+            return await saveWebsiteWithoutSelection(normalizedURL: normalized)
         }
         let previousSelectedId = beginWebsiteSave(for: normalized)
         defer { endWebsiteSave() }
@@ -267,6 +243,43 @@ public final class WebsitesViewModel: ObservableObject {
             )
             return false
         }
+    }
+
+    private func saveWebsiteWithoutSelection(normalizedURL: URL) async -> Bool {
+        _ = upsertPendingWebsite(
+            from: normalizedURL,
+            source: .queuedShare,
+            status: .reading
+        )
+        saveErrorMessage = nil
+        do {
+            let response = try await api.save(url: normalizedURL.absoluteString)
+            return await handleSaveWebsiteWithoutSelectionResponse(
+                response,
+                normalizedURL: normalizedURL
+            )
+        } catch {
+            if await recoverSavedWebsiteWithoutSelection(pendingURL: normalizedURL) {
+                return true
+            }
+            saveErrorMessage = ErrorMapping.message(for: error)
+            return false
+        }
+    }
+
+    private func handleSaveWebsiteWithoutSelectionResponse(
+        _ response: WebsiteSaveResponse,
+        normalizedURL: URL
+    ) async -> Bool {
+        if response.success, let website = response.website {
+            applySavedWebsiteWithoutSelection(website, pendingURL: normalizedURL)
+            return true
+        }
+        if response.success, await recoverSavedWebsiteWithoutSelection(pendingURL: normalizedURL) {
+            return true
+        }
+        saveErrorMessage = "Failed to save website"
+        return false
     }
 
     public func setPinned(id: String, pinned: Bool) async {

@@ -254,6 +254,11 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
             }
         case .insert, .update:
             if let record = payload.record, let mapped = RealtimeMappers.mapWebsite(record) {
+                if mapped.deletedAt != nil {
+                    removeItem(id: mapped.id, persist: true)
+                    cache.remove(key: CacheKeys.websiteDetail(id: mapped.id))
+                    return
+                }
                 let merged = mergePinnedAndArchivedFields(for: mapped, metadata: record.metadata)
                 updateListItem(merged, persist: true)
                 if let active, active.id == mapped.id {

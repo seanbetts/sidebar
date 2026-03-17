@@ -587,6 +587,36 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.saveErrorMessage)
     }
 
+    func testSaveWebsiteWithoutSelectionRecoversFromRequestFailureWhenListShowsSavedWebsite() async {
+        let savedItem = makeItem(
+            id: "site-queued-1",
+            url: "https://queued.example/path",
+            domain: "queued.example"
+        )
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [savedItem])),
+            saveResult: .failure(MockError.forced)
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let saved = await viewModel.saveWebsite(
+            url: "https://queued.example/path",
+            selectAfterSave: false
+        )
+
+        XCTAssertTrue(saved)
+        XCTAssertEqual(viewModel.items.first?.url, "https://queued.example/path")
+        XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
+        XCTAssertNil(viewModel.saveErrorMessage)
+    }
+
     func testLoadArchivedTracksLoadingState() async {
         let cache = InMemoryCacheClient()
         let api = ControlledArchivedWebsitesAPI()

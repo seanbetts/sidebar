@@ -226,6 +226,84 @@ final class WebsitesStoreTests: XCTestCase {
         XCTAssertNil(cached)
     }
 
+    func testApplyRealtimeSoftDeleteUpdateRemovesItemAndCache() async {
+        let item = WebsiteItem(
+            id: "w1",
+            title: "Example",
+            url: "https://example.com",
+            domain: "example.com",
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2024-01-01",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let detail = WebsiteDetail(
+            id: "w1",
+            title: "Example",
+            url: "https://example.com",
+            urlFull: nil,
+            domain: "example.com",
+            content: "Body",
+            source: nil,
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2024-01-01",
+            lastOpenedAt: nil
+        )
+        let cache = TestCacheClient()
+        cache.set(key: CacheKeys.websitesList, value: WebsitesResponse(items: [item]), ttlSeconds: 60)
+        cache.set(key: CacheKeys.websiteDetail(id: "w1"), value: detail, ttlSeconds: 60)
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        store.updateListItem(item, persist: false)
+        try? await store.loadDetail(id: "w1")
+
+        let payload = RealtimePayload<WebsiteRealtimeRecord>(
+            eventType: .update,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: "w1",
+                title: "Example",
+                url: "https://example.com",
+                domain: "example.com",
+                metadata: nil,
+                savedAt: nil,
+                publishedAt: nil,
+                readingTime: nil,
+                updatedAt: "2024-01-02",
+                lastOpenedAt: nil,
+                deletedAt: "2024-01-02T00:00:00Z"
+            ),
+            oldRecord: nil
+        )
+
+        store.applyRealtimeEvent(payload)
+
+        XCTAssertTrue(store.items.isEmpty)
+        XCTAssertNil(store.active)
+        let cached: WebsiteDetail? = cache.get(key: CacheKeys.websiteDetail(id: "w1"))
+        XCTAssertNil(cached)
+    }
+
     func testPrefetchArchivedDetailsFetchesOnlyRetainedUncachedItems() async {
         let retainedUpdatedAt = ISO8601DateFormatter().string(from: Date())
         let expiredUpdatedAt = ISO8601DateFormatter().string(from: Calendar.current.date(byAdding: .day, value: -10, to: Date())!)
