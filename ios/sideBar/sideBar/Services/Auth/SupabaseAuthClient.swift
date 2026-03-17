@@ -82,14 +82,14 @@ public final class SupabaseAuthClient: SupabaseAuthClientProtocol {
         )
     }
 
-    private static func mapEvent<T>(_ event: T) -> SupabaseAuthEvent {
-        let description = String(describing: event).uppercased()
-        if description.contains("INITIAL_SESSION") || description == "INITIALSESSION" || description == "INITIAL_SESSION" {
+    static func mapEvent(_ event: AuthChangeEvent) -> SupabaseAuthEvent {
+        switch event {
+        case .initialSession:
             return .initialSession
-        }
-        if description.contains("SIGNED_OUT") || description == "SIGNEDOUT" || description == "SIGNED_OUT" {
+        case .signedOut:
             return .signedOut
+        default:
+            return .other(event.rawValue)
         }
-        return .other(description)
     }
 }

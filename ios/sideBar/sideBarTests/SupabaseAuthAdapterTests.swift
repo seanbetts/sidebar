@@ -111,6 +111,20 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertTrue(options.storage is SupabaseKeychainStorage)
     }
 
+    func testSupabaseAuthClientMapsTypedInitialSessionEvent() {
+        XCTAssertEqual(SupabaseAuthClient.mapEvent(.initialSession), .initialSession)
+    }
+
+    func testSupabaseAuthClientMapsTypedSignedOutEvent() {
+        XCTAssertEqual(SupabaseAuthClient.mapEvent(.signedOut), .signedOut)
+    }
+
+    func testSupabaseAuthClientPreservesSupabaseRawValueForOtherTypedEvents() {
+        XCTAssertEqual(SupabaseAuthClient.mapEvent(.signedIn), .other("SIGNED_IN"))
+        XCTAssertEqual(SupabaseAuthClient.mapEvent(.tokenRefreshed), .other("TOKEN_REFRESHED"))
+        XCTAssertEqual(SupabaseAuthClient.mapEvent(.userUpdated), .other("USER_UPDATED"))
+    }
+
     func testOfflineAccessAllowsStoredCredentialsWithinWindow() async {
         let store = InMemoryAuthStateStore()
         try? store.saveAccessToken("token")
