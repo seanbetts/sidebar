@@ -1,3 +1,7 @@
+import pytest
+
+from api.config import settings
+from api.services.ai.key_encryption import ProviderKeyEncryptionService
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
 
 
@@ -39,3 +43,28 @@ def test_soft_delete_key_marks_record_deleted(test_db):
         )
         is None
     )
+
+
+def test_provider_key_encryption_requires_explicit_key_in_production(monkeypatch):
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(settings, "byok_encryption_key", None)
+    monkeypatch.setattr(settings, "supabase_jwt_secret", "jwt-secret")
+    monkeypatch.setattr(settings, "supabase_service_role_key", "service-role")
+    monkeypatch.setattr(settings, "bearer_token", "bearer-token")
+    ProviderKeyEncryptionService._fernet = None
+
+    with pytest.raises(ValueError, match="BYOK_ENCRYPTION_KEY is required in production"):
+        ProviderKeyEncryptionService._resolve_fernet_key()
+
+
+def test_provider_key_encryption_uses_fallback_outside_production(monkeypatch):
+    monkeypatch.setattr(settings, "app_env", "local")
+    monkeypatch.setattr(settings, "byok_encryption_key", None)
+    monkeypatch.setattr(settings, "supabase_jwt_secret", "jwt-secret")
+    monkeypatch.setattr(settings, "supabase_service_role_key", None)
+    monkeypatch.setattr(settings, "bearer_token", None)
+    ProviderKeyEncryptionService._fernet = None
+
+    encrypted = ProviderKeyEncryptionService.encrypt("sk-local-12345678")
+
+    assert ProviderKeyEncryptionService.decrypt(encrypted) == "sk-local-12345678"

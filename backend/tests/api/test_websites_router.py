@@ -2,7 +2,11 @@ import os
 import uuid
 from datetime import UTC, datetime
 
+import pytest
 from api.config import settings
+from api.db.dependencies import get_current_user_id
+from api.main import app
+from api.middleware import rate_limit as rate_limit_module
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from api.models.website import Website
 from api.schemas.filters import WebsiteFilters
@@ -15,6 +19,13 @@ from sqlalchemy.orm.attributes import NO_VALUE
 from tests.helpers import error_message
 
 TEST_USER_ID = os.environ["TEST_USER_ID"]
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    rate_limit_module.rate_limiter.reset()
+    yield
+    rate_limit_module.rate_limiter.reset()
 
 
 def _auth_headers() -> dict[str, str]:
@@ -67,6 +78,55 @@ def test_websites_save_reports_local_and_jina_payment_error(test_client, monkeyp
         response.json()["error"]["details"]["code"]
         == "WEB_SAVE_LOCAL_PARSE_AND_JINA_PAYMENT_REQUIRED"
     )
+
+
+def test_websites_save_rate_limit_returns_stable_429(test_client, monkeypatch):
+    async def fake_execute(_skill, _script, _args, user_id=None):
+        return {
+            "success": False,
+            "error": "No readable content extracted",
+        }
+
+    monkeypatch.setattr(test_client.app.state.executor, "execute", fake_execute)
+    monkeypatch.setitem(
+        rate_limit_module.RATE_LIMIT_POLICIES,
+        "website_save",
+        rate_limit_module.RateLimitPolicy(limit=1, window_seconds=60),
+    )
+    rate_limit_module.rate_limiter.reset()
+
+    app.dependency_overrides[get_current_user_id] = lambda: "website-user-1"
+    try:
+        first = test_client.post(
+            "/api/websites/save",
+            json={"url": "https://example.com"},
+            headers=_auth_headers(),
+        )
+        second = test_client.post(
+            "/api/websites/save",
+            json={"url": "https://example.com/again"},
+            headers=_auth_headers(),
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    app.dependency_overrides[get_current_user_id] = lambda: "website-user-2"
+    try:
+        third = test_client.post(
+            "/api/websites/save",
+            json={"url": "https://example.com/third"},
+            headers=_auth_headers(),
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+        rate_limit_module.rate_limiter.reset()
+
+    assert first.status_code == 400
+    assert second.status_code == 429
+    assert second.json()["error"]["code"] == "RATE_LIMITED"
+    assert second.json()["error"]["details"]["scope"] == "website_save"
+    assert second.headers["Retry-After"]
+    assert third.status_code == 400
 
 
 def test_websites_save_reports_no_readable_content(test_client, monkeypatch):

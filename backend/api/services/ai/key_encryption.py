@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
 import os
 
 from cryptography.fernet import Fernet, InvalidToken
 
 from api.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class ProviderKeyEncryptionService:
@@ -44,7 +47,12 @@ class ProviderKeyEncryptionService:
 
     @staticmethod
     def _resolve_fernet_key() -> bytes:
-        """Resolve a stable Fernet key for the current environment."""
+        """Resolve a stable Fernet key for the current environment.
+
+        Production requires an explicit BYOK_ENCRYPTION_KEY so encrypted user keys
+        are not tied to rotatable infrastructure secrets. Non-production
+        environments keep a deterministic fallback for local development and tests.
+        """
         configured = settings.byok_encryption_key
         if configured:
             key_bytes = configured.encode("utf-8")
@@ -56,6 +64,9 @@ class ProviderKeyEncryptionService:
                 return base64.urlsafe_b64encode(
                     hashlib.sha256(configured.encode("utf-8")).digest()
                 )
+
+        if settings.app_env in {"prod", "production"}:
+            raise ValueError("BYOK_ENCRYPTION_KEY is required in production")
 
         if os.getenv("TESTING"):
             return base64.urlsafe_b64encode(
@@ -71,6 +82,9 @@ class ProviderKeyEncryptionService:
             raise ValueError(
                 "BYOK encryption key is not configured. Set BYOK_ENCRYPTION_KEY."
             )
+        logger.warning(
+            "BYOK_ENCRYPTION_KEY not set, using non-production fallback secret"
+        )
         return base64.urlsafe_b64encode(
             hashlib.sha256(fallback_secret.encode("utf-8")).digest()
         )

@@ -2,10 +2,22 @@ import os
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from api.config import settings
+from api.db.dependencies import get_current_user_id
+from api.main import app
+from api.middleware import rate_limit as rate_limit_module
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.models.website import Website
 from api.services.file_ingestion_service import FileIngestionService
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    rate_limit_module.rate_limiter.reset()
+    yield
+    rate_limit_module.rate_limiter.reset()
 
 
 def _auth_headers() -> dict[str, str]:
@@ -33,6 +45,48 @@ def test_ingestion_upload_and_meta(test_client):
         "failed",
         "canceled",
     }
+
+
+def test_ingestion_upload_rate_limit_returns_stable_429(test_client, monkeypatch):
+    monkeypatch.setitem(
+        rate_limit_module.RATE_LIMIT_POLICIES,
+        "file_upload",
+        rate_limit_module.RateLimitPolicy(limit=1, window_seconds=60),
+    )
+    rate_limit_module.rate_limiter.reset()
+
+    app.dependency_overrides[get_current_user_id] = lambda: "upload-user-1"
+    try:
+        first = test_client.post(
+            "/api/v1/files",
+            headers=_auth_headers(),
+            files={"file": ("sample.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+        second = test_client.post(
+            "/api/v1/files",
+            headers=_auth_headers(),
+            files={"file": ("sample-2.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    app.dependency_overrides[get_current_user_id] = lambda: "upload-user-2"
+    try:
+        third = test_client.post(
+            "/api/v1/files",
+            headers=_auth_headers(),
+            files={"file": ("sample-3.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+        rate_limit_module.rate_limiter.reset()
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.json()["error"]["code"] == "RATE_LIMITED"
+    assert second.json()["error"]["details"]["scope"] == "file_upload"
+    assert second.headers["Retry-After"]
+    assert third.status_code == 200
 
 
 def test_ingestion_pause_resume_cancel(test_client):

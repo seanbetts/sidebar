@@ -2,10 +2,22 @@ import os
 import uuid
 from datetime import UTC, datetime
 
+import pytest
+
 from api.config import settings
+from api.db.dependencies import get_current_user_id
+from api.main import app
+from api.middleware import rate_limit as rate_limit_module
 from api.models.conversation import Conversation
 
 TEST_USER_ID = os.environ["TEST_USER_ID"]
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    rate_limit_module.rate_limiter.reset()
+    yield
+    rate_limit_module.rate_limiter.reset()
 
 
 def _auth_headers() -> dict[str, str]:
@@ -57,6 +69,48 @@ def test_conversation_update_and_search(test_client, test_db):
     )
     assert search_response.status_code == 200
     assert any(item["id"] == str(conversation_id) for item in search_response.json())
+
+
+def test_conversation_search_rate_limit_is_user_scoped(test_client, monkeypatch):
+    monkeypatch.setitem(
+        rate_limit_module.RATE_LIMIT_POLICIES,
+        "conversation_search",
+        rate_limit_module.RateLimitPolicy(limit=1, window_seconds=60),
+    )
+    rate_limit_module.rate_limiter.reset()
+
+    app.dependency_overrides[get_current_user_id] = lambda: "search-user-1"
+    try:
+        first = test_client.post(
+            "/api/conversations/search",
+            params={"query": "hello"},
+            headers=_auth_headers(),
+        )
+        second = test_client.post(
+            "/api/conversations/search",
+            params={"query": "hello again"},
+            headers=_auth_headers(),
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    app.dependency_overrides[get_current_user_id] = lambda: "search-user-2"
+    try:
+        third = test_client.post(
+            "/api/conversations/search",
+            params={"query": "hello from another user"},
+            headers=_auth_headers(),
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+        rate_limit_module.rate_limiter.reset()
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.json()["error"]["code"] == "RATE_LIMITED"
+    assert second.json()["error"]["details"]["scope"] == "conversation_search"
+    assert second.headers["Retry-After"]
+    assert third.status_code == 200
 
 
 def test_conversation_messages_and_delete(test_client, test_db):

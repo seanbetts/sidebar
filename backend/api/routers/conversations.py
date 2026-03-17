@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
+from api.middleware import rate_limit as rate_limit_module
 from api.services.agent.conversation_compaction_service import (
     ConversationCompactionService,
 )
@@ -207,6 +208,7 @@ def search_conversations(
     query: str,
     limit: int = 10,
     user_id: str = Depends(get_current_user_id),
+    _rate_limit: None = Depends(rate_limit_module.conversation_search_rate_limit),
     db: Session = Depends(get_db),
 ):
     """Full-text search across conversations and messages."""

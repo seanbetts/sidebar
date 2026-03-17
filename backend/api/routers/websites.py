@@ -13,6 +13,7 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError, WebsiteNotFoundError
+from api.middleware import rate_limit as rate_limit_module
 from api.routers.download_headers import markdown_download_headers
 from api.routers.websites_helpers import website_detail_payload, website_summary
 from api.schemas.filters import WebsiteFilters
@@ -133,6 +134,7 @@ def search_websites(
     limit: int = 50,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
+    _rate_limit: None = Depends(rate_limit_module.website_search_rate_limit),
     db: Session = Depends(get_db),
 ):
     """Search websites by title or content.
@@ -163,6 +165,7 @@ async def save_website(
     payload: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
+    _rate_limit: None = Depends(rate_limit_module.website_save_rate_limit),
     db: Session = Depends(get_db),
 ):
     """Save a website using the web-save skill.

@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from api.exceptions import APIError
 from fastapi import HTTPException as FastAPIHTTPException
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DBAPIError, OperationalError
+
+from api.exceptions import APIError
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +59,18 @@ async def http_exception_handler(
     """Handle FastAPI HTTPException and normalize the response."""
     detail = exc.detail
     if isinstance(detail, dict) and "error" in detail:
-        return JSONResponse(status_code=exc.status_code, content=detail)
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=detail,
+            headers=exc.headers,
+        )
 
     message = detail if isinstance(detail, str) else "Request failed"
     code = "HTTP_ERROR"
     return JSONResponse(
         status_code=exc.status_code,
         content=_error_payload(code, message, {"status_code": exc.status_code}),
+        headers=exc.headers,
     )
 
 

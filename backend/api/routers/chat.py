@@ -26,6 +26,7 @@ from api.metrics import (
     chat_stream_errors_total,
     chat_streaming_duration_seconds,
 )
+from api.middleware import rate_limit as rate_limit_module
 from api.schemas.tool_context import ToolExecutionContext
 from api.services.agent.conversation_compaction_service import (
     ConversationCompactionService,
@@ -235,6 +236,7 @@ async def stream_chat(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
+    _rate_limit: None = Depends(rate_limit_module.chat_stream_rate_limit),
 ):
     """Stream a chat response with SSE and tool events.
 
@@ -679,6 +681,7 @@ async def generate_title(
     request: Request,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
+    _rate_limit: None = Depends(rate_limit_module.chat_generate_title_rate_limit),
 ):
     """Generate a concise title for a conversation using Gemini.
 

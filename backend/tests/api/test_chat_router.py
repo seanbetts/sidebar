@@ -3,9 +3,12 @@ import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
+import pytest
+
 from api.config import settings
 from api.db.dependencies import get_current_user_id
 from api.main import app
+from api.middleware import rate_limit as rate_limit_module
 from api.routers import chat as chat_router
 from api.services.ai.gateway import ChatResolution
 from api.services.agent.request_assembly_service import AssembledChatInputs
@@ -14,6 +17,13 @@ from api.services.agent.request_budget_service import (
     RequestBudgetReport,
 )
 from api.services.conversation_service import ConversationService
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    rate_limit_module.rate_limiter.reset()
+    yield
+    rate_limit_module.rate_limiter.reset()
 
 
 def _auth_headers() -> dict[str, str]:
@@ -68,6 +78,55 @@ def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
     assert "event: token" in body
     assert json.dumps({"type": "token", "content": "Hello"}) in body
     assert "event: complete" in body
+
+
+def test_stream_chat_rate_limit_is_user_scoped(test_client, monkeypatch):
+    _patch_stream_gateway(monkeypatch, [{"type": "token", "content": "Hello"}])
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setitem(
+        rate_limit_module.RATE_LIMIT_POLICIES,
+        "chat_stream",
+        rate_limit_module.RateLimitPolicy(limit=1, window_seconds=60),
+    )
+    rate_limit_module.rate_limiter.reset()
+
+    app.dependency_overrides[get_current_user_id] = lambda: "rate-user-1"
+    try:
+        first = test_client.post(
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={"message": "Hi"},
+        )
+        second = test_client.post(
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={"message": "Hi again"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    app.dependency_overrides[get_current_user_id] = lambda: "rate-user-2"
+    try:
+        third = test_client.post(
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={"message": "Hi from another user"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+        rate_limit_module.rate_limiter.reset()
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.headers["Retry-After"]
+    payload = second.json()
+    assert payload["error"]["code"] == "RATE_LIMITED"
+    assert payload["error"]["details"]["scope"] == "chat_stream"
+    assert third.status_code == 200
 
 
 def test_stream_chat_forwards_memory_events(test_client, monkeypatch):

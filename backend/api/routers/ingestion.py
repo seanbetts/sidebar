@@ -15,6 +15,7 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError, RangeNotSatisfiableError
+from api.middleware import rate_limit as rate_limit_module
 from api.routers.ingestion_helpers import (
     _category_for_file,
     _extract_youtube_id,
@@ -44,6 +45,7 @@ async def upload_file(
     folder: str = Form(default=""),
     user_id: str = Depends(get_current_user_id),
     token: str = Depends(verify_bearer_token),
+    _rate_limit: None = Depends(rate_limit_module.file_upload_rate_limit),
     db: Session = Depends(get_db),
 ):
     """Upload a file and enqueue ingestion."""
@@ -57,6 +59,7 @@ async def quick_upload_file(
     folder: str = Form(default=""),
     user_id: str = Depends(get_current_user_id),
     token: str = Depends(verify_bearer_token),
+    _rate_limit: None = Depends(rate_limit_module.file_upload_rate_limit),
     db: Session = Depends(get_db),
 ):
     """Upload a file and enqueue ingestion (async)."""
@@ -75,6 +78,7 @@ def ingest_youtube(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     token: str = Depends(verify_bearer_token),
+    _rate_limit: None = Depends(rate_limit_module.file_upload_rate_limit),
     db: Session = Depends(get_db),
 ):
     """Create an ingestion job for a YouTube video URL."""
