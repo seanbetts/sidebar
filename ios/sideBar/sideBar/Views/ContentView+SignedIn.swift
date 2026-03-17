@@ -110,7 +110,7 @@ extension ContentView {
         content = AnyView(content.onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             Task {
                 if environment.authState == .active {
-                    await environment.consumeExtensionEvents()
+                    await environment.consumeExtensionEvents(awaitPendingShareReplay: false)
                     await environment.consumeWidgetCompletions()
                     await environment.consumeWidgetQuickSave()
                 }

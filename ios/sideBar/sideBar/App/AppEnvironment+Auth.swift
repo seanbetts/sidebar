@@ -54,7 +54,7 @@ extension AppEnvironment {
             #endif
             Task { [weak self] in
                 if self?.authState == .active {
-                    await self?.consumeExtensionEvents()
+                    await self?.consumeExtensionEvents(awaitPendingShareReplay: false)
                     await self?.consumeWidgetCompletions()
                 }
             }
@@ -182,7 +182,7 @@ extension AppEnvironment {
         }
 
         if authState == .active {
-            await consumeExtensionEvents()
+            await consumeExtensionEvents(awaitPendingShareReplay: false)
             await consumeWidgetCompletions()
             await consumeWidgetQuickSave()
             if includeDeferredRefresh {
@@ -195,7 +195,7 @@ extension AppEnvironment {
         if includeDeferredRefresh {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             if authState == .active {
-                await consumeExtensionEvents()
+                await consumeExtensionEvents(awaitPendingShareReplay: false)
                 await websitesViewModel.load(force: true)
                 reconcileQueuedWebsitesWithSavedItems()
             }
@@ -218,11 +218,14 @@ extension AppEnvironment {
         _ = await (tasks, notes, websites, files)
     }
 
-    public func consumeExtensionEvents() async {
+    public func consumeExtensionEvents(awaitPendingShareReplay: Bool = true) async {
         guard authState == .active else { return }
-        await consumePendingShares()
+        if awaitPendingShareReplay {
+            await consumePendingShares()
+        }
         let events = storage.extensionEventStore.consumeEvents()
-        guard !events.isEmpty else { return }
+        let hasQueuedWebsiteItems = storage.pendingShareStore.loadAll().contains { $0.kind == .website }
+        guard !events.isEmpty || hasQueuedWebsiteItems else { return }
 
         var enqueuedWebsiteEvents = false
         for event in events where event.type == .websiteSaved {
@@ -241,6 +244,12 @@ extension AppEnvironment {
 
         if enqueuedWebsiteEvents {
             websitesViewModel.syncPendingWebsitesFromQueuedShares(storage.pendingShareStore.loadAll())
+        }
+
+        guard !awaitPendingShareReplay else { return }
+        guard hasQueuedWebsiteItems || enqueuedWebsiteEvents else { return }
+        Task { [weak self] in
+            await self?.consumePendingShares()
         }
     }
 
