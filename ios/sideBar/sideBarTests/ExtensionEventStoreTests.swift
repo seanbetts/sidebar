@@ -32,7 +32,7 @@ final class ExtensionEventStoreTests: XCTestCase {
     }
 }
 
-private final class RacingUserDefaults: UserDefaults, @unchecked Sendable {
+private final class RacingUserDefaults: UserDefaults {
     private let lock = NSLock()
     private var storedValues: [String: Any] = [:]
     private var appendReadCount = 0
