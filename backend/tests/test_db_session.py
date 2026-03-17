@@ -11,6 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import inspect
+from sqlalchemy.exc import OperationalError, PendingRollbackError
 
 from api.db import session as session_module
 from api.models.website import Website
@@ -105,3 +106,76 @@ def test_log_website_column_refresh_emits_structured_warning_and_clears_trace(
     assert "SELECT websites.source FROM websites WHERE websites.id = :pk_1" in caplog.text
     assert "frame-1" in caplog.text
     assert id(refresh_state) not in session_module._pending_website_column_lazy_loads
+
+
+def test_after_begin_invalidates_and_reraises_disconnect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Disconnects in after_begin must invalidate and bubble up for caller retry."""
+    session = SimpleNamespace(info={})
+    invalidated: list[BaseException] = []
+    connection = SimpleNamespace(
+        invalidate=lambda exc=None: invalidated.append(exc),
+    )
+    apply_calls = 0
+
+    def fake_apply(_connection, _user_id, _force_public_search_path) -> None:
+        nonlocal apply_calls
+        apply_calls += 1
+        raise OperationalError(
+            "SET LOCAL statement_timeout = :timeout_ms",
+            {"timeout_ms": 8000},
+            Exception("SSL connection has been closed unexpectedly"),
+        )
+
+    monkeypatch.setattr(session_module, "_apply_session_settings", fake_apply)
+
+    with pytest.raises(OperationalError):
+        session_module._set_app_user_id(
+            session,
+            transaction=object(),
+            connection=connection,
+        )
+
+    assert apply_calls == 1
+    assert len(invalidated) == 1
+
+
+class _DisconnectingSession:
+    def __init__(self) -> None:
+        self.info: dict[str, str] = {}
+        self.execute_calls = 0
+        self.rollback_calls = 0
+        self.invalidate_calls = 0
+
+    def execute(self, _statement, _params=None):
+        self.execute_calls += 1
+        if self.execute_calls == 1:
+            raise OperationalError(
+                "SET app.user_id = :user_id",
+                {"user_id": "user-1"},
+                Exception("SSL connection has been closed unexpectedly"),
+            )
+        if self.rollback_calls == 0:
+            raise PendingRollbackError(
+                "Can't reconnect until invalid transaction is rolled back."
+            )
+        return None
+
+    def rollback(self) -> None:
+        self.rollback_calls += 1
+
+    def invalidate(self) -> None:
+        self.invalidate_calls += 1
+
+
+def test_set_session_user_id_rolls_back_before_retrying_disconnect() -> None:
+    """Explicit session setup must rollback before reconnecting an invalid session."""
+    db = _DisconnectingSession()
+
+    session_module.set_session_user_id(db, "user-1")
+
+    assert db.info["app_user_id"] == "user-1"
+    assert db.execute_calls == 2
+    assert db.rollback_calls == 1
+    assert db.invalidate_calls == 1

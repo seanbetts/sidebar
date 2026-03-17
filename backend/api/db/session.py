@@ -99,9 +99,9 @@ def _set_app_user_id(session: Session, transaction, connection) -> None:
     )
     try:
         _apply_session_settings(connection, user_id, force_public)
-    except OperationalError:
-        connection.invalidate()
-        _apply_session_settings(connection, user_id, force_public)
+    except OperationalError as exc:
+        connection.invalidate(exc)
+        raise
 
 
 def _record_website_column_lazy_load(orm_execute_state) -> None:
@@ -174,5 +174,7 @@ def set_session_user_id(db: Session, user_id: str | None) -> None:
     try:
         db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
     except OperationalError:
+        db.rollback()
         db.invalidate()
+        db.info["app_user_id"] = user_id
         db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
