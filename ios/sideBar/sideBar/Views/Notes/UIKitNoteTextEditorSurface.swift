@@ -10,6 +10,11 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     }
 
     class AccessoryTextView: UITextView {
+        private static let baseTextContainerInsets = UIEdgeInsets(
+            top: NoteTextLayout.verticalPadding, left: NoteTextLayout.horizontalPadding,
+            bottom: NoteTextLayout.verticalPadding, right: NoteTextLayout.horizontalPadding
+        )
+
         var formattingAccessoryView: UIView?
         var formattingCommandsEnabled = false
         var onBoldCommand: (() -> Void)?
@@ -20,6 +25,9 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var onSubheadingCommand: (() -> Void)?
         var onBodyCommand: (() -> Void)?
         var shouldAutofocus = false
+        var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
+            didSet { setNeedsLayout() }
+        }
         private var keyboardObservers: [NSObjectProtocol] = []
         private var keyboardFrameInScreen: CGRect?
 
@@ -85,6 +93,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         override func layoutSubviews() {
             super.layoutSubviews()
+            updateTextContainerInsets()
             updateViewportInsets()
         }
 
@@ -147,6 +156,18 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             scrollCurrentSelectionIntoView()
         }
 
+        private func updateTextContainerInsets() {
+            let extraHorizontalInset = max((bounds.width - maxReadableContentWidth) / 2, 0)
+            let resolvedInsets = UIEdgeInsets(
+                top: Self.baseTextContainerInsets.top,
+                left: Self.baseTextContainerInsets.left + extraHorizontalInset,
+                bottom: Self.baseTextContainerInsets.bottom,
+                right: Self.baseTextContainerInsets.right + extraHorizontalInset
+            )
+            guard textContainerInset != resolvedInsets else { return }
+            textContainerInset = resolvedInsets
+        }
+
         private func resolvedKeyboardFrameInView() -> CGRect? {
             guard let keyboardFrameInScreen,
                   let window else { return nil }
@@ -205,12 +226,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.tintColor = NoteTextAppearance.caretTintColor
         textView.accessibilityIdentifier = "notes-editor-text-view"
         textView.textContainer.lineFragmentPadding = 0
-        textView.textContainerInset = UIEdgeInsets(
-            top: NoteTextLayout.verticalPadding,
-            left: NoteTextLayout.horizontalPadding,
-            bottom: NoteTextLayout.verticalPadding,
-            right: NoteTextLayout.horizontalPadding
-        )
+        textView.maxReadableContentWidth = maxContentWidth
         textView.delegate = context.coordinator
         textView.textFormattingConfiguration = nil
         if shouldShowFormattingAccessory, let formattingBarConfiguration {
@@ -225,6 +241,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.isEditable = isEditable
         if let accessoryTextView = textView as? AccessoryTextView {
             accessoryTextView.shouldAutofocus = isEditable && shouldAutofocus
+            accessoryTextView.maxReadableContentWidth = maxContentWidth
             if isEditable, shouldAutofocus, accessoryTextView.window != nil, accessoryTextView.isFirstResponder == false {
                 DispatchQueue.main.async {
                     accessoryTextView.becomeFirstResponder()

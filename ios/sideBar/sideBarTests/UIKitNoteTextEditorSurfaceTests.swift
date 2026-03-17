@@ -428,6 +428,33 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
 
         XCTAssertEqual(textView.scrollRangeToVisibleCallCount, baselineScrollCallCount)
     }
+
+    func testWideIPadSurfaceKeepsTextViewFullWidthAndCentersReadableColumn() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarPresentation: .floatingTopTrailing,
+            maxContentWidth: 360,
+            width: 600,
+            height: 320
+        )
+
+        XCTAssertEqual(textView.bounds.width, 600, accuracy: 0.5)
+        XCTAssertEqual(
+            textView.textContainerInset.left,
+            NoteTextLayout.horizontalPadding + 120,
+            accuracy: 0.5
+        )
+        XCTAssertEqual(
+            textView.textContainerInset.right,
+            NoteTextLayout.horizontalPadding + 120,
+            accuracy: 0.5
+        )
+    }
 }
 
 #endif

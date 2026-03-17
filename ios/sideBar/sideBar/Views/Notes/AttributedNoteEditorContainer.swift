@@ -162,7 +162,6 @@ struct AttributedNoteEditorContainer: View {
             formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
             formattingBarPresentation: resolvedFormattingBarPresentation
         )
-        .frame(maxWidth: maxContentWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
         #else
