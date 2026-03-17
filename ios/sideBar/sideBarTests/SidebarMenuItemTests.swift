@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class SidebarMenuItemTests: XCTestCase {
     func testDeleteMenuItemUsesSystemDestructiveTintPolicy() {
         let item = SidebarMenuItem.delete {}

@@ -134,6 +134,40 @@ def test_count_executed_ui_tests_counts_non_skipped_ui_test_cases() -> None:
     assert count_executed_ui_tests(payload, {"sideBarUITests"}) == 2
 
 
+def test_count_executed_ui_tests_can_count_all_test_cases_for_ui_only_lanes() -> None:
+    """Dedicated UI lanes can count every executed leaf test case without bundle-name matching."""
+    payload = {
+        "testPlanConfigurations": [],
+        "devices": [],
+        "testNodes": [
+            {
+                "nodeType": "Test Plan",
+                "name": "AppleUI",
+                "children": [
+                    {
+                        "nodeType": "Test Suite",
+                        "name": "Launch smoke",
+                        "children": [
+                            _test_case("testLaunch", "Passed"),
+                            _test_case("testOpenSettings", "Passed"),
+                            _test_case("testSkipped", "Skipped"),
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+    assert (
+        count_executed_ui_tests(
+            payload,
+            {"sideBarUITests"},
+            count_all_test_cases=True,
+        )
+        == 2
+    )
+
+
 def test_resolve_profile_config_merges_selected_profile_over_root() -> None:
     """Profile overrides should replace thresholds while inheriting shared gates."""
     resolved = resolve_profile_config(
@@ -148,17 +182,21 @@ def test_resolve_profile_config_merges_selected_profile_over_root() -> None:
                     "coverage_thresholds": {"sideBarShared.framework": 60.0},
                     "minimum_deterministic_ui_journey_tests": 0,
                 },
+                "ui": {
+                    "minimum_deterministic_ui_journey_tests": 3,
+                    "count_all_test_cases_as_ui": True,
+                },
             },
             "warning_gate": {
                 "max_warnings": 0,
                 "include_path_contains": ["/ios/sideBar/sideBar/"],
             },
         },
-        profile="logic",
+        profile="ui",
     )
 
-    assert resolved["coverage_thresholds"] == {"sideBarShared.framework": 60.0}
-    assert resolved["minimum_deterministic_ui_journey_tests"] == 0
+    assert resolved["minimum_deterministic_ui_journey_tests"] == 3
+    assert resolved["count_all_test_cases_as_ui"] is True
     assert resolved["warning_gate"]["max_warnings"] == 0
 
 

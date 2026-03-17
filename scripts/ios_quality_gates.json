@@ -41,7 +41,8 @@
     "ui": {
       "coverage_thresholds": {},
       "baseline_coverage_thresholds": {},
-      "minimum_deterministic_ui_journey_tests": 3
+      "minimum_deterministic_ui_journey_tests": 3,
+      "count_all_test_cases_as_ui": true
     },
     "extensions": {
       "coverage_thresholds": {

@@ -52,8 +52,10 @@ def _build_config_list_id(*, pbxproj_text: str, target_name: str) -> str:
     return match.group(1)
 
 
-def _debug_build_settings(*, pbxproj_text: str, target_name: str) -> str:
-    """Return the raw Debug buildSettings block for one target."""
+def _build_settings_for_config(
+    *, pbxproj_text: str, target_name: str, config_name: str
+) -> str:
+    """Return the raw buildSettings block for one target/configuration."""
     config_list_id = _build_config_list_id(pbxproj_text=pbxproj_text, target_name=target_name)
     config_list_match = re.search(
         rf"\t\t{config_list_id} /\* .*? \*/ = \{{\n.*?\t\t\tbuildConfigurations = \(\n(?P<body>.*?)\t\t\t\);\n.*?\t\t\}};",
@@ -62,15 +64,18 @@ def _debug_build_settings(*, pbxproj_text: str, target_name: str) -> str:
     )
     assert config_list_match is not None, f"Missing XCConfigurationList for {target_name}"
     config_ids = re.findall(r"\t\t\t\t([A-F0-9]+) /\* (Debug|Release) \*/", config_list_match.group("body"))
-    debug_config_id = next((config_id for config_id, name in config_ids if name == "Debug"), None)
-    assert debug_config_id is not None, f"Missing Debug config for {target_name}"
+    target_config_id = next(
+        (config_id for config_id, name in config_ids if name == config_name),
+        None,
+    )
+    assert target_config_id is not None, f"Missing {config_name} config for {target_name}"
 
     config_match = re.search(
-        rf"\t\t{debug_config_id} /\* Debug \*/ = \{{\n.*?\t\t\tbuildSettings = \{{\n(?P<body>.*?)\t\t\t\}};\n\t\t\tname = Debug;\n\t\t\}};",
+        rf"\t\t{target_config_id} /\* {config_name} \*/ = \{{\n.*?\t\t\tbuildSettings = \{{\n(?P<body>.*?)\t\t\t\}};\n\t\t\tname = {config_name};\n\t\t\}};",
         pbxproj_text,
         re.DOTALL,
     )
-    assert config_match is not None, f"Missing Debug build settings for {target_name}"
+    assert config_match is not None, f"Missing {config_name} build settings for {target_name}"
     return config_match.group("body")
 
 
@@ -95,8 +100,45 @@ def test_app_debug_targets_disable_debug_dylib_splitting() -> None:
     pbxproj_text = _pbxproj_text()
 
     for target_name in ("sideBar", "sideBarLogicHost"):
-        build_settings = _debug_build_settings(
+        build_settings = _build_settings_for_config(
             pbxproj_text=pbxproj_text,
             target_name=target_name,
+            config_name="Debug",
         )
         assert "ENABLE_DEBUG_DYLIB = NO;" in build_settings
+
+
+def test_extension_debug_targets_emit_debug_dylibs_for_testable_imports() -> None:
+    """Extension debug builds should keep debug dylibs for ShareExtensionTests linkage."""
+    pbxproj_text = _pbxproj_text()
+
+    for target_name in ("ShareExtension", "sideBarWidgetsExtension", "sideBar Safari Extension"):
+        build_settings = _build_settings_for_config(
+            pbxproj_text=pbxproj_text,
+            target_name=target_name,
+            config_name="Debug",
+        )
+        assert "ENABLE_DEBUG_DYLIB = YES;" in build_settings
+
+
+def test_share_extension_tests_link_extension_debug_dylibs() -> None:
+    """Extension test bundles should link extension debug dylibs."""
+    pbxproj_text = _pbxproj_text()
+
+    for config_name in ("Debug", "Release"):
+        build_settings = _build_settings_for_config(
+            pbxproj_text=pbxproj_text,
+            target_name="ShareExtensionTests",
+            config_name=config_name,
+        )
+        assert '"$(BUILT_PRODUCTS_DIR)/ShareExtension.appex/ShareExtension.debug.dylib"' in build_settings
+        assert (
+            '"$(BUILT_PRODUCTS_DIR)/sideBarWidgetsExtension.appex/'
+            'sideBarWidgetsExtension.debug.dylib"'
+            in build_settings
+        )
+        assert (
+            '"$(BUILT_PRODUCTS_DIR)/sideBar\\\\ Safari\\\\ Extension.appex/'
+            'sideBar\\\\ Safari\\\\ Extension.debug.dylib"'
+            in build_settings
+        )

@@ -1297,6 +1297,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				ENABLE_DEBUG_DYLIB = YES;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1401,6 +1402,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				ENABLE_DEBUG_DYLIB = YES;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.sideBarWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1494,6 +1496,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				ENABLE_DEBUG_DYLIB = YES;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
@@ -1585,6 +1588,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				ENABLE_DEBUG_DYLIB = YES;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
@@ -1684,6 +1688,7 @@
 				);
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				ENABLE_DEBUG_DYLIB = YES;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",

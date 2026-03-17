@@ -267,6 +267,8 @@ def extract_coverage_by_target(xccov_report: dict) -> dict[str, float]:
 def count_executed_ui_tests(
     test_results_payload: dict,
     ui_test_target_names: set[str],
+    *,
+    count_all_test_cases: bool = False,
 ) -> int:
     """Count executed UI test cases from xcresult test-results payload."""
 
@@ -276,7 +278,7 @@ def count_executed_ui_tests(
 
         node_type = node.get("nodeType")
         node_name = node.get("name")
-        is_ui_bundle = (
+        is_ui_bundle = count_all_test_cases or (
             node_type == "UI test bundle"
             or (isinstance(node_name, str) and node_name in ui_test_target_names)
         )
@@ -367,6 +369,7 @@ def main() -> int:
     )
     max_drop_pct_points = float(config.get("max_drop_pct_points", 0.0))
     min_ui_tests = int(config.get("minimum_deterministic_ui_journey_tests", 0))
+    count_all_test_cases_as_ui = bool(config.get("count_all_test_cases_as_ui", False))
     ui_test_target_names = {
         str(name)
         for name in config.get("ui_test_target_names", ["sideBarUITests"])
@@ -430,6 +433,7 @@ def main() -> int:
             ui_test_count = count_executed_ui_tests(
                 test_results_payload=ui_test_results,
                 ui_test_target_names=ui_test_target_names,
+                count_all_test_cases=count_all_test_cases_as_ui,
             )
             emit(
                 "Deterministic UI journey tests: "
