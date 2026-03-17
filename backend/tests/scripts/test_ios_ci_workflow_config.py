@@ -348,8 +348,8 @@ def test_ios_ci_stores_result_bundles_under_runner_temp() -> None:
         )
 
 
-def test_ios_ci_uses_persistent_lane_derived_data() -> None:
-    """Apple lanes should reuse a stable derived-data path per lane to avoid cold package graph setup."""
+def test_ios_ci_uses_lane_scoped_derived_data_with_clean_rebuilds() -> None:
+    """Apple lanes should use stable lane paths but force clean rebuilds to avoid stale linker state."""
     workflows_and_jobs = [
         (_dev_workflow(), "ios_test_dev"),
         (_main_workflow(), "ios_test_main"),
@@ -359,7 +359,7 @@ def test_ios_ci_uses_persistent_lane_derived_data() -> None:
     for workflow, job_name in workflows_and_jobs:
         env = _job_step(workflow, job_name, "Run tests")["env"]
         assert env["IOS_DERIVED_DATA_PATH"] == "${{ env.IOS_SHARED_DERIVED_DATA_ROOT }}/${{ matrix.id }}"
-        assert env["IOS_CLEAN_DERIVED_DATA"] == "NO"
+        assert env["IOS_CLEAN_DERIVED_DATA"] == "YES"
 
 
 def test_ios_ci_uses_persistent_swiftpm_cache_paths() -> None:
