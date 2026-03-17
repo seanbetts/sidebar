@@ -392,6 +392,42 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
 
         XCTAssertEqual(bottomInset, 0, accuracy: 0.5)
     }
+
+    func testViewportInsetChangeDoesNotScrollWhenSelectionAlreadyVisible() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass(
+                Array(repeating: "Visible line", count: 40).joined(separator: "\n")
+            ),
+            plainText: Array(repeating: "Visible line", count: 40).joined(separator: "\n")
+        )
+        let topInsertion = viewModel.attributedContent.startIndex
+        viewModel.selection = AttributedTextSelection(range: topInsertion..<topInsertion)
+        let trackingTextView = ScrollTrackingAccessoryTextView()
+        let textView = try XCTUnwrap(
+            mountTextView(
+                viewModel: viewModel,
+                formattingBarPresentation: .floatingTopTrailing,
+                makeTextView: { trackingTextView },
+                height: 320
+            ) as? ScrollTrackingAccessoryTextView
+        )
+        let baselineScrollCallCount = textView.scrollRangeToVisibleCallCount
+        let keyboardFrameInView = CGRect(x: 0, y: 280, width: textView.bounds.width, height: 40)
+        let keyboardFrameInWindow = textView.convert(keyboardFrameInView, to: textView.window)
+        let keyboardFrameInScreen = textView.window?.convert(keyboardFrameInWindow, to: nil) ?? keyboardFrameInWindow
+
+        NotificationCenter.default.post(
+            name: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil,
+            userInfo: [
+                UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: keyboardFrameInScreen)
+            ]
+        )
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(textView.scrollRangeToVisibleCallCount, baselineScrollCallCount)
+    }
 }
 
 #endif

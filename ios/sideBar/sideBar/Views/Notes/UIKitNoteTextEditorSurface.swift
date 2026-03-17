@@ -376,6 +376,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 selectedUTF16Range: textView.selectedRange
             )
             isApplyingProgrammaticText = false
+            lastAppliedRenderSignature = RenderSignature(
+                renderGeneration: viewModel.renderGeneration,
+                baseFontSize: viewModel.baseFontSize
+            )
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {

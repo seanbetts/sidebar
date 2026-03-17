@@ -22,6 +22,7 @@ func mountTextView(
     makeKeyAndVisible: Bool = false,
     formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
     formattingBarPresentation: NoteFormattingBarPresentation = .keyboardAccessory,
+    makeTextView: (() -> UIKitNoteTextEditorSurface.AccessoryTextView)? = nil,
     width: CGFloat = 360,
     height: CGFloat = 320
 ) throws -> UITextView {
@@ -33,7 +34,8 @@ func mountTextView(
                 isEditable: isEditable,
                 shouldAutofocus: autofocusEnabled,
                 formattingBarConfiguration: formattingBarConfiguration,
-                formattingBarPresentation: formattingBarPresentation
+                formattingBarPresentation: formattingBarPresentation,
+                makeTextView: makeTextView
             )
         )
     )
@@ -151,6 +153,17 @@ final class AttributeMutationTrackingTextView: UIKitNoteTextEditorSurface.Access
         didSet {
             attributedTextAssignmentCount += 1
         }
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
+final class ScrollTrackingAccessoryTextView: UIKitNoteTextEditorSurface.AccessoryTextView {
+    private(set) var scrollRangeToVisibleCallCount = 0
+
+    override func scrollRangeToVisible(_ range: NSRange) {
+        scrollRangeToVisibleCallCount += 1
+        super.scrollRangeToVisible(range)
     }
 }
 

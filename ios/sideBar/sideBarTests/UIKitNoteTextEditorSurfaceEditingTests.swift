@@ -350,6 +350,31 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
 
         XCTAssertEqual(persistenceSnapshotCount, 0)
     }
+
+    func testTypingChangesDoNotRewriteUIKitAttributedTextOnNextUpdateCycle() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let trackingTextView = AttributeMutationTrackingTextView()
+        let textView = try XCTUnwrap(
+            mountTextView(
+                viewModel: viewModel,
+                formattingBarConfiguration: .disabled,
+                formattingBarPresentation: .hidden,
+                makeTextView: { trackingTextView }
+            ) as? AttributeMutationTrackingTextView
+        )
+        let initialAssignmentCount = textView.attributedTextAssignmentCount
+
+        textView.text = "Hello updated"
+        textView.selectedRange = NSRange(location: 13, length: 0)
+        textView.delegate?.textViewDidChange?(textView)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(textView.attributedTextAssignmentCount, initialAssignmentCount + 1)
+    }
 }
 
 #endif
