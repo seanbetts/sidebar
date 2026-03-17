@@ -14,9 +14,16 @@ def test_skills_api_image_installs_ffmpeg() -> None:
     assert "apt-get install -y --no-install-recommends" in contents
 
 
+def test_skills_api_image_installs_deno() -> None:
+    contents = DOCKERFILE.read_text(encoding="utf-8")
+
+    assert "deno" in contents
+
+
 def test_skills_api_healthcheck_targets_api_health_without_curl() -> None:
     contents = DOCKERFILE.read_text(encoding="utf-8")
+    healthcheck_section = contents.split("HEALTHCHECK", maxsplit=1)[1]
 
     assert "HEALTHCHECK" in contents
     assert "http://127.0.0.1:8001/api/health" in contents
-    assert "curl -f" not in contents
+    assert "curl -f" not in healthcheck_section

@@ -87,6 +87,18 @@ def _resolve_js_runtimes() -> dict[str, dict[str, str]] | None:
     return None
 
 
+def _detect_impersonation_support() -> str:
+    return "curl_cffi" if importlib.util.find_spec("curl_cffi") else "none"
+
+
+def _resolve_youtube_webpage_client() -> str | None:
+    value = (os.getenv("YT_DLP_YOUTUBE_WEBPAGE_CLIENT") or "").strip().lower()
+    allowed_clients = {"web", "web_safari", "mweb"}
+    if value in allowed_clients:
+        return value
+    return None
+
+
 def _resolve_player_clients(audio_only: bool) -> list[str] | None:
     value = (os.getenv("YT_DLP_PLAYER_CLIENTS") or "").strip()
     if value:
@@ -620,9 +632,17 @@ def download_youtube(
         "quiet": quiet,
     }
 
+    youtube_extractor_args: dict[str, list[str]] = {}
     player_clients = _resolve_player_clients(audio_only)
     if player_clients:
-        ydl_opts["extractor_args"] = {"youtube": {"player_client": player_clients}}
+        youtube_extractor_args["player_client"] = player_clients
+
+    webpage_client = _resolve_youtube_webpage_client()
+    if webpage_client:
+        youtube_extractor_args["webpage_client"] = [webpage_client]
+
+    if youtube_extractor_args:
+        ydl_opts["extractor_args"] = {"youtube": youtube_extractor_args}
 
     # Audio-only configuration
     if audio_only:
@@ -664,6 +684,7 @@ def download_youtube(
     logger.info(
         "yt-dlp js runtimes: %s", ",".join(js_runtimes.keys()) if js_runtimes else "none"
     )
+    logger.info("yt-dlp impersonation support: %s", _detect_impersonation_support())
     logger.info("yt-dlp audio_only=%s playlist=%s", audio_only, is_playlist)
     remote_components = _default_remote_components()
     ydl_opts["remote_components"] = remote_components

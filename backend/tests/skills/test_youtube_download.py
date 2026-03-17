@@ -35,6 +35,13 @@ def test_resolve_js_runtimes_from_env_with_path(monkeypatch):
     assert module._resolve_js_runtimes() == {"node": {"path": "/opt/node"}}
 
 
+def test_resolve_js_runtimes_preserves_env_order(monkeypatch):
+    module = _load_download_module()
+    monkeypatch.setenv("YT_DLP_JS_RUNTIMES", "deno,node")
+    monkeypatch.delenv("YT_DLP_JS_RUNTIME", raising=False)
+    assert module._resolve_js_runtimes() == {"deno": {}, "node": {}}
+
+
 def test_resolve_js_runtimes_from_path(monkeypatch):
     module = _load_download_module()
     monkeypatch.delenv("YT_DLP_JS_RUNTIMES", raising=False)
@@ -49,6 +56,42 @@ def test_resolve_js_runtimes_missing(monkeypatch):
     monkeypatch.delenv("YT_DLP_JS_RUNTIME", raising=False)
     monkeypatch.setattr(module.shutil, "which", lambda _value: None)
     assert module._resolve_js_runtimes() is None
+
+
+def test_detect_impersonation_support_when_curl_cffi_available(monkeypatch):
+    module = _load_download_module()
+
+    class FakeSpec:
+        pass
+
+    monkeypatch.setattr(
+        module.importlib.util,
+        "find_spec",
+        lambda name: FakeSpec() if name == "curl_cffi" else None,
+    )
+
+    assert module._detect_impersonation_support() == "curl_cffi"
+
+
+def test_detect_impersonation_support_when_unavailable(monkeypatch):
+    module = _load_download_module()
+    monkeypatch.setattr(module.importlib.util, "find_spec", lambda _name: None)
+
+    assert module._detect_impersonation_support() == "none"
+
+
+def test_resolve_youtube_webpage_client_from_env(monkeypatch):
+    module = _load_download_module()
+    monkeypatch.setenv("YT_DLP_YOUTUBE_WEBPAGE_CLIENT", "web")
+
+    assert module._resolve_youtube_webpage_client() == "web"
+
+
+def test_resolve_youtube_webpage_client_rejects_unknown_value(monkeypatch):
+    module = _load_download_module()
+    monkeypatch.setenv("YT_DLP_YOUTUBE_WEBPAGE_CLIENT", "desktop")
+
+    assert module._resolve_youtube_webpage_client() is None
 
 
 def test_resolve_player_clients_defaults_for_audio(monkeypatch):
@@ -102,6 +145,7 @@ def test_download_youtube_enables_remote_components(monkeypatch, tmp_path):
     monkeypatch.setattr(module, "check_ffmpeg", lambda: True)
     monkeypatch.setattr(module.yt_dlp, "YoutubeDL", FakeYoutubeDL)
     monkeypatch.setattr(module, "_resolve_js_runtimes", lambda: {"node": {}})
+    monkeypatch.setattr(module, "_detect_impersonation_support", lambda: "curl_cffi")
     monkeypatch.setattr(
         module.logger,
         "info",
@@ -125,6 +169,7 @@ def test_download_youtube_enables_remote_components(monkeypatch, tmp_path):
         'yt-dlp extractor args: {"youtube": {"player_client": ["default"]}}'
         in log_messages
     )
+    assert "yt-dlp impersonation support: curl_cffi" in log_messages
 
 
 def test_download_youtube_leaves_video_player_clients_on_default(monkeypatch, tmp_path):
@@ -167,12 +212,56 @@ def test_download_youtube_leaves_video_player_clients_on_default(monkeypatch, tm
     assert "extractor_args" not in captured["opts"]
 
 
-def test_backend_pyproject_pins_latest_verified_yt_dlp_release():
-    pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
-    pyproject = tomllib.loads(pyproject_path.read_text())
-    dependencies = pyproject["project"]["dependencies"]
+def test_backend_lockfile_resolves_yt_dlp_nightly_build():
+    lock_path = Path(__file__).resolve().parents[2] / "uv.lock"
+    lock_content = lock_path.read_text()
 
-    assert "yt-dlp>=2026.3.13" in dependencies
+    assert 'name = "yt-dlp"' in lock_content
+    assert 'version = "2026.3.13.83652.dev0"' in lock_content
+    assert 'name = "curl-cffi"' in lock_content
+
+
+def test_download_youtube_adds_webpage_client_to_extractor_args(monkeypatch, tmp_path):
+    module = _load_download_module()
+    captured: dict[str, Any] = {}
+
+    class FakeYoutubeDL:
+        def __init__(self, opts):
+            captured["opts"] = opts
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def extract_info(self, _url, download=False):
+            assert download is False
+            return {"title": "Video", "duration": 42}
+
+        def prepare_filename(self, _info):
+            return str(tmp_path / "Video.webm")
+
+        def download(self, _urls):
+            (tmp_path / "Video.mp3").write_bytes(b"audio")
+
+    monkeypatch.setenv("YT_DLP_YOUTUBE_WEBPAGE_CLIENT", "web")
+    monkeypatch.setattr(module, "check_ffmpeg", lambda: True)
+    monkeypatch.setattr(module.yt_dlp, "YoutubeDL", FakeYoutubeDL)
+    monkeypatch.setattr(module, "_resolve_js_runtimes", lambda: {"deno": {}})
+
+    result = module.download_youtube(
+        url="https://www.youtube.com/watch?v=abc123xyzAA",
+        audio_only=True,
+        quiet=True,
+        upload=False,
+        temp_dir=str(tmp_path),
+    )
+
+    assert result["success"] is True
+    assert captured["opts"]["extractor_args"] == {
+        "youtube": {"player_client": ["default"], "webpage_client": ["web"]}
+    }
 
 
 def test_store_downloaded_output_uses_ingestion_helpers(monkeypatch, tmp_path):

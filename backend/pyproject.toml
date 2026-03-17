@@ -32,7 +32,7 @@ dependencies = [
     # Domain parsing (favicon dedupe)
     "publicsuffix2>=2.20191221",
     # YouTube downloading (youtube-download skill)
-    "yt-dlp>=2026.3.13",
+    "yt-dlp[curl-cffi]==2026.3.13.83652.dev0",
     # Audio transcription (audio-transcribe skill)
     "pydub>=0.25.1",
     "tqdm>=4.66.0",

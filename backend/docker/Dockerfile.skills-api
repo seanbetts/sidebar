@@ -5,11 +5,17 @@ WORKDIR /app
 # Install system dependencies for file processing
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    curl \
     ffmpeg \
     libreoffice \
+    unzip \
     poppler-utils \
     nodejs \
     npm && \
+    curl -fsSL https://dl.deno.land/release/v2.7.5/deno-x86_64-unknown-linux-gnu.zip -o /tmp/deno.zip && \
+    unzip /tmp/deno.zip -d /usr/local/bin && \
+    chmod +x /usr/local/bin/deno && \
+    rm /tmp/deno.zip && \
     rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
