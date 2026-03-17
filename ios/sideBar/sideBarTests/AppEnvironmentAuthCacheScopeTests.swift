@@ -59,18 +59,68 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         assertCachedDataCleared(environment)
     }
 
+    func testRefreshAuthStatePreservesPendingShareQueueDuringActiveScopeMigration() {
+        let queuedURL = "https://example.com/articles/\(UUID().uuidString)"
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(
+                NSError(domain: "AppEnvironmentAuthCacheScopeTests", code: 1)
+            )
+        )
+        let environment = makeEnvironment(
+            authState: .active,
+            userId: "user-migrated",
+            websitesAPI: websitesAPI
+        )
+        primeCachedData(environment)
+        let queuedItem = environment.storage.pendingShareStore.enqueueWebsite(url: queuedURL)
+
+        environment.refreshAuthState()
+
+        XCTAssertEqual(isolatedDefaults.defaults.string(forKey: cacheScopeKey), "user-migrated")
+        XCTAssertEqual(environment.storage.pendingShareStore.loadAll().map(\.id), [queuedItem?.id].compactMap { $0 })
+        XCTAssertEqual(environment.storage.pendingShareStore.loadAll().first?.url, queuedURL)
+    }
+
+    func testRefreshAuthStatePreservesExtensionEventsDuringActiveScopeMigration() {
+        let queuedURL = "https://example.com/articles/\(UUID().uuidString)"
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(
+                NSError(domain: "AppEnvironmentAuthCacheScopeTests", code: 1)
+            )
+        )
+        let environment = makeEnvironment(
+            authState: .active,
+            userId: "user-migrated",
+            websitesAPI: websitesAPI
+        )
+        primeCachedData(environment)
+        environment.storage.extensionEventStore.recordWebsiteSaved(url: queuedURL)
+
+        environment.refreshAuthState()
+
+        XCTAssertEqual(isolatedDefaults.defaults.string(forKey: cacheScopeKey), "user-migrated")
+        waitForQueuedWebsite(queuedURL, in: environment)
+        XCTAssertTrue(
+            environment.storage.pendingShareStore.loadAll().contains { $0.url == queuedURL }
+        )
+    }
+
     func testRefreshAuthStateClearsCachedDataWhenSignedOutWithStoredScope() {
         isolatedDefaults.defaults.set("user-old", forKey: cacheScopeKey)
         isolatedDefaults.defaults.set("person@example.com", forKey: lastSignInEmailKey)
         isolatedDefaults.defaults.set(Date().timeIntervalSince1970, forKey: lastAuthTimestampKey)
         let environment = makeEnvironment(authState: .signedOut, userId: nil)
         primeCachedData(environment)
+        _ = environment.storage.pendingShareStore.enqueueWebsite(url: "https://example.com/articles/sign-out")
+        environment.storage.extensionEventStore.recordWebsiteSaved(url: "https://example.com/articles/sign-out")
 
         environment.refreshAuthState()
 
         XCTAssertNil(isolatedDefaults.defaults.string(forKey: cacheScopeKey))
         XCTAssertNil(isolatedDefaults.defaults.string(forKey: lastSignInEmailKey))
         XCTAssertNil(isolatedDefaults.defaults.object(forKey: lastAuthTimestampKey))
+        XCTAssertTrue(environment.storage.pendingShareStore.loadAll().isEmpty)
+        XCTAssertTrue(environment.storage.extensionEventStore.consumeEvents().isEmpty)
         assertCachedDataCleared(environment)
     }
 
@@ -100,12 +150,17 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         XCTAssertEqual(environment.settingsViewModel.shortcutsToken, "")
     }
 
-    private func makeEnvironment(authState: AuthState, userId: String?) -> AppEnvironment {
+    private func makeEnvironment(
+        authState: AuthState,
+        userId: String?,
+        websitesAPI: (any WebsitesProviding)? = nil
+    ) -> AppEnvironment {
         let authSession = MutableAuthSession(authState: authState, userId: userId)
         let container = ServiceContainer(
             config: .fallbackForTesting(),
             authSession: authSession,
-            cacheClient: InMemoryCacheClient()
+            cacheClient: InMemoryCacheClient(),
+            websitesAPI: websitesAPI
         )
         let environment = AppEnvironment(
             container: container,
@@ -149,6 +204,16 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
             as: CacheScopePayload.self
         )
         XCTAssertNil(offlinePayload)
+    }
+
+    private func waitForQueuedWebsite(
+        _ url: String,
+        in environment: AppEnvironment,
+        attempts: Int = 40
+    ) {
+        for _ in 0..<attempts where !environment.storage.pendingShareStore.loadAll().contains(where: { $0.url == url }) {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
     }
 }
 

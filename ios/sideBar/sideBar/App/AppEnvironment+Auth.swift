@@ -84,7 +84,10 @@ extension AppEnvironment {
                 \(previousScope, privacy: .public) to \(currentUserId, privacy: .public)
                 """
             )
-            resetSignedInData(clearNavigationState: false)
+            resetSignedInData(
+                clearNavigationState: false,
+                preserveExtensionHandoffs: true
+            )
         }
         defaults.set(currentUserId, forKey: AppStorageKeys.cacheScopeUserId)
     }
@@ -100,9 +103,12 @@ extension AppEnvironment {
         storage.userDefaults.removeObject(forKey: AppStorageKeys.cacheScopeUserId)
     }
 
-    private func resetSignedInData(clearNavigationState: Bool) {
+    private func resetSignedInData(
+        clearNavigationState: Bool,
+        preserveExtensionHandoffs: Bool = false
+    ) {
         dismissMacSettings()
-        flushSignedInPersistence()
+        flushSignedInPersistence(preserveExtensionHandoffs: preserveExtensionHandoffs)
         chatStore.reset()
         notesStore.reset()
         websitesStore.reset()
@@ -132,15 +138,17 @@ extension AppEnvironment {
         }
     }
 
-    private func flushSignedInPersistence() {
+    private func flushSignedInPersistence(preserveExtensionHandoffs: Bool = false) {
         container.cacheClient.clear()
         offlineStore.clearAllSnapshots()
         let defaults = storage.userDefaults
         defaults.removeObject(forKey: AppStorageKeys.lastSignInEmail)
         defaults.removeObject(forKey: AppStorageKeys.lastAuthTimestamp)
         storage.widgetDataManager.clearAllDataForSignOut()
-        storage.pendingShareStore.clearAll()
-        storage.extensionEventStore.clear()
+        if !preserveExtensionHandoffs {
+            storage.pendingShareStore.clearAll()
+            storage.extensionEventStore.clear()
+        }
         do {
             try draftStorage.clearAllDrafts()
         } catch {
