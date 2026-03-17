@@ -24,7 +24,9 @@ evaluate_platform_expectations = CONFIG_CHECK_MODULE.evaluate_platform_expectati
 evaluate_embedded_framework_expectations = (
     CONFIG_CHECK_MODULE.evaluate_embedded_framework_expectations
 )
-validate_extension_config_resolution = CONFIG_CHECK_MODULE.validate_extension_config_resolution
+validate_extension_config_resolution = (
+    CONFIG_CHECK_MODULE.validate_extension_config_resolution
+)
 validate_built_macos_widget_artifacts = (
     CONFIG_CHECK_MODULE.validate_built_macos_widget_artifacts
 )
@@ -91,7 +93,9 @@ def _mock_otool_success(
             )
         raise AssertionError(f"unexpected command: {command}")
 
-    monkeypatch.setattr(CONFIG_CHECK_MODULE.subprocess, "check_output", _fake_check_output)
+    monkeypatch.setattr(
+        CONFIG_CHECK_MODULE.subprocess, "check_output", _fake_check_output
+    )
 
 
 def test_has_relative_local_include_accepts_expected_line() -> None:
@@ -203,7 +207,9 @@ def test_validate_extension_config_resolution_resolves_expected_values(
     assert errors == []
 
 
-def test_evaluate_platform_expectations_reports_non_macos_safari_target_settings() -> None:
+def test_evaluate_platform_expectations_reports_non_macos_safari_target_settings() -> (
+    None
+):
     """macOS Safari targets should fail validation when configured for iPhone SDK/platforms."""
     errors = evaluate_platform_expectations(
         target="sideBar Safari Extension (macOS) Extension",
@@ -223,7 +229,9 @@ def test_evaluate_platform_expectations_reports_non_macos_safari_target_settings
     ]
 
 
-def test_evaluate_embedded_framework_expectations_reports_embedded_framework_copy_phase() -> None:
+def test_evaluate_embedded_framework_expectations_reports_embedded_framework_copy_phase() -> (
+    None
+):
     """Extension targets should fail validation if sideBarShared is embedded in the appex."""
     objects = {
         "target": {
@@ -327,7 +335,10 @@ def test_validate_extension_config_resolution_reports_disallowed_embedded_framew
     finally:
         CONFIG_CHECK_MODULE.load_pbxproj_objects = original_loader
 
-    assert "sideBarWidgetsExtension: disallowed embedded framework copy phase for 'sideBarShared.framework'" in errors
+    assert (
+        "sideBarWidgetsExtension: disallowed embedded framework copy phase for 'sideBarShared.framework'"
+        in errors
+    )
 
 
 def test_validate_extension_config_resolution_reports_missing_macos_host_framework_runpath(
@@ -401,6 +412,79 @@ def test_validate_extension_config_resolution_reports_missing_macos_host_framewo
     assert (
         "sideBarWidgetsExtension: missing build setting "
         "'LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]'"
+    ) in errors
+
+
+def test_validate_extension_config_resolution_reports_missing_package_framework_search_path(
+    tmp_path: Path,
+) -> None:
+    """macOS extension targets should include PackageFrameworks in framework search paths."""
+    base_xcconfig = tmp_path / "SideBar.xcconfig"
+    base_xcconfig.write_text(f"{LOCAL_INCLUDE_LINE}\n", encoding="utf-8")
+
+    setting_expectations = CONFIG_CHECK_MODULE.SETTING_EXPECTATIONS
+    debug_settings = {
+        **setting_expectations,
+        "APP_GROUP_ID": "group.ai.sidebar.sidebar",
+        "INFOPLIST_KEY_APP_GROUP_ID": "group.ai.sidebar.sidebar",
+        "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator macosx",
+        "SDKROOT": "auto",
+        "LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]": [
+            "@executable_path/Frameworks",
+            "@executable_path/../../Frameworks",
+            "@executable_path/../../../../Frameworks",
+        ],
+    }
+
+    objects = {
+        "project": {
+            "isa": "PBXProject",
+            "buildConfigurationList": "project_configs",
+        },
+        "project_configs": {
+            "isa": "XCConfigurationList",
+            "buildConfigurations": ["project_debug"],
+        },
+        "project_debug": {
+            "isa": "XCBuildConfiguration",
+            "name": "Debug",
+            "buildSettings": {},
+        },
+        "target": {
+            "isa": "PBXNativeTarget",
+            "name": "ShareExtension",
+            "buildConfigurationList": "target_configs",
+            "buildPhases": ["frameworks"],
+        },
+        "target_configs": {
+            "isa": "XCConfigurationList",
+            "buildConfigurations": ["target_debug"],
+        },
+        "target_debug": {
+            "isa": "XCBuildConfiguration",
+            "name": "Debug",
+            "buildSettings": debug_settings,
+        },
+        "frameworks": {
+            "isa": "PBXFrameworksBuildPhase",
+            "files": [],
+        },
+    }
+
+    original_loader = CONFIG_CHECK_MODULE.load_pbxproj_objects
+    try:
+        CONFIG_CHECK_MODULE.load_pbxproj_objects = lambda _path: objects
+        errors = validate_extension_config_resolution(
+            pbxproj_path=tmp_path / "project.pbxproj",
+            base_xcconfig_path=base_xcconfig,
+            configuration="Debug",
+            targets=("ShareExtension",),
+        )
+    finally:
+        CONFIG_CHECK_MODULE.load_pbxproj_objects = original_loader
+
+    assert (
+        "ShareExtension: missing build setting 'FRAMEWORK_SEARCH_PATHS[sdk=macosx*]'"
     ) in errors
 
 
@@ -491,6 +575,10 @@ def test_validate_extension_config_resolution_accepts_list_valued_runpaths(
         "INFOPLIST_KEY_SUPABASE_ANON_KEY": sentinel_values["SUPABASE_ANON_KEY"],
         "APP_GROUP_ID": "group.ai.sidebar.sidebar",
         "INFOPLIST_KEY_APP_GROUP_ID": "group.ai.sidebar.sidebar",
+        "FRAMEWORK_SEARCH_PATHS[sdk=macosx*]": [
+            "$(inherited)",
+            "$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+        ],
         "LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]": [
             "@executable_path/Frameworks",
             "@executable_path/../../Frameworks",
@@ -548,14 +636,18 @@ def test_validate_extension_config_resolution_accepts_list_valued_runpaths(
     assert errors == []
 
 
-def test_validate_built_macos_widget_artifacts_rejects_non_sidebar_app_path(tmp_path: Path) -> None:
+def test_validate_built_macos_widget_artifacts_rejects_non_sidebar_app_path(
+    tmp_path: Path,
+) -> None:
     """Artifact validation should require a sideBar.app bundle path."""
     app = tmp_path / "NotSideBar.app"
     app.mkdir(parents=True)
 
     errors = validate_built_macos_widget_artifacts(app_path=app)
 
-    assert errors == [f"{app}: expected built app bundle path ending with 'sideBar.app'"]
+    assert errors == [
+        f"{app}: expected built app bundle path ending with 'sideBar.app'"
+    ]
 
 
 def test_validate_built_macos_widget_artifacts_reports_missing_widget_appex(
@@ -670,7 +762,9 @@ def test_validate_built_macos_widget_artifacts_accepts_debug_stub_executable_lay
                 )
         raise AssertionError(f"unexpected command: {command}")
 
-    monkeypatch.setattr(CONFIG_CHECK_MODULE.subprocess, "check_output", _fake_check_output)
+    monkeypatch.setattr(
+        CONFIG_CHECK_MODULE.subprocess, "check_output", _fake_check_output
+    )
 
     errors = validate_built_macos_widget_artifacts(app_path=paths["app"])
 
@@ -694,7 +788,9 @@ def test_validate_built_macos_widget_artifacts_reports_missing_shared_framework_
     )
 
 
-def test_main_returns_failure_when_required_files_missing(monkeypatch, tmp_path: Path) -> None:
+def test_main_returns_failure_when_required_files_missing(
+    monkeypatch, tmp_path: Path
+) -> None:
     """CLI should fail fast for missing project/xcconfig paths."""
     missing_pbxproj = tmp_path / "missing.pbxproj"
     missing_xcconfig = tmp_path / "missing.xcconfig"

@@ -1296,6 +1296,10 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				"INFOPLIST_KEY_SUPABASE_ANON_KEY[arch=*]" = "$(SUPABASE_ANON_KEY)";
 				"INFOPLIST_KEY_SUPABASE_URL[arch=*]" = "$(SUPABASE_URL)";
+				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+				);
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				"KEYCHAIN_ACCESS_GROUP[arch=*]" = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				"KEYCHAIN_SERVICE[arch=*]" = ai.sidebar.sidebar;
@@ -1342,6 +1346,10 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				"INFOPLIST_KEY_SUPABASE_ANON_KEY[arch=*]" = "$(SUPABASE_ANON_KEY)";
 				"INFOPLIST_KEY_SUPABASE_URL[arch=*]" = "$(SUPABASE_URL)";
+				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+				);
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				"KEYCHAIN_ACCESS_GROUP[arch=*]" = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				"KEYCHAIN_SERVICE[arch=*]" = ai.sidebar.sidebar;
@@ -1392,6 +1400,10 @@
 				"INFOPLIST_KEY_R2_ENDPOINT[arch=*]" = "$(R2_ENDPOINT)";
 				"INFOPLIST_KEY_R2_FAVICON_BUCKET[arch=*]" = "$(R2_FAVICON_BUCKET)";
 				"INFOPLIST_KEY_R2_FAVICON_PUBLIC_BASE_URL[arch=*]" = "$(R2_FAVICON_PUBLIC_BASE_URL)";
+				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+				);
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
@@ -1441,6 +1453,10 @@
 				"INFOPLIST_KEY_R2_ENDPOINT[arch=*]" = "$(R2_ENDPOINT)";
 				"INFOPLIST_KEY_R2_FAVICON_BUCKET[arch=*]" = "$(R2_FAVICON_BUCKET)";
 				"INFOPLIST_KEY_R2_FAVICON_PUBLIC_BASE_URL[arch=*]" = "$(R2_FAVICON_PUBLIC_BASE_URL)";
+				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+				);
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				KEYCHAIN_SERVICE = ai.sidebar.sidebar;

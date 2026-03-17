@@ -80,6 +80,19 @@ RUNPATH_EXPECTATIONS_BY_TARGET = {
     },
 }
 
+FRAMEWORK_SEARCH_PATH_EXPECTATIONS_BY_TARGET = {
+    "ShareExtension": {
+        "FRAMEWORK_SEARCH_PATHS[sdk=macosx*]": (
+            "$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+        ),
+    },
+    "sideBarWidgetsExtension": {
+        "FRAMEWORK_SEARCH_PATHS[sdk=macosx*]": (
+            "$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+        ),
+    },
+}
+
 SENTINEL_VALUES = {
     "API_BASE_URL": "https://config-resolution.example.invalid/api/v1",
     "SUPABASE_URL": "https://config-resolution.example.invalid",
@@ -174,7 +187,8 @@ def load_pbxproj_objects(pbxproj_path: Path) -> dict[str, dict[str, object]]:
         output = subprocess.check_output(command, text=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(
-            f"plutil failed for '{pbxproj_path}' with exit {exc.returncode}:\n{exc.output}"
+            "plutil failed for "
+            f"'{pbxproj_path}' with exit {exc.returncode}:\n{exc.output}"
         ) from exc
 
     payload = json.loads(output)
@@ -245,7 +259,7 @@ def evaluate_embedded_framework_expectations(
     objects: dict[str, dict[str, object]],
     target: str,
 ) -> list[str]:
-    """Return validation errors for extension targets that disallow embedding sideBarShared."""
+    """Return validation errors when extensions embed sideBarShared."""
     target_object = target_object_for_name(objects=objects, target=target)
     build_phase_ids = target_object.get("buildPhases", [])
     if not isinstance(build_phase_ids, list):
@@ -311,8 +325,7 @@ def project_configuration_settings(
         if not isinstance(build_settings, dict):
             raise RuntimeError(f"Invalid project build settings for {configuration}")
         return {
-            key: normalize_value(str(value))
-            for key, value in build_settings.items()
+            key: normalize_value(str(value)) for key, value in build_settings.items()
         }
 
     raise RuntimeError(f"Missing project {configuration} build configuration")
@@ -326,7 +339,7 @@ def resolve_value(
     local_overrides: dict[str, str],
     seen: set[str] | None = None,
 ) -> str | None:
-    """Resolve a build setting through target/project settings and xcconfig overrides."""
+    """Resolve a build setting through target, project, and xcconfig overrides."""
     if seen is None:
         seen = set()
     if key in seen:
@@ -386,7 +399,8 @@ def evaluate_setting_expectations(
 
         if normalize_value(actual) != normalize_value(expected):
             errors.append(
-                f"{target}: build setting '{key}' expected '{expected}' but got '{actual}'"
+                f"{target}: build setting '{key}' expected "
+                f"'{expected}' but got '{actual}'"
             )
     return errors
 
@@ -400,13 +414,37 @@ def evaluate_platform_expectations(
     """Return validation errors for expected platform build settings."""
     normalized_settings = dict(settings)
     if "SDKROOT" in normalized_settings:
-        normalized_settings["SDKROOT"] = normalize_sdkroot_value(normalized_settings["SDKROOT"])
+        normalized_settings["SDKROOT"] = normalize_sdkroot_value(
+            normalized_settings["SDKROOT"]
+        )
 
     return evaluate_setting_expectations(
         target=target,
         settings=normalized_settings,
         expectations=expectations,
     )
+
+
+def evaluate_contains_expectations(
+    *,
+    target: str,
+    settings: dict[str, str],
+    expectations: dict[str, tuple[str, ...]],
+) -> list[str]:
+    """Return validation errors when a build setting omits required substrings."""
+    errors: list[str] = []
+    for key, required_values in expectations.items():
+        actual = settings.get(key)
+        if actual is None:
+            errors.append(f"{target}: missing build setting '{key}'")
+            continue
+
+        for required_value in required_values:
+            if required_value not in actual:
+                errors.append(
+                    f"{target}: build setting '{key}' must include '{required_value}'"
+                )
+    return errors
 
 
 def parse_otool_rpath_entries(otool_output: str) -> set[str]:
@@ -448,7 +486,8 @@ def inspect_binary_with_otool(binary_path: Path, mode: str) -> str:
         return subprocess.check_output(command, text=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(
-            f"{binary_path}: failed `{' '.join(command)}` with exit {exc.returncode}:\n{exc.output}"
+            f"{binary_path}: failed `{' '.join(command)}` with exit "
+            f"{exc.returncode}:\n{exc.output}"
         ) from exc
 
 
@@ -473,7 +512,8 @@ def evaluate_widget_binary_artifact_expectations(
             for linked in linked_libraries
         ):
             errors.append(
-                f"{binary_path}: missing linked framework '@rpath/sideBarShared.framework/...'"
+                f"{binary_path}: missing linked framework "
+                "'@rpath/sideBarShared.framework/...'"
             )
     return errors
 
@@ -483,7 +523,9 @@ def validate_built_macos_widget_artifacts(*, app_path: Path) -> list[str]:
     errors: list[str] = []
 
     if app_path.name != BUILT_APP_NAME:
-        return [f"{app_path}: expected built app bundle path ending with '{BUILT_APP_NAME}'"]
+        return [
+            f"{app_path}: expected built app bundle path ending with '{BUILT_APP_NAME}'"
+        ]
 
     if not app_path.exists():
         return [f"{app_path}: missing built app bundle"]
@@ -509,7 +551,9 @@ def validate_built_macos_widget_artifacts(*, app_path: Path) -> list[str]:
     widget_debug_dylib_path = (
         widget_appex_path / "Contents" / "MacOS" / WIDGET_DEBUG_DYLIB_NAME
     )
-    binary_expectations = [(widget_executable_path, not widget_debug_dylib_path.exists())]
+    binary_expectations = [
+        (widget_executable_path, not widget_debug_dylib_path.exists())
+    ]
     if widget_debug_dylib_path.exists():
         binary_expectations.append((widget_debug_dylib_path, True))
 
@@ -541,7 +585,8 @@ def validate_extension_config_resolution(
     xcconfig_values = parse_xcconfig_values(base_text)
     if not has_relative_local_include(base_text):
         errors.append(
-            f"{base_xcconfig_path}: expected relative include line `{LOCAL_INCLUDE_LINE}`"
+            f"{base_xcconfig_path}: expected relative include line "
+            f"`{LOCAL_INCLUDE_LINE}`"
         )
 
     objects = load_pbxproj_objects(pbxproj_path)
@@ -564,15 +609,23 @@ def validate_extension_config_resolution(
         runpath_expectations = RUNPATH_EXPECTATIONS_BY_TARGET.get(target)
         if runpath_expectations:
             expected_keys.update(runpath_expectations)
+        framework_search_expectations = (
+            FRAMEWORK_SEARCH_PATH_EXPECTATIONS_BY_TARGET.get(target)
+        )
+        if framework_search_expectations:
+            expected_keys.update(framework_search_expectations)
         resolved_settings = {
             key: value
             for key in (set(settings) | expected_keys)
-            if (value := resolve_value(
-                key,
-                settings=settings,
-                xcconfig_values=xcconfig_values,
-                local_overrides=SENTINEL_VALUES,
-            )) is not None
+            if (
+                value := resolve_value(
+                    key,
+                    settings=settings,
+                    xcconfig_values=xcconfig_values,
+                    local_overrides=SENTINEL_VALUES,
+                )
+            )
+            is not None
         }
         errors.extend(
             evaluate_setting_expectations(
@@ -595,6 +648,14 @@ def validate_extension_config_resolution(
                     target=target,
                     settings=resolved_settings,
                     expectations=runpath_expectations,
+                )
+            )
+        if framework_search_expectations:
+            errors.extend(
+                evaluate_contains_expectations(
+                    target=target,
+                    settings=resolved_settings,
+                    expectations=framework_search_expectations,
                 )
             )
         if target in DISALLOWED_FRAMEWORK_EMBED_TARGETS:
