@@ -19,6 +19,32 @@ def load_config(path: Path) -> dict:
         raise RuntimeError(f"Failed to load config at {path}: {exc}") from exc
 
 
+def resolve_profile_config(config: dict, profile: str | None) -> dict:
+    """Return the merged config for the selected verification profile."""
+    profiles = config.get("profiles")
+    if not isinstance(profiles, dict):
+        return config
+
+    selected_profile = profile or str(config.get("default_profile") or "full")
+    profile_overrides = profiles.get(selected_profile)
+    if not isinstance(profile_overrides, dict):
+        raise ValueError(f"Unknown iOS quality gate profile: {selected_profile}")
+
+    merged = {key: value for key, value in config.items() if key != "profiles"}
+    for key, value in profile_overrides.items():
+        if (
+            key == "warning_gate"
+            and isinstance(merged.get("warning_gate"), dict)
+            and isinstance(value, dict)
+        ):
+            warning_gate = dict(merged["warning_gate"])
+            warning_gate.update(value)
+            merged[key] = warning_gate
+            continue
+        merged[key] = value
+    return merged
+
+
 def run_xccov(xcresult_path: Path) -> dict:
     """Return the parsed `xccov` JSON report for an xcresult bundle."""
     command = [
@@ -305,6 +331,11 @@ def main() -> int:
         help="Repository root path",
     )
     parser.add_argument(
+        "--profile",
+        default=None,
+        help="Optional verification profile from the quality-gates config.",
+    )
+    parser.add_argument(
         "--warnings-only",
         action="store_true",
         help="Run warning gates only (skip coverage/UI-count checks).",
@@ -324,7 +355,12 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    raw_config = load_config(args.config)
+    try:
+        config = resolve_profile_config(raw_config, args.profile)
+    except ValueError as exc:
+        emit(str(exc))
+        return 1
     thresholds: dict[str, float] = config.get("coverage_thresholds", {})
     baseline_thresholds: dict[str, float] = config.get(
         "baseline_coverage_thresholds", {}

@@ -17,6 +17,7 @@ collect_warning_entries = QUALITY_GATES_MODULE.collect_warning_entries
 count_executed_ui_tests = QUALITY_GATES_MODULE.count_executed_ui_tests
 evaluate_warning_gates = QUALITY_GATES_MODULE.evaluate_warning_gates
 main = QUALITY_GATES_MODULE.main
+resolve_profile_config = QUALITY_GATES_MODULE.resolve_profile_config
 
 
 def _warning_summary(message: str, file_path: str, line: int) -> dict:
@@ -131,6 +132,102 @@ def test_count_executed_ui_tests_counts_non_skipped_ui_test_cases() -> None:
     }
 
     assert count_executed_ui_tests(payload, {"sideBarUITests"}) == 2
+
+
+def test_resolve_profile_config_merges_selected_profile_over_root() -> None:
+    """Profile overrides should replace thresholds while inheriting shared gates."""
+    resolved = resolve_profile_config(
+        {
+            "default_profile": "full",
+            "profiles": {
+                "full": {
+                    "coverage_thresholds": {"sideBar.app": 25.0},
+                    "minimum_deterministic_ui_journey_tests": 3,
+                },
+                "logic": {
+                    "coverage_thresholds": {"sideBarShared.framework": 60.0},
+                    "minimum_deterministic_ui_journey_tests": 0,
+                },
+            },
+            "warning_gate": {
+                "max_warnings": 0,
+                "include_path_contains": ["/ios/sideBar/sideBar/"],
+            },
+        },
+        profile="logic",
+    )
+
+    assert resolved["coverage_thresholds"] == {"sideBarShared.framework": 60.0}
+    assert resolved["minimum_deterministic_ui_journey_tests"] == 0
+    assert resolved["warning_gate"]["max_warnings"] == 0
+
+
+def test_main_logic_profile_accepts_logic_only_xcresult(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """The logic profile should not require app/UI targets from a logic-only xcresult."""
+    config_path = tmp_path / "ios_quality_gates.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "default_profile": "full",
+                "profiles": {
+                    "full": {
+                        "coverage_thresholds": {"sideBar.app": 25.0},
+                        "baseline_coverage_thresholds": {"sideBar.app": 29.0},
+                        "minimum_deterministic_ui_journey_tests": 3,
+                    },
+                    "logic": {
+                        "coverage_thresholds": {"sideBarShared.framework": 60.0},
+                        "baseline_coverage_thresholds": {"sideBarShared.framework": 66.0},
+                        "minimum_deterministic_ui_journey_tests": 0,
+                    },
+                },
+                "max_drop_pct_points": 1.0,
+                "warning_gate": {
+                    "max_warnings": 0,
+                    "include_path_contains": ["/ios/sideBar/sideBar/"],
+                    "exclude_path_contains": [],
+                    "exclude_message_regexes": [],
+                },
+            }
+        )
+    )
+
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xccov",
+        lambda _: {
+            "targets": [
+                {"name": "sideBarShared.framework", "lineCoverage": 0.76},
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xcresulttool_tests",
+        lambda _: {"testNodes": []},
+    )
+    monkeypatch.setattr(
+        QUALITY_GATES_MODULE,
+        "run_xcresulttool",
+        lambda _: {"issues": {"warningSummaries": {"_values": []}}},
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "check_ios_quality_gates.py",
+            "--xcresult",
+            str(tmp_path / "logic-only.xcresult"),
+            "--config",
+            str(config_path),
+            "--profile",
+            "logic",
+        ],
+    )
+
+    assert main() == 0
 
 
 def test_main_fails_when_executed_ui_tests_are_below_minimum(

@@ -1,20 +1,34 @@
 {
-  "coverage_thresholds": {
-    "sideBar.app": 25.0,
-    "sideBarShared.framework": 60.0,
-    "ShareExtension.appex": 1.0,
-    "sideBarWidgetsExtension.appex": 5.0,
-    "sideBar Safari Extension.appex": 30.0
-  },
-  "baseline_coverage_thresholds": {
-    "sideBar.app": 29.0,
-    "sideBarShared.framework": 66.0,
-    "ShareExtension.appex": 1.7,
-    "sideBarWidgetsExtension.appex": 11.0,
-    "sideBar Safari Extension.appex": 85.0
+  "default_profile": "full",
+  "profiles": {
+    "full": {
+      "coverage_thresholds": {
+        "sideBar.app": 25.0,
+        "sideBarShared.framework": 60.0,
+        "ShareExtension.appex": 1.0,
+        "sideBarWidgetsExtension.appex": 5.0,
+        "sideBar Safari Extension.appex": 30.0
+      },
+      "baseline_coverage_thresholds": {
+        "sideBar.app": 29.0,
+        "sideBarShared.framework": 66.0,
+        "ShareExtension.appex": 1.7,
+        "sideBarWidgetsExtension.appex": 11.0,
+        "sideBar Safari Extension.appex": 85.0
+      },
+      "minimum_deterministic_ui_journey_tests": 3
+    },
+    "logic": {
+      "coverage_thresholds": {
+        "sideBarShared.framework": 60.0
+      },
+      "baseline_coverage_thresholds": {
+        "sideBarShared.framework": 66.0
+      },
+      "minimum_deterministic_ui_journey_tests": 0
+    }
   },
   "max_drop_pct_points": 1.0,
-  "minimum_deterministic_ui_journey_tests": 3,
   "ui_test_paths": [
     "ios/sideBar/sideBarUITests"
   ],
