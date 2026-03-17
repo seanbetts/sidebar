@@ -52,7 +52,6 @@ extension AppEnvironmentDeepLinkTests {
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
 
-        XCTAssertEqual(websitesAPI.saveCallCount, 1)
         XCTAssertTrue(environment.pendingNewTaskDeepLink)
         XCTAssertEqual(environment.commandSelection, .tasks)
         XCTAssertTrue(storage.pendingShareStore.loadAll().contains(where: { $0.url == url }))
@@ -61,12 +60,13 @@ extension AppEnvironmentDeepLinkTests {
         _ = await activationTask.value
         await waitForSavedWebsite(id: website.id, url: url, in: environment)
 
+        XCTAssertEqual(websitesAPI.saveCallCount, 1)
         XCTAssertEqual(environment.websitesViewModel.items.first?.url, url)
         XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
     }
 }
 
-private actor AsyncReplayGate {
+actor AsyncReplayGate {
     private var continuation: CheckedContinuation<Void, Never>?
     private var isOpen = false
 

@@ -27,6 +27,7 @@ extension AppEnvironment {
     public func refreshAuthState() {
         let previousAuthState = authState
         authState = container.authSession.authState
+        let becameActive = previousAuthState != .active && authState == .active
         let wasAuthenticated = previousAuthState != .signedOut
         let isAuthenticated = authState != .signedOut
 
@@ -54,8 +55,12 @@ extension AppEnvironment {
             #endif
             Task { [weak self] in
                 if self?.authState == .active {
-                    await self?.consumeExtensionEvents(awaitPendingShareReplay: false)
-                    await self?.consumeWidgetCompletions()
+                    if becameActive {
+                        await self?.handleSignedInActivation()
+                    } else {
+                        await self?.consumeExtensionEvents(awaitPendingShareReplay: false)
+                        await self?.consumeWidgetCompletions()
+                    }
                 }
             }
         } else {
