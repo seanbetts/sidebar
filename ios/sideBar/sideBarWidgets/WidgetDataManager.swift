@@ -37,91 +37,31 @@ public final class WidgetDataManager {
     )
   }
 
+  private var bridge: WidgetDataBridge {
+    WidgetDataBridge(
+      userDefaultsProvider: { [self] in userDefaults },
+      appGroupResolutionProvider: { [self] in appGroupResolution },
+      diagnosticsRecorder: { [self] stage, message, metadata in
+        recordDiagnostics(stage: stage, message: message, metadata: metadata)
+      },
+      timelineReloader: { contentType in
+        for kind in contentType.widgetKinds {
+          WidgetCenter.shared.reloadTimelines(ofKind: kind)
+        }
+      }
+    )
+  }
+
   // MARK: - Generic Data Storage
 
   /// Loads widget data for a content type
   public func load<T: WidgetDataContainer>(for contentType: WidgetContentType) -> T {
-    let resolution = appGroupResolution
-    guard let defaults = userDefaults else {
-      recordDiagnostics(
-        stage: "load_empty",
-        message: "No widget data snapshot was available.",
-        metadata: [
-          "content_type": contentType.rawValue,
-          "app_group_source": resolution.source,
-          "has_defaults": "false",
-          "has_data_key": "false"
-        ]
-      )
-      return T.empty
-    }
-
-    guard let data = defaults.data(forKey: contentType.dataKey) else {
-      recordDiagnostics(
-        stage: "load_empty",
-        message: "No widget data snapshot was available.",
-        metadata: [
-          "content_type": contentType.rawValue,
-          "app_group_source": resolution.source,
-          "has_defaults": "true",
-          "has_data_key": defaults.object(forKey: contentType.dataKey) == nil ? "false" : "true"
-        ]
-      )
-      return T.empty
-    }
-
-    let decoded = try? Self.makeDecoder().decode(T.self, from: data)
-    recordDiagnostics(
-      stage: "load",
-      message: "Loaded widget data snapshot.",
-      metadata: [
-        "content_type": contentType.rawValue,
-        "app_group_source": resolution.source,
-        "has_defaults": "true",
-        "has_data_key": "true",
-        "bytes": "\(data.count)",
-        "decode_success": decoded == nil ? "false" : "true",
-        "item_count": "\(decoded?.items.count ?? 0)",
-        "total_count": "\(decoded?.totalCount ?? 0)"
-      ]
-    )
-    return decoded ?? T.empty
+    bridge.load(for: contentType)
   }
 
   /// Stores widget data for a content type (used for optimistic updates from intents)
   public func store<T: WidgetDataContainer>(_ data: T, for contentType: WidgetContentType) {
-    let resolution = appGroupResolution
-    guard let defaults = userDefaults else {
-      recordDiagnostics(
-        stage: "store_missing_defaults",
-        message: "Could not store widget data snapshot because shared defaults were unavailable.",
-        metadata: [
-          "content_type": contentType.rawValue,
-          "app_group_source": resolution.source,
-          "has_defaults": "false"
-        ]
-      )
-      return
-    }
-    if let encoded = try? Self.makeEncoder().encode(data) {
-      defaults.set(encoded, forKey: contentType.dataKey)
-      defaults.synchronize()
-      recordDiagnostics(
-        stage: "store",
-        message: "Stored widget data snapshot.",
-        metadata: [
-          "content_type": contentType.rawValue,
-          "app_group_source": resolution.source,
-          "has_defaults": "true",
-          "bytes": "\(encoded.count)",
-          "item_count": "\(data.items.count)",
-          "total_count": "\(data.totalCount)"
-        ]
-      )
-    }
-    for kind in contentType.widgetKinds {
-      WidgetCenter.shared.reloadTimelines(ofKind: kind)
-    }
+    bridge.store(data, for: contentType)
   }
 
   // MARK: - Generic Pending Operations
@@ -131,36 +71,14 @@ public final class WidgetDataManager {
     _ operation: WidgetPendingOperation<A>,
     for contentType: WidgetContentType
   ) {
-    guard let defaults = userDefaults else { return }
-    var pending = loadPendingOperations(for: contentType, actionType: A.self)
-
-    // Deduplicate by itemId + action
-    if !pending.contains(where: { $0.itemId == operation.itemId && $0.action == operation.action }) {
-      pending.append(operation)
-      if let encoded = try? Self.makeEncoder().encode(pending) {
-        defaults.set(encoded, forKey: contentType.pendingKey)
-        defaults.synchronize()
-        recordDiagnostics(
-          stage: "record_pending_operation",
-          message: "Recorded widget pending operation.",
-          metadata: [
-            "content_type": contentType.rawValue,
-            "count": "\(pending.count)"
-          ]
-        )
-      }
-    }
+    bridge.recordPendingOperation(operation, for: contentType)
   }
 
   private func loadPendingOperations<A: Codable & Equatable>(
     for contentType: WidgetContentType,
     actionType: A.Type
   ) -> [WidgetPendingOperation<A>] {
-    guard let defaults = userDefaults,
-          let data = defaults.data(forKey: contentType.pendingKey) else {
-      return []
-    }
-    return (try? Self.makeDecoder().decode([WidgetPendingOperation<A>].self, from: data)) ?? []
+    bridge.loadPendingOperations(for: contentType, actionType: actionType)
   }
 
   // MARK: - Authentication State

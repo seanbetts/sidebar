@@ -45,55 +45,29 @@ public final class WidgetDataManager {
     )
   }
 
+  private var bridge: WidgetDataBridge {
+    WidgetDataBridge(
+      userDefaultsProvider: { [self] in userDefaults },
+      appGroupResolutionProvider: { [self] in appGroupResolution },
+      diagnosticsRecorder: { [self] stage, message, metadata in
+        recordDiagnostics(stage: stage, message: message, metadata: metadata)
+      },
+      timelineReloader: { [self] contentType in
+        reloadWidgets(for: contentType)
+      }
+    )
+  }
+
   // MARK: - Generic Data Storage
 
   /// Stores widget data for a content type
   public func store<T: WidgetDataContainer>(_ data: T, for contentType: WidgetContentType) {
-    guard let defaults = userDefaults else {
-      recordDiagnostics(
-        stage: "store_missing_defaults",
-        message: "Could not store widget data because shared defaults were unavailable.",
-        metadata: ["content_type": contentType.rawValue]
-      )
-      return
-    }
-    if let encoded = try? Self.makeEncoder().encode(data) {
-      defaults.set(encoded, forKey: contentType.dataKey)
-      defaults.synchronize()
-      recordDiagnostics(
-        stage: "store",
-        message: "Stored widget data snapshot.",
-        metadata: [
-          "content_type": contentType.rawValue,
-          "bytes": "\(encoded.count)",
-          "item_count": "\(data.items.count)",
-          "total_count": "\(data.totalCount)"
-        ]
-      )
-    }
-    reloadWidgets(for: contentType)
+    bridge.store(data, for: contentType)
   }
 
   /// Loads widget data for a content type
   public func load<T: WidgetDataContainer>(for contentType: WidgetContentType) -> T {
-    guard let defaults = userDefaults,
-          let data = defaults.data(forKey: contentType.dataKey) else {
-      recordDiagnostics(
-        stage: "load_empty",
-        message: "No widget data snapshot was available.",
-        metadata: ["content_type": contentType.rawValue]
-      )
-      return T.empty
-    }
-    recordDiagnostics(
-      stage: "load",
-      message: "Loaded widget data snapshot.",
-      metadata: [
-        "content_type": contentType.rawValue,
-        "bytes": "\(data.count)"
-      ]
-    )
-    return (try? Self.makeDecoder().decode(T.self, from: data)) ?? T.empty
+    bridge.load(for: contentType)
   }
 
   // MARK: - Generic Pending Operations
@@ -103,32 +77,7 @@ public final class WidgetDataManager {
     _ operation: WidgetPendingOperation<A>,
     for contentType: WidgetContentType
   ) {
-    guard let defaults = userDefaults else {
-      recordDiagnostics(
-        stage: "record_pending_missing_defaults",
-        message: "Could not record widget pending operation because shared defaults were unavailable.",
-        metadata: ["content_type": contentType.rawValue]
-      )
-      return
-    }
-    var pending = loadPendingOperations(for: contentType, actionType: A.self)
-
-    // Deduplicate by itemId + action
-    if !pending.contains(where: { $0.itemId == operation.itemId && $0.action == operation.action }) {
-      pending.append(operation)
-      if let encoded = try? Self.makeEncoder().encode(pending) {
-        defaults.set(encoded, forKey: contentType.pendingKey)
-        defaults.synchronize()
-        recordDiagnostics(
-          stage: "record_pending_operation",
-          message: "Recorded widget pending operation.",
-          metadata: [
-            "content_type": contentType.rawValue,
-            "count": "\(pending.count)"
-          ]
-        )
-      }
-    }
+    bridge.recordPendingOperation(operation, for: contentType)
   }
 
   /// Consumes and clears pending operations (called by main app)
@@ -136,19 +85,7 @@ public final class WidgetDataManager {
     for contentType: WidgetContentType,
     actionType: A.Type
   ) -> [WidgetPendingOperation<A>] {
-    guard let defaults = userDefaults else { return [] }
-    let pending = loadPendingOperations(for: contentType, actionType: actionType)
-    defaults.removeObject(forKey: contentType.pendingKey)
-    defaults.synchronize()
-    recordDiagnostics(
-      stage: "consume_pending_operations",
-      message: "Consumed widget pending operations.",
-      metadata: [
-        "content_type": contentType.rawValue,
-        "count": "\(pending.count)"
-      ]
-    )
-    return pending
+    bridge.consumePendingOperations(for: contentType, actionType: actionType)
   }
 
   /// Consumes matching pending operations and preserves non-matching operations.
@@ -157,40 +94,14 @@ public final class WidgetDataManager {
     actionType: A.Type,
     matching: (A) -> Bool
   ) -> [WidgetPendingOperation<A>] {
-    guard let defaults = userDefaults else { return [] }
-    let pending = loadPendingOperations(for: contentType, actionType: actionType)
-    guard !pending.isEmpty else { return [] }
-
-    let matchingOperations = pending.filter { matching($0.action) }
-    let remainingOperations = pending.filter { !matching($0.action) }
-
-    if remainingOperations.isEmpty {
-      defaults.removeObject(forKey: contentType.pendingKey)
-    } else if let encoded = try? Self.makeEncoder().encode(remainingOperations) {
-      defaults.set(encoded, forKey: contentType.pendingKey)
-    }
-    defaults.synchronize()
-    recordDiagnostics(
-      stage: "consume_matching_pending_operations",
-      message: "Consumed matching widget pending operations.",
-      metadata: [
-        "content_type": contentType.rawValue,
-        "matched_count": "\(matchingOperations.count)",
-        "remaining_count": "\(remainingOperations.count)"
-      ]
-    )
-    return matchingOperations
+    bridge.consumePendingOperations(for: contentType, actionType: actionType, matching: matching)
   }
 
   private func loadPendingOperations<A: Codable & Equatable>(
     for contentType: WidgetContentType,
     actionType: A.Type
   ) -> [WidgetPendingOperation<A>] {
-    guard let defaults = userDefaults,
-          let data = defaults.data(forKey: contentType.pendingKey) else {
-      return []
-    }
-    return (try? Self.makeDecoder().decode([WidgetPendingOperation<A>].self, from: data)) ?? []
+    bridge.loadPendingOperations(for: contentType, actionType: actionType)
   }
 
   // MARK: - Authentication State
