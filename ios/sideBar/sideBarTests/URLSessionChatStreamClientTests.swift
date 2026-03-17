@@ -125,6 +125,10 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         }
     }
 
+    func testDefaultSessionDoesNotUseSharedSingleton() {
+        XCTAssertFalse(URLSessionChatStreamClient.defaultSession() === URLSession.shared)
+    }
+
     // MARK: - Concurrency regression (Phase 2.5)
 
     func testDisconnectDuringConnectDoesNotCrash() async throws {

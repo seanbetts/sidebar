@@ -22,7 +22,7 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
     public init(
         baseUrl: URL,
         accessTokenProvider: @escaping () -> String?,
-        session: URLSession = .shared,
+        session: URLSession = defaultSession(),
         parser: ChatStreamParser = ChatStreamParser(),
         handler: ChatStreamEventHandler? = nil
     ) {
@@ -31,6 +31,10 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         self.session = session
         self.parser = parser
         self.handler = handler
+    }
+
+    public static func defaultSession() -> URLSession {
+        APIClient.makeDefaultSession()
     }
 
     public func connect(request: ChatStreamRequest) async throws {
