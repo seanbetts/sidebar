@@ -3,7 +3,7 @@ import XCTest
 @testable import sideBarShared
 
 final class ExtensionEventStoreTests: XCTestCase {
-    func testConcurrentAppendsDropOneEventDuringReadModifyWriteRace() {
+    func testConcurrentAppendsPreserveBothEventsAcrossReadModifyWriteRace() {
         let defaults = RacingUserDefaults()
         let store = ExtensionEventStore(userDefaults: defaults)
         let group = DispatchGroup()
@@ -28,7 +28,8 @@ final class ExtensionEventStoreTests: XCTestCase {
         XCTAssertEqual(group.wait(timeout: .now() + 2), .success)
 
         let events = store.consumeEvents()
-        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(Set(events.compactMap(\.fileId)), Set(["file-1", "file-2"]))
     }
 }
 

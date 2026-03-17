@@ -182,6 +182,7 @@ public final class ExtensionEventStore {
     private let eventsKey = "extensionEvents"
     private let maxStoredEventsBytes = 240_000
     private let injectedUserDefaults: UserDefaults?
+    private let lock = NSRecursiveLock()
 
     public init(userDefaults: UserDefaults? = nil) {
         self.injectedUserDefaults = userDefaults
@@ -215,6 +216,8 @@ public final class ExtensionEventStore {
 
     /// Returns and clears all recorded extension events.
     public func consumeEvents() -> [ExtensionEvent] {
+        lock.lock()
+        defer { lock.unlock() }
         guard let defaults = userDefaults else {
             recordDiagnostics(
                 stage: "consume_events_missing_store",
@@ -248,6 +251,8 @@ public final class ExtensionEventStore {
 
     /// Clears all recorded extension events without consuming them.
     public func clear() {
+        lock.lock()
+        defer { lock.unlock() }
         guard let defaults = userDefaults else { return }
         defaults.removeObject(forKey: eventsKey)
         defaults.synchronize()
@@ -259,6 +264,8 @@ public final class ExtensionEventStore {
 
     @discardableResult
     private func append(event: ExtensionEvent) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
         guard let defaults = userDefaults else {
             recordDiagnostics(
                 stage: "append_event_missing_store",
