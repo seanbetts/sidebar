@@ -91,6 +91,10 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(decoded.progressTotalCount, 3)
     }
 
+    func testWidgetNotePlaceholderMatchesSharedContract() {
+        XCTAssertEqual(WidgetNoteData.placeholder.notes.first?.path, "/notes/meeting")
+    }
+
     func testCompleteTaskIntentOptimisticallyUpdatesProgressCounts() async throws {
         clearTaskWidgetStorage()
         defer { clearTaskWidgetStorage() }

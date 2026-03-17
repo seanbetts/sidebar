@@ -1,6 +1,7 @@
 import AppIntents
 import SwiftUI
 import WidgetKit
+import sideBarShared
 
 struct SavedSitesWidget: Widget {
     let kind: String = "SavedSitesWidget"

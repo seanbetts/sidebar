@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import sideBarShared
 
 struct WidgetHeaderView: View {
     let title: String

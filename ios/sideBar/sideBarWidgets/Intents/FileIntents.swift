@@ -1,5 +1,6 @@
 import AppIntents
 import WidgetKit
+import sideBarShared
 
 // MARK: - Open Files Intent
 

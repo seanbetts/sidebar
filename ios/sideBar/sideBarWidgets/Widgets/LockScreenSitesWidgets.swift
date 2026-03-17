@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import sideBarShared
 
 #if os(iOS)
 // MARK: - Lock Screen Site Count (Circular)

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import WidgetKit
+import sideBarShared
 
 @main
 struct SideBarWidgetsBundle: WidgetBundle {

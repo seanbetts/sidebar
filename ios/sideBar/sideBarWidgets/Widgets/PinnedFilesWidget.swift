@@ -1,6 +1,7 @@
 import AppIntents
 import SwiftUI
 import WidgetKit
+import sideBarShared
 
 struct PinnedFilesWidget: Widget {
     let kind: String = "PinnedFilesWidget"

@@ -1,6 +1,7 @@
 import AppIntents
 import WidgetKit
 import os
+import sideBarShared
 
 // MARK: - Open Note Intent
 
