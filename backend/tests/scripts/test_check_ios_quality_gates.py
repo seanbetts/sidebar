@@ -230,6 +230,52 @@ def test_main_logic_profile_accepts_logic_only_xcresult(
     assert main() == 0
 
 
+def test_lane_specific_profiles_can_target_disjoint_xcresults() -> None:
+    """Lane profiles should require only the targets each workflow lane produces."""
+    resolved = resolve_profile_config(
+        {
+            "default_profile": "full",
+            "profiles": {
+                "logic": {
+                    "coverage_thresholds": {"sideBarShared.framework": 60.0},
+                    "minimum_deterministic_ui_journey_tests": 0,
+                },
+                "surface": {
+                    "coverage_thresholds": {
+                        "sideBar.app": 25.0,
+                        "sideBarShared.framework": 60.0,
+                    },
+                    "minimum_deterministic_ui_journey_tests": 0,
+                },
+                "ui": {
+                    "coverage_thresholds": {},
+                    "minimum_deterministic_ui_journey_tests": 3,
+                },
+                "extensions": {
+                    "coverage_thresholds": {
+                        "ShareExtension.appex": 1.0,
+                        "sideBarWidgetsExtension.appex": 5.0,
+                        "sideBar Safari Extension.appex": 30.0,
+                    },
+                    "minimum_deterministic_ui_journey_tests": 0,
+                },
+            },
+            "warning_gate": {
+                "max_warnings": 0,
+                "include_path_contains": ["/ios/sideBar/sideBar/"],
+            },
+        },
+        profile="extensions",
+    )
+
+    assert resolved["coverage_thresholds"] == {
+        "ShareExtension.appex": 1.0,
+        "sideBarWidgetsExtension.appex": 5.0,
+        "sideBar Safari Extension.appex": 30.0,
+    }
+    assert resolved["minimum_deterministic_ui_journey_tests"] == 0
+
+
 def test_main_fails_when_executed_ui_tests_are_below_minimum(
     monkeypatch, tmp_path: Path
 ) -> None:

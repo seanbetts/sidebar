@@ -105,7 +105,7 @@ jobs:
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
-            enable_coverage: "NO"
+            enable_coverage: "YES"
             prepare_simulator_before_tests: "YES"
             collect_simulator_diagnostics_on_failure: "NO"
           - id: logic-ipad
@@ -122,7 +122,7 @@ jobs:
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
-            enable_coverage: "NO"
+            enable_coverage: "YES"
             prepare_simulator_before_tests: "YES"
             collect_simulator_diagnostics_on_failure: "NO"
           - id: logic-mac
@@ -138,7 +138,7 @@ jobs:
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
-            enable_coverage: "NO"
+            enable_coverage: "YES"
             prepare_simulator_before_tests: "NO"
             collect_simulator_diagnostics_on_failure: "NO"
     steps:

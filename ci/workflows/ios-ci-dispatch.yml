@@ -115,7 +115,7 @@ jobs:
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
-            enable_coverage: "NO"
+            enable_coverage: "YES"
             prepare_simulator_before_tests: "YES"
             collect_simulator_diagnostics_on_failure: "YES"
           - id: logic-ipad
@@ -132,7 +132,7 @@ jobs:
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
-            enable_coverage: "NO"
+            enable_coverage: "YES"
             prepare_simulator_before_tests: "YES"
             collect_simulator_diagnostics_on_failure: "YES"
           - id: logic-mac
@@ -148,7 +148,7 @@ jobs:
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
-            enable_coverage: "NO"
+            enable_coverage: "YES"
             prepare_simulator_before_tests: "NO"
             collect_simulator_diagnostics_on_failure: "NO"
           - id: surface
@@ -164,7 +164,7 @@ jobs:
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
-            enable_coverage: "NO"
+            enable_coverage: "YES"
             prepare_simulator_before_tests: "YES"
             collect_simulator_diagnostics_on_failure: "YES"
           - id: ui
@@ -197,7 +197,7 @@ jobs:
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
-            enable_coverage: "NO"
+            enable_coverage: "YES"
             prepare_simulator_before_tests: "YES"
             collect_simulator_diagnostics_on_failure: "YES"
     steps:
@@ -274,13 +274,15 @@ jobs:
       - name: Run quality gates (${{ matrix.label }})
         if: ${{ github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane }}
         run: |
-          if [[ "${{ matrix.lane }}" == "logic" ]]; then
+          if [[ "${{ matrix.lane }}" == "ui" ]]; then
             python3 scripts/check_ios_quality_gates.py \
               --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult" \
-              --profile logic
+              --profile ui \
+              --skip-coverage
           else
             python3 scripts/check_ios_quality_gates.py \
-              --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"
+              --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult" \
+              --profile "${{ matrix.lane }}"
           fi
       - name: Upload xcresult bundle (${{ matrix.id }})
         if: ${{ failure() && (github.event.inputs.lane == 'all' || github.event.inputs.lane == matrix.lane) }}

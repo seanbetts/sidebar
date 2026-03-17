@@ -112,7 +112,7 @@ jobs:
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
-            enable_coverage: "NO"
+            enable_coverage: "YES"
             prepare_simulator_before_tests: "YES"
             collect_simulator_diagnostics_on_failure: "YES"
           - id: ui
@@ -145,7 +145,7 @@ jobs:
             parallel_testing_enabled: "NO"
             max_parallel_test_workers: "1"
             destination_timeout: "180"
-            enable_coverage: "NO"
+            enable_coverage: "YES"
             prepare_simulator_before_tests: "YES"
             collect_simulator_diagnostics_on_failure: "YES"
     steps:
@@ -215,8 +215,16 @@ jobs:
         run: scripts/test-ios.sh
       - name: Run quality gates (${{ matrix.label }})
         run: |
-          python3 scripts/check_ios_quality_gates.py \
-            --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"
+          if [[ "${{ matrix.lane }}" == "ui" ]]; then
+            python3 scripts/check_ios_quality_gates.py \
+              --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult" \
+              --profile ui \
+              --skip-coverage
+          else
+            python3 scripts/check_ios_quality_gates.py \
+              --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult" \
+              --profile "${{ matrix.lane }}"
+          fi
       - name: Upload xcresult bundle (${{ matrix.id }})
         if: ${{ failure() }}
         continue-on-error: true

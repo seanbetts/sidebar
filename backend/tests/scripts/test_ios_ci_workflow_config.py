@@ -503,34 +503,55 @@ def test_ios_ci_resolves_only_testing_specs_from_taxonomy() -> None:
 
 def test_dev_workflow_runs_logic_quality_gates_after_tests() -> None:
     """Dev logic lanes should enforce the logic-profile quality gate on their xcresults."""
-    run_script = _job_step(_dev_workflow(), "ios_test_dev", "Run logic quality gates")["run"]
+    workflow = _dev_workflow()
+    run_script = _job_step(workflow, "ios_test_dev", "Run logic quality gates")["run"]
+    matrix_entries = _job_matrix(workflow, "ios_test_dev")
 
     assert "python3 scripts/check_ios_quality_gates.py" in run_script
     assert '--xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"' in run_script
     assert "--profile logic" in run_script
+    assert {entry["enable_coverage"] for entry in matrix_entries} == {"YES"}
 
 
-def test_main_workflow_runs_full_quality_gates_after_tests() -> None:
-    """Main lanes should enforce the default full quality gate on their xcresults."""
-    run_script = _job_step(_main_workflow(), "ios_test_main", "Run quality gates")["run"]
+def test_main_workflow_runs_lane_specific_quality_gates_after_tests() -> None:
+    """Main lanes should select the quality-gate profile that matches each xcresult."""
+    workflow = _main_workflow()
+    run_script = _job_step(workflow, "ios_test_main", "Run quality gates")["run"]
+    matrix = {entry["id"]: entry for entry in _job_matrix(workflow, "ios_test_main")}
 
     assert "python3 scripts/check_ios_quality_gates.py" in run_script
     assert '--xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"' in run_script
-    assert "--profile logic" not in run_script
+    assert 'if [[ "${{ matrix.lane }}" == "ui" ]]; then' in run_script
+    assert "--profile ui" in run_script
+    assert "--skip-coverage" in run_script
+    assert '--profile "${{ matrix.lane }}"' in run_script
+    assert matrix["surface"]["enable_coverage"] == "YES"
+    assert matrix["ui"]["enable_coverage"] == "NO"
+    assert matrix["extensions"]["enable_coverage"] == "YES"
 
 
 def test_dispatch_workflow_switches_quality_gate_profile_by_lane() -> None:
-    """Manual dispatch should use the logic profile only for logic lanes."""
+    """Manual dispatch should select lane-specific gate behavior and coverage."""
+    workflow = _dispatch_workflow()
     run_script = _job_step(
-        _dispatch_workflow(),
+        workflow,
         "ios_test_dispatch",
         "Run quality gates",
     )["run"]
+    matrix = {entry["id"]: entry for entry in _job_matrix(workflow, "ios_test_dispatch")}
 
     assert "python3 scripts/check_ios_quality_gates.py" in run_script
     assert '--xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"' in run_script
-    assert 'if [[ "${{ matrix.lane }}" == "logic" ]]; then' in run_script
-    assert "--profile logic" in run_script
+    assert 'if [[ "${{ matrix.lane }}" == "ui" ]]; then' in run_script
+    assert "--profile ui" in run_script
+    assert "--skip-coverage" in run_script
+    assert '--profile "${{ matrix.lane }}"' in run_script
+    assert matrix["logic-iphone"]["enable_coverage"] == "YES"
+    assert matrix["logic-ipad"]["enable_coverage"] == "YES"
+    assert matrix["logic-mac"]["enable_coverage"] == "YES"
+    assert matrix["surface"]["enable_coverage"] == "YES"
+    assert matrix["ui"]["enable_coverage"] == "NO"
+    assert matrix["extensions"]["enable_coverage"] == "YES"
 
 
 def test_ios_ci_uses_node24_compatible_actions() -> None:
