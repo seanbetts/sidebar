@@ -61,4 +61,14 @@ final class WidgetBridgeContractTests: XCTestCase {
             "ai.sidebar.sidebar"
         )
     }
+
+    func testWidgetBridgeAppGroupResolutionDoesNotUseHardcodedFallback() {
+        let resolution = WidgetBridgeAppGroupResolver.resolve(
+            configuredValue: nil,
+            bundleIdentifier: nil
+        )
+
+        XCTAssertNil(resolution.id)
+        XCTAssertEqual(resolution.source, "unavailable")
+    }
 }

@@ -30,12 +30,19 @@ public final class WidgetDataManager {
     if let injectedUserDefaults {
       return injectedUserDefaults
     }
-    guard let groupId = appGroupId else { return nil }
+    guard let groupId = appGroupResolution.id else { return nil }
     return UserDefaults(suiteName: groupId)
   }
 
   private var appGroupId: String? {
-    AppGroupConfiguration.appGroupId
+    appGroupResolution.id
+  }
+
+  private var appGroupResolution: WidgetBridgeAppGroupResolution {
+    WidgetBridgeAppGroupResolver.resolve(
+      configuredValue: Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String,
+      bundleIdentifier: Bundle.main.bundleIdentifier
+    )
   }
 
   // MARK: - Generic Data Storage
@@ -441,7 +448,10 @@ private extension WidgetDataManager {
       stage: stage,
       message: message,
       metadata: metadata.merging(
-        ["app_group_id": appGroupId ?? "nil"],
+        [
+          "app_group_id": appGroupId ?? "nil",
+          "app_group_source": appGroupResolution.source
+        ],
         uniquingKeysWith: { current, _ in current }
       )
     )

@@ -20,6 +20,16 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(appGroupIdForWidgetTests(), "group.ai.sidebar.sidebar")
     }
 
+    func testSharedWidgetBridgeAppGroupResolverDoesNotUseHardcodedFallback() {
+        let resolution = WidgetBridgeAppGroupResolver.resolve(
+            configuredValue: nil,
+            bundleIdentifier: nil
+        )
+
+        XCTAssertNil(resolution.id)
+        XCTAssertEqual(resolution.source, "unavailable")
+    }
+
     func testWidgetContentTypeKeysAndKindsAreStable() {
         XCTAssertEqual(WidgetContentType.tasks.dataKey, "widget_tasks_data")
         XCTAssertEqual(WidgetContentType.tasks.pendingKey, "widget_tasks_pending")

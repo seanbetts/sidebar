@@ -22,21 +22,19 @@ public final class WidgetDataManager {
   // MARK: - App Group Access
 
   private var userDefaults: UserDefaults? {
-    UserDefaults(suiteName: appGroupResolution.id)
+    guard let groupId = appGroupResolution.id else { return nil }
+    return UserDefaults(suiteName: groupId)
   }
 
-  private var appGroupId: String {
+  private var appGroupId: String? {
     appGroupResolution.id
   }
 
-  private var appGroupResolution: (id: String, source: String) {
-    if let configured = configuredAppGroupId() {
-      return (configured, "info_plist")
-    }
-    if let derived = AppGroupConfiguration.resolvedAppGroupId(bundleIdentifier: Bundle.main.bundleIdentifier) {
-      return (derived, "bundle_identifier")
-    }
-    return ("group.ai.sidebar.sidebar", "hardcoded_fallback")
+  private var appGroupResolution: WidgetBridgeAppGroupResolution {
+    WidgetBridgeAppGroupResolver.resolve(
+      configuredValue: Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String,
+      bundleIdentifier: Bundle.main.bundleIdentifier
+    )
   }
 
   // MARK: - Generic Data Storage
@@ -229,14 +227,6 @@ public final class WidgetDataManager {
     return decoder
   }
 
-  private func configuredAppGroupId() -> String? {
-    let raw = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String
-    let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    guard !trimmed.isEmpty, !trimmed.contains("$(") else {
-      return nil
-    }
-    return trimmed
-  }
 }
 
 public struct WidgetFaviconConfigurationValues {
@@ -365,7 +355,7 @@ private extension WidgetDataManager {
     WidgetExtensionDiagnostics.ensureSentryStarted()
     let mergedMetadata = metadata.merging(
       [
-        "app_group_id": appGroupId,
+        "app_group_id": appGroupId ?? "nil",
         "app_group_source": appGroupResolution.source
       ],
       uniquingKeysWith: { current, _ in current }
