@@ -1244,6 +1244,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/WriteQueueTask5Tests.swift",
+      "bucket": "logic",
+      "feature_area": "shared_infra",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/YouTubePlayerViewTests.swift",
       "bucket": "surface",
       "feature_area": "websites",

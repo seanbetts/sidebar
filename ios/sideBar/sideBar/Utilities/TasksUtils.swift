@@ -2,7 +2,7 @@ import Foundation
 import sideBarShared
 
 public enum TasksUtils {
-    static let msPerDay: Double = 24 * 60 * 60
+    static let secondsPerDay: Double = 24 * 60 * 60
 
     static let tasksDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -224,7 +224,7 @@ public enum TasksUtils {
     }
 
     static func dayDiff(from start: Date, to end: Date) -> Int {
-        Int(floor((startOfDay(end).timeIntervalSince(startOfDay(start))) / msPerDay))
+        Int(floor((startOfDay(end).timeIntervalSince(startOfDay(start))) / secondsPerDay))
     }
 
     static func formatDayLabel(date: Date, dayDiff: Int) -> String {

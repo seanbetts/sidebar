@@ -53,6 +53,7 @@ enum WriteQueueError: Error {
     case missingExecutor
     case missingQueue
     case queueFull
+    case unknownEntityType(String)
 }
 
 struct WriteQueueConflictError: Error {

@@ -9,7 +9,7 @@ final class CompositeWriteQueueExecutor: WriteQueueExecutor {
 
     func execute(write: PendingWriteRecord) async throws {
         guard let entityType = WriteEntityType(rawValue: write.entityType) else {
-            return
+            throw WriteQueueError.unknownEntityType(write.entityType)
         }
         guard let executor = executors[entityType] else {
             throw WriteQueueError.missingExecutor

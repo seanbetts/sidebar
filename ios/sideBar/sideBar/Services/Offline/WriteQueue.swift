@@ -9,13 +9,14 @@ public final class WriteQueue: ObservableObject {
     @Published private(set) var isProcessing: Bool = false
     @Published private(set) var isPausedForConflict: Bool = false
     public let maxPendingWrites: Int
-    private let container: NSPersistentContainer
+    let container: NSPersistentContainer
     private let connectivityMonitor: ConnectivityMonitor
     private let executor: WriteQueueExecutor?
     private let autoProcessEnabled: Bool
     private var cancellables = Set<AnyCancellable>()
     private let encoder = JSONEncoder()
-    private let logger = Logger(subsystem: "sideBar", category: "WriteQueue")
+    let logger = Logger(subsystem: "sideBar", category: "WriteQueue")
+    var hasRecoveredStuckWrites = false
     init(
         container: NSPersistentContainer,
         connectivityMonitor: ConnectivityMonitor,
@@ -29,6 +30,7 @@ public final class WriteQueue: ObservableObject {
         self.autoProcessEnabled = autoProcessEnabled
         self.maxPendingWrites = maxPendingWrites
         Task { [weak self] in
+            await self?.recoverStuckWritesIfNeeded()
             await self?.restoreConflictPauseState()
             await self?.loadPendingCount()
         }
@@ -96,6 +98,7 @@ public final class WriteQueue: ObservableObject {
 
     func processQueue() async {
         guard !isProcessing, !isPausedForConflict, executor != nil, !connectivityMonitor.isOffline else { return }
+        await recoverStuckWritesIfNeeded()
         isProcessing = true
         defer { isProcessing = false }
 
@@ -178,6 +181,7 @@ public final class WriteQueue: ObservableObject {
                 writes.forEach { context.delete($0) }
             }
         } catch {
+            logger.error("Failed to delete writes by id: \(error.localizedDescription, privacy: .public)")
             return
         }
         await loadPendingCount()
@@ -196,6 +200,11 @@ public final class WriteQueue: ObservableObject {
                 writes.forEach { context.delete($0) }
             }
         } catch {
+            let entity = entityType.rawValue
+            let description = error.localizedDescription
+            logger.error(
+                "Failed to delete writes for entity \(entity, privacy: .public): \(description, privacy: .public)"
+            )
             return
         }
         await loadPendingCount()
@@ -223,6 +232,7 @@ public final class WriteQueue: ObservableObject {
             }
             await loadPendingCount()
         } catch {
+            logger.error("Failed to prune oldest writes: \(error.localizedDescription, privacy: .public)")
             return
         }
     }
@@ -234,6 +244,7 @@ public final class WriteQueue: ObservableObject {
         }
     }
 
+    func setConflictPauseState(_ isPaused: Bool) { isPausedForConflict = isPaused }
     func resolveConflict(id: UUID, resolution: WriteQueueConflictResolution) async {
         do {
             try await performBackgroundTask { context in
@@ -261,6 +272,7 @@ public final class WriteQueue: ObservableObject {
                 }
             }
         } catch {
+            logger.error("Failed to resolve write conflict: \(error.localizedDescription, privacy: .public)")
             return
         }
         await loadPendingCount()
@@ -295,9 +307,14 @@ private extension WriteQueue {
                 isPausedForConflict = true
                 return false
             }
-            let shouldRetry = shouldRetry(attempts: write.attempts)
-            await markWriteFailed(id: write.id, error: error, shouldRetry: shouldRetry)
-            if shouldRetry {
+            let shouldRetryWrite: Bool
+            if case .unknownEntityType = (error as? WriteQueueError) {
+                shouldRetryWrite = false
+            } else {
+                shouldRetryWrite = shouldRetry(attempts: write.attempts)
+            }
+            await markWriteFailed(id: write.id, error: error, shouldRetry: shouldRetryWrite)
+            if shouldRetryWrite {
                 let delay = backoffDelay(for: Int(write.attempts))
                 try? await Task.sleep(nanoseconds: delay)
             }
@@ -408,6 +425,7 @@ private extension WriteQueue {
                 }
             }
         } catch {
+            logger.error("Failed to mark write as failed: \(error.localizedDescription, privacy: .public)")
             return
         }
     }
@@ -461,25 +479,7 @@ private extension WriteQueue {
         return try encoder.encode(snapshot)
     }
 
-    private func restoreConflictPauseState() async {
-        do {
-            let hasConflict = try await hasOutstandingConflictWrites()
-            isPausedForConflict = hasConflict
-        } catch {
-            logger.error("Failed to restore conflict pause state: \(error.localizedDescription, privacy: .public)")
-        }
-    }
-
-    private func hasOutstandingConflictWrites() async throws -> Bool {
-        try await performBackgroundTask { context in
-            let request = PendingWrite.fetchRequest()
-            request.fetchLimit = 1
-            request.predicate = NSPredicate(format: "conflictReason != nil")
-            return try context.count(for: request) > 0
-        }
-    }
-
-    private func performBackgroundTask<T>(
+    func performBackgroundTask<T>(
         _ work: @escaping (NSManagedObjectContext) throws -> T
     ) async throws -> T {
         try await withCheckedThrowingContinuation { continuation in

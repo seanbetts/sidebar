@@ -12,7 +12,7 @@ private let widgetTasksDateFormatter: DateFormatter = {
 }()
 
 public enum WidgetTasksUtils {
-  private static let msPerDay: Double = 24 * 60 * 60
+  private static let secondsPerDay: Double = 24 * 60 * 60
   private static let completionDisplayDurationSeconds: TimeInterval = 1.25
 
   public static func visibleTasks(_ tasks: [WidgetTask], now: Date) -> [WidgetTask] {
@@ -77,6 +77,6 @@ public enum WidgetTasksUtils {
   }
 
   private static func dayDiff(from start: Date, to end: Date) -> Int {
-    Int(floor((startOfDay(end).timeIntervalSince(startOfDay(start))) / msPerDay))
+    Int(floor((startOfDay(end).timeIntervalSince(startOfDay(start))) / secondsPerDay))
   }
 }

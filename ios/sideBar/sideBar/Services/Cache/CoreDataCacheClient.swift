@@ -6,17 +6,21 @@ import OSLog
 /// Core Data-backed cache implementation.
 public final class CoreDataCacheClient: CacheClient {
     private let container: NSPersistentContainer
+    private let backgroundContext: NSManagedObjectContext
     private let logger = Logger(subsystem: "sideBar", category: "Cache")
 
     public init(container: NSPersistentContainer) {
         self.container = container
+        let backgroundContext = container.newBackgroundContext()
+        backgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        self.backgroundContext = backgroundContext
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
     }
 
     public func get<T: Codable>(key: String) -> T? {
         var decoded: T?
-        let context = container.viewContext
+        let context = backgroundContext
         context.performAndWait {
             let request = NSFetchRequest<NSManagedObject>(entityName: "CacheEntry")
             request.fetchLimit = 1
@@ -78,8 +82,8 @@ public final class CoreDataCacheClient: CacheClient {
         let expiresAt = now.addingTimeInterval(ttlSeconds)
         let typeName = String(reflecting: T.self)
 
-        container.performBackgroundTask { context in
-            context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        backgroundContext.performAndWait {
+            let context = backgroundContext
             let request = NSFetchRequest<NSManagedObject>(entityName: "CacheEntry")
             request.fetchLimit = 1
             request.predicate = NSPredicate(format: "key == %@", key)
@@ -109,7 +113,7 @@ public final class CoreDataCacheClient: CacheClient {
     }
 
     public func remove(key: String) {
-        let context = container.viewContext
+        let context = backgroundContext
         context.performAndWait {
             let request = NSFetchRequest<NSManagedObject>(entityName: "CacheEntry")
             request.predicate = NSPredicate(format: "key == %@", key)
@@ -126,7 +130,7 @@ public final class CoreDataCacheClient: CacheClient {
     }
 
     public func clear() {
-        let context = container.viewContext
+        let context = backgroundContext
         context.performAndWait {
             let request = NSFetchRequest<NSManagedObject>(entityName: "CacheEntry")
             do {

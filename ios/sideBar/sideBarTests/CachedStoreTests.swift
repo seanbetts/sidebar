@@ -153,6 +153,16 @@ final class CachedStoreTests: XCTestCase {
         }
     }
 
+    func testCoreDataCacheClientSetIsVisibleImmediatelyAfterCallReturns() async {
+        let persistence = PersistenceController(inMemory: true)
+        let cache = CoreDataCacheClient(container: persistence.container)
+
+        cache.set(key: "greeting", value: "hello", ttlSeconds: 60)
+
+        let value: String? = cache.get(key: "greeting")
+        XCTAssertEqual(value, "hello")
+    }
+
 }
 
 @MainActor

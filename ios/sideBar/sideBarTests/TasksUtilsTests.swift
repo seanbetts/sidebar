@@ -31,6 +31,13 @@ final class TasksUtilsTests: XCTestCase {
         XCTAssertEqual(formatted, "2025-06-01")
     }
 
+    func testSecondsPerDayMatchesTwentyFourHourInterval() async {
+        XCTAssertEqual(TasksUtils.secondsPerDay, 86_400)
+        let start = Date(timeIntervalSince1970: 0)
+        let end = Date(timeIntervalSince1970: 86_400)
+        XCTAssertEqual(TasksUtils.dayDiff(from: start, to: end), 1)
+    }
+
     // MARK: - Due labels
 
     func testDueLabelToday() async {
