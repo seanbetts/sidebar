@@ -432,9 +432,7 @@ extension NotesEditorViewModel {
         nativeEditorViewModel = nativeViewModel
         sharedNativeEditorViewModel = nativeViewModel
         observeNativeEditor(nativeViewModel)
-        DispatchQueue.main.async { [weak self] in
-            self?.objectWillChange.send()
-        }
+        objectWillChange.send()
     }
 
     @available(iOS 26.0, macOS 26.0, *)
@@ -442,9 +440,7 @@ extension NotesEditorViewModel {
         if nativeEditorViewModel === nativeViewModel {
             resetNativeEditorObservation()
             nativeEditorViewModel = nil
-            DispatchQueue.main.async { [weak self] in
-                self?.objectWillChange.send()
-            }
+            objectWillChange.send()
         }
     }
 
@@ -452,14 +448,12 @@ extension NotesEditorViewModel {
     private func observeNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
         resetNativeEditorObservation()
         nativeEditorObservation = nativeViewModel.objectWillChange.sink { [weak self, weak nativeViewModel] _ in
-            DispatchQueue.main.async {
-                guard
-                    let self,
-                    let nativeViewModel,
-                    self.nativeEditorViewModel === nativeViewModel
-                else { return }
-                self.objectWillChange.send()
-            }
+            guard
+                let self,
+                let nativeViewModel,
+                self.nativeEditorViewModel === nativeViewModel
+            else { return }
+            self.objectWillChange.send()
         }
     }
 
@@ -470,18 +464,12 @@ extension NotesEditorViewModel {
     }
     public func setDirty(_ dirty: Bool) {
         guard isDirty != dirty else { return }
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.isDirty != dirty else { return }
-            self.isDirty = dirty
-        }
+        isDirty = dirty
     }
 
     public func setReadOnly(_ readOnly: Bool) {
         guard isReadOnly != readOnly else { return }
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.isReadOnly != readOnly else { return }
-            self.isReadOnly = readOnly
-        }
+        isReadOnly = readOnly
     }
 
     @available(iOS 26.0, macOS 26.0, *)
