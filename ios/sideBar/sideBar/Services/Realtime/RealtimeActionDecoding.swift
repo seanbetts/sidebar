@@ -1,5 +1,5 @@
 import Foundation
-import Realtime
+import Supabase
 
 protocol RealtimeActionDecoding {
     func decodeRecord<T: Decodable>(decoder: JSONDecoder) throws -> T

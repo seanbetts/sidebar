@@ -1,7 +1,6 @@
 import Foundation
 import Supabase
 import sideBarShared
-
 enum SupabaseAuthRecovery {
     private static let supabaseSessionStorageKeys = ["supabase.auth.token", "supabase.session"]
 
