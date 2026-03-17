@@ -125,6 +125,32 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertEqual(SupabaseAuthClient.mapEvent(.userUpdated), .other("USER_UPDATED"))
     }
 
+    func testInMemoryAuthStateStoreSupportsConcurrentAccess() async throws {
+        let store = InMemoryAuthStateStore()
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for iteration in 0..<50 {
+                group.addTask {
+                    try store.saveAccessToken("token-\(iteration)")
+                }
+                group.addTask {
+                    try store.saveUserId("user-\(iteration)")
+                }
+                group.addTask {
+                    _ = try store.loadAccessToken()
+                    _ = try store.loadUserId()
+                }
+            }
+
+            try await group.waitForAll()
+        }
+
+        let accessToken = try store.loadAccessToken()
+        let userId = try store.loadUserId()
+        XCTAssertNotNil(accessToken)
+        XCTAssertNotNil(userId)
+    }
+
     func testOfflineAccessAllowsStoredCredentialsWithinWindow() async {
         let store = InMemoryAuthStateStore()
         try? store.saveAccessToken("token")

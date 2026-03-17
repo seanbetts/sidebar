@@ -10,7 +10,8 @@ public protocol AuthStateStore {
 }
 
 /// In-memory auth state store for testing.
-public nonisolated final class InMemoryAuthStateStore: AuthStateStore {
+public nonisolated final class InMemoryAuthStateStore: AuthStateStore, @unchecked Sendable {
+    private let stateLock = NSLock()
     private var accessToken: String?
     private var userId: String?
 
@@ -18,22 +19,32 @@ public nonisolated final class InMemoryAuthStateStore: AuthStateStore {
     }
 
     public func saveAccessToken(_ token: String?) throws {
+        stateLock.lock()
+        defer { stateLock.unlock() }
         accessToken = token
     }
 
     public func saveUserId(_ userId: String?) throws {
+        stateLock.lock()
+        defer { stateLock.unlock() }
         self.userId = userId
     }
 
     public func loadAccessToken() throws -> String? {
-        accessToken
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return accessToken
     }
 
     public func loadUserId() throws -> String? {
-        userId
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return userId
     }
 
     public func clear() throws {
+        stateLock.lock()
+        defer { stateLock.unlock() }
         accessToken = nil
         userId = nil
     }
