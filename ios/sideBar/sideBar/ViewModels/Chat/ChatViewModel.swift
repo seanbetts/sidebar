@@ -169,6 +169,10 @@ private final class ChatViewModelTeardownBag {
         }
     }
     var conversationUpdatedAtDates: [String: Date] = [:]
+    #if DEBUG
+    var streamEventHandlersBuildCountForTesting = 0
+    #endif
+    lazy var streamEventHandlers: [ChatStreamEventType: (ChatStreamEvent) -> Void] = makeStreamEventHandlers()
 
     init(
         network: ChatNetworkCoordinator,

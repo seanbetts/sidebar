@@ -179,6 +179,22 @@ final class ChatViewModelTests: XCTestCase {
         let cachedMemories: [MemoryItem]? = cache.get(key: CacheKeys.memoriesList)
         XCTAssertNil(cachedMemories)
     }
+
+    func testStreamEventHandlersBuildOnceAcrossMultipleEvents() {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+
+        XCTAssertEqual(viewModel.streamEventHandlersBuildCountForTesting, 0)
+
+        viewModel.handle(event: ChatStreamEvent(type: .scratchpadUpdated, data: nil))
+        viewModel.handle(event: ChatStreamEvent(type: .memoryCreated, data: AnyCodable(["id": "memory-1"])))
+
+        XCTAssertEqual(viewModel.streamEventHandlersBuildCountForTesting, 1)
+    }
+
     func testWorkspacePatchEventDispatchesValidatedWorkspaceActions() {
         let cache = TestCacheClient()
         var dispatchedActions: [WorkspaceAction] = []

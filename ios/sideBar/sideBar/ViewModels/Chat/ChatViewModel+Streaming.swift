@@ -45,7 +45,10 @@ extension ChatViewModel {
         }
     }
 
-    private var streamEventHandlers: [ChatStreamEventType: (ChatStreamEvent) -> Void] {
+    func makeStreamEventHandlers() -> [ChatStreamEventType: (ChatStreamEvent) -> Void] {
+        #if DEBUG
+        streamEventHandlersBuildCountForTesting += 1
+        #endif
         let handlers: [ChatStreamEventType: (ChatStreamEvent) -> Void] = [
             .token: { [weak self] (event: ChatStreamEvent) in
                 self?.appendToken(from: event)
