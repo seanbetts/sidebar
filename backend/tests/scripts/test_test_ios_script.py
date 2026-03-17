@@ -727,6 +727,59 @@ def test_missing_test_bundle_after_signal_kill_retries_test_action(tmp_path: Pat
     assert "Detected transient simulator infrastructure failure" in result.stdout
 
 
+def test_malloc_allocator_crash_retries_test_action(tmp_path: Path) -> None:
+    """Test-host allocator crashes should retry the xcodebuild test action once."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+    test_attempts = tmp_path / "test-attempts.txt"
+
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$*\" >> \"{xcodebuild_log}\"\n"
+        "if [[ \"$*\" == *\"-resolvePackageDependencies\"* ]]; then\n"
+        "  exit 0\n"
+        "fi\n"
+        f"attempt=$(cat \"{test_attempts}\" 2>/dev/null || echo 0)\n"
+        "attempt=$((attempt + 1))\n"
+        f"printf '%s' \"$attempt\" > \"{test_attempts}\"\n"
+        "if [[ \"$attempt\" -eq 1 ]]; then\n"
+        "  cat <<'EOF'\n"
+        "Restarting after unexpected exit, crash, or test timeout; summary will include totals from previous launches.\n"
+        "sideBarLogicHost(27031,0x103db9e40) malloc: *** error for object 0x26254e7a0: pointer being freed was not allocated\n"
+        "sideBarLogicHost(27031,0x103db9e40) malloc: *** set a breakpoint in malloc_error_break to debug\n"
+        "EOF\n"
+        "  exit 65\n"
+        "fi\n"
+        "exit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_DESTINATION": "platform=iOS Simulator,name=iPhone 17 Pro",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+        }
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    log_lines = xcodebuild_log.read_text().splitlines()
+    assert len(log_lines) == 3
+    assert sum(" test" in line for line in log_lines) == 2
+    assert "Detected transient simulator infrastructure failure" in result.stdout
+
+
 def test_exit_73_with_zero_executed_tests_does_not_pass(tmp_path: Path) -> None:
     """Exit 73 should remain fatal when the xcresult contains no executed tests."""
     bin_dir = tmp_path / "bin"

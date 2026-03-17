@@ -405,6 +405,12 @@ is_transient_simulator_infrastructure_failure() {
     return 0
   fi
 
+  if [[ "${combined_output}" == *"Restarting after unexpected exit, crash, or test timeout"* ]] \
+    && [[ "${combined_output}" == *"malloc: *** error for object"* ]] \
+    && [[ "${combined_output}" == *"pointer being freed was not allocated"* ]]; then
+    return 0
+  fi
+
   [[ "${combined_output}" == *"Failed to install or launch the test runner"* ]] || return 1
   [[ "${combined_output}" == *"Mach error -308"* || "${combined_output}" == *"(ipc/mig) server died"* ]] || return 1
 
