@@ -147,7 +147,7 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoadingArchived)
     }
 
-    func testStoreActiveNoteMirrorsOnNextMainRunLoopTurn() async {
+    func testStoreActiveNoteMirrorsImmediately() async {
         let api = NotesAPISpy()
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
@@ -168,14 +168,6 @@ final class NotesViewModelTests: XCTestCase {
         )
 
         store.applyEditorUpdate(note)
-
-        XCTAssertNil(viewModel.activeNote)
-
-        await withCheckedContinuation { continuation in
-            DispatchQueue.main.async {
-                continuation.resume()
-            }
-        }
 
         XCTAssertEqual(viewModel.activeNote?.id, "note-id")
     }
