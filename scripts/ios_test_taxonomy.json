@@ -14,6 +14,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentActivationReplayTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/AppEnvironmentAuthCacheScopeTests.swift",
       "bucket": "logic",
       "feature_area": "app_shell",
