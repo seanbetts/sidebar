@@ -48,6 +48,20 @@ final class ExtensionSharedHelperTests: XCTestCase {
         XCTAssertNil(try bridge.retrieve(key: "supabase.auth.token"))
     }
 
+    func testExtensionAuthStateStoreFactoryCreatesUsableStoreUnderTests() throws {
+        let store = ExtensionAuthStateStoreFactory.makeSharedStore()
+
+        try store.saveAccessToken("factory-token")
+        try store.saveUserId("factory-user")
+
+        XCTAssertEqual(try store.loadAccessToken(), "factory-token")
+        XCTAssertEqual(try store.loadUserId(), "factory-user")
+
+        try store.clear()
+        XCTAssertNil(try store.loadAccessToken())
+        XCTAssertNil(try store.loadUserId())
+    }
+
     private func makeJWT(exp: TimeInterval) -> String {
         let header = #"{"alg":"HS256","typ":"JWT"}"#
         let payload = #"{"exp":\#(Int(exp))}"#

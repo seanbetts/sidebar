@@ -55,4 +55,28 @@ final class ExternalSurfaceDiagnosticsStoreTests: XCTestCase {
         XCTAssertTrue(export.contains("has_defaults=true"))
         XCTAssertTrue(export.contains("has_root_directory=true"))
     }
+
+    func testCanQueueFileItemsRecordsMissingAppGroupContextWhenFileContainerUnavailable() {
+        let suiteName = "ExternalSurfaceDiagnosticsStoreTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)
+        defaults?.removePersistentDomain(forName: suiteName)
+        defer {
+            defaults?.removePersistentDomain(forName: suiteName)
+        }
+
+        let store = PendingShareStore(
+            baseDirectory: nil,
+            userDefaults: defaults,
+            allowAppGroupFallback: false
+        )
+
+        XCTAssertFalse(store.canQueueFileItems())
+
+        let entries = ExternalSurfaceDiagnosticsStore.shared.recentEntries(limit: 10)
+        XCTAssertTrue(entries.contains { entry in
+            entry.surface == "pending_share_store"
+                && entry.stage == "missing_app_group"
+                && entry.metadata["context"] == "canQueueFileItems"
+        })
+    }
 }
