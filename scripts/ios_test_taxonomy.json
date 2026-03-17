@@ -326,6 +326,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/ExtensionEventStoreTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/ExtensionSentryBootstrapTests.swift",
       "bucket": "logic",
       "feature_area": "extensions",
