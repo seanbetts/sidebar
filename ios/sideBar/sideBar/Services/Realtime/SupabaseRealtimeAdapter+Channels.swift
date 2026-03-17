@@ -66,6 +66,7 @@ extension SupabaseRealtimeAdapter {
         await tokenStore.set(nil)
         currentUserId = nil
         for channel in channels {
+            guard client.realtimeV2.channels[channel.topic] != nil else { continue }
             await client.realtimeV2.removeChannel(channel)
         }
     }

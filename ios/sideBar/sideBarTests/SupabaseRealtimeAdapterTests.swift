@@ -176,7 +176,7 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
     }
 
     func testEnqueueTransitionRunsOperationsSeriallyInSubmissionOrder() async {
-        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting())
+        let adapter = retain(SupabaseRealtimeAdapter(config: .fallbackForTesting()))
         let executionOrder = SynchronizedIntArray()
         let operationCount = 8
         let gate = RealtimeTransitionGate()
@@ -194,7 +194,7 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
     }
 
     func testStopInternalClearsChannelsAfterRapidStateChurn() async {
-        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting())
+        let adapter = retain(SupabaseRealtimeAdapter(config: .fallbackForTesting()))
 
         for index in 0..<10 {
             adapter.currentUserId = "user-\(index)"
@@ -225,9 +225,14 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
     }
 
     func testSubscribeToFileJobsScopesCallbacksToCurrentUser() async {
-        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting())
+        let adapter = retain(SupabaseRealtimeAdapter(config: .fallbackForTesting()))
 
         XCTAssertEqual(adapter.fileJobsFilter(userId: "user-123"), "user_id=eq.user-123")
+    }
+
+    private func retain(_ adapter: SupabaseRealtimeAdapter) -> SupabaseRealtimeAdapter {
+        Self.retainedAdapters.append(adapter)
+        return adapter
     }
 
     private func retain(
