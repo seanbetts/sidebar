@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime, timedelta
 
+import sentry_sdk
 from sqlalchemy.orm import Session
 
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
+
+logger = logging.getLogger(__name__)
 
 
 class IngestionJobHealthService:
@@ -65,4 +69,12 @@ class IngestionJobHealthService:
             job.lease_expires_at = None
             job.updated_at = now
         db.commit()
+        logger.error(
+            "Ingestion worker unavailable for user_id=%s; failing %s stale queued jobs",
+            user_id,
+            len(stale_jobs),
+        )
+        sentry_sdk.capture_message(
+            "Ingestion worker unavailable for stale queued jobs", level="error"
+        )
         return len(stale_jobs)

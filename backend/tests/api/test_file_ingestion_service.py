@@ -4,6 +4,7 @@ import pytest
 from api.exceptions import ConflictError
 from api.models.file_ingestion import FileDerivative, FileProcessingJob
 from api.services.file_ingestion_service import FileIngestionService
+from api.services import ingestion_job_health_service
 from api.services.ingestion_job_health_service import IngestionJobHealthService
 
 
@@ -338,3 +339,77 @@ def test_fail_stale_queued_jobs_when_worker_available_keeps_queued(db_session):
     assert updated == 0
     assert refreshed is not None
     assert refreshed.status == "queued"
+
+
+def test_fail_stale_queued_jobs_reports_sentry_once(db_session, monkeypatch):
+    _, job = FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="queued.txt",
+        path="queued.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )
+    job.updated_at = datetime.now(UTC) - timedelta(minutes=5)
+    db_session.commit()
+
+    sentry_messages: list[tuple[str, str | None]] = []
+
+    monkeypatch.setattr(
+        ingestion_job_health_service.sentry_sdk,
+        "capture_message",
+        lambda message, *, level=None: sentry_messages.append((message, level)),
+    )
+
+    updated = IngestionJobHealthService.fail_stale_queued_jobs_when_worker_unavailable(
+        db_session,
+        "user-1",
+        queued_ttl_seconds=120,
+        worker_heartbeat_ttl_seconds=45,
+    )
+
+    assert updated == 1
+    assert sentry_messages == [
+        ("Ingestion worker unavailable for stale queued jobs", "error")
+    ]
+
+
+def test_fail_stale_queued_jobs_logs_worker_unavailable_summary(
+    db_session, monkeypatch
+):
+    _, job = FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="queued.txt",
+        path="queued.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )
+    stale_age = timedelta(minutes=5)
+    job.updated_at = datetime.now(UTC) - stale_age
+    db_session.commit()
+
+    log_messages: list[str] = []
+
+    monkeypatch.setattr(
+        ingestion_job_health_service.logger,
+        "error",
+        lambda message, *args: log_messages.append(message % args if args else message),
+    )
+    monkeypatch.setattr(
+        ingestion_job_health_service.sentry_sdk,
+        "capture_message",
+        lambda message, *, level=None: None,
+    )
+
+    updated = IngestionJobHealthService.fail_stale_queued_jobs_when_worker_unavailable(
+        db_session,
+        "user-1",
+        queued_ttl_seconds=120,
+        worker_heartbeat_ttl_seconds=45,
+    )
+
+    assert updated == 1
+    assert log_messages == [
+        "Ingestion worker unavailable for user_id=user-1; failing 1 stale queued jobs"
+    ]

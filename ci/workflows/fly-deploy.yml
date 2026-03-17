@@ -130,3 +130,36 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: flyctl -c fly.toml deploy
+
+      - name: Ensure ingestion worker machine is running
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl -c fly.toml scale count 1 --process-group ingestion --region lhr
+
+      - name: Verify ingestion worker machine state
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          result = subprocess.run(
+              ["flyctl", "-c", "fly.toml", "machine", "list", "--json"],
+              check=True,
+              capture_output=True,
+              text=True,
+          )
+          machines = json.loads(result.stdout)
+          has_started_ingestion = any(
+              machine.get("process_group") == "ingestion"
+              and machine.get("state") == "started"
+              for machine in machines
+          )
+          if not has_started_ingestion:
+              print(json.dumps(machines, indent=2))
+              raise SystemExit("No started ingestion machine found after deploy")
+          PY
