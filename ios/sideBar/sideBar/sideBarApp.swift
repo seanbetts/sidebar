@@ -124,6 +124,9 @@ struct SideBarApp: App {
         WindowGroup {
             rootContentView
         }
+        .commands {
+            SidebarCommands(environment: environment)
+        }
         #endif
     }
 }

@@ -96,6 +96,16 @@ final class AppCommandsTests: XCTestCase {
         )
         XCTAssertTrue(normalized.contains("Toggle(\"InlineCode\",isOn:formattingBinding(.inlineCode)).disabled(!canFormatNotes)"))
     }
+
+    func testIOSAppSceneRegistersSidebarCommands() throws {
+        let normalized = try normalizedSideBarAppSource()
+
+        XCTAssertTrue(
+            normalized.contains(
+                "WindowGroup{rootContentView}.commands{SidebarCommands(environment:environment)}"
+            )
+        )
+    }
 }
 
 private func normalizedAppCommandsSource(
@@ -123,6 +133,34 @@ private func appCommandsSourceForFormattingTests(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read AppCommands.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func normalizedSideBarAppSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try sideBarAppSource(file: file, line: line)
+        .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+}
+
+private func sideBarAppSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("sideBarApp.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read sideBarApp.swift: \(error)", file: file, line: line)
         throw error
     }
 }

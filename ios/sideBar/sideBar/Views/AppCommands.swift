@@ -1,5 +1,7 @@
-#if os(macOS)
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 struct SidebarCommands: Commands {
     @ObservedObject private var environment: AppEnvironment
@@ -9,6 +11,9 @@ struct SidebarCommands: Commands {
     }
 
     var body: some Commands {
+        notesFormatCommands
+
+        #if os(macOS)
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") {
                 environment.presentMacSettings()
@@ -78,53 +83,58 @@ struct SidebarCommands: Commands {
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
             }
 
-            if #available(macOS 26.0, *) {
-                CommandMenu("Format") {
-                    Button("Title") {
-                        environment.notesRuntime.editorViewModel.setTextStyle(.title)
-                    }
-                    .keyboardShortcut("t", modifiers: [.command, .shift])
-                    .disabled(!canApplyTextStyle(.title))
+        }
+        #endif
+    }
 
-                    Button("Heading") {
-                        environment.notesRuntime.editorViewModel.setTextStyle(.heading)
-                    }
-                    .keyboardShortcut("h", modifiers: [.command, .shift])
-                    .disabled(!canApplyTextStyle(.heading))
-
-                    Button("Subheading") {
-                        environment.notesRuntime.editorViewModel.setTextStyle(.subheading)
-                    }
-                    .keyboardShortcut("j", modifiers: [.command, .shift])
-                    .disabled(!canApplyTextStyle(.subheading))
-
-                    Button("Body") {
-                        environment.notesRuntime.editorViewModel.setTextStyle(.body)
-                    }
-                    .keyboardShortcut("b", modifiers: [.command, .shift])
-                    .disabled(!canApplyTextStyle(.body))
-
-                    Divider()
-
-                    Toggle("Bold", isOn: formattingBinding(.bold))
-                        .keyboardShortcut("b", modifiers: [.command])
-                        .disabled(!canFormatNotes)
-
-                    Toggle("Italic", isOn: formattingBinding(.italic))
-                        .keyboardShortcut("i", modifiers: [.command])
-                        .disabled(!canFormatNotes)
-
-                    Toggle("Underline", isOn: formattingBinding(.underline))
-                        .keyboardShortcut("u", modifiers: [.command])
-                        .disabled(!canFormatNotes)
-
-                    Toggle("Strikethrough", isOn: formattingBinding(.strikethrough))
-                        .keyboardShortcut("x", modifiers: [.command, .shift])
-                        .disabled(!canFormatNotes)
-
-                    Toggle("Inline Code", isOn: formattingBinding(.inlineCode))
-                        .disabled(!canFormatNotes)
+    @CommandsBuilder
+    private var notesFormatCommands: some Commands {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            CommandMenu("Format") {
+                Button("Title") {
+                    environment.notesRuntime.editorViewModel.setTextStyle(.title)
                 }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                .disabled(!canApplyTextStyle(.title))
+
+                Button("Heading") {
+                    environment.notesRuntime.editorViewModel.setTextStyle(.heading)
+                }
+                .keyboardShortcut("h", modifiers: [.command, .shift])
+                .disabled(!canApplyTextStyle(.heading))
+
+                Button("Subheading") {
+                    environment.notesRuntime.editorViewModel.setTextStyle(.subheading)
+                }
+                .keyboardShortcut("j", modifiers: [.command, .shift])
+                .disabled(!canApplyTextStyle(.subheading))
+
+                Button("Body") {
+                    environment.notesRuntime.editorViewModel.setTextStyle(.body)
+                }
+                .keyboardShortcut("b", modifiers: [.command, .shift])
+                .disabled(!canApplyTextStyle(.body))
+
+                Divider()
+
+                Toggle("Bold", isOn: formattingBinding(.bold))
+                    .keyboardShortcut("b", modifiers: [.command])
+                    .disabled(!canFormatNotes)
+
+                Toggle("Italic", isOn: formattingBinding(.italic))
+                    .keyboardShortcut("i", modifiers: [.command])
+                    .disabled(!canFormatNotes)
+
+                Toggle("Underline", isOn: formattingBinding(.underline))
+                    .keyboardShortcut("u", modifiers: [.command])
+                    .disabled(!canFormatNotes)
+
+                Toggle("Strikethrough", isOn: formattingBinding(.strikethrough))
+                    .keyboardShortcut("x", modifiers: [.command, .shift])
+                    .disabled(!canFormatNotes)
+
+                Toggle("Inline Code", isOn: formattingBinding(.inlineCode))
+                    .disabled(!canFormatNotes)
             }
         }
     }
@@ -182,4 +192,3 @@ struct SidebarCommands: Commands {
         )
     }
 }
-#endif
