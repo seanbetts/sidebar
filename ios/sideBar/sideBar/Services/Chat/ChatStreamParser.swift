@@ -10,8 +10,10 @@ public struct ParsedSSEEvent {
 /// Parses server-sent events into chat stream events.
 public struct ChatStreamParser {
     private var buffer = ""
+    private let maxBufferSize: Int
 
-    public init() {
+    public init(maxBufferSize: Int = 65_536) {
+        self.maxBufferSize = maxBufferSize
     }
 
     public mutating func ingest(_ data: Data) -> [ChatStreamEvent] {
@@ -19,6 +21,9 @@ public struct ChatStreamParser {
             return []
         }
         buffer.append(chunk)
+        if buffer.count > maxBufferSize {
+            buffer = String(buffer.suffix(maxBufferSize))
+        }
         var output: [ChatStreamEvent] = []
 
         let events = buffer.components(separatedBy: "\n\n")
