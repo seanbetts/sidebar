@@ -77,6 +77,43 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
         XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.traitBold))
     }
 
+    func testTextStyleChangeDoesNotJumpFocusedViewportToEnd() throws {
+        let plainText = (0..<40)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass(plainText),
+            plainText: plainText
+        )
+        let targetOffset = NSString(string: plainText).range(of: "Line 20 body text").location
+        let targetIndex = viewModel.index(forCharacterOffset: targetOffset, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: targetIndex..<targetIndex)
+
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            makeKeyAndVisible: true,
+            formattingBarConfiguration: .disabled,
+            formattingBarPresentation: .floatingTopTrailing,
+            width: 834,
+            height: 520
+        )
+        XCTAssertTrue(textView.becomeFirstResponder())
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        XCTAssertTrue(textView.isFirstResponder)
+
+        textView.layoutIfNeeded()
+        textView.setContentOffset(CGPoint(x: 0, y: 360), animated: false)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        let baselineOffset = textView.contentOffset.y
+
+        viewModel.applyTextStyle(.subheading)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(textView.selectedRange.location, targetOffset)
+        XCTAssertLessThan(abs(textView.contentOffset.y - baselineOffset), 1)
+    }
+
     func testUIKitTypingAttributesStayPlainOnEmptyTrailingParagraphAfterHeading() throws {
         let document = NotesSemanticDocument(
             blocks: [

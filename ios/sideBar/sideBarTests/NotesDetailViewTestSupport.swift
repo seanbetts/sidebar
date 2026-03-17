@@ -178,14 +178,19 @@ func mount(
 @discardableResult
 func mount(
     _ view: some View,
-    frame: CGRect = CGRect(x: 0, y: 0, width: 390, height: 844)
+    frame: CGRect = CGRect(x: 0, y: 0, width: 390, height: 844),
+    makeKeyAndVisible: Bool = false
 ) -> UIHostingController<AnyView> {
     let controller = UIHostingController(
         rootView: AnyView(view)
     )
     let window = makeHostingWindow(frame: frame)
     window.rootViewController = controller
-    window.isHidden = false
+    if makeKeyAndVisible {
+        window.makeKeyAndVisible()
+    } else {
+        window.isHidden = false
+    }
     let rootView = controller.view!
     rootView.frame = frame
     rootView.setNeedsLayout()
@@ -200,11 +205,13 @@ func mount(
 @discardableResult
 func mount(
     _ view: NotesDetailView,
-    environment: AppEnvironment
+    environment: AppEnvironment,
+    makeKeyAndVisible: Bool = false
 ) -> UIHostingController<AnyView> {
     mount(
         view.environmentObject(environment),
-        frame: CGRect(x: 0, y: 0, width: 900, height: 700)
+        frame: CGRect(x: 0, y: 0, width: 900, height: 700),
+        makeKeyAndVisible: makeKeyAndVisible
     )
 }
 

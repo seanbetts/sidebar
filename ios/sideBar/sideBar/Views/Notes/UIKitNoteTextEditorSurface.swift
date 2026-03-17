@@ -255,6 +255,11 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             renderGeneration: viewModel.renderGeneration,
             baseFontSize: viewModel.baseFontSize
         )
+        let selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
+        let preservedViewportOffset = preservedViewportOffsetIfNeeded(
+            for: textView,
+            selectedRange: selectedRange
+        )
         if context.coordinator.lastAppliedRenderSignature != renderSignature {
             let attributedText = bridgedAttributedText(from: viewModel.attributedContent)
             context.coordinator.isApplyingProgrammaticText = true
@@ -263,7 +268,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             context.coordinator.lastAppliedRenderSignature = renderSignature
         }
 
-        let selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
         if textView.selectedRange != selectedRange {
             context.coordinator.isApplyingProgrammaticSelection = true
             textView.selectedRange = selectedRange
@@ -274,26 +278,20 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         if NSDictionary(dictionary: textView.typingAttributes).isEqual(to: typingAttributes) == false {
             textView.typingAttributes = typingAttributes
         }
+
+        if let preservedViewportOffset {
+            restoreViewportOffsetIfNeeded(
+                preservedViewportOffset,
+                for: textView,
+                selectedRange: selectedRange
+            )
+        }
     }
 
     static func dismantleUIView(_ textView: UITextView, coordinator: Void) {
         if textView.isFirstResponder {
             textView.resignFirstResponder()
         }
-    }
-
-    static func resolvedBottomViewportInset(
-        textViewBounds: CGRect,
-        keyboardFrameInView: CGRect?,
-        accessoryHeight: CGFloat
-    ) -> CGFloat {
-        guard let keyboardFrameInView,
-              keyboardFrameInView.intersects(textViewBounds) else {
-            return 0
-        }
-
-        let overlap = max(textViewBounds.maxY - keyboardFrameInView.minY, 0)
-        return max(overlap + accessoryHeight, 0)
     }
 
     private func bridgedAttributedText(from text: AttributedString) -> NSAttributedString {

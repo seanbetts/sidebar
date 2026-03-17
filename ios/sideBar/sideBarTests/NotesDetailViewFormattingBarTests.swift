@@ -345,6 +345,7 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(context.makeView().noteFormattingBarConfiguration.activeTextStyle, .heading)
         XCTAssertEqual(document.blocks[1].content.first?.marks, [.bold])
     }
+
 #elseif os(macOS)
     func testCustomFormattingBarIsVisibleOnMacOSInEditMode() async throws {
         guard #available(macOS 26.0, *) else {
