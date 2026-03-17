@@ -4,6 +4,9 @@ import sideBarShared
 // MARK: - MarkdownRendering
 
 public enum MarkdownRendering {
+    private nonisolated(unsafe) static var regexCache: [String: NSRegularExpression] = [:]
+    private nonisolated(unsafe) static var regexCacheLock = NSLock()
+
     public struct MarkdownYouTubeEmbed {
         public let sourceURL: String
         public let videoId: String
@@ -324,8 +327,20 @@ public enum MarkdownRendering {
         pattern: String,
         options: NSRegularExpression.Options = []
     ) -> NSRegularExpression {
+        let cacheKey = "\(pattern)\u{1F}\(options.rawValue)"
+        regexCacheLock.lock()
+        if let cached = regexCache[cacheKey] {
+            regexCacheLock.unlock()
+            return cached
+        }
+        regexCacheLock.unlock()
+
         do {
-            return try NSRegularExpression(pattern: pattern, options: options)
+            let regex = try NSRegularExpression(pattern: pattern, options: options)
+            regexCacheLock.lock()
+            regexCache[cacheKey] = regex
+            regexCacheLock.unlock()
+            return regex
         } catch {
             assertionFailure("Invalid regex pattern: \(pattern). Error: \(error)")
             return fallbackRegex()

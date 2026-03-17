@@ -462,10 +462,10 @@ final class MarkdownRenderingTests: XCTestCase {
         XCTAssertTrue(markdown.contains("</svg>"))
     }
 
-    func testMakeRegexAllocatesNewInstancesForSamePattern() {
+    func testMakeRegexCachesInstancesForSamePattern() {
         let first = MarkdownRendering.makeRegex(pattern: "abc")
         let second = MarkdownRendering.makeRegex(pattern: "abc")
 
-        XCTAssertFalse(first === second)
+        XCTAssertTrue(first === second)
     }
 }
