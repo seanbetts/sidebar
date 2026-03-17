@@ -19,7 +19,7 @@ final class ShareExtensionAuthRefresher {
         }
         self.keychain = keychain
         let authOptions = SupabaseClientOptions.AuthOptions(
-            storage: ShareExtensionSupabaseKeychainStorage(stateStore: keychain),
+            storage: SupabaseKeychainStorageBridge(stateStore: keychain),
             emitLocalSessionAsInitialSession: true
         )
         let supabase = SupabaseClient(
@@ -60,108 +60,20 @@ final class ShareExtensionAuthRefresher {
         now: Date = Date(),
         leadTime: TimeInterval
     ) -> Bool {
-        guard let expiry = jwtExpiryDate(from: accessToken) else {
-            return true
-        }
-        return expiry.timeIntervalSince(now) <= leadTime
-    }
-
-    private static func jwtExpiryDate(from accessToken: String) -> Date? {
-        guard let payloadData = decodeJwtPayload(accessToken) else {
-            return nil
-        }
-        guard
-            let jsonObject = try? JSONSerialization.jsonObject(with: payloadData, options: []),
-            let payload = jsonObject as? [String: Any]
-        else {
-            return nil
-        }
-        if let exp = payload["exp"] as? TimeInterval {
-            return Date(timeIntervalSince1970: exp)
-        }
-        if let expString = payload["exp"] as? String,
-           let exp = TimeInterval(expString) {
-            return Date(timeIntervalSince1970: exp)
-        }
-        return nil
-    }
-
-    private static func decodeJwtPayload(_ token: String) -> Data? {
-        let segments = token.split(separator: ".")
-        guard segments.count >= 2 else { return nil }
-        let payload = String(segments[1])
-        return base64UrlDecode(payload)
-    }
-
-    private static func base64UrlDecode(_ value: String) -> Data? {
-        var base64 = value
-            .replacingOccurrences(of: "-", with: "+")
-            .replacingOccurrences(of: "_", with: "/")
-        let padding = 4 - (base64.count % 4)
-        if padding < 4 {
-            base64.append(String(repeating: "=", count: padding))
-        }
-        return Data(base64Encoded: base64)
+        JWTExpiry.shouldRefreshAccessToken(accessToken, now: now, leadTime: leadTime)
     }
 
     private static func loadConfig(from bundle: Bundle) -> ShareExtensionSupabaseConfig? {
         guard
             let supabaseURLValue = bundle.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
-            let normalizedURL = normalizeConfigValue(supabaseURLValue),
-            let supabaseURL = parseHTTPURL(from: normalizedURL),
+            let normalizedURL = ConfigNormalization.normalizeConfigValue(supabaseURLValue),
+            let supabaseURL = ConfigNormalization.parseHTTPURL(from: normalizedURL),
             let supabaseAnonKeyValue = bundle.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
-            let supabaseAnonKey = normalizeConfigValue(supabaseAnonKeyValue)
+            let supabaseAnonKey = ConfigNormalization.normalizeConfigValue(supabaseAnonKeyValue)
         else {
             return nil
         }
 
         return ShareExtensionSupabaseConfig(url: supabaseURL, anonKey: supabaseAnonKey)
-    }
-
-    private static func normalizeConfigValue(_ value: String) -> String? {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        if trimmed.hasPrefix("$(") && trimmed.hasSuffix(")") {
-            return nil
-        }
-        if trimmed.hasPrefix("${") && trimmed.hasSuffix("}") {
-            return nil
-        }
-        return trimmed.replacingOccurrences(of: "\\/", with: "/")
-    }
-
-    private static func parseHTTPURL(from value: String) -> URL? {
-        guard let url = URL(string: value),
-              let scheme = url.scheme?.lowercased(),
-              scheme == "http" || scheme == "https",
-              let host = url.host,
-              !host.isEmpty else {
-            return nil
-        }
-        return url
-    }
-}
-
-/// Bridges KeychainAuthStateStore to Supabase AuthLocalStorage for the share extension.
-///
-/// Marked as `@unchecked Sendable` because KeychainAuthStateStore serializes
-/// its mutable in-memory state and Security framework Keychain APIs are thread-safe.
-private final class ShareExtensionSupabaseKeychainStorage: AuthLocalStorage, @unchecked Sendable {
-    private let stateStore: KeychainAuthStateStore
-
-    init(stateStore: KeychainAuthStateStore) {
-        self.stateStore = stateStore
-    }
-
-    func store(key: String, value: Data) throws {
-        try stateStore.saveSessionData(value, forKey: key)
-    }
-
-    func retrieve(key: String) throws -> Data? {
-        try stateStore.loadSessionData(forKey: key)
-    }
-
-    func remove(key: String) throws {
-        try stateStore.removeSessionData(forKey: key)
     }
 }

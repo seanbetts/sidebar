@@ -24,6 +24,8 @@
 		14DFA3342F110406001DAF5B /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3332F110406001DAF5B /* Realtime */; };
 		14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
 		14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
+		14DFA33A2F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
+		14DFA33B2F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		14F1A0B82F31000000BEEF03 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0B92F31000000BEEF03 /* Markdown */; };
 		9A8B7C6D5E4F3A2B1C0D0E04 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
 		9A8B7C6D5E4F3A2B1C0D0E05 /* sideBarShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1413DE462F2B514C002495EE /* sideBarShared.framework */; };
@@ -314,6 +316,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				14DFA33A2F116F2C001DAF5B /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -386,6 +389,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				14DFA33B2F116F2C001DAF5B /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -505,6 +509,7 @@
 			);
 			name = sideBarShared;
 			packageProductDependencies = (
+				14DFA3382F116F2C001DAF5B /* Supabase */,
 			);
 			productName = sideBarShared;
 			productReference = 1413DE462F2B514C002495EE /* sideBarShared.framework */;
@@ -686,6 +691,7 @@
 			);
 			name = sideBarTests;
 			packageProductDependencies = (
+				14DFA3382F116F2C001DAF5B /* Supabase */,
 			);
 			productName = sideBarTests;
 			productReference = 14C84A552F10562500FE0C16 /* sideBarTests.xctest */;
