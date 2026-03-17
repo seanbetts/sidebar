@@ -82,4 +82,16 @@ final class ChatStreamParserTests: XCTestCase {
         XCTAssertEqual(operations?.first?["op"] as? String, "swap_panes")
         XCTAssertNotNil(payload?["future_field"] as? [String: Any])
     }
+
+    func testIngestRetainsOversizedPartialEventWithoutReset() {
+        var parser = ChatStreamParser()
+        let oversizedChunk = String(repeating: "a", count: 1_200_000)
+
+        let events = parser.ingest(Data(oversizedChunk.utf8))
+
+        XCTAssertTrue(events.isEmpty)
+        let mirroredBuffer = Mirror(reflecting: parser).children
+            .first(where: { $0.label == "buffer" })?.value as? String
+        XCTAssertEqual(mirroredBuffer?.count, oversizedChunk.count)
+    }
 }

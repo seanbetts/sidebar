@@ -235,7 +235,7 @@ final class MarkdownRenderingTests: XCTestCase {
             "\"author_url\":\"https://www.tiktok.com/@deadline\",",
             "\"title\":\"TikTok title\",",
             "\"thumbnail_url\":\"https://example.com/thumb.jpg\"",
-            "} -->",
+            "} -->"
         ].joined()
         let input = """
         ![TikTok thumbnail](https://example.com/thumb.jpg)
@@ -402,7 +402,7 @@ final class MarkdownRenderingTests: XCTestCase {
             "\"author_url\":\"https://www.tiktok.com/@deadline\",",
             "\"title\":\"TikTok title\",",
             "\"thumbnail_url\":\"https://example.com/thumb.jpg\"",
-            "} -->",
+            "} -->"
         ].joined()
         let input = """
         ![TikTok thumbnail](https://example.com/thumb.jpg)
@@ -460,5 +460,12 @@ final class MarkdownRenderingTests: XCTestCase {
         }
         XCTAssertTrue(markdown.contains("<svg>"))
         XCTAssertTrue(markdown.contains("</svg>"))
+    }
+
+    func testMakeRegexAllocatesNewInstancesForSamePattern() {
+        let first = MarkdownRendering.makeRegex(pattern: "abc")
+        let second = MarkdownRendering.makeRegex(pattern: "abc")
+
+        XCTAssertFalse(first === second)
     }
 }

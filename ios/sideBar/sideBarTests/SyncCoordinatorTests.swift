@@ -82,6 +82,37 @@ final class SyncCoordinatorTests: XCTestCase {
         XCTAssertEqual(store.refreshCount, 0)
         XCTAssertEqual(queue.pendingCount, 1)
     }
+
+    func testRefreshAllWaitsForFirstStoreBeforeStartingSecondStore() async {
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let queue = WriteQueue(
+            container: PersistenceController(inMemory: true).container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let firstStore = BlockingSyncStore()
+        let secondStore = OrderedSyncStore()
+        let coordinator = SyncCoordinator(
+            connectivityMonitor: connectivityMonitor,
+            writeQueue: queue,
+            stores: [firstStore, secondStore]
+        )
+
+        let refreshTask = Task {
+            await coordinator.refreshAll()
+        }
+
+        await fulfillment(of: [firstStore.started], timeout: 1.0)
+        XCTAssertEqual(secondStore.refreshCount, 0)
+
+        firstStore.continueRefresh()
+        await refreshTask.value
+
+        XCTAssertEqual(secondStore.refreshCount, 1)
+    }
 }
 
 @MainActor
@@ -98,5 +129,32 @@ private final class CountingWriteExecutor: WriteQueueExecutor {
 
     func execute(write: PendingWriteRecord) async throws {
         executedCount += 1
+    }
+}
+
+@MainActor
+private final class BlockingSyncStore: SyncableStore {
+    let started = XCTestExpectation(description: "blocking store started")
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func refreshAll() async {
+        started.fulfill()
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func continueRefresh() {
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
+@MainActor
+private final class OrderedSyncStore: SyncableStore {
+    private(set) var refreshCount = 0
+
+    func refreshAll() async {
+        refreshCount += 1
     }
 }
