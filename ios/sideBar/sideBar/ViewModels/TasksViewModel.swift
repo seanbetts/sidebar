@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import sideBarShared
 
 @MainActor
 /// Manages tasks state, networking, and user actions for the tasks UI.
