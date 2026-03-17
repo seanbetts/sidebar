@@ -1160,7 +1160,19 @@
       "branch_policy": "main"
     },
     {
+      "path": "ios/sideBar/sideBarTests/ExtensionSharedHelperTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/WidgetBridgeContractTests.swift",
+      "bucket": "logic",
+      "feature_area": "extensions",
+      "branch_policy": "dev"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/WidgetDataBridgeTests.swift",
       "bucket": "logic",
       "feature_area": "extensions",
       "branch_policy": "dev"
