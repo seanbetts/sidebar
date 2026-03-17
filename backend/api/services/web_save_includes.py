@@ -337,10 +337,60 @@ def _find_by_position(
             return False
         return class_name in class_attr.split()
 
-    if _has_class(original_node, "duet--article--gallery"):
+    def _normalize_text(value: str) -> str:
+        return " ".join(value.split())
 
-        def _normalize_text(value: str) -> str:
-            return " ".join(value.split())
+    def _last_descendant_paragraph(
+        node: lxml_html.HtmlElement,
+    ) -> lxml_html.HtmlElement | None:
+        paragraphs = [
+            elem
+            for elem in node.iter()
+            if isinstance(elem.tag, str) and elem.tag == "p"
+        ]
+        return paragraphs[-1] if paragraphs else None
+
+    def _match_extracted_paragraph(
+        paragraph: lxml_html.HtmlElement,
+    ) -> tuple[lxml_html.HtmlElement, int] | None:
+        target_text = _normalize_text(paragraph.text_content())
+        if not target_text:
+            return None
+
+        extracted_paragraphs = [
+            elem
+            for elem in extracted_tree.iter()
+            if isinstance(elem.tag, str) and elem.tag == "p"
+        ]
+        matching = [
+            elem
+            for elem in extracted_paragraphs
+            if _normalize_text(elem.text_content()) == target_text
+        ]
+        if len(matching) != 1:
+            return None
+
+        anchor = matching[0]
+        parent = anchor.getparent()
+        if parent is None:
+            return None
+        return parent, parent.index(anchor) + 1
+
+    if _has_class(original_node, "duet--article--gallery"):
+        current = original_node
+        while current is not None:
+            preceding = current.getprevious()
+            while preceding is not None:
+                if not isinstance(preceding.tag, str):
+                    preceding = preceding.getprevious()
+                    continue
+                paragraph = _last_descendant_paragraph(preceding)
+                if paragraph is not None:
+                    match = _match_extracted_paragraph(paragraph)
+                    if match is not None:
+                        return match
+                preceding = preceding.getprevious()
+            current = current.getparent()
 
         article = original_node
         while article is not None and article.tag != "article":
@@ -364,23 +414,9 @@ def _find_by_position(
                 last_paragraph_index = paragraph_index.get(id(elem))
                 last_paragraph = elem
         if last_paragraph is not None:
-            target_text = _normalize_text(last_paragraph.text_content())
-            if target_text:
-                extracted_paragraphs = [
-                    elem
-                    for elem in extracted_tree.iter()
-                    if isinstance(elem.tag, str) and elem.tag == "p"
-                ]
-                matching = [
-                    elem
-                    for elem in extracted_paragraphs
-                    if _normalize_text(elem.text_content()) == target_text
-                ]
-                if len(matching) == 1:
-                    anchor = matching[0]
-                    parent = anchor.getparent()
-                    if parent is not None:
-                        return parent, parent.index(anchor) + 1
+            match = _match_extracted_paragraph(last_paragraph)
+            if match is not None:
+                return match
         if last_paragraph_index is not None:
             extracted_paragraphs = [
                 elem

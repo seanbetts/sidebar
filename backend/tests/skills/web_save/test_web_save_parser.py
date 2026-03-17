@@ -1957,6 +1957,41 @@ def test_apply_include_reinsertion_uses_ancestor_siblings_for_position():
     assert between_index < g2_index
 
 
+def test_apply_include_reinsertion_prefers_nearest_ancestor_sibling_paragraph():
+    extracted_html = "<article><p>Intro</p><p>Before</p><p>After</p></article>"
+    original_html = """
+    <html>
+      <body>
+        <p>Intro</p>
+        <section>
+          <div class="copy"><p>Before</p></div>
+          <div class="media-shell">
+            <div class="wrap">
+              <section class="duet--article--gallery">Gallery</section>
+            </div>
+          </div>
+        </section>
+        <p>After</p>
+      </body>
+    </html>
+    """
+    original_dom = lxml_html.fromstring(original_html)
+
+    updated = web_save_includes.apply_include_reinsertion(
+        extracted_html,
+        original_dom,
+        include_selectors=[".duet--article--gallery"],
+        removal_rules=[],
+    )
+
+    intro_index = updated.find("Intro")
+    before_index = updated.find("Before")
+    gallery_index = updated.find("Gallery")
+    after_index = updated.find("After")
+
+    assert intro_index < before_index < gallery_index < after_index
+
+
 def test_node_lookup_key_matches_same_element_across_queries():
     original_html = """
     <html>
