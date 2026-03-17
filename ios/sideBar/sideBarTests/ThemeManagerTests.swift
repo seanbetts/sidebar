@@ -3,6 +3,7 @@ import XCTest
 import sideBarShared
 @testable import sideBar
 
+@MainActor
 final class ThemeManagerTests: XCTestCase {
     private var isolatedDefaults: [TestIsolation.IsolatedUserDefaults] = []
     private static var retainedManagers: [ThemeManager] = []
@@ -37,7 +38,7 @@ final class ThemeManagerTests: XCTestCase {
         XCTAssertEqual(secondManager.mode, .system)
     }
 
-    func testModePublishesOffMainThreadWhenMutatedFromDetachedTask() async throws {
+    func testModePublishesOnMainThreadWhenMutatedFromDetachedTask() async throws {
         let (manager, _) = makeThemeManager()
         let expectation = expectation(description: "mode update published")
         let publicationThread = LockedBox<Bool?>(nil)
@@ -51,12 +52,14 @@ final class ThemeManagerTests: XCTestCase {
             .store(in: &cancellables)
 
         let task = Task.detached {
-            manager.mode = .dark
+            await MainActor.run {
+                manager.mode = .dark
+            }
         }
         _ = await task.value
 
         await fulfillment(of: [expectation], timeout: 1.0)
-        XCTAssertEqual(publicationThread.value, false)
+        XCTAssertEqual(publicationThread.value, true)
     }
 
     private func makeThemeManager() -> (ThemeManager, UserDefaults) {

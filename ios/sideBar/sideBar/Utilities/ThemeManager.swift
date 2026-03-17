@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+@MainActor
 public final class ThemeManager: ObservableObject {
     @Published public var mode: ThemeMode {
         didSet {
