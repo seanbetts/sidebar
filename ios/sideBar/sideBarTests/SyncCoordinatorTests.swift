@@ -83,7 +83,7 @@ final class SyncCoordinatorTests: XCTestCase {
         XCTAssertEqual(queue.pendingCount, 1)
     }
 
-    func testRefreshAllWaitsForFirstStoreBeforeStartingSecondStore() async {
+    func testRefreshAllStartsSecondStoreBeforeFirstStoreFinishes() async {
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
             startMonitoring: false
@@ -106,7 +106,8 @@ final class SyncCoordinatorTests: XCTestCase {
         }
 
         await fulfillment(of: [firstStore.started], timeout: 1.0)
-        XCTAssertEqual(secondStore.refreshCount, 0)
+        await fulfillment(of: [secondStore.started], timeout: 1.0)
+        XCTAssertEqual(secondStore.refreshCount, 1)
 
         firstStore.continueRefresh()
         await refreshTask.value
@@ -152,9 +153,11 @@ private final class BlockingSyncStore: SyncableStore {
 
 @MainActor
 private final class OrderedSyncStore: SyncableStore {
+    let started = XCTestExpectation(description: "ordered store started")
     private(set) var refreshCount = 0
 
     func refreshAll() async {
+        started.fulfill()
         refreshCount += 1
     }
 }

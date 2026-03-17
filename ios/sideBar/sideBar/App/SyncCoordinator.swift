@@ -49,8 +49,12 @@ final class SyncCoordinator {
     func refreshAll() async {
         guard isSyncAllowed() else { return }
         await writeQueue.processQueue()
-        for store in stores {
-            await store.refreshAll()
+        await withTaskGroup(of: Void.self) { group in
+            for store in stores {
+                group.addTask { @MainActor in
+                    await store.refreshAll()
+                }
+            }
         }
     }
 }
