@@ -121,9 +121,7 @@ extension SupabaseRealtimeAdapter {
             record: record,
             oldRecord: oldRecord
         )
-        Task { @MainActor [weak self] in
-            self?.handler?.handleNoteEvent(payload)
-        }
+        handler?.handleNoteEvent(payload)
     }
 
     func handleWebsiteInsert(_ action: RealtimeActionDecoding) {
@@ -252,9 +250,7 @@ extension SupabaseRealtimeAdapter {
             record: record,
             oldRecord: oldRecord
         )
-        Task { @MainActor [weak self] in
-            self?.handler?.handleWebsiteEvent(payload)
-        }
+        handler?.handleWebsiteEvent(payload)
     }
 
     private func notifyIngestedFileEvent(
@@ -269,9 +265,7 @@ extension SupabaseRealtimeAdapter {
             record: record,
             oldRecord: oldRecord
         )
-        Task { @MainActor [weak self] in
-            self?.handler?.handleIngestedFileEvent(payload)
-        }
+        handler?.handleIngestedFileEvent(payload)
     }
 
     private func notifyFileJobEvent(
@@ -286,9 +280,7 @@ extension SupabaseRealtimeAdapter {
             record: record,
             oldRecord: oldRecord
         )
-        Task { @MainActor [weak self] in
-            self?.handler?.handleFileJobEvent(payload)
-        }
+        handler?.handleFileJobEvent(payload)
     }
 
 }

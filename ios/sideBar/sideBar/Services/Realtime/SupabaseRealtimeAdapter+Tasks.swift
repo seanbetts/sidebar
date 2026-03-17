@@ -123,9 +123,7 @@ extension SupabaseRealtimeAdapter {
             record: record,
             oldRecord: oldRecord
         )
-        Task { @MainActor [weak self] in
-            self?.handler?.handleTaskEvent(payload)
-        }
+        handler?.handleTaskEvent(payload)
     }
 
     private func notifyTaskProjectEvent(
@@ -140,9 +138,7 @@ extension SupabaseRealtimeAdapter {
             record: record,
             oldRecord: oldRecord
         )
-        Task { @MainActor [weak self] in
-            self?.handler?.handleTaskProjectEvent(payload)
-        }
+        handler?.handleTaskProjectEvent(payload)
     }
 
     private func notifyTaskGroupEvent(
@@ -157,9 +153,7 @@ extension SupabaseRealtimeAdapter {
             record: record,
             oldRecord: oldRecord
         )
-        Task { @MainActor [weak self] in
-            self?.handler?.handleTaskGroupEvent(payload)
-        }
+        handler?.handleTaskGroupEvent(payload)
     }
 }
 

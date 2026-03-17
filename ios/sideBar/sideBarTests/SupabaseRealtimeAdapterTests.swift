@@ -6,10 +6,16 @@ import Supabase
 
 @MainActor
 final class SupabaseRealtimeAdapterTests: XCTestCase {
+    private static var retainedAdapters: [SupabaseRealtimeAdapter] = []
+    private static var retainedHandlers: [RecordingRealtimeHandler] = []
+
     func testHandleNoteInsertDispatchesPayload() async {
         let expectation = expectation(description: "note insert")
         let handler = RecordingRealtimeHandler(noteExpectation: expectation)
-        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting(), handler: handler)
+        let adapter = retain(
+            SupabaseRealtimeAdapter(config: .fallbackForTesting(), handler: handler),
+            handler: handler
+        )
         let record = NoteRealtimeRecord(
             id: "n1",
             title: "Title",
@@ -34,7 +40,10 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
     func testHandleWebsiteUpdateIncludesOldRecord() async {
         let expectation = expectation(description: "website update")
         let handler = RecordingRealtimeHandler(websiteExpectation: expectation)
-        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting(), handler: handler)
+        let adapter = retain(
+            SupabaseRealtimeAdapter(config: .fallbackForTesting(), handler: handler),
+            handler: handler
+        )
         let record = WebsiteRealtimeRecord(
             id: "w1",
             title: "New",
@@ -74,7 +83,10 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
     func testHandleFileJobDeleteUsesOldRecord() async {
         let expectation = expectation(description: "file job delete")
         let handler = RecordingRealtimeHandler(fileJobExpectation: expectation)
-        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting(), handler: handler)
+        let adapter = retain(
+            SupabaseRealtimeAdapter(config: .fallbackForTesting(), handler: handler),
+            handler: handler
+        )
         let old = FileJobRealtimeRecord(
             fileId: "f1",
             status: "failed",
@@ -96,7 +108,10 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
     func testHandleTaskUpdateIncludesOldRecord() async {
         let expectation = expectation(description: "task update")
         let handler = RecordingRealtimeHandler(taskExpectation: expectation)
-        let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting(), handler: handler)
+        let adapter = retain(
+            SupabaseRealtimeAdapter(config: .fallbackForTesting(), handler: handler),
+            handler: handler
+        )
         let record = TaskRealtimeRecord(
             id: "t1",
             title: "New title",
@@ -136,6 +151,28 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         XCTAssertEqual(payload?.table, RealtimeTable.tasks)
         XCTAssertEqual(payload?.record?.title, "New title")
         XCTAssertEqual(payload?.oldRecord?.title, "Old title")
+    }
+
+    func testHandleNoteInsertDeliversOnCurrentMainActorTurn() {
+        let handler = RecordingRealtimeHandler()
+        let adapter = retain(
+            SupabaseRealtimeAdapter(config: .fallbackForTesting(), handler: handler),
+            handler: handler
+        )
+        let record = NoteRealtimeRecord(
+            id: "n-sync",
+            title: "Title",
+            document: nil,
+            documentVersion: nil,
+            plainText: "Body",
+            metadata: nil,
+            updatedAt: nil,
+            deletedAt: nil
+        )
+
+        adapter.handleNoteInsert(MockAction(record: record))
+
+        XCTAssertEqual(handler.notePayload?.record?.id, "n-sync")
     }
 
     func testEnqueueTransitionRunsOperationsSeriallyInSubmissionOrder() async {
@@ -191,6 +228,15 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
         let adapter = SupabaseRealtimeAdapter(config: .fallbackForTesting())
 
         XCTAssertEqual(adapter.fileJobsFilter(userId: "user-123"), "user_id=eq.user-123")
+    }
+
+    private func retain(
+        _ adapter: SupabaseRealtimeAdapter,
+        handler: RecordingRealtimeHandler
+    ) -> SupabaseRealtimeAdapter {
+        Self.retainedAdapters.append(adapter)
+        Self.retainedHandlers.append(handler)
+        return adapter
     }
 }
 
