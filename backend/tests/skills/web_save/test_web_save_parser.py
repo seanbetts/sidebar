@@ -1957,6 +1957,26 @@ def test_apply_include_reinsertion_uses_ancestor_siblings_for_position():
     assert between_index < g2_index
 
 
+def test_node_lookup_key_matches_same_element_across_queries():
+    original_html = """
+    <html>
+      <body>
+        <div class="wrap"><section class="duet--article--gallery">G1</section></div>
+      </body>
+    </html>
+    """
+    original_dom = lxml_html.fromstring(original_html)
+    gallery = original_dom.cssselect(".duet--article--gallery")[0]
+    gallery_path = gallery.getroottree().getpath(gallery)
+    gallery_from_xpath = original_dom.xpath(gallery_path)[0]
+
+    assert web_save_includes._node_lookup_key(gallery) == gallery_path
+    assert (
+        web_save_includes._node_lookup_key(gallery)
+        == web_save_includes._node_lookup_key(gallery_from_xpath)
+    )
+
+
 def test_apply_include_reinsertion_verge_gallery_uses_paragraph_index():
     extracted_html = "<article><p>Repeat</p><p>Repeat</p><p>After</p></article>"
     original_html = """

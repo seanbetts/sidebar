@@ -18,6 +18,14 @@ def _safe_html_tree(html_text: str) -> lxml_html.HtmlElement:
     return tree
 
 
+def _node_lookup_key(node: lxml_html.HtmlElement) -> str | None:
+    """Return a traversal-stable key for a node within its source tree."""
+    try:
+        return node.getroottree().getpath(node)
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
 def apply_include_reinsertion(
     extracted_html: str,
     original_dom: lxml_html.HtmlElement,
@@ -26,7 +34,9 @@ def apply_include_reinsertion(
 ) -> str:
     """Reinsert forcibly included elements after Readability extraction."""
     extracted_tree = _safe_html_tree(extracted_html)
-    body = extracted_tree.find(".//body") or extracted_tree
+    body = extracted_tree.find(".//body")
+    if body is None:
+        body = extracted_tree
 
     def _element_order(tree: lxml_html.HtmlElement) -> dict[int, int]:
         return {
@@ -42,17 +52,27 @@ def apply_include_reinsertion(
         except Exception:
             continue
 
-    candidate_ids = {id(node): node for node in include_candidates}
+    candidate_keys = {
+        key: node
+        for node in include_candidates
+        if (key := _node_lookup_key(node)) is not None
+    }
     ordered_candidates = [
-        node for node in original_dom.iter() if id(node) in candidate_ids
+        node for node in original_dom.iter() if _node_lookup_key(node) in candidate_keys
     ]
     filtered_candidates: list[lxml_html.HtmlElement] = []
-    included_ids: set[int] = set()
+    included_keys: set[str] = set()
     for node in ordered_candidates:
-        if any(id(ancestor) in included_ids for ancestor in node.iterancestors()):
+        if any(
+            ancestor_key in included_keys
+            for ancestor in node.iterancestors()
+            if (ancestor_key := _node_lookup_key(ancestor)) is not None
+        ):
             continue
         filtered_candidates.append(node)
-        included_ids.add(id(node))
+        node_key = _node_lookup_key(node)
+        if node_key is not None:
+            included_keys.add(node_key)
 
     def _get_direct_item_text(list_node: lxml_html.HtmlElement) -> list[str]:
         """Get text of direct li children (not nested content)."""
@@ -336,8 +356,9 @@ def _find_by_position(
         }
         last_paragraph_index = None
         last_paragraph = None
+        original_node_key = _node_lookup_key(original_node)
         for elem in search_root.iter():
-            if elem is original_node:
+            if _node_lookup_key(elem) == original_node_key:
                 break
             if isinstance(elem.tag, str) and elem.tag == "p":
                 last_paragraph_index = paragraph_index.get(id(elem))
