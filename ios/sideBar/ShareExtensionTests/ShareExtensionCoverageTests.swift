@@ -183,6 +183,10 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertTrue(export.contains("item_provider_count=0"))
     }
 
+    func testShareNetworkMonitorUsesSharedSessionForConnectivityProbes() {
+        XCTAssertTrue(ShareNetworkMonitor.defaultSession() === URLSession.shared)
+    }
+
     private func findRepositoryRoot(filePath: String = #filePath) throws -> URL {
         var candidate = URL(fileURLWithPath: filePath).deletingLastPathComponent()
         while candidate.path != "/" {

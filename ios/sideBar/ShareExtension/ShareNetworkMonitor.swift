@@ -5,7 +5,7 @@ enum ShareNetworkMonitor {
     static func isOnline(
         timeout: TimeInterval = 0.3,
         probeURLs: [URL]? = nil,
-        session: URLSession = APIClient.makeDefaultSession()
+        session: URLSession = defaultSession()
     ) async -> Bool {
         let targets = probeURLs ?? defaultProbeURLs()
         guard !targets.isEmpty else { return true }
@@ -13,6 +13,10 @@ enum ShareNetworkMonitor {
             return true
         }
         return false
+    }
+
+    static func defaultSession() -> URLSession {
+        URLSession.shared
     }
 
     private static func probe(url: URL, timeout: TimeInterval, session: URLSession) async -> Bool {
