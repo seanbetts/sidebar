@@ -400,8 +400,15 @@ is_transient_simulator_infrastructure_failure() {
     }
   )"
 
+  if [[ "${combined_output}" == *"Failed to create a bundle instance representing"* ]] \
+    && [[ "${combined_output}" == *"Test crashed with signal kill."* ]]; then
+    return 0
+  fi
+
   [[ "${combined_output}" == *"Failed to install or launch the test runner"* ]] || return 1
   [[ "${combined_output}" == *"Mach error -308"* || "${combined_output}" == *"(ipc/mig) server died"* ]] || return 1
+
+  return 0
 }
 
 test_status=0

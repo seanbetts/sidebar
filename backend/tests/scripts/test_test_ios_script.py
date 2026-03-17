@@ -652,6 +652,81 @@ def test_non_transient_simulator_failures_do_not_retry_test_action(tmp_path: Pat
     assert "Detected transient simulator infrastructure failure" not in result.stdout
 
 
+def test_missing_test_bundle_after_signal_kill_retries_test_action(tmp_path: Path) -> None:
+    """Simulator-host teardown should retry when xcresult reports a missing test bundle after a kill."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    xcodebuild_log = tmp_path / "xcodebuild.log"
+    test_attempts = tmp_path / "test-attempts.txt"
+    result_bundle = tmp_path / "surface.xcresult"
+
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$*\" >> \"{xcodebuild_log}\"\n"
+        "if [[ \"$*\" == *\"-resolvePackageDependencies\"* ]]; then\n"
+        "  exit 0\n"
+        "fi\n"
+        f"attempt=$(cat \"{test_attempts}\" 2>/dev/null || echo 0)\n"
+        "attempt=$((attempt + 1))\n"
+        f"printf '%s' \"$attempt\" > \"{test_attempts}\"\n"
+        "mkdir -p \"$IOS_RESULT_BUNDLE_PATH\"\n"
+        "if [[ \"$attempt\" -eq 1 ]]; then\n"
+        "  exit 65\n"
+        "fi\n"
+        "exit 0\n",
+    )
+    write_executable(
+        bin_dir / "xcrun",
+        "#!/bin/bash\n"
+        "attempt=$(cat \"" + str(test_attempts) + "\" 2>/dev/null || echo 0)\n"
+        "if [[ \"$1 $2 $3\" == \"xcresulttool get test-results\" && \"$4\" == \"summary\" ]]; then\n"
+        "  if [[ \"$attempt\" -eq 1 ]]; then\n"
+        "    cat <<'EOF'\n"
+        '{"failedTests":2,"passedTests":29,"result":"Failed","testFailures":[{"failureText":"Failed to create a bundle instance representing \'/tmp/sideBar.app/PlugIns/sideBarTests.xctest\'. Check that the bundle exists on disk.","targetName":"sideBarTests","testIdentifierString":"sideBar encountered an error"},{"failureText":"Test crashed with signal kill.","targetName":"sideBarTests","testIdentifierString":"AppEnvironmentDeepLinkTests/testHandleSignedInActivationConsumesExtensionEvents()"}],"totalTestCount":31}\n'
+        "EOF\n"
+        "  else\n"
+        "    cat <<'EOF'\n"
+        '{"totalTestCount":31,"passedTests":31,"failedTests":0,"skippedTests":0,"result":"Passed"}\n'
+        "EOF\n"
+        "  fi\n"
+        "  exit 0\n"
+        "fi\n"
+        "if [[ \"$1 $2\" == \"xcresulttool get\" && \"$3\" == \"build-results\" ]]; then\n"
+        "  cat <<'EOF'\n"
+        '{"status":"succeeded","errorCount":0}\n'
+        "EOF\n"
+        "  exit 0\n"
+        "fi\n"
+        "exit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_DESTINATION": "platform=iOS Simulator,name=iPhone 17 Pro",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+            "IOS_RESULT_BUNDLE_PATH": str(result_bundle),
+        }
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    log_lines = xcodebuild_log.read_text().splitlines()
+    assert len(log_lines) == 3
+    assert sum(" test" in line for line in log_lines) == 2
+    assert "Detected transient simulator infrastructure failure" in result.stdout
+
+
 def test_exit_73_with_zero_executed_tests_does_not_pass(tmp_path: Path) -> None:
     """Exit 73 should remain fatal when the xcresult contains no executed tests."""
     bin_dir = tmp_path / "bin"
