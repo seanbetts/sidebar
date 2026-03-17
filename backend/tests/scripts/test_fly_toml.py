@@ -1,0 +1,13 @@
+"""Guardrails for Fly runtime configuration."""
+
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+FLY_TOML = REPO_ROOT / "backend" / "fly.toml"
+
+
+def test_fly_defaults_ytdlp_js_runtimes_to_deno_then_node() -> None:
+    contents = FLY_TOML.read_text(encoding="utf-8")
+
+    assert 'YT_DLP_JS_RUNTIMES = "deno,node"' in contents
