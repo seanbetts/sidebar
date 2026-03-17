@@ -14,6 +14,12 @@
       "branch_policy": "dev"
     },
     {
+      "path": "ios/sideBar/sideBarTests/AppEnvironmentActiveAuthRefreshTests.swift",
+      "bucket": "surface",
+      "feature_area": "app_shell",
+      "branch_policy": "main"
+    },
+    {
       "path": "ios/sideBar/sideBarTests/AppEnvironmentActivationReplayTests.swift",
       "bucket": "surface",
       "feature_area": "app_shell",
@@ -573,6 +579,12 @@
     },
     {
       "path": "ios/sideBar/sideBarTests/NotesDetailViewFormattingBarTests.swift",
+      "bucket": "surface",
+      "feature_area": "notes",
+      "branch_policy": "main"
+    },
+    {
+      "path": "ios/sideBar/sideBarTests/NotesDetailViewFormattingBarViewportTests.swift",
       "bucket": "surface",
       "feature_area": "notes",
       "branch_policy": "main"
