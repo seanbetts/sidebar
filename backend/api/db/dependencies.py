@@ -9,7 +9,7 @@ from sqlalchemy import text
 
 from api.auth import bearer_scheme
 from api.config import settings
-from api.models.user_settings import UserSettings
+from api.services.user_settings_service import UserSettingsService
 from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 
 _LOCAL_APP_ENVS = {"local", "dev", "development", "test", "testing"}
@@ -85,20 +85,16 @@ async def get_current_user_id(
 
         with SessionLocal() as db:
             db.execute(text("SET app.pat_token = :token"), {"token": token})
-            record = (
-                db.query(UserSettings)
-                .filter(UserSettings.shortcuts_pat == token)
-                .first()
-            )
-        if not record:
+            pat_user_id = UserSettingsService.get_user_id_for_shortcuts_pat(db, token)
+        if not pat_user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        request.state.user_id = record.user_id
-        _persist_local_active_user_id(str(record.user_id))
-        return record.user_id
+        request.state.user_id = pat_user_id
+        _persist_local_active_user_id(pat_user_id)
+        return pat_user_id
 
     validator = SupabaseJWTValidator()
     try:

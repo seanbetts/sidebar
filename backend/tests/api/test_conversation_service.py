@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import event
+
 from api.services.conversation_service import ConversationService
 
 
@@ -202,6 +204,51 @@ def test_search_conversations_ignores_hidden_messages(db_session):
 
     assert all(item.id != hidden_only.id for item in hidden_results)
     assert any(item.id == visible_match.id for item in visible_results)
+
+
+def test_search_conversations_matches_first_message_without_loading_messages_json(
+    db_session,
+):
+    conversation = ConversationService.create_conversation(
+        db_session,
+        "user-1",
+        "Other Chat",
+    )
+    ConversationService.add_message(
+        db_session,
+        "user-1",
+        conversation.id,
+        {
+            "id": "msg-first-1",
+            "role": "assistant",
+            "content": "Delta response",
+            "status": "complete",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "toolCalls": [],
+        },
+    )
+
+    statements: list[str] = []
+
+    def record_statement(
+        _conn, _cursor, statement, _parameters, _context, _executemany
+    ):
+        if statement.lstrip().upper().startswith("SELECT"):
+            statements.append(statement)
+
+    event.listen(db_session.bind, "before_cursor_execute", record_statement)
+    try:
+        results = ConversationService.search_conversations(
+            db_session,
+            "user-1",
+            "Delta",
+            limit=10,
+        )
+    finally:
+        event.remove(db_session.bind, "before_cursor_execute", record_statement)
+
+    assert any(item.id == conversation.id for item in results)
+    assert all("messages" not in statement.lower() for statement in statements)
 
 
 def test_archive_conversation_excluded_from_list(db_session):

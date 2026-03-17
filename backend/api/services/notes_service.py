@@ -18,6 +18,7 @@ from api.services.notes_helpers import ensure_note_no_conflict
 from api.services.notes_title import derive_note_title
 from api.services.notes_write_contract import build_canonical_note_write
 from api.utils.pinned_order import lock_pinned_order
+from api.utils.search import build_text_search_filter
 
 
 class NotesService:
@@ -551,7 +552,9 @@ class NotesService:
             query = query.filter(Note.last_opened_at <= filters.opened_before)
 
         if filters.title_search:
-            query = query.filter(Note.title.ilike(f"%{filters.title_search}%"))
+            query = query.filter(
+                build_text_search_filter([Note.title], filters.title_search)
+            )
 
         query = query.order_by(Note.updated_at.desc())
         if offset:

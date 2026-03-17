@@ -19,6 +19,7 @@ from api.models.task import Task
 from api.models.task_group import TaskGroup
 from api.models.task_project import TaskProject
 from api.services.recurrence_service import RecurrenceService
+from api.utils.search import build_text_search_filter
 from api.utils.validation import parse_optional_uuid, parse_uuid
 
 
@@ -420,10 +421,7 @@ class TaskService:
                 Task.deleted_at.is_(None),
                 Task.status != "trashed",
                 Task.status != "completed",
-                or_(
-                    Task.title.ilike(f"%{query}%"),
-                    Task.notes.ilike(f"%{query}%"),
-                ),
+                build_text_search_filter([Task.title, Task.notes], query),
             )
             .order_by(Task.updated_at.desc())
             .all()

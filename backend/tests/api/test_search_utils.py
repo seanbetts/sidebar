@@ -50,3 +50,23 @@ def test_build_text_search_filter_case_sensitive(test_db):
     results = test_db.query(Note).filter(Note.user_id == "user-1", search_filter).all()
 
     assert {note.title for note in results} == {"Alpha"}
+
+
+def test_build_text_search_filter_escapes_percent_literal(test_db):
+    _create_note(test_db, "user-1", "Budget 100% complete")
+    _create_note(test_db, "user-1", "Budget 100 percent complete")
+
+    search_filter = build_text_search_filter([Note.title], "%")
+    results = test_db.query(Note).filter(Note.user_id == "user-1", search_filter).all()
+
+    assert [note.title for note in results] == ["Budget 100% complete"]
+
+
+def test_build_text_search_filter_escapes_underscore_literal(test_db):
+    _create_note(test_db, "user-1", "File_1")
+    _create_note(test_db, "user-1", "FileA1")
+
+    search_filter = build_text_search_filter([Note.title], "_")
+    results = test_db.query(Note).filter(Note.user_id == "user-1", search_filter).all()
+
+    assert [note.title for note in results] == ["File_1"]

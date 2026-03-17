@@ -1,7 +1,15 @@
 """Tests for authentication middleware."""
 
 import pytest
+from fastapi import HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
+from starlette.requests import Request
+
+from api.auth import verify_bearer_token
 from api.config import settings
+from api.db.dependencies import get_current_user_id
+from api.main import root
+from api.services.user_settings_service import UserSettingsService
 
 
 def _error_message(response) -> str:
@@ -118,7 +126,6 @@ class TestAuthenticationMiddleware:
         assert "WWW-Authenticate" in response.headers
         assert response.headers["WWW-Authenticate"] == "Bearer"
 
-
 class TestAuthenticationEdgeCases:
     """Test edge cases in authentication."""
 
@@ -187,3 +194,71 @@ class TestAuthenticationWithMCP:
         )
         # Should not be 401 (might be 200 or other, but not unauthorized)
         assert response.status_code != 401
+
+
+@pytest.mark.asyncio
+async def test_root_payload_omits_write_allowlist():
+    """Root payload should not expose writable server paths."""
+    payload = await root()
+
+    assert "write_allowlist" not in payload["security"]
+
+
+@pytest.mark.asyncio
+async def test_verify_bearer_token_uses_pat_service_lookup(test_db, monkeypatch):
+    """PAT validation should delegate to the shared user settings service."""
+    token = "sb_pat_test_verify_token"
+    UserSettingsService.upsert_settings(test_db, "user-1", shortcuts_pat=token)
+    request = Request({"type": "http", "headers": []})
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+    service_calls: list[str] = []
+    original = UserSettingsService.get_user_id_for_shortcuts_pat
+
+    def spy(db, supplied_token: str):
+        service_calls.append(supplied_token)
+        return original(db, supplied_token)
+
+    monkeypatch.setattr(UserSettingsService, "get_user_id_for_shortcuts_pat", spy)
+
+    payload = await verify_bearer_token(request, credentials)
+
+    assert payload == {"sub": "user-1"}
+    assert request.state.user_id == "user-1"
+    assert service_calls == [token]
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_id_uses_pat_service_lookup(test_db, monkeypatch):
+    """Dependency PAT validation should delegate to the shared user settings service."""
+    token = "sb_pat_test_dependency_token"
+    UserSettingsService.upsert_settings(test_db, "user-1", shortcuts_pat=token)
+    request = Request({"type": "http", "headers": []})
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+    service_calls: list[str] = []
+    original = UserSettingsService.get_user_id_for_shortcuts_pat
+
+    def spy(db, supplied_token: str):
+        service_calls.append(supplied_token)
+        return original(db, supplied_token)
+
+    monkeypatch.setattr(UserSettingsService, "get_user_id_for_shortcuts_pat", spy)
+
+    user_id = await get_current_user_id(request, credentials)
+
+    assert user_id == "user-1"
+    assert service_calls == [token]
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_id_rejects_invalid_pat(test_db):
+    """Invalid PAT tokens should still be rejected."""
+    request = Request({"type": "http", "headers": []})
+    credentials = HTTPAuthorizationCredentials(
+        scheme="Bearer", credentials="sb_pat_missing_token"
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_current_user_id(request, credentials)
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail == "Invalid API token"

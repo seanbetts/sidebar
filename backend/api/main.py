@@ -27,7 +27,6 @@ from api.middleware.error_handler import (
     unhandled_exception_handler,
 )
 from api.middleware.metrics import MetricsMiddleware
-from api.models.user_settings import UserSettings
 from api.routers import (
     chat,
     conversations,
@@ -50,6 +49,7 @@ from api.routers import settings as user_settings
 from api.security.path_validator import PathValidator
 from api.services.agent.skills.executor import SkillExecutor
 from api.services.knowledge.provider import init_docs_indexer
+from api.services.user_settings_service import UserSettingsService
 from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 
 sentry_fastapi_module: ModuleType | None
@@ -242,19 +242,15 @@ async def auth_middleware(request: Request, call_next):
 
             with SessionLocal() as db:
                 db.execute(text("SET app.pat_token = :token"), {"token": token})
-                settings_record = (
-                    db.query(UserSettings)
-                    .filter(UserSettings.shortcuts_pat == token)
-                    .first()
-                )
-            if not settings_record:
+                user_id = UserSettingsService.get_user_id_for_shortcuts_pat(db, token)
+            if not user_id:
                 return _auth_error(
                     401,
                     "INVALID_API_TOKEN",
                     "Invalid API token",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            request.state.user_id = settings_record.user_id
+            request.state.user_id = user_id
         else:
             validator = SupabaseJWTValidator()
             payload = await validator.validate_token(token)
@@ -351,6 +347,5 @@ async def root():
         "security": {
             "auth": "Unified bearer token for all endpoints",
             "path_jailing": "All paths restricted to the configured storage root",
-            "write_allowlist": settings.writable_paths,
         },
     }

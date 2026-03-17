@@ -288,7 +288,7 @@ class ConversationService:
         query: str,
         limit: int = 10,
     ) -> list[Conversation]:
-        """Search conversations by title, first message, or message content.
+        """Search conversations by title or first visible message.
 
         Args:
             db: Database session.
@@ -299,8 +299,19 @@ class ConversationService:
         Returns:
             List of matching conversations.
         """
-        conversations = (
+        return (
             db.query(Conversation)
+            .options(
+                load_only(
+                    Conversation.id,
+                    Conversation.title,
+                    Conversation.title_generated,
+                    Conversation.created_at,
+                    Conversation.updated_at,
+                    Conversation.message_count,
+                    Conversation.first_message,
+                )
+            )
             .filter(
                 Conversation.user_id == user_id,
                 Conversation.is_archived.is_(False),
@@ -313,45 +324,3 @@ class ConversationService:
             .limit(limit)
             .all()
         )
-
-        message_candidates = (
-            db.query(Conversation)
-            .options(
-                load_only(
-                    Conversation.id,
-                    Conversation.title,
-                    Conversation.title_generated,
-                    Conversation.created_at,
-                    Conversation.updated_at,
-                    Conversation.message_count,
-                    Conversation.first_message,
-                    Conversation.messages,
-                )
-            )
-            .filter(
-                Conversation.user_id == user_id,
-                Conversation.is_archived.is_(False),
-            )
-            .order_by(Conversation.updated_at.desc())
-            .all()
-        )
-
-        normalized_query = query.casefold()
-        message_matches: list[Conversation] = []
-        seen_ids = {str(item.id) for item in conversations}
-        for conversation in message_candidates:
-            if str(conversation.id) in seen_ids:
-                continue
-
-            if any(
-                normalized_query in str(message.get("content", "")).casefold()
-                for message in cls.visible_messages(conversation.messages)
-            ):
-                message_matches.append(conversation)
-
-        all_matches = {str(item.id): item for item in conversations + message_matches}
-        return sorted(
-            all_matches.values(),
-            key=lambda item: item.updated_at,
-            reverse=True,
-        )[:limit]

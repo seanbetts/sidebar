@@ -1,6 +1,7 @@
 """Tasks router."""
 # ruff: noqa: B008
 
+import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends
@@ -22,6 +23,7 @@ from api.services.tasks_snapshot_service import TasksSnapshotService
 from api.services.user_settings_service import UserSettingsService
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+logger = logging.getLogger(__name__)
 
 
 def _task_payload(task) -> dict:
@@ -104,7 +106,7 @@ def _update_snapshot_background(user_id: str, today_payload: dict) -> None:
             )
             UserSettingsService.update_tasks_snapshot(db, user_id, snapshot)
         except Exception:
-            return
+            logger.exception("Snapshot update failed for user %s", user_id)
 
 
 @router.get("/lists/{scope}")

@@ -1,6 +1,7 @@
 import os
 from datetime import UTC, date, datetime, timedelta
 
+from api.routers import tasks as tasks_router
 from api.config import settings
 from api.models.task import Task
 from api.models.task_group import TaskGroup
@@ -81,6 +82,40 @@ def test_tasks_search(test_client, test_db):
     assert response.status_code == 200
     payload = response.json()
     assert any(item["title"] == "Find me" for item in payload.get("tasks", []))
+
+
+def test_tasks_search_escapes_like_wildcards(test_client, test_db):
+    test_db.add_all(
+        [
+            Task(
+                user_id=TEST_USER_ID,
+                title="Literal 100% match",
+                notes="Contains a percent sign",
+                status="active",
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            ),
+            Task(
+                user_id=TEST_USER_ID,
+                title="Plain task",
+                notes="No wildcard characters",
+                status="active",
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            ),
+        ]
+    )
+    test_db.commit()
+
+    response = test_client.get(
+        "/api/v1/tasks/search",
+        params={"query": "%"},
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["title"] for item in payload["tasks"]] == ["Literal 100% match"]
 
 
 def test_tasks_counts(test_client, test_db):
@@ -199,6 +234,36 @@ def test_tasks_apply_idempotent(test_client, test_db):
     payload_second = second.json()
     assert payload_second["applied"] == ["op-1"]
     assert payload_second["tasks"] == []
+
+
+def test_today_tasks_snapshot_logs_background_failures(
+    test_client, test_db, monkeypatch, caplog
+):
+    task = Task(
+        user_id=TEST_USER_ID,
+        title="Today task",
+        status="active",
+        deadline=date.today(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(task)
+    test_db.commit()
+
+    def fail_snapshot(*_args, **_kwargs):
+        raise RuntimeError("snapshot boom")
+
+    monkeypatch.setattr(
+        tasks_router.UserSettingsService,
+        "update_tasks_snapshot",
+        fail_snapshot,
+    )
+    caplog.set_level("ERROR", logger="api.routers.tasks")
+
+    response = test_client.get("/api/v1/tasks/lists/today", headers=_auth_headers())
+
+    assert response.status_code == 200
+    assert "Snapshot update failed for user" in caplog.text
 
 
 def test_tasks_sync_returns_updates(test_client, test_db):

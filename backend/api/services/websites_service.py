@@ -709,7 +709,9 @@ class WebsitesService:
             query = query.filter(Website.published_at <= filters.published_before)
 
         if filters.title_search:
-            query = query.filter(Website.title.ilike(f"%{filters.title_search}%"))
+            query = query.filter(
+                build_text_search_filter([Website.title], filters.title_search)
+            )
 
         query = query.order_by(
             Website.saved_at.desc().nullslast(), Website.created_at.desc()

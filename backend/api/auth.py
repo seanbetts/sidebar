@@ -7,7 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 
 from api.config import settings
-from api.models.user_settings import UserSettings
+from api.services.user_settings_service import UserSettingsService
 from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 
 # Unified bearer authentication (Supabase JWTs)
@@ -44,19 +44,15 @@ async def verify_bearer_token(
 
         with SessionLocal() as db:
             db.execute(text("SET app.pat_token = :token"), {"token": token})
-            record = (
-                db.query(UserSettings)
-                .filter(UserSettings.shortcuts_pat == token)
-                .first()
-            )
-        if not record:
+            user_id = UserSettingsService.get_user_id_for_shortcuts_pat(db, token)
+        if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        request.state.user_id = record.user_id
-        return {"sub": record.user_id}
+        request.state.user_id = user_id
+        return {"sub": user_id}
 
     validator = SupabaseJWTValidator()
     try:
