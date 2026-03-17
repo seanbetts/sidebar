@@ -186,11 +186,11 @@ def _initialize_worker_sentry() -> None:
 
 def _report_website_transcript_final_failure(
     db, job: FileProcessingJob, error: IngestionError, *, failure_stage: str
-) -> None:
+) -> bool:
     record = _get_file(db, job)
     transcript_target = _get_transcript_target(record) if record else None
     if record is None or transcript_target is None:
-        return
+        return False
 
     website_id, youtube_url = transcript_target
     WebsiteTranscriptService.update_transcript_status(
@@ -205,8 +205,8 @@ def _report_website_transcript_final_failure(
     FileIngestionService.soft_delete_file(db, record.id)
 
     try:
-        with sentry_sdk.push_scope() as scope:
-            scope.user = {"id": str(record.user_id)}
+        with sentry_sdk.new_scope() as scope:
+            scope.set_user({"id": str(record.user_id)})
             scope.fingerprint = [
                 "website-youtube-transcript-failed",
                 error.code,
@@ -226,6 +226,7 @@ def _report_website_transcript_final_failure(
             "Failed to report website transcript failure to Sentry file_id=%s",
             record.id,
         )
+    return True
 
 
 _audio_transcriber: Callable[..., dict] | None = None
@@ -643,10 +644,11 @@ def _retry_or_fail(db, job: FileProcessingJob, error: IngestionError) -> None:
     job.stage = "failed"
     job.finished_at = _now()
     db.commit()
-    _report_website_transcript_final_failure(
+    handled_website_transcript_failure = _report_website_transcript_final_failure(
         db, job, error, failure_stage=failure_stage
     )
-    logger.error(
+    log_fn = logger.warning if handled_website_transcript_failure else logger.error
+    log_fn(
         "Job failed file_id=%s attempt=%s code=%s message=%s",
         job.file_id,
         job.attempts,
@@ -919,6 +921,7 @@ def _transcribe_youtube(
             or "not a bot" in lowered
             or "cookies-from-browser" in lowered
             or "po token" in lowered
+            or "blocked anonymous download" in lowered
         ):
             raise IngestionError(
                 "VIDEO_DOWNLOAD_FORBIDDEN", message, retryable=False

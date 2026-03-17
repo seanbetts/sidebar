@@ -203,6 +203,8 @@ def test_final_website_transcript_failure_reports_sentry_once(test_db, monkeypat
     extras: dict[str, str] = {}
     user_context: dict[str, str] = {}
     fingerprint: list[str] = []
+    warning_logs: list[str] = []
+    error_logs: list[str] = []
 
     class _Scope:
         def __enter__(self):
@@ -217,12 +219,7 @@ def test_final_website_transcript_failure_reports_sentry_once(test_db, monkeypat
         def set_extra(self, key, value):
             extras[key] = str(value)
 
-        @property
-        def user(self):
-            return user_context
-
-        @user.setter
-        def user(self, value):
+        def set_user(self, value):
             user_context.clear()
             user_context.update(value)
 
@@ -234,13 +231,28 @@ def test_final_website_transcript_failure_reports_sentry_once(test_db, monkeypat
         def fingerprint(self, value):
             fingerprint[:] = [str(item) for item in value]
 
-    monkeypatch.setattr(ingestion_worker.sentry_sdk, "push_scope", lambda: _Scope())
+    monkeypatch.setattr(ingestion_worker.sentry_sdk, "new_scope", lambda: _Scope())
+    monkeypatch.setattr(
+        ingestion_worker.sentry_sdk,
+        "push_scope",
+        lambda: pytest.fail("push_scope should not be used"),
+    )
     monkeypatch.setattr(
         ingestion_worker.sentry_sdk,
         "capture_message",
         lambda message, *, level=None: sentry_messages.append(
             {"message": message, "level": str(level)}
         ),
+    )
+    monkeypatch.setattr(
+        ingestion_worker.logger,
+        "warning",
+        lambda message, *args: warning_logs.append(message % args if args else message),
+    )
+    monkeypatch.setattr(
+        ingestion_worker.logger,
+        "error",
+        lambda message, *args: error_logs.append(message % args if args else message),
     )
 
     def fake_update_transcript_status(
@@ -304,6 +316,8 @@ def test_final_website_transcript_failure_reports_sentry_once(test_db, monkeypat
         "website-youtube-transcript-failed",
         "VIDEO_DOWNLOAD_FORBIDDEN",
     ]
+    assert any(message.startswith("Job failed file_id=") for message in warning_logs)
+    assert error_logs == []
 
 
 def test_initialize_worker_sentry_uses_backend_settings(monkeypatch):
@@ -501,6 +515,33 @@ def test_transcribe_youtube_sign_in_required_is_non_retryable(test_db, monkeypat
 
     assert exc_info.value.code == "VIDEO_DOWNLOAD_FORBIDDEN"
     assert exc_info.value.retryable is False
+
+
+def test_transcribe_youtube_blocked_anonymous_download_is_non_retryable(
+    test_db, monkeypatch
+):
+    file_id = uuid4()
+    record = _make_youtube_ingested_file(test_db, file_id)
+    error_logs: list[str] = []
+
+    def fake_transcriber(*_args, **_kwargs):
+        raise RuntimeError("YouTube blocked anonymous download for this video")
+
+    monkeypatch.setattr(
+        ingestion_worker, "_load_youtube_transcriber", lambda: fake_transcriber
+    )
+    monkeypatch.setattr(
+        ingestion_worker.logger,
+        "error",
+        lambda message, *args: error_logs.append(message % args if args else message),
+    )
+
+    with pytest.raises(ingestion_worker.IngestionError) as exc_info:
+        ingestion_worker._transcribe_youtube(record, upload_transcript=False)
+
+    assert exc_info.value.code == "VIDEO_DOWNLOAD_FORBIDDEN"
+    assert exc_info.value.retryable is False
+    assert error_logs == []
 
 
 def test_classify_unexpected_error_maps_storage_tls_failure():
