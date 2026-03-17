@@ -357,6 +357,32 @@ XCODEBUILD_ARGS+=(-disableAutomaticPackageResolution)
 
 prepare_target_simulator
 
+ui_only_lane_executed_zero_runnable_tests() {
+  local test_results_summary="$1"
+
+  python3 - "$test_results_summary" <<'PY'
+import json
+import sys
+
+raw = sys.argv[1]
+if not raw.strip():
+    sys.exit(0)
+
+try:
+    payload = json.loads(raw)
+except json.JSONDecodeError:
+    sys.exit(0)
+
+total = int(payload.get("totalTestCount", 0) or 0)
+skipped = int(payload.get("skippedTests", 0) or 0)
+
+if total == 0 or (total > 0 and skipped == total):
+    sys.exit(0)
+
+sys.exit(1)
+PY
+}
+
 is_transient_simulator_infrastructure_failure() {
   local output_path="$1"
   local test_results_summary="$2"
@@ -409,6 +435,22 @@ while [[ ${test_attempt} -le ${IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT} ]]; 
   fi
 
   if [[ ${test_status} -eq 0 ]]; then
+    if [[ "${lane_includes_ui_tests}" == "YES" ]] && scheme_has_only_ui_tests "${IOS_EXECUTION_SCHEME}" \
+      && [[ -n "${IOS_RESULT_BUNDLE_PATH}" && -d "${IOS_RESULT_BUNDLE_PATH}" ]]; then
+      test_results_summary="$(xcrun xcresulttool get test-results summary --path "${IOS_RESULT_BUNDLE_PATH}" --compact || true)"
+      if ui_only_lane_executed_zero_runnable_tests "${test_results_summary}"; then
+        echo "UI-only lane executed zero runnable tests because all selected UI tests were skipped."
+        echo "xcodebuild test summary:"
+        echo "${test_results_summary}"
+        test_status=1
+      fi
+    fi
+
+    if [[ ${test_status} -eq 0 ]]; then
+      rm -f "${xcodebuild_output_file}"
+      break
+    fi
+
     rm -f "${xcodebuild_output_file}"
     break
   fi

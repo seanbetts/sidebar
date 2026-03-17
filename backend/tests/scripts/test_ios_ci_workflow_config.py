@@ -303,6 +303,25 @@ def test_ios_ci_ui_lane_receives_explicit_ui_test_secrets() -> None:
     assert env["SUPABASE_ANON_KEY"] == "${{ secrets.SUPABASE_ANON_KEY }}"
 
 
+def test_ui_lane_writes_runtime_secrets_file_for_xctest_process() -> None:
+    """UI workflows should materialize `.ui-test-secrets.local` before invoking xcodebuild."""
+    workflows_and_jobs = [
+        (_main_workflow(), "ios_test_main"),
+        (_dispatch_workflow(), "ios_test_dispatch"),
+    ]
+
+    for workflow, job_name in workflows_and_jobs:
+        step = _job_step(workflow, job_name, "Write UI test secrets file")
+        script = step["run"]
+
+        assert "ios/sideBar/.ui-test-secrets.local" in script
+        assert "SIDEBAR_UI_TEST_EMAIL=${SIDEBAR_UI_TEST_EMAIL}" in script
+        assert "SIDEBAR_UI_TEST_PASSWORD=${SIDEBAR_UI_TEST_PASSWORD}" in script
+        assert "SIDEBAR_UI_TEST_API_BASE_URL=${API_BASE_URL}" in script
+        assert "SIDEBAR_UI_TEST_SUPABASE_URL=${SUPABASE_URL}" in script
+        assert "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}" in script
+
+
 def test_ios_ci_ipad_lanes_use_the_dedicated_pre_push_simulator() -> None:
     """Shared-Mac iPad lanes should route through the dedicated pre-push simulator helper."""
     workflows_and_jobs = [

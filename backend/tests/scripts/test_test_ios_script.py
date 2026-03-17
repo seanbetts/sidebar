@@ -709,6 +709,63 @@ def test_exit_73_with_zero_executed_tests_does_not_pass(tmp_path: Path) -> None:
     assert "xcodebuild failed (exit 73). xcresult summary:" in result.stdout
 
 
+def test_ui_only_lane_fails_when_all_selected_ui_tests_are_skipped(tmp_path: Path) -> None:
+    """UI-only lanes should fail when the test runner skips every selected smoke test."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    result_bundle = tmp_path / "ui-skipped.xcresult"
+
+    write_executable(
+        bin_dir / "xcodebuild",
+        "#!/bin/bash\n"
+        "if [[ \"$*\" == *\"-resolvePackageDependencies\"* ]]; then\n"
+        "  exit 0\n"
+        "fi\n"
+        "mkdir -p \"$IOS_RESULT_BUNDLE_PATH\"\n"
+        "exit 0\n",
+    )
+    write_executable(
+        bin_dir / "xcrun",
+        "#!/bin/bash\n"
+        "if [[ \"$1 $2 $3\" == \"xcresulttool get test-results\" && \"$4\" == \"summary\" ]]; then\n"
+        "  cat <<'EOF'\n"
+        '{\"totalTestCount\":5,\"passedTests\":0,\"failedTests\":0,\"skippedTests\":5,\"result\":\"Passed\"}\n'
+        "EOF\n"
+        "  exit 0\n"
+        "fi\n"
+        "exit 0\n",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "IOS_SCHEME": "sideBarUI",
+            "IOS_ONLY_TESTING": "sideBarUITests/SideBarUITests,sideBarUITests/SideBarUITestsLaunchTests",
+            "IOS_DESTINATION": "platform=iOS Simulator,name=iPad Pro 13-inch (M5)",
+            "IOS_ENABLE_CODE_COVERAGE": "NO",
+            "IOS_RESULT_BUNDLE_PATH": str(result_bundle),
+            "SIDEBAR_UI_TEST_API_BASE_URL": "https://api.sidebar.example/api/v1",
+            "SIDEBAR_UI_TEST_SUPABASE_URL": "https://sidebar.supabase.co",
+            "SIDEBAR_UI_TEST_SUPABASE_ANON_KEY": "anon-key",
+            "SIDEBAR_UI_TEST_EMAIL": "tester@example.com",
+            "SIDEBAR_UI_TEST_PASSWORD": "super-secret",
+        }
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "UI-only lane executed zero runnable tests because all selected UI tests were skipped." in result.stdout
+
+
 def test_test_ios_script_has_no_apple_sentry_package_manager_bootstrap() -> None:
     """The Apple test harness should not bootstrap Sentry through a package manager."""
     script = SCRIPT_PATH.read_text(encoding="utf-8").lower()

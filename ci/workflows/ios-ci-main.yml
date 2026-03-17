@@ -182,6 +182,23 @@ jobs:
             --only-testing "${IOS_ONLY_TESTING}" \
             --skip-testing "${{ matrix.skip_testing }}" \
             --allowed-macos-targets "sideBarTests"
+      - name: Write UI test secrets file (${{ matrix.label }})
+        if: ${{ matrix.lane == 'ui' }}
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SIDEBAR_UI_TEST_EMAIL: ${{ secrets.SIDEBAR_UI_TEST_EMAIL }}
+          SIDEBAR_UI_TEST_PASSWORD: ${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}
+        run: |
+          umask 077
+          cat > ios/sideBar/.ui-test-secrets.local <<EOF
+          SIDEBAR_UI_TEST_EMAIL=${SIDEBAR_UI_TEST_EMAIL}
+          SIDEBAR_UI_TEST_PASSWORD=${SIDEBAR_UI_TEST_PASSWORD}
+          SIDEBAR_UI_TEST_API_BASE_URL=${API_BASE_URL}
+          SIDEBAR_UI_TEST_SUPABASE_URL=${SUPABASE_URL}
+          SIDEBAR_UI_TEST_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+          EOF
       - name: Run tests (${{ matrix.label }})
         env:
           IOS_SCHEME: ${{ matrix.scheme }}
