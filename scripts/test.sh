@@ -14,8 +14,16 @@ run_frontend() {
 }
 
 run_ios() {
-  echo "Running iOS tests..."
-  ./scripts/test-ios.sh
+  echo "Running iOS logic tests..."
+  xcodebuild test \
+    -project ios/sideBar/sideBar.xcodeproj \
+    -scheme sideBarLogicHost \
+    -testPlan AppleFast \
+    -destination 'platform=macOS' \
+    -parallel-testing-enabled NO \
+    CODE_SIGNING_ALLOWED=NO \
+    CODE_SIGNING_REQUIRED=NO \
+    CODE_SIGN_IDENTITY=
 }
 
 case "${TARGET}" in
