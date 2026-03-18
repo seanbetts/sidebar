@@ -23,7 +23,7 @@ Options:
   --remote <name>       Git remote (default: origin)
   --dev <branch>        Dev branch name (default: dev)
   --main <branch>       Main branch name (default: main)
-  --run-ios-tests       Run scripts/test-ios.sh before promotion
+  --run-ios-tests       Run iOS logic tests before promotion
   --export-options-plist <path>
                         ExportOptions.plist for macOS archive/export widget verification
   -h, --help            Show this help
