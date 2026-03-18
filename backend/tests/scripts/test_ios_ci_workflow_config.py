@@ -286,6 +286,7 @@ def test_surface_ui_and_extensions_use_expected_schemes() -> None:
     assert _matrix_entry("surface")["test_plan"] == "AppleStateful"
     assert _matrix_entry("ui")["scheme"] == "sideBarUI"
     assert _matrix_entry("ui")["test_plan"] == "AppleUI"
+    assert _matrix_entry("ui")["destination"] == "platform=iOS Simulator,name=iPhone 17 Pro"
     assert _matrix_entry("extensions")["scheme"] == "sideBarExtensions"
     assert _matrix_entry("extensions")["test_plan"] == "AppleExtensions"
 
@@ -345,7 +346,7 @@ def test_ios_ci_ipad_lanes_use_the_dedicated_pre_push_simulator() -> None:
     pre_push_entry_ids = {
         entry["id"] for entry in dispatch_entries if entry.get("pre_push_mode") == "YES"
     }
-    assert ipad_entry_ids == {"logic-ipad", "ui"}
+    assert ipad_entry_ids == {"logic-ipad"}
     assert pre_push_entry_ids == ipad_entry_ids
 
 

@@ -133,11 +133,45 @@ extension SideBarUITests {
     @MainActor
     func openNotesTab(in app: XCUIApplication) {
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
-        let notesTab = app.tabBars.buttons["Notes"]
-        XCTAssertTrue(notesTab.waitForExistence(timeout: 20), "Notes tab did not appear.")
-        XCTAssertTrue(waitForHittable(notesTab, timeout: 20), "Notes tab was not tappable.")
-        notesTab.tap()
+        let notesDestination = resolvePrimaryNavigationElement(
+            in: app,
+            title: "Notes"
+        )
+        XCTAssertTrue(notesDestination.waitForExistence(timeout: 20), "Notes destination did not appear.")
+        XCTAssertTrue(waitForHittable(notesDestination, timeout: 20), "Notes destination was not tappable.")
+        notesDestination.tap()
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
+    }
+
+    func resolveSignInButton(in app: XCUIApplication) -> XCUIElement {
+        let candidates = [
+            app.buttons["Sign in"],
+            app.buttons["Sign In"]
+        ]
+
+        for candidate in candidates where candidate.exists {
+            return candidate
+        }
+
+        return candidates[0]
+    }
+
+    func resolvePrimaryNavigationElement(
+        in app: XCUIApplication,
+        title: String
+    ) -> XCUIElement {
+        let candidates = [
+            app.tabBars.buttons[title],
+            app.buttons[title],
+            app.cells.staticTexts[title].firstMatch,
+            app.staticTexts[title]
+        ]
+
+        for candidate in candidates where candidate.exists {
+            return candidate
+        }
+
+        return candidates[0]
     }
 
     @MainActor

@@ -48,7 +48,7 @@ final class SideBarUITests: XCTestCase {
             waitForSignedInHome(in: app, timeout: 45),
             "Signed-in shell did not appear after login."
         )
-        let signInButton = app.buttons["Sign In"]
+        let signInButton = resolveSignInButton(in: app)
         XCTAssertTrue(
             waitForNonExistence(of: signInButton, timeout: 10),
             "Sign In button remained visible after successful login."
@@ -74,7 +74,7 @@ final class SideBarUITests: XCTestCase {
             ),
             "Expected auth error did not appear for invalid credentials."
         )
-        let signInButton = app.buttons["Sign In"]
+        let signInButton = resolveSignInButton(in: app)
         XCTAssertTrue(signInButton.exists, "Sign In button should remain visible on failed auth.")
         XCTAssertFalse(
             waitForSignedInHome(in: app, timeout: 5),
@@ -140,10 +140,13 @@ final class SideBarUITests: XCTestCase {
     @MainActor
     func openChatDetail(in app: XCUIApplication) -> XCUIElement {
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
-        let chatTab = app.tabBars.buttons["Chat"]
-        XCTAssertTrue(chatTab.waitForExistence(timeout: 20), "Chat tab did not appear.")
-        XCTAssertTrue(waitForHittable(chatTab, timeout: 20), "Chat tab was not tappable.")
-        chatTab.tap()
+        let chatDestination = resolvePrimaryNavigationElement(
+            in: app,
+            title: "Chat"
+        )
+        XCTAssertTrue(chatDestination.waitForExistence(timeout: 20), "Chat destination did not appear.")
+        XCTAssertTrue(waitForHittable(chatDestination, timeout: 20), "Chat destination was not tappable.")
+        chatDestination.tap()
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
 
         let sendButton = app.buttons["Send message"]
@@ -151,8 +154,8 @@ final class SideBarUITests: XCTestCase {
             return sendButton
         }
 
-        if !chatTab.isSelected, waitForHittable(chatTab, timeout: 8) {
-            chatTab.tap()
+        if !sendButton.exists, waitForHittable(chatDestination, timeout: 8) {
+            chatDestination.tap()
             dismissSystemAlertsIfPresent(in: app, timeout: 6)
         }
         if sendButton.waitForExistence(timeout: 8) {
@@ -347,7 +350,7 @@ final class SideBarUITests: XCTestCase {
         passwordField.tap()
         passwordField.typeText(password)
 
-        let signInButton = app.buttons["Sign In"]
+        let signInButton = resolveSignInButton(in: app)
         XCTAssertTrue(signInButton.exists, "Sign In button is missing.")
         signInButton.tap()
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
@@ -427,7 +430,10 @@ final class SideBarUITests: XCTestCase {
             app.buttons["Settings"],
             app.buttons["Toggle sidebar"],
             app.tabBars.buttons["Notes"],
-            app.tabBars.buttons["Tasks"]
+            app.tabBars.buttons["Tasks"],
+            app.buttons["Notes"],
+            app.buttons["Tasks"],
+            app.buttons["Chat"]
         ]
 
         while Date() < deadline {

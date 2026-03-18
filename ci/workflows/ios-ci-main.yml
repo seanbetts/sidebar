@@ -60,7 +60,7 @@ jobs:
             scripts/test-ios.sh
           done <<'EOF'
           surface|sideBar|AppleStateful|platform=iOS Simulator,name=iPhone 17 Pro
-          ui|sideBarUI|AppleUI|platform=iOS Simulator,name=iPad Pro 13-inch (M5)
+          ui|sideBarUI|AppleUI|platform=iOS Simulator,name=iPhone 17 Pro
           extensions|sideBarExtensions|AppleExtensions|platform=iOS Simulator,name=iPhone 17 Pro
           EOF
 
@@ -117,12 +117,11 @@ jobs:
             collect_simulator_diagnostics_on_failure: "YES"
           - id: ui
             lane: ui
-            label: "iPad Pro 13-inch (M5) iPadOS 26"
+            label: "iPhone 17 Pro iOS 26"
             scheme: sideBarUI
             test_plan: AppleUI
-            destination: "platform=iOS Simulator,name=iPad Pro 13-inch (M5)"
+            destination: "platform=iOS Simulator,name=iPhone 17 Pro"
             runner_label: ios
-            pre_push_mode: "YES"
             spec_selection_main: ui_smoke
             skip_testing: ""
             retry_tests_on_failure: "NO"

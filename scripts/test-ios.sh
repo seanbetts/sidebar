@@ -86,7 +86,7 @@ IOS_PREPARE_SIMULATOR_BEFORE_TESTS="${IOS_PREPARE_SIMULATOR_BEFORE_TESTS:-NO}"
 IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE="${IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE:-NO}"
 IOS_SIMULATOR_DIAGNOSTICS_DIR="${IOS_SIMULATOR_DIAGNOSTICS_DIR:-}"
 IOS_RETRY_TRANSIENT_SIMULATOR_FAILURES="${IOS_RETRY_TRANSIENT_SIMULATOR_FAILURES:-YES}"
-IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT="${IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT:-3}"
+IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT="${IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT:-2}"
 IOS_TARGET_SIMULATOR_UDID=""
 
 if [[ "${SIDEBAR_PRE_PUSH_MODE}" == "YES" ]]; then
@@ -402,12 +402,6 @@ is_transient_simulator_infrastructure_failure() {
 
   if [[ "${combined_output}" == *"Failed to create a bundle instance representing"* ]] \
     && [[ "${combined_output}" == *"Test crashed with signal kill."* ]]; then
-    return 0
-  fi
-
-  if [[ "${combined_output}" == *"Restarting after unexpected exit, crash, or test timeout"* ]] \
-    && [[ "${combined_output}" == *"malloc: *** error for object"* ]] \
-    && [[ "${combined_output}" == *"pointer being freed was not allocated"* ]]; then
     return 0
   fi
 

@@ -350,6 +350,7 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         XCTAssertNil(window.rootViewController)
         XCTAssertTrue(window.isHidden)
     }
+
     func testEditableSurfaceSkipsFirstResponderWhenAutofocusDisabled() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(

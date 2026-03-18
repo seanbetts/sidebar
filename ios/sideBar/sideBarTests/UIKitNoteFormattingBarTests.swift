@@ -466,13 +466,11 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         let window = makeUIKitNoteTextEditorSurfaceHostingWindow(
             frame: CGRect(x: 0, y: 0, width: 500, height: 900)
         )
-        let rootViewController = UIViewController()
-        window.rootViewController = rootViewController
         window.isHidden = false
 
         let bar = UIKitNoteFormattingBar(configuration: makeEnabledConfiguration())
         bar.frame = CGRect(x: 420, y: 760, width: 60, height: 48)
-        rootViewController.view.addSubview(bar)
+        window.addSubview(bar)
         bar.setNeedsLayout()
         bar.layoutIfNeeded()
 

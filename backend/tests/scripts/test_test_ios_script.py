@@ -727,8 +727,8 @@ def test_missing_test_bundle_after_signal_kill_retries_test_action(tmp_path: Pat
     assert "Detected transient simulator infrastructure failure" in result.stdout
 
 
-def test_malloc_allocator_crash_retries_test_action(tmp_path: Path) -> None:
-    """Test-host allocator crashes should retry the xcodebuild test action once."""
+def test_malloc_allocator_crash_does_not_retry_test_action(tmp_path: Path) -> None:
+    """Allocator crashes should fail immediately so the root cause is investigated."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     xcodebuild_log = tmp_path / "xcodebuild.log"
@@ -773,19 +773,20 @@ def test_malloc_allocator_crash_retries_test_action(tmp_path: Path) -> None:
         check=False,
     )
 
-    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.returncode == 65, result.stdout + result.stderr
     log_lines = xcodebuild_log.read_text().splitlines()
-    assert len(log_lines) == 3
-    assert sum(" test" in line for line in log_lines) == 2
-    assert "Detected transient simulator infrastructure failure" in result.stdout
+    assert len(log_lines) == 2
+    assert sum(" test" in line for line in log_lines) == 1
+    assert "Detected transient simulator infrastructure failure" not in result.stdout
 
 
-def test_multiple_transient_simulator_failures_use_third_attempt_budget(tmp_path: Path) -> None:
-    """Transient simulator-host failures should survive two flaky attempts before succeeding."""
+def test_missing_test_bundle_after_signal_kill_uses_two_attempt_budget_by_default(tmp_path: Path) -> None:
+    """The default transient retry budget should stop after the second failed test attempt."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     xcodebuild_log = tmp_path / "xcodebuild.log"
     test_attempts = tmp_path / "test-attempts.txt"
+    result_bundle = tmp_path / "surface.xcresult"
 
     write_executable(
         bin_dir / "xcodebuild",
@@ -797,13 +798,24 @@ def test_multiple_transient_simulator_failures_use_third_attempt_budget(tmp_path
         f"attempt=$(cat \"{test_attempts}\" 2>/dev/null || echo 0)\n"
         "attempt=$((attempt + 1))\n"
         f"printf '%s' \"$attempt\" > \"{test_attempts}\"\n"
-        "if [[ \"$attempt\" -lt 3 ]]; then\n"
+        "mkdir -p \"$IOS_RESULT_BUNDLE_PATH\"\n"
+        "exit 65\n",
+    )
+    write_executable(
+        bin_dir / "xcrun",
+        "#!/bin/bash\n"
+        "attempt=$(cat \"" + str(test_attempts) + "\" 2>/dev/null || echo 0)\n"
+        "if [[ \"$1 $2 $3\" == \"xcresulttool get test-results\" && \"$4\" == \"summary\" ]]; then\n"
         "  cat <<'EOF'\n"
-        "Restarting after unexpected exit, crash, or test timeout; summary will include totals from previous launches.\n"
-        "sideBarLogicHost(27031,0x103db9e40) malloc: *** error for object 0x26254e7a0: pointer being freed was not allocated\n"
-        "sideBarLogicHost(27031,0x103db9e40) malloc: *** set a breakpoint in malloc_error_break to debug\n"
+        '{"failedTests":2,"passedTests":29,"result":"Failed","testFailures":[{"failureText":"Failed to create a bundle instance representing \'/tmp/sideBar.app/PlugIns/sideBarTests.xctest\'. Check that the bundle exists on disk.","targetName":"sideBarTests","testIdentifierString":"sideBar encountered an error"},{"failureText":"Test crashed with signal kill.","targetName":"sideBarTests","testIdentifierString":"AppEnvironmentDeepLinkTests/testHandleSignedInActivationConsumesExtensionEvents()"}],"totalTestCount":31}\n'
         "EOF\n"
-        "  exit 65\n"
+        "  exit 0\n"
+        "fi\n"
+        "if [[ \"$1 $2\" == \"xcresulttool get\" && \"$3\" == \"build-results\" ]]; then\n"
+        "  cat <<'EOF'\n"
+        '{"status":"succeeded","errorCount":0}\n'
+        "EOF\n"
+        "  exit 0\n"
         "fi\n"
         "exit 0\n",
     )
@@ -814,7 +826,7 @@ def test_multiple_transient_simulator_failures_use_third_attempt_budget(tmp_path
             "PATH": f"{bin_dir}:{env['PATH']}",
             "IOS_DESTINATION": "platform=iOS Simulator,name=iPhone 17 Pro",
             "IOS_ENABLE_CODE_COVERAGE": "NO",
-            "IOS_TRANSIENT_SIMULATOR_FAILURE_RETRY_LIMIT": "3",
+            "IOS_RESULT_BUNDLE_PATH": str(result_bundle),
         }
     )
 
@@ -827,11 +839,11 @@ def test_multiple_transient_simulator_failures_use_third_attempt_budget(tmp_path
         check=False,
     )
 
-    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.returncode == 65, result.stdout + result.stderr
     log_lines = xcodebuild_log.read_text().splitlines()
-    assert len(log_lines) == 4
-    assert sum(" test" in line for line in log_lines) == 3
-    assert result.stdout.count("Detected transient simulator infrastructure failure") == 2
+    assert len(log_lines) == 3
+    assert sum(" test" in line for line in log_lines) == 2
+    assert result.stdout.count("Detected transient simulator infrastructure failure") == 1
 
 
 def test_exit_73_with_zero_executed_tests_does_not_pass(tmp_path: Path) -> None:
