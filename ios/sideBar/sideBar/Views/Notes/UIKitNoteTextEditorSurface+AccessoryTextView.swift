@@ -96,14 +96,25 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
               window != nil else { return }
         guard bounds.height > 0, contentSize.height > 0 else { return }
         layoutIfNeeded()
-        let resolvedOffset = UIKitNoteTextEditorSurface.clampedContentOffset(
-            pendingInitialViewportOffset,
-            for: self
-        )
-        guard resolvedOffset.x + 0.5 >= pendingInitialViewportOffset.x,
-              resolvedOffset.y + 0.5 >= pendingInitialViewportOffset.y else { return }
-        setContentOffset(resolvedOffset, animated: false)
+        guard applyInitialViewportOffset(pendingInitialViewportOffset) else { return }
         hasAppliedPendingInitialViewportOffset = true
+    }
+
+    func applyDeferredInitialViewportOffsetIfNeeded(_ offset: CGPoint) {
+        guard window != nil else { return }
+        guard applyInitialViewportOffset(offset) else { return }
+        hasAppliedPendingInitialViewportOffset = true
+    }
+
+    @discardableResult
+    private func applyInitialViewportOffset(_ offset: CGPoint) -> Bool {
+        guard bounds.height > 0, contentSize.height > 0 else { return false }
+        layoutIfNeeded()
+        let resolvedOffset = UIKitNoteTextEditorSurface.clampedContentOffset(offset, for: self)
+        guard resolvedOffset.x + 0.5 >= offset.x,
+              resolvedOffset.y + 0.5 >= offset.y else { return false }
+        setContentOffset(resolvedOffset, animated: false)
+        return true
     }
 }
 #endif

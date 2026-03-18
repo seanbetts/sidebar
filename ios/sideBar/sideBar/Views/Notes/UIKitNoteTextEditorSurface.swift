@@ -32,11 +32,18 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             didSet {
                 hasAppliedPendingInitialViewportOffset = false
                 applyPendingInitialViewportOffsetIfNeeded()
+                guard let pendingInitialViewportOffset else { return }
+                let deferredViewportOffset = pendingInitialViewportOffset
+                DispatchQueue.main.async { [weak self] in
+                    self?.applyDeferredInitialViewportOffsetIfNeeded(deferredViewportOffset)
+                }
             }
         }
         var keyboardObservers: [NSObjectProtocol] = []
         var keyboardFrameInScreen: CGRect?
         var hasAppliedPendingInitialViewportOffset = false
+        var debugHasAppliedPendingInitialViewportOffset: Bool { hasAppliedPendingInitialViewportOffset }
+        var debugPendingInitialViewportOffset: CGPoint? { pendingInitialViewportOffset }
 
         override var inputAccessoryView: UIView? {
             get { formattingAccessoryView }

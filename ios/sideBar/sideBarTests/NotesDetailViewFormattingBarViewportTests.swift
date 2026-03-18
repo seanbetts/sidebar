@@ -34,8 +34,12 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
                 accessibilityIdentifier: "notes-editor-text-view"
             )
         )
+        let accessoryEditorTextView = try XCTUnwrap(editorTextView as? UIKitNoteTextEditorSurface.AccessoryTextView)
 
         XCTAssertTrue(context.editorViewModel.isEditingNote)
+        XCTAssertTrue(accessoryEditorTextView.isFirstResponder)
+        XCTAssertTrue(accessoryEditorTextView.debugHasAppliedPendingInitialViewportOffset)
+        XCTAssertNil(accessoryEditorTextView.debugPendingInitialViewportOffset)
         XCTAssertLessThan(abs(editorTextView.contentOffset.y - baselineOffset), 1)
     }
 
