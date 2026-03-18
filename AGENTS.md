@@ -68,26 +68,21 @@ Write tests for new behavior.
 
 For feature work and bug fixes, follow the active superpowers TDD workflow unless the user explicitly instructs otherwise. For documentation-only or configuration-only changes, add tests when behavior changes or coverage would otherwise regress.
 
-### Apple test taxonomy
+### Apple testing
 
-Use one Apple test taxonomy across the shared iOS/macOS app. Do not create feature-specific testing rules for Notes, Files, Chat, Tasks, Websites, Skills, or other surfaces.
+Tests are validated during TDD by the coding agent. CI provides a safety net, not a gate.
 
-- `Logic`: deterministic shared-code tests, this is the default layer for new Apple coverage
-- `Surface`: mounted views, app-environment wiring, persistence, platform-hosted behavior, and broader integration coverage
-- `UI Smoke`: tiny end-to-end app checks only
+- **Dev CI** runs logic tests on macOS (no simulator, no flakiness) on push to `dev`
+- **Main CI** runs the full suite on iOS simulator and blocks on failure (prevents broken Xcode Cloud builds)
+- **Pre-push** runs lint checks only (SwiftLint, doc comments)
 
-Branch policy for the Apple test taxonomy:
+When adding tests, use the existing Xcode test plans:
+- `AppleFast` (via `sideBarLogicHost` scheme): deterministic logic tests, no simulator
+- `AppleStateful` (via `sideBar` scheme): integration tests requiring app environment
+- `AppleUI` (via `sideBarUI` scheme): end-to-end smoke tests
+- `AppleExtensions` (via `sideBarExtensions` scheme): extension tests
 
-- `dev` should run `Logic`
-- `main` should run `Logic`, `Surface`, and `UI Smoke`
-
-When adding or changing Apple coverage, choose the lowest appropriate Apple test layer first.
-- default new Apple tests to `logic`
-- choose `surface` only when the logic layer cannot prove the behavior
-- choose `ui_smoke` only for true end-to-end coverage
-- layer repo-local Apple testing rules on top of third-party skills, do not edit the third-party skills themselves
-
-Apple support files and helpers should be kept separate from test cases conceptually, even when they live in test directories. Update the committed taxonomy manifest when moving or adding Apple test/support files.
+Default new tests to the `sideBarLogicHost` / `AppleFast` plan. Only use `AppleStateful` when the logic layer cannot prove the behavior.
 
 **Tools:** pytest (backend), vitest (frontend)
 **Coverage targets:** 90% services, 70% components/stores
