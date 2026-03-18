@@ -17,11 +17,10 @@ This applies equally to Notes, Files, Chat, Tasks, Websites, Skills, app-shell c
 
 ## Lane routing
 
-- The user-facing Logic lane remains `sideBar` with `AppleFast`.
-- `./scripts/test-ios.sh` routes that combination to `sideBarLogicHost` for execution.
-- We do this because the `sideBar` scheme includes `sideBarTests`, while `AppleFast` targets `sideBarLogicTests`.
+- Use the `sideBarLogicHost` scheme with `AppleFast` for logic tests (runs on macOS, no simulator needed).
+- The `sideBar` scheme includes `sideBarTests`, while `AppleFast` targets `sideBarLogicTests`.
 - Running `AppleFast` directly through the `sideBar` scheme causes Xcode to union those test bundles, build both `sideBar` and `sideBarLogicHost`, and risk duplicate `sideBar.swiftmodule` outputs.
-- `sideBarLogicHost` is the execution scheme used by CI for the Logic lane.
+- CI uses `sideBarLogicHost` directly for the Logic lane.
 
 ## Placement rules
 
@@ -31,7 +30,7 @@ Choose the lowest appropriate Apple test layer first.
 - choose `surface` only when the logic layer cannot prove the behavior
 - choose `ui_smoke` only for true end-to-end coverage
 
-Support files, harnesses, fixtures, and helpers may live beside tests, but they are not test cases. Keep them accounted for in the committed taxonomy manifest.
+Support files, harnesses, fixtures, and helpers may live beside tests, but they are not test cases.
 
 ## Naming guidance
 

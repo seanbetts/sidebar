@@ -90,12 +90,26 @@ git checkout dev
 Run iOS unit tests from the CLI:
 
 ```bash
-./scripts/test-ios.sh
-xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' test            # fast/default unit lane
-IOS_SCHEME=sideBarUI ./scripts/test-ios.sh                                                                                              # curated UI smoke lane
-IOS_SCHEME=sideBarUI IOS_UI_SMOKE_ONLY=NO ./scripts/test-ios.sh                                                                         # broader UI regression lane
-xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarUI -destination 'platform=iOS Simulator,name=iPhone 15' test          # direct full UI lane
-xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBarExtensions -destination 'platform=iOS Simulator,name=iPhone 15' test  # extension lane
+# Logic tests (fast, no simulator, recommended for TDD)
+xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
+  -scheme sideBarLogicHost -testPlan AppleFast \
+  -destination 'platform=macOS' -parallel-testing-enabled NO \
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+
+# Full suite (needs iOS simulator)
+xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
+  -scheme sideBar -testPlan AppleStateful \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+
+# UI smoke tests
+xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
+  -scheme sideBarUI -testPlan AppleUI \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+
+# Extension tests
+xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
+  -scheme sideBarExtensions -testPlan AppleExtensions \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 
 ## Safety Notes (Production Data)

@@ -97,62 +97,47 @@ The Apple app now uses a unified workspace model that supports both built-in sec
 - Reopen behavior:
   - Chat tool results can expose "Show ..." workspace action buttons for reopening previously presented surfaces.
 
-## Architecture Boundaries (CI-Enforced)
+## Architecture Boundaries
 
-Layering constraints are enforced by `scripts/check_ios_architecture_boundaries.py`:
+Layering constraints:
 
 - `Services` cannot depend on `Stores`, `ViewModels`, or `Views`.
 - `Stores` cannot depend on `ViewModels` or `Views`.
 - `ViewModels` cannot depend on `Views`.
 
-Do not bypass these checks with cross-layer shortcuts.
+Do not bypass these constraints with cross-layer shortcuts.
 
-## Testing and Quality Gates
+## Testing and Quality
 
 Local validation commands:
 
 ```bash
 swiftlint --config ios/sideBar/.swiftlint.yml
 python3 scripts/check_ios_doc_comments.py
-python3 scripts/check_ios_architecture_boundaries.py
-scripts/check-ios-warning-gate.sh
-scripts/test-ios.sh
-```
 
-`scripts/test-ios.sh` defaults to serial execution when the lane includes `sideBarUITests` (for simulator stability), unless `IOS_PARALLEL_TESTING_ENABLED` is explicitly set.
+# Logic tests (fast, no simulator)
+xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
+  -scheme sideBarLogicHost -testPlan AppleFast \
+  -destination 'platform=macOS' -parallel-testing-enabled NO \
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+```
 
 CI workflow (`.github/workflows/ios-ci.yml`):
 
-- Runs on two self-hosted runners on the developer machine:
-  - `ios` runner: iPad and iPhone simulator test lanes (sequential).
-  - `mac` runner: macOS native test lane, quality checks, and hard gates.
-- Triggers: push to `dev` branch only (path-filtered to `ios/**` and CI scripts), plus manual `workflow_dispatch`.
-- Quality job (parallel with test matrix):
-  - SwiftLint
-  - iOS doc-comment coverage check
-  - Architecture boundary check
-- Test matrix (parallel with quality job):
-  - iPad lane: UI tests only, coverage disabled.
-  - iPhone lane: all tests except UI tests, coverage enabled.
-  - macOS lane: unit tests only, coverage disabled.
-- Hard gates (runs after both quality and test matrix complete):
-  - Per-target coverage thresholds and baseline-drop enforcement via `scripts/check_ios_quality_gates.py`.
-  - First-party iOS target warning gate via `scripts/check_ios_quality_gates.py` warning policy.
-  - Uses iPhone lane xcresult only.
+- Runs on a self-hosted Mac runner.
+- `dev` branch: SwiftLint + doc comments + AppleFast logic tests on macOS (no simulator).
+- `main` branch: full suite (AppleStateful + AppleUI + AppleExtensions on iOS simulator).
+- Manual dispatch available for any lane combination.
 
 Pre-push hook (`.git/hooks/pre-push`):
 
-- Blocks pushes to `main` unless `scripts/test-ios.sh` passes locally.
-- Local `main` pushes run `scripts/test-ios.sh` in dedicated pre-push simulator mode.
-- The hook auto-creates and reuses `sideBar PrePush iPad`, storing its UDID in `.git/sidebar-pre-push/simulator-udid`.
+- Runs lint checks only (SwiftLint, doc comments). No test execution.
 - Blocks pushes to `main` unless `scripts/check-main-linear-history.sh` passes:
   - pushed `main` tip must match local `dev` tip
   - push range may not include merge commits
   - non-fast-forward updates to `main` are rejected
 - Pushes to `dev` and other branches are unblocked.
-- Self-hosted runner lanes keep their existing iPad, iPhone, and macOS split.
 - Guards against broken builds reaching Xcode Cloud.
-- Expensive iOS warning/cert gates are manual pre-commit hooks so normal `dev` pushes stay fast.
 
 Recommended release command:
 
@@ -166,44 +151,9 @@ This keeps `main` linear by promoting the published `origin/dev` tip with a fast
 scripts/release-main.sh --run-ios-tests
 ```
 
-## macOS Widget Safety Checks
+## macOS Widget Notes
 
-Use the widget safety scripts only for widget-focused macOS flows. They are not part of generic iPhone or iPad simulator testing.
-
-Local registration cleanup:
-
-```bash
-python3 scripts/clean_stale_widget_registrations.py \
-  --workspace-root "$PWD" \
-  --bundle-id ai.sidebar.sidebar.sideBarWidgets
-```
-
-- Run this when local macOS widget launches start resolving the wrong appex, after switching worktrees, or before widget-specific macOS verification if the machine has accumulated old debug installs.
-- The cleaner preserves the current workspace registration and `/Applications/sideBar AI.app`, and removes stale debug registrations from old `DerivedData`, worktrees, and temp locations.
-- Use `--dry-run` to inspect the keep/remove decision set without mutating `pluginkit`.
-
-Artifact verification entry point:
-
-```bash
-python3 scripts/verify_macos_widget_artifacts.py --mode debug --workspace-root "$PWD"
-python3 scripts/verify_macos_widget_artifacts.py --mode release --workspace-root "$PWD"
-python3 scripts/verify_macos_widget_artifacts.py \
-  --mode archive-export \
-  --workspace-root "$PWD" \
-  --export-options-plist ios/sideBar/ExportOptions.plist
-```
-
-- `debug` builds the macOS app in Debug and verifies the built widget bundle can resolve `sideBarShared.framework`.
-- `release` builds the macOS app in Release and runs the same built-artifact checks.
-- `archive-export` archives, exports, and verifies the packaged macOS app artifact that release flows ship.
-- Add `--clean-stale-registrations` when you want the verifier to normalize local widget registrations before building.
-
-CI and release enforcement:
-
-- `ios-ci.yml` runs macOS Debug widget verification only on the `logic-mac` dev lane.
-- `ios-ci-main.yml` runs dedicated macOS widget verification jobs for both Debug and Release before the main test lanes.
-- `ios-ci-dispatch.yml` runs Debug verification for the manual `logic` lane and Release verification for `surface`, `ui`, and `extensions`, while `all` runs both.
-- `scripts/release-main.sh` blocks promotion to `main` unless archive/export widget verification passes.
+Widget verification is handled by CI workflows and the release script. No separate widget scripts are needed for day-to-day development.
 
 ## Self-Hosted Runner Setup
 
@@ -259,4 +209,4 @@ Use this handbook as primary reference.
 
 ## Maintenance Rule
 
-Any PR that changes iOS setup, architecture boundaries, runtime configuration keys, or CI quality gates must update this handbook in the same change.
+Any PR that changes iOS setup, architecture boundaries, runtime configuration keys, or CI workflows must update this handbook in the same change.
