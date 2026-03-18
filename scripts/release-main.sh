@@ -127,7 +127,13 @@ fi
 
 if [[ "$run_ios_tests" == "true" ]]; then
   echo "Running iOS preflight..."
-  "$repo_root/scripts/test-ios.sh"
+  xcodebuild test \
+    -project ios/sideBar/sideBar.xcodeproj \
+    -scheme sideBarLogicHost \
+    -testPlan AppleFast \
+    -destination 'platform=macOS' \
+    -parallel-testing-enabled NO \
+    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
 else
   echo "Skipping local iOS preflight. Use --run-ios-tests for an explicit release preflight."
 fi
