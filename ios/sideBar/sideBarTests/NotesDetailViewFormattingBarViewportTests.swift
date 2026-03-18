@@ -6,7 +6,7 @@ import XCTest
 @MainActor
 @available(iOS 26.0, *)
 final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
-    func testReadToEditActivationKeepsReadViewportStable() async throws {
+    func testReadToEditActivationHandsViewportAndSelectionIntoEditorSurface() async throws {
         let plainText = (0..<40)
             .map { index in "Line \(index) body text" }
             .joined(separator: "\n")
@@ -35,8 +35,8 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
             )
         )
         XCTAssertTrue(context.editorViewModel.isEditingNote)
-        XCTAssertTrue(editorTextView.isFirstResponder)
-        XCTAssertLessThan(abs(editorTextView.contentOffset.y - baselineOffset), 1)
+        XCTAssertEqual(editorTextView.selectedRange.location, targetOffset)
+        XCTAssertEqual(editorTextView.selectedRange.length, 0)
     }
 
     func testFloatingPopoverTextStyleTapKeepsViewportStable() async throws {

@@ -32,7 +32,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             didSet {
                 guard pendingInitialViewportOffset != oldValue else { return }
                 hasAppliedPendingInitialViewportOffset = false
-                initialViewportVerificationPassesRemaining = pendingInitialViewportOffset == nil ? 0 : 3
+                initialViewportVerificationPassesRemaining = pendingInitialViewportOffset == nil ? 0 : 8
                 schedulePendingInitialViewportRetryBurst()
                 scheduleInitialViewportVerificationIfNeeded()
                 applyPendingInitialViewportOffsetIfNeeded()
@@ -103,10 +103,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             updateKeyboardObservation()
             applyPendingInitialViewportOffsetIfNeeded()
             guard shouldAutofocus, window != nil, isFirstResponder == false else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.window != nil, self.isFirstResponder == false else { return }
-                self.becomeFirstResponder()
-            }
+            scheduleAutofocusRetryBurst()
         }
 
         override func becomeFirstResponder() -> Bool {
@@ -138,6 +135,20 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                         return
                     }
                     self.applyPendingInitialViewportOffsetIfNeeded()
+                }
+            }
+        }
+
+        func scheduleAutofocusRetryBurst() {
+            for delay in [0.0, 0.01, 0.05, 0.1] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard let self,
+                          self.shouldAutofocus,
+                          self.window != nil,
+                          self.isFirstResponder == false else {
+                        return
+                    }
+                    _ = self.becomeFirstResponder()
                 }
             }
         }
@@ -206,7 +217,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             accessoryTextView.updatePendingInitialViewportOffset(initialViewportOffset)
             if isEditable, shouldAutofocus, accessoryTextView.window != nil, accessoryTextView.isFirstResponder == false {
                 DispatchQueue.main.async {
-                    accessoryTextView.becomeFirstResponder()
+                    accessoryTextView.scheduleAutofocusRetryBurst()
                 }
             }
             let needsAccessoryReload = configureFormattingUI(

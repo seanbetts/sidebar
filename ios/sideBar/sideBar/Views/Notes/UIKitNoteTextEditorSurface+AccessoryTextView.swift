@@ -105,17 +105,20 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
               window != nil else { return }
         guard bounds.height > 0, contentSize.height > 0 else { return }
         layoutIfNeeded()
-        guard applyInitialViewportOffset(pendingInitialViewportOffset) else { return }
+        guard applyInitialViewportOffset(pendingInitialViewportOffset) else {
+            scheduleInitialViewportVerificationIfNeeded(after: 0.02)
+            return
+        }
         hasAppliedPendingInitialViewportOffset = true
         scheduleInitialViewportVerificationIfNeeded()
     }
 
-    func scheduleInitialViewportVerificationIfNeeded() {
+    func scheduleInitialViewportVerificationIfNeeded(after delay: TimeInterval = 0) {
         guard isInitialViewportVerificationScheduled == false,
               initialViewportVerificationPassesRemaining > 0,
               let pendingInitialViewportOffset else { return }
         isInitialViewportVerificationScheduled = true
-        DispatchQueue.main.async { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self else { return }
             self.isInitialViewportVerificationScheduled = false
             self.verifyInitialViewportOffsetIfNeeded(pendingInitialViewportOffset)
@@ -126,8 +129,9 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         guard pendingInitialViewportOffset == offset else { return }
         let resolution = resolveInitialViewportOffset(offset)
         guard case .resolved(let resolvedOffset) = resolution else {
-            if case .notReady = resolution {
-                scheduleInitialViewportVerificationIfNeeded()
+            if initialViewportVerificationPassesRemaining > 0 {
+                initialViewportVerificationPassesRemaining -= 1
+                scheduleInitialViewportVerificationIfNeeded(after: 0.02)
             }
             return
         }

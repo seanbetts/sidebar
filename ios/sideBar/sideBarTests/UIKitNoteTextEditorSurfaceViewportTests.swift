@@ -1,4 +1,5 @@
 #if os(iOS)
+import SwiftUI
 import UIKit
 import XCTest
 @testable import sideBar
