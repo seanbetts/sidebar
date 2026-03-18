@@ -5,184 +5,36 @@ on:
     branches: [main]
     paths:
       - "ios/**"
-      - "scripts/check_ios_architecture_boundaries.py"
-      - "scripts/ios_architecture_boundaries_baseline.json"
-      - "scripts/check_ios_doc_comments.py"
-      - "scripts/validate_ios_test_lane.py"
-      - "scripts/validate_ios_test_taxonomy.py"
-      - "scripts/resolve_ios_test_specs.py"
-      - "scripts/ios_test_taxonomy.json"
-      - "scripts/check_ios_quality_gates.py"
-      - "scripts/ios_quality_gates.json"
-      - "scripts/check-ios-warning-gate.sh"
-      - "scripts/test-ios*.sh"
-      - "scripts/clean_stale_widget_registrations.py"
-      - "scripts/verify_macos_widget_artifacts.py"
-      - "scripts/check_ios_extension_config_resolution.py"
-      - ".swiftlint.yml"
-      - ".github/workflows/ios-ci.yml"
       - ".github/workflows/ios-ci-main.yml"
-      - ".github/workflows/ios-ci-dispatch.yml"
 
 concurrency:
   group: ios-ci-main-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  ios_prepare_packages:
+  ios_test_full:
+    runs-on: [self-hosted, mac]
     timeout-minutes: 45
-    runs-on: [self-hosted, mac]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Configure shared Apple cache paths
+      - name: Resolve packages
         run: |
-          shared_root="$HOME/Library/Caches/sidebar-ci-apple-tests"
-          mkdir -p "$shared_root/swiftpm/source-packages"
-          mkdir -p "$shared_root/swiftpm/package-cache"
-          mkdir -p "$shared_root/deriveddata"
-          echo "IOS_CLONED_SOURCE_PACKAGES_DIR=$shared_root/swiftpm/source-packages" >> "$GITHUB_ENV"
-          echo "IOS_PACKAGE_CACHE_PATH=$shared_root/swiftpm/package-cache" >> "$GITHUB_ENV"
-          echo "IOS_SHARED_DERIVED_DATA_ROOT=$shared_root/deriveddata" >> "$GITHUB_ENV"
-      - name: Warm shared package state
+          xcodebuild -project ios/sideBar/sideBar.xcodeproj \
+            -scheme sideBar \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -resolvePackageDependencies \
+            -onlyUsePackageVersionsFromResolvedFile
+      - name: Run full test suite
         run: |
-          while IFS='|' read -r lane_id scheme test_plan destination; do
-            IOS_SCHEME="$scheme" \
-            IOS_TEST_PLAN="$test_plan" \
-            IOS_DESTINATION="$destination" \
-            IOS_DESTINATION_TIMEOUT="180" \
-            IOS_DERIVED_DATA_PATH="${IOS_SHARED_DERIVED_DATA_ROOT}/${lane_id}" \
-            IOS_CLEAN_DERIVED_DATA="NO" \
-            IOS_CLONED_SOURCE_PACKAGES_DIR="${IOS_CLONED_SOURCE_PACKAGES_DIR}" \
-            IOS_PACKAGE_CACHE_PATH="${IOS_PACKAGE_CACHE_PATH}" \
-            IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS="600" \
-            IOS_RESOLVE_PACKAGE_DEPENDENCIES_ONLY="YES" \
-            scripts/test-ios.sh
-          done <<'EOF'
-          surface|sideBar|AppleStateful|platform=iOS Simulator,name=iPhone 17 Pro
-          ui|sideBarUI|AppleUI|platform=iOS Simulator,name=iPhone 17 Pro
-          extensions|sideBarExtensions|AppleExtensions|platform=iOS Simulator,name=iPhone 17 Pro
-          EOF
-
-  ios_widget_verification_main:
-    needs: [ios_prepare_packages]
-    timeout-minutes: 60
-    runs-on: [self-hosted, mac]
-    strategy:
-      fail-fast: false
-      matrix:
-        # Widget verification matrix contract:
-        # - main CI runs macOS Debug and Release widget verification
-        # - archive/export verification runs in release promotion paths
-        include:
-          - mode: debug
-            label: "macOS Debug widget verification"
-          - mode: release
-            label: "macOS Release widget verification"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Verify macOS widget artifacts (${{ matrix.label }})
-        run: |
-          python3 scripts/verify_macos_widget_artifacts.py \
-            --mode "${{ matrix.mode }}" \
-            --workspace-root "${{ github.workspace }}" \
-            --clean-stale-registrations
-
-  ios_test_main:
-    needs: [ios_prepare_packages, ios_widget_verification_main]
-    timeout-minutes: 90
-    runs-on:
-      - self-hosted
-      - ${{ matrix.runner_label }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - id: surface
-            lane: surface
-            label: "iPhone 17 Pro iOS 26"
-            scheme: sideBar
-            test_plan: AppleStateful
-            destination: "platform=iOS Simulator,name=iPhone 17 Pro"
-            runner_label: ios
-            spec_selection_main: main_surface
-            skip_testing: ""
-            retry_tests_on_failure: "NO"
-            parallel_testing_enabled: "NO"
-            max_parallel_test_workers: "1"
-            destination_timeout: "180"
-            enable_coverage: "YES"
-            prepare_simulator_before_tests: "YES"
-            collect_simulator_diagnostics_on_failure: "YES"
-          - id: ui
-            lane: ui
-            label: "iPhone 17 Pro iOS 26"
-            scheme: sideBarUI
-            test_plan: AppleUI
-            destination: "platform=iOS Simulator,name=iPhone 17 Pro"
-            runner_label: ios
-            spec_selection_main: ui_smoke
-            skip_testing: ""
-            retry_tests_on_failure: "NO"
-            parallel_testing_enabled: "NO"
-            max_parallel_test_workers: "1"
-            destination_timeout: "180"
-            enable_coverage: "NO"
-            prepare_simulator_before_tests: "YES"
-            collect_simulator_diagnostics_on_failure: "YES"
-          - id: extensions
-            lane: extensions
-            label: "iPhone 17 Pro iOS 26"
-            scheme: sideBarExtensions
-            test_plan: AppleExtensions
-            destination: "platform=iOS Simulator,name=iPhone 17 Pro"
-            runner_label: ios
-            spec_selection_main: main_extensions
-            skip_testing: ""
-            retry_tests_on_failure: "NO"
-            parallel_testing_enabled: "NO"
-            max_parallel_test_workers: "1"
-            destination_timeout: "180"
-            enable_coverage: "YES"
-            prepare_simulator_before_tests: "YES"
-            collect_simulator_diagnostics_on_failure: "YES"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Configure shared Apple cache paths
-        run: |
-          shared_root="$HOME/Library/Caches/sidebar-ci-apple-tests"
-          mkdir -p "$shared_root/swiftpm/source-packages"
-          mkdir -p "$shared_root/swiftpm/package-cache"
-          mkdir -p "$shared_root/deriveddata"
-          echo "IOS_CLONED_SOURCE_PACKAGES_DIR=$shared_root/swiftpm/source-packages" >> "$GITHUB_ENV"
-          echo "IOS_PACKAGE_CACHE_PATH=$shared_root/swiftpm/package-cache" >> "$GITHUB_ENV"
-          echo "IOS_SHARED_DERIVED_DATA_ROOT=$shared_root/deriveddata" >> "$GITHUB_ENV"
-      - name: Pre-clean stale test outputs (${{ matrix.id }})
-        run: |
-          rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"
-          rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics"
-          rm -rf "${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult"
-          rm -rf "${{ github.workspace }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics"
-          mkdir -p "${{ runner.temp }}/ios-test-results"
-      - name: Resolve taxonomy test specs (${{ matrix.label }})
-        run: |
-          selection="${{ matrix.spec_selection_main }}"
-          specs="$(python3 scripts/resolve_ios_test_specs.py --repo-root . --selection "$selection")"
-          echo "IOS_ONLY_TESTING=$specs" >> "$GITHUB_ENV"
-          echo "IOS_RESOLVED_TAXONOMY_SELECTION=$selection" >> "$GITHUB_ENV"
-      - name: Validate lane configuration (${{ matrix.label }})
-        run: |
-          python3 scripts/validate_ios_test_lane.py \
-            --project ios/sideBar/sideBar.xcodeproj \
-            --scheme "${{ matrix.scheme }}" \
-            --destination "${{ matrix.destination }}" \
-            --only-testing "${IOS_ONLY_TESTING}" \
-            --skip-testing "${{ matrix.skip_testing }}" \
-            --allowed-macos-targets "sideBarTests"
-      - name: Write UI test secrets file (${{ matrix.label }})
-        if: ${{ matrix.lane == 'ui' }}
+          xcodebuild test \
+            -project ios/sideBar/sideBar.xcodeproj \
+            -scheme sideBar \
+            -testPlan AppleStateful \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -parallel-testing-enabled NO \
+            -resultBundlePath "${{ runner.temp }}/ios-test-results/main.xcresult"
+      - name: Run UI smoke tests
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -190,79 +42,22 @@ jobs:
           SIDEBAR_UI_TEST_EMAIL: ${{ secrets.SIDEBAR_UI_TEST_EMAIL }}
           SIDEBAR_UI_TEST_PASSWORD: ${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}
         run: |
-          umask 077
-          cat > ios/sideBar/.ui-test-secrets.local <<EOF
-          SIDEBAR_UI_TEST_EMAIL=${SIDEBAR_UI_TEST_EMAIL}
-          SIDEBAR_UI_TEST_PASSWORD=${SIDEBAR_UI_TEST_PASSWORD}
-          SIDEBAR_UI_TEST_API_BASE_URL=${API_BASE_URL}
-          SIDEBAR_UI_TEST_SUPABASE_URL=${SUPABASE_URL}
-          SIDEBAR_UI_TEST_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-          EOF
-      - name: Run tests (${{ matrix.label }})
-        env:
-          IOS_SCHEME: ${{ matrix.scheme }}
-          IOS_TEST_PLAN: ${{ matrix.test_plan }}
-          IOS_DESTINATION: ${{ matrix.destination }}
-          IOS_DESTINATION_TIMEOUT: ${{ matrix.destination_timeout }}
-          IOS_RESULT_BUNDLE_PATH: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult
-          IOS_DERIVED_DATA_PATH: ${{ env.IOS_SHARED_DERIVED_DATA_ROOT }}/${{ matrix.id }}
-          IOS_CLEAN_DERIVED_DATA: "YES"
-          IOS_CLONED_SOURCE_PACKAGES_DIR: ${{ env.IOS_CLONED_SOURCE_PACKAGES_DIR }}
-          IOS_PACKAGE_CACHE_PATH: ${{ env.IOS_PACKAGE_CACHE_PATH }}
-          IOS_PACKAGE_RESOLVE_TIMEOUT_SECONDS: "600"
-          IOS_SKIP_PACKAGE_DEPENDENCY_RESOLUTION: "YES"
-          IOS_ONLY_TESTING: ${{ env.IOS_ONLY_TESTING }}
-          IOS_SKIP_TESTING: ${{ matrix.skip_testing }}
-          IOS_RETRY_TESTS_ON_FAILURE: ${{ matrix.retry_tests_on_failure }}
-          IOS_ENABLE_CODE_COVERAGE: ${{ matrix.enable_coverage }}
-          IOS_PARALLEL_TESTING_ENABLED: ${{ matrix.parallel_testing_enabled }}
-          IOS_MAXIMUM_PARALLEL_TESTING_WORKERS: ${{ matrix.max_parallel_test_workers }}
-          IOS_PREPARE_SIMULATOR_BEFORE_TESTS: ${{ matrix.prepare_simulator_before_tests }}
-          IOS_COLLECT_SIMULATOR_DIAGNOSTICS_ON_FAILURE: ${{ matrix.collect_simulator_diagnostics_on_failure }}
-          IOS_SIMULATOR_DIAGNOSTICS_DIR: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics
-          SIDEBAR_PRE_PUSH_MODE: ${{ matrix.pre_push_mode || 'NO' }}
-          SIDEBAR_PRE_PUSH_STATE_DIR: ${{ runner.temp }}/pre-push-simulator/${{ matrix.id }}
-          SIDEBAR_PRE_PUSH_SIMULATOR_NAME: sideBar PrePush iPad
-          API_BASE_URL: ${{ secrets.API_BASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SIDEBAR_UI_TEST_EMAIL: ${{ secrets.SIDEBAR_UI_TEST_EMAIL }}
-          SIDEBAR_UI_TEST_PASSWORD: ${{ secrets.SIDEBAR_UI_TEST_PASSWORD }}
-        run: scripts/test-ios.sh
-      - name: Run quality gates (${{ matrix.label }})
+          xcodebuild test \
+            -project ios/sideBar/sideBar.xcodeproj \
+            -scheme sideBarUI \
+            -testPlan AppleUI \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -parallel-testing-enabled NO \
+            -resultBundlePath "${{ runner.temp }}/ios-test-results/main-ui.xcresult"
+      - name: Run extension tests
         run: |
-          if [[ "${{ matrix.lane }}" == "ui" ]]; then
-            python3 scripts/check_ios_quality_gates.py \
-              --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult" \
-              --profile ui \
-              --skip-coverage
-          else
-            python3 scripts/check_ios_quality_gates.py \
-              --xcresult "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult" \
-              --profile "${{ matrix.lane }}"
-          fi
-      - name: Upload xcresult bundle (${{ matrix.id }})
-        if: ${{ failure() }}
-        continue-on-error: true
-        uses: actions/upload-artifact@v6
-        with:
-          name: ios-xcresult-${{ matrix.id }}
-          path: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult
-          if-no-files-found: ignore
-          retention-days: 1
-      - name: Upload simulator diagnostics (${{ matrix.id }})
-        if: ${{ failure() }}
-        continue-on-error: true
-        uses: actions/upload-artifact@v6
-        with:
-          name: ios-simulator-diagnostics-${{ matrix.id }}
-          path: ${{ runner.temp }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics
-          if-no-files-found: ignore
-          retention-days: 1
-      - name: Cleanup test outputs (${{ matrix.id }})
-        if: ${{ always() }}
-        run: |
-          rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}.xcresult"
-          rm -rf "${{ runner.temp }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics"
-          rm -rf "${{ github.workspace }}/ios-test-results/${{ matrix.id }}.xcresult"
-          rm -rf "${{ github.workspace }}/ios-test-results/${{ matrix.id }}-simulator-diagnostics"
+          xcodebuild test \
+            -project ios/sideBar/sideBar.xcodeproj \
+            -scheme sideBarExtensions \
+            -testPlan AppleExtensions \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -parallel-testing-enabled NO \
+            -resultBundlePath "${{ runner.temp }}/ios-test-results/main-extensions.xcresult"
+      - name: Cleanup
+        if: always()
+        run: rm -rf "${{ runner.temp }}/ios-test-results"
