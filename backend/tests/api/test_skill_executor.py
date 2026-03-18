@@ -1,6 +1,10 @@
 """Tests for SkillExecutor security and functionality."""
 
 import asyncio
+import json
+import subprocess
+import threading
+import time
 
 import pytest
 from api.config import settings
@@ -188,6 +192,34 @@ print(json.dumps({"success": True}))
 
 class TestSkillExecutorExecution:
     """Test script execution functionality."""
+
+    @pytest.mark.asyncio
+    async def test_execute_does_not_block_event_loop(self, executor, monkeypatch):
+        """Long-running script execution should not block unrelated loop callbacks."""
+        callback_fired = threading.Event()
+        callback_seen_during_run: list[bool] = []
+
+        def fake_run(*args, **kwargs):
+            del args, kwargs
+            time.sleep(0.05)
+            callback_seen_during_run.append(callback_fired.is_set())
+            time.sleep(0.05)
+            return subprocess.CompletedProcess(
+                args=["python", "echo.py"],
+                returncode=0,
+                stdout=json.dumps({"success": True, "data": {"message": "ok"}}),
+                stderr="",
+            )
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+
+        loop = asyncio.get_running_loop()
+        loop.call_later(0.02, callback_fired.set)
+
+        result = await executor.execute("test-skill", "echo.py", ["hello"])
+
+        assert result["success"] is True
+        assert callback_seen_during_run == [True]
 
     @pytest.mark.asyncio
     async def test_passes_arguments_correctly(self, executor):

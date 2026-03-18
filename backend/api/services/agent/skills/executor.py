@@ -254,7 +254,8 @@ class SkillExecutor:
                     env.update(env_overrides)
 
                 # Execute with strict timeout and no shell
-                result = subprocess.run(
+                result = await asyncio.to_thread(
+                    subprocess.run,
                     cmd,
                     capture_output=True,
                     text=True,
