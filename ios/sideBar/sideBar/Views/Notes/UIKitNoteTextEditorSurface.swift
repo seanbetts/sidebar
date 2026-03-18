@@ -30,20 +30,27 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
         var pendingInitialViewportOffset: CGPoint? {
             didSet {
+                guard pendingInitialViewportOffset != oldValue else { return }
                 hasAppliedPendingInitialViewportOffset = false
+                initialViewportVerificationPassesRemaining = pendingInitialViewportOffset == nil ? 0 : 3
+                schedulePendingInitialViewportRetryBurst()
+                scheduleInitialViewportVerificationIfNeeded()
                 applyPendingInitialViewportOffsetIfNeeded()
-                guard let pendingInitialViewportOffset else { return }
-                let deferredViewportOffset = pendingInitialViewportOffset
-                DispatchQueue.main.async { [weak self] in
-                    self?.applyDeferredInitialViewportOffsetIfNeeded(deferredViewportOffset)
-                }
             }
         }
         var keyboardObservers: [NSObjectProtocol] = []
         var keyboardFrameInScreen: CGRect?
         var hasAppliedPendingInitialViewportOffset = false
+        var initialViewportVerificationPassesRemaining = 0
+        var isInitialViewportVerificationScheduled = false
         var debugHasAppliedPendingInitialViewportOffset: Bool { hasAppliedPendingInitialViewportOffset }
         var debugPendingInitialViewportOffset: CGPoint? { pendingInitialViewportOffset }
+        override var contentSize: CGSize {
+            didSet {
+                applyPendingInitialViewportOffsetIfNeeded()
+                scheduleInitialViewportVerificationIfNeeded()
+            }
+        }
 
         override var inputAccessoryView: UIView? {
             get { formattingAccessoryView }
@@ -120,6 +127,19 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             updateTextContainerInsets()
             updateViewportInsets()
             applyPendingInitialViewportOffsetIfNeeded()
+            scheduleInitialViewportVerificationIfNeeded()
+        }
+
+        private func schedulePendingInitialViewportRetryBurst() {
+            guard let pendingInitialViewportOffset else { return }
+            for delay in [0.0, 0.01, 0.05] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard let self, self.pendingInitialViewportOffset == pendingInitialViewportOffset else {
+                        return
+                    }
+                    self.applyPendingInitialViewportOffsetIfNeeded()
+                }
+            }
         }
 
     }
@@ -183,9 +203,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         if let accessoryTextView = textView as? AccessoryTextView {
             accessoryTextView.shouldAutofocus = isEditable && shouldAutofocus
             accessoryTextView.maxReadableContentWidth = maxContentWidth
-            if accessoryTextView.pendingInitialViewportOffset != initialViewportOffset {
-                accessoryTextView.pendingInitialViewportOffset = initialViewportOffset
-            }
+            accessoryTextView.updatePendingInitialViewportOffset(initialViewportOffset)
             if isEditable, shouldAutofocus, accessoryTextView.window != nil, accessoryTextView.isFirstResponder == false {
                 DispatchQueue.main.async {
                     accessoryTextView.becomeFirstResponder()
@@ -236,6 +254,11 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
         if let accessoryTextView = textView as? AccessoryTextView {
             accessoryTextView.applyPendingInitialViewportOffsetIfNeeded()
+            if accessoryTextView.pendingInitialViewportOffset != nil {
+                DispatchQueue.main.async { [weak accessoryTextView] in
+                    accessoryTextView?.applyPendingInitialViewportOffsetIfNeeded()
+                }
+            }
         }
     }
 

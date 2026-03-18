@@ -7,6 +7,15 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         pendingInitialViewportOffset != nil && hasAppliedPendingInitialViewportOffset == false
     }
 
+    func updatePendingInitialViewportOffset(_ offset: CGPoint?) {
+        guard let offset else {
+            guard initialViewportVerificationPassesRemaining == 0 else { return }
+            pendingInitialViewportOffset = nil
+            return
+        }
+        pendingInitialViewportOffset = offset
+    }
+
     func updateKeyboardObservation() {
         removeKeyboardObservers()
         guard window != nil else {
@@ -98,23 +107,66 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         layoutIfNeeded()
         guard applyInitialViewportOffset(pendingInitialViewportOffset) else { return }
         hasAppliedPendingInitialViewportOffset = true
+        scheduleInitialViewportVerificationIfNeeded()
     }
 
-    func applyDeferredInitialViewportOffsetIfNeeded(_ offset: CGPoint) {
-        guard window != nil else { return }
+    func scheduleInitialViewportVerificationIfNeeded() {
+        guard isInitialViewportVerificationScheduled == false,
+              initialViewportVerificationPassesRemaining > 0,
+              let pendingInitialViewportOffset else { return }
+        isInitialViewportVerificationScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.isInitialViewportVerificationScheduled = false
+            self.verifyInitialViewportOffsetIfNeeded(pendingInitialViewportOffset)
+        }
+    }
+
+    func verifyInitialViewportOffsetIfNeeded(_ offset: CGPoint) {
+        guard pendingInitialViewportOffset == offset else { return }
+        let resolution = resolveInitialViewportOffset(offset)
+        guard case .resolved(let resolvedOffset) = resolution else {
+            if case .notReady = resolution {
+                scheduleInitialViewportVerificationIfNeeded()
+            }
+            return
+        }
+        let isStable =
+            abs(contentOffset.x - resolvedOffset.x) <= 0.5 &&
+            abs(contentOffset.y - resolvedOffset.y) <= 0.5
+        guard isStable == false else {
+            initialViewportVerificationPassesRemaining = 0
+            pendingInitialViewportOffset = nil
+            return
+        }
+
+        guard initialViewportVerificationPassesRemaining > 0 else { return }
+        initialViewportVerificationPassesRemaining -= 1
         guard applyInitialViewportOffset(offset) else { return }
         hasAppliedPendingInitialViewportOffset = true
+        scheduleInitialViewportVerificationIfNeeded()
     }
 
     @discardableResult
     private func applyInitialViewportOffset(_ offset: CGPoint) -> Bool {
-        guard bounds.height > 0, contentSize.height > 0 else { return false }
+        guard case .resolved(let resolvedOffset) = resolveInitialViewportOffset(offset) else { return false }
+        setContentOffset(resolvedOffset, animated: false)
+        return true
+    }
+
+    private enum InitialViewportResolution {
+        case notReady
+        case unresolved
+        case resolved(CGPoint)
+    }
+
+    private func resolveInitialViewportOffset(_ offset: CGPoint) -> InitialViewportResolution {
+        guard bounds.height > 0, contentSize.height > 0 else { return .notReady }
         layoutIfNeeded()
         let resolvedOffset = UIKitNoteTextEditorSurface.clampedContentOffset(offset, for: self)
         guard resolvedOffset.x + 0.5 >= offset.x,
-              resolvedOffset.y + 0.5 >= offset.y else { return false }
-        setContentOffset(resolvedOffset, animated: false)
-        return true
+              resolvedOffset.y + 0.5 >= offset.y else { return .unresolved }
+        return .resolved(resolvedOffset)
     }
 }
 #endif

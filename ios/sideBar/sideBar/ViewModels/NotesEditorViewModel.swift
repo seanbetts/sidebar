@@ -305,6 +305,9 @@ public final class NotesEditorViewModel: ObservableObject {
     public func enterEditMode() { enterEditMode(at: .start) }
     public func enterEditMode(at target: PendingEditSelectionTarget) {
         guard currentNoteId != nil, unsupportedContent == nil else { return }
+        if #available(iOS 26.0, macOS 26.0, *) {
+            primeSharedNativeEditorForEdit(target: target)
+        }
         pendingEditSelectionTarget = target; pendingEditViewportOffset = lastReadViewportOffset
         presentationMode = .edit
     }
@@ -317,8 +320,16 @@ public final class NotesEditorViewModel: ObservableObject {
     public func updateReadViewportOffset(_ offset: CGPoint?) { lastReadViewportOffset = offset }
     var debugLastReadViewportOffset: CGPoint? { lastReadViewportOffset }
     var debugPendingEditViewportOffset: CGPoint? { pendingEditViewportOffset }
+    var peekPendingEditViewportOffset: CGPoint? { pendingEditViewportOffset }
     public func exitEditModeToRead() {
         pendingEditSelectionTarget = nil; pendingEditViewportOffset = nil; presentationMode = .read
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func primeSharedNativeEditorForEdit(target: PendingEditSelectionTarget) {
+        let nativeEditorViewModel = sharedNativeEditor()
+        nativeEditorViewModel.loadDocument(canonicalContent: canonicalContent, plainText: content)
+        nativeEditorViewModel.applySelectionTarget(target)
     }
 
     private func syncNativeEditorContent(canonicalContent: String, plainText: String) {
@@ -470,31 +481,15 @@ extension NotesEditorViewModel {
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    private func resetNativeEditorObservation() {
-        nativeEditorObservation?.cancel()
-        nativeEditorObservation = nil
-    }
-    public func setDirty(_ dirty: Bool) {
-        guard isDirty != dirty else { return }
-        isDirty = dirty
-    }
-
-    public func setReadOnly(_ readOnly: Bool) {
-        guard isReadOnly != readOnly else { return }
-        isReadOnly = readOnly
-    }
-
+    private func resetNativeEditorObservation() { nativeEditorObservation?.cancel(); nativeEditorObservation = nil }
+    public func setDirty(_ dirty: Bool) { guard isDirty != dirty else { return }; isDirty = dirty }
+    public func setReadOnly(_ readOnly: Bool) { guard isReadOnly != readOnly else { return }; isReadOnly = readOnly }
     @available(iOS 26.0, macOS 26.0, *)
     fileprivate func alignPersistenceBaseline(with nativeViewModel: NativeNoteEditorViewModel) {
-        let snapshot = nativeViewModel.currentPersistenceSnapshot()
-        content = snapshot.plainText
+        let snapshot = nativeViewModel.currentPersistenceSnapshot(); content = snapshot.plainText
         canonicalContent = snapshot.canonicalContent
     }
-
     fileprivate func normalizedEditorSnapshot(for note: NotePayload) -> (content: String, plainText: String) {
-        (
-            content: NotesSemanticDocumentCodec.encode(note.document) ?? "",
-            plainText: note.plainText
-        )
+        (content: NotesSemanticDocumentCodec.encode(note.document) ?? "", plainText: note.plainText)
     }
 }

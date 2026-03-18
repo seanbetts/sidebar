@@ -168,7 +168,7 @@ struct AttributedNoteEditorContainer: View {
             shouldAutofocus: autofocusEnabled,
             formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
             formattingBarPresentation: resolvedFormattingBarPresentation,
-            initialViewportOffset: pendingInitialViewportOffset
+            initialViewportOffset: resolvedInitialViewportOffset
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
@@ -192,6 +192,10 @@ struct AttributedNoteEditorContainer: View {
             isPhone: UIDevice.current.userInterfaceIdiom == .phone,
             isSoftwareKeyboardVisible: isSoftwareKeyboardVisible
         )
+    }
+
+    private var resolvedInitialViewportOffset: CGPoint? {
+        pendingInitialViewportOffset ?? editorViewModel.peekPendingEditViewportOffset
     }
     #endif
 }

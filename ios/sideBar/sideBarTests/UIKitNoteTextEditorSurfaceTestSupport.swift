@@ -23,6 +23,7 @@ func mountTextView(
     formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
     formattingBarPresentation: NoteFormattingBarPresentation = .keyboardAccessory,
     makeTextView: (() -> UIKitNoteTextEditorSurface.AccessoryTextView)? = nil,
+    initialViewportOffset: CGPoint? = nil,
     maxContentWidth: CGFloat? = nil,
     width: CGFloat = 360,
     height: CGFloat = 320
@@ -36,6 +37,7 @@ func mountTextView(
                 shouldAutofocus: autofocusEnabled,
                 formattingBarConfiguration: formattingBarConfiguration,
                 formattingBarPresentation: formattingBarPresentation,
+                initialViewportOffset: initialViewportOffset,
                 makeTextView: makeTextView
             )
         )
@@ -165,6 +167,17 @@ final class ScrollTrackingAccessoryTextView: UIKitNoteTextEditorSurface.Accessor
     override func scrollRangeToVisible(_ range: NSRange) {
         scrollRangeToVisibleCallCount += 1
         super.scrollRangeToVisible(range)
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
+final class ViewportTrackingAccessoryTextView: UIKitNoteTextEditorSurface.AccessoryTextView {
+    private(set) var recordedContentOffsets: [CGPoint] = []
+
+    override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
+        recordedContentOffsets.append(contentOffset)
+        super.setContentOffset(contentOffset, animated: animated)
     }
 }
 

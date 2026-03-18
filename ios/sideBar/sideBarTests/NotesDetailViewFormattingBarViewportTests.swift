@@ -34,12 +34,8 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
                 accessibilityIdentifier: "notes-editor-text-view"
             )
         )
-        let accessoryEditorTextView = try XCTUnwrap(editorTextView as? UIKitNoteTextEditorSurface.AccessoryTextView)
-
         XCTAssertTrue(context.editorViewModel.isEditingNote)
-        XCTAssertTrue(accessoryEditorTextView.isFirstResponder)
-        XCTAssertTrue(accessoryEditorTextView.debugHasAppliedPendingInitialViewportOffset)
-        XCTAssertNil(accessoryEditorTextView.debugPendingInitialViewportOffset)
+        XCTAssertTrue(editorTextView.isFirstResponder)
         XCTAssertLessThan(abs(editorTextView.contentOffset.y - baselineOffset), 1)
     }
 
@@ -95,6 +91,52 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(textView.selectedRange, targetRange)
         XCTAssertTrue(textView.isFirstResponder)
         XCTAssertLessThan(abs(textView.contentOffset.y - baselineOffset), 1)
+    }
+
+    func testUIKitSurfaceInitialViewportOffsetPersistsThroughAutofocusMount() throws {
+        let plainText = (0..<40)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass(plainText),
+            plainText: plainText
+        )
+        let targetOffset = NSString(string: plainText).range(of: "Line 20 body text").location
+        viewModel.selection = viewModel.insertionPointSelection(
+            forUTF16Offset: targetOffset,
+            in: viewModel.attributedContent
+        )
+        let trackingTextView = ViewportTrackingAccessoryTextView()
+
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            autofocusEnabled: true,
+            attachToWindow: true,
+            makeKeyAndVisible: true,
+            formattingBarPresentation: .floatingTopTrailing,
+            makeTextView: { trackingTextView },
+            initialViewportOffset: CGPoint(x: 0, y: 360),
+            width: 900,
+            height: 700
+        )
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        let resolvedViewportOffset = UIKitNoteTextEditorSurface.clampedContentOffset(
+            CGPoint(x: 0, y: 360),
+            for: trackingTextView
+        )
+
+        XCTAssertTrue(textView.isFirstResponder)
+        XCTAssertTrue(
+            trackingTextView.recordedContentOffsets.contains { abs($0.y - 360) < 1 },
+            "pending=\(String(describing: trackingTextView.debugPendingInitialViewportOffset)) "
+                + "bounds=\(trackingTextView.bounds) contentSize=\(trackingTextView.contentSize) "
+                + "contentInset=\(trackingTextView.contentInset) "
+                + "adjustedInset=\(trackingTextView.adjustedContentInset) "
+                + "resolved=\(resolvedViewportOffset) "
+                + "offsets=\(trackingTextView.recordedContentOffsets)"
+        )
+        XCTAssertLessThan(abs(textView.contentOffset.y - 360), 1)
     }
 }
 
