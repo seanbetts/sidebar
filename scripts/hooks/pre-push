@@ -1,0 +1,14 @@
+#!/bin/bash
+# Pre-push hook: fast lint checks before pushing to main.
+# Tests are validated during TDD and by CI after push.
+set -euo pipefail
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [[ "${remote_ref}" == "refs/heads/main" ]]; then
+    echo "Pushing to main -- running lint checks..."
+    scripts/check-main-linear-history.sh "${remote_sha}" "${local_sha}" dev
+    (cd ios/sideBar && swiftlint --strict)
+    python3 scripts/check_ios_doc_comments.py
+    echo "Lint checks passed."
+  fi
+done

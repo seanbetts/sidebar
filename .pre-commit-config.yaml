@@ -81,20 +81,6 @@ repos:
         language: system
         files: ^(ios/sideBar/Config/SideBar\.xcconfig|ios/sideBar/sideBar\.xcodeproj/project\.pbxproj|scripts/check_ios_extension_config_resolution\.py)$
         pass_filenames: false
-      - id: ios-tests
-        name: ios-tests
-        entry: scripts/test-ios.sh
-        language: system
-        files: ^ios/
-        pass_filenames: false
-        stages: [manual]
-      - id: ios-warning-gate
-        name: ios-warning-gate
-        entry: scripts/check-ios-warning-gate.sh
-        language: system
-        files: ^(ios/.*\.swift|scripts/check_ios_quality_gates\.py|scripts/ios_quality_gates\.json|scripts/check-ios-warning-gate\.sh)$
-        pass_filenames: false
-        stages: [manual]
       - id: check-cert-pins
         name: check-cert-pins
         entry: bash ios/check-cert-pins.sh
