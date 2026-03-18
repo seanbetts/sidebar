@@ -140,7 +140,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
 
         func scheduleAutofocusRetryBurst() {
-            for delay in [0.0, 0.01, 0.05, 0.1] {
+            for delay in [0.0, 0.01, 0.05, 0.1, 0.2, 0.35, 0.5] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                     guard let self,
                           self.shouldAutofocus,
@@ -148,6 +148,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                           self.isFirstResponder == false else {
                         return
                     }
+                    self.window?.makeKey()
+                    self.window?.endEditing(false)
                     _ = self.becomeFirstResponder()
                 }
             }

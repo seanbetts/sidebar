@@ -59,6 +59,14 @@ extension NotesDetailView {
 
     func activateReadSurfaceEditing(at target: NotesEditorViewModel.PendingEditSelectionTarget) {
         guard currentUnsupportedContent == nil else { return }
+        #if os(iOS)
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        #endif
         editorViewModel.enterEditMode(at: target)
     }
 
