@@ -205,7 +205,8 @@ extension NotesDetailView {
                 SelectableNoteReadView(
                     document: currentReadDocument,
                     maxContentWidth: contentMaxWidth,
-                    onActivateEditing: activateReadSurfaceEditing
+                    onActivateEditing: activateReadSurfaceEditing,
+                    onViewportOffsetChange: handleReadViewportOffsetChange
                 )
             }
         } else if viewModel.selectedNoteId != nil {

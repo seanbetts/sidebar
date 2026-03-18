@@ -10,7 +10,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     }
 
     class AccessoryTextView: UITextView {
-        private static let baseTextContainerInsets = UIEdgeInsets(
+        static let baseTextContainerInsets = UIEdgeInsets(
             top: NoteTextLayout.verticalPadding, left: NoteTextLayout.horizontalPadding,
             bottom: NoteTextLayout.verticalPadding, right: NoteTextLayout.horizontalPadding
         )
@@ -28,8 +28,15 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { setNeedsLayout() }
         }
-        private var keyboardObservers: [NSObjectProtocol] = []
-        private var keyboardFrameInScreen: CGRect?
+        var pendingInitialViewportOffset: CGPoint? {
+            didSet {
+                hasAppliedPendingInitialViewportOffset = false
+                applyPendingInitialViewportOffsetIfNeeded()
+            }
+        }
+        var keyboardObservers: [NSObjectProtocol] = []
+        var keyboardFrameInScreen: CGRect?
+        var hasAppliedPendingInitialViewportOffset = false
 
         override var inputAccessoryView: UIView? {
             get { formattingAccessoryView }
@@ -80,11 +87,21 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         override func didMoveToWindow() {
             super.didMoveToWindow()
             updateKeyboardObservation()
+            applyPendingInitialViewportOffsetIfNeeded()
             guard shouldAutofocus, window != nil, isFirstResponder == false else { return }
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.window != nil, self.isFirstResponder == false else { return }
                 self.becomeFirstResponder()
             }
+        }
+
+        override func becomeFirstResponder() -> Bool {
+            let becameFirstResponder = super.becomeFirstResponder()
+            guard becameFirstResponder else { return false }
+            DispatchQueue.main.async { [weak self] in
+                self?.applyPendingInitialViewportOffsetIfNeeded()
+            }
+            return true
         }
 
         deinit {
@@ -95,89 +112,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             super.layoutSubviews()
             updateTextContainerInsets()
             updateViewportInsets()
-        }
-
-        private func updateKeyboardObservation() {
-            removeKeyboardObservers()
-            guard window != nil else {
-                keyboardFrameInScreen = nil
-                updateViewportInsets()
-                return
-            }
-
-            let center = NotificationCenter.default
-            keyboardObservers = [
-                center.addObserver(
-                    forName: UIResponder.keyboardWillChangeFrameNotification,
-                    object: nil,
-                    queue: .main
-                ) { [weak self] notification in
-                    self?.handleKeyboardNotification(notification)
-                },
-                center.addObserver(
-                    forName: UIResponder.keyboardWillHideNotification,
-                    object: nil,
-                    queue: .main
-                ) { [weak self] _ in
-                    self?.keyboardFrameInScreen = nil
-                    self?.updateViewportInsets()
-                }
-            ]
-            updateViewportInsets()
-        }
-
-        private func removeKeyboardObservers() {
-            let center = NotificationCenter.default
-            keyboardObservers.forEach(center.removeObserver)
-            keyboardObservers.removeAll()
-        }
-
-        private func handleKeyboardNotification(_ notification: Notification) {
-            guard let frameValue = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue else {
-                return
-            }
-            keyboardFrameInScreen = frameValue.cgRectValue
-            updateViewportInsets()
-        }
-
-        private func updateViewportInsets() {
-            let bottomInset = UIKitNoteTextEditorSurface.resolvedBottomViewportInset(
-                textViewBounds: bounds,
-                keyboardFrameInView: resolvedKeyboardFrameInView(),
-                accessoryHeight: resolvedAccessoryHeight()
-            )
-            let previousBottomInset = contentInset.bottom
-            contentInset.bottom = bottomInset
-            var indicatorInsets = verticalScrollIndicatorInsets
-            indicatorInsets.bottom = bottomInset
-            verticalScrollIndicatorInsets = indicatorInsets
-
-            guard abs(previousBottomInset - bottomInset) > 0.5 else { return }
-            scrollCurrentSelectionIntoView()
-        }
-
-        private func updateTextContainerInsets() {
-            let extraHorizontalInset = max((bounds.width - maxReadableContentWidth) / 2, 0)
-            let resolvedInsets = UIEdgeInsets(
-                top: Self.baseTextContainerInsets.top,
-                left: Self.baseTextContainerInsets.left + extraHorizontalInset,
-                bottom: Self.baseTextContainerInsets.bottom,
-                right: Self.baseTextContainerInsets.right + extraHorizontalInset
-            )
-            guard textContainerInset != resolvedInsets else { return }
-            textContainerInset = resolvedInsets
-        }
-
-        private func resolvedKeyboardFrameInView() -> CGRect? {
-            guard let keyboardFrameInScreen,
-                  let window else { return nil }
-            let keyboardFrameInWindow = window.convert(keyboardFrameInScreen, from: nil)
-            return convert(keyboardFrameInWindow, from: window)
-        }
-
-        private func resolvedAccessoryHeight() -> CGFloat {
-            guard formattingAccessoryView != nil, isFirstResponder else { return 0 }
-            return formattingAccessoryView?.bounds.height ?? 0
+            applyPendingInitialViewportOffsetIfNeeded()
         }
 
     }
@@ -188,6 +123,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let shouldAutofocus: Bool
     let formattingBarConfiguration: NoteFormattingBarConfiguration?
     let formattingBarPresentation: NoteFormattingBarPresentation
+    let initialViewportOffset: CGPoint?
     let makeTextView: (() -> AccessoryTextView)?
 
     init(
@@ -197,6 +133,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         shouldAutofocus: Bool = true,
         formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
         formattingBarPresentation: NoteFormattingBarPresentation,
+        initialViewportOffset: CGPoint? = nil,
         makeTextView: (() -> AccessoryTextView)? = nil
     ) {
         self.viewModel = viewModel
@@ -205,6 +142,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         self.shouldAutofocus = shouldAutofocus
         self.formattingBarConfiguration = formattingBarConfiguration
         self.formattingBarPresentation = formattingBarPresentation
+        self.initialViewportOffset = initialViewportOffset
         self.makeTextView = makeTextView
     }
 
@@ -238,6 +176,9 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         if let accessoryTextView = textView as? AccessoryTextView {
             accessoryTextView.shouldAutofocus = isEditable && shouldAutofocus
             accessoryTextView.maxReadableContentWidth = maxContentWidth
+            if accessoryTextView.pendingInitialViewportOffset != initialViewportOffset {
+                accessoryTextView.pendingInitialViewportOffset = initialViewportOffset
+            }
             if isEditable, shouldAutofocus, accessoryTextView.window != nil, accessoryTextView.isFirstResponder == false {
                 DispatchQueue.main.async {
                     accessoryTextView.becomeFirstResponder()
@@ -285,6 +226,9 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 for: textView,
                 selectedRange: selectedRange
             )
+        }
+        if let accessoryTextView = textView as? AccessoryTextView {
+            accessoryTextView.applyPendingInitialViewportOffsetIfNeeded()
         }
     }
 
@@ -454,7 +398,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 }
 
 @available(iOS 26.0, *)
-private extension UIKitNoteTextEditorSurface.AccessoryTextView {
+extension UIKitNoteTextEditorSurface.AccessoryTextView {
     func scrollCurrentSelectionIntoView() {
         guard selectedRange.location != NSNotFound else { return }
         if let selectionRect = selectionRectInContentCoordinates(),

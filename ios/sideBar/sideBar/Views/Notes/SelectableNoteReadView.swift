@@ -13,16 +13,19 @@ struct SelectableNoteReadView: View {
     let document: NotesSemanticDocument
     let maxContentWidth: CGFloat
     var onActivateEditing: ((ReadActivationTarget) -> Void)?
+    var onViewportOffsetChange: ((CGPoint) -> Void)?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
 
     init(
         document: NotesSemanticDocument,
         maxContentWidth: CGFloat,
-        onActivateEditing: ((ReadActivationTarget) -> Void)? = nil
+        onActivateEditing: ((ReadActivationTarget) -> Void)? = nil,
+        onViewportOffsetChange: ((CGPoint) -> Void)? = nil
     ) {
         self.document = document
         self.maxContentWidth = maxContentWidth
         self.onActivateEditing = onActivateEditing
+        self.onViewportOffsetChange = onViewportOffsetChange
     }
 
     init(
@@ -40,7 +43,8 @@ struct SelectableNoteReadView: View {
                 from: document,
                 baseFontSize: baseFontSize
             ),
-            onActivateEditing: onActivateEditing
+            onActivateEditing: onActivateEditing,
+            onViewportOffsetChange: onViewportOffsetChange
         )
         .padding(.horizontal, NoteTextLayout.horizontalPadding)
         .padding(.vertical, NoteTextLayout.verticalPadding)
@@ -89,23 +93,47 @@ struct SelectableNoteReadView: View {
             guard nsRange.length > 0 else { continue }
 
             let blockType = blockType(for: run, in: attributed)
-            let traits = noteInlineTraits(for: run)
-            mutable.addAttribute(
-                .font,
-                value: notePlatformFont(
+            let swiftTraits = noteSwiftUIFontTraits(
+                from: noteExplicitSwiftUIFont(from: run.attributes)
+            )
+            let hasExplicitBlock = run.noteBlock != nil
+            if hasExplicitBlock {
+                mutable.addAttribute(
+                    .font,
+                    value: notePlatformFont(
+                        baseFontSize: baseFontSize,
+                        blockType: blockType,
+                        bold: swiftTraits.bold,
+                        italic: swiftTraits.italic,
+                        inlineCode: swiftTraits.monospaced
+                    ),
+                    range: nsRange
+                )
+            } else {
+                let pointSize = noteBlockPointSize(
                     baseFontSize: baseFontSize,
-                    blockType: blockType,
-                    bold: traits.bold,
-                    italic: traits.italic,
-                    inlineCode: traits.monospaced
-                ),
-                range: nsRange
-            )
-            mutable.addAttribute(
-                .paragraphStyle,
-                value: paragraphStyle(for: blockType, baseFontSize: baseFontSize),
-                range: nsRange
-            )
+                    blockType: blockType
+                )
+                mutable.addAttribute(
+                    .font,
+                    value: notePlatformFont(
+                        baseFontSize: pointSize,
+                        bold: swiftTraits.bold,
+                        italic: swiftTraits.italic,
+                        monospaced: swiftTraits.monospaced
+                    ),
+                    range: nsRange
+                )
+            }
+            if blockTypeNeedsParagraphStyle(blockType) {
+                mutable.addAttribute(
+                    .paragraphStyle,
+                    value: paragraphStyle(for: blockType, baseFontSize: baseFontSize),
+                    range: nsRange
+                )
+            } else {
+                mutable.removeAttribute(.paragraphStyle, range: nsRange)
+            }
             if run.underlineStyle != nil {
                 mutable.addAttribute(
                     .underlineStyle,
@@ -155,7 +183,7 @@ struct SelectableNoteReadView: View {
     private static func noteInlineTraits(
         for run: AttributedString.Runs.Run
     ) -> NoteInlineFormattingTraits {
-        noteInlineFormattingTraits(from: run.attributes)
+        noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: run.attributes))
     }
 
     private static func blockType(
@@ -163,6 +191,17 @@ struct SelectableNoteReadView: View {
         in attributed: AttributedString
     ) -> NotesSemanticDocument.BlockType {
         NoteTextBlockResolution.resolvedBlockType(for: run, in: attributed)
+    }
+
+    private static func blockTypeNeedsParagraphStyle(
+        _ blockType: NotesSemanticDocument.BlockType
+    ) -> Bool {
+        switch blockType {
+        case .unorderedList, .orderedList, .checklist, .blockquote, .codeBlock:
+            return true
+        default:
+            return false
+        }
     }
 
     private static func paragraphStyle(
@@ -314,6 +353,7 @@ struct SelectableNoteReadView: View {
 private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     let attributedContent: NSAttributedString
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
+    let onViewportOffsetChange: ((CGPoint) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let textView = SelectableNoteReadView.makePlatformTextView(
@@ -437,6 +477,7 @@ private final class SelectableNoteReadTextView: NSTextView {
 private struct PlatformSelectableNoteReadView: UIViewRepresentable {
     let attributedContent: NSAttributedString
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
+    let onViewportOffsetChange: ((CGPoint) -> Void)?
 
     func makeUIView(context: Context) -> SelectableNoteReadContainerView {
         let containerView = SelectableNoteReadContainerView()
@@ -455,6 +496,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
             .underlineStyle: NSUnderlineStyle.single.rawValue
         ]
         textView.onActivateEditing = onActivateEditing
+        textView.onViewportOffsetChange = onViewportOffsetChange
         textView.attributedText = attributedContent
         containerView.onActivateEditing = onActivateEditing
         return containerView
@@ -463,6 +505,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
     func updateUIView(_ containerView: SelectableNoteReadContainerView, context: Context) {
         let readTextView = containerView.textView
         readTextView.onActivateEditing = onActivateEditing
+        readTextView.onViewportOffsetChange = onViewportOffsetChange
         containerView.onActivateEditing = onActivateEditing
         if readTextView.attributedText.isEqual(to: attributedContent) == false {
             readTextView.attributedText = attributedContent
@@ -473,6 +516,32 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
 @available(iOS 26.0, macOS 26.0, *)
 private final class SelectableNoteReadTextView: UITextView {
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
+    var onViewportOffsetChange: ((CGPoint) -> Void)? {
+        didSet { reportViewportOffsetIfNeeded(force: true) }
+    }
+    private var lastReportedViewportOffset: CGPoint?
+
+    override var contentOffset: CGPoint {
+        didSet {
+            reportViewportOffsetIfNeeded()
+        }
+    }
+
+    override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
+        super.setContentOffset(contentOffset, animated: animated)
+        reportViewportOffsetIfNeeded()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        reportViewportOffsetIfNeeded()
+    }
+
+    private func reportViewportOffsetIfNeeded(force: Bool = false) {
+        guard force || lastReportedViewportOffset != contentOffset else { return }
+        lastReportedViewportOffset = contentOffset
+        onViewportOffsetChange?(contentOffset)
+    }
 
     private func linkAttribute(at point: CGPoint) -> Any? {
         guard attributedText.length > 0 else { return nil }

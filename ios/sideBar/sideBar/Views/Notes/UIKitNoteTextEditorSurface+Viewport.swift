@@ -22,6 +22,10 @@ extension UIKitNoteTextEditorSurface {
         for textView: UITextView,
         selectedRange: NSRange
     ) -> CGPoint? {
+        if let accessoryTextView = textView as? AccessoryTextView,
+           accessoryTextView.hasPendingUnappliedInitialViewportOffset {
+            return nil
+        }
         guard textView.isFirstResponder else { return nil }
         guard textView.selectedRange == selectedRange else { return nil }
         return textView.contentOffset
@@ -34,10 +38,10 @@ extension UIKitNoteTextEditorSurface {
     ) {
         guard textView.selectedRange == selectedRange else { return }
         textView.layoutIfNeeded()
-        textView.setContentOffset(clampedContentOffset(offset, for: textView), animated: false)
+        textView.setContentOffset(Self.clampedContentOffset(offset, for: textView), animated: false)
     }
 
-    func clampedContentOffset(
+    static func clampedContentOffset(
         _ offset: CGPoint,
         for textView: UITextView
     ) -> CGPoint {

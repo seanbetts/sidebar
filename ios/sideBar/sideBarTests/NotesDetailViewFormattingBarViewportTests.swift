@@ -6,6 +6,39 @@ import XCTest
 @MainActor
 @available(iOS 26.0, *)
 final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
+    func testReadToEditActivationKeepsReadViewportStable() async throws {
+        let plainText = (0..<40)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: plainText))
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(findTextView(in: controller.view))
+        let targetOffset = NSString(string: plainText).range(of: "Line 20 body text").location
+
+        readTextView.setContentOffset(CGPoint(x: 0, y: 360), animated: false)
+        drainNotesHostingRunLoop()
+        let baselineOffset = readTextView.contentOffset.y
+        let recordedReadViewportOffset = try XCTUnwrap(context.editorViewModel.debugLastReadViewportOffset)
+        XCTAssertEqual(recordedReadViewportOffset.y, baselineOffset, accuracy: 1)
+
+        context.editorViewModel.enterEditMode(at: .characterOffset(targetOffset))
+        let pendingEditViewportOffset = try XCTUnwrap(context.editorViewModel.debugPendingEditViewportOffset)
+        XCTAssertEqual(pendingEditViewportOffset.y, baselineOffset, accuracy: 1)
+        drainNotesHostingRunLoop()
+        drainNotesHostingRunLoop()
+
+        let editorTextView = try XCTUnwrap(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            )
+        )
+
+        XCTAssertTrue(context.editorViewModel.isEditingNote)
+        XCTAssertLessThan(abs(editorTextView.contentOffset.y - baselineOffset), 1)
+    }
+
     func testFloatingPopoverTextStyleTapKeepsViewportStable() async throws {
         let plainText = (0..<40)
             .map { index in "Line \(index) body text" }
@@ -120,6 +153,22 @@ private func findFormattingPopoverRoot(startingAt view: UIView?) -> UIView? {
 
     for subview in view.subviews {
         if let match = findFormattingPopoverRoot(startingAt: subview) {
+            return match
+        }
+    }
+
+    return nil
+}
+
+@MainActor
+private func findTextView(in view: UIView?, accessibilityIdentifier: String) -> UITextView? {
+    guard let view else { return nil }
+    if let textView = view as? UITextView, textView.accessibilityIdentifier == accessibilityIdentifier {
+        return textView
+    }
+
+    for subview in view.subviews {
+        if let match = findTextView(in: subview, accessibilityIdentifier: accessibilityIdentifier) {
             return match
         }
     }
