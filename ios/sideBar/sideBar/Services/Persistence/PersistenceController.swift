@@ -125,7 +125,9 @@ public final class PersistenceController {
 
     nonisolated private static func configureInMemoryStore(for container: NSPersistentContainer) {
         container.persistentStoreDescriptions.forEach { description in
-            description.url = URL(fileURLWithPath: "/dev/null")
+            description.url = URL(
+                fileURLWithPath: NSTemporaryDirectory()
+            ).appendingPathComponent(UUID().uuidString)
         }
     }
 

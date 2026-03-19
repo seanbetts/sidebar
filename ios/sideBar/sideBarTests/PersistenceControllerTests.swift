@@ -62,7 +62,7 @@ final class PersistenceControllerTests: XCTestCase {
                         code: NSPersistentStoreIncompatibleVersionHashError
                     )
                 }
-                if container.persistentStoreDescriptions.first?.url?.path == "/dev/null" {
+                if container.persistentStoreDescriptions.first?.url?.path.hasPrefix(NSTemporaryDirectory()) == true {
                     didUseInMemoryFallback = true
                 }
             },
