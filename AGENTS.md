@@ -73,7 +73,7 @@ For feature work and bug fixes, follow the active superpowers TDD workflow unles
 Tests are validated during TDD by the coding agent. CI provides a safety net, not a gate.
 
 - **Dev CI** runs logic tests on macOS (no simulator, no flakiness) on push to `dev`
-- **Main CI** runs the full suite on iOS simulator and blocks on failure (prevents broken Xcode Cloud builds)
+- **Main CI** runs logic tests on macOS + UI/extension tests on iOS simulator, blocks on failure (prevents broken Xcode Cloud builds)
 - **Pre-push** runs lint checks only (SwiftLint, doc comments)
 
 When adding tests, use the existing Xcode test plans:

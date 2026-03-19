@@ -827,7 +827,7 @@ MVVM layering boundaries (Services cannot depend on Stores/ViewModels/Views, etc
 
 iOS CI enforcement:
 - `dev`: SwiftLint + doc comments + AppleFast logic tests (macOS, no simulator)
-- `main`: full suite (AppleStateful + AppleUI + AppleExtensions on iOS simulator, blocking)
+- `main`: AppleFast logic tests (macOS) + AppleUI + AppleExtensions (iOS simulator, blocking)
 
 ---
 

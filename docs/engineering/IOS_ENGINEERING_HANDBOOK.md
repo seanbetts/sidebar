@@ -126,7 +126,7 @@ CI workflow (`.github/workflows/ios-ci.yml`):
 
 - Runs on a self-hosted Mac runner.
 - `dev` branch: SwiftLint + doc comments + AppleFast logic tests on macOS (no simulator).
-- `main` branch: full suite (AppleStateful + AppleUI + AppleExtensions on iOS simulator).
+- `main` branch: AppleFast logic tests on macOS + AppleUI + AppleExtensions on iOS simulator.
 - Manual dispatch available for any lane combination.
 
 Pre-push hook (`.git/hooks/pre-push`):

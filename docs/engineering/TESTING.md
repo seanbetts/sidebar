@@ -198,7 +198,7 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 | Branch | What runs | Blocking? |
 |--------|-----------|-----------|
 | `dev` | SwiftLint + doc comments + AppleFast logic tests (macOS, no simulator) | Yes |
-| `main` | Full suite (AppleStateful + AppleUI + AppleExtensions on iOS simulator) | Yes |
+| `main` | AppleFast logic tests (macOS) + AppleUI + AppleExtensions (iOS simulator) | Yes |
 
 **Pre-push:** Lint checks only (SwiftLint, doc comments, linear history). No test execution.
 
@@ -208,4 +208,4 @@ Backend/frontend tests run automatically on push/PR via GitHub Actions.
 
 iOS CI runs on a self-hosted Mac runner:
 - `dev`: logic tests on macOS destination (no simulator, blocks on failure)
-- `main`: full suite on iOS simulator (blocks on failure to prevent broken Xcode Cloud builds)
+- `main`: logic tests on macOS + UI/extension tests on iOS simulator (blocks on failure to prevent broken Xcode Cloud builds)
