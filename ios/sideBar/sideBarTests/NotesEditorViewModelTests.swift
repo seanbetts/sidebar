@@ -427,12 +427,15 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.canApplyFormattingCommands())
 
         viewModel.enterEditMode()
+        let editRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: editRange)
 
         XCTAssertTrue(viewModel.canApplyFormattingCommands())
 
         viewModel.toggleFormatting(.italic)
 
-        XCTAssertTrue(noteRangeHasItalicTrait(nativeViewModel.attributedContent, range: range))
+        let updatedRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
+        XCTAssertTrue(noteRangeHasItalicTrait(nativeViewModel.attributedContent, range: updatedRange))
         XCTAssertTrue(viewModel.isFormattingActive(.italic))
         XCTAssertTrue(viewModel.isDirty)
     }
@@ -481,6 +484,8 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.canApplyFormattingCommands())
 
         viewModel.enterEditMode()
+        let editRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: editRange)
 
         viewModel.setFormatting(.underline, enabled: true)
         let enabledRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
@@ -675,6 +680,8 @@ final class NotesEditorViewModelTests: XCTestCase {
         let range = characterRange(length: 5, in: nativeViewModel.attributedContent)
         nativeViewModel.selection = AttributedTextSelection(range: range)
         viewModel.enterEditMode()
+        let editRange = characterRange(length: 5, in: nativeViewModel.attributedContent)
+        nativeViewModel.selection = AttributedTextSelection(range: editRange)
 
         let previous = nativeViewModel.attributedContent
         nativeViewModel.applyFormatting(.bold)

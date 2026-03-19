@@ -73,15 +73,13 @@ struct SelectableNoteReadView: View {
     ) -> NSAttributedString {
         bridgedPlatformAttributedString(
             from: makeAttributedContent(from: document, baseFontSize: baseFontSize),
-            baseFontSize: baseFontSize,
-            includeParagraphStyles: false
+            baseFontSize: baseFontSize
         )
     }
 
     static func bridgedPlatformAttributedString(
         from attributed: AttributedString,
-        baseFontSize: CGFloat,
-        includeParagraphStyles: Bool = true
+        baseFontSize: CGFloat
     ) -> NSAttributedString {
         let base = (try? NSAttributedString(attributed, including: \.noteTextEditor))
             ?? NSAttributedString(attributed)
@@ -133,15 +131,11 @@ struct SelectableNoteReadView: View {
                     range: nsRange
                 )
             }
-            if includeParagraphStyles || blockTypeNeedsParagraphStyle(blockType) {
-                mutable.addAttribute(
-                    .paragraphStyle,
-                    value: paragraphStyle(for: blockType, baseFontSize: baseFontSize),
-                    range: nsRange
-                )
-            } else {
-                mutable.removeAttribute(.paragraphStyle, range: nsRange)
-            }
+            mutable.addAttribute(
+                .paragraphStyle,
+                value: paragraphStyle(for: blockType, baseFontSize: baseFontSize),
+                range: nsRange
+            )
             if run.underlineStyle != nil {
                 mutable.addAttribute(
                     .underlineStyle,
@@ -199,17 +193,6 @@ struct SelectableNoteReadView: View {
         in attributed: AttributedString
     ) -> NotesSemanticDocument.BlockType {
         NoteTextBlockResolution.resolvedBlockType(for: run, in: attributed)
-    }
-
-    private static func blockTypeNeedsParagraphStyle(
-        _ blockType: NotesSemanticDocument.BlockType
-    ) -> Bool {
-        switch blockType {
-        case .unorderedList, .orderedList, .checklist, .blockquote, .codeBlock:
-            return true
-        default:
-            return false
-        }
     }
 
     private static func paragraphStyle(

@@ -352,16 +352,21 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertTrue(traits.italic)
     }
 
-    func testMakePlatformAttributedContentRemovesParagraphStyleOverrides() {
+    func testMakePlatformAttributedContentAppliesNoteTextParagraphMetrics() {
         let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\n\nTwo")
         let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
-            from: document,
-            baseFontSize: 16
+            from: document, baseFontSize: 16
         )
-
-        XCTAssertNil(readAttributed.attribute(.paragraphStyle, at: 0, effectiveRange: nil))
-        XCTAssertNil(readAttributed.attribute(.paragraphStyle, at: 4, effectiveRange: nil))
-        XCTAssertNil(readAttributed.attribute(.paragraphStyle, at: 5, effectiveRange: nil))
+        let titleStyle = readAttributed.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
+        let bodyStyle = readAttributed.attribute(.paragraphStyle, at: 5, effectiveRange: nil) as? NSParagraphStyle
+        let expectedTitle = NoteTextParagraphMetrics.paragraphStyle(for: .title, baseFontSize: 16)
+        let expectedBody = NoteTextParagraphMetrics.paragraphStyle(for: .paragraph, baseFontSize: 16)
+        XCTAssertNotNil(titleStyle)
+        XCTAssertEqual(titleStyle?.lineSpacing ?? -1, expectedTitle.lineSpacing, accuracy: 0.001)
+        XCTAssertEqual(titleStyle?.paragraphSpacing ?? -1, expectedTitle.paragraphSpacing, accuracy: 0.001)
+        XCTAssertNotNil(bodyStyle)
+        XCTAssertEqual(bodyStyle?.lineSpacing ?? -1, expectedBody.lineSpacing, accuracy: 0.001)
+        XCTAssertEqual(bodyStyle?.paragraphSpacing ?? -1, expectedBody.paragraphSpacing, accuracy: 0.001)
     }
 
     func testReadTextViewBlankLineGapMatchesMountedEditorTextView() async throws {
