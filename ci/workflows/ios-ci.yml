@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   ios_quality:
-    runs-on: [self-hosted, mac]
+    runs-on: [self-hosted, macOS]
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -30,7 +30,7 @@ jobs:
 
   ios_test_logic:
     needs: [ios_quality]
-    runs-on: [self-hosted, mac]
+    runs-on: [self-hosted, macOS]
     timeout-minutes: 30
     steps:
       - name: Checkout

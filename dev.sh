@@ -7,7 +7,7 @@
 # Common commands:
 #   ./dev.sh start
 #     Start backend, frontend, ingestion worker, docs, website, and Caddy proxy,
-#     restart local GitHub Actions runners, and ensure local test Postgres availability.
+#     restart the local GitHub Actions runner, and ensure local test Postgres availability.
 #     Proxy URLs (requires: brew install caddy):
 #       - Website: http://trysidebar.localhost:8080
 #       - App:     http://app.trysidebar.localhost:8080
@@ -19,11 +19,11 @@
 #       - Docs:     http://localhost:3001
 #       - Website:  http://localhost:5173
 #   ./dev.sh stop
-#     Stop all services managed by this script, including local GitHub Actions runners.
+#     Stop all services managed by this script, including the local GitHub Actions runner.
 #   ./dev.sh restart
-#     Restart all services, including local GitHub Actions runners.
+#     Restart all services, including the local GitHub Actions runner.
 #   ./dev.sh status
-#     Show running status, including local GitHub Actions runners, URLs, and log file locations.
+#     Show running status, including the local GitHub Actions runner, URLs, and log file locations.
 #   ./dev.sh logs [backend|frontend|ingestion|docs|website|caddy]
 #     Tail logs for one service or all services.
 #
@@ -31,7 +31,7 @@
 # - If .env and/or .env.local exist, they are loaded automatically.
 # - If Doppler is installed and configured, services run through doppler.
 # - Set SIDEBAR_DEV_TEST_DB=0 to skip local test DB setup/checks.
-# - Set SIDEBAR_FORCE_RUNNER_RESTART=1 to restart GitHub runners even if they are busy.
+# - Set SIDEBAR_FORCE_RUNNER_RESTART=1 to restart the GitHub runner even if it is busy.
 set -euo pipefail
 
 BACKEND_LOG="/tmp/sidebar-backend.log"
@@ -61,8 +61,6 @@ STARTUP_DETECT_ATTEMPTS=40
 STARTUP_DETECT_INTERVAL_SECONDS="0.5"
 RUNNER_DIRS=(
   "/Users/sean/Coding/actions-runner-ios"
-  "/Users/sean/Coding/actions-runner-ios2"
-  "/Users/sean/Coding/actions-runner-mac"
 )
 
 load_env() {

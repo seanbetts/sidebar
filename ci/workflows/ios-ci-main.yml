@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   ios_test_full:
-    runs-on: [self-hosted, mac]
+    runs-on: [self-hosted, macOS]
     timeout-minutes: 45
     steps:
       - name: Checkout
