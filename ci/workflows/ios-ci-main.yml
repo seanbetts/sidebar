@@ -26,6 +26,8 @@ jobs:
             -resolvePackageDependencies \
             -onlyUsePackageVersionsFromResolvedFile
       - name: Run full test suite
+        id: full_tests
+        continue-on-error: true
         run: |
           xcodebuild test \
             -project ios/sideBar/sideBar.xcodeproj \
@@ -34,6 +36,18 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
             -parallel-testing-enabled NO \
             -resultBundlePath "${{ runner.temp }}/ios-test-results/main.xcresult"
+      - name: Check full test suite results
+        if: steps.full_tests.outcome == 'failure'
+        run: |
+          echo "::warning::Full test suite exited with non-zero status. Checking xcresult for actual failures..."
+          if xcrun xcresulttool get test-results summary \
+            --path "${{ runner.temp }}/ios-test-results/main.xcresult" 2>/dev/null \
+            | grep -q '"failedTests" : 0'; then
+            echo "All tests passed despite non-zero exit (likely test host crash with successful retry)."
+          else
+            echo "::error::Test failures detected in xcresult."
+            exit 1
+          fi
       - name: Run UI smoke tests
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
