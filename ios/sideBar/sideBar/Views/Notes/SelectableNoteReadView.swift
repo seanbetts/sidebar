@@ -33,7 +33,7 @@ struct SelectableNoteReadView: View {
         maxContentWidth: CGFloat,
         onActivateEditing: (() -> Void)?
     ) {
-        self.init(document: document, maxContentWidth: maxContentWidth) { _ in onActivateEditing?() }
+        self.init(document: document, maxContentWidth: maxContentWidth, onActivateEditing: { _ in onActivateEditing?() })
     }
 
     var body: some View {
