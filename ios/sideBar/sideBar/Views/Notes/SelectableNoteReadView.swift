@@ -73,13 +73,15 @@ struct SelectableNoteReadView: View {
     ) -> NSAttributedString {
         bridgedPlatformAttributedString(
             from: makeAttributedContent(from: document, baseFontSize: baseFontSize),
-            baseFontSize: baseFontSize
+            baseFontSize: baseFontSize,
+            includeParagraphStyles: false
         )
     }
 
     static func bridgedPlatformAttributedString(
         from attributed: AttributedString,
-        baseFontSize: CGFloat
+        baseFontSize: CGFloat,
+        includeParagraphStyles: Bool = true
     ) -> NSAttributedString {
         let base = (try? NSAttributedString(attributed, including: \.noteTextEditor))
             ?? NSAttributedString(attributed)
@@ -96,6 +98,12 @@ struct SelectableNoteReadView: View {
             let swiftTraits = noteSwiftUIFontTraits(
                 from: noteExplicitSwiftUIFont(from: run.attributes)
             )
+            let monospaced: Bool
+            if let platformFont = noteExplicitPlatformFont(from: run.attributes) {
+                monospaced = notePlatformFontTraits(from: platformFont).monospaced
+            } else {
+                monospaced = false
+            }
             let hasExplicitBlock = run.noteBlock != nil
             if hasExplicitBlock {
                 mutable.addAttribute(
@@ -105,7 +113,7 @@ struct SelectableNoteReadView: View {
                         blockType: blockType,
                         bold: swiftTraits.bold,
                         italic: swiftTraits.italic,
-                        inlineCode: swiftTraits.monospaced
+                        inlineCode: monospaced
                     ),
                     range: nsRange
                 )
@@ -120,12 +128,12 @@ struct SelectableNoteReadView: View {
                         baseFontSize: pointSize,
                         bold: swiftTraits.bold,
                         italic: swiftTraits.italic,
-                        monospaced: swiftTraits.monospaced
+                        monospaced: monospaced
                     ),
                     range: nsRange
                 )
             }
-            if blockTypeNeedsParagraphStyle(blockType) {
+            if includeParagraphStyles || blockTypeNeedsParagraphStyle(blockType) {
                 mutable.addAttribute(
                     .paragraphStyle,
                     value: paragraphStyle(for: blockType, baseFontSize: baseFontSize),

@@ -96,8 +96,8 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         normalized[range][AttributeScopes.AppKitAttributes.FontAttribute.self] = noteEditorPlatformFont(
             baseFontSize: baseFontSize,
             blockType: blockType,
-            bold: traits.bold,
-            italic: traits.italic,
+            bold: false,
+            italic: false,
             inlineCode: traits.monospaced
         )
         #endif

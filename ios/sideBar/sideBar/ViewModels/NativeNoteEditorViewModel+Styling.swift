@@ -49,6 +49,7 @@ extension NativeNoteEditorViewModel {
             monospaced: state.inlineCode
         )
         setFont(font, in: &attrs)
+        #if os(iOS)
         setPlatformFont(
             inlineStyledPlatformFont(
                 bold: state.bold,
@@ -57,6 +58,16 @@ extension NativeNoteEditorViewModel {
             ),
             in: &attrs
         )
+        #elseif os(macOS)
+        setPlatformFont(
+            inlineStyledPlatformFont(
+                bold: false,
+                italic: false,
+                monospaced: state.inlineCode
+            ),
+            in: &attrs
+        )
+        #endif
         #if os(iOS)
         attrs[AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
             state.inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
@@ -81,6 +92,7 @@ extension NativeNoteEditorViewModel {
             monospaced: state.inlineCode
         )
         setFont(font, in: &text, range: range)
+        #if os(iOS)
         setPlatformFont(
             inlineStyledPlatformFont(
                 bold: state.bold,
@@ -90,6 +102,17 @@ extension NativeNoteEditorViewModel {
             in: &text,
             range: range
         )
+        #elseif os(macOS)
+        setPlatformFont(
+            inlineStyledPlatformFont(
+                bold: false,
+                italic: false,
+                monospaced: state.inlineCode
+            ),
+            in: &text,
+            range: range
+        )
+        #endif
         #if os(iOS)
         text[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
             state.inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
@@ -116,6 +139,7 @@ extension NativeNoteEditorViewModel {
             italic: inlineState.italic,
             inlineCode: inlineState.inlineCode
         )
+        #if os(iOS)
         setPlatformFont(
             noteEditorPlatformFont(
                 baseFontSize: baseFontSize,
@@ -126,6 +150,18 @@ extension NativeNoteEditorViewModel {
             ),
             in: &attrs
         )
+        #elseif os(macOS)
+        setPlatformFont(
+            noteEditorPlatformFont(
+                baseFontSize: baseFontSize,
+                blockType: blockType,
+                bold: false,
+                italic: false,
+                inlineCode: inlineState.inlineCode
+            ),
+            in: &attrs
+        )
+        #endif
         attrs.paragraphStyle = paragraphStyle(for: blockType)
         attrs.noteBlock = blockMarker(for: blockType)
         attrs.noteStructuralBoundary = nil

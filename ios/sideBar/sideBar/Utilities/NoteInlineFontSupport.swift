@@ -322,7 +322,8 @@ func noteSemanticInlineFormattingTraits(
         return NoteInlineFormattingTraits(
             bold: notePlatformFontWeightValue(platformFont)
                 > notePlatformFontWeightValue(defaultPlatformFont) + 0.05
-                || (platformTraits.bold && !defaultTraits.bold),
+                || (platformTraits.bold && !defaultTraits.bold)
+                || (swiftTraits.bold && !defaultTraits.bold),
             italic: (platformTraits.italic && !defaultTraits.italic)
                 || (swiftTraits.italic && !defaultTraits.italic),
             monospaced: (platformTraits.monospaced && !defaultTraits.monospaced)
