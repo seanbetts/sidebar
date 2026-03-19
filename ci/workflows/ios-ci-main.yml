@@ -21,36 +21,28 @@ jobs:
       - name: Resolve packages
         run: |
           xcodebuild -project ios/sideBar/sideBar.xcodeproj \
-            -scheme sideBar \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -scheme sideBarLogicHost \
+            -destination 'platform=macOS' \
             -resolvePackageDependencies \
             -onlyUsePackageVersionsFromResolvedFile
-      - name: Run full test suite
-        id: full_tests
-        continue-on-error: true
+      - name: Run logic tests (macOS, no simulator)
         run: |
           xcodebuild test \
             -project ios/sideBar/sideBar.xcodeproj \
-            -scheme sideBar \
-            -testPlan AppleStateful \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -scheme sideBarLogicHost \
+            -testPlan AppleFast \
+            -destination 'platform=macOS' \
             -parallel-testing-enabled NO \
-            -retry-tests-on-failure \
-            -test-repetition-relaunch-enabled YES \
-            -resultBundlePath "${{ runner.temp }}/ios-test-results/main.xcresult"
-      - name: Check full test suite results
-        if: steps.full_tests.outcome == 'failure'
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=
+      - name: Resolve UI packages
         run: |
-          echo "::warning::Full test suite exited with non-zero status. Checking xcresult for actual failures..."
-          SUMMARY=$(xcrun xcresulttool get test-results summary \
-            --path "${{ runner.temp }}/ios-test-results/main.xcresult" 2>/dev/null || true)
-          echo "$SUMMARY"
-          if echo "$SUMMARY" | grep -q '"failedTests" : 0'; then
-            echo "All tests passed despite non-zero exit (likely test host crash with successful retry)."
-          else
-            echo "::error::Test failures detected in xcresult."
-            exit 1
-          fi
+          xcodebuild -project ios/sideBar/sideBar.xcodeproj \
+            -scheme sideBarUI \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -resolvePackageDependencies \
+            -onlyUsePackageVersionsFromResolvedFile
       - name: Run UI smoke tests
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
