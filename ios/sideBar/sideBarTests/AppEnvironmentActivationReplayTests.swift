@@ -6,26 +6,6 @@ import sideBarShared
 extension AppEnvironmentDeepLinkTests {
     func testHandleSignedInActivationDoesNotWaitForQueuedWebsiteReplay() async {
         let url = "https://example.com/articles/\(UUID().uuidString)"
-        let website = WebsiteDetail(
-            id: "website-\(UUID().uuidString)",
-            title: "Saved",
-            url: url,
-            urlFull: url,
-            domain: "example.com",
-            content: "Saved content",
-            source: "web",
-            savedAt: nil,
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: false,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: nil,
-            readingTime: nil,
-            updatedAt: nil,
-            lastOpenedAt: nil
-        )
         let replayGate = AsyncReplayGate()
         let websitesAPI = DeepLinkWebsitesAPI(
             saveResult: .success(WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")),
@@ -58,10 +38,14 @@ extension AppEnvironmentDeepLinkTests {
 
         await replayGate.open()
         _ = await activationTask.value
-        await waitForSavedWebsite(id: website.id, url: url, in: environment)
+        await waitForWebsiteEventSurface(url, in: environment)
+        for _ in 0..<20 where !storage.pendingShareStore.loadAll().isEmpty {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
 
         XCTAssertEqual(websitesAPI.saveCallCount, 1)
-        XCTAssertEqual(environment.websitesViewModel.items.first?.url, url)
+        XCTAssertTrue(websiteEventIsSurfaced(url, in: environment))
         XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
     }
 }

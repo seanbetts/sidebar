@@ -261,26 +261,6 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
     func testConsumePendingSharesPreservesWebsiteQueuedDuringInFlightSave() async {
         let firstURL = "https://example.com/articles/\(UUID().uuidString)"
         let secondURL = "https://example.com/articles/\(UUID().uuidString)"
-        let savedWebsite = WebsiteDetail(
-            id: "website-\(UUID().uuidString)",
-            title: "Saved First Website",
-            url: firstURL,
-            urlFull: firstURL,
-            domain: "example.com",
-            content: "Saved content",
-            source: "web",
-            savedAt: "2026-03-16T15:37:50Z",
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: false,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: nil,
-            readingTime: nil,
-            updatedAt: "2026-03-16T15:37:50Z",
-            lastOpenedAt: nil
-        )
         let websitesAPI = DeepLinkWebsitesAPI(
             saveResult: .success(
                 WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
@@ -298,9 +278,11 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
         await environment.consumePendingShares()
 
-        XCTAssertEqual(environment.websitesViewModel.items.first?.url, firstURL)
+        XCTAssertEqual(websitesAPI.saveCallCount, 1)
+        XCTAssertFalse(environment.websitesViewModel.items.contains(where: { $0.url == firstURL }))
         XCTAssertEqual(storage.pendingShareStore.loadAll().compactMap(\.url), [secondURL])
-        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, secondURL)
+        XCTAssertTrue(environment.websitesViewModel.pendingWebsites.contains { $0.url == firstURL })
+        XCTAssertTrue(websiteEventIsSurfaced(secondURL, in: environment))
     }
 
     func testConsumeWebsiteSaveHandoffRefreshesListAfterQueuedWebsiteEventOnMacOS() async {
@@ -362,6 +344,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         storage.extensionEventStore.recordWebsiteSaved(url: url)
 
         await environment.handleSignedInActivation()
+        await waitForWebsiteEventSurface(url, in: environment)
 
         XCTAssertTrue(
             websiteEventIsSurfaced(url, in: environment),

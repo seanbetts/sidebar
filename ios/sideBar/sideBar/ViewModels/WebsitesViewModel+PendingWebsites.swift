@@ -177,8 +177,16 @@ extension WebsitesViewModel {
         let savedCanonical = Set(items.map { canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url })
 
         pendingWebsites.removeAll {
-            $0.source == .queuedShare &&
-            (!queuedCanonical.contains($0.canonicalURL) || savedCanonical.contains($0.canonicalURL))
+            guard $0.source == .queuedShare else { return false }
+            if savedCanonical.contains($0.canonicalURL) {
+                return true
+            }
+            if queuedCanonical.contains($0.canonicalURL) {
+                return false
+            }
+            // Once a queued share has been handed off to the async save pipeline,
+            // keep rendering its pending row until completion or failure removes it.
+            return $0.jobId == nil
         }
 
         for entry in orderedQueuedEntries {

@@ -129,7 +129,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(cached?.items.first?.id, "site-1")
     }
 
-    func testSaveWebsiteLoadsDetailAndSelects() async {
+    func testSaveWebsiteQueuesPendingSelectionUntilJobCompletes() async {
         let item = makeItem(id: "site-1")
         let detail = makeDetail(id: "site-1")
         let cache = InMemoryCacheClient()
@@ -152,9 +152,11 @@ final class WebsitesViewModelTests: XCTestCase {
         let saved = await viewModel.saveWebsite(url: "https://example.com")
 
         XCTAssertTrue(saved)
-        XCTAssertEqual(viewModel.items.first?.id, "site-1")
-        XCTAssertEqual(viewModel.selectedWebsiteId, "site-1")
-        XCTAssertEqual(viewModel.active?.id, "site-1")
+        XCTAssertTrue(viewModel.items.isEmpty)
+        XCTAssertEqual(viewModel.pendingWebsite?.url, "https://example.com")
+        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "test-job-id")
+        XCTAssertEqual(viewModel.selectedWebsiteId, viewModel.pendingWebsite?.id)
+        XCTAssertNil(viewModel.active)
     }
 
     func testSaveWebsiteNormalizesUrl() async {
@@ -211,7 +213,8 @@ final class WebsitesViewModelTests: XCTestCase {
         )
 
         _ = await saveTask.value
-        XCTAssertNil(viewModel.pendingWebsite)
+        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "test-job-id")
+        XCTAssertFalse(viewModel.isLoadingDetail)
     }
 
     func testSaveWebsiteSetsWatchingPendingTitleForYouTube() async {
@@ -245,7 +248,8 @@ final class WebsitesViewModelTests: XCTestCase {
         )
 
         _ = await saveTask.value
-        XCTAssertNil(viewModel.pendingWebsite)
+        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "test-job-id")
+        XCTAssertFalse(viewModel.isLoadingDetail)
     }
 
     func testClearPendingIfNeededCanonicalizesYouTubeURLs() async {
@@ -501,10 +505,12 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(saved)
         XCTAssertEqual(viewModel.selectedWebsiteId, "site-existing")
         XCTAssertEqual(viewModel.active?.id, "site-existing")
-        XCTAssertTrue(viewModel.items.contains(where: { $0.id == "site-new" }))
+        XCTAssertEqual(viewModel.pendingWebsites.first?.url, "https://new.example")
+        XCTAssertEqual(viewModel.pendingWebsites.first?.jobId, "test-job-id")
+        XCTAssertFalse(viewModel.items.contains(where: { $0.url == "https://new.example" }))
     }
 
-    func testSaveWebsiteWithoutSelectionShowsAndClearsQueuedPendingRow() async {
+    func testSaveWebsiteWithoutSelectionKeepsQueuedPendingRowAfterAsyncEnqueue() async {
         let cache = InMemoryCacheClient()
         let api = ControlledWebsitesAPI()
         let store = WebsitesStore(api: api, cache: cache)
@@ -534,10 +540,11 @@ final class WebsitesViewModelTests: XCTestCase {
         )
 
         _ = await saveTask.value
-        XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
+        XCTAssertEqual(viewModel.pendingWebsites.count, 1)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.jobId, "test-job-id")
     }
 
-    func testSaveWebsiteWithoutSelectionRecoversFromSuccessWithoutWebsitePayload() async {
+    func testSaveWebsiteWithoutSelectionKeepsPendingRowAfterAsyncAcceptance() async {
         let savedItem = makeItem(
             id: "site-queued-1",
             url: "https://queued.example/path",
@@ -567,8 +574,9 @@ final class WebsitesViewModelTests: XCTestCase {
         )
 
         XCTAssertTrue(saved)
-        XCTAssertEqual(viewModel.items.first?.url, "https://queued.example/path")
-        XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
+        XCTAssertTrue(viewModel.items.isEmpty)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.url, "https://queued.example/path")
+        XCTAssertEqual(viewModel.pendingWebsites.first?.jobId, "test-job-id")
         XCTAssertNil(viewModel.saveErrorMessage)
     }
 
