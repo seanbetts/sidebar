@@ -60,11 +60,12 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
     }
 
     func updateViewportInsets() {
-        let bottomInset = UIKitNoteTextEditorSurface.resolvedBottomViewportInset(
+        let keyboardInset = UIKitNoteTextEditorSurface.resolvedBottomViewportInset(
             textViewBounds: bounds,
             keyboardFrameInView: resolvedKeyboardFrameInView(),
             accessoryHeight: resolvedAccessoryHeight()
         )
+        let bottomInset = keyboardInset + Self.baseTextContainerInsets.bottom
         let previousBottomInset = contentInset.bottom
         contentInset.bottom = bottomInset
         var indicatorInsets = verticalScrollIndicatorInsets
@@ -110,7 +111,15 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
             return
         }
         hasAppliedPendingInitialViewportOffset = true
+        guard isCurrentSelectionVisible() else {
+            initialViewportVerificationPassesRemaining = 0
+            self.pendingInitialViewportOffset = nil
+            scrollCurrentSelectionIntoView()
+            scheduleSelectionVisibilityRetryBurst()
+            return
+        }
         scheduleInitialViewportVerificationIfNeeded()
+        scheduleSelectionVisibilityRetryBurst()
     }
 
     func scheduleInitialViewportVerificationIfNeeded(after delay: TimeInterval = 0) {
@@ -141,6 +150,8 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         guard isStable == false else {
             initialViewportVerificationPassesRemaining = 0
             pendingInitialViewportOffset = nil
+            scrollCurrentSelectionIntoView()
+            scheduleSelectionVisibilityRetryBurst()
             return
         }
 
@@ -171,6 +182,77 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         guard resolvedOffset.x + 0.5 >= offset.x,
               resolvedOffset.y + 0.5 >= offset.y else { return .unresolved }
         return .resolved(resolvedOffset)
+    }
+
+    private func scheduleSelectionVisibilityRetryBurst() {
+        for delay in [0.0, 0.01, 0.05] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard let self, self.window != nil else { return }
+                self.scrollCurrentSelectionIntoView()
+            }
+        }
+    }
+
+    func scrollCurrentSelectionIntoView() {
+        guard selectedRange.location != NSNotFound else { return }
+        guard let selectionRect = selectionRectInContentCoordinates() else {
+            scrollRangeToVisible(selectedRange)
+            return
+        }
+        let visibleViewport = visibleViewportRect()
+        if isSelectionRectVisible(selectionRect, in: visibleViewport) {
+            return
+        }
+
+        var targetOffset = contentOffset
+        let verticalMargin = max(Self.baseTextContainerInsets.top, 12)
+
+        if selectionRect.minY < visibleViewport.minY {
+            targetOffset.y -= (visibleViewport.minY - selectionRect.minY) + verticalMargin
+        } else if selectionRect.maxY > visibleViewport.maxY {
+            targetOffset.y += (selectionRect.maxY - visibleViewport.maxY) + verticalMargin
+        }
+
+        setContentOffset(
+            UIKitNoteTextEditorSurface.clampedContentOffset(targetOffset, for: self),
+            animated: false
+        )
+        layoutIfNeeded()
+
+        let targetRect = selectionRect.insetBy(dx: 0, dy: -verticalMargin)
+        if visibleViewportRect().intersects(targetRect) == false {
+            scrollRectToVisible(targetRect, animated: false)
+        }
+    }
+
+    func isCurrentSelectionVisible() -> Bool {
+        guard let selectionRect = selectionRectInContentCoordinates() else { return false }
+        return isSelectionRectVisible(selectionRect, in: visibleViewportRect())
+    }
+
+    func selectionRectInContentCoordinates() -> CGRect? {
+        if let textRange = selectedTextRange {
+            if textRange.isEmpty {
+                return caretRect(for: textRange.start)
+            }
+
+            let rect = firstRect(for: textRange)
+            if rect.isNull == false, rect.isEmpty == false {
+                return rect
+            }
+        }
+
+        guard selectedRange.location != NSNotFound else { return nil }
+        let glyphRange = layoutManager.glyphRange(forCharacterRange: selectedRange, actualCharacterRange: nil)
+        return layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+    }
+
+    func visibleViewportRect() -> CGRect {
+        bounds.inset(by: adjustedContentInset)
+    }
+
+    private func isSelectionRectVisible(_ selectionRect: CGRect, in viewport: CGRect) -> Bool {
+        viewport.contains(selectionRect.insetBy(dx: 0, dy: -1))
     }
 }
 #endif

@@ -391,6 +391,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             guard selection != viewModel.selection else { return }
             viewModel.selection = selection
             viewModel.handleSelectionChange()
+            if let accessoryTextView = textView as? AccessoryTextView,
+               accessoryTextView.isFirstResponder {
+                accessoryTextView.scrollCurrentSelectionIntoView()
+            }
         }
 
         func textView(
@@ -440,36 +444,4 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     }
 }
 
-@available(iOS 26.0, *)
-extension UIKitNoteTextEditorSurface.AccessoryTextView {
-    func scrollCurrentSelectionIntoView() {
-        guard selectedRange.location != NSNotFound else { return }
-        if let selectionRect = selectionRectInContentCoordinates(),
-           visibleViewportRect().contains(selectionRect.insetBy(dx: 0, dy: -1)) {
-            return
-        }
-        scrollRangeToVisible(selectedRange)
-    }
-
-    func selectionRectInContentCoordinates() -> CGRect? {
-        if let textRange = selectedTextRange {
-            if textRange.isEmpty {
-                return caretRect(for: textRange.start)
-            }
-
-            let rect = firstRect(for: textRange)
-            if rect.isNull == false, rect.isEmpty == false {
-                return rect
-            }
-        }
-
-        guard selectedRange.location != NSNotFound else { return nil }
-        let glyphRange = layoutManager.glyphRange(forCharacterRange: selectedRange, actualCharacterRange: nil)
-        return layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-    }
-
-    func visibleViewportRect() -> CGRect {
-        bounds.inset(by: adjustedContentInset)
-    }
-}
 #endif

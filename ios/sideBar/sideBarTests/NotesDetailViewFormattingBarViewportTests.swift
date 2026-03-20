@@ -39,6 +39,46 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(editorTextView.selectedRange.length, 0)
     }
 
+    func testReadToEditActivationFromBottomKeepsTargetLineVisible() async throws {
+        let plainText = (0..<80)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: plainText))
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(findTextView(in: controller.view))
+        let targetOffset = NSString(string: plainText).range(of: "Line 79 body text").location
+        let readBottomOffset = max(
+            readTextView.contentSize.height
+                + readTextView.adjustedContentInset.bottom
+                - readTextView.bounds.height,
+            -readTextView.adjustedContentInset.top
+        )
+
+        readTextView.setContentOffset(CGPoint(x: 0, y: readBottomOffset), animated: false)
+        drainNotesHostingRunLoop()
+
+        context.editorViewModel.enterEditMode(at: .characterOffset(targetOffset))
+        drainNotesHostingRunLoop()
+        drainNotesHostingRunLoop()
+
+        let editorTextView = try XCTUnwrap(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            ) as? UIKitNoteTextEditorSurface.AccessoryTextView
+        )
+        let selectionRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
+        let visibleViewport = editorTextView.visibleViewportRect()
+
+        XCTAssertTrue(context.editorViewModel.isEditingNote)
+        XCTAssertEqual(editorTextView.selectedRange.location, targetOffset)
+        XCTAssertTrue(
+            visibleViewport.intersects(selectionRect.insetBy(dx: 0, dy: -1)),
+            "viewport=\(visibleViewport) selection=\(selectionRect) contentOffset=\(editorTextView.contentOffset)"
+        )
+    }
+
     func testFloatingPopoverTextStyleTapKeepsViewportStable() async throws {
         let plainText = (0..<40)
             .map { index in "Line \(index) body text" }
