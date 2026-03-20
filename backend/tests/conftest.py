@@ -172,6 +172,24 @@ def _ensure_user_settings_columns(connection) -> None:
 
     connection.execute(
         text(
+            "ALTER TABLE website_processing_jobs "
+            "ADD COLUMN IF NOT EXISTS lease_expires_at timestamptz"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE website_processing_jobs "
+            "ADD COLUMN IF NOT EXISTS worker_id text"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_website_jobs_status_lease "
+            "ON website_processing_jobs (status, lease_expires_at)"
+        )
+    )
+    connection.execute(
+        text(
             "ALTER TABLE user_settings "
             "ADD COLUMN IF NOT EXISTS ai_primary_provider text"
         )

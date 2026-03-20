@@ -5,7 +5,7 @@ import logging
 import uuid
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Body, Depends, Request
+from fastapi import APIRouter, Body, Depends
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,7 @@ from api.middleware import rate_limit as rate_limit_module
 from api.routers.download_headers import markdown_download_headers
 from api.routers.websites_helpers import website_detail_payload, website_summary
 from api.schemas.filters import WebsiteFilters
-from api.services.web_save_error_service import classify_web_save_result
+from api.services.website_processing_service import WebsiteProcessingService
 from api.services.website_transcript_service import WebsiteTranscriptService
 from api.services.websites_service import WebsitesService
 from api.services.websites_sync_service import WebsitesSyncService
@@ -161,65 +161,34 @@ def search_websites(
 
 @router.post("/save")
 async def save_website(
-    request: Request,
     payload: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     _rate_limit: None = Depends(rate_limit_module.website_save_rate_limit),
     db: Session = Depends(get_db),
 ):
-    """Save a website using the web-save skill.
+    """Queue an async website save job.
 
     Args:
-        request: FastAPI request with executor state.
         payload: Request payload with url.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
 
     Returns:
-        Skill execution result payload.
+        202 with job_id and status.
 
     Raises:
-        BadRequestError: For missing url or skill errors.
+        BadRequestError: For missing or invalid url.
     """
     url = str(payload.get("url", "")).strip()
     _validate_save_website_url(url)
 
-    executor = request.app.state.executor
-    result = await executor.execute(
-        "web-save",
-        "save_url.py",
-        [url, "--database", "--user-id", user_id],
-        user_id=user_id,
+    job = WebsiteProcessingService.create_job(db, user_id, url)
+    return JSONResponse(
+        status_code=202,
+        content={"job_id": str(job.id), "status": "queued"},
     )
-    if not result.get("success"):
-        normalized_error = classify_web_save_result(
-            result,
-            url=url,
-            target_url=url,
-        )
-        logger.error(
-            "websites save failed url=%s error=%s",
-            url,
-            result.get("error"),
-        )
-        details = {
-            **normalized_error.get("details", {}),
-            "code": normalized_error.get("code"),
-            "suggestions": normalized_error.get("suggestions"),
-        }
-        raise BadRequestError(normalized_error["message"], details=details)
-
-    raw_website_id = str((result.get("data") or {}).get("id") or "").strip()
-    if not raw_website_id:
-        raise BadRequestError("Failed to save website")
-    website_id = parse_uuid(raw_website_id, "website", "id")
-    website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
-    if not website:
-        raise BadRequestError("Failed to save website")
-
-    return {"success": True, "website": website_detail_payload(website)}
 
 
 @router.post("/{website_id}/youtube-transcript")
