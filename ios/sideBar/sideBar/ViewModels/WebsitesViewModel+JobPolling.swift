@@ -34,7 +34,7 @@ extension WebsitesViewModel {
                     endWebsiteSave()
                     jobPollingTasks.removeValue(forKey: jobId)
                     return
-                case "failed":
+                case "failed", "stalled":
                     let message = response.error?.message ?? "Save failed"
                     endWebsiteSave()
                     failWebsiteSave(
@@ -87,7 +87,7 @@ extension WebsitesViewModel {
             } else {
                 endWebsiteSave()
             }
-        case "failed":
+        case "failed", "stalled":
             jobPollingTasks[jobId]?.cancel()
             jobPollingTasks.removeValue(forKey: jobId)
             let pendingURL = URL(string: pending.url) ?? URL(string: "https://invalid")!

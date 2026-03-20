@@ -264,17 +264,18 @@ def get_job_status(
     if not job:
         raise NotFoundError("Job", str(job_id))
 
-    result: dict = {"job_id": str(job.id), "status": job.status}
+    client_status, client_error = WebsiteProcessingService.status_for_client(job)
+    result: dict = {"job_id": str(job.id), "status": client_status}
 
-    if job.status == "completed" and job.website_id:
+    if client_status == "completed" and job.website_id:
         website = WebsitesService.get_website(
             db, user_id, job.website_id, mark_opened=False
         )
         if website:
             result["website"] = website_detail_payload(website)
 
-    if job.status == "failed" and job.error_message:
-        result["error"] = {"message": job.error_message}
+    if client_status in {"failed", "stalled"} and client_error:
+        result["error"] = {"message": client_error}
 
     return result
 

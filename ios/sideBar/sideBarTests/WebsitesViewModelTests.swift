@@ -272,6 +272,47 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoadingDetail)
     }
 
+    func testSaveWebsiteTreatsStalledJobAsFailure() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-1", status: "queued")
+            ),
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "stalled",
+                    website: nil,
+                    error: WebsiteJobError(
+                        message: "Website save is still waiting for a worker. Try again."
+                    )
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let saved = await viewModel.saveWebsite(url: "https://example.com")
+
+        XCTAssertTrue(saved)
+        XCTAssertTrue(viewModel.isLoadingDetail)
+
+        try? await Task.sleep(for: .seconds(10.5))
+        await Task.yield()
+
+        XCTAssertFalse(viewModel.isLoadingDetail)
+        XCTAssertEqual(
+            viewModel.saveErrorMessage,
+            "Website save is still waiting for a worker. Try again."
+        )
+        XCTAssertNil(viewModel.pendingWebsite)
+    }
+
     func testClearPendingIfNeededCanonicalizesYouTubeURLs() async {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI()
@@ -1213,6 +1254,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let listResult: Result<WebsitesResponse, Error>
     let getResult: Result<WebsiteDetail, Error>
     let saveResult: Result<WebsiteSaveJobResponse, Error>
+    let jobStatusResult: Result<WebsiteJobStatusResponse, Error>
     let transcribeResult: Result<WebsiteTranscriptResponse, Error>
     let pinResult: Result<WebsiteItem, Error>
     let renameResult: Result<WebsiteItem, Error>
@@ -1230,6 +1272,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         listResult: Result<WebsitesResponse, Error> = .failure(MockError.forced),
         getResult: Result<WebsiteDetail, Error> = .failure(MockError.forced),
         saveResult: Result<WebsiteSaveJobResponse, Error> = .failure(MockError.forced),
+        jobStatusResult: Result<WebsiteJobStatusResponse, Error> = .failure(MockError.forced),
         transcribeResult: Result<WebsiteTranscriptResponse, Error> = .failure(MockError.forced),
         transcribeHandler: ((_ id: String, _ url: String) async throws -> WebsiteTranscriptResponse)? = nil,
         pinResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
@@ -1243,6 +1286,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         self.listResult = listResult
         self.getResult = getResult
         self.saveResult = saveResult
+        self.jobStatusResult = jobStatusResult
         self.transcribeResult = transcribeResult
         self.transcribeHandler = transcribeHandler
         self.pinResult = pinResult
@@ -1280,7 +1324,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
 
     func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
         _ = id
-        throw MockError.forced
+        return try jobStatusResult.get()
     }
 
     func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
