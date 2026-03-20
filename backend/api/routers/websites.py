@@ -238,6 +238,47 @@ def append_youtube_transcript(
     )
 
 
+@router.get("/jobs/{job_id}")
+def get_job_status(
+    job_id: uuid.UUID,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Get the status of an async website save job.
+
+    Args:
+        job_id: Job UUID.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Job status with website payload on completion,
+        or error details on failure.
+
+    Raises:
+        NotFoundError: If job does not exist for this user.
+    """
+    job = WebsiteProcessingService.get_job(db, user_id, job_id)
+    if not job:
+        raise NotFoundError("Job", str(job_id))
+
+    result: dict = {"job_id": str(job.id), "status": job.status}
+
+    if job.status == "completed" and job.website_id:
+        website = WebsitesService.get_website(
+            db, user_id, job.website_id, mark_opened=False
+        )
+        if website:
+            result["website"] = website_detail_payload(website)
+
+    if job.status == "failed" and job.error_message:
+        result["error"] = {"message": job.error_message}
+
+    return result
+
+
 @router.get("/{website_id}")
 def get_website(
     website_id: uuid.UUID,
