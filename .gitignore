@@ -60,6 +60,7 @@ ios/sideBar/.ui-test-secrets.local
 /workspace/
 /.worktrees/
 /.superpowers/
+/.claude/
 
 # iOS/Xcode
 ios/**/*.xcodeproj/*

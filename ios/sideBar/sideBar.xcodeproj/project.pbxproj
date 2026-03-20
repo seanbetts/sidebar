@@ -18,11 +18,6 @@
 		146EA0712F2FE83C004AE7D1 /* sideBar Safari Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 146EA0592F2FE83C004AE7D1 /* sideBar Safari Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		146EA0972F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 146EA0962F2FE878004AE7D1 /* sideBar Safari Extension (macOS) Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
-		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
-		14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
-		14DFA3322F110406001DAF5B /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3312F110406001DAF5B /* PostgREST */; };
-		14DFA3342F110406001DAF5B /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3332F110406001DAF5B /* Realtime */; };
-		14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
 		14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		14DFA33A2F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
 		14DFA33B2F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
@@ -1271,7 +1266,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YOURTEAMID;
+				ENABLE_DEBUG_DYLIB = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				"INFOPLIST_KEY_API_BASE_URL[arch=*]" = "$(API_BASE_URL)";
@@ -1279,10 +1279,6 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				"INFOPLIST_KEY_SUPABASE_ANON_KEY[arch=*]" = "$(SUPABASE_ANON_KEY)";
 				"INFOPLIST_KEY_SUPABASE_URL[arch=*]" = "$(SUPABASE_URL)";
-				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
-					"$(inherited)",
-					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
-				);
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				"KEYCHAIN_ACCESS_GROUP[arch=*]" = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				"KEYCHAIN_SERVICE[arch=*]" = ai.sidebar.sidebar;
@@ -1297,7 +1293,6 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				ENABLE_DEBUG_DYLIB = YES;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1323,6 +1318,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YOURTEAMID;
 				ENABLE_HARDENED_RUNTIME = YES;
+				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				"INFOPLIST_KEY_API_BASE_URL[arch=*]" = "$(API_BASE_URL)";
@@ -1330,10 +1329,6 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				"INFOPLIST_KEY_SUPABASE_ANON_KEY[arch=*]" = "$(SUPABASE_ANON_KEY)";
 				"INFOPLIST_KEY_SUPABASE_URL[arch=*]" = "$(SUPABASE_URL)";
-				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
-					"$(inherited)",
-					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
-				);
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				"KEYCHAIN_ACCESS_GROUP[arch=*]" = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				"KEYCHAIN_SERVICE[arch=*]" = ai.sidebar.sidebar;
@@ -1375,7 +1370,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YOURTEAMID;
+				ENABLE_DEBUG_DYLIB = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = sideBarWidgets/Info.plist;
 				INFOPLIST_KEY_APP_GROUP_ID = "$(APP_GROUP_ID)";
@@ -1384,10 +1384,6 @@
 				"INFOPLIST_KEY_R2_ENDPOINT[arch=*]" = "$(R2_ENDPOINT)";
 				"INFOPLIST_KEY_R2_FAVICON_BUCKET[arch=*]" = "$(R2_FAVICON_BUCKET)";
 				"INFOPLIST_KEY_R2_FAVICON_PUBLIC_BASE_URL[arch=*]" = "$(R2_FAVICON_PUBLIC_BASE_URL)";
-				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
-					"$(inherited)",
-					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
-				);
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
@@ -1402,7 +1398,6 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				ENABLE_DEBUG_DYLIB = YES;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.sidebar.sidebar.sideBarWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1430,6 +1425,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YOURTEAMID;
 				ENABLE_HARDENED_RUNTIME = YES;
+				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = sideBarWidgets/Info.plist;
 				INFOPLIST_KEY_APP_GROUP_ID = "$(APP_GROUP_ID)";
@@ -1438,10 +1437,6 @@
 				"INFOPLIST_KEY_R2_ENDPOINT[arch=*]" = "$(R2_ENDPOINT)";
 				"INFOPLIST_KEY_R2_FAVICON_BUCKET[arch=*]" = "$(R2_FAVICON_BUCKET)";
 				"INFOPLIST_KEY_R2_FAVICON_PUBLIC_BASE_URL[arch=*]" = "$(R2_FAVICON_PUBLIC_BASE_URL)";
-				"FRAMEWORK_SEARCH_PATHS[sdk=macosx*]" = (
-					"$(inherited)",
-					"$(BUILT_PRODUCTS_DIR)/PackageFrameworks",
-				);
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				KEYCHAIN_ACCESS_GROUP = "$(AppIdentifierPrefix)ai.sidebar.sidebar";
 				KEYCHAIN_SERVICE = ai.sidebar.sidebar;
@@ -1481,6 +1476,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YOURTEAMID;
+				ENABLE_DEBUG_DYLIB = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension/Info.plist";
 				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
@@ -1496,7 +1492,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				ENABLE_DEBUG_DYLIB = YES;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
@@ -1567,6 +1562,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YOURTEAMID;
+				ENABLE_DEBUG_DYLIB = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "sideBar Safari Extension (macOS) Extension/Info.plist";
@@ -1588,7 +1584,6 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				ENABLE_DEBUG_DYLIB = YES;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
@@ -1668,6 +1663,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YOURTEAMID;
+				ENABLE_DEBUG_DYLIB = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = (
 					Base.lproj/Main.storyboard,
@@ -1688,7 +1684,6 @@
 				);
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				ENABLE_DEBUG_DYLIB = YES;
 				MARKETING_VERSION = 0.1;
 				OTHER_LDFLAGS = (
 					"-framework",
@@ -1801,6 +1796,7 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = YOURTEAMID;
+				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -1818,7 +1814,6 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				ENABLE_DEBUG_DYLIB = NO;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -1902,11 +1897,11 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = YOURTEAMID;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
 				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
@@ -1980,11 +1975,11 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = YOURTEAMID;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
 				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
@@ -2298,11 +2293,11 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = YOURTEAMID;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
 				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
@@ -2589,31 +2584,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		14DFA32D2F110406001DAF5B /* Auth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Auth;
-		};
-		14DFA32F2F110406001DAF5B /* Functions */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Functions;
-		};
-		14DFA3312F110406001DAF5B /* PostgREST */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = PostgREST;
-		};
-		14DFA3332F110406001DAF5B /* Realtime */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Realtime;
-		};
-		14DFA3352F110406001DAF5B /* Storage */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Storage;
-		};
 		14DFA3382F116F2C001DAF5B /* Supabase */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
