@@ -115,6 +115,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Set image reference
+        id: image
+        run: echo "ref=registry.fly.io/sidebar-api:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Fly registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.fly.io
+          username: x
+          password: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/docker/Dockerfile.skills-api
+          push: true
+          tags: ${{ steps.image.outputs.ref }}
+          cache-from: type=gha,scope=fly-deploy-api
+          cache-to: type=gha,mode=max,scope=fly-deploy-api
+
       - name: Install Flyctl
         env:
           FLYCTL_VERSION: "0.3.221"
@@ -129,7 +153,7 @@ jobs:
         working-directory: backend
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl -c fly.toml deploy --remote-only --depot=false --deploy-retries 3
+        run: flyctl -c fly.toml deploy --image "${{ steps.image.outputs.ref }}" --deploy-retries 3
 
       - name: Ensure ingestion worker machine is running
         working-directory: backend

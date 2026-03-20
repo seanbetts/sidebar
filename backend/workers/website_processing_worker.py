@@ -161,8 +161,8 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
 
     from api.services.agent.skills.executor import SkillExecutor
 
-    executor = SkillExecutor(settings)
     try:
+        executor = SkillExecutor(settings.skills_dir, settings.workspace_base)
         result = asyncio.run(
             executor.execute(
                 "web-save",

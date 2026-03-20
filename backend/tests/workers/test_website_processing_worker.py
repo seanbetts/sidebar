@@ -1,6 +1,7 @@
 """Tests for website processing worker."""
 
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 from api.models.website_processing_job import WebsiteProcessingJob
 
@@ -103,3 +104,74 @@ def test_main_initializes_sentry_with_worker_script_name(monkeypatch):
         "process_type": "worker",
     }
     assert len(started_worker_ids) == 1
+
+
+def test_process_job_initializes_executor_with_configured_paths(test_db, monkeypatch):
+    """Worker should construct SkillExecutor with configured skill and workspace roots."""
+    from api.services.agent.skills import executor as executor_module
+    from workers import website_processing_worker
+
+    website_id = uuid4()
+    captured: dict[str, object] = {}
+
+    class FakeExecutor:
+        def __init__(self, skills_dir, workspace_base):
+            captured["skills_dir"] = skills_dir
+            captured["workspace_base"] = workspace_base
+
+        async def execute(self, *args, **kwargs):
+            return {"success": True, "data": {"id": str(website_id)}}
+
+    job = WebsiteProcessingJob(
+        user_id="test-user",
+        url="https://example.com",
+        status="processing",
+        worker_id="worker-1",
+        lease_expires_at=datetime.now(UTC) + timedelta(minutes=1),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(job)
+    test_db.commit()
+
+    monkeypatch.setattr(executor_module, "SkillExecutor", FakeExecutor)
+
+    website_processing_worker._process_job(test_db, job)
+    test_db.refresh(job)
+
+    assert captured == {
+        "skills_dir": website_processing_worker.settings.skills_dir,
+        "workspace_base": website_processing_worker.settings.workspace_base,
+    }
+    assert job.status == "completed"
+    assert job.website_id == website_id
+
+
+def test_process_job_marks_failed_when_executor_init_raises(test_db, monkeypatch):
+    """Worker should fail the claimed job when executor setup crashes."""
+    from api.services.agent.skills import executor as executor_module
+    from workers import website_processing_worker
+
+    class RaisingExecutor:
+        def __init__(self, *_args, **_kwargs):
+            raise RuntimeError("executor init failed")
+
+    job = WebsiteProcessingJob(
+        user_id="test-user",
+        url="https://example.com",
+        status="processing",
+        worker_id="worker-1",
+        lease_expires_at=datetime.now(UTC) + timedelta(minutes=1),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(job)
+    test_db.commit()
+
+    monkeypatch.setattr(executor_module, "SkillExecutor", RaisingExecutor)
+
+    website_processing_worker._process_job(test_db, job)
+    test_db.refresh(job)
+
+    assert job.status == "failed"
+    assert job.error_message == "executor init failed"
