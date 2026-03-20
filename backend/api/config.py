@@ -162,6 +162,13 @@ class Settings(BaseSettings):
     skill_max_output_bytes: int = 10 * 1024 * 1024  # 10MB
     skill_max_concurrent: int = 5
 
+    # Website processing worker
+    website_worker_concurrency: int = 4
+    website_save_timeout_seconds: int = 120
+    website_worker_poll_seconds: int = 2
+    website_worker_heartbeat_seconds: int = 15
+    website_worker_lease_seconds: int = 180
+
     # Storage
     storage_backend: str = "local"  # local or r2
     r2_endpoint: str = ""
