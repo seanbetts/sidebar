@@ -119,7 +119,12 @@ def test_after_begin_invalidates_and_reraises_disconnect(
     )
     apply_calls = 0
 
-    def fake_apply(_connection, _user_id, _force_public_search_path) -> None:
+    def fake_apply(
+        _connection,
+        _user_id,
+        _force_public_search_path,
+        _website_worker_scope=None,
+    ) -> None:
         nonlocal apply_calls
         apply_calls += 1
         raise OperationalError(
