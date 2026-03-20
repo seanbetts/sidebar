@@ -38,6 +38,7 @@ extension WebsitesViewModel {
         public let canonicalURL: String
         public let source: PendingWebsiteSource
         public let queueItemId: UUID?
+        public let jobId: String?
         public let status: PendingWebsiteStatus
 
         public init(
@@ -48,6 +49,7 @@ extension WebsitesViewModel {
             canonicalURL: String,
             source: PendingWebsiteSource,
             queueItemId: UUID? = nil,
+            jobId: String? = nil,
             status: PendingWebsiteStatus = .reading
         ) {
             self.id = id
@@ -57,6 +59,7 @@ extension WebsitesViewModel {
             self.canonicalURL = canonicalURL
             self.source = source
             self.queueItemId = queueItemId
+            self.jobId = jobId
             self.status = status
         }
 
@@ -98,6 +101,7 @@ extension WebsitesViewModel {
                 canonicalURL: existing.canonicalURL,
                 source: source,
                 queueItemId: queueItemId ?? existing.queueItemId,
+                jobId: existing.jobId,
                 status: resolvedStatus
             )
             if updated != existing {
@@ -123,6 +127,32 @@ extension WebsitesViewModel {
 
     func removePendingWebsite(id: String) {
         pendingWebsites.removeAll { $0.id == id }
+    }
+
+    func hasPendingWebsite(for url: URL) -> Bool {
+        let key = canonicalWebsiteURLForPendingMatch(url.absoluteString) ?? url.absoluteString
+        return pendingWebsites.contains { $0.canonicalURL == key }
+    }
+
+    func updatePendingWebsiteJobId(_ jobId: String, for url: URL) {
+        let key = canonicalWebsiteURLForPendingMatch(url.absoluteString) ?? url.absoluteString
+        guard let index = pendingWebsites.firstIndex(where: { $0.canonicalURL == key }) else { return }
+        let existing = pendingWebsites[index]
+        pendingWebsites[index] = PendingWebsiteItem(
+            id: existing.id,
+            title: existing.title,
+            domain: existing.domain,
+            url: existing.url,
+            canonicalURL: existing.canonicalURL,
+            source: existing.source,
+            queueItemId: existing.queueItemId,
+            jobId: jobId,
+            status: existing.status
+        )
+    }
+
+    func pendingWebsiteByJobId(_ jobId: String) -> PendingWebsiteItem? {
+        pendingWebsites.first { $0.jobId == jobId }
     }
 
     func syncQueuedPendingWebsites(

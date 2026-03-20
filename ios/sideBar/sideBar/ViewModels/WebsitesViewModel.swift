@@ -91,6 +91,7 @@ public final class WebsitesViewModel: ObservableObject {
     @Published var inFlightTranscriptRequests: [String: Set<String>] = [:]
     var pendingTranscriptJobs: [String: Set<String>] = [:]
     var transcriptPollingTasks: [String: Task<Void, Never>] = [:]
+    var jobPollingTasks: [String: Task<Void, Never>] = [:]
     var cancellables = Set<AnyCancellable>()
 
     public init(
@@ -226,14 +227,16 @@ public final class WebsitesViewModel: ObservableObject {
         defer { endWebsiteSave() }
         do {
             let response = try await api.save(url: normalized.absoluteString)
-            guard let website = validatedSavedWebsite(
-                from: response,
-                previousSelectedId: previousSelectedId,
-                pendingURL: normalized
-            ) else {
-                return false
+            updatePendingWebsiteJobId(response.jobId, for: normalized)
+            let jobId = response.jobId
+            let url = normalized
+            jobPollingTasks[jobId] = Task { [weak self] in
+                await self?.pollJobUntilComplete(
+                    jobId: jobId,
+                    pendingURL: url,
+                    previousSelectedId: previousSelectedId
+                )
             }
-            applySavedWebsite(website, pendingURL: normalized)
             return true
         } catch {
             failWebsiteSave(
@@ -254,10 +257,17 @@ public final class WebsitesViewModel: ObservableObject {
         saveErrorMessage = nil
         do {
             let response = try await api.save(url: normalizedURL.absoluteString)
-            return await handleSaveWebsiteWithoutSelectionResponse(
-                response,
-                normalizedURL: normalizedURL
-            )
+            updatePendingWebsiteJobId(response.jobId, for: normalizedURL)
+            let jobId = response.jobId
+            let url = normalizedURL
+            jobPollingTasks[jobId] = Task { [weak self] in
+                await self?.pollJobUntilComplete(
+                    jobId: jobId,
+                    pendingURL: url,
+                    previousSelectedId: nil
+                )
+            }
+            return true
         } catch {
             if await recoverSavedWebsiteWithoutSelection(pendingURL: normalizedURL) {
                 return true
@@ -265,21 +275,6 @@ public final class WebsitesViewModel: ObservableObject {
             saveErrorMessage = ErrorMapping.message(for: error)
             return false
         }
-    }
-
-    private func handleSaveWebsiteWithoutSelectionResponse(
-        _ response: WebsiteSaveResponse,
-        normalizedURL: URL
-    ) async -> Bool {
-        if response.success, let website = response.website {
-            applySavedWebsiteWithoutSelection(website, pendingURL: normalizedURL)
-            return true
-        }
-        if response.success, await recoverSavedWebsiteWithoutSelection(pendingURL: normalizedURL) {
-            return true
-        }
-        saveErrorMessage = "Failed to save website"
-        return false
     }
 
     public func setPinned(id: String, pinned: Bool) async {
