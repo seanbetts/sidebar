@@ -70,7 +70,7 @@ class WebsiteProcessingService:
         job.error_message = error_message
         if website_id is not None:
             job.website_id = website_id
-        if status == "canceled":
+        if status in {"completed", "failed", "canceled"}:
             job.worker_id = None
             job.lease_expires_at = None
         job.updated_at = datetime.now(UTC)

@@ -310,7 +310,54 @@ final class WebsitesViewModelTests: XCTestCase {
             viewModel.saveErrorMessage,
             "Website save is still waiting for a worker. Try again."
         )
-        XCTAssertNil(viewModel.pendingWebsite)
+        XCTAssertEqual(viewModel.pendingWebsite?.url, "https://example.com")
+        XCTAssertEqual(viewModel.pendingWebsite?.status, .failed)
+        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
+    }
+
+    func testRetryPendingWebsiteResubmitsFailedDirectSave() async {
+        let cache = InMemoryCacheClient()
+        let api = ControlledWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        viewModel.pendingWebsite = WebsitesViewModel.PendingWebsiteItem(
+            id: "pending-1",
+            title: "Reading...",
+            domain: "example.com",
+            url: "https://example.com",
+            canonicalURL: "https://example.com",
+            source: .directSave,
+            jobId: "job-1",
+            status: .failed
+        )
+        viewModel.saveErrorMessage = "Timed out"
+
+        let retryTask = Task { await viewModel.retryPendingWebsite(id: "pending-1") }
+        await Task.yield()
+
+        XCTAssertEqual(viewModel.pendingWebsite?.status, .reading)
+        XCTAssertEqual(viewModel.pendingWebsite?.id, "pending-1")
+        XCTAssertTrue(viewModel.isLoadingDetail)
+        XCTAssertNil(viewModel.saveErrorMessage)
+
+        api.resumeSave(
+            result: .success(
+                WebsiteSaveJobResponse(
+                    jobId: "job-2",
+                    status: "queued"
+                )
+            )
+        )
+
+        let retried = await retryTask.value
+        XCTAssertTrue(retried)
+        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-2")
+        XCTAssertEqual(api.savedURLs, ["https://example.com"])
     }
 
     func testCancelWebsiteSaveCallsAPIAndClearsPendingState() async {
@@ -1437,6 +1484,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
 
 private final class ControlledWebsitesAPI: WebsitesProviding {
     private var saveContinuation: CheckedContinuation<WebsiteSaveJobResponse, Error>?
+    private(set) var savedURLs: [String] = []
 
     func list() async throws -> WebsitesResponse {
         WebsitesResponse(items: [])
@@ -1453,7 +1501,8 @@ private final class ControlledWebsitesAPI: WebsitesProviding {
     }
 
     func save(url: String) async throws -> WebsiteSaveJobResponse {
-        try await withCheckedThrowingContinuation { continuation in
+        savedURLs.append(url)
+        return try await withCheckedThrowingContinuation { continuation in
             saveContinuation = continuation
         }
     }

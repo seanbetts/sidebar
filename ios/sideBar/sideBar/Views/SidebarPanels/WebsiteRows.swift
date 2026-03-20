@@ -4,8 +4,8 @@ import SwiftUI
 struct PendingWebsiteRow: View, Equatable {
     let pending: WebsitesViewModel.PendingWebsiteItem
     let useListStyling: Bool
-    let onRetry: ((UUID) -> Void)?
-    let onRemove: ((UUID) -> Void)?
+    let onRetry: (() -> Void)?
+    let onRemove: (() -> Void)?
 
     static func == (lhs: PendingWebsiteRow, rhs: PendingWebsiteRow) -> Bool {
         lhs.pending == rhs.pending && lhs.useListStyling == rhs.useListStyling
@@ -30,30 +30,28 @@ struct PendingWebsiteRow: View, Equatable {
                         .lineLimit(1)
                 }
                 Spacer()
-                if let queueItemId = pending.queueItemId {
-                    HStack(spacing: 8) {
-                        if pending.status == .failed, let onRetry {
-                            Button {
-                                onRetry(queueItemId)
-                            } label: {
-                                Image(systemName: "arrow.counterclockwise.circle")
-                                    .appFont(.labelMd)
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(secondaryTextColor)
-                            .accessibilityLabel("Retry queued website")
+                HStack(spacing: 8) {
+                    if pending.status == .failed, let onRetry {
+                        Button {
+                            onRetry()
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise.circle")
+                                .appFont(.labelMd)
                         }
-                        if let onRemove {
-                            Button {
-                                onRemove(queueItemId)
-                            } label: {
-                                Image(systemName: "xmark.circle")
-                                    .appFont(.labelMd)
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(secondaryTextColor)
-                            .accessibilityLabel("Remove queued website")
+                        .buttonStyle(.plain)
+                        .foregroundStyle(secondaryTextColor)
+                        .accessibilityLabel("Retry website save")
+                    }
+                    if let onRemove {
+                        Button {
+                            onRemove()
+                        } label: {
+                            Image(systemName: "xmark.circle")
+                                .appFont(.labelMd)
                         }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(secondaryTextColor)
+                        .accessibilityLabel("Remove pending website")
                     }
                 }
             }

@@ -90,9 +90,52 @@ extension WebsitesViewModel {
     }
 
     func failWebsiteSave(previousSelectedId: String?, pendingURL: URL, message: String) {
-        removePendingWebsite(for: pendingURL.absoluteString)
+        updatePendingWebsiteStatus(for: pendingURL.absoluteString, status: .failed)
         selectedWebsiteId = previousSelectedId
         saveErrorMessage = message
+    }
+
+    func retryPendingWebsite(id: String) async -> Bool {
+        guard let pending = pendingWebsite(id: id),
+              pending.source == .directSave,
+              let normalized = normalizedWebsiteURL(from: pending.url) else {
+            return false
+        }
+
+        let previousSelectedId = selectedWebsiteId
+        selectedWebsiteId = pending.id
+        saveErrorMessage = nil
+        isSavingWebsite = true
+        isLoadingDetail = true
+        updatePendingWebsiteStatus(for: normalized.absoluteString, status: .reading)
+
+        if let jobId = pending.jobId {
+            jobPollingTasks[jobId]?.cancel()
+            jobPollingTasks.removeValue(forKey: jobId)
+        }
+
+        do {
+            let response = try await api.save(url: normalized.absoluteString)
+            updatePendingWebsiteJobId(response.jobId, for: normalized)
+            let jobId = response.jobId
+            let url = normalized
+            jobPollingTasks[jobId] = Task { [weak self] in
+                await self?.pollJobUntilComplete(
+                    jobId: jobId,
+                    pendingURL: url,
+                    previousSelectedId: previousSelectedId
+                )
+            }
+            return true
+        } catch {
+            endWebsiteSave()
+            failWebsiteSave(
+                previousSelectedId: previousSelectedId,
+                pendingURL: normalized,
+                message: ErrorMapping.message(for: error)
+            )
+            return false
+        }
     }
 
     func updatePanelDerivedState() {

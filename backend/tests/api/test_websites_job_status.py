@@ -176,3 +176,24 @@ def test_update_job_does_not_override_canceled_status(test_db):
 
     test_db.refresh(job)
     assert job.status == "canceled"
+
+
+def test_update_job_clears_worker_metadata_for_failed_jobs(test_db):
+    """Failed jobs should release their worker lease immediately."""
+    job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+    job.status = "processing"
+    job.worker_id = "worker-1"
+    job.lease_expires_at = datetime.now(UTC) + timedelta(minutes=3)
+    test_db.commit()
+
+    WebsiteProcessingService.update_job(
+        test_db,
+        job.id,
+        status="failed",
+        error_message="Script execution timeout (60s)",
+    )
+
+    test_db.refresh(job)
+    assert job.status == "failed"
+    assert job.worker_id is None
+    assert job.lease_expires_at is None

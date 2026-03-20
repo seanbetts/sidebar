@@ -10,12 +10,12 @@ from datetime import UTC, datetime, timedelta
 from threading import Event, Thread
 
 from api.config import settings
-from api.db.session import SessionLocal
+from api.db.session import SessionLocal, set_website_worker_scope
 from api.models.website_processing_job import WebsiteProcessingJob
 from api.services.script_sentry import initialize_script_sentry
 from api.services.web_save_error_service import classify_web_save_result
 from api.services.website_processing_service import WebsiteProcessingService
-from sqlalchemy import and_, or_, text
+from sqlalchemy import and_, or_
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,7 @@ def _now() -> datetime:
 
 def _set_worker_scope(db) -> None:
     """Set session GUCs for cross-user worker access."""
-    db.execute(text("SELECT set_config('app.user_id', '', false)"))
-    db.execute(text("SELECT set_config('app.website_worker_scope', 'all', false)"))
+    set_website_worker_scope(db, enabled=True)
 
 
 def _claim_job(db, worker_id: str) -> WebsiteProcessingJob | None:

@@ -158,13 +158,23 @@ extension WebsitesPanelView {
         PendingWebsiteRow(
             pending: pending,
             useListStyling: useListStyling,
-            onRetry: { queueItemId in
+            onRetry: {
+                if let queueItemId = pending.queueItemId {
+                    Task {
+                        await appEnvironment.retryPendingQueuedWebsite(queueItemId)
+                    }
+                    return
+                }
                 Task {
-                    await appEnvironment.retryPendingQueuedWebsite(queueItemId)
+                    _ = await viewModel.retryPendingWebsite(id: pending.id)
                 }
             },
-            onRemove: { queueItemId in
-                appEnvironment.removePendingQueuedWebsite(queueItemId)
+            onRemove: {
+                if let queueItemId = pending.queueItemId {
+                    appEnvironment.removePendingQueuedWebsite(queueItemId)
+                    return
+                }
+                viewModel.removePendingWebsite(id: pending.id)
             }
         )
     }

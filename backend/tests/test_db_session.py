@@ -141,6 +141,39 @@ def test_after_begin_invalidates_and_reraises_disconnect(
     assert len(invalidated) == 1
 
 
+def test_after_begin_applies_worker_scope_from_session_info(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Worker-scope sessions should reapply website_worker_scope every transaction."""
+    session = SimpleNamespace(info={"website_worker_scope": "all"})
+    connection = SimpleNamespace()
+    captured: dict[str, object] = {}
+
+    def fake_apply(
+        _connection,
+        user_id,
+        force_public_search_path,
+        website_worker_scope,
+    ) -> None:
+        captured["user_id"] = user_id
+        captured["force_public_search_path"] = force_public_search_path
+        captured["website_worker_scope"] = website_worker_scope
+
+    monkeypatch.setattr(session_module, "_apply_session_settings", fake_apply)
+
+    session_module._set_app_user_id(
+        session,
+        transaction=object(),
+        connection=connection,
+    )
+
+    assert captured == {
+        "user_id": None,
+        "force_public_search_path": False,
+        "website_worker_scope": "all",
+    }
+
+
 class _DisconnectingSession:
     def __init__(self) -> None:
         self.info: dict[str, str] = {}
@@ -176,6 +209,18 @@ def test_set_session_user_id_rolls_back_before_retrying_disconnect() -> None:
     session_module.set_session_user_id(db, "user-1")
 
     assert db.info["app_user_id"] == "user-1"
+    assert db.execute_calls == 2
+    assert db.rollback_calls == 1
+    assert db.invalidate_calls == 1
+
+
+def test_set_website_worker_scope_rolls_back_before_retrying_disconnect() -> None:
+    """Worker scope setup must rollback before retrying a dropped connection."""
+    db = _DisconnectingSession()
+
+    session_module.set_website_worker_scope(db, enabled=True)
+
+    assert db.info["website_worker_scope"] == "all"
     assert db.execute_calls == 2
     assert db.rollback_calls == 1
     assert db.invalidate_calls == 1

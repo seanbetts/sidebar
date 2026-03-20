@@ -155,6 +155,27 @@ extension WebsitesViewModel {
         pendingWebsites.first { $0.jobId == jobId }
     }
 
+    func pendingWebsite(id: String) -> PendingWebsiteItem? {
+        pendingWebsites.first { $0.id == id }
+    }
+
+    func updatePendingWebsiteStatus(for rawURL: String, status: PendingWebsiteStatus) {
+        let key = canonicalWebsiteURLForPendingMatch(rawURL) ?? rawURL
+        guard let index = pendingWebsites.firstIndex(where: { $0.canonicalURL == key }) else { return }
+        let existing = pendingWebsites[index]
+        pendingWebsites[index] = PendingWebsiteItem(
+            id: existing.id,
+            title: existing.title,
+            domain: existing.domain,
+            url: existing.url,
+            canonicalURL: existing.canonicalURL,
+            source: existing.source,
+            queueItemId: existing.queueItemId,
+            jobId: existing.jobId,
+            status: status
+        )
+    }
+
     func syncQueuedPendingWebsites(
         with queuedItems: [PendingShareItem],
         readingQueueItemId: UUID? = nil
