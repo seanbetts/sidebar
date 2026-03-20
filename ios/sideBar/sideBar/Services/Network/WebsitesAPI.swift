@@ -6,7 +6,8 @@ public protocol WebsitesProviding {
     func list() async throws -> WebsitesResponse
     func listArchived(limit: Int, offset: Int) async throws -> WebsitesResponse
     func get(id: String) async throws -> WebsiteDetail
-    func save(url: String) async throws -> WebsiteSaveResponse
+    func save(url: String) async throws -> WebsiteSaveJobResponse
+    func jobStatus(id: String) async throws -> WebsiteJobStatusResponse
     func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse
     func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem
     func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem
@@ -181,8 +182,12 @@ public struct WebsitesAPI {
         try await client.request("websites/\(id)")
     }
 
-    public func save(url: String) async throws -> WebsiteSaveResponse {
+    public func save(url: String) async throws -> WebsiteSaveJobResponse {
         return try await client.request("websites/save", method: "POST", body: WebsiteSaveRequest(url: url))
+    }
+
+    public func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
+        try await client.request("websites/jobs/\(id)")
     }
 
     public func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {

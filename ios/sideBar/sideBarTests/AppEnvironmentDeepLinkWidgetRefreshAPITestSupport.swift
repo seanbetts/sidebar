@@ -23,8 +23,13 @@ final class WidgetRefreshWebsitesAPI: WebsitesProviding {
         throw WidgetRefreshWebsitesAPIError.forced
     }
 
-    func save(url: String) async throws -> WebsiteSaveResponse {
+    func save(url: String) async throws -> WebsiteSaveJobResponse {
         _ = url
+        throw WidgetRefreshWebsitesAPIError.forced
+    }
+
+    func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
+        _ = id
         throw WidgetRefreshWebsitesAPIError.forced
     }
 

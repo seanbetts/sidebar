@@ -47,4 +47,8 @@ extension AppEnvironment: RealtimeEventHandler {
             await tasksViewModel.applyTaskGroupRealtimeEvent(payload)
         }
     }
+
+    public func handleWebsiteJobEvent(_ payload: RealtimePayload<WebsiteJobRealtimeRecord>) {
+        // Wired to websitesViewModel in Task 8
+    }
 }

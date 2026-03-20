@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 #if os(iOS)
 import SwiftUI
 import UIKit
@@ -5,6 +6,7 @@ import XCTest
 @testable import sideBar
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
     func testConfigurationReflectsCanonicalEditorModelIncludingTextStyle() async throws {
         guard #available(iOS 26.0, *) else {

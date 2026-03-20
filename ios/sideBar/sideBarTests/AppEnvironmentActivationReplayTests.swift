@@ -28,7 +28,7 @@ extension AppEnvironmentDeepLinkTests {
         )
         let replayGate = AsyncReplayGate()
         let websitesAPI = DeepLinkWebsitesAPI(
-            saveResult: .success(WebsiteSaveResponse(success: true, website: website)),
+            saveResult: .success(WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")),
             onSave: { _ in
                 await replayGate.wait()
             }

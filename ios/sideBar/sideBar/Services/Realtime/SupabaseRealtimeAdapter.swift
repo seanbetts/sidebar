@@ -14,6 +14,7 @@ public protocol RealtimeEventHandler: AnyObject {
     func handleTaskEvent(_ payload: RealtimePayload<TaskRealtimeRecord>)
     func handleTaskProjectEvent(_ payload: RealtimePayload<TaskProjectRealtimeRecord>)
     func handleTaskGroupEvent(_ payload: RealtimePayload<TaskGroupRealtimeRecord>)
+    func handleWebsiteJobEvent(_ payload: RealtimePayload<WebsiteJobRealtimeRecord>)
 }
 
 /// Bridges Supabase realtime events into app payloads.
@@ -33,6 +34,7 @@ public protocol RealtimeEventHandler: AnyObject {
     var tasksChannel: RealtimeChannelV2?
     var taskProjectsChannel: RealtimeChannelV2?
     var taskGroupsChannel: RealtimeChannelV2?
+    var websiteJobsChannel: RealtimeChannelV2?
     var notesSubscriptions: [ObservationToken] = []
     var websitesSubscriptions: [ObservationToken] = []
     var ingestedFilesSubscriptions: [ObservationToken] = []
@@ -40,6 +42,7 @@ public protocol RealtimeEventHandler: AnyObject {
     var tasksSubscriptions: [ObservationToken] = []
     var taskProjectsSubscriptions: [ObservationToken] = []
     var taskGroupsSubscriptions: [ObservationToken] = []
+    var websiteJobsSubscriptions: [ObservationToken] = []
     var transitionTask: Task<Void, Never>?
 
     public init(config: EnvironmentConfig, handler: RealtimeEventHandler? = nil) {
@@ -282,6 +285,31 @@ extension SupabaseRealtimeAdapter {
         handler?.handleFileJobEvent(payload)
     }
 
+    func handleWebsiteJobUpdate(_ action: RealtimeActionDecoding) {
+        do {
+            let decoder = Self.makeDecoder()
+            let record: WebsiteJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
+            notifyWebsiteJobEvent(type: .update, record: record, oldRecord: nil)
+        } catch {
+            logger.error("Website jobs update decode failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func notifyWebsiteJobEvent(
+        type: RealtimeEventType,
+        record: WebsiteJobRealtimeRecord?,
+        oldRecord: WebsiteJobRealtimeRecord?
+    ) {
+        let payload = RealtimePayload(
+            eventType: type,
+            table: RealtimeTable.websiteJobs,
+            schema: "public",
+            record: record,
+            oldRecord: oldRecord
+        )
+        handler?.handleWebsiteJobEvent(payload)
+    }
+
 }
 
 actor AccessTokenStore {
@@ -359,5 +387,16 @@ public struct FileJobRealtimeRecord: Codable {
     public let errorCode: String?
     public let errorMessage: String?
     public let attempts: Int?
+    public let updatedAt: String?
+}
+
+/// Represents WebsiteJobRealtimeRecord.
+public struct WebsiteJobRealtimeRecord: Codable {
+    public let id: String
+    public let userId: String?
+    public let url: String?
+    public let status: String?
+    public let errorMessage: String?
+    public let websiteId: String?
     public let updatedAt: String?
 }

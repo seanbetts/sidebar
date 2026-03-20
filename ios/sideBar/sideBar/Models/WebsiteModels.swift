@@ -208,6 +208,44 @@ public struct WebsiteSaveResponse: Codable {
     public let website: WebsiteDetail?
 }
 
+/// Represents an async website save job response.
+public struct WebsiteSaveJobResponse: Codable {
+    /// The job identifier.
+    public let jobId: String
+    /// The job status (queued, processing, completed, failed).
+    public let status: String
+
+    private enum CodingKeys: String, CodingKey {
+        case jobId = "job_id"
+        case status
+    }
+}
+
+/// Represents a job status poll response.
+public struct WebsiteJobStatusResponse: Codable {
+    /// The job identifier.
+    public let jobId: String
+    /// The job status.
+    public let status: String
+    /// The website payload (present when status is completed).
+    public let website: WebsiteDetail?
+    /// The error details (present when status is failed).
+    public let error: WebsiteJobError?
+
+    private enum CodingKeys: String, CodingKey {
+        case jobId = "job_id"
+        case status
+        case website
+        case error
+    }
+}
+
+/// Represents a job error response.
+public struct WebsiteJobError: Codable {
+    /// The error message.
+    public let message: String
+}
+
 /// Represents a website sync response struct.
 public struct WebsiteSyncResponse: Codable {
     /// The applied value.

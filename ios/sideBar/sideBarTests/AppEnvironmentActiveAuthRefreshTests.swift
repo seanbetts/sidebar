@@ -31,29 +31,7 @@ extension AppEnvironmentDeepLinkTests {
         )
         let websitesAPI = DeepLinkWebsitesAPI(
             saveResult: .success(
-                WebsiteSaveResponse(
-                    success: true,
-                    website: WebsiteDetail(
-                        id: "website-queued",
-                        title: "Queued Website",
-                        url: queuedURL,
-                        urlFull: queuedURL,
-                        domain: "example.com",
-                        content: "Saved content",
-                        source: "web",
-                        savedAt: nil,
-                        publishedAt: nil,
-                        pinned: false,
-                        pinnedOrder: nil,
-                        archived: false,
-                        faviconUrl: nil,
-                        faviconR2Key: nil,
-                        youtubeTranscripts: nil,
-                        readingTime: nil,
-                        updatedAt: nil,
-                        lastOpenedAt: nil
-                    )
-                )
+                WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
             ),
             listResult: .success(WebsitesResponse(items: [existingItem], archivedCount: 0)),
             onSave: { _ in

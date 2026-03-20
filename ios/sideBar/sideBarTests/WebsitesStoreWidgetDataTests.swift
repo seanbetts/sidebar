@@ -135,8 +135,13 @@ private final class WebsitesWidgetDataMockAPI: WebsitesProviding {
         return try getResult.get()
     }
 
-    func save(url: String) async throws -> WebsiteSaveResponse {
+    func save(url: String) async throws -> WebsiteSaveJobResponse {
         _ = url
+        throw WebsitesWidgetDataMockError.forced
+    }
+
+    func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
+        _ = id
         throw WebsitesWidgetDataMockError.forced
     }
 

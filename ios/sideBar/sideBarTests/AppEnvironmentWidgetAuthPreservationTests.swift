@@ -3,7 +3,7 @@ import sideBarShared
 @testable import sideBar
 
 @MainActor
-final class AppEnvironmentWidgetAuthPreservationTests: XCTestCase {
+final class AppEnvWidgetAuthPreservationTests: XCTestCase {
     private var retainedEnvironments: [AppEnvironment] = []
     private var environment: AppEnvironment!
     private var storage: AppEnvironmentStorage!

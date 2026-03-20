@@ -757,8 +757,13 @@ final class WebsitesStoreMockWebsitesAPI: WebsitesProviding {
         return try getResult.get()
     }
 
-    func save(url: String) async throws -> WebsiteSaveResponse {
+    func save(url: String) async throws -> WebsiteSaveJobResponse {
         _ = url
+        throw WebsitesStoreMockError.forced
+    }
+
+    func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
+        _ = id
         throw WebsitesStoreMockError.forced
     }
 

@@ -136,9 +136,9 @@ final class WebsitesViewModelTests: XCTestCase {
         let api = MockWebsitesAPI(
             listResult: .success(WebsitesResponse(items: [item])),
             getResult: .success(detail),
-            saveResult: .success(WebsiteSaveResponse(
-                success: true,
-                website: detail
+            saveResult: .success(WebsiteSaveJobResponse(
+                jobId: "test-job-id",
+                status: "queued"
             ))
         )
         let store = WebsitesStore(api: api, cache: cache)
@@ -164,9 +164,9 @@ final class WebsitesViewModelTests: XCTestCase {
         let api = MockWebsitesAPI(
             listResult: .success(WebsitesResponse(items: [item])),
             getResult: .success(detail),
-            saveResult: .success(WebsiteSaveResponse(
-                success: true,
-                website: detail
+            saveResult: .success(WebsiteSaveJobResponse(
+                jobId: "test-job-id",
+                status: "queued"
             ))
         )
         let store = WebsitesStore(api: api, cache: cache)
@@ -204,9 +204,9 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isLoadingDetail)
 
         api.resumeSave(
-            result: .success(WebsiteSaveResponse(
-                success: true,
-                website: makeDetail(id: "site-1")
+            result: .success(WebsiteSaveJobResponse(
+                jobId: "test-job-id",
+                status: "queued"
             ))
         )
 
@@ -238,14 +238,9 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isLoadingDetail)
 
         api.resumeSave(
-            result: .success(WebsiteSaveResponse(
-                success: true,
-                website: makeDetail(
-                    id: "site-yt-1",
-                    title: "Video",
-                    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-                    domain: "youtube.com"
-                )
+            result: .success(WebsiteSaveJobResponse(
+                jobId: "test-job-id",
+                status: "queued"
             ))
         )
 
@@ -486,14 +481,9 @@ final class WebsitesViewModelTests: XCTestCase {
         let api = MockWebsitesAPI(
             listResult: .success(WebsitesResponse(items: [existing])),
             getResult: .success(existingDetail),
-            saveResult: .success(WebsiteSaveResponse(
-                success: true,
-                website: makeDetail(
-                    id: "site-new",
-                    title: "New Site",
-                    url: "https://new.example",
-                    domain: "new.example"
-                )
+            saveResult: .success(WebsiteSaveJobResponse(
+                jobId: "test-job-id",
+                status: "queued"
             ))
         )
         let store = WebsitesStore(api: api, cache: cache)
@@ -536,14 +526,9 @@ final class WebsitesViewModelTests: XCTestCase {
 
         api.resumeSave(
             result: .success(
-                WebsiteSaveResponse(
-                    success: true,
-                    website: makeDetail(
-                        id: "site-queued-1",
-                        title: "Queued",
-                        url: "https://queued.example/path",
-                        domain: "queued.example"
-                    )
+                WebsiteSaveJobResponse(
+                    jobId: "test-job-id",
+                    status: "queued"
                 )
             )
         )
@@ -562,9 +547,9 @@ final class WebsitesViewModelTests: XCTestCase {
         let api = MockWebsitesAPI(
             listResult: .success(WebsitesResponse(items: [savedItem])),
             saveResult: .success(
-                WebsiteSaveResponse(
-                    success: true,
-                    website: nil
+                WebsiteSaveJobResponse(
+                    jobId: "test-job-id",
+                    status: "queued"
                 )
             )
         )
@@ -1199,7 +1184,7 @@ private struct TestNetworkStatus: NetworkStatusProviding {
 private final class MockWebsitesAPI: WebsitesProviding {
     let listResult: Result<WebsitesResponse, Error>
     let getResult: Result<WebsiteDetail, Error>
-    let saveResult: Result<WebsiteSaveResponse, Error>
+    let saveResult: Result<WebsiteSaveJobResponse, Error>
     let transcribeResult: Result<WebsiteTranscriptResponse, Error>
     let pinResult: Result<WebsiteItem, Error>
     let renameResult: Result<WebsiteItem, Error>
@@ -1216,7 +1201,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     init(
         listResult: Result<WebsitesResponse, Error> = .failure(MockError.forced),
         getResult: Result<WebsiteDetail, Error> = .failure(MockError.forced),
-        saveResult: Result<WebsiteSaveResponse, Error> = .failure(MockError.forced),
+        saveResult: Result<WebsiteSaveJobResponse, Error> = .failure(MockError.forced),
         transcribeResult: Result<WebsiteTranscriptResponse, Error> = .failure(MockError.forced),
         transcribeHandler: ((_ id: String, _ url: String) async throws -> WebsiteTranscriptResponse)? = nil,
         pinResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
@@ -1260,9 +1245,14 @@ private final class MockWebsitesAPI: WebsitesProviding {
         return try getResult.get()
     }
 
-    func save(url: String) async throws -> WebsiteSaveResponse {
+    func save(url: String) async throws -> WebsiteSaveJobResponse {
         lastSavedUrl = url
         return try saveResult.get()
+    }
+
+    func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
+        _ = id
+        throw MockError.forced
     }
 
     func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
@@ -1324,7 +1314,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
 }
 
 private final class ControlledWebsitesAPI: WebsitesProviding {
-    private var saveContinuation: CheckedContinuation<WebsiteSaveResponse, Error>?
+    private var saveContinuation: CheckedContinuation<WebsiteSaveJobResponse, Error>?
 
     func list() async throws -> WebsitesResponse {
         WebsitesResponse(items: [])
@@ -1340,10 +1330,15 @@ private final class ControlledWebsitesAPI: WebsitesProviding {
         makeDetail(id: id)
     }
 
-    func save(url: String) async throws -> WebsiteSaveResponse {
+    func save(url: String) async throws -> WebsiteSaveJobResponse {
         try await withCheckedThrowingContinuation { continuation in
             saveContinuation = continuation
         }
+    }
+
+    func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
+        _ = id
+        throw MockError.forced
     }
 
     func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
@@ -1377,7 +1372,7 @@ private final class ControlledWebsitesAPI: WebsitesProviding {
         return WebsiteSyncResponse(applied: [], websites: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
     }
 
-    func resumeSave(result: Result<WebsiteSaveResponse, Error>) {
+    func resumeSave(result: Result<WebsiteSaveJobResponse, Error>) {
         guard let continuation = saveContinuation else { return }
         saveContinuation = nil
         continuation.resume(with: result)
@@ -1403,8 +1398,13 @@ private final class ControlledArchivedWebsitesAPI: WebsitesProviding {
         makeDetail(id: id)
     }
 
-    func save(url: String) async throws -> WebsiteSaveResponse {
+    func save(url: String) async throws -> WebsiteSaveJobResponse {
         _ = url
+        throw MockError.forced
+    }
+
+    func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
+        _ = id
         throw MockError.forced
     }
 

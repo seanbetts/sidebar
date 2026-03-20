@@ -4,7 +4,7 @@ import sideBarShared
 @testable import sideBar
 
 final class DeepLinkWebsitesAPI: WebsitesProviding {
-    let saveResult: Result<WebsiteSaveResponse, Error>
+    let saveResult: Result<WebsiteSaveJobResponse, Error>
     let detailResult: Result<WebsiteDetail, Error>
     let listResult: Result<WebsitesResponse, Error>
     let onSave: ((String) async -> Void)?
@@ -13,7 +13,7 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
     private(set) var listCallCount = 0
 
     init(
-        saveResult: Result<WebsiteSaveResponse, Error>,
+        saveResult: Result<WebsiteSaveJobResponse, Error>,
         listResult: Result<WebsitesResponse, Error> = .success(
             WebsitesResponse(items: [], archivedCount: 0)
         ),
@@ -42,11 +42,16 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
         return try detailResult.get()
     }
 
-    func save(url: String) async throws -> WebsiteSaveResponse {
+    func save(url: String) async throws -> WebsiteSaveJobResponse {
         saveCallCount += 1
         lastSavedURL = url
         await onSave?(url)
         return try saveResult.get()
+    }
+
+    func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
+        _ = id
+        throw DeepLinkWebsitesAPIError.forced
     }
 
     func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {

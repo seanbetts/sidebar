@@ -41,29 +41,7 @@ extension AppEnvironmentDeepLinkTests {
         let url = URL(string: "https://example.com/articles/\(UUID().uuidString)")!
         let websitesAPI = DeepLinkWebsitesAPI(
             saveResult: .success(
-                WebsiteSaveResponse(
-                    success: true,
-                    website: WebsiteDetail(
-                        id: "website-1",
-                        title: "Saved",
-                        url: url.absoluteString,
-                        urlFull: url.absoluteString,
-                        domain: "example.com",
-                        content: "Saved content",
-                        source: "web",
-                        savedAt: nil,
-                        publishedAt: nil,
-                        pinned: false,
-                        pinnedOrder: nil,
-                        archived: false,
-                        faviconUrl: nil,
-                        faviconR2Key: nil,
-                        youtubeTranscripts: nil,
-                        readingTime: nil,
-                        updatedAt: nil,
-                        lastOpenedAt: nil
-                    )
-                )
+                WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
             )
         )
         environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
