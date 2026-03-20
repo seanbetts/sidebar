@@ -214,6 +214,16 @@ final class WebsitesViewModelTests: XCTestCase {
 
         _ = await saveTask.value
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "test-job-id")
+        XCTAssertTrue(viewModel.isLoadingDetail)
+
+        viewModel.didReceiveWebsiteJobUpdate(
+            jobId: "test-job-id",
+            status: "completed",
+            websiteId: "saved-1",
+            errorMessage: nil
+        )
+        await Task.yield()
+
         XCTAssertFalse(viewModel.isLoadingDetail)
     }
 
@@ -249,6 +259,16 @@ final class WebsitesViewModelTests: XCTestCase {
 
         _ = await saveTask.value
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "test-job-id")
+        XCTAssertTrue(viewModel.isLoadingDetail)
+
+        viewModel.didReceiveWebsiteJobUpdate(
+            jobId: "test-job-id",
+            status: "completed",
+            websiteId: "saved-1",
+            errorMessage: nil
+        )
+        await Task.yield()
+
         XCTAssertFalse(viewModel.isLoadingDetail)
     }
 
