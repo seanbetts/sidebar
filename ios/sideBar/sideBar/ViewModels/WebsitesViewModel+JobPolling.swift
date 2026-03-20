@@ -31,10 +31,12 @@ extension WebsitesViewModel {
                     if let website = response.website {
                         applySavedWebsite(website, pendingURL: pendingURL)
                     }
+                    endWebsiteSave()
                     jobPollingTasks.removeValue(forKey: jobId)
                     return
                 case "failed":
                     let message = response.error?.message ?? "Save failed"
+                    endWebsiteSave()
                     failWebsiteSave(
                         previousSelectedId: previousSelectedId,
                         pendingURL: pendingURL,
@@ -49,6 +51,7 @@ extension WebsitesViewModel {
                 continue
             }
         }
+        endWebsiteSave()
         failWebsiteSave(
             previousSelectedId: previousSelectedId,
             pendingURL: pendingURL,
@@ -79,13 +82,17 @@ extension WebsitesViewModel {
                     } catch {
                         self.logger.error("Failed to fetch completed website \(websiteId): \(error.localizedDescription, privacy: .public)")
                     }
+                    self.endWebsiteSave()
                 }
+            } else {
+                endWebsiteSave()
             }
         case "failed":
             jobPollingTasks[jobId]?.cancel()
             jobPollingTasks.removeValue(forKey: jobId)
             let pendingURL = URL(string: pending.url) ?? URL(string: "https://invalid")!
             let message = errorMessage ?? "Save failed"
+            endWebsiteSave()
             failWebsiteSave(
                 previousSelectedId: nil,
                 pendingURL: pendingURL,

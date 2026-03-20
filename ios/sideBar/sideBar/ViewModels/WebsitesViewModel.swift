@@ -224,7 +224,6 @@ public final class WebsitesViewModel: ObservableObject {
             return await saveWebsiteWithoutSelection(normalizedURL: normalized)
         }
         let previousSelectedId = beginWebsiteSave(for: normalized)
-        defer { endWebsiteSave() }
         do {
             let response = try await api.save(url: normalized.absoluteString)
             updatePendingWebsiteJobId(response.jobId, for: normalized)
@@ -239,6 +238,7 @@ public final class WebsitesViewModel: ObservableObject {
             }
             return true
         } catch {
+            endWebsiteSave()
             failWebsiteSave(
                 previousSelectedId: previousSelectedId,
                 pendingURL: normalized,
