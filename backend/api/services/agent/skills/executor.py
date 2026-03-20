@@ -173,6 +173,21 @@ class SkillExecutor:
             return error_value
         return str(error_payload)
 
+    @staticmethod
+    def _resolve_timeout_seconds(env_overrides: dict[str, str] | None) -> int:
+        """Return the effective subprocess timeout for a skill execution."""
+        if env_overrides:
+            raw_timeout = env_overrides.get("SKILL_TIMEOUT_SECONDS")
+            if raw_timeout is not None:
+                try:
+                    timeout_seconds = int(raw_timeout)
+                except (TypeError, ValueError):
+                    timeout_seconds = settings.skill_timeout_seconds
+                else:
+                    if timeout_seconds > 0:
+                        return timeout_seconds
+        return settings.skill_timeout_seconds
+
     async def execute(
         self,
         skill_name: str,
@@ -188,6 +203,8 @@ class SkillExecutor:
         # Acquire semaphore for concurrency control
         async with self._semaphore:
             try:
+                timeout_seconds = self._resolve_timeout_seconds(env_overrides)
+
                 # Validate script path
                 script_path = self._validate_script_path(skill_name, script_name)
 
@@ -260,7 +277,7 @@ class SkillExecutor:
                     capture_output=True,
                     text=True,
                     env=env,
-                    timeout=settings.skill_timeout_seconds,
+                    timeout=timeout_seconds,
                     shell=False,  # Explicit: never use shell
                     cwd=self.workspace_base,  # Run in workspace (not skills dir)
                 )
@@ -327,9 +344,7 @@ class SkillExecutor:
 
             except subprocess.TimeoutExpired:
                 duration_ms = (time.time() - start_time) * 1000
-                error_msg = (
-                    f"Script execution timeout ({settings.skill_timeout_seconds}s)"
-                )
+                error_msg = f"Script execution timeout ({timeout_seconds}s)"
                 AuditLogger.log_tool_call(
                     tool_name=f"{skill_name}.{script_name}",
                     parameters={"args": args},

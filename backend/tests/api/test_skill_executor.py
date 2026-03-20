@@ -146,6 +146,34 @@ print(json.dumps({"success": True}))
             settings.skill_timeout_seconds = original_timeout
 
     @pytest.mark.asyncio
+    async def test_env_override_timeout_controls_subprocess_timeout(
+        self, executor, monkeypatch
+    ):
+        """Per-call timeout overrides should affect the parent subprocess timeout."""
+        captured: dict[str, object] = {}
+
+        def fake_run(*args, **kwargs):
+            captured["timeout"] = kwargs["timeout"]
+            return subprocess.CompletedProcess(
+                args=["python", "echo.py"],
+                returncode=0,
+                stdout=json.dumps({"success": True, "data": {"message": "ok"}}),
+                stderr="",
+            )
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+
+        result = await executor.execute(
+            "test-skill",
+            "echo.py",
+            ["hello"],
+            env_overrides={"SKILL_TIMEOUT_SECONDS": "120"},
+        )
+
+        assert result["success"] is True
+        assert captured["timeout"] == 120
+
+    @pytest.mark.asyncio
     async def test_output_size_limits(self, executor, temp_skills_dir):
         """Should enforce output size limits."""
         # Create a script that produces huge output
