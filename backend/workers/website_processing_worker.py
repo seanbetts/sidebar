@@ -19,6 +19,9 @@ from sqlalchemy import and_, or_, text
 
 logger = logging.getLogger(__name__)
 
+_CLEANUP_INTERVAL_SECONDS = 3600
+_JOB_RETENTION_DAYS = 7
+
 
 def _now() -> datetime:
     """Return current UTC time."""
@@ -100,6 +103,25 @@ def _start_heartbeat(
         thread.join(timeout=settings.website_worker_heartbeat_seconds)
 
     return _stop
+
+
+def _cleanup_old_jobs(db) -> int:
+    """Delete completed/failed jobs older than retention period."""
+    cutoff = _now() - timedelta(days=_JOB_RETENTION_DAYS)
+    deleted = (
+        db.query(WebsiteProcessingJob)
+        .filter(
+            and_(
+                WebsiteProcessingJob.status.in_(["completed", "failed"]),
+                WebsiteProcessingJob.updated_at < cutoff,
+            )
+        )
+        .delete(synchronize_session="fetch")
+    )
+    if deleted:
+        db.commit()
+        logger.info("Cleaned up %d old website jobs", deleted)
+    return deleted
 
 
 def _requeue_stalled_jobs(db) -> None:
@@ -202,11 +224,16 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
 def _run_worker_loop(worker_id: str) -> None:
     """Main worker loop: poll, claim, process."""
     logger.info("Website worker %s starting", worker_id)
+    last_cleanup = 0.0
 
     while True:
         try:
             with SessionLocal() as db:
                 _set_worker_scope(db)
+                now_ts = time.monotonic()
+                if now_ts - last_cleanup >= _CLEANUP_INTERVAL_SECONDS:
+                    _cleanup_old_jobs(db)
+                    last_cleanup = now_ts
                 _requeue_stalled_jobs(db)
 
                 job = _claim_job(db, worker_id)
