@@ -14,9 +14,10 @@ const { websitesAPI } = vi.hoisted(() => ({
 	}
 }));
 
-const { enqueueWebsiteSave, flushQueuedWebsiteSaves } = vi.hoisted(() => ({
+const { enqueueWebsiteSave, flushQueuedWebsiteSaves, pollUntilComplete } = vi.hoisted(() => ({
 	enqueueWebsiteSave: vi.fn(),
-	flushQueuedWebsiteSaves: vi.fn()
+	flushQueuedWebsiteSaves: vi.fn(),
+	pollUntilComplete: vi.fn()
 }));
 
 const { user } = vi.hoisted(() => ({
@@ -40,7 +41,8 @@ const { user } = vi.hoisted(() => ({
 vi.mock('$lib/services/api', () => ({ websitesAPI }));
 vi.mock('$lib/services/website_save_sync', () => ({
 	enqueueWebsiteSave,
-	flushQueuedWebsiteSaves
+	flushQueuedWebsiteSaves,
+	pollUntilComplete
 }));
 vi.mock('$lib/stores/auth', () => ({ user }));
 vi.mock('$lib/utils/cache', () => ({
@@ -283,24 +285,21 @@ describe('websitesStore', () => {
 	});
 
 	it('tracks pending website while saving and returns the saved id', async () => {
-		websitesAPI.save.mockResolvedValue({
-			success: true,
-			website: {
-				id: 'saved-1',
-				title: 'Saved Website',
-				url: 'https://example.com',
-				domain: 'example.com',
-				content: 'Hello',
-				source: 'readability',
-				url_full: 'https://example.com',
-				saved_at: '2026-03-13T10:00:00Z',
-				published_at: null,
-				pinned: false,
-				archived: false,
-				youtube_transcripts: {},
-				updated_at: '2026-03-13T10:00:00Z',
-				last_opened_at: null
-			}
+		websitesAPI.save.mockResolvedValue({ job_id: 'job-1', status: 'pending' });
+		pollUntilComplete.mockResolvedValue({
+			id: 'saved-1',
+			title: 'Saved Website',
+			url: 'https://example.com',
+			domain: 'example.com',
+			content: 'Hello',
+			source: 'readability',
+			url_full: 'https://example.com',
+			saved_at: '2026-03-13T10:00:00Z',
+			published_at: null,
+			pinned: false,
+			archived: false,
+			updated_at: '2026-03-13T10:00:00Z',
+			last_opened_at: null
 		});
 
 		const savePromise = websitesStore.saveWebsite('example.com');
@@ -325,27 +324,25 @@ describe('websitesStore', () => {
 			title: 'Saved Website',
 			url: 'https://example.com'
 		});
+		expect(pollUntilComplete).toHaveBeenCalledWith('job-1');
 	});
 
 	it('treats YouTube URLs as regular website saves', async () => {
-		websitesAPI.save.mockResolvedValue({
-			success: true,
-			website: {
-				id: 'saved-youtube',
-				title: 'Video',
-				url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-				domain: 'youtube.com',
-				content: 'Transcript',
-				source: 'youtube',
-				url_full: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-				saved_at: '2026-03-13T10:00:00Z',
-				published_at: null,
-				pinned: false,
-				archived: false,
-				youtube_transcripts: {},
-				updated_at: '2026-03-13T10:00:00Z',
-				last_opened_at: null
-			}
+		websitesAPI.save.mockResolvedValue({ job_id: 'job-yt', status: 'pending' });
+		pollUntilComplete.mockResolvedValue({
+			id: 'saved-youtube',
+			title: 'Video',
+			url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+			domain: 'youtube.com',
+			content: 'Transcript',
+			source: 'youtube',
+			url_full: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+			saved_at: '2026-03-13T10:00:00Z',
+			published_at: null,
+			pinned: false,
+			archived: false,
+			updated_at: '2026-03-13T10:00:00Z',
+			last_opened_at: null
 		});
 
 		const result = await websitesStore.saveWebsite('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
@@ -452,24 +449,21 @@ describe('websitesStore', () => {
 	});
 
 	it('preserves freshly saved websites during stale reloads', async () => {
-		websitesAPI.save.mockResolvedValue({
-			success: true,
-			website: {
-				id: 'saved-2',
-				title: 'Fresh Save',
-				url: 'https://example.com/fresh',
-				domain: 'example.com',
-				content: 'Fresh content',
-				source: 'readability',
-				url_full: 'https://example.com/fresh',
-				saved_at: '2026-03-13T10:05:00Z',
-				published_at: null,
-				pinned: false,
-				archived: false,
-				youtube_transcripts: {},
-				updated_at: '2026-03-13T10:05:00Z',
-				last_opened_at: null
-			}
+		websitesAPI.save.mockResolvedValue({ job_id: 'job-fresh', status: 'pending' });
+		pollUntilComplete.mockResolvedValue({
+			id: 'saved-2',
+			title: 'Fresh Save',
+			url: 'https://example.com/fresh',
+			domain: 'example.com',
+			content: 'Fresh content',
+			source: 'readability',
+			url_full: 'https://example.com/fresh',
+			saved_at: '2026-03-13T10:05:00Z',
+			published_at: null,
+			pinned: false,
+			archived: false,
+			updated_at: '2026-03-13T10:05:00Z',
+			last_opened_at: null
 		});
 		websitesAPI.list.mockResolvedValue({
 			items: [

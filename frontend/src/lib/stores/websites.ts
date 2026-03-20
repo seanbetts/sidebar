@@ -1,7 +1,11 @@
 import { get, writable } from 'svelte/store';
 import { websitesAPI } from '$lib/services/api';
 import { user } from '$lib/stores/auth';
-import { enqueueWebsiteSave, flushQueuedWebsiteSaves } from '$lib/services/website_save_sync';
+import {
+	enqueueWebsiteSave,
+	flushQueuedWebsiteSaves,
+	pollUntilComplete
+} from '$lib/services/website_save_sync';
 import { getCachedData, invalidateCache, setCachedData } from '$lib/utils/cache';
 import { logError } from '$lib/utils/errorHandling';
 
@@ -42,9 +46,9 @@ export interface WebsiteDetail extends WebsiteItem {
 	url_full: string | null;
 }
 
-interface WebsiteSaveResponse {
-	success: boolean;
-	website?: WebsiteDetail;
+interface WebsiteAsyncSaveResponse {
+	job_id: string;
+	status: string;
 }
 
 interface SaveWebsiteResult {
@@ -116,10 +120,11 @@ const mergeWebsiteCollections = (active: WebsiteItem[], archived: WebsiteItem[])
 	return [...active, ...filteredArchived];
 };
 
-const parseSavedWebsite = (value: unknown): WebsiteDetail | null => {
+const parseAsyncSaveResponse = (value: unknown): WebsiteAsyncSaveResponse | null => {
 	if (!value || typeof value !== 'object') return null;
-	const payload = value as WebsiteSaveResponse;
-	return isWebsiteDetail(payload.website) ? payload.website : null;
+	const payload = value as Record<string, unknown>;
+	if (typeof payload.job_id !== 'string' || typeof payload.status !== 'string') return null;
+	return { job_id: payload.job_id as string, status: payload.status as string };
 };
 
 const stripWwwPrefix = (value: string): string => value.replace(/^www\./i, '');
@@ -522,7 +527,12 @@ function createWebsitesStore() {
 				}
 
 				const result = await websitesAPI.save(normalized.href);
-				const website = parseSavedWebsite(result);
+				const asyncResponse = parseAsyncSaveResponse(result);
+				if (!asyncResponse) {
+					throw new Error('Failed to save website');
+				}
+
+				const website = await pollUntilComplete(asyncResponse.job_id);
 				if (!website) {
 					throw new Error('Failed to save website');
 				}

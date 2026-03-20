@@ -2,8 +2,8 @@ import { websitesAPI } from '$lib/services/api';
 import { websiteSaveQueue, type QueuedWebsiteSave } from '$lib/stores/website_save_queue';
 import { logError } from '$lib/utils/errorHandling';
 
-type WebsiteSavePayload = Awaited<ReturnType<typeof websitesAPI.save>>;
-type SavedWebsiteDetail = NonNullable<WebsiteSavePayload['website']>;
+type JobStatusPayload = Awaited<ReturnType<typeof websitesAPI.jobStatus>>;
+type SavedWebsiteDetail = NonNullable<JobStatusPayload['website']>;
 
 let flushPromise: Promise<SavedWebsiteDetail[]> | null = null;
 
@@ -15,9 +15,34 @@ const getStatus = (error: unknown): number | null => {
 	return typeof status === 'number' ? status : null;
 };
 
-const extractSavedWebsite = (payload: WebsiteSavePayload): SavedWebsiteDetail | null => {
-	return payload.success && payload.website ? payload.website : null;
-};
+const POLL_INTERVALS = [10, 15, 20, 30, 45, 60, 60];
+const POLL_MAX_DURATION_MS = 5 * 60 * 1000;
+
+/**
+ * Poll a save job until it completes or times out.
+ */
+export async function pollUntilComplete(jobId: string): Promise<SavedWebsiteDetail | null> {
+	const start = Date.now();
+	let attempt = 0;
+	while (Date.now() - start < POLL_MAX_DURATION_MS) {
+		const interval = POLL_INTERVALS[Math.min(attempt, POLL_INTERVALS.length - 1)];
+		await new Promise((r) => setTimeout(r, interval * 1000));
+		attempt++;
+		let jobFailed = false;
+		try {
+			const status = await websitesAPI.jobStatus(jobId);
+			if (status.status === 'completed' && status.website) return status.website;
+			if (status.status === 'failed') {
+				jobFailed = true;
+				throw new Error(status.error?.message ?? 'Save failed');
+			}
+		} catch (error) {
+			if (jobFailed) throw error;
+			// Swallow transient network errors and keep polling.
+		}
+	}
+	throw new Error('Save timed out');
+}
 
 /**
  * Queue a website URL for replay after auth is restored.
@@ -48,8 +73,8 @@ export async function flushQueuedWebsiteSaves(): Promise<SavedWebsiteDetail[]> {
 
 		for (const entry of queue) {
 			try {
-				const payload = await websitesAPI.save(entry.url);
-				const website = extractSavedWebsite(payload);
+				const { job_id } = await websitesAPI.save(entry.url);
+				const website = await pollUntilComplete(job_id);
 				if (!website) {
 					throw new Error('Failed to save queued website');
 				}

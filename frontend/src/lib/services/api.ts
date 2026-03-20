@@ -400,45 +400,13 @@ class WebsitesAPI {
 	}
 
 	/**
-	 * Save a website URL.
+	 * Save a website URL (async job).
 	 *
 	 * @param url - Website URL to save.
-	 * @returns Save response payload.
+	 * @returns Job ID and initial status.
 	 * @throws Error when the request fails.
 	 */
-	async save(url: string): Promise<{
-		success: boolean;
-		website?: {
-			id: string;
-			title: string;
-			url: string;
-			domain: string;
-			content: string;
-			source: string | null;
-			url_full: string | null;
-			saved_at: string | null;
-			published_at: string | null;
-			pinned: boolean;
-			pinned_order?: number | null;
-			archived?: boolean;
-			favicon_url?: string | null;
-			favicon_r2_key?: string | null;
-			favicon_extracted_at?: string | null;
-			youtube_transcripts?: Record<
-				string,
-				{
-					status?: string;
-					file_id?: string;
-					updated_at?: string;
-					error?: string;
-				}
-			>;
-			reading_time?: string | null;
-			updated_at: string | null;
-			last_opened_at: string | null;
-			deleted_at?: string | null;
-		};
-	}> {
+	async save(url: string): Promise<{ job_id: string; status: string }> {
 		const response = await fetch(`${this.baseUrl}/save`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -459,6 +427,46 @@ class WebsitesAPI {
 			const error = new Error(message) as Error & { status?: number };
 			error.status = response.status;
 			throw error;
+		}
+		return response.json();
+	}
+
+	/**
+	 * Check the status of a website save job.
+	 *
+	 * @param jobId - Job ID returned from save().
+	 * @returns Job status with optional website detail or error.
+	 * @throws Error when the request fails.
+	 */
+	async jobStatus(jobId: string): Promise<{
+		job_id: string;
+		status: string;
+		website?: {
+			id: string;
+			title: string;
+			url: string;
+			domain: string;
+			content: string;
+			source: string | null;
+			url_full: string | null;
+			saved_at: string | null;
+			published_at: string | null;
+			pinned: boolean;
+			pinned_order?: number | null;
+			archived?: boolean;
+			favicon_url?: string | null;
+			favicon_r2_key?: string | null;
+			favicon_extracted_at?: string | null;
+			reading_time?: string | null;
+			updated_at: string | null;
+			last_opened_at: string | null;
+			deleted_at?: string | null;
+		};
+		error?: { message: string };
+	}> {
+		const response = await fetch(`${this.baseUrl}/jobs/${jobId}`);
+		if (!response.ok) {
+			throw Object.assign(new Error('Failed to get job status'), { status: response.status });
 		}
 		return response.json();
 	}
