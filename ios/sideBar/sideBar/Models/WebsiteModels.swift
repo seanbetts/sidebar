@@ -200,14 +200,6 @@ private struct TranscriptQueueData: Decodable {
     let fileId: String?
 }
 
-/// Represents a website save response struct.
-public struct WebsiteSaveResponse: Codable {
-    /// The success value.
-    public let success: Bool
-    /// The canonical saved website payload.
-    public let website: WebsiteDetail?
-}
-
 /// Represents an async website save job response.
 public struct WebsiteSaveJobResponse: Codable {
     /// The job identifier.

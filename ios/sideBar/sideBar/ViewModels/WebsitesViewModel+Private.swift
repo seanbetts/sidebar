@@ -52,18 +52,6 @@ extension WebsitesViewModel {
         isLoadingDetail = false
     }
 
-    func validatedSavedWebsite(
-        from response: WebsiteSaveResponse,
-        previousSelectedId: String?,
-        pendingURL: URL
-    ) -> WebsiteDetail? {
-        guard response.success, let website = response.website else {
-            failWebsiteSave(previousSelectedId: previousSelectedId, pendingURL: pendingURL, message: "Failed to save website")
-            return nil
-        }
-        return website
-    }
-
     func applySavedWebsite(_ website: WebsiteDetail, pendingURL: URL) {
         selectedWebsiteId = website.id
         store.applyDetailUpdate(website, persist: true)
@@ -80,22 +68,6 @@ extension WebsitesViewModel {
                 self?.logger.error("Failed to refresh websites list after save: \(error.localizedDescription, privacy: .public)")
             }
         }
-    }
-
-    func applySavedWebsiteWithoutSelection(_ website: WebsiteDetail, pendingURL: URL) {
-        applySavedWebsiteWithoutSelection(website, pendingURLString: pendingURL.absoluteString)
-    }
-
-    func applySavedWebsiteWithoutSelection(_ website: WebsiteDetail, pendingURLString: String?) {
-        store.applyDetailUpdate(website, persist: true)
-        store.insertItemAtTop(
-            WebsiteItem(detail: website),
-            persist: true
-        )
-        if let pendingURLString {
-            removePendingWebsite(for: pendingURLString)
-        }
-        store.invalidateList()
     }
 
     func recoverSavedWebsiteWithoutSelection(pendingURL: URL) async -> Bool {
