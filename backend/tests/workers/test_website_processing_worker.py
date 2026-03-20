@@ -2,7 +2,6 @@
 
 from datetime import UTC, datetime, timedelta
 
-import pytest
 from api.models.website_processing_job import WebsiteProcessingJob
 
 
@@ -67,3 +66,40 @@ def test_requeue_stalled_jobs(test_db):
     test_db.refresh(job)
     assert job.status == "queued"
     assert job.worker_id is None
+
+
+def test_main_initializes_sentry_with_worker_script_name(monkeypatch):
+    """Website worker main should initialize Sentry with a worker script name."""
+    from workers import website_processing_worker
+
+    captured: dict[str, str] = {}
+    started_worker_ids: list[str] = []
+
+    def fake_initialize_script_sentry(script_name: str, **kwargs) -> bool:
+        captured["script_name"] = script_name
+        captured["process_type"] = kwargs.get("process_type", "")
+        return True
+
+    monkeypatch.setattr(
+        website_processing_worker,
+        "initialize_script_sentry",
+        fake_initialize_script_sentry,
+    )
+    monkeypatch.setattr(
+        website_processing_worker,
+        "_run_worker_loop",
+        lambda worker_id: started_worker_ids.append(worker_id),
+    )
+    monkeypatch.setattr(
+        website_processing_worker.settings,
+        "website_worker_concurrency",
+        1,
+    )
+
+    website_processing_worker.main()
+
+    assert captured == {
+        "script_name": "workers.website_processing_worker",
+        "process_type": "worker",
+    }
+    assert len(started_worker_ids) == 1

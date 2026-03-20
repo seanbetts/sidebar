@@ -257,7 +257,10 @@ def main() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    initialize_script_sentry()
+    initialize_script_sentry(
+        "workers.website_processing_worker",
+        process_type="worker",
+    )
 
     worker_id = f"web-worker-{uuid.uuid4().hex[:8]}"
     concurrency = settings.website_worker_concurrency
