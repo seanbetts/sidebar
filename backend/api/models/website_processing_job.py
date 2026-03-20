@@ -17,6 +17,7 @@ class WebsiteProcessingJob(Base):
     __table_args__ = (
         Index("idx_website_jobs_user_id", "user_id"),
         Index("idx_website_jobs_status", "status"),
+        Index("idx_website_jobs_status_lease", "status", "lease_expires_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -29,6 +30,10 @@ class WebsiteProcessingJob(Base):
     website_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("websites.id"), nullable=True
     )
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    worker_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
