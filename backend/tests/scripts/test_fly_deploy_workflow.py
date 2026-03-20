@@ -53,3 +53,48 @@ def test_fly_deploy_workflow_verifies_ingestion_machine_is_started() -> None:
     assert 'env.get("FLY_PROCESS_GROUP")' in run_script
     assert 'machine_process_group(machine) == "ingestion"' in run_script
     assert 'machine.get("state") == "started"' in run_script
+
+
+def test_fly_deploy_workflow_authenticates_with_flyctl_before_push() -> None:
+    """Fly deploy should refresh registry auth right before pushing the image."""
+    workflow = _workflow()
+    deploy_steps = workflow["jobs"]["deploy"]["steps"]
+
+    install_index = next(
+        index
+        for index, step in enumerate(deploy_steps)
+        if step.get("name") == "Install Flyctl"
+    )
+    auth_index = next(
+        index
+        for index, step in enumerate(deploy_steps)
+        if step.get("name") == "Authenticate Docker to Fly registry"
+    )
+    push_index = next(
+        index
+        for index, step in enumerate(deploy_steps)
+        if step.get("name") == "Push image to Fly registry"
+    )
+
+    assert install_index < auth_index < push_index
+    assert deploy_steps[auth_index]["run"] == "flyctl auth docker"
+    assert "${{ secrets.FLY_API_TOKEN }}" in str(deploy_steps[auth_index]["env"])
+
+
+def test_fly_deploy_workflow_builds_before_registry_push() -> None:
+    """Fly deploy should avoid authenticating to the registry until after build completes."""
+    workflow = _workflow()
+    deploy_steps = workflow["jobs"]["deploy"]["steps"]
+
+    build_step = next(
+        step for step in deploy_steps if step.get("name") == "Build image"
+    )
+    push_step = next(
+        step for step in deploy_steps if step.get("name") == "Push image to Fly registry"
+    )
+
+    assert build_step["uses"] == "docker/build-push-action@v6"
+    assert build_step["with"]["push"] == "false"
+    assert build_step["with"]["load"] == "true"
+    assert build_step["with"]["tags"] == "${{ steps.image.outputs.ref }}"
+    assert push_step["run"] == 'docker push "${{ steps.image.outputs.ref }}"'
