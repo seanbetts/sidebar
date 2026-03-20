@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
+from api.config import settings
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError, WebsiteNotFoundError
@@ -17,6 +18,7 @@ from api.middleware import rate_limit as rate_limit_module
 from api.routers.download_headers import markdown_download_headers
 from api.routers.websites_helpers import website_detail_payload, website_summary
 from api.schemas.filters import WebsiteFilters
+from api.services.website_job_health_service import WebsiteJobHealthService
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.website_transcript_service import WebsiteTranscriptService
 from api.services.websites_service import WebsitesService
@@ -260,6 +262,13 @@ def get_job_status(
     Raises:
         NotFoundError: If job does not exist for this user.
     """
+    WebsiteJobHealthService.fail_stale_queued_jobs_when_worker_unavailable(
+        db,
+        user_id,
+        queued_ttl_seconds=settings.website_save_timeout_seconds,
+        worker_heartbeat_ttl_seconds=settings.website_worker_heartbeat_seconds * 3,
+    )
+
     job = WebsiteProcessingService.get_job(db, user_id, job_id)
     if not job:
         raise NotFoundError("Job", str(job_id))

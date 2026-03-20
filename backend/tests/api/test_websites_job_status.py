@@ -85,17 +85,48 @@ def test_get_job_status_reports_stalled_processing_job(test_client, test_db):
 
 
 def test_get_job_status_reports_stalled_queued_job(test_client, test_db):
-    """GET /websites/jobs/{id} reports stalled when no worker has picked it up in time."""
+    """GET /websites/jobs/{id} reports failed when the worker appears unavailable."""
     job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
-    stall_age = max(
-        settings.website_worker_lease_seconds,
-        settings.website_save_timeout_seconds,
-    )
-    job.updated_at = datetime.now(UTC) - timedelta(seconds=stall_age + 1)
+    job.updated_at = datetime.now(UTC) - timedelta(minutes=5)
     test_db.commit()
 
     response = test_client.get(
         f"/api/websites/jobs/{job.id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "failed"
+    assert (
+        data["error"]["message"]
+        == "Website processing is temporarily unavailable. Please retry in a few minutes."
+    )
+
+
+def test_get_job_status_reports_stalled_queued_job_when_worker_is_active(
+    test_client, test_db
+):
+    """GET /websites/jobs/{id} keeps queued jobs stalled when a worker is active."""
+    stale_job = WebsiteProcessingService.create_job(
+        test_db, TEST_USER_ID, "https://example.com"
+    )
+    stall_age = max(
+        settings.website_worker_lease_seconds,
+        settings.website_save_timeout_seconds,
+    )
+    stale_job.updated_at = datetime.now(UTC) - timedelta(seconds=stall_age + 1)
+
+    active_job = WebsiteProcessingService.create_job(
+        test_db, "other-user", "https://example.org"
+    )
+    active_job.status = "processing"
+    active_job.worker_id = "worker-1"
+    active_job.updated_at = datetime.now(UTC)
+    test_db.commit()
+
+    response = test_client.get(
+        f"/api/websites/jobs/{stale_job.id}",
         headers=_auth_headers(),
     )
 
