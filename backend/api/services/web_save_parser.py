@@ -63,6 +63,7 @@ from api.services.web_save_parser_paywall import (
     extract_paywall_preview_markdown,
     is_anti_bot_challenge_page,
 )
+from api.services.web_save_parser_reuters import extract_reuters_payload
 from api.services.web_save_parser_snapshots import (
     maybe_build_snapshot_render,
 )
@@ -511,6 +512,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             steam_html, steam_meta = steam_payload
             article_html = steam_html
             metadata.update(steam_meta)
+        elif reuters_payload := extract_reuters_payload(raw_html_original, final_url):
+            reuters_html, reuters_meta = reuters_payload
+            article_html = reuters_html
+            metadata.update(reuters_meta)
         elif urlparse(final_url).netloc.endswith("blog.google"):
             blog_google_html = extract_blog_google_body_html(raw_html_original)
             if blog_google_html:
