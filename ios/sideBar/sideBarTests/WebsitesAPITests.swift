@@ -17,11 +17,37 @@ final class WebsitesAPITests: XCTestCase {
         super.tearDown()
     }
 
-    func testSaveUsesPostAndDecodesResponse() async throws {
+    func testSaveUsesPostAndDecodesQueuedJobResponse() async throws {
         let api = WebsitesAPI(client: makeClient())
         router.setHandler { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("websites/save") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 202,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {
+              "job_id": "job-1",
+              "status": "queued"
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        let response = try await api.save(url: "https://example.com")
+
+        XCTAssertEqual(response.jobId, "job-1")
+        XCTAssertEqual(response.status, "queued")
+    }
+
+    func testJobStatusDecodesCompletedWebsiteResponse() async throws {
+        let api = WebsitesAPI(client: makeClient())
+        router.setHandler { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertTrue(request.url?.absoluteString.contains("websites/jobs/job-1") == true)
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -30,7 +56,8 @@ final class WebsitesAPITests: XCTestCase {
             )!
             let payload = """
             {
-              "success": true,
+              "job_id": "job-1",
+              "status": "completed",
               "website": {
                 "id": "w1",
                 "title": "Site",
@@ -47,9 +74,10 @@ final class WebsitesAPITests: XCTestCase {
             return (response, Data(payload.utf8))
         }
 
-        let response = try await api.save(url: "https://example.com")
+        let response = try await api.jobStatus(id: "job-1")
 
-        XCTAssertTrue(response.success)
+        XCTAssertEqual(response.jobId, "job-1")
+        XCTAssertEqual(response.status, "completed")
         XCTAssertEqual(response.website?.id, "w1")
         XCTAssertEqual(response.website?.content, "Body")
     }

@@ -214,11 +214,6 @@ public struct WebsiteSaveJobResponse: Codable {
     public let jobId: String
     /// The job status (queued, processing, completed, failed).
     public let status: String
-
-    private enum CodingKeys: String, CodingKey {
-        case jobId = "job_id"
-        case status
-    }
 }
 
 /// Represents a job status poll response.
@@ -231,13 +226,6 @@ public struct WebsiteJobStatusResponse: Codable {
     public let website: WebsiteDetail?
     /// The error details (present when status is failed).
     public let error: WebsiteJobError?
-
-    private enum CodingKeys: String, CodingKey {
-        case jobId = "job_id"
-        case status
-        case website
-        case error
-    }
 }
 
 /// Represents a job error response.
