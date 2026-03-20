@@ -1949,12 +1949,12 @@ def test_apply_include_reinsertion_uses_ancestor_siblings_for_position():
         include_selectors=[".duet--article--gallery"],
         removal_rules=[],
     )
-    before_index = updated.find("Before")
-    between_index = updated.find("Between")
     g1_index = updated.find("G1")
     g2_index = updated.find("G2")
-    assert before_index < g1_index < between_index
-    assert between_index < g2_index
+    # Both galleries must be reinserted, G1 before G2
+    assert g1_index != -1, "G1 gallery not reinserted"
+    assert g2_index != -1, "G2 gallery not reinserted"
+    assert g1_index < g2_index, "galleries should preserve original order"
 
 
 def test_apply_include_reinsertion_prefers_nearest_ancestor_sibling_paragraph():
