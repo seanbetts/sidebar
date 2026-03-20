@@ -70,6 +70,8 @@ USER root
 # Configure yt-dlp JS runtime for YouTube downloads
 ENV YT_DLP_JS_RUNTIMES=node
 ENV PLAYWRIGHT_STARTUP_CHECK=1
+ENV REQUESTS_CA_BUNDLE=/usr/lib/ssl/cert.pem
+ENV SSL_CERT_FILE=/usr/lib/ssl/cert.pem
 
 # Expose API port
 EXPOSE 8001

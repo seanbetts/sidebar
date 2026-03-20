@@ -27,3 +27,10 @@ def test_skills_api_healthcheck_targets_api_health_without_curl() -> None:
     assert "HEALTHCHECK" in contents
     assert "http://127.0.0.1:8001/api/health" in contents
     assert "curl -f" not in healthcheck_section
+
+
+def test_skills_api_image_uses_system_ca_bundle_for_python_https() -> None:
+    contents = DOCKERFILE.read_text(encoding="utf-8")
+
+    assert "REQUESTS_CA_BUNDLE=/usr/lib/ssl/cert.pem" in contents
+    assert "SSL_CERT_FILE=/usr/lib/ssl/cert.pem" in contents
