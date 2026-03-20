@@ -112,3 +112,36 @@ def test_get_job_status_not_found(test_client):
         headers=_auth_headers(),
     )
     assert response.status_code == 404
+
+
+def test_cancel_job_marks_job_canceled(test_client, test_db):
+    """POST /websites/jobs/{id}/cancel marks an active job as canceled."""
+    job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+
+    response = test_client.post(
+        f"/api/websites/jobs/{job.id}/cancel",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "canceled"
+    test_db.refresh(job)
+    assert job.status == "canceled"
+    assert job.lease_expires_at is None
+    assert job.worker_id is None
+
+
+def test_update_job_does_not_override_canceled_status(test_db):
+    """Canceled jobs should stay canceled if the worker reports a later outcome."""
+    job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+    WebsiteProcessingService.cancel_job(test_db, TEST_USER_ID, job.id)
+
+    WebsiteProcessingService.update_job(
+        test_db,
+        job.id,
+        status="completed",
+        website_id=uuid4(),
+    )
+
+    test_db.refresh(job)
+    assert job.status == "canceled"

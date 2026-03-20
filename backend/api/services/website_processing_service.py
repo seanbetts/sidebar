@@ -64,12 +64,31 @@ class WebsiteProcessingService:
         )
         if not job:
             return
+        if job.status == "canceled" and status != "canceled":
+            return
         job.status = status
         job.error_message = error_message
         if website_id is not None:
             job.website_id = website_id
+        if status == "canceled":
+            job.worker_id = None
+            job.lease_expires_at = None
         job.updated_at = datetime.now(UTC)
         db.commit()
+
+    @staticmethod
+    def cancel_job(
+        db: Session,
+        user_id: str,
+        job_id: uuid.UUID,
+    ) -> WebsiteProcessingJob | None:
+        """Cancel an active website processing job for a user."""
+        job = WebsiteProcessingService.get_job(db, user_id, job_id)
+        if not job:
+            return None
+        WebsiteProcessingService.update_job(db, job_id, status="canceled")
+        db.refresh(job)
+        return job
 
     @staticmethod
     def status_for_client(job: WebsiteProcessingJob) -> tuple[str, str | None]:

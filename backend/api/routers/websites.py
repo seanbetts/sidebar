@@ -280,6 +280,20 @@ def get_job_status(
     return result
 
 
+@router.post("/jobs/{job_id}/cancel")
+def cancel_job(
+    job_id: uuid.UUID,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Cancel an async website save job."""
+    job = WebsiteProcessingService.cancel_job(db, user_id, job_id)
+    if not job:
+        raise NotFoundError("Job", str(job_id))
+    return {"job_id": str(job.id), "status": job.status}
+
+
 @router.get("/{website_id}")
 def get_website(
     website_id: uuid.UUID,

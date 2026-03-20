@@ -188,8 +188,7 @@ extension WebsitesDetailView {
             )
             #endif
         } else if viewModel.isLoadingDetail || !viewModel.pendingWebsites.isEmpty {
-            LoadingView(message: viewModel.detailLoadingMessage)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            pendingWebsiteLoadingView
         } else if let error = viewModel.errorMessage, viewModel.selectedWebsiteId != nil {
             PlaceholderView(
                 title: "Unable to load website",

@@ -313,6 +313,47 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.pendingWebsite)
     }
 
+    func testCancelWebsiteSaveCallsAPIAndClearsPendingState() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            cancelResult: .success(())
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let pending = WebsitesViewModel.PendingWebsiteItem(
+            id: "pending-1",
+            title: "Reading...",
+            domain: "example.com",
+            url: "https://example.com",
+            canonicalURL: "https://example.com",
+            source: .directSave,
+            jobId: "job-1",
+            status: .reading
+        )
+        viewModel.pendingWebsite = pending
+        viewModel.selectedWebsiteId = pending.id
+        viewModel.isLoadingDetail = true
+        viewModel.isSavingWebsite = true
+        viewModel.jobPollingTasks["job-1"] = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+            }
+        }
+
+        await viewModel.cancelWebsiteSave()
+
+        XCTAssertEqual(api.canceledJobIds, ["job-1"])
+        XCTAssertFalse(viewModel.isLoadingDetail)
+        XCTAssertFalse(viewModel.isSavingWebsite)
+        XCTAssertNil(viewModel.pendingWebsite)
+        XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
+    }
+
     func testClearPendingIfNeededCanonicalizesYouTubeURLs() async {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI()
@@ -1255,6 +1296,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let getResult: Result<WebsiteDetail, Error>
     let saveResult: Result<WebsiteSaveJobResponse, Error>
     let jobStatusResult: Result<WebsiteJobStatusResponse, Error>
+    let cancelResult: Result<Void, Error>
     let transcribeResult: Result<WebsiteTranscriptResponse, Error>
     let pinResult: Result<WebsiteItem, Error>
     let renameResult: Result<WebsiteItem, Error>
@@ -1263,6 +1305,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let syncResult: Result<WebsiteSyncResponse, Error>
     let transcribeHandler: ((_ id: String, _ url: String) async throws -> WebsiteTranscriptResponse)?
     private(set) var lastSavedUrl: String?
+    private(set) var canceledJobIds: [String] = []
     private(set) var deleteRequestUpdatedAts: [String?] = []
     private var queuedListResults: [Result<WebsitesResponse, Error>] = []
     private var queuedGetResults: [Result<WebsiteDetail, Error>] = []
@@ -1273,6 +1316,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         getResult: Result<WebsiteDetail, Error> = .failure(MockError.forced),
         saveResult: Result<WebsiteSaveJobResponse, Error> = .failure(MockError.forced),
         jobStatusResult: Result<WebsiteJobStatusResponse, Error> = .failure(MockError.forced),
+        cancelResult: Result<Void, Error> = .failure(MockError.forced),
         transcribeResult: Result<WebsiteTranscriptResponse, Error> = .failure(MockError.forced),
         transcribeHandler: ((_ id: String, _ url: String) async throws -> WebsiteTranscriptResponse)? = nil,
         pinResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
@@ -1287,6 +1331,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         self.getResult = getResult
         self.saveResult = saveResult
         self.jobStatusResult = jobStatusResult
+        self.cancelResult = cancelResult
         self.transcribeResult = transcribeResult
         self.transcribeHandler = transcribeHandler
         self.pinResult = pinResult
@@ -1325,6 +1370,11 @@ private final class MockWebsitesAPI: WebsitesProviding {
     func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
         _ = id
         return try jobStatusResult.get()
+    }
+
+    func cancel(jobId: String) async throws {
+        canceledJobIds.append(jobId)
+        try cancelResult.get()
     }
 
     func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {

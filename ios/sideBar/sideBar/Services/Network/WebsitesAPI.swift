@@ -8,6 +8,7 @@ public protocol WebsitesProviding {
     func get(id: String) async throws -> WebsiteDetail
     func save(url: String) async throws -> WebsiteSaveJobResponse
     func jobStatus(id: String) async throws -> WebsiteJobStatusResponse
+    func cancel(jobId: String) async throws
     func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse
     func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem
     func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem
@@ -35,6 +36,10 @@ public extension WebsitesProviding {
 
     func delete(id: String) async throws {
         try await delete(id: id, clientUpdatedAt: nil)
+    }
+
+    func cancel(jobId: String) async throws {
+        throw APIClientError.requestFailed(405)
     }
 }
 
@@ -188,6 +193,10 @@ public struct WebsitesAPI {
 
     public func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
         try await client.request("websites/jobs/\(id)")
+    }
+
+    public func cancel(jobId: String) async throws {
+        try await client.requestVoid("websites/jobs/\(jobId)/cancel", method: "POST")
     }
 
     public func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {

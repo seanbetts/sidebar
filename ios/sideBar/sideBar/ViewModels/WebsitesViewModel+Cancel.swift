@@ -1,0 +1,39 @@
+import Foundation
+
+@MainActor
+extension WebsitesViewModel {
+    public func canCancelWebsiteSave() -> Bool {
+        cancelablePendingWebsite() != nil
+    }
+
+    public func cancelWebsiteSave() async {
+        guard let pending = cancelablePendingWebsite(),
+              let jobId = pending.jobId else { return }
+
+        do {
+            try await api.cancel(jobId: jobId)
+        } catch {
+            toastCenter.show(message: "Failed to cancel website save")
+            return
+        }
+
+        jobPollingTasks[jobId]?.cancel()
+        jobPollingTasks.removeValue(forKey: jobId)
+        removePendingWebsite(id: pending.id)
+        if selectedWebsiteId == pending.id {
+            selectedWebsiteId = nil
+        }
+        saveErrorMessage = nil
+        endWebsiteSave()
+    }
+
+    private func cancelablePendingWebsite() -> PendingWebsiteItem? {
+        if let selectedWebsiteId,
+           let selectedPending = pendingWebsites.first(where: {
+               $0.id == selectedWebsiteId && $0.jobId != nil
+           }) {
+            return selectedPending
+        }
+        return pendingWebsites.first { $0.jobId != nil }
+    }
+}

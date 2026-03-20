@@ -82,6 +82,23 @@ final class WebsitesAPITests: XCTestCase {
         XCTAssertEqual(response.website?.content, "Body")
     }
 
+    func testCancelUsesPostRequest() async throws {
+        let api = WebsitesAPI(client: makeClient())
+        router.setHandler { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertTrue(request.url?.absoluteString.contains("websites/jobs/job-1/cancel") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{}".utf8))
+        }
+
+        try await api.cancel(jobId: "job-1")
+    }
+
     func testListDecodesReadingTimeField() async throws {
         let api = WebsitesAPI(client: makeClient())
         router.setHandler { request in
