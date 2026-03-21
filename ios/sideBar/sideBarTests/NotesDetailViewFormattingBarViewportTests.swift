@@ -113,7 +113,10 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
             on: editorTextView,
             to: NSRange(location: tapOffset, length: 0)
         )
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil {
+            editorTextView.selectedRange.location == tapOffset
+                && abs(editorTextView.contentOffset.y - baselineOffset) < 1
+        }
 
         XCTAssertEqual(editorTextView.selectedRange.location, tapOffset)
         XCTAssertEqual(editorTextView.contentOffset.y, baselineOffset, accuracy: 1)
@@ -158,7 +161,14 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         let baselineViewportOffset = editorTextView.contentOffset.y
 
         editorTextView.selectedRange = NSRange(location: nextLineOffset, length: 0)
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil {
+            guard let selectionRect = editorTextView.selectionRectInContentCoordinates() else {
+                return false
+            }
+            let visibleViewport = editorTextView.visibleViewportRect()
+            return editorTextView.contentOffset.y > baselineViewportOffset
+                && visibleViewport.intersects(selectionRect.insetBy(dx: 0, dy: -1))
+        }
 
         let selectionRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
         let visibleViewport = editorTextView.visibleViewportRect()
@@ -211,7 +221,10 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         // Let UIKit deliver the real selection-change callback so this path matches
         // hardware-keyboard caret navigation instead of a duplicated synthetic delegate call.
         editorTextView.selectedRange = NSRange(location: previousLineOffset, length: 0)
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await waitUntil {
+            editorTextView.selectedRange.location == previousLineOffset
+                && abs(editorTextView.contentOffset.y - baselineViewportOffset) < 1
+        }
 
         XCTAssertEqual(
             editorTextView.contentOffset.y,
