@@ -8,6 +8,66 @@ import UIKit
 @testable import sideBar
 
 #if os(macOS)
+typealias NoteReadPlatformFont = NSFont
+#else
+typealias NoteReadPlatformFont = UIFont
+#endif
+
+func noteReadPlatformFont(
+    in attributed: NSAttributedString,
+    at location: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> NoteReadPlatformFont {
+    try XCTUnwrap(
+        attributed.attribute(.font, at: location, effectiveRange: nil) as? NoteReadPlatformFont,
+        file: file,
+        line: line
+    )
+}
+
+func noteReadPlatformFontPointSize(_ font: NoteReadPlatformFont) -> CGFloat {
+    font.pointSize
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func makePlatformFont(
+    baseFontSize: CGFloat,
+    bold: Bool,
+    italic: Bool
+) -> NotePlatformFont {
+    notePlatformFont(baseFontSize: baseFontSize, bold: bold, italic: italic)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+func applyBridgedPlatformFont(
+    _ font: NotePlatformFont,
+    to attributed: inout AttributedString,
+    range: Range<AttributedString.Index>,
+    clearSwiftUIFont: Bool = true
+) {
+    let plainText = String(attributed.characters)
+    let lowerCharacterOffset = attributed.characters.distance(from: attributed.startIndex, to: range.lowerBound)
+    let upperCharacterOffset = attributed.characters.distance(from: attributed.startIndex, to: range.upperBound)
+    let lower = plainText.index(plainText.startIndex, offsetBy: lowerCharacterOffset)
+    let upper = plainText.index(plainText.startIndex, offsetBy: upperCharacterOffset)
+    let nsRange = NSRange(
+        location: lower.utf16Offset(in: plainText),
+        length: upper.utf16Offset(in: plainText) - lower.utf16Offset(in: plainText)
+    )
+    let bridged = NSMutableAttributedString(attributedString: NSAttributedString(attributed))
+    bridged.addAttribute(.font, value: font, range: nsRange)
+    guard let bridgedAttributed = try? AttributedString(bridged, including: \.noteTextEditor) else {
+        XCTFail("Expected bridged attributed string to remain convertible")
+        return
+    }
+    attributed = bridgedAttributed
+    if clearSwiftUIFont {
+        attributed[range].font = nil
+    }
+}
+
+#if os(macOS)
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 func nonLinkClickPoint(
