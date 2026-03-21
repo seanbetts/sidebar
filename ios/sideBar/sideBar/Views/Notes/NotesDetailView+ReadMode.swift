@@ -58,6 +58,13 @@ extension NotesDetailView {
     }
 
     func activateReadSurfaceEditing(at target: NotesEditorViewModel.PendingEditSelectionTarget) {
+        activateReadSurfaceEditing(at: target, normalizedViewportY: nil)
+    }
+
+    func activateReadSurfaceEditing(
+        at target: NotesEditorViewModel.PendingEditSelectionTarget,
+        normalizedViewportY: CGFloat?
+    ) {
         guard currentUnsupportedContent == nil else { return }
         #if os(iOS)
         UIApplication.shared.sendAction(
@@ -67,7 +74,7 @@ extension NotesDetailView {
             for: nil
         )
         #endif
-        editorViewModel.enterEditMode(at: target)
+        editorViewModel.enterEditMode(at: target, normalizedViewportY: normalizedViewportY)
     }
 
     func handleReadViewportOffsetChange(_ offset: CGPoint) {

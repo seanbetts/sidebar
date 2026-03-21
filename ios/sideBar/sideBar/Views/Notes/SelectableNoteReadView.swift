@@ -13,6 +13,7 @@ struct SelectableNoteReadView: View {
     let document: NotesSemanticDocument
     let maxContentWidth: CGFloat
     var onActivateEditing: ((ReadActivationTarget) -> Void)?
+    var onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)?
     var onViewportOffsetChange: ((CGPoint) -> Void)?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
 
@@ -20,11 +21,13 @@ struct SelectableNoteReadView: View {
         document: NotesSemanticDocument,
         maxContentWidth: CGFloat,
         onActivateEditing: ((ReadActivationTarget) -> Void)? = nil,
+        onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)? = nil,
         onViewportOffsetChange: ((CGPoint) -> Void)? = nil
     ) {
         self.document = document
         self.maxContentWidth = maxContentWidth
         self.onActivateEditing = onActivateEditing
+        self.onActivateEditingWithViewport = onActivateEditingWithViewport
         self.onViewportOffsetChange = onViewportOffsetChange
     }
 
@@ -46,6 +49,7 @@ struct SelectableNoteReadView: View {
             ),
             maxReadableContentWidth: maxContentWidth,
             onActivateEditing: onActivateEditing,
+            onActivateEditingWithViewport: onActivateEditingWithViewport,
             onViewportOffsetChange: onViewportOffsetChange
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -57,6 +61,7 @@ struct SelectableNoteReadView: View {
                 baseFontSize: baseFontSize
             ),
             onActivateEditing: onActivateEditing,
+            onActivateEditingWithViewport: onActivateEditingWithViewport,
             onViewportOffsetChange: onViewportOffsetChange
         )
         .padding(.horizontal, NoteTextLayout.horizontalPadding)
@@ -359,6 +364,7 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     let attributedContent: NSAttributedString
     let maxReadableContentWidth: CGFloat
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
+    let onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     let onViewportOffsetChange: ((CGPoint) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -511,6 +517,7 @@ private final class SelectableNoteReadTextView: NSTextView {
 private struct PlatformSelectableNoteReadView: UIViewRepresentable {
     let attributedContent: NSAttributedString
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
+    let onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     let onViewportOffsetChange: ((CGPoint) -> Void)?
 
     func makeUIView(context: Context) -> SelectableNoteReadContainerView {
@@ -530,17 +537,21 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
             .underlineStyle: NSUnderlineStyle.single.rawValue
         ]
         textView.onActivateEditing = onActivateEditing
+        textView.onActivateEditingWithViewport = onActivateEditingWithViewport
         textView.onViewportOffsetChange = onViewportOffsetChange
         textView.attributedText = attributedContent
         containerView.onActivateEditing = onActivateEditing
+        containerView.onActivateEditingWithViewport = onActivateEditingWithViewport
         return containerView
     }
 
     func updateUIView(_ containerView: SelectableNoteReadContainerView, context: Context) {
         let readTextView = containerView.textView
         readTextView.onActivateEditing = onActivateEditing
+        readTextView.onActivateEditingWithViewport = onActivateEditingWithViewport
         readTextView.onViewportOffsetChange = onViewportOffsetChange
         containerView.onActivateEditing = onActivateEditing
+        containerView.onActivateEditingWithViewport = onActivateEditingWithViewport
         if readTextView.attributedText.isEqual(to: attributedContent) == false {
             readTextView.attributedText = attributedContent
         }
@@ -550,6 +561,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
 @available(iOS 26.0, macOS 26.0, *)
 private final class SelectableNoteReadTextView: UITextView {
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
+    var onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     var onViewportOffsetChange: ((CGPoint) -> Void)? {
         didSet { reportViewportOffsetIfNeeded(force: true) }
     }
@@ -602,12 +614,35 @@ private final class SelectableNoteReadTextView: UITextView {
               let characterOffset = SelectableNoteReadView.characterOffsetForEditingActivation(in: self, at: point) else { return nil }
         return .characterOffset(characterOffset)
     }
+
+    func activationNormalizedViewportY(
+        for target: SelectableNoteReadView.ReadActivationTarget
+    ) -> CGFloat? {
+        let characterOffset: Int
+        switch target {
+        case .start:
+            characterOffset = 0
+        case .characterOffset(let offset):
+            characterOffset = offset
+        }
+        guard let position = position(
+            from: beginningOfDocument,
+            offset: min(max(characterOffset, 0), attributedText.length)
+        ) else {
+            return nil
+        }
+        let viewport = bounds.inset(by: adjustedContentInset)
+        guard viewport.height > 0 else { return nil }
+        let caretRect = caretRect(for: position)
+        return min(max((caretRect.midY - viewport.minY) / viewport.height, 0), 1)
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
 private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizerDelegate {
     let textView = SelectableNoteReadTextView()
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
+    var onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
 
     private lazy var activationTapRecognizer: UITapGestureRecognizer = {
         let recognizer = UITapGestureRecognizer(
@@ -644,7 +679,11 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
         guard recognizer.state == .ended else { return }
         let point = recognizer.location(in: textView)
         guard let target = textView.activationTarget(at: point) else { return }
-        onActivateEditing?(target)
+        if let onActivateEditingWithViewport {
+            onActivateEditingWithViewport(target, textView.activationNormalizedViewportY(for: target))
+        } else {
+            onActivateEditing?(target)
+        }
     }
 
     func gestureRecognizer(

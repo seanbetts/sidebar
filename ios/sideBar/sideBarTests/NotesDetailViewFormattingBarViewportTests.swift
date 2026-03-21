@@ -126,6 +126,74 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(editorTextView.contentOffset.y, baselineOffset, accuracy: 1)
     }
 
+    func testReadToEditActivationFromMiddlePreservesRelativeLinePosition() async throws {
+        let plainText = (0..<120)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: plainText))
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(findTextView(in: controller.view))
+        let targetOffset = NSString(string: plainText).range(of: "Line 70 body text").location
+
+        let readTargetPosition = try XCTUnwrap(
+            readTextView.position(from: readTextView.beginningOfDocument, offset: targetOffset)
+        )
+        let initialReadTargetRect = readTextView.caretRect(for: readTargetPosition)
+        let readViewportHeight = readTextView.bounds.inset(by: readTextView.adjustedContentInset).height
+        let targetReadOffset = max(
+            initialReadTargetRect.midY - (readViewportHeight * 0.55),
+            -readTextView.adjustedContentInset.top
+        )
+        readTextView.setContentOffset(CGPoint(x: 0, y: targetReadOffset), animated: false)
+        drainNotesHostingRunLoop()
+        let readTargetRect = readTextView.caretRect(for: readTargetPosition)
+        let readViewport = readTextView.bounds.inset(by: readTextView.adjustedContentInset)
+        let expectedNormalizedViewportY = (readTargetRect.midY - readViewport.minY) / readViewport.height
+
+        context.editorViewModel.enterEditMode(
+            at: .characterOffset(targetOffset),
+            normalizedViewportY: expectedNormalizedViewportY
+        )
+        await waitUntil {
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            ) is UIKitNoteTextEditorSurface.AccessoryTextView
+        }
+
+        let editorTextView = try XCTUnwrap(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            ) as? UIKitNoteTextEditorSurface.AccessoryTextView
+        )
+        await waitUntil {
+            guard let selectionRect = editorTextView.selectionRectInContentCoordinates() else {
+                return false
+            }
+            let editorViewport = editorTextView.visibleViewportRect()
+            let actualRelativeY = selectionRect.midY - editorViewport.minY
+            let expectedRelativeY = editorViewport.height * expectedNormalizedViewportY
+            return abs(actualRelativeY - expectedRelativeY) <= 24
+        }
+
+        let selectionRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
+        let editorViewport = editorTextView.visibleViewportRect()
+        let actualRelativeY = selectionRect.midY - editorViewport.minY
+        let expectedRelativeY = editorViewport.height * expectedNormalizedViewportY
+
+        XCTAssertEqual(editorTextView.selectedRange.location, targetOffset)
+        XCTAssertEqual(
+            actualRelativeY,
+            expectedRelativeY,
+            accuracy: 24,
+            "selectionRect=\(selectionRect) editorViewport=\(editorViewport) "
+                + "contentOffset=\(editorTextView.contentOffset) "
+                + "expectedNormalizedViewportY=\(expectedNormalizedViewportY)"
+        )
+    }
+
     func testFloatingPopoverTextStyleTapKeepsViewportStable() async throws {
         let plainText = (0..<120)
             .map { index in "Line \(index) body text" }

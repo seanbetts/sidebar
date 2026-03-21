@@ -96,7 +96,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let formattingBarConfiguration: NoteFormattingBarConfiguration?
     let formattingBarPresentation: NoteFormattingBarPresentation
     let pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
-    let onPendingSelectionTargetApplied: (() -> Void)?
+    let onPendingSelectionTargetApplied: ((AccessoryTextView) -> Void)?
     let makeTextView: (() -> AccessoryTextView)?
 
     init(
@@ -107,7 +107,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
         formattingBarPresentation: NoteFormattingBarPresentation,
         pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget? = nil,
-        onPendingSelectionTargetApplied: (() -> Void)? = nil,
+        onPendingSelectionTargetApplied: ((AccessoryTextView) -> Void)? = nil,
         makeTextView: (() -> AccessoryTextView)? = nil
     ) {
         self.viewModel = viewModel
@@ -180,13 +180,13 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             coordinator: context.coordinator,
             selectedRange: selectedRange
         )
+        scheduleAutofocusIfNeeded(for: textView)
         acknowledgePendingSelectionTargetIfNeeded(
             pendingSelectionTarget,
             selectedRange: selectedRange,
             textView: textView,
             coordinator: context.coordinator
         )
-        scheduleAutofocusIfNeeded(for: textView)
 
         let typingAttributes = bridgedTypingAttributes(from: viewModel.attributedContent)
         if NSDictionary(dictionary: textView.typingAttributes).isEqual(to: typingAttributes) == false {
@@ -298,7 +298,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                     viewModel.handleSelectionChange()
                 }
             }
-            onPendingSelectionTargetApplied?()
+            onPendingSelectionTargetApplied?(textView)
         }
     }
 

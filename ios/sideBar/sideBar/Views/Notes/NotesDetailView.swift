@@ -206,6 +206,7 @@ extension NotesDetailView {
                     document: currentReadDocument,
                     maxContentWidth: contentMaxWidth,
                     onActivateEditing: activateReadSurfaceEditing,
+                    onActivateEditingWithViewport: activateReadSurfaceEditing,
                     onViewportOffsetChange: handleReadViewportOffsetChange
                 )
             }

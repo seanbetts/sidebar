@@ -34,6 +34,33 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         scrollSelectionRectIntoView(selectionRect)
     }
 
+    func positionCurrentSelection(atNormalizedViewportY normalizedViewportY: CGFloat) {
+        guard selectedRange.location != NSNotFound else { return }
+        guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else {
+            scrollCurrentSelectionIntoView()
+            return
+        }
+        let visibleViewport = visibleViewportRect()
+        guard visibleViewport.height > 0 else {
+            scrollCurrentSelectionIntoView()
+            return
+        }
+
+        let clampedNormalizedViewportY = min(max(normalizedViewportY, 0), 1)
+        let targetMidY = visibleViewport.minY + (visibleViewport.height * clampedNormalizedViewportY)
+        var targetOffset = contentOffset
+        targetOffset.y += selectionRect.midY - targetMidY
+        setContentOffset(
+            UIKitNoteTextEditorSurface.clampedContentOffset(targetOffset, for: self),
+            animated: false
+        )
+        layoutIfNeeded()
+
+        if isCurrentSelectionIntersectingViewport() == false {
+            scrollSelectionRectIntoView(selectionRect)
+        }
+    }
+
     func isCurrentSelectionVisible() -> Bool {
         guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else { return false }
         return isSelectionRectVisible(selectionRect, in: visibleViewportRect())

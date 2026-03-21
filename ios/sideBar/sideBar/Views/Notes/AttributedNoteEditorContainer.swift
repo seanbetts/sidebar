@@ -22,6 +22,7 @@ struct AttributedNoteEditorContainer: View {
     @StateObject private var nativeViewModel: NativeNoteEditorViewModel
     @State private var loadedNoteId: String?
     @State private var pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
+    @State private var pendingSelectionNormalizedViewportY: CGFloat?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     #if os(iOS)
     @State private var isSoftwareKeyboardVisible = false
@@ -141,6 +142,7 @@ struct AttributedNoteEditorContainer: View {
         )
         if loadedNoteId != previousLoadedNoteId {
             pendingSelectionTarget = editorViewModel.consumePendingEditSelectionTarget()
+            pendingSelectionNormalizedViewportY = editorViewModel.consumePendingEditNormalizedViewportY()
         }
     }
 
@@ -166,7 +168,19 @@ struct AttributedNoteEditorContainer: View {
             formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
             formattingBarPresentation: resolvedFormattingBarPresentation,
             pendingSelectionTarget: pendingSelectionTarget,
-            onPendingSelectionTargetApplied: { pendingSelectionTarget = nil }
+            onPendingSelectionTargetApplied: { textView in
+                let normalizedViewportY = pendingSelectionNormalizedViewportY
+                pendingSelectionTarget = nil
+                pendingSelectionNormalizedViewportY = nil
+                guard let normalizedViewportY else { return }
+                DispatchQueue.main.async { [weak textView] in
+                    guard let textView else { return }
+                    textView.layoutIfNeeded()
+                    textView.positionCurrentSelection(
+                        atNormalizedViewportY: normalizedViewportY
+                    )
+                }
+            }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
