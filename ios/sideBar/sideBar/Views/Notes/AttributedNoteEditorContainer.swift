@@ -177,7 +177,6 @@ struct AttributedNoteEditorContainer: View {
             isEditable: true,
             shouldAutofocus: autofocusEnabled
         )
-        .frame(maxWidth: maxContentWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
         #endif

@@ -10,7 +10,15 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
     }
 
     final class EditorTextView: NSTextView {
+        private static let baseTextContainerInset = NSSize(
+            width: NoteTextLayout.horizontalPadding,
+            height: NoteTextLayout.verticalPadding
+        )
+
         var shouldAutofocus = false
+        var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
+            didSet { needsLayout = true }
+        }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
@@ -19,6 +27,21 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                 guard let self, self.shouldAutofocus, self.window != nil else { return }
                 self.window?.makeFirstResponder(self)
             }
+        }
+
+        override func layout() {
+            super.layout()
+            updateTextContainerInset()
+        }
+
+        private func updateTextContainerInset() {
+            let extraHorizontalInset = max((bounds.width - maxReadableContentWidth) / 2, 0)
+            let resolvedInset = NSSize(
+                width: Self.baseTextContainerInset.width + extraHorizontalInset,
+                height: Self.baseTextContainerInset.height
+            )
+            guard textContainerInset != resolvedInset else { return }
+            textContainerInset = resolvedInset
         }
     }
 
@@ -52,12 +75,9 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         textView.importsGraphics = false
         textView.allowsUndo = true
         textView.shouldAutofocus = isEditable && shouldAutofocus
+        textView.maxReadableContentWidth = maxContentWidth
         textView.textColor = .labelColor
         textView.insertionPointColor = NoteTextAppearance.caretTintColor
-        textView.textContainerInset = NSSize(
-            width: NoteTextLayout.horizontalPadding,
-            height: NoteTextLayout.verticalPadding
-        )
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.heightTracksTextView = false
@@ -89,6 +109,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
 
         textView.isEditable = isEditable
         textView.shouldAutofocus = isEditable && shouldAutofocus
+        textView.maxReadableContentWidth = maxContentWidth
         if isEditable,
            shouldAutofocus,
            textView.window != nil,

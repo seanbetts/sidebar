@@ -1,11 +1,35 @@
 #if os(macOS)
 import AppKit
+import SwiftUI
 import XCTest
 @testable import sideBar
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
+    func testWideMacOSContainerKeepsScrollViewAtHostEdgeAndCentersReadableColumn() async throws {
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
+        let environment = makeNotesDetailTestEnvironment()
+        let hostFrame = NSRect(x: 0, y: 0, width: 900, height: 320)
+        let container = AttributedNoteEditorContainer(
+            editorViewModel: context.editorViewModel,
+            maxContentWidth: 640,
+            onEscape: { _ in }
+        )
+        let controller = mount(container.environmentObject(environment), frame: hostFrame)
+        controller.view.layoutSubtreeIfNeeded()
+        controller.view.window?.contentView?.layoutSubtreeIfNeeded()
+        drainNotesHostingRunLoop()
+
+        let textView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        let scrollView = try XCTUnwrap(textView.enclosingScrollView)
+        let expectedHorizontalInset = NoteTextLayout.horizontalPadding + ((hostFrame.width - 640) / 2)
+
+        XCTAssertEqual(scrollView.frame.width, hostFrame.width, accuracy: 0.5)
+        XCTAssertEqual(textView.frame.width, hostFrame.width, accuracy: 0.5)
+        XCTAssertEqual(textView.textContainerInset.width, expectedHorizontalInset, accuracy: 0.5)
+    }
+
     func testMountedAppKitEditorUsesSharedTypographyAndParagraphMetrics() throws {
         let baseFontSize = NoteTextTypography.defaultBodyFontSize
         let document = NotesSemanticDocument(
