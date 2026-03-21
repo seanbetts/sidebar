@@ -174,6 +174,15 @@ class SkillExecutor:
         return str(error_payload)
 
     @staticmethod
+    def _decode_timeout_stream(stream: bytes | str | None) -> str:
+        """Decode partial stdout/stderr captured on subprocess timeout."""
+        if stream is None:
+            return ""
+        if isinstance(stream, bytes):
+            return stream.decode("utf-8", errors="replace").strip()
+        return stream.strip()
+
+    @staticmethod
     def _resolve_timeout_seconds(env_overrides: dict[str, str] | None) -> int:
         """Return the effective subprocess timeout for a skill execution."""
         if env_overrides:
@@ -342,9 +351,25 @@ class SkillExecutor:
                     )
                     return error
 
-            except subprocess.TimeoutExpired:
+            except subprocess.TimeoutExpired as exc:
                 duration_ms = (time.time() - start_time) * 1000
                 error_msg = f"Script execution timeout ({timeout_seconds}s)"
+                stderr_text = self._decode_timeout_stream(exc.stderr)
+                stdout_text = self._decode_timeout_stream(exc.output)
+                if stderr_text:
+                    logger.warning(
+                        "Skill %s/%s partial stderr before timeout: %s",
+                        skill_name,
+                        script_name,
+                        stderr_text[:2000],
+                    )
+                if stdout_text:
+                    logger.warning(
+                        "Skill %s/%s partial stdout before timeout: %s",
+                        skill_name,
+                        script_name,
+                        stdout_text[:2000],
+                    )
                 AuditLogger.log_tool_call(
                     tool_name=f"{skill_name}.{script_name}",
                     parameters={"args": args},

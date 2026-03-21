@@ -165,6 +165,97 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertFalse(environment.websitesViewModel.isSavingWebsite)
     }
 
+    func testRemoveFailedQueuedWebsiteLeavesOtherFailedRowsVisible() async {
+        let firstURL = "https://example.com/articles/\(UUID().uuidString)"
+        let secondURL = "https://example.com/articles/\(UUID().uuidString)"
+        let environment = requireEnvironment()
+
+        let firstQueued = storage.pendingShareStore.enqueueWebsite(url: firstURL)
+        let secondQueued = storage.pendingShareStore.enqueueWebsite(url: secondURL)
+        XCTAssertNotNil(firstQueued)
+        XCTAssertNotNil(secondQueued)
+
+        let now = Date()
+        storage.pendingShareStore.replaceAll([
+            PendingShareItem(
+                id: firstQueued!.id,
+                kind: .website,
+                createdAt: now,
+                url: firstURL,
+                retryCount: pendingWebsiteQueueMaxRetryCount,
+                nextRetryAt: nil,
+                lastError: "Request failed (HTTP 503)."
+            ),
+            PendingShareItem(
+                id: secondQueued!.id,
+                kind: .website,
+                createdAt: now,
+                url: secondURL,
+                retryCount: pendingWebsiteQueueMaxRetryCount,
+                nextRetryAt: nil,
+                lastError: "Request failed (HTTP 503)."
+            )
+        ])
+        environment.websitesViewModel.syncPendingWebsitesFromQueuedShares(
+            storage.pendingShareStore.loadAll()
+        )
+
+        environment.removePendingQueuedWebsite(firstQueued!.id)
+
+        let remainingQueue = storage.pendingShareStore.loadAll()
+        XCTAssertEqual(remainingQueue.count, 1)
+        XCTAssertEqual(remainingQueue.first?.id, secondQueued!.id)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.count, 1)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.first?.queueItemId, secondQueued!.id)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.first?.status, .failed)
+    }
+
+    func testRemoveFailedQueuedWebsiteAfterHandoffRemovesOnlyMatchingFailedRow() async {
+        let firstURL = "https://example.com/articles/\(UUID().uuidString)"
+        let secondURL = "https://example.com/articles/\(UUID().uuidString)"
+        let environment = requireEnvironment()
+
+        let firstQueued = storage.pendingShareStore.enqueueWebsite(url: firstURL)
+        let secondQueued = storage.pendingShareStore.enqueueWebsite(url: secondURL)
+        XCTAssertNotNil(firstQueued)
+        XCTAssertNotNil(secondQueued)
+
+        environment.websitesViewModel.pendingWebsites = [
+            WebsitesViewModel.PendingWebsiteItem(
+                id: "pending-first",
+                title: "Reading...",
+                domain: "example.com",
+                url: firstURL,
+                canonicalURL: firstURL,
+                source: .directSave,
+                queueItemId: firstQueued!.id,
+                jobId: "job-first",
+                status: .failed
+            ),
+            WebsitesViewModel.PendingWebsiteItem(
+                id: "pending-second",
+                title: "Reading...",
+                domain: "example.com",
+                url: secondURL,
+                canonicalURL: secondURL,
+                source: .directSave,
+                queueItemId: secondQueued!.id,
+                jobId: "job-second",
+                status: .failed
+            )
+        ]
+
+        environment.removePendingQueuedWebsite(firstQueued!.id)
+
+        let remainingQueue = storage.pendingShareStore.loadAll()
+        XCTAssertEqual(remainingQueue.count, 1)
+        XCTAssertEqual(remainingQueue.first?.id, secondQueued!.id)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.count, 1)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.first?.id, "pending-second")
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.first?.queueItemId, secondQueued!.id)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.first?.status, .failed)
+    }
+
     func testSavedWebsiteListUpdatePrunesMatchingQueuedWebsiteState() async {
         let url = "https://example.com/articles/\(UUID().uuidString)"
         let websitesAPI = DeepLinkWebsitesAPI(

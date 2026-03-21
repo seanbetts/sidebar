@@ -146,6 +146,32 @@ print(json.dumps({"success": True}))
             settings.skill_timeout_seconds = original_timeout
 
     @pytest.mark.asyncio
+    async def test_timeout_logs_partial_subprocess_output(self, executor, monkeypatch, caplog):
+        """Timeouts should log any partial stdout/stderr emitted before the kill."""
+
+        def fake_run(*args, **kwargs):
+            raise subprocess.TimeoutExpired(
+                cmd=kwargs.get("args", args[0] if args else ["python", "slow.py"]),
+                timeout=kwargs["timeout"],
+                output="partial stdout before timeout",
+                stderr=(
+                    "web-save render start url=https://example.com timeout_ms=30000\n"
+                    "web-save fetched url=https://example.com fetch_elapsed_ms=1200"
+                ),
+            )
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+
+        with caplog.at_level("WARNING"):
+            result = await executor.execute("test-skill", "echo.py", ["hello"])
+
+        assert result["success"] is False
+        assert "timeout" in result["error"].lower()
+        assert "partial stderr" in caplog.text
+        assert "web-save render start" in caplog.text
+        assert "partial stdout" in caplog.text
+
+    @pytest.mark.asyncio
     async def test_env_override_timeout_controls_subprocess_timeout(
         self, executor, monkeypatch
     ):

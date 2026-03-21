@@ -129,6 +129,18 @@ extension WebsitesViewModel {
         pendingWebsites.removeAll { $0.id == id }
     }
 
+    func removePendingWebsite(queueItemId: UUID) {
+        let removedIds = Set(
+            pendingWebsites
+                .filter { $0.queueItemId == queueItemId }
+                .map(\.id)
+        )
+        pendingWebsites.removeAll { $0.queueItemId == queueItemId }
+        if let selectedWebsiteId, removedIds.contains(selectedWebsiteId) {
+            self.selectedWebsiteId = nil
+        }
+    }
+
     func hasPendingWebsite(for url: URL) -> Bool {
         let key = canonicalWebsiteURLForPendingMatch(url.absoluteString) ?? url.absoluteString
         return pendingWebsites.contains { $0.canonicalURL == key }

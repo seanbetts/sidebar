@@ -239,6 +239,7 @@ extension AppEnvironment {
 
     public func removePendingQueuedWebsite(_ queueItemId: UUID) {
         storage.pendingShareStore.remove(ids: [queueItemId])
+        websitesViewModel.removePendingWebsite(queueItemId: queueItemId)
         websitesViewModel.syncPendingWebsitesFromQueuedShares(storage.pendingShareStore.loadAll())
     }
 
