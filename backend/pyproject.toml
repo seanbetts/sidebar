@@ -178,6 +178,9 @@ ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.ruff.lint.isort]
+known-first-party = ["api"]
+
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["D104"]
 "api/alembic/env.py" = ["I001"]
