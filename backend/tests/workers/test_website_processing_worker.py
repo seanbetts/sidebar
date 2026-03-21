@@ -3,6 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+from api.models.website import Website
 from api.models.website_processing_job import WebsiteProcessingJob
 
 
@@ -175,3 +176,61 @@ def test_process_job_marks_failed_when_executor_init_raises(test_db, monkeypatch
 
     assert job.status == "failed"
     assert job.error_message == "executor init failed"
+
+
+def test_process_job_soft_deletes_website_when_canceled_midflight(
+    test_db, monkeypatch
+):
+    """Worker should remove a late-created website when the job was canceled."""
+    from api.services.agent.skills import executor as executor_module
+    from api.services.website_processing_service import WebsiteProcessingService
+    from workers import website_processing_worker
+
+    website_id = uuid4()
+
+    class FakeExecutor:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def execute(self, *_args, **_kwargs):
+            website = Website(
+                id=website_id,
+                user_id="test-user",
+                url="https://example.com/cancel-me",
+                url_full="https://example.com/cancel-me",
+                domain="example.com",
+                title="Cancel Me",
+                content="Content",
+                source="web",
+                metadata_={"pinned": False, "archived": False},
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+                last_opened_at=None,
+                deleted_at=None,
+            )
+            test_db.add(website)
+            test_db.commit()
+            WebsiteProcessingService.update_job(test_db, job.id, status="canceled")
+            return {"success": True, "data": {"id": str(website_id)}}
+
+    job = WebsiteProcessingJob(
+        user_id="test-user",
+        url="https://example.com/cancel-me",
+        status="processing",
+        worker_id="worker-1",
+        lease_expires_at=datetime.now(UTC) + timedelta(minutes=1),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(job)
+    test_db.commit()
+
+    monkeypatch.setattr(executor_module, "SkillExecutor", FakeExecutor)
+
+    website_processing_worker._process_job(test_db, job)
+    test_db.refresh(job)
+
+    website = test_db.query(Website).filter(Website.id == website_id).first()
+    assert website is not None
+    assert job.status == "canceled"
+    assert website.deleted_at is not None

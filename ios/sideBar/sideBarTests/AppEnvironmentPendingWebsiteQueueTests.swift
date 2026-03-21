@@ -212,6 +212,49 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
         XCTAssertTrue(environment.websitesViewModel.pendingWebsites.isEmpty)
     }
+
+    func testEnqueueWebsiteSaveDoesNotReplaySameURLThroughPendingQueue() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let gate = AsyncGate()
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-1", status: "queued")
+            ),
+            onSave: { _ in
+                await gate.wait()
+            }
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        let saveTask = Task {
+            await environment.enqueueWebsiteSave(url: url, selectAfterSave: true)
+        }
+
+        for _ in 0..<20 where websitesAPI.saveCallCount < 1 {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        let consumeTask = Task {
+            await environment.consumePendingShares()
+        }
+
+        for _ in 0..<20 where websitesAPI.saveCallCount < 2 {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        XCTAssertEqual(websitesAPI.saveCallCount, 1)
+        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
+
+        await gate.open()
+        let saveResult = await saveTask.value
+        XCTAssertTrue(saveResult)
+        await consumeTask.value
+        XCTAssertEqual(websitesAPI.saveCallCount, 1)
+    }
 }
 
 @MainActor

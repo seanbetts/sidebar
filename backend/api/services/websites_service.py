@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 
 from sqlalchemy import func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -29,6 +30,44 @@ from api.utils.search import build_text_search_filter
 
 class WebsitesService:
     """Service layer for websites operations."""
+
+    @staticmethod
+    def _apply_upsert_fields(
+        website: Website,
+        *,
+        domain: str,
+        title: str,
+        content: str,
+        source: str | None,
+        url_full: str | None,
+        saved_at: datetime | None,
+        published_at: datetime | None,
+        normalized_reading_time: str | None,
+        pinned: bool,
+        now: datetime,
+    ) -> None:
+        """Apply the canonical upsert field updates to an existing website."""
+        website.url_full = url_full or website.url_full
+        website.domain = domain
+        website.title = title
+        website.content = content
+        website.source = source
+        website.saved_at = saved_at
+        website.published_at = published_at
+        website.reading_time = normalized_reading_time
+        metadata = {**(website.metadata_ or {}), "archived": False}
+        if "pinned" not in metadata:
+            metadata["pinned"] = pinned
+        if normalized_reading_time:
+            metadata["reading_time"] = normalized_reading_time
+        else:
+            metadata.pop("reading_time", None)
+        website.metadata_ = metadata
+        website.is_archived = bool(metadata.get("archived", False))
+        flag_modified(website, "metadata_")
+        if website.deleted_at is not None:
+            website.deleted_at = None
+        website.updated_at = now
 
     @staticmethod
     def get_by_url(
@@ -211,27 +250,19 @@ class WebsitesService:
             db, user_id, normalized_url, include_deleted=True
         )
         if website:
-            website.url_full = url_full or website.url_full
-            website.domain = domain
-            website.title = title
-            website.content = content
-            website.source = source
-            website.saved_at = saved_at
-            website.published_at = published_at
-            website.reading_time = normalized_reading_time
-            metadata = {**(website.metadata_ or {}), "archived": False}
-            if "pinned" not in metadata:
-                metadata["pinned"] = pinned
-            if normalized_reading_time:
-                metadata["reading_time"] = normalized_reading_time
-            else:
-                metadata.pop("reading_time", None)
-            website.metadata_ = metadata
-            website.is_archived = bool(metadata.get("archived", False))
-            flag_modified(website, "metadata_")
-            if website.deleted_at is not None:
-                website.deleted_at = None
-            website.updated_at = now
+            WebsitesService._apply_upsert_fields(
+                website,
+                domain=domain,
+                title=title,
+                content=content,
+                source=source,
+                url_full=url_full,
+                saved_at=saved_at,
+                published_at=published_at,
+                normalized_reading_time=normalized_reading_time,
+                pinned=pinned,
+                now=now,
+            )
             db.commit()
             db.refresh(website)
             return website
@@ -258,7 +289,32 @@ class WebsitesService:
             deleted_at=None,
         )
         db.add(website)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            website = WebsitesService.get_by_url(
+                db,
+                user_id,
+                normalized_url,
+                include_deleted=True,
+            )
+            if website is None:
+                raise
+            WebsitesService._apply_upsert_fields(
+                website,
+                domain=domain,
+                title=title,
+                content=content,
+                source=source,
+                url_full=url_full,
+                saved_at=saved_at,
+                published_at=published_at,
+                normalized_reading_time=normalized_reading_time,
+                pinned=pinned,
+                now=now,
+            )
+            db.commit()
         db.refresh(website)
         return website
 

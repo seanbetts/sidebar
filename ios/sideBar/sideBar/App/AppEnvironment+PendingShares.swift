@@ -170,44 +170,8 @@ extension AppEnvironment {
             websitesViewModel.saveErrorMessage = "Enter a valid URL."
             return false
         }
-        guard let queuedItem = storage.pendingShareStore.enqueueWebsite(
-            url: normalized.absoluteString
-        ) else {
-            websitesViewModel.saveErrorMessage = "Could not save for later."
-            return false
-        }
-        websitesViewModel.saveErrorMessage = nil
-
-        let resetQueueItem = PendingShareItem(
-            id: queuedItem.id,
-            kind: queuedItem.kind,
-            createdAt: queuedItem.createdAt,
-            url: queuedItem.url,
-            filePath: queuedItem.filePath,
-            filename: queuedItem.filename,
-            mimeType: queuedItem.mimeType,
-            retryCount: nil,
-            nextRetryAt: nil,
-            lastError: nil
-        )
-        var items = storage.pendingShareStore.loadAll()
-        if let index = items.firstIndex(where: { $0.id == queuedItem.id }) {
-            items[index] = resetQueueItem
-            storage.pendingShareStore.replaceAll(items)
-        }
-        websitesViewModel.syncPendingWebsitesFromQueuedShares(
-            storage.pendingShareStore.loadAll(),
-            readingQueueItemId: queuedItem.id
-        )
-
-        guard !connectivityMonitor.isOffline else {
-            if selectAfterSave {
-                toastCenter.show(message: "Saved for later", style: .success)
-            }
-            return true
-        }
-        return await processQueuedWebsiteNow(
-            queueItemId: queuedItem.id,
+        return await websitesViewModel.saveWebsite(
+            url: normalized.absoluteString,
             selectAfterSave: selectAfterSave
         )
     }

@@ -5,6 +5,7 @@ from api.exceptions import ConflictError
 from api.models.website import Website
 from api.schemas.filters import WebsiteFilters
 from api.services.websites_service import WebsitesService
+from sqlalchemy.exc import IntegrityError
 
 
 @pytest.fixture
@@ -363,3 +364,57 @@ def test_get_by_url_matches_legacy_youtube_row_via_url_full(db_session):
 
     assert resolved is not None
     assert resolved.id == legacy.id
+
+
+def test_upsert_website_recovers_from_concurrent_insert(db_session, monkeypatch):
+    existing = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/race",
+        title="Original",
+        content="Original content",
+        source="https://example.com/race",
+    )
+
+    original_get_by_url = WebsitesService.get_by_url
+    get_calls = {"count": 0}
+
+    def fake_get_by_url(db, user_id, url, include_deleted=False):
+        get_calls["count"] += 1
+        if get_calls["count"] == 1:
+            return None
+        return original_get_by_url(
+            db,
+            user_id,
+            url,
+            include_deleted=include_deleted,
+        )
+
+    original_commit = db_session.commit
+    commit_calls = {"count": 0}
+
+    def fake_commit():
+        if commit_calls["count"] == 0:
+            commit_calls["count"] += 1
+            raise IntegrityError(
+                "INSERT INTO websites ...",
+                params={},
+                orig=Exception("duplicate key value violates unique constraint"),
+            )
+        return original_commit()
+
+    monkeypatch.setattr(WebsitesService, "get_by_url", staticmethod(fake_get_by_url))
+    monkeypatch.setattr(db_session, "commit", fake_commit)
+
+    website = WebsitesService.upsert_website(
+        db_session,
+        "test_user",
+        url="https://example.com/race",
+        title="Updated",
+        content="Updated content",
+        source="https://example.com/race",
+    )
+
+    assert website.id == existing.id
+    assert website.title == "Updated"
+    assert website.content == "Updated content"

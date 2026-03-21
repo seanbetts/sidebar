@@ -15,6 +15,7 @@ from api.models.website_processing_job import WebsiteProcessingJob
 from api.services.script_sentry import initialize_script_sentry
 from api.services.web_save_error_service import classify_web_save_result
 from api.services.website_processing_service import WebsiteProcessingService
+from api.services.websites_service import WebsitesService
 from sqlalchemy import and_, or_
 
 logger = logging.getLogger(__name__)
@@ -160,6 +161,11 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
 
     from api.services.agent.skills.executor import SkillExecutor
 
+    db.refresh(job)
+    if job.status == "canceled":
+        logger.info("Skipping canceled job %s before execution", job.id)
+        return
+
     try:
         executor = SkillExecutor(settings.skills_dir, settings.workspace_base)
         result = asyncio.run(
@@ -211,6 +217,21 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
             job.id,
             status="failed",
             error_message="Invalid website ID returned",
+        )
+        return
+
+    db.refresh(job)
+    if job.status == "canceled":
+        WebsitesService.soft_delete_website(
+            db,
+            job.user_id,
+            website_uuid,
+            allow_missing=True,
+        )
+        logger.info(
+            "Job %s finished after cancellation; soft-deleted website_id=%s",
+            job.id,
+            raw_website_id,
         )
         return
 
