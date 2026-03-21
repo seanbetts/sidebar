@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import time
 
-from api.metrics import http_request_duration_seconds, http_requests_total
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from api.metrics import http_request_duration_seconds, http_requests_total
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):

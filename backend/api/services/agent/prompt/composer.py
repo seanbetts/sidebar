@@ -785,9 +785,6 @@ class PromptContextService:
             db: Database session.
             user_id: Current user ID.
             now: Current timestamp.
-
-        Returns:
-            Tuple of (note_items, website_items, conversation_items, file_items).
         """
         cached = cls._recent_activity_cache.get(user_id)
         if cached:

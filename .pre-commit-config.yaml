@@ -4,10 +4,10 @@ repos:
     rev: v0.8.4
     hooks:
       - id: ruff
-        args: [--config=backend/pyproject.toml, --fix]
+        args: [--config=pyproject.toml, --fix]
         files: ^backend/(api|workers)/.*\.py$
       - id: ruff-format
-        args: [--config=backend/pyproject.toml]
+        args: [--config=pyproject.toml]
         files: ^backend/(api|workers)/.*\.py$
 
   # Python - Type checking

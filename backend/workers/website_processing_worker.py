@@ -10,9 +10,6 @@ from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from threading import Event, Thread
 
-from sqlalchemy import and_, or_
-from sqlalchemy.orm.attributes import flag_modified
-
 from api.config import settings
 from api.db.session import SessionLocal, set_website_worker_scope
 from api.models.website import Website
@@ -21,6 +18,8 @@ from api.services.script_sentry import initialize_script_sentry
 from api.services.web_save_error_service import classify_web_save_result
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.websites_service import WebsitesService
+from sqlalchemy import and_, or_
+from sqlalchemy.orm.attributes import flag_modified
 
 logger = logging.getLogger(__name__)
 
