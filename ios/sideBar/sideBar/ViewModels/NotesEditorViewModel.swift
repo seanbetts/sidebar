@@ -43,8 +43,6 @@ public final class NotesEditorViewModel: ObservableObject {
     @available(iOS 26.0, macOS 26.0, *)
     private var nativeEditorObservation: AnyCancellable?
     private var pendingEditSelectionTarget: PendingEditSelectionTarget?
-    private var lastReadViewportOffset: CGPoint?
-    private var pendingEditViewportOffset: CGPoint?
     private var syncRequestedWhileSaving = false
     private var cancellables = Set<AnyCancellable>()
 
@@ -95,8 +93,6 @@ public final class NotesEditorViewModel: ObservableObject {
             if detectedUnsupportedContent != nil {
                 presentationMode = .read
                 pendingEditSelectionTarget = nil
-                pendingEditViewportOffset = nil
-                lastReadViewportOffset = nil
             }
             if !isSaving {
                 saveErrorMessage = nil
@@ -120,11 +116,9 @@ public final class NotesEditorViewModel: ObservableObject {
         if !isSameNote || detectedUnsupportedContent != nil {
             presentationMode = .read
             pendingEditSelectionTarget = nil
-            pendingEditViewportOffset = nil
         }
         if !isSameNote {
             syncRequestedWhileSaving = false
-            lastReadViewportOffset = nil
         }
         guard detectedUnsupportedContent == nil else { return }
         Task { [weak self] in
@@ -312,21 +306,15 @@ public final class NotesEditorViewModel: ObservableObject {
         if #available(iOS 26.0, macOS 26.0, *) {
             primeSharedNativeEditorForEdit(target: target)
         }
-        pendingEditSelectionTarget = target; pendingEditViewportOffset = lastReadViewportOffset
+        pendingEditSelectionTarget = target
         presentationMode = .edit
     }
     public func consumePendingEditSelectionTarget() -> PendingEditSelectionTarget? {
         defer { pendingEditSelectionTarget = nil }; return pendingEditSelectionTarget
     }
-    public func consumePendingEditViewportOffset() -> CGPoint? {
-        defer { pendingEditViewportOffset = nil }; return pendingEditViewportOffset
-    }
-    public func updateReadViewportOffset(_ offset: CGPoint?) { lastReadViewportOffset = offset }
-    var debugLastReadViewportOffset: CGPoint? { lastReadViewportOffset }
-    var debugPendingEditViewportOffset: CGPoint? { pendingEditViewportOffset }
-    var peekPendingEditViewportOffset: CGPoint? { pendingEditViewportOffset }
+    var debugPendingEditViewportOffset: CGPoint? { nil }
     public func exitEditModeToRead() {
-        pendingEditSelectionTarget = nil; pendingEditViewportOffset = nil; presentationMode = .read
+        pendingEditSelectionTarget = nil; presentationMode = .read
     }
 
     @available(iOS 26.0, macOS 26.0, *)
@@ -440,8 +428,6 @@ extension NotesEditorViewModel {
         currentNoteId = nil
         presentationMode = .read
         pendingEditSelectionTarget = nil
-        pendingEditViewportOffset = nil
-        lastReadViewportOffset = nil
         content = ""
         canonicalContent = ""
         isDirty = false

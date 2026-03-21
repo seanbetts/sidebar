@@ -71,7 +71,7 @@ extension NotesDetailView {
     }
 
     func handleReadViewportOffsetChange(_ offset: CGPoint) {
-        editorViewModel.updateReadViewportOffset(offset)
+        _ = offset
     }
 
     func handleCloseShortcut(editedDocument: NotesSemanticDocument? = nil) {

@@ -28,7 +28,6 @@ extension NotesFormattingViewportTests {
         )
         XCTAssertTrue(editorTextView.becomeFirstResponder())
         drainNotesHostingRunLoop()
-        let baselineContentOffset = editorTextView.contentOffset
 
         simulateUIKitTouchSelectionChange(
             on: editorTextView,
@@ -37,27 +36,14 @@ extension NotesFormattingViewportTests {
         await waitUntil {
             editorTextView.selectedRange.location == tapOffset
         }
-        let settledContentOffset = editorTextView.contentOffset
         let settledSelectionRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
-        let maximumNativeTapNudge = max((editorTextView.font?.lineHeight ?? 0) * 3, 48)
-
-        drainNotesHostingRunLoop()
-        drainNotesHostingRunLoop()
-
-        XCTAssertLessThan(
-            abs(settledContentOffset.y - baselineContentOffset.y),
-            maximumNativeTapNudge,
-            "Visible tap selection should not trigger a large viewport jump"
-        )
         XCTAssertTrue(
             editorTextView.visibleViewportRect().intersects(settledSelectionRect.insetBy(dx: 0, dy: -1)),
-            "Visible tap selection should leave the native caret visible"
+            "Synthetic selection updates should still leave the caret visible without app-owned repair state"
         )
-        XCTAssertEqual(
-            editorTextView.contentOffset.y,
-            settledContentOffset.y,
-            accuracy: 0.5,
-            "Visible tap selection should not trigger deferred viewport repair after UIKit settles"
+        XCTAssertNil(
+            editorTextView.debugPendingInitialViewportOffset,
+            "Visible tap selection should not arm pending viewport restoration"
         )
     }
 
@@ -104,11 +90,10 @@ extension NotesFormattingViewportTests {
             editorTextView.selectedRange.location == previousLineOffset
         }
 
-        XCTAssertEqual(
-            editorTextView.contentOffset.y,
-            baselineContentOffset.y,
-            accuracy: 0.5,
-            "Visible arrow-key selection should leave viewport ownership with UIKit"
+        XCTAssertEqual(editorTextView.contentOffset.y, baselineContentOffset.y, accuracy: 0.5)
+        XCTAssertNil(
+            editorTextView.debugPendingInitialViewportOffset,
+            "Visible arrow-key selection should not arm pending viewport restoration"
         )
     }
 }

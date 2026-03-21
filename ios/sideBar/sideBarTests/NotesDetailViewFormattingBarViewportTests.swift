@@ -18,13 +18,12 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
 
         readTextView.setContentOffset(CGPoint(x: 0, y: 360), animated: false)
         drainNotesHostingRunLoop()
-        let baselineOffset = readTextView.contentOffset.y
-        let recordedReadViewportOffset = try XCTUnwrap(context.editorViewModel.debugLastReadViewportOffset)
-        XCTAssertEqual(recordedReadViewportOffset.y, baselineOffset, accuracy: 1)
 
         context.editorViewModel.enterEditMode(at: .characterOffset(targetOffset))
-        let pendingEditViewportOffset = try XCTUnwrap(context.editorViewModel.debugPendingEditViewportOffset)
-        XCTAssertEqual(pendingEditViewportOffset.y, baselineOffset, accuracy: 1)
+        XCTAssertNil(
+            context.editorViewModel.debugPendingEditViewportOffset,
+            "Edit entry should not carry read-surface viewport state into the live editor"
+        )
         drainNotesHostingRunLoop()
         drainNotesHostingRunLoop()
 
@@ -32,11 +31,16 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
             findTextView(
                 in: controller.view,
                 accessibilityIdentifier: "notes-editor-text-view"
-            )
+            ) as? UIKitNoteTextEditorSurface.AccessoryTextView
         )
         XCTAssertTrue(context.editorViewModel.isEditingNote)
         XCTAssertEqual(editorTextView.selectedRange.location, targetOffset)
         XCTAssertEqual(editorTextView.selectedRange.length, 0)
+        let selectionRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
+        XCTAssertTrue(
+            editorTextView.visibleViewportRect().intersects(selectionRect.insetBy(dx: 0, dy: -1)),
+            "Edit entry should rely on native selection visibility, not pending viewport restoration"
+        )
     }
 
     func testReadToEditActivationFromBottomKeepsTargetLineVisible() async throws {
@@ -182,7 +186,7 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         )
     }
 
-    func testUIKitSurfaceInitialViewportOffsetPersistsThroughAutofocusMount() throws {
+    func testUIKitSurfaceAutofocusMountDoesNotCarryPendingViewportOffset() throws {
         let plainText = (0..<40)
             .map { index in "Line \(index) body text" }
             .joined(separator: "\n")
@@ -205,27 +209,16 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
             makeKeyAndVisible: true,
             formattingBarPresentation: .floatingTopTrailing,
             makeTextView: { trackingTextView },
-            initialViewportOffset: CGPoint(x: 0, y: 360),
             width: 900,
             height: 700
         )
         RunLoop.main.run(until: Date().addingTimeInterval(0.1))
-        let resolvedViewportOffset = UIKitNoteTextEditorSurface.clampedContentOffset(
-            CGPoint(x: 0, y: 360),
-            for: trackingTextView
-        )
 
         XCTAssertTrue(textView.isFirstResponder)
-        XCTAssertTrue(
-            trackingTextView.recordedContentOffsets.contains { abs($0.y - 360) < 1 },
-            "pending=\(String(describing: trackingTextView.debugPendingInitialViewportOffset)) "
-                + "bounds=\(trackingTextView.bounds) contentSize=\(trackingTextView.contentSize) "
-                + "contentInset=\(trackingTextView.contentInset) "
-                + "adjustedInset=\(trackingTextView.adjustedContentInset) "
-                + "resolved=\(resolvedViewportOffset) "
-                + "offsets=\(trackingTextView.recordedContentOffsets)"
+        XCTAssertNil(
+            trackingTextView.debugPendingInitialViewportOffset,
+            "Autofocus mount should not arm pending viewport restoration"
         )
-        XCTAssertLessThan(abs(textView.contentOffset.y - 360), 1)
     }
 }
 

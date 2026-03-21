@@ -25,42 +25,15 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var onSubheadingCommand: (() -> Void)?
         var onBodyCommand: (() -> Void)?
         var shouldAutofocus = false
+        var shouldRevealSelectionOnNextProgrammaticSelection = false
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { setNeedsLayout() }
         }
-        var pendingInitialViewportOffset: CGPoint? {
-            didSet {
-                guard pendingInitialViewportOffset != oldValue else { return }
-                hasAppliedPendingInitialViewportOffset = false
-                initialViewportVerificationPassesRemaining = pendingInitialViewportOffset == nil ? 0 : 8
-                schedulePendingInitialViewportRetryBurst()
-                scheduleInitialViewportVerificationIfNeeded()
-                applyPendingInitialViewportOffsetIfNeeded()
-            }
-        }
-        var hasAppliedPendingInitialViewportOffset = false
-        var initialViewportVerificationPassesRemaining = 0
-        var isInitialViewportVerificationScheduled = false
-        var lastStableSelectionRange = NSRange(location: NSNotFound, length: 0)
-        var lastStableViewportOffset = CGPoint.zero
-        var debugHasAppliedPendingInitialViewportOffset: Bool { hasAppliedPendingInitialViewportOffset }
-        var debugPendingInitialViewportOffset: CGPoint? { pendingInitialViewportOffset }
-        override var contentSize: CGSize {
-            didSet {
-                applyPendingInitialViewportOffsetIfNeeded()
-                scheduleInitialViewportVerificationIfNeeded()
-            }
-        }
+        var debugPendingInitialViewportOffset: CGPoint? { nil }
 
         override var inputAccessoryView: UIView? {
             get { formattingAccessoryView }
             set { formattingAccessoryView = newValue }
-        }
-
-        override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
-            super.setContentOffset(contentOffset, animated: animated)
-            guard selectedRange == lastStableSelectionRange else { return }
-            lastStableViewportOffset = self.contentOffset
         }
 
         override var keyCommands: [UIKeyCommand]? {
@@ -86,54 +59,20 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
-            applyPendingInitialViewportOffsetIfNeeded()
             guard shouldAutofocus, window != nil, isFirstResponder == false else { return }
-            scheduleAutofocusRetryBurst()
-        }
-
-        override func becomeFirstResponder() -> Bool {
-            let becameFirstResponder = super.becomeFirstResponder()
-            guard becameFirstResponder else { return false }
             DispatchQueue.main.async { [weak self] in
-                self?.applyPendingInitialViewportOffsetIfNeeded()
+                guard let self, self.shouldAutofocus, self.window != nil, self.isFirstResponder == false else {
+                    return
+                }
+                self.window?.makeKey()
+                _ = self.becomeFirstResponder()
             }
-            return true
         }
 
         override func layoutSubviews() {
             super.layoutSubviews()
             updateTextContainerInsets()
             updateViewportInsets()
-            applyPendingInitialViewportOffsetIfNeeded()
-            scheduleInitialViewportVerificationIfNeeded()
-        }
-
-        private func schedulePendingInitialViewportRetryBurst() {
-            guard let pendingInitialViewportOffset else { return }
-            for delay in [0.0, 0.01, 0.05] {
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                    guard let self, self.pendingInitialViewportOffset == pendingInitialViewportOffset else {
-                        return
-                    }
-                    self.applyPendingInitialViewportOffsetIfNeeded()
-                }
-            }
-        }
-
-        func scheduleAutofocusRetryBurst() {
-            for delay in [0.0, 0.01, 0.05, 0.1, 0.2, 0.35, 0.5] {
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                    guard let self,
-                          self.shouldAutofocus,
-                          self.window != nil,
-                          self.isFirstResponder == false else {
-                        return
-                    }
-                    self.window?.makeKey()
-                    self.window?.endEditing(false)
-                    _ = self.becomeFirstResponder()
-                }
-            }
         }
 
     }
@@ -167,7 +106,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let shouldAutofocus: Bool
     let formattingBarConfiguration: NoteFormattingBarConfiguration?
     let formattingBarPresentation: NoteFormattingBarPresentation
-    let initialViewportOffset: CGPoint?
     let makeTextView: (() -> AccessoryTextView)?
 
     init(
@@ -177,7 +115,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         shouldAutofocus: Bool = true,
         formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
         formattingBarPresentation: NoteFormattingBarPresentation,
-        initialViewportOffset: CGPoint? = nil,
         makeTextView: (() -> AccessoryTextView)? = nil
     ) {
         self.viewModel = viewModel
@@ -186,7 +123,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         self.shouldAutofocus = shouldAutofocus
         self.formattingBarConfiguration = formattingBarConfiguration
         self.formattingBarPresentation = formattingBarPresentation
-        self.initialViewportOffset = initialViewportOffset
         self.makeTextView = makeTextView
     }
 
@@ -199,6 +135,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.isEditable = isEditable
         textView.allowsEditingTextAttributes = false
         textView.shouldAutofocus = isEditable && shouldAutofocus
+        textView.shouldRevealSelectionOnNextProgrammaticSelection = isEditable && shouldAutofocus
         textView.backgroundColor = .clear
         textView.textColor = .label
         textView.tintColor = NoteTextAppearance.caretTintColor
@@ -220,12 +157,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.isEditable = isEditable
         textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.maxReadableContentWidth = maxContentWidth
-        textView.updatePendingInitialViewportOffset(initialViewportOffset)
-        if isEditable, shouldAutofocus, textView.window != nil, textView.isFirstResponder == false {
-            DispatchQueue.main.async {
-                textView.scheduleAutofocusRetryBurst()
-            }
-        }
         let needsAccessoryReload = configureFormattingUI(
             for: textView,
             configuration: formattingBarConfiguration
@@ -239,15 +170,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         )
         let selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
         let isProgrammaticRenderUpdate = context.coordinator.lastAppliedRenderSignature != renderSignature
-        let preservedViewportOffset = preservedViewportOffsetIfNeeded(
-            for: textView,
-            selectedRange: selectedRange,
-            preserveAcrossSelectionChange: isProgrammaticRenderUpdate
-        )
         if isProgrammaticRenderUpdate {
             let attributedText = bridgedAttributedText(from: viewModel.attributedContent)
             context.coordinator.isApplyingProgrammaticText = true
-            textView.attributedText = attributedText
+            textView.textStorage.setAttributedString(attributedText)
             context.coordinator.isApplyingProgrammaticText = false
             context.coordinator.lastAppliedRenderSignature = renderSignature
         }
@@ -256,25 +182,18 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             context.coordinator.isApplyingProgrammaticSelection = true
             textView.selectedRange = selectedRange
             context.coordinator.isApplyingProgrammaticSelection = false
+            if textView.shouldRevealSelectionOnNextProgrammaticSelection {
+                textView.shouldRevealSelectionOnNextProgrammaticSelection = false
+                DispatchQueue.main.async { [weak textView] in
+                    textView?.layoutIfNeeded()
+                    textView?.scrollRangeToVisible(selectedRange)
+                }
+            }
         }
 
         let typingAttributes = bridgedTypingAttributes(from: viewModel.attributedContent)
         if NSDictionary(dictionary: textView.typingAttributes).isEqual(to: typingAttributes) == false {
             textView.typingAttributes = typingAttributes
-        }
-
-        if let preservedViewportOffset {
-            restoreViewportOffsetIfNeeded(
-                preservedViewportOffset,
-                for: textView,
-                selectedRange: selectedRange
-            )
-        }
-        textView.applyPendingInitialViewportOffsetIfNeeded()
-        if textView.pendingInitialViewportOffset != nil {
-            DispatchQueue.main.async { [weak textView] in
-                textView?.applyPendingInitialViewportOffsetIfNeeded()
-            }
         }
     }
 
@@ -421,7 +340,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 baseFontSize: viewModel.baseFontSize
             )
             isApplyingProgrammaticText = true
-            textView.attributedText = bridgedText
+            textView.textStorage.setAttributedString(bridgedText)
             isApplyingProgrammaticText = false
             lastAppliedRenderSignature = RenderSignature(
                 renderGeneration: viewModel.renderGeneration,

@@ -21,7 +21,6 @@ struct AttributedNoteEditorContainer: View {
 
     @StateObject private var nativeViewModel: NativeNoteEditorViewModel
     @State private var loadedNoteId: String?
-    @State private var pendingInitialViewportOffset: CGPoint?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     #if os(iOS)
     @State private var isSoftwareKeyboardVisible = false
@@ -134,17 +133,11 @@ struct AttributedNoteEditorContainer: View {
     }
 
     private func loadIfNeeded() {
-        let previousLoadedNoteId = loadedNoteId
         loadedNoteId = Self.loadNoteIfNeeded(
             editorViewModel: editorViewModel,
             nativeViewModel: nativeViewModel,
             loadedNoteId: loadedNoteId
         )
-        #if os(iOS)
-        if loadedNoteId != previousLoadedNoteId {
-            pendingInitialViewportOffset = editorViewModel.consumePendingEditViewportOffset()
-        }
-        #endif
     }
 
     private func applyAutosaveDelay(isOffline: Bool) {
@@ -167,8 +160,7 @@ struct AttributedNoteEditorContainer: View {
             isEditable: true,
             shouldAutofocus: autofocusEnabled,
             formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
-            formattingBarPresentation: resolvedFormattingBarPresentation,
-            initialViewportOffset: resolvedInitialViewportOffset
+            formattingBarPresentation: resolvedFormattingBarPresentation
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
@@ -192,10 +184,6 @@ struct AttributedNoteEditorContainer: View {
             isPhone: UIDevice.current.userInterfaceIdiom == .phone,
             isSoftwareKeyboardVisible: isSoftwareKeyboardVisible
         )
-    }
-
-    private var resolvedInitialViewportOffset: CGPoint? {
-        pendingInitialViewportOffset ?? editorViewModel.peekPendingEditViewportOffset
     }
     #endif
 }

@@ -23,7 +23,6 @@ func mountTextView(
     formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
     formattingBarPresentation: NoteFormattingBarPresentation = .keyboardAccessory,
     makeTextView: (() -> UIKitNoteTextEditorSurface.AccessoryTextView)? = nil,
-    initialViewportOffset: CGPoint? = nil,
     maxContentWidth: CGFloat? = nil,
     width: CGFloat = 360,
     height: CGFloat = 320
@@ -37,7 +36,6 @@ func mountTextView(
                 shouldAutofocus: autofocusEnabled,
                 formattingBarConfiguration: formattingBarConfiguration,
                 formattingBarPresentation: formattingBarPresentation,
-                initialViewportOffset: initialViewportOffset,
                 makeTextView: makeTextView
             )
         )
