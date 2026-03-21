@@ -143,6 +143,7 @@ def render_html_with_playwright(
     """Render HTML using Playwright for JS-heavy pages."""
     configure_playwright_browsers_path()
     try:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright
     except ImportError as exc:  # pragma: no cover - depends on optional dependency
         raise RuntimeError("Playwright is not installed") from exc
@@ -154,6 +155,7 @@ def render_html_with_playwright(
             browser = playwright.chromium.launch(headless=True)
         context = browser.new_context(user_agent=USER_AGENT)
         page = context.new_page()
+        should_close_browser = True
         try:
             page.goto(url, wait_until=wait_until, timeout=timeout)
             preview = summarize_rendered_page(page)
@@ -165,8 +167,15 @@ def render_html_with_playwright(
             html = page.content()
             final_url = page.url
             return html, final_url
+        except PlaywrightTimeoutError:
+            # Let the outer sync_playwright() teardown stop the driver session
+            # directly. Explicit browser.close() can take much longer than the
+            # navigation timeout on timed-out pages.
+            should_close_browser = False
+            raise
         finally:
-            browser.close()
+            if should_close_browser:
+                browser.close()
 
 
 def resolve_rendering_settings(rules: list[Rule]) -> tuple[str, str | None, int]:

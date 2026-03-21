@@ -3,6 +3,7 @@ import sys
 from types import ModuleType
 
 from api.services import web_save_rendering
+import pytest
 
 
 def test_requires_js_rendering_for_unrendered_youtube_embed():
@@ -194,3 +195,90 @@ def test_render_html_with_playwright_aborts_on_antibot_before_wait(monkeypatch):
     assert ops.index("goto") < ops.index("content")
     assert "wait_for" not in ops
     assert "browser_close" in ops
+
+
+def test_render_html_with_playwright_skips_browser_close_on_navigation_timeout(
+    monkeypatch,
+):
+    ops: list[str] = []
+
+    class FakeTimeoutError(Exception):
+        pass
+
+    class FakePage:
+        def goto(self, *args, **kwargs):
+            ops.append("goto")
+            raise FakeTimeoutError("Page.goto: Timeout 15000ms exceeded.")
+
+        def wait_for_selector(self, *args, **kwargs):
+            ops.append("wait_for")
+
+        def content(self) -> str:
+            ops.append("content")
+            return "<html></html>"
+
+        def title(self) -> str:
+            ops.append("title")
+            return "Timed out"
+
+        @property
+        def url(self) -> str:
+            ops.append("url")
+            return "https://example.com/timeout"
+
+    page = FakePage()
+
+    class FakeContext:
+        def __init__(self, page: FakePage) -> None:
+            self._page = page
+
+        def new_page(self) -> FakePage:
+            ops.append("new_page")
+            return self._page
+
+    class FakeBrowser:
+        def __init__(self, page: FakePage) -> None:
+            self._page = page
+
+        def new_context(self, *, user_agent: str | None = None):
+            ops.append("new_context")
+            return FakeContext(self._page)
+
+        def close(self) -> None:
+            ops.append("browser_close")
+
+    class FakeChromium:
+        def __init__(self, page: FakePage) -> None:
+            self._page = page
+
+        def launch(self, *args, **kwargs):
+            ops.append("launch")
+            return FakeBrowser(self._page)
+
+    class FakePlaywright:
+        def __init__(self, page: FakePage) -> None:
+            self.chromium = FakeChromium(page)
+
+    class FakeSyncPlaywright:
+        def __enter__(self) -> FakePlaywright:
+            ops.append("playwright_enter")
+            return FakePlaywright(page)
+
+        def __exit__(self, exc_type, exc, traceback) -> bool:
+            ops.append("playwright_exit")
+            return False
+
+    fake_sync_module = ModuleType("playwright.sync_api")
+    fake_sync_module.sync_playwright = lambda: FakeSyncPlaywright()
+    fake_sync_module.TimeoutError = FakeTimeoutError
+    fake_playwright_module = ModuleType("playwright")
+    fake_playwright_module.sync_api = fake_sync_module
+
+    monkeypatch.setitem(sys.modules, "playwright", fake_playwright_module)
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", fake_sync_module)
+
+    with pytest.raises(FakeTimeoutError):
+        web_save_rendering.render_html_with_playwright("https://example.com")
+
+    assert "browser_close" not in ops
+    assert "playwright_exit" in ops
