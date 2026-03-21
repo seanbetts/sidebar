@@ -7,18 +7,14 @@ import UIKit
 #endif
 import sideBarShared
 @testable import sideBar
-
-// Keep the fast lane to a few lifetime cycles; the longer mixed teardown soak
-// remains quarantined in the mounted macOS repro suite.
+// Keep the fast lane to a few lifetime cycles; the longer mixed teardown soak remains quarantined in the mounted macOS repro suite.
 let notesLifetimeSmokeIterations = 4
 private let notesHostingDrainDuration: TimeInterval = 0.01
-
 @MainActor
 struct NotesDetailViewTestContext {
     let store: NotesStore
     let notesViewModel: NotesViewModel
     let editorViewModel: NotesEditorViewModel
-
     func makeView() -> NotesDetailView {
         NotesDetailView(
             viewModel: notesViewModel,
@@ -32,7 +28,6 @@ struct NotesDetailViewTestContext {
         )
     }
 }
-
 @MainActor
 enum NotesDetailViewTestRetainer {
     static var environments: [AppEnvironment] = []
@@ -40,10 +35,15 @@ enum NotesDetailViewTestRetainer {
     static var hostingControllers: [NSHostingController<AnyView>] = []
     static var hostingWindows: [NSWindow] = []
     #elseif os(iOS)
+    struct ParkedHostBatch {
+        let environments: [AppEnvironment]
+        let hostingControllers: [UIHostingController<AnyView>]
+        let hostingWindows: [UIWindow]
+    }
     static var hostingControllers: [UIHostingController<AnyView>] = []
     static var hostingWindows: [UIWindow] = []
+    static var parkedHostBatches: [ParkedHostBatch] = []
     #endif
-
     static func reset() {
         #if os(iOS)
         drainNotesHostingRunLoop()
@@ -52,11 +52,36 @@ enum NotesDetailViewTestRetainer {
             window.resignKey()
             window.isHidden = true
         }
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { candidate in
+                hostingWindows.contains { window in window === candidate } == false
+            }?
+            .makeKey()
         drainNotesHostingRunLoop()
+        let parkedBatch = ParkedHostBatch(
+            environments: environments,
+            hostingControllers: hostingControllers,
+            hostingWindows: hostingWindows
+        )
         hostingWindows.forEach { window in
+            if let controller = window.rootViewController as? UIHostingController<AnyView> {
+                controller.rootView = AnyView(EmptyView())
+                controller.view.removeFromSuperview()
+            } else {
+                window.rootViewController?.view.removeFromSuperview()
+            }
             window.rootViewController = nil
+            window.windowScene = nil
         }
         drainNotesHostingRunLoop()
+        if parkedBatch.environments.isEmpty == false
+            || parkedBatch.hostingControllers.isEmpty == false
+            || parkedBatch.hostingWindows.isEmpty == false {
+            parkedHostBatches.append(parkedBatch)
+        }
+        AppEnvironment.shared = nil
         hostingControllers.removeAll()
         hostingWindows.removeAll()
         drainNotesHostingRunLoop()
@@ -73,7 +98,6 @@ enum NotesDetailViewTestRetainer {
         environments.removeAll()
     }
 }
-
 @MainActor
 class NotesDetailViewHostingTestCase: XCTestCase {
     override func tearDown() {
@@ -81,7 +105,6 @@ class NotesDetailViewHostingTestCase: XCTestCase {
         super.tearDown()
     }
 }
-
 @MainActor
 func makeNotesDetailViewTestContext(
     note: NotePayload = makeTestNote(),
@@ -114,14 +137,12 @@ func makeNotesDetailViewTestContext(
             continuation.resume()
         }
     }
-
     return NotesDetailViewTestContext(
         store: store,
         notesViewModel: notesViewModel,
         editorViewModel: editorViewModel
     )
 }
-
 @MainActor
 func makeNotesDetailTestEnvironment(
     retainInGlobalRetainer: Bool = true
@@ -137,7 +158,6 @@ func makeNotesDetailTestEnvironment(
     }
     return environment
 }
-
 #if os(macOS)
 @MainActor
 @discardableResult
@@ -165,7 +185,6 @@ func mount(
     NotesDetailViewTestRetainer.hostingWindows.append(window)
     return controller
 }
-
 @MainActor
 @discardableResult
 func mount(
@@ -204,7 +223,6 @@ func mount(
     NotesDetailViewTestRetainer.hostingWindows.append(window)
     return controller
 }
-
 @MainActor
 @discardableResult
 func mount(
@@ -218,7 +236,6 @@ func mount(
         makeKeyAndVisible: makeKeyAndVisible
     )
 }
-
 @MainActor
 @discardableResult
 func mount(

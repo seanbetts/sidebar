@@ -21,6 +21,49 @@ final class NotesEditorViewModelHydrationTests: XCTestCase {
         XCTAssertTrue(NotesDetailViewTestRetainer.hostingWindows.isEmpty)
     }
 
+    func testResetDetachesMountedNotesEnvironmentBeforeNextTest() async {
+        let context = await makeNotesDetailViewTestContext()
+        weak var weakController: UIHostingController<AnyView>?
+        weak var weakWindow: UIWindow?
+        weak var weakEnvironment: AppEnvironment?
+        defer {
+            NotesDetailViewTestRetainer.parkedHostBatches.removeAll()
+            drainNotesHostingRunLoop()
+        }
+
+        let environment = makeNotesDetailTestEnvironment()
+        weakEnvironment = environment
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: false)
+        weakController = controller
+        weakWindow = controller.view.window
+
+        XCTAssertNotNil(weakEnvironment)
+        XCTAssertNotNil(weakController)
+        XCTAssertNotNil(weakWindow)
+
+        NotesDetailViewTestRetainer.reset()
+
+        let sceneWindows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+        let windowStillInScene = weakWindow.map { window in
+            sceneWindows.contains { $0 === window }
+        } ?? false
+        let controllerStillMountedInScene = sceneWindows.contains { $0.rootViewController === weakController }
+
+        XCTAssertTrue(NotesDetailViewTestRetainer.environments.isEmpty)
+        XCTAssertTrue(NotesDetailViewTestRetainer.hostingControllers.isEmpty)
+        XCTAssertTrue(NotesDetailViewTestRetainer.hostingWindows.isEmpty)
+        XCTAssertNotNil(weakEnvironment)
+        XCTAssertNotNil(weakController)
+        XCTAssertNotNil(weakWindow)
+        XCTAssertFalse(windowStillInScene)
+        XCTAssertFalse(controllerStillMountedInScene)
+        XCTAssertNil(weakWindow?.rootViewController)
+        XCTAssertEqual(weakWindow?.isHidden, true)
+        XCTAssertNil(AppEnvironment.shared)
+    }
+
     func testAttachNativeEditorDoesNotOverwriteLoadedNoteState() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
