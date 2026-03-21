@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 import XCTest
 @testable import sideBar
 
@@ -21,6 +24,7 @@ final class NotesEditorViewModelHydrationTests: XCTestCase {
         XCTAssertTrue(NotesDetailViewTestRetainer.hostingWindows.isEmpty)
     }
 
+    #if os(iOS)
     func testResetDetachesMountedNotesEnvironmentBeforeNextTest() async {
         let context = await makeNotesDetailViewTestContext()
         weak var weakController: UIHostingController<AnyView>?
@@ -63,6 +67,7 @@ final class NotesEditorViewModelHydrationTests: XCTestCase {
         XCTAssertEqual(weakWindow?.isHidden, true)
         XCTAssertNil(AppEnvironment.shared)
     }
+    #endif
 
     func testAttachNativeEditorDoesNotOverwriteLoadedNoteState() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
