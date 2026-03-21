@@ -22,6 +22,13 @@ This applies equally to Notes, Files, Chat, Tasks, Websites, Skills, app-shell c
 - Running `AppleFast` directly through the `sideBar` scheme causes Xcode to union those test bundles, build both `sideBar` and `sideBarLogicHost`, and risk duplicate `sideBar.swiftmodule` outputs.
 - CI uses `sideBarLogicHost` directly for the Logic lane.
 
+Current websites and extension split:
+
+- `sideBarLogicTests/WebsitesViewModelTests` runs in `AppleFast`.
+- `sideBarTests/WebsitesStoreTests` stays in `AppleStateful`.
+- `sideBarTests/AppEnvironmentDeepLinkTests` stays in `AppleStateful`.
+- `ShareExtensionTests/ShareExtensionCoverageTests` stays in `AppleExtensions`.
+
 ## Placement rules
 
 Choose the lowest appropriate Apple test layer first.

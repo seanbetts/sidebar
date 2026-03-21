@@ -193,6 +193,36 @@ The preflight command validates lane configuration and runs `SELECT 1` before py
 | AppleUI | sideBarUI | End-to-end smoke (login, messaging, notes) | Yes |
 | AppleExtensions | sideBarExtensions | Share sheet, widgets, Safari extension | Yes |
 
+Current lane split for the website-save checkpoint:
+
+- `sideBarLogicTests/WebsitesViewModelTests` runs in `AppleFast`.
+- `sideBarTests/WebsitesStoreTests` stays in `AppleStateful`.
+- `sideBarTests/AppEnvironmentDeepLinkTests` stays in `AppleStateful`.
+- `ShareExtensionTests/ShareExtensionCoverageTests` stays in `AppleExtensions`.
+
+Use separate commands per lane instead of mixing them under `sideBarLogicHost`:
+
+```bash
+# Logic lane
+xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
+  -scheme sideBarLogicHost -testPlan AppleFast \
+  -destination 'platform=macOS' \
+  -only-testing:sideBarLogicTests/WebsitesViewModelTests
+
+# Stateful lane
+xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
+  -scheme sideBar -testPlan AppleStateful \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing:sideBarTests/WebsitesStoreTests \
+  -only-testing:sideBarTests/AppEnvironmentDeepLinkTests
+
+# Extension lane
+xcodebuild test -project ios/sideBar/sideBar.xcodeproj \
+  -scheme sideBarExtensions -testPlan AppleExtensions \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing:ShareExtensionTests/ShareExtensionCoverageTests
+```
+
 ### CI Behavior
 
 | Branch | What runs | Blocking? |
