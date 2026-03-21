@@ -143,6 +143,24 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(linkValue, expectedURL)
     }
 
+    func testMakePlatformTextViewUsesBaseReadableInsetsOnMacOS() throws {
+        let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\nTwo")
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+        let textView = SelectableNoteReadView.makePlatformTextView(
+            attributedContent: attributed,
+            onActivateEditing: { _ in }
+        )
+        textView.frame = NSRect(x: 0, y: 0, width: 420, height: 120)
+        textView.layoutSubtreeIfNeeded()
+
+        XCTAssertEqual(textView.textContainer?.lineFragmentPadding, 0)
+        XCTAssertEqual(textView.textContainerInset.width, NoteTextLayout.horizontalPadding, accuracy: 0.001)
+        XCTAssertEqual(textView.textContainerInset.height, NoteTextLayout.verticalPadding, accuracy: 0.001)
+    }
+
     func testMakePlatformTextViewKeepsFormattedDragSelectionsCopyableWithoutActivatingEditMode() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,

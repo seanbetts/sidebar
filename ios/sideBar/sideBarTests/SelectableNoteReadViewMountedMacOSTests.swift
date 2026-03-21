@@ -8,6 +8,40 @@ import AppKit
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class SelectableNoteReadViewMountedMacOSTests: XCTestCase {
+    func testWideMountedReadSurfaceKeepsScrollViewAtHostEdgeAndCentersReadableColumn() throws {
+        let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\nTwo")
+        let hostFrame = NSRect(x: 0, y: 0, width: 900, height: 240)
+        let controller = NSHostingController(
+            rootView: AnyView(
+                SelectableNoteReadView(
+                    document: document,
+                    maxContentWidth: 640,
+                    onActivateEditing: { _ in }
+                )
+            )
+        )
+        let window = NSWindow(
+            contentRect: hostFrame,
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = controller
+        window.orderFront(nil)
+        controller.view.frame = hostFrame
+        controller.view.layoutSubtreeIfNeeded()
+        window.contentView?.layoutSubtreeIfNeeded()
+        drainNotesHostingRunLoop()
+
+        let textView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        let scrollView = try XCTUnwrap(textView.enclosingScrollView)
+        let expectedHorizontalInset = NoteTextLayout.horizontalPadding + ((hostFrame.width - 640) / 2)
+
+        XCTAssertEqual(scrollView.frame.width, hostFrame.width, accuracy: 0.5)
+        XCTAssertEqual(textView.frame.width, hostFrame.width, accuracy: 0.5)
+        XCTAssertEqual(textView.textContainerInset.width, expectedHorizontalInset, accuracy: 0.5)
+    }
+
     func testMountedReadSurfaceKeepsSelectableReadRenderer() throws {
         let textView = try makeReadTextView(
             plainText: "One\nTwo",
@@ -68,14 +102,15 @@ final class SelectableNoteReadViewMountedMacOSTests: XCTestCase {
         )
     }
 
-    func testMountedReadSurfaceUsesZeroInternalTextViewPaddingOnMacOS() throws {
+    func testMountedReadSurfaceUsesBaseReadableTextViewPaddingOnMacOS() throws {
         let textView = try makeReadTextView(
             plainText: "One\nTwo",
             frame: NSRect(x: 0, y: 0, width: 420, height: 240)
         )
 
         XCTAssertEqual(textView.textContainer?.lineFragmentPadding, 0)
-        XCTAssertEqual(textView.textContainerInset, .zero)
+        XCTAssertEqual(textView.textContainerInset.width, NoteTextLayout.horizontalPadding, accuracy: 0.001)
+        XCTAssertEqual(textView.textContainerInset.height, NoteTextLayout.verticalPadding, accuracy: 0.001)
     }
 
     func testMountedReadSurfaceCanUnmountRepeatedlyWithoutCrashing() throws {

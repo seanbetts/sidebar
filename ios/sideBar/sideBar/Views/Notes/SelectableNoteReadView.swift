@@ -38,6 +38,19 @@ struct SelectableNoteReadView: View {
 
     var body: some View {
         let baseFontSize = Self.readBaseFontSize(for: resolvedTextSizeOption)
+        #if os(macOS)
+        PlatformSelectableNoteReadView(
+            attributedContent: Self.makePlatformAttributedContent(
+                from: document,
+                baseFontSize: baseFontSize
+            ),
+            maxReadableContentWidth: maxContentWidth,
+            onActivateEditing: onActivateEditing,
+            onViewportOffsetChange: onViewportOffsetChange
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(DesignTokens.Colors.background)
+        #else
         PlatformSelectableNoteReadView(
             attributedContent: Self.makePlatformAttributedContent(
                 from: document,
@@ -51,6 +64,7 @@ struct SelectableNoteReadView: View {
         .frame(maxWidth: maxContentWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
+        #endif
     }
 
     private var resolvedTextSizeOption: AppTextSizeOption { AppTextSizeOption.resolved(from: appTextSizeRaw) }
@@ -343,6 +357,7 @@ struct SelectableNoteReadView: View {
 @available(iOS 26.0, macOS 26.0, *)
 private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     let attributedContent: NSAttributedString
+    let maxReadableContentWidth: CGFloat
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     let onViewportOffsetChange: ((CGPoint) -> Void)?
 
@@ -351,13 +366,17 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
             attributedContent: attributedContent,
             onActivateEditing: onActivateEditing
         )
+        guard let readTextView = textView as? SelectableNoteReadTextView else {
+            preconditionFailure("Expected SelectableNoteReadTextView for macOS read surface")
+        }
+        readTextView.maxReadableContentWidth = maxReadableContentWidth
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.hasHorizontalScroller = false
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
-        scrollView.documentView = textView
+        scrollView.documentView = readTextView
         return scrollView
     }
 
@@ -365,6 +384,7 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
         guard let textView = scrollView.documentView as? SelectableNoteReadTextView else {
             return
         }
+        textView.maxReadableContentWidth = maxReadableContentWidth
         textView.onActivateEditing = onActivateEditing
         if textView.textStorage?.isEqual(to: attributedContent) == false {
             textView.textStorage?.setAttributedString(attributedContent)
@@ -382,9 +402,22 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
 
 @available(iOS 26.0, macOS 26.0, *)
 private final class SelectableNoteReadTextView: NSTextView {
+    private static let baseTextContainerInset = NSSize(
+        width: NoteTextLayout.horizontalPadding,
+        height: NoteTextLayout.verticalPadding
+    )
+
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
+    var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
+        didSet { needsLayout = true }
+    }
     private var didDragSelectionGesture = false
     private var lastActivationTimestamp: TimeInterval = 0
+
+    override func layout() {
+        super.layout()
+        updateTextContainerInset()
+    }
 
     override func mouseDown(with event: NSEvent) {
         didDragSelectionGesture = false
@@ -435,6 +468,16 @@ private final class SelectableNoteReadTextView: NSTextView {
     private var canTriggerActivationNow: Bool {
         let now = ProcessInfo.processInfo.systemUptime
         return now - lastActivationTimestamp > 0.2
+    }
+
+    private func updateTextContainerInset() {
+        let extraHorizontalInset = max((bounds.width - maxReadableContentWidth) / 2, 0)
+        let resolvedInset = NSSize(
+            width: Self.baseTextContainerInset.width + extraHorizontalInset,
+            height: Self.baseTextContainerInset.height
+        )
+        guard textContainerInset != resolvedInset else { return }
+        textContainerInset = resolvedInset
     }
 
     private func linkAttribute(at point: NSPoint) -> Any? {
