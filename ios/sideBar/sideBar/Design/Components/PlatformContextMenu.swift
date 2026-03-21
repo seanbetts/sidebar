@@ -3,11 +3,10 @@ import SwiftUI
 #if os(iOS)
 import UIKit
 
-/// SwiftUI context menus keep row highlighting stable, but on iPhone destructive
-/// actions render the trash icon with the default tint instead of the system
-/// destructive color. Limit the UIKit fallback to those destructive menus.
-func shouldUseUIKitContextMenu(on idiom: UIUserInterfaceIdiom, items: [SidebarMenuItem]) -> Bool {
-    idiom == .phone && items.contains(where: { $0.role == .destructive })
+/// iPhone uses the same SwiftUI context menu path as iPad/macOS to avoid
+/// clipped row previews during the long-press highlight animation.
+func shouldUseUIKitContextMenu(on idiom: UIUserInterfaceIdiom) -> Bool {
+    false
 }
 
 private struct UIKitContextMenuView<Content: View>: UIViewRepresentable {
@@ -84,7 +83,7 @@ extension View {
     @ViewBuilder
     func platformContextMenu(items: [SidebarMenuItem]) -> some View {
         #if os(iOS)
-        if shouldUseUIKitContextMenu(on: UIDevice.current.userInterfaceIdiom, items: items) {
+        if shouldUseUIKitContextMenu(on: UIDevice.current.userInterfaceIdiom) {
             UIKitContextMenuView(items: items, content: self)
         } else {
             self.contextMenu {

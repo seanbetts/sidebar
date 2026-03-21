@@ -10,11 +10,11 @@ struct SidebarMenuItem: Identifiable {
 
 enum SidebarMenuItemTintPolicy: Equatable {
     case sidebarText
-    case systemRole
+    case destructiveText
 }
 
 func sidebarMenuItemTintPolicy(for item: SidebarMenuItem) -> SidebarMenuItemTintPolicy {
-    item.role == .destructive ? .systemRole : .sidebarText
+    item.role == .destructive ? .destructiveText : .sidebarText
 }
 
 extension SidebarMenuItem {
@@ -97,7 +97,7 @@ func sidebarMenuItemsView(_ items: [SidebarMenuItem]) -> some View {
                 }
             }
             .foregroundStyle(DesignTokens.Colors.textPrimary)
-        case .systemRole:
+        case .destructiveText:
             Button(role: item.role) {
                 item.handler()
             } label: {
@@ -107,6 +107,7 @@ func sidebarMenuItemsView(_ items: [SidebarMenuItem]) -> some View {
                     Text(item.title)
                 }
             }
+            .foregroundStyle(.red)
         }
     }
 }

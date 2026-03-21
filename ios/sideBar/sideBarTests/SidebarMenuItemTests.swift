@@ -3,10 +3,10 @@ import XCTest
 
 @MainActor
 final class SidebarMenuItemTests: XCTestCase {
-    func testDeleteMenuItemUsesSystemDestructiveTintPolicy() {
+    func testDeleteMenuItemUsesExplicitDestructiveTintPolicy() {
         let item = SidebarMenuItem.delete {}
 
-        XCTAssertEqual(sidebarMenuItemTintPolicy(for: item), .systemRole)
+        XCTAssertEqual(sidebarMenuItemTintPolicy(for: item), .destructiveText)
     }
 
     func testCopyMenuItemUsesSidebarTextTintPolicy() {
