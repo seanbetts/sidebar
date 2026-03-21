@@ -58,6 +58,26 @@ def test_detects_generic_challenge_marker():
     assert "challenge-form" in detection.reason
 
 
+def test_detects_datadome_challenge_marker():
+    html = textwrap.dedent(
+        """
+        <html>
+          <head><title>reuters.com</title></head>
+          <body>
+            <iframe src="https://geo.captcha-delivery.com/captcha/" title="DataDome CAPTCHA"></iframe>
+            <p>Please enable JS and disable any ad blocker</p>
+          </body>
+        </html>
+        """
+    )
+
+    detection = detect_antibot_html(html)
+
+    assert detection is not None
+    assert detection.challenge_kind == "generic"
+    assert "DataDome" in detection.reason or "enable js and disable any ad blocker" in detection.reason.lower()
+
+
 def test_returns_none_for_regular_article():
     html = textwrap.dedent(
         """

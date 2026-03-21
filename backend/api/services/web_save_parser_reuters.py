@@ -25,8 +25,16 @@ _TRACKING_IMAGE_PATTERNS = (
     "ad.360yield.com/ux",
 )
 _DROP_HEADINGS = {
+    "business",
     "read next",
+    "site index",
+    "latest",
+    "media",
+    "browse",
     "about reuters",
+    "stay informed",
+    "information you can trust",
+    "follow us",
     "lseg products",
 }
 _DROP_EXACT_TEXT = {
@@ -55,14 +63,14 @@ def extract_reuters_payload(raw_html: str, url: str) -> tuple[str, dict] | None:
         return None
 
     soup = BeautifulSoup(raw_html, "html.parser")
-    article = soup.find("article")
+    article = _find_reuters_content_root(soup)
     if not isinstance(article, Tag):
         return None
 
     cleaned_article = deepcopy(article)
     _cleanup_reuters_article(cleaned_article)
 
-    if not cleaned_article.find("p"):
+    if not _has_reuters_body_content(cleaned_article):
         return None
 
     title = _normalize_reuters_title(_extract_text(cleaned_article.find("h1")))
@@ -76,8 +84,48 @@ def extract_reuters_payload(raw_html: str, url: str) -> tuple[str, dict] | None:
     return str(cleaned_article), metadata
 
 
+def _find_reuters_content_root(soup: BeautifulSoup) -> Tag | None:
+    article = soup.find("article")
+    if isinstance(article, Tag):
+        return article
+
+    headline = soup.find("h1")
+    if not isinstance(headline, Tag):
+        return None
+
+    candidates: list[Tag] = []
+    for ancestor in headline.parents:
+        if not isinstance(ancestor, Tag):
+            continue
+        if ancestor.name not in {"main", "section", "div", "body"}:
+            continue
+        candidates.append(ancestor)
+        if ancestor.name == "main":
+            break
+
+    if not candidates:
+        return None
+
+    def candidate_score(node: Tag) -> tuple[int, int, int]:
+        paragraph_count = len(node.find_all("p"))
+        author_links = len(
+            [
+                anchor
+                for anchor in node.find_all("a", href=True)
+                if "/authors/" in (anchor.get("href") or "")
+            ]
+        )
+        heading_count = len(node.find_all(["h2", "h3"]))
+        return (paragraph_count, -author_links, -heading_count)
+
+    return max(candidates, key=candidate_score, default=None)
+
+
 def _cleanup_reuters_article(article: Tag) -> None:
     """Remove Reuters-specific non-article descendants from an article subtree."""
+    for node in list(article.find_all(["script", "style", "iframe", "noscript"])):
+        node.decompose()
+
     for img in list(article.find_all("img")):
         src = (img.get("src") or "").strip()
         if src.startswith("blob:") or any(
@@ -113,6 +161,21 @@ def _cleanup_reuters_article(article: Tag) -> None:
         normalized = paragraph.get_text(" ", strip=True).lower()
         if normalized in _DROP_EXACT_TEXT:
             paragraph.decompose()
+
+
+def _has_reuters_body_content(article: Tag) -> bool:
+    paragraphs = []
+    for paragraph in article.find_all("p"):
+        text = " ".join(paragraph.get_text(" ", strip=True).split())
+        if len(text.split()) < 8:
+            continue
+        lowered = text.lower()
+        if lowered in _DROP_EXACT_TEXT:
+            continue
+        if "thomson reuters" in lowered:
+            continue
+        paragraphs.append(text)
+    return len(paragraphs) >= 2
 
 
 def _extract_section_heading(node: Tag) -> str | None:

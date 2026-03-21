@@ -63,6 +63,21 @@ _GENERIC_MARKERS: tuple[Marker, ...] = (
         description="page warns to wait while verifying",
         phrase="please wait while we verify",
     ),
+    Marker(
+        kind="generic",
+        description="page references DataDome challenge delivery",
+        phrase="captcha-delivery.com",
+    ),
+    Marker(
+        kind="generic",
+        description="page contains DataDome challenge copy",
+        phrase="please enable js and disable any ad blocker",
+    ),
+    Marker(
+        kind="generic",
+        description="page contains a DataDome CAPTCHA iframe",
+        phrase="datadome captcha",
+    ),
 )
 
 _ALL_MARKERS: tuple[Marker, ...] = (

@@ -15,6 +15,7 @@ from api.services.web_save_parser_apple_news import (
     resolve_apple_news_source_url,
 )
 from api.services import web_save_parser_steam
+from api.services.web_save_parser_fallback import LocalParseFallbackError
 import api.services.web_save_parser_tiktok as web_save_parser_tiktok
 import api.services.web_save_parser_patreon as web_save_parser_patreon
 from api.services.web_save_parser_tiktok import TikTokVideoSnapshot
@@ -133,6 +134,56 @@ def _build_reuters_article_html() -> str:
           <section>
             <h2>LSEG Products</h2>
             <a href="https://www.lseg.com/en/data-analytics/products/workspace?utm_source=reuters.com&utm_medium=footer&utm_campaign=Reuters_ProductPage_Links">Workspace, opens new tab</a>
+          </section>
+          <img src="https://sp.analytics.yahoo.com/sp.pl?a=10000&f=https%3A%2F%2Fwww.reuters.com%2Fstory" alt="dot image pixel"/>
+        </main>
+      </body>
+    </html>
+    """
+
+
+def _build_reuters_main_only_html() -> str:
+    return """
+    <html>
+      <head>
+        <title>Exclusive: OpenAI courts private equity to join enterprise AI venture, sources say | Reuters</title>
+        <meta property="article:published_time" content="2026-03-16T18:11:32Z"/>
+        <link rel="canonical" href="https://www.reuters.com/business/openai-courts-private-equity-join-enterprise-ai-venture-sources-say-2026-03-16/"/>
+      </head>
+      <body>
+        <main class="regular-article-layout-module__main__lKixO">
+          <section class="article-header">
+            <a href="https://www.reuters.com/business/">Business</a>
+            <h1>Exclusive: OpenAI courts private equity to join enterprise AI venture, sources say</h1>
+            <p>March 16, 2026 6:11 PM UTC</p>
+            <div class="byline">
+              <a href="https://www.reuters.com/authors/milana-vinn/">Milana Vinn</a>
+              <a href="https://www.reuters.com/authors/echo-wang/">Echo Wang</a>
+            </div>
+          </section>
+          <section class="article-body">
+            <p>OpenAI has approached private equity firms about backing a new enterprise artificial intelligence venture, people familiar with the matter said.</p>
+            <p>The discussions are preliminary and no deal is certain, the sources said, requesting anonymity to discuss confidential talks.</p>
+          </section>
+          <section aria-label="author-bio">
+            <a href="https://www.reuters.com/authors/milana-vinn/">Milana Vinn</a>
+            <p>Milana Vinn reports on technology, media, and telecom mergers and acquisitions.</p>
+          </section>
+          <section>
+            <h2>Read Next</h2>
+            <ul>
+              <li><a href="https://www.reuters.com/business/example">Another story</a></li>
+            </ul>
+          </section>
+          <section>
+            <h2>Business</h2>
+            <ul>
+              <li><a href="https://www.reuters.com/business/finance/example">Rail story</a></li>
+            </ul>
+          </section>
+          <section>
+            <h2>About Reuters</h2>
+            <p>Reuters, the news and media division of Thomson Reuters, is the world's largest multimedia news provider.</p>
           </section>
           <img src="https://sp.analytics.yahoo.com/sp.pl?a=10000&f=https%3A%2F%2Fwww.reuters.com%2Fstory" alt="dot image pixel"/>
         </main>
@@ -376,6 +427,40 @@ def test_parse_url_local_reuters_article_uses_domain_extractor(monkeypatch):
     assert "LSEG Products" not in parsed.content
     assert "sp.analytics.yahoo.com" not in parsed.content
     assert "blob:http://localhost" not in parsed.content
+
+
+def test_parse_url_local_reuters_article_without_article_tag_uses_domain_extractor(
+    monkeypatch,
+):
+    html_doc = _build_reuters_main_only_html()
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html_doc,
+            "https://www.reuters.com/business/openai-courts-private-equity-join-enterprise-ai-venture-sources-say-2026-03-16/",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://www.reuters.com/business/openai-courts-private-equity-join-enterprise-ai-venture-sources-say-2026-03-16/"
+    )
+
+    assert (
+        "OpenAI has approached private equity firms about backing a new enterprise "
+        "artificial intelligence venture"
+        in parsed.content
+    )
+    assert "The discussions are preliminary and no deal is certain" in parsed.content
+    assert "Milana Vinn reports on technology, media, and telecom" not in parsed.content
+    assert "Read Next" not in parsed.content
+    assert "\n## [Business]" not in parsed.content
+    assert "About Reuters" not in parsed.content
+    assert "sp.analytics.yahoo.com" not in parsed.content
 
 
 def test_extract_patreon_post_snapshot_extracts_locked_preview():
@@ -4006,14 +4091,13 @@ def test_parse_url_local_paywall_marks_anti_bot_block(monkeypatch):
     monkeypatch.setattr(web_save_parser, "ReadabilityDocument", FakeDocument)
     monkeypatch.setattr(web_save_parser, "html_to_markdown", lambda _html: "")
 
-    parsed = web_save_parser.parse_url_local("https://www.wsj.com/tech/ai/story-id")
-    frontmatter = parsed.content.split("---\n", 2)[1]
-    data = web_save_parser.yaml.safe_load(frontmatter)
+    with pytest.raises(LocalParseFallbackError) as exc_info:
+        web_save_parser.parse_url_local("https://www.wsj.com/tech/ai/story-id")
 
-    assert data["paywalled"] is True
-    assert data["truncated"] is False
-    assert data["anti_bot_blocked"] is True
-    assert "anti-bot challenge page" in parsed.content
+    assert exc_info.value.fallback == "jina"
+    assert exc_info.value.stage == "direct"
+    assert exc_info.value.antibot_detection is not None
+    assert exc_info.value.antibot_detection.challenge_kind == "generic"
 
 
 def test_parse_url_local_uses_substack_api(monkeypatch):
