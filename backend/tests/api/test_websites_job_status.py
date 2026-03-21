@@ -68,10 +68,7 @@ def test_get_job_status_completed_without_website_is_not_completed(
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "failed"
-    assert (
-        data["error"]["message"]
-        == "Unable to save website: save completed without a website."
-    )
+    assert data["error"]["message"] == "Failed to load saved website"
 
 
 def test_get_job_status_marks_completed_job_failed_when_canonical_website_missing(
@@ -102,13 +99,10 @@ def test_get_job_status_marks_completed_job_failed_when_canonical_website_missin
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "failed"
-    assert (
-        data["error"]["message"]
-        == "Unable to save website: save completed without a website."
-    )
+    assert data["error"]["message"] == "Failed to load saved website"
     test_db.refresh(job)
     assert job.status == "failed"
-    assert job.error_message == "Unable to save website: save completed without a website."
+    assert job.error_message == "Failed to load saved website"
 
 
 def test_get_job_status_failed(test_client, test_db):
@@ -178,10 +172,7 @@ def test_get_job_status_reports_stalled_queued_job_when_worker_is_active(
     stale_job = WebsiteProcessingService.create_job(
         test_db, TEST_USER_ID, "https://example.com"
     )
-    stall_age = max(
-        settings.website_worker_lease_seconds,
-        settings.website_save_timeout_seconds,
-    )
+    stall_age = settings.website_worker_lease_seconds
     stale_job.updated_at = datetime.now(UTC) - timedelta(seconds=stall_age + 1)
 
     active_job = WebsiteProcessingService.create_job(
