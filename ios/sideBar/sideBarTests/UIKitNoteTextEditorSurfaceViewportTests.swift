@@ -103,42 +103,6 @@ extension UIKitNoteTextEditorSurfaceTests {
             accuracy: 0.5
         )
     }
-
-    func testSelectionChangeScrollsCaretIntoVisibleViewport() throws {
-        let plainText = (0..<80)
-            .map { index in "Line \(index) body text" }
-            .joined(separator: "\n")
-        let viewModel = NativeNoteEditorViewModel()
-        viewModel.loadDocument(
-            canonicalContent: canonicalUIKitPlainTextPass(plainText),
-            plainText: plainText
-        )
-        let trackingTextView = try XCTUnwrap(
-            mountTextView(
-                viewModel: viewModel,
-                formattingBarPresentation: .floatingTopTrailing,
-                makeTextView: { ScrollTrackingAccessoryTextView() },
-                width: 834,
-                height: 320
-            ) as? ScrollTrackingAccessoryTextView
-        )
-        let targetOffset = NSString(string: plainText).range(of: "Line 79 body text").location
-
-        XCTAssertTrue(trackingTextView.becomeFirstResponder())
-        trackingTextView.setContentOffset(.zero, animated: false)
-        trackingTextView.selectedRange = NSRange(location: targetOffset, length: 0)
-        trackingTextView.delegate?.textViewDidChangeSelection?(trackingTextView)
-        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-
-        let selectionRect = try XCTUnwrap(trackingTextView.selectionRectInContentCoordinates())
-        let visibleViewport = trackingTextView.visibleViewportRect()
-
-        XCTAssertGreaterThan(trackingTextView.contentOffset.y, 0)
-        XCTAssertTrue(
-            visibleViewport.intersects(selectionRect.insetBy(dx: 0, dy: -1)),
-            "viewport=\(visibleViewport) selection=\(selectionRect) contentOffset=\(trackingTextView.contentOffset)"
-        )
-    }
 }
 
 #endif

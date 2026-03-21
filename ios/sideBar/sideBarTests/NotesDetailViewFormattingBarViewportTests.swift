@@ -79,8 +79,151 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         )
     }
 
+    func testVisibleTapSelectionAfterReadToEditKeepsViewportStable() async throws {
+        let plainText = (0..<80)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: plainText))
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(findTextView(in: controller.view))
+        let entryOffset = NSString(string: plainText).range(of: "Line 60 body text").location
+        let tapOffset = NSString(string: plainText).range(of: "Line 58 body text").location
+        let readOffset = max(
+            readTextView.contentSize.height * 0.6,
+            -readTextView.adjustedContentInset.top
+        )
+
+        readTextView.setContentOffset(CGPoint(x: 0, y: readOffset), animated: false)
+        drainNotesHostingRunLoop()
+
+        context.editorViewModel.enterEditMode(at: .characterOffset(entryOffset))
+        drainNotesHostingRunLoop()
+        drainNotesHostingRunLoop()
+
+        let editorTextView = try XCTUnwrap(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            )
+        )
+        let baselineOffset = editorTextView.contentOffset.y
+
+        simulateUIKitTouchSelectionChange(
+            on: editorTextView,
+            to: NSRange(location: tapOffset, length: 0)
+        )
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(editorTextView.selectedRange.location, tapOffset)
+        XCTAssertEqual(editorTextView.contentOffset.y, baselineOffset, accuracy: 1)
+    }
+
+    func testMovingCaretDownPastBottomEdgeScrollsViewport() async throws {
+        let plainText = (0..<80)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: plainText))
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let entryOffset = NSString(string: plainText).range(of: "Line 70 body text").location
+        let nextLineOffset = NSString(string: plainText).range(of: "Line 71 body text").location
+
+        context.editorViewModel.enterEditMode(at: .characterOffset(entryOffset))
+        drainNotesHostingRunLoop()
+        drainNotesHostingRunLoop()
+
+        let editorTextView = try XCTUnwrap(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            ) as? UIKitNoteTextEditorSurface.AccessoryTextView
+        )
+        XCTAssertTrue(editorTextView.becomeFirstResponder())
+        drainNotesHostingRunLoop()
+        editorTextView.layoutIfNeeded()
+        let baselineRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
+        let targetViewportOffset = CGPoint(
+            x: 0,
+            y: max(
+                baselineRect.maxY - editorTextView.visibleViewportRect().height,
+                -editorTextView.adjustedContentInset.top
+            )
+        )
+        editorTextView.setContentOffset(
+            UIKitNoteTextEditorSurface.clampedContentOffset(targetViewportOffset, for: editorTextView),
+            animated: false
+        )
+        drainNotesHostingRunLoop()
+        let baselineViewportOffset = editorTextView.contentOffset.y
+
+        editorTextView.selectedRange = NSRange(location: nextLineOffset, length: 0)
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        let selectionRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
+        let visibleViewport = editorTextView.visibleViewportRect()
+
+        XCTAssertGreaterThan(editorTextView.contentOffset.y, baselineViewportOffset)
+        XCTAssertTrue(
+            visibleViewport.intersects(selectionRect.insetBy(dx: 0, dy: -1)),
+            "viewport=\(visibleViewport) selection=\(selectionRect) contentOffset=\(editorTextView.contentOffset)"
+        )
+    }
+
+    func testMovingCaretUpWithinVisibleViewportKeepsViewportStatic() async throws {
+        let plainText = (0..<80)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: plainText))
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let entryOffset = NSString(string: plainText).range(of: "Line 70 body text").location
+        let previousLineOffset = NSString(string: plainText).range(of: "Line 69 body text").location
+
+        context.editorViewModel.enterEditMode(at: .characterOffset(entryOffset))
+        drainNotesHostingRunLoop()
+        drainNotesHostingRunLoop()
+
+        let editorTextView = try XCTUnwrap(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            ) as? UIKitNoteTextEditorSurface.AccessoryTextView
+        )
+        XCTAssertTrue(editorTextView.becomeFirstResponder())
+        drainNotesHostingRunLoop()
+        editorTextView.layoutIfNeeded()
+        let baselineRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
+        let targetViewportOffset = CGPoint(
+            x: 0,
+            y: max(
+                baselineRect.maxY - editorTextView.visibleViewportRect().height,
+                -editorTextView.adjustedContentInset.top
+            )
+        )
+        editorTextView.setContentOffset(
+            UIKitNoteTextEditorSurface.clampedContentOffset(targetViewportOffset, for: editorTextView),
+            animated: false
+        )
+        drainNotesHostingRunLoop()
+        let baselineViewportOffset = editorTextView.contentOffset.y
+
+        // Let UIKit deliver the real selection-change callback so this path matches
+        // hardware-keyboard caret navigation instead of a duplicated synthetic delegate call.
+        editorTextView.selectedRange = NSRange(location: previousLineOffset, length: 0)
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(
+            editorTextView.contentOffset.y,
+            baselineViewportOffset,
+            accuracy: 1,
+            "current=\(editorTextView.contentOffset) baseline=\(baselineViewportOffset) "
+                + "selection=\(editorTextView.selectedRange) firstResponder=\(editorTextView.isFirstResponder)"
+        )
+    }
+
     func testFloatingPopoverTextStyleTapKeepsViewportStable() async throws {
-        let plainText = (0..<40)
+        let plainText = (0..<120)
             .map { index in "Line \(index) body text" }
             .joined(separator: "\n")
         let nativeViewModel = NativeNoteEditorViewModel()
@@ -88,10 +231,12 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
             canonicalContent: canonicalUIKitPlainTextPass(plainText),
             plainText: plainText
         )
+        let trackingTextView = ViewportTrackingAccessoryTextView()
         let textView = try mountTextView(
             viewModel: nativeViewModel,
             makeKeyAndVisible: true,
             formattingBarPresentation: .floatingTopTrailing,
+            makeTextView: { trackingTextView },
             maxContentWidth: 640,
             width: 500,
             height: 900
@@ -105,11 +250,10 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         window.addSubview(bar)
         bar.setNeedsLayout()
         bar.layoutIfNeeded()
-        let targetOffset = NSString(string: plainText).range(of: "Line 20 body text").location
+        let targetOffset = NSString(string: plainText).range(of: "Line 60 body text").location
         let targetRange = NSRange(location: targetOffset, length: 0)
 
-        textView.selectedRange = targetRange
-        textView.delegate?.textViewDidChangeSelection?(textView)
+        simulateUIKitSelectionChange(on: textView, to: targetRange)
         XCTAssertTrue(textView.becomeFirstResponder())
         textView.layoutIfNeeded()
         textView.setContentOffset(CGPoint(x: 0, y: 360), animated: false)
@@ -130,7 +274,12 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
 
         XCTAssertEqual(textView.selectedRange, targetRange)
         XCTAssertTrue(textView.isFirstResponder)
-        XCTAssertLessThan(abs(textView.contentOffset.y - baselineOffset), 1)
+        XCTAssertLessThan(
+            abs(textView.contentOffset.y - baselineOffset),
+            1,
+            "offset=\(textView.contentOffset) baseline=\(baselineOffset) "
+                + "recordedOffsets=\(trackingTextView.recordedContentOffsets)"
+        )
     }
 
     func testUIKitSurfaceInitialViewportOffsetPersistsThroughAutofocusMount() throws {

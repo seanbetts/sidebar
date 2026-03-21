@@ -20,14 +20,15 @@ extension UIKitNoteTextEditorSurface {
 
     func preservedViewportOffsetIfNeeded(
         for textView: UITextView,
-        selectedRange: NSRange
+        selectedRange: NSRange,
+        preserveAcrossSelectionChange: Bool
     ) -> CGPoint? {
         if let accessoryTextView = textView as? AccessoryTextView,
            accessoryTextView.hasPendingUnappliedInitialViewportOffset {
             return nil
         }
-        guard textView.isFirstResponder else { return nil }
-        guard textView.selectedRange == selectedRange else { return nil }
+        guard textView.window != nil else { return nil }
+        guard preserveAcrossSelectionChange else { return nil }
         return textView.contentOffset
     }
 
@@ -39,6 +40,11 @@ extension UIKitNoteTextEditorSurface {
         guard textView.selectedRange == selectedRange else { return }
         textView.layoutIfNeeded()
         textView.setContentOffset(Self.clampedContentOffset(offset, for: textView), animated: false)
+        (textView as? AccessoryTextView)?.recordStableSelectionViewport()
+        (textView as? AccessoryTextView)?.scheduleDeferredViewportRestoration(
+            to: offset,
+            selectedRange: selectedRange
+        )
     }
 
     static func clampedContentOffset(

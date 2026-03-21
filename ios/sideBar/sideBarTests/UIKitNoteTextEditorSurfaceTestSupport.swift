@@ -96,6 +96,29 @@ func makeUIKitNoteTextEditorSurfaceHostingWindow(frame: CGRect) -> UIWindow {
 }
 
 @MainActor
+func simulateUIKitSelectionChange(
+    on textView: UITextView,
+    to range: NSRange,
+    settleDelay: TimeInterval = 0.01
+) {
+    textView.selectedRange = range
+    RunLoop.main.run(until: Date().addingTimeInterval(settleDelay))
+    textView.delegate?.textViewDidChangeSelection?(textView)
+}
+
+@MainActor
+@available(iOS 26.0, *)
+func simulateUIKitTouchSelectionChange(
+    on textView: UITextView,
+    to range: NSRange,
+    settleDelay: TimeInterval = 0.01
+) {
+    (textView as? UIKitNoteTextEditorSurface.AccessoryTextView)?
+        .markUpcomingSelectionChangeAsDirectTouch()
+    simulateUIKitSelectionChange(on: textView, to: range, settleDelay: settleDelay)
+}
+
+@MainActor
 @available(iOS 26.0, *)
 func mountSurfaceHost(
     viewModel: NativeNoteEditorViewModel,

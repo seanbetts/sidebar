@@ -3,6 +3,14 @@ import UIKit
 
 @available(iOS 26.0, *)
 extension UIKitNoteTextEditorSurface.AccessoryTextView {
+    private enum SelectionMovementDirection {
+        case up
+        case down
+        case none
+    }
+
+    private static let selectionViewportTolerance: CGFloat = 2
+
     var hasPendingUnappliedInitialViewportOffset: Bool {
         pendingInitialViewportOffset != nil && hasAppliedPendingInitialViewportOffset == false
     }
@@ -14,6 +22,26 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
             return
         }
         pendingInitialViewportOffset = offset
+    }
+
+    func recordStableSelectionViewport() {
+        lastStableSelectionRange = selectedRange
+        lastStableViewportOffset = contentOffset
+    }
+
+    override open func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        markUpcomingSelectionChangeAsDirectTouch()
+        super.touchesBegan(touches, with: event)
+    }
+
+    func markUpcomingSelectionChangeAsDirectTouch() {
+        directTouchSelectionChangeDeadline = CACurrentMediaTime() + 0.2
+    }
+
+    func consumeDirectTouchSelectionChange() -> Bool {
+        let isDirectTouchSelectionChange = CACurrentMediaTime() <= directTouchSelectionChangeDeadline
+        directTouchSelectionChangeDeadline = 0
+        return isDirectTouchSelectionChange
     }
 
     func updateKeyboardObservation() {
@@ -111,15 +139,20 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
             return
         }
         hasAppliedPendingInitialViewportOffset = true
+        guard isCurrentSelectionIntersectingViewport() == false else {
+            recordStableSelectionViewport()
+            scheduleInitialViewportVerificationIfNeeded()
+            return
+        }
         guard isCurrentSelectionVisible() else {
             initialViewportVerificationPassesRemaining = 0
             self.pendingInitialViewportOffset = nil
             scrollCurrentSelectionIntoView()
-            scheduleSelectionVisibilityRetryBurst()
+            recordStableSelectionViewport()
             return
         }
+        recordStableSelectionViewport()
         scheduleInitialViewportVerificationIfNeeded()
-        scheduleSelectionVisibilityRetryBurst()
     }
 
     func scheduleInitialViewportVerificationIfNeeded(after delay: TimeInterval = 0) {
@@ -150,8 +183,10 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         guard isStable == false else {
             initialViewportVerificationPassesRemaining = 0
             pendingInitialViewportOffset = nil
-            scrollCurrentSelectionIntoView()
-            scheduleSelectionVisibilityRetryBurst()
+            if isCurrentSelectionIntersectingViewport() == false {
+                scrollCurrentSelectionIntoView()
+            }
+            recordStableSelectionViewport()
             return
         }
 
@@ -184,33 +219,206 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         return .resolved(resolvedOffset)
     }
 
-    private func scheduleSelectionVisibilityRetryBurst() {
-        for delay in [0.0, 0.01, 0.05] {
+    func cancelDeferredViewportAdjustment() {
+        selectionChangeAdjustmentGeneration += 1
+        deferredViewportRestorationGeneration += 1
+        initialViewportVerificationPassesRemaining = 0
+        pendingInitialViewportOffset = nil
+    }
+
+    func scheduleDeferredViewportRestoration(
+        to offset: CGPoint,
+        selectedRange: NSRange
+    ) {
+        deferredViewportRestorationGeneration += 1
+        let generation = deferredViewportRestorationGeneration
+        for delay in [0.0, 0.01, 0.05, 0.1] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                guard let self, self.window != nil else { return }
-                self.scrollCurrentSelectionIntoView()
+                guard let self,
+                      self.window != nil,
+                      self.deferredViewportRestorationGeneration == generation,
+                      self.selectedRange == selectedRange else {
+                    return
+                }
+                self.layoutIfNeeded()
+                self.setContentOffset(
+                    UIKitNoteTextEditorSurface.clampedContentOffset(offset, for: self),
+                    animated: false
+                )
             }
         }
     }
 
+    func scheduleSelectionChangeVisibilityAdjustment(
+        from previousSelectedRange: NSRange,
+        isDirectTouchSelectionChange: Bool
+    ) {
+        selectionChangeAdjustmentGeneration += 1
+        let generation = selectionChangeAdjustmentGeneration
+        let baselineContentOffset = lastStableSelectionRange == previousSelectedRange ?
+            lastStableViewportOffset : contentOffset
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { [weak self] in
+            guard let self,
+                  self.window != nil,
+                  self.selectionChangeAdjustmentGeneration == generation else { return }
+            self.scrollSelectionChangeIntoView(
+                from: previousSelectedRange,
+                baselineContentOffset: baselineContentOffset,
+                isDirectTouchSelectionChange: isDirectTouchSelectionChange
+            )
+        }
+    }
+
+    func scrollSelectionChangeIntoView(
+        from previousSelectedRange: NSRange,
+        baselineContentOffset: CGPoint,
+        isDirectTouchSelectionChange: Bool
+    ) {
+        guard selectedRange.location != NSNotFound else { return }
+        guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else { return }
+
+        let movementDirection = selectionMovementDirection(
+            from: previousSelectedRange,
+            to: selectedRange
+        )
+        let visibleViewport = visibleViewportRect()
+        let baselineViewportOffset = UIKitNoteTextEditorSurface.clampedContentOffset(
+            baselineContentOffset,
+            for: self
+        )
+        if isDirectTouchSelectionChange,
+           isSelectionRectIntersectingViewport(selectionRect, in: visibleViewport) {
+            restoreStableViewportOffsetIfNeeded(
+                baselineViewportOffset,
+                for: movementDirection,
+                selectionRect: selectionRect,
+                visibleViewport: visibleViewport,
+                forceRestore: true
+            )
+            recordStableSelectionViewport()
+            return
+        }
+        if isSelectionRectVisible(selectionRect, in: visibleViewport) {
+            restoreStableViewportOffsetIfNeeded(
+                baselineViewportOffset,
+                for: movementDirection,
+                selectionRect: selectionRect,
+                visibleViewport: visibleViewport,
+                forceRestore: true
+            )
+            recordStableSelectionViewport()
+            return
+        }
+
+        switch movementDirection {
+        case .up:
+            guard selectionRect.minY < visibleViewport.minY - Self.selectionViewportTolerance else {
+                restoreStableViewportOffsetIfNeeded(
+                    baselineViewportOffset,
+                    for: movementDirection,
+                    selectionRect: selectionRect,
+                    visibleViewport: visibleViewport,
+                    forceRestore: true
+                )
+                recordStableSelectionViewport()
+                return
+            }
+        case .down:
+            guard selectionRect.maxY > visibleViewport.maxY + Self.selectionViewportTolerance else {
+                restoreStableViewportOffsetIfNeeded(
+                    baselineViewportOffset,
+                    for: movementDirection,
+                    selectionRect: selectionRect,
+                    visibleViewport: visibleViewport,
+                    forceRestore: true
+                )
+                recordStableSelectionViewport()
+                return
+            }
+        case .none:
+            guard selectionRect.maxY < visibleViewport.minY - Self.selectionViewportTolerance ||
+                    selectionRect.minY > visibleViewport.maxY + Self.selectionViewportTolerance else {
+                restoreStableViewportOffsetIfNeeded(
+                    baselineViewportOffset,
+                    for: movementDirection,
+                    selectionRect: selectionRect,
+                    visibleViewport: visibleViewport,
+                    forceRestore: true
+                )
+                recordStableSelectionViewport()
+                return
+            }
+        }
+
+        scrollSelectionRectIntoView(selectionRect)
+        recordStableSelectionViewport()
+    }
+
     func scrollCurrentSelectionIntoView() {
         guard selectedRange.location != NSNotFound else { return }
-        guard let selectionRect = selectionRectInContentCoordinates() else {
+        guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else {
             scrollRangeToVisible(selectedRange)
             return
         }
+        scrollSelectionRectIntoView(selectionRect)
+    }
+
+    func isCurrentSelectionVisible() -> Bool {
+        guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else { return false }
+        return isSelectionRectVisible(selectionRect, in: visibleViewportRect())
+    }
+
+    func isCurrentSelectionIntersectingViewport() -> Bool {
+        guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else { return false }
+        return isSelectionRectIntersectingViewport(selectionRect, in: visibleViewportRect())
+    }
+
+    func selectionRectInContentCoordinates() -> CGRect? {
+        selectionRectInContentCoordinates(for: selectedRange)
+    }
+
+    func selectionRectInContentCoordinates(for range: NSRange) -> CGRect? {
+        guard range.location != NSNotFound else { return nil }
+        if range.length == 0,
+           let position = position(from: beginningOfDocument, offset: range.location) {
+            return caretRect(for: position)
+        }
+
+        if let textRange = textRange(for: range) {
+            let rect = firstRect(for: textRange)
+            if rect.isNull == false, rect.isEmpty == false {
+                return rect
+            }
+        }
+        return nil
+    }
+
+    func visibleViewportRect() -> CGRect {
+        bounds.inset(by: adjustedContentInset)
+    }
+
+    private func isSelectionRectVisible(_ selectionRect: CGRect, in viewport: CGRect) -> Bool {
+        viewport.contains(
+            selectionRect.insetBy(dx: 0, dy: -Self.selectionViewportTolerance)
+        )
+    }
+
+    private func isSelectionRectIntersectingViewport(_ selectionRect: CGRect, in viewport: CGRect) -> Bool {
+        selectionRect.maxY >= viewport.minY - Self.selectionViewportTolerance &&
+            selectionRect.minY <= viewport.maxY + Self.selectionViewportTolerance
+    }
+
+    private func scrollSelectionRectIntoView(_ selectionRect: CGRect) {
         let visibleViewport = visibleViewportRect()
         if isSelectionRectVisible(selectionRect, in: visibleViewport) {
             return
         }
 
         var targetOffset = contentOffset
-        let verticalMargin = max(Self.baseTextContainerInsets.top, 12)
-
         if selectionRect.minY < visibleViewport.minY {
-            targetOffset.y -= (visibleViewport.minY - selectionRect.minY) + verticalMargin
+            targetOffset.y -= visibleViewport.minY - selectionRect.minY
         } else if selectionRect.maxY > visibleViewport.maxY {
-            targetOffset.y += (selectionRect.maxY - visibleViewport.maxY) + verticalMargin
+            targetOffset.y += selectionRect.maxY - visibleViewport.maxY
         }
 
         setContentOffset(
@@ -219,40 +427,69 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         )
         layoutIfNeeded()
 
-        let targetRect = selectionRect.insetBy(dx: 0, dy: -verticalMargin)
-        if visibleViewportRect().intersects(targetRect) == false {
-            scrollRectToVisible(targetRect, animated: false)
+        if isCurrentSelectionVisible() == false {
+            scrollRectToVisible(selectionRect, animated: false)
         }
     }
 
-    func isCurrentSelectionVisible() -> Bool {
-        guard let selectionRect = selectionRectInContentCoordinates() else { return false }
-        return isSelectionRectVisible(selectionRect, in: visibleViewportRect())
-    }
-
-    func selectionRectInContentCoordinates() -> CGRect? {
-        if let textRange = selectedTextRange {
-            if textRange.isEmpty {
-                return caretRect(for: textRange.start)
+    private func restoreStableViewportOffsetIfNeeded(
+        _ baselineViewportOffset: CGPoint,
+        for movementDirection: SelectionMovementDirection,
+        selectionRect: CGRect,
+        visibleViewport: CGRect,
+        forceRestore: Bool = false
+    ) {
+        if forceRestore {
+            if abs(contentOffset.y - baselineViewportOffset.y) > 0.5 {
+                setContentOffset(baselineViewportOffset, animated: false)
             }
-
-            let rect = firstRect(for: textRange)
-            if rect.isNull == false, rect.isEmpty == false {
-                return rect
-            }
+            scheduleDeferredViewportRestoration(
+                to: baselineViewportOffset,
+                selectedRange: selectedRange
+            )
+            return
         }
 
-        guard selectedRange.location != NSNotFound else { return nil }
-        let glyphRange = layoutManager.glyphRange(forCharacterRange: selectedRange, actualCharacterRange: nil)
-        return layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+        guard abs(contentOffset.y - baselineViewportOffset.y) > 0.5 else { return }
+        let shouldRestore: Bool
+        switch movementDirection {
+        case .up:
+            shouldRestore = contentOffset.y > baselineViewportOffset.y
+        case .down:
+            shouldRestore = contentOffset.y < baselineViewportOffset.y
+        case .none:
+            shouldRestore = isSelectionRectIntersectingViewport(selectionRect, in: visibleViewport)
+        }
+        guard shouldRestore else { return }
+        setContentOffset(baselineViewportOffset, animated: false)
+        scheduleDeferredViewportRestoration(
+            to: baselineViewportOffset,
+            selectedRange: selectedRange
+        )
     }
 
-    func visibleViewportRect() -> CGRect {
-        bounds.inset(by: adjustedContentInset)
+    private func selectionMovementDirection(
+        from previousRange: NSRange,
+        to newRange: NSRange
+    ) -> SelectionMovementDirection {
+        guard previousRange.location != NSNotFound else { return .none }
+        if newRange.location > previousRange.location {
+            return .down
+        }
+        if newRange.location < previousRange.location {
+            return .up
+        }
+        return .none
     }
 
-    private func isSelectionRectVisible(_ selectionRect: CGRect, in viewport: CGRect) -> Bool {
-        viewport.contains(selectionRect.insetBy(dx: 0, dy: -1))
+    private func textRange(for range: NSRange) -> UITextRange? {
+        guard let start = position(from: beginningOfDocument, offset: range.location) else {
+            return nil
+        }
+        guard let end = position(from: start, offset: range.length) else {
+            return nil
+        }
+        return textRange(from: start, to: end)
     }
 }
 #endif

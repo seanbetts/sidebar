@@ -43,6 +43,11 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var hasAppliedPendingInitialViewportOffset = false
         var initialViewportVerificationPassesRemaining = 0
         var isInitialViewportVerificationScheduled = false
+        var selectionChangeAdjustmentGeneration = 0
+        var deferredViewportRestorationGeneration = 0
+        var directTouchSelectionChangeDeadline: CFTimeInterval = 0
+        var lastStableSelectionRange = NSRange(location: NSNotFound, length: 0)
+        var lastStableViewportOffset = CGPoint.zero
         var debugHasAppliedPendingInitialViewportOffset: Bool { hasAppliedPendingInitialViewportOffset }
         var debugPendingInitialViewportOffset: CGPoint? { pendingInitialViewportOffset }
         override var contentSize: CGSize {
@@ -55,6 +60,12 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         override var inputAccessoryView: UIView? {
             get { formattingAccessoryView }
             set { formattingAccessoryView = newValue }
+        }
+
+        override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
+            super.setContentOffset(contentOffset, animated: animated)
+            guard selectedRange == lastStableSelectionRange else { return }
+            lastStableViewportOffset = self.contentOffset
         }
 
         override var keyCommands: [UIKeyCommand]? {
@@ -70,33 +81,13 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             ]
         }
 
-        @objc private func handleTitleCommand() {
-            onTitleCommand?()
-        }
-
-        @objc private func handleHeadingCommand() {
-            onHeadingCommand?()
-        }
-
-        @objc private func handleSubheadingCommand() {
-            onSubheadingCommand?()
-        }
-
-        @objc private func handleBodyCommand() {
-            onBodyCommand?()
-        }
-
-        @objc private func handleBoldCommand() {
-            onBoldCommand?()
-        }
-
-        @objc private func handleItalicCommand() {
-            onItalicCommand?()
-        }
-
-        @objc private func handleUnderlineCommand() {
-            onUnderlineCommand?()
-        }
+        @objc private func handleTitleCommand() { onTitleCommand?() }
+        @objc private func handleHeadingCommand() { onHeadingCommand?() }
+        @objc private func handleSubheadingCommand() { onSubheadingCommand?() }
+        @objc private func handleBodyCommand() { onBodyCommand?() }
+        @objc private func handleBoldCommand() { onBoldCommand?() }
+        @objc private func handleItalicCommand() { onItalicCommand?() }
+        @objc private func handleUnderlineCommand() { onUnderlineCommand?() }
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
@@ -235,11 +226,13 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             baseFontSize: viewModel.baseFontSize
         )
         let selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
+        let isProgrammaticRenderUpdate = context.coordinator.lastAppliedRenderSignature != renderSignature
         let preservedViewportOffset = preservedViewportOffsetIfNeeded(
             for: textView,
-            selectedRange: selectedRange
+            selectedRange: selectedRange,
+            preserveAcrossSelectionChange: isProgrammaticRenderUpdate
         )
-        if context.coordinator.lastAppliedRenderSignature != renderSignature {
+        if isProgrammaticRenderUpdate {
             let attributedText = bridgedAttributedText(from: viewModel.attributedContent)
             context.coordinator.isApplyingProgrammaticText = true
             textView.attributedText = attributedText
@@ -357,8 +350,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
     final class Coordinator: NSObject, UITextViewDelegate {
         let viewModel: NativeNoteEditorViewModel
-        var isApplyingProgrammaticText = false
-        var isApplyingProgrammaticSelection = false
+        var isApplyingProgrammaticText = false, isApplyingProgrammaticSelection = false
         fileprivate var lastAppliedRenderSignature: RenderSignature?
 
         init(viewModel: NativeNoteEditorViewModel) {
@@ -367,6 +359,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingProgrammaticText else { return }
+            (textView as? AccessoryTextView)?.cancelDeferredViewportAdjustment()
 
             isApplyingProgrammaticText = true
             viewModel.replaceAttributedContent(
@@ -381,19 +374,25 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
-            guard !isApplyingProgrammaticText else { return }
-            guard !isApplyingProgrammaticSelection else { return }
+            guard !isApplyingProgrammaticText, !isApplyingProgrammaticSelection else { return }
+            (textView as? AccessoryTextView)?.cancelDeferredViewportAdjustment()
 
+            let previousSelectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
             let selection = viewModel.selection(
                 fromUTF16Range: textView.selectedRange,
                 in: viewModel.attributedContent
             )
-            guard selection != viewModel.selection else { return }
-            viewModel.selection = selection
-            viewModel.handleSelectionChange()
+            if selection != viewModel.selection {
+                viewModel.selection = selection
+                viewModel.handleSelectionChange()
+            }
             if let accessoryTextView = textView as? AccessoryTextView,
                accessoryTextView.isFirstResponder {
-                accessoryTextView.scrollCurrentSelectionIntoView()
+                let isDirectTouchSelectionChange = accessoryTextView.consumeDirectTouchSelectionChange()
+                accessoryTextView.scheduleSelectionChangeVisibilityAdjustment(
+                    from: previousSelectedRange,
+                    isDirectTouchSelectionChange: isDirectTouchSelectionChange
+                )
             }
         }
 
@@ -402,6 +401,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
+            (textView as? AccessoryTextView)?.cancelDeferredViewportAdjustment()
             let selection = viewModel.selection(fromUTF16Range: range, in: viewModel.attributedContent)
             if selection != viewModel.selection {
                 viewModel.selection = selection
