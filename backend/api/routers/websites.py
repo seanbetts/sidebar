@@ -285,6 +285,7 @@ def get_job_status(
         if website:
             result["website"] = website_detail_payload(website)
         else:
+            WebsiteProcessingService.fail_completed_job_without_website(db, job.id)
             result["status"] = "failed"
             result["error"] = {
                 "message": WebsiteProcessingService._COMPLETED_MISSING_WEBSITE_MESSAGE

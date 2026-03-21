@@ -74,6 +74,43 @@ def test_get_job_status_completed_without_website_is_not_completed(
     )
 
 
+def test_get_job_status_marks_completed_job_failed_when_canonical_website_missing(
+    test_client, test_db, monkeypatch
+):
+    """GET /websites/jobs/{id} marks the job failed if the canonical website cannot reload."""
+    from api.routers import websites as websites_router
+
+    job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+    WebsiteProcessingService.update_job(
+        test_db,
+        job.id,
+        status="completed",
+        website_id=uuid4(),
+    )
+
+    monkeypatch.setattr(
+        websites_router.WebsitesService,
+        "get_website",
+        lambda *_args, **_kwargs: None,
+    )
+
+    response = test_client.get(
+        f"/api/websites/jobs/{job.id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "failed"
+    assert (
+        data["error"]["message"]
+        == "Unable to save website: save completed without a website."
+    )
+    test_db.refresh(job)
+    assert job.status == "failed"
+    assert job.error_message == "Unable to save website: save completed without a website."
+
+
 def test_get_job_status_failed(test_client, test_db):
     """GET /websites/jobs/{id} returns error details when failed."""
     job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
