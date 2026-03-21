@@ -6,12 +6,31 @@ import UIKit
 
 #if os(iOS)
 final class PlatformContextMenuTests: XCTestCase {
-    func testUIKitContextMenuIsDisabledOnIPhone() {
-        XCTAssertFalse(shouldUseUIKitContextMenu(on: .phone))
+    func testUIKitContextMenuIsEnabledOnIPhoneForDestructiveMenus() {
+        XCTAssertTrue(
+            shouldUseUIKitContextMenu(
+                on: .phone,
+                items: [.delete {}]
+            )
+        )
     }
 
-    func testUIKitContextMenuIsDisabledOnIPad() {
-        XCTAssertFalse(shouldUseUIKitContextMenu(on: .pad))
+    func testUIKitContextMenuStaysDisabledOnIPhoneForNonDestructiveMenus() {
+        XCTAssertFalse(
+            shouldUseUIKitContextMenu(
+                on: .phone,
+                items: [.copy {}]
+            )
+        )
+    }
+
+    func testUIKitContextMenuStaysDisabledOnIPadForDestructiveMenus() {
+        XCTAssertFalse(
+            shouldUseUIKitContextMenu(
+                on: .pad,
+                items: [.delete {}]
+            )
+        )
     }
 }
 #endif
