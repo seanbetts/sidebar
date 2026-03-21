@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from api.config import settings
 from api.services.website_processing_service import WebsiteProcessingService
+from api.services.websites_service import WebsitesService
 
 
 TEST_USER_ID = os.environ["TEST_USER_ID"]
@@ -30,10 +31,17 @@ def test_get_job_status_queued(test_client, test_db):
 
 
 def test_get_job_status_completed(test_client, test_db):
-    """GET /websites/jobs/{id} returns completed status."""
+    """GET /websites/jobs/{id} returns completed status with website payload."""
     job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+    website = WebsitesService.save_website(
+        test_db,
+        TEST_USER_ID,
+        url="https://example.com",
+        title="Example",
+        content="Saved content",
+    )
     WebsiteProcessingService.update_job(
-        test_db, job.id, status="completed", website_id=None
+        test_db, job.id, status="completed", website_id=website.id
     )
     response = test_client.get(
         f"/api/websites/jobs/{job.id}",
@@ -42,6 +50,25 @@ def test_get_job_status_completed(test_client, test_db):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "completed"
+    assert data["website"]["id"] == str(website.id)
+
+
+def test_get_job_status_completed_without_website_is_not_completed(
+    test_client, test_db
+):
+    """GET /websites/jobs/{id} never reports completed without a website payload."""
+    job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+    WebsiteProcessingService.update_job(test_db, job.id, status="completed")
+
+    response = test_client.get(
+        f"/api/websites/jobs/{job.id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "stalled"
+    assert data["error"]["message"] == "Website save stalled before completion. Try again."
 
 
 def test_get_job_status_failed(test_client, test_db):
@@ -136,6 +163,22 @@ def test_get_job_status_reports_stalled_queued_job_when_worker_is_active(
     assert data["error"]["message"] == "Website save is still waiting for a worker. Try again."
 
 
+def test_get_job_status_reports_canceled_job(test_client, test_db):
+    """GET /websites/jobs/{id} returns canceled as a terminal status."""
+    job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+    WebsiteProcessingService.cancel_job(test_db, TEST_USER_ID, job.id)
+
+    response = test_client.get(
+        f"/api/websites/jobs/{job.id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "canceled"
+    assert "website" not in data
+
+
 def test_get_job_status_not_found(test_client):
     """GET /websites/jobs/{id} returns 404 for unknown job."""
     response = test_client.get(
@@ -176,6 +219,21 @@ def test_update_job_does_not_override_canceled_status(test_db):
 
     test_db.refresh(job)
     assert job.status == "canceled"
+
+
+def test_status_for_client_uses_worker_lease_for_queued_jobs(monkeypatch, test_db):
+    """Queued jobs should become stalled based on worker lease, not the larger save timeout."""
+    monkeypatch.setattr(settings, "website_worker_lease_seconds", 60)
+    monkeypatch.setattr(settings, "website_save_timeout_seconds", 300)
+
+    job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+    job.updated_at = datetime.now(UTC) - timedelta(seconds=90)
+    test_db.commit()
+
+    status, error = WebsiteProcessingService.status_for_client(job)
+
+    assert status == "stalled"
+    assert error == "Website save is still waiting for a worker. Try again."
 
 
 def test_update_job_clears_worker_metadata_for_failed_jobs(test_db):

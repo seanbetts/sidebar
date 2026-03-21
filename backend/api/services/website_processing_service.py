@@ -102,10 +102,7 @@ class WebsiteProcessingService:
         ):
             return "stalled", WebsiteProcessingService._PROCESSING_STALLED_MESSAGE
 
-        queued_stall_seconds = max(
-            settings.website_worker_lease_seconds,
-            settings.website_save_timeout_seconds,
-        )
+        queued_stall_seconds = settings.website_worker_lease_seconds
         if (
             job.status == "queued"
             and (now - job.updated_at).total_seconds() > queued_stall_seconds

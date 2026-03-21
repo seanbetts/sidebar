@@ -276,12 +276,20 @@ def get_job_status(
     client_status, client_error = WebsiteProcessingService.status_for_client(job)
     result: dict = {"job_id": str(job.id), "status": client_status}
 
-    if client_status == "completed" and job.website_id:
-        website = WebsitesService.get_website(
-            db, user_id, job.website_id, mark_opened=False
+    if client_status == "completed":
+        website = (
+            WebsitesService.get_website(db, user_id, job.website_id, mark_opened=False)
+            if job.website_id
+            else None
         )
         if website:
             result["website"] = website_detail_payload(website)
+        else:
+            result["status"] = "stalled"
+            result["error"] = {
+                "message": WebsiteProcessingService._PROCESSING_STALLED_MESSAGE
+            }
+            return result
 
     if client_status in {"failed", "stalled"} and client_error:
         result["error"] = {"message": client_error}
