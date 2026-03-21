@@ -4,20 +4,6 @@ import UIKit
 
 @available(iOS 26.0, *)
 extension UIKitNoteTextEditorSurface {
-    static func resolvedBottomViewportInset(
-        textViewBounds: CGRect,
-        keyboardFrameInView: CGRect?,
-        accessoryHeight: CGFloat
-    ) -> CGFloat {
-        guard let keyboardFrameInView,
-              keyboardFrameInView.intersects(textViewBounds) else {
-            return 0
-        }
-
-        let overlap = max(textViewBounds.maxY - keyboardFrameInView.minY, 0)
-        return max(overlap + accessoryHeight, 0)
-    }
-
     func preservedViewportOffsetIfNeeded(
         for textView: UITextView,
         selectedRange: NSRange,
@@ -41,10 +27,6 @@ extension UIKitNoteTextEditorSurface {
         textView.layoutIfNeeded()
         textView.setContentOffset(Self.clampedContentOffset(offset, for: textView), animated: false)
         (textView as? AccessoryTextView)?.recordStableSelectionViewport()
-        (textView as? AccessoryTextView)?.scheduleDeferredViewportRestoration(
-            to: offset,
-            selectedRange: selectedRange
-        )
     }
 
     static func clampedContentOffset(

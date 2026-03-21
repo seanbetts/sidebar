@@ -38,14 +38,9 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 applyPendingInitialViewportOffsetIfNeeded()
             }
         }
-        var keyboardObservers: [NSObjectProtocol] = []
-        var keyboardFrameInScreen: CGRect?
         var hasAppliedPendingInitialViewportOffset = false
         var initialViewportVerificationPassesRemaining = 0
         var isInitialViewportVerificationScheduled = false
-        var selectionChangeAdjustmentGeneration = 0
-        var deferredViewportRestorationGeneration = 0
-        var directTouchSelectionChangeDeadline: CFTimeInterval = 0
         var lastStableSelectionRange = NSRange(location: NSNotFound, length: 0)
         var lastStableViewportOffset = CGPoint.zero
         var debugHasAppliedPendingInitialViewportOffset: Bool { hasAppliedPendingInitialViewportOffset }
@@ -91,7 +86,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
-            updateKeyboardObservation()
             applyPendingInitialViewportOffsetIfNeeded()
             guard shouldAutofocus, window != nil, isFirstResponder == false else { return }
             scheduleAutofocusRetryBurst()
@@ -104,10 +98,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 self?.applyPendingInitialViewportOffsetIfNeeded()
             }
             return true
-        }
-
-        deinit {
-            removeKeyboardObservers()
         }
 
         override func layoutSubviews() {
@@ -148,6 +138,29 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
     }
 
+    final class EditorContainerView: UIView {
+        let textView: AccessoryTextView
+
+        init(textView: AccessoryTextView) {
+            self.textView = textView
+            super.init(frame: .zero)
+            backgroundColor = .clear
+            textView.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(textView)
+            NSLayoutConstraint.activate([
+                textView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                textView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                textView.topAnchor.constraint(equalTo: topAnchor),
+                textView.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor)
+            ])
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+    }
+
     @ObservedObject var viewModel: NativeNoteEditorViewModel
     let maxContentWidth: CGFloat
     let isEditable: Bool
@@ -181,7 +194,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         Coordinator(viewModel: viewModel)
     }
 
-    func makeUIView(context: Context) -> UITextView {
+    func makeUIView(context: Context) -> EditorContainerView {
         let textView = makeTextView?() ?? AccessoryTextView()
         textView.isEditable = isEditable
         textView.allowsEditingTextAttributes = false
@@ -199,27 +212,26 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 configuration: formattingBarConfiguration
             )
         }
-        return textView
+        return EditorContainerView(textView: textView)
     }
 
-    func updateUIView(_ textView: UITextView, context: Context) {
+    func updateUIView(_ containerView: EditorContainerView, context: Context) {
+        let textView = containerView.textView
         textView.isEditable = isEditable
-        if let accessoryTextView = textView as? AccessoryTextView {
-            accessoryTextView.shouldAutofocus = isEditable && shouldAutofocus
-            accessoryTextView.maxReadableContentWidth = maxContentWidth
-            accessoryTextView.updatePendingInitialViewportOffset(initialViewportOffset)
-            if isEditable, shouldAutofocus, accessoryTextView.window != nil, accessoryTextView.isFirstResponder == false {
-                DispatchQueue.main.async {
-                    accessoryTextView.scheduleAutofocusRetryBurst()
-                }
+        textView.shouldAutofocus = isEditable && shouldAutofocus
+        textView.maxReadableContentWidth = maxContentWidth
+        textView.updatePendingInitialViewportOffset(initialViewportOffset)
+        if isEditable, shouldAutofocus, textView.window != nil, textView.isFirstResponder == false {
+            DispatchQueue.main.async {
+                textView.scheduleAutofocusRetryBurst()
             }
-            let needsAccessoryReload = configureFormattingUI(
-                for: accessoryTextView,
-                configuration: formattingBarConfiguration
-            )
-            if needsAccessoryReload, accessoryTextView.isFirstResponder {
-                accessoryTextView.reloadInputViews()
-            }
+        }
+        let needsAccessoryReload = configureFormattingUI(
+            for: textView,
+            configuration: formattingBarConfiguration
+        )
+        if needsAccessoryReload, textView.isFirstResponder {
+            textView.reloadInputViews()
         }
         let renderSignature = RenderSignature(
             renderGeneration: viewModel.renderGeneration,
@@ -258,17 +270,16 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 selectedRange: selectedRange
             )
         }
-        if let accessoryTextView = textView as? AccessoryTextView {
-            accessoryTextView.applyPendingInitialViewportOffsetIfNeeded()
-            if accessoryTextView.pendingInitialViewportOffset != nil {
-                DispatchQueue.main.async { [weak accessoryTextView] in
-                    accessoryTextView?.applyPendingInitialViewportOffsetIfNeeded()
-                }
+        textView.applyPendingInitialViewportOffsetIfNeeded()
+        if textView.pendingInitialViewportOffset != nil {
+            DispatchQueue.main.async { [weak textView] in
+                textView?.applyPendingInitialViewportOffsetIfNeeded()
             }
         }
     }
 
-    static func dismantleUIView(_ textView: UITextView, coordinator: Void) {
+    static func dismantleUIView(_ containerView: EditorContainerView, coordinator: Void) {
+        let textView = containerView.textView
         if textView.isFirstResponder {
             textView.resignFirstResponder()
         }

@@ -113,8 +113,6 @@ func simulateUIKitTouchSelectionChange(
     to range: NSRange,
     settleDelay: TimeInterval = 0.01
 ) {
-    (textView as? UIKitNoteTextEditorSurface.AccessoryTextView)?
-        .markUpcomingSelectionChangeAsDirectTouch()
     simulateUIKitSelectionChange(on: textView, to: range, settleDelay: settleDelay)
 }
 

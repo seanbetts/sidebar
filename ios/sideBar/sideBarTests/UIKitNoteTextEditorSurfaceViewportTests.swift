@@ -21,27 +21,22 @@ extension UIKitNoteTextEditorSurfaceTests {
         XCTAssertEqual(textView.textContainerInset.bottom, NoteTextLayout.verticalPadding)
     }
 
-    func testKeyboardViewportInsetAddsKeyboardOverlapAndAccessoryHeight() {
-        let bottomInset = UIKitNoteTextEditorSurface.resolvedBottomViewportInset(
-            textViewBounds: CGRect(x: 0, y: 0, width: 360, height: 640),
-            keyboardFrameInView: CGRect(x: 0, y: 420, width: 360, height: 220),
-            accessoryHeight: 56
+    func testMountedSurfaceUsesKeyboardLayoutContainer() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarPresentation: .floatingTopTrailing,
+            height: 320
         )
 
-        XCTAssertEqual(bottomInset, 276, accuracy: 0.5)
+        XCTAssertTrue(textView.superview is UIKitNoteTextEditorSurface.EditorContainerView)
     }
 
-    func testKeyboardViewportInsetIgnoresNonIntersectingKeyboardFrames() {
-        let bottomInset = UIKitNoteTextEditorSurface.resolvedBottomViewportInset(
-            textViewBounds: CGRect(x: 0, y: 0, width: 360, height: 640),
-            keyboardFrameInView: CGRect(x: 0, y: 700, width: 360, height: 220),
-            accessoryHeight: 56
-        )
-
-        XCTAssertEqual(bottomInset, 0, accuracy: 0.5)
-    }
-
-    func testViewportInsetChangeDoesNotScrollWhenSelectionAlreadyVisible() throws {
+    func testKeyboardNotificationDoesNotChangeViewportInsetsWhenLayoutOwnsKeyboardSpace() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalUIKitPlainTextPass(
@@ -49,21 +44,30 @@ extension UIKitNoteTextEditorSurfaceTests {
             ),
             plainText: Array(repeating: "Visible line", count: 40).joined(separator: "\n")
         )
-        let topInsertion = viewModel.attributedContent.startIndex
-        viewModel.selection = AttributedTextSelection(range: topInsertion..<topInsertion)
-        let trackingTextView = ScrollTrackingAccessoryTextView()
-        let textView = try XCTUnwrap(
+        let trackingTextView = try XCTUnwrap(
             mountTextView(
                 viewModel: viewModel,
                 formattingBarPresentation: .floatingTopTrailing,
-                makeTextView: { trackingTextView },
+                makeTextView: { UIKitNoteTextEditorSurface.AccessoryTextView() },
                 height: 320
-            ) as? ScrollTrackingAccessoryTextView
+            ) as? UIKitNoteTextEditorSurface.AccessoryTextView
         )
-        let baselineScrollCallCount = textView.scrollRangeToVisibleCallCount
-        let keyboardFrameInView = CGRect(x: 0, y: 280, width: textView.bounds.width, height: 40)
-        let keyboardFrameInWindow = textView.convert(keyboardFrameInView, to: textView.window)
-        let keyboardFrameInScreen = textView.window?.convert(keyboardFrameInWindow, to: nil) ?? keyboardFrameInWindow
+        let baselineContentInset = trackingTextView.contentInset
+        let baselineIndicatorInsets = trackingTextView.verticalScrollIndicatorInsets
+        let keyboardFrameInView = CGRect(
+            x: 0,
+            y: 280,
+            width: trackingTextView.bounds.width,
+            height: 40
+        )
+        let keyboardFrameInWindow = trackingTextView.convert(
+            keyboardFrameInView,
+            to: trackingTextView.window
+        )
+        let keyboardFrameInScreen = trackingTextView.window?.convert(
+            keyboardFrameInWindow,
+            to: nil
+        ) ?? keyboardFrameInWindow
 
         NotificationCenter.default.post(
             name: UIResponder.keyboardWillChangeFrameNotification,
@@ -74,7 +78,11 @@ extension UIKitNoteTextEditorSurfaceTests {
         )
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
 
-        XCTAssertEqual(textView.scrollRangeToVisibleCallCount, baselineScrollCallCount)
+        XCTAssertEqual(trackingTextView.contentInset, baselineContentInset)
+        XCTAssertEqual(
+            trackingTextView.verticalScrollIndicatorInsets,
+            baselineIndicatorInsets
+        )
     }
 
     func testWideIPadSurfaceKeepsTextViewFullWidthAndCentersReadableColumn() throws {

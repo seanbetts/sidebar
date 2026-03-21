@@ -3,12 +3,6 @@ import UIKit
 
 @available(iOS 26.0, *)
 extension UIKitNoteTextEditorSurface.AccessoryTextView {
-    private enum SelectionMovementDirection {
-        case up
-        case down
-        case none
-    }
-
     private static let selectionViewportTolerance: CGFloat = 2
 
     var hasPendingUnappliedInitialViewportOffset: Bool {
@@ -29,71 +23,8 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         lastStableViewportOffset = contentOffset
     }
 
-    override open func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        markUpcomingSelectionChangeAsDirectTouch()
-        super.touchesBegan(touches, with: event)
-    }
-
-    func markUpcomingSelectionChangeAsDirectTouch() {
-        directTouchSelectionChangeDeadline = CACurrentMediaTime() + 0.2
-    }
-
-    func consumeDirectTouchSelectionChange() -> Bool {
-        let isDirectTouchSelectionChange = CACurrentMediaTime() <= directTouchSelectionChangeDeadline
-        directTouchSelectionChangeDeadline = 0
-        return isDirectTouchSelectionChange
-    }
-
-    func updateKeyboardObservation() {
-        removeKeyboardObservers()
-        guard window != nil else {
-            keyboardFrameInScreen = nil
-            updateViewportInsets()
-            return
-        }
-
-        let center = NotificationCenter.default
-        keyboardObservers = [
-            center.addObserver(
-                forName: UIResponder.keyboardWillChangeFrameNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] notification in
-                self?.handleKeyboardNotification(notification)
-            },
-            center.addObserver(
-                forName: UIResponder.keyboardWillHideNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                self?.keyboardFrameInScreen = nil
-                self?.updateViewportInsets()
-            }
-        ]
-        updateViewportInsets()
-    }
-
-    func removeKeyboardObservers() {
-        let center = NotificationCenter.default
-        keyboardObservers.forEach(center.removeObserver)
-        keyboardObservers.removeAll()
-    }
-
-    func handleKeyboardNotification(_ notification: Notification) {
-        guard let frameValue = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue else {
-            return
-        }
-        keyboardFrameInScreen = frameValue.cgRectValue
-        updateViewportInsets()
-    }
-
     func updateViewportInsets() {
-        let keyboardInset = UIKitNoteTextEditorSurface.resolvedBottomViewportInset(
-            textViewBounds: bounds,
-            keyboardFrameInView: resolvedKeyboardFrameInView(),
-            accessoryHeight: resolvedAccessoryHeight()
-        )
-        let bottomInset = keyboardInset + Self.baseTextContainerInsets.bottom
+        let bottomInset = Self.baseTextContainerInsets.bottom
         let previousBottomInset = contentInset.bottom
         contentInset.bottom = bottomInset
         var indicatorInsets = verticalScrollIndicatorInsets
@@ -101,7 +32,6 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         verticalScrollIndicatorInsets = indicatorInsets
 
         guard abs(previousBottomInset - bottomInset) > 0.5 else { return }
-        scrollCurrentSelectionIntoView()
     }
 
     func updateTextContainerInsets() {
@@ -114,18 +44,6 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         )
         guard textContainerInset != resolvedInsets else { return }
         textContainerInset = resolvedInsets
-    }
-
-    func resolvedKeyboardFrameInView() -> CGRect? {
-        guard let keyboardFrameInScreen,
-              let window else { return nil }
-        let keyboardFrameInWindow = window.convert(keyboardFrameInScreen, from: nil)
-        return convert(keyboardFrameInWindow, from: window)
-    }
-
-    func resolvedAccessoryHeight() -> CGFloat {
-        guard formattingAccessoryView != nil, isFirstResponder else { return 0 }
-        return formattingAccessoryView?.bounds.height ?? 0
     }
 
     func applyPendingInitialViewportOffsetIfNeeded() {
@@ -219,141 +137,6 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         return .resolved(resolvedOffset)
     }
 
-    func cancelDeferredViewportAdjustment() {
-        selectionChangeAdjustmentGeneration += 1
-        deferredViewportRestorationGeneration += 1
-        initialViewportVerificationPassesRemaining = 0
-        pendingInitialViewportOffset = nil
-    }
-
-    func scheduleDeferredViewportRestoration(
-        to offset: CGPoint,
-        selectedRange: NSRange
-    ) {
-        deferredViewportRestorationGeneration += 1
-        let generation = deferredViewportRestorationGeneration
-        for delay in [0.0, 0.01, 0.05, 0.1] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                guard let self,
-                      self.window != nil,
-                      self.deferredViewportRestorationGeneration == generation,
-                      self.selectedRange == selectedRange else {
-                    return
-                }
-                self.layoutIfNeeded()
-                self.setContentOffset(
-                    UIKitNoteTextEditorSurface.clampedContentOffset(offset, for: self),
-                    animated: false
-                )
-            }
-        }
-    }
-
-    func scheduleSelectionChangeVisibilityAdjustment(
-        from previousSelectedRange: NSRange,
-        isDirectTouchSelectionChange: Bool
-    ) {
-        selectionChangeAdjustmentGeneration += 1
-        let generation = selectionChangeAdjustmentGeneration
-        let baselineContentOffset = lastStableSelectionRange == previousSelectedRange ?
-            lastStableViewportOffset : contentOffset
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { [weak self] in
-            guard let self,
-                  self.window != nil,
-                  self.selectionChangeAdjustmentGeneration == generation else { return }
-            self.scrollSelectionChangeIntoView(
-                from: previousSelectedRange,
-                baselineContentOffset: baselineContentOffset,
-                isDirectTouchSelectionChange: isDirectTouchSelectionChange
-            )
-        }
-    }
-
-    func scrollSelectionChangeIntoView(
-        from previousSelectedRange: NSRange,
-        baselineContentOffset: CGPoint,
-        isDirectTouchSelectionChange: Bool
-    ) {
-        guard selectedRange.location != NSNotFound else { return }
-        guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else { return }
-
-        let movementDirection = selectionMovementDirection(
-            from: previousSelectedRange,
-            to: selectedRange
-        )
-        let visibleViewport = visibleViewportRect()
-        let baselineViewportOffset = UIKitNoteTextEditorSurface.clampedContentOffset(
-            baselineContentOffset,
-            for: self
-        )
-        if isDirectTouchSelectionChange,
-           isSelectionRectIntersectingViewport(selectionRect, in: visibleViewport) {
-            restoreStableViewportOffsetIfNeeded(
-                baselineViewportOffset,
-                for: movementDirection,
-                selectionRect: selectionRect,
-                visibleViewport: visibleViewport,
-                forceRestore: true
-            )
-            recordStableSelectionViewport()
-            return
-        }
-        if isSelectionRectVisible(selectionRect, in: visibleViewport) {
-            restoreStableViewportOffsetIfNeeded(
-                baselineViewportOffset,
-                for: movementDirection,
-                selectionRect: selectionRect,
-                visibleViewport: visibleViewport,
-                forceRestore: true
-            )
-            recordStableSelectionViewport()
-            return
-        }
-
-        switch movementDirection {
-        case .up:
-            guard selectionRect.minY < visibleViewport.minY - Self.selectionViewportTolerance else {
-                restoreStableViewportOffsetIfNeeded(
-                    baselineViewportOffset,
-                    for: movementDirection,
-                    selectionRect: selectionRect,
-                    visibleViewport: visibleViewport,
-                    forceRestore: true
-                )
-                recordStableSelectionViewport()
-                return
-            }
-        case .down:
-            guard selectionRect.maxY > visibleViewport.maxY + Self.selectionViewportTolerance else {
-                restoreStableViewportOffsetIfNeeded(
-                    baselineViewportOffset,
-                    for: movementDirection,
-                    selectionRect: selectionRect,
-                    visibleViewport: visibleViewport,
-                    forceRestore: true
-                )
-                recordStableSelectionViewport()
-                return
-            }
-        case .none:
-            guard selectionRect.maxY < visibleViewport.minY - Self.selectionViewportTolerance ||
-                    selectionRect.minY > visibleViewport.maxY + Self.selectionViewportTolerance else {
-                restoreStableViewportOffsetIfNeeded(
-                    baselineViewportOffset,
-                    for: movementDirection,
-                    selectionRect: selectionRect,
-                    visibleViewport: visibleViewport,
-                    forceRestore: true
-                )
-                recordStableSelectionViewport()
-                return
-            }
-        }
-
-        scrollSelectionRectIntoView(selectionRect)
-        recordStableSelectionViewport()
-    }
-
     func scrollCurrentSelectionIntoView() {
         guard selectedRange.location != NSNotFound else { return }
         guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else {
@@ -430,56 +213,6 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         if isCurrentSelectionVisible() == false {
             scrollRectToVisible(selectionRect, animated: false)
         }
-    }
-
-    private func restoreStableViewportOffsetIfNeeded(
-        _ baselineViewportOffset: CGPoint,
-        for movementDirection: SelectionMovementDirection,
-        selectionRect: CGRect,
-        visibleViewport: CGRect,
-        forceRestore: Bool = false
-    ) {
-        if forceRestore {
-            if abs(contentOffset.y - baselineViewportOffset.y) > 0.5 {
-                setContentOffset(baselineViewportOffset, animated: false)
-            }
-            scheduleDeferredViewportRestoration(
-                to: baselineViewportOffset,
-                selectedRange: selectedRange
-            )
-            return
-        }
-
-        guard abs(contentOffset.y - baselineViewportOffset.y) > 0.5 else { return }
-        let shouldRestore: Bool
-        switch movementDirection {
-        case .up:
-            shouldRestore = contentOffset.y > baselineViewportOffset.y
-        case .down:
-            shouldRestore = contentOffset.y < baselineViewportOffset.y
-        case .none:
-            shouldRestore = isSelectionRectIntersectingViewport(selectionRect, in: visibleViewport)
-        }
-        guard shouldRestore else { return }
-        setContentOffset(baselineViewportOffset, animated: false)
-        scheduleDeferredViewportRestoration(
-            to: baselineViewportOffset,
-            selectedRange: selectedRange
-        )
-    }
-
-    private func selectionMovementDirection(
-        from previousRange: NSRange,
-        to newRange: NSRange
-    ) -> SelectionMovementDirection {
-        guard previousRange.location != NSNotFound else { return .none }
-        if newRange.location > previousRange.location {
-            return .down
-        }
-        if newRange.location < previousRange.location {
-            return .up
-        }
-        return .none
     }
 
     private func textRange(for range: NSRange) -> UITextRange? {
