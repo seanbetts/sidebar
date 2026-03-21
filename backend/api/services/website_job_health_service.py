@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import sentry_sdk
@@ -25,6 +26,7 @@ class WebsiteJobHealthService:
         db: Session,
         user_id: str,
         *,
+        job_id: uuid.UUID | None = None,
         queued_ttl_seconds: int = 120,
         worker_heartbeat_ttl_seconds: int = 45,
     ) -> int:
@@ -47,31 +49,35 @@ class WebsiteJobHealthService:
             return 0
 
         queued_cutoff = now - timedelta(seconds=queued_ttl_seconds)
-        stale_jobs = (
-            db.query(WebsiteProcessingJob)
-            .filter(
-                WebsiteProcessingJob.user_id == user_id,
-                WebsiteProcessingJob.status == "queued",
-                WebsiteProcessingJob.updated_at <= queued_cutoff,
-            )
-            .all()
+        stale_jobs = db.query(WebsiteProcessingJob).filter(
+            WebsiteProcessingJob.user_id == user_id,
+            WebsiteProcessingJob.status == "queued",
+            WebsiteProcessingJob.updated_at <= queued_cutoff,
         )
-        if not stale_jobs:
-            return 0
+        if job_id is not None:
+            stale_jobs = stale_jobs.filter(WebsiteProcessingJob.id == job_id)
 
-        for job in stale_jobs:
-            job.status = "failed"
-            job.error_message = WebsiteJobHealthService._WORKER_UNAVAILABLE_MESSAGE
-            job.lease_expires_at = None
-            job.worker_id = None
-            job.updated_at = now
+        updated = stale_jobs.update(
+            {
+                WebsiteProcessingJob.status: "failed",
+                WebsiteProcessingJob.error_message: (
+                    WebsiteJobHealthService._WORKER_UNAVAILABLE_MESSAGE
+                ),
+                WebsiteProcessingJob.lease_expires_at: None,
+                WebsiteProcessingJob.worker_id: None,
+                WebsiteProcessingJob.updated_at: now,
+            },
+            synchronize_session=False,
+        )
+        if updated == 0:
+            return 0
         db.commit()
         logger.error(
             "Website worker unavailable for user_id=%s; failing %s stale queued jobs",
             user_id,
-            len(stale_jobs),
+            updated,
         )
         sentry_sdk.capture_message(
             "Website worker unavailable for stale queued jobs", level="error"
         )
-        return len(stale_jobs)
+        return updated

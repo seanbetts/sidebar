@@ -95,7 +95,7 @@ class WebsiteProcessingService:
     def fail_completed_job_without_website(
         db: Session,
         job_id: uuid.UUID,
-    ) -> None:
+    ) -> WebsiteProcessingJob | None:
         """Mark a completed job as failed when its canonical website is missing."""
         WebsiteProcessingService.update_job(
             db,
@@ -103,6 +103,14 @@ class WebsiteProcessingService:
             status="failed",
             error_message=WebsiteProcessingService._COMPLETED_MISSING_WEBSITE_MESSAGE,
         )
+        job = (
+            db.query(WebsiteProcessingJob)
+            .filter(WebsiteProcessingJob.id == job_id)
+            .first()
+        )
+        if job:
+            db.refresh(job)
+        return job
 
     @staticmethod
     def status_for_client(job: WebsiteProcessingJob) -> tuple[str, str | None]:

@@ -262,13 +262,18 @@ def get_job_status(
     Raises:
         NotFoundError: If job does not exist for this user.
     """
+    job = WebsiteProcessingService.get_job(db, user_id, job_id)
+    if not job:
+        raise NotFoundError("Job", str(job_id))
+
     WebsiteJobHealthService.fail_stale_queued_jobs_when_worker_unavailable(
         db,
         user_id,
-        queued_ttl_seconds=settings.website_save_timeout_seconds,
+        job_id=job.id,
+        queued_ttl_seconds=settings.website_worker_lease_seconds,
         worker_heartbeat_ttl_seconds=settings.website_worker_heartbeat_seconds * 3,
     )
-
+    db.expire_all()
     job = WebsiteProcessingService.get_job(db, user_id, job_id)
     if not job:
         raise NotFoundError("Job", str(job_id))
@@ -278,18 +283,36 @@ def get_job_status(
 
     if client_status == "completed":
         website = (
-            WebsitesService.get_website(db, user_id, job.website_id, mark_opened=False)
+            WebsitesService.get_website(
+                db,
+                user_id,
+                job.website_id,
+                mark_opened=False,
+                include_deleted=True,
+            )
             if job.website_id
             else None
         )
         if website:
             result["website"] = website_detail_payload(website)
         else:
-            WebsiteProcessingService.fail_completed_job_without_website(db, job.id)
-            result["status"] = "failed"
-            result["error"] = {
-                "message": WebsiteProcessingService._COMPLETED_MISSING_WEBSITE_MESSAGE
-            }
+            repaired_job = WebsiteProcessingService.fail_completed_job_without_website(
+                db, job.id
+            )
+            if repaired_job:
+                repaired_status, repaired_error = (
+                    WebsiteProcessingService.status_for_client(repaired_job)
+                )
+                result["status"] = repaired_status
+                if repaired_error:
+                    result["error"] = {"message": repaired_error}
+            else:
+                result["status"] = "failed"
+                result["error"] = {
+                    "message": (
+                        WebsiteProcessingService._COMPLETED_MISSING_WEBSITE_MESSAGE
+                    )
+                }
             return result
 
     if client_status in {"failed", "stalled"} and client_error:

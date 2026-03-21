@@ -53,6 +53,36 @@ def test_get_job_status_completed(test_client, test_db):
     assert data["website"]["id"] == str(website.id)
 
 
+def test_get_job_status_completed_includes_soft_deleted_website_payload(
+    test_client, test_db
+):
+    """GET /websites/jobs/{id} keeps completed jobs immutable after soft delete."""
+    job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+    website = WebsitesService.save_website(
+        test_db,
+        TEST_USER_ID,
+        url="https://example.com",
+        title="Example",
+        content="Saved content",
+    )
+    WebsitesService.delete_website(test_db, TEST_USER_ID, website.id)
+    WebsiteProcessingService.update_job(
+        test_db, job.id, status="completed", website_id=website.id
+    )
+
+    response = test_client.get(
+        f"/api/websites/jobs/{job.id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "completed"
+    assert data["website"]["id"] == str(website.id)
+    test_db.refresh(job)
+    assert job.status == "completed"
+
+
 def test_get_job_status_completed_without_website_is_not_completed(
     test_client, test_db
 ):
@@ -145,10 +175,61 @@ def test_get_job_status_reports_stalled_processing_job(test_client, test_db):
     assert data["error"]["message"] == "Website save stalled before completion. Try again."
 
 
-def test_get_job_status_reports_stalled_queued_job(test_client, test_db):
-    """GET /websites/jobs/{id} reports failed when the worker appears unavailable."""
+def test_get_job_status_fails_queued_job_when_worker_unavailable(test_client, test_db):
+    """GET /websites/jobs/{id} fails queued jobs when no worker heartbeat exists."""
     job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
     job.updated_at = datetime.now(UTC) - timedelta(minutes=5)
+    test_db.commit()
+
+    response = test_client.get(
+        f"/api/websites/jobs/{job.id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "failed"
+    assert (
+        data["error"]["message"]
+        == "Website processing is temporarily unavailable. Please retry in a few minutes."
+    )
+
+
+def test_get_job_status_only_fails_requested_job_when_worker_unavailable(
+    test_client, test_db
+):
+    """GET /websites/jobs/{id} should not rewrite unrelated queued jobs."""
+    requested_job = WebsiteProcessingService.create_job(
+        test_db, TEST_USER_ID, "https://example.com/requested"
+    )
+    requested_job.updated_at = datetime.now(UTC) - timedelta(minutes=5)
+    other_job = WebsiteProcessingService.create_job(
+        test_db, TEST_USER_ID, "https://example.com/other"
+    )
+    other_job.updated_at = datetime.now(UTC) - timedelta(minutes=5)
+    test_db.commit()
+
+    response = test_client.get(
+        f"/api/websites/jobs/{requested_job.id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "failed"
+    test_db.refresh(other_job)
+    assert other_job.status == "queued"
+    assert other_job.error_message is None
+
+
+def test_get_job_status_fails_queued_job_after_worker_lease_without_heartbeat(
+    test_client, test_db, monkeypatch
+):
+    """GET /websites/jobs/{id} fails queued jobs once worker health is stale."""
+    monkeypatch.setattr(settings, "website_worker_lease_seconds", 60)
+    monkeypatch.setattr(settings, "website_save_timeout_seconds", 300)
+    job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+    job.updated_at = datetime.now(UTC) - timedelta(seconds=90)
     test_db.commit()
 
     response = test_client.get(
@@ -192,6 +273,34 @@ def test_get_job_status_reports_stalled_queued_job_when_worker_is_active(
     data = response.json()
     assert data["status"] == "stalled"
     assert data["error"]["message"] == "Website save is still waiting for a worker. Try again."
+
+
+def test_get_job_status_preserves_canceled_status_when_missing_website_fallback_cannot_fail(
+    test_client, test_db, monkeypatch
+):
+    """GET /websites/jobs/{id} should honor cancel races over fallback failure repair."""
+    job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
+    WebsiteProcessingService.update_job(test_db, job.id, status="completed")
+
+    def cancel_instead(_db, _job_id):
+        WebsiteProcessingService.cancel_job(test_db, TEST_USER_ID, job.id)
+        return WebsiteProcessingService.get_job(test_db, TEST_USER_ID, job.id)
+
+    monkeypatch.setattr(
+        WebsiteProcessingService,
+        "fail_completed_job_without_website",
+        cancel_instead,
+    )
+
+    response = test_client.get(
+        f"/api/websites/jobs/{job.id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "canceled"
+    assert "error" not in data
 
 
 def test_get_job_status_reports_canceled_job(test_client, test_db):
