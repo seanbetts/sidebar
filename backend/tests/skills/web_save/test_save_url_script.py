@@ -279,6 +279,86 @@ def test_save_url_database_antibot_jina_blocked_content(monkeypatch):
     assert err.payload["code"] == "WEB_SAVE_BLOCKED_SITE"
 
 
+def test_save_url_database_antibot_jina_reuters_shell_content_is_rejected(
+    monkeypatch,
+):
+    module = _load_save_url_module()
+    captured = _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        LocalParseFallbackError(
+            fallback="jina",
+            rule_id="antibot-fetch-challenge",
+            antibot_detection=AntibotDetection(
+                "generic", "captcha-delivery.com challenge"
+            ),
+            stage="fetch",
+        )
+    )
+    module.get_markdown_content = lambda _url, _key: (
+        "Title: Exclusive: OpenAI courts private equity to join enterprise AI venture, sources say | Reuters\n"
+        "URL Source: https://www.reuters.com/business/openai-courts-private-equity-join-enterprise-ai-venture-sources-say-2026-03-16/\n"
+        "Markdown Content:\n"
+        "[Purchase Licensing Rights](https://www.reutersagency.com/en/licensereuterscontent/)\n\n"
+        "[Milana Vinn](https://www.reuters.com/authors/milana-vinn/)\n"
+        "Thomson Reuters\n\n"
+        "Milana Vinn reports on technology, media, and telecom (TMT) mergers and acquisitions.\n\n"
+        "## Read Next\n\n"
+        "* [Another story](https://www.reuters.com/technology/example)\n\n"
+        "## [Business](https://www.reuters.com/business/)\n\n"
+        "* [Rail story](https://www.reuters.com/business/finance/example)\n\n"
+        "### About Reuters\n\n"
+        "Reuters, the news and media division of Thomson Reuters, is the world's largest multimedia news provider.\n\n"
+        "### LSEG Products\n\n"
+        "* [Workspace](https://www.lseg.com/en/data-analytics/products/workspace)\n"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": (
+                "Exclusive: OpenAI courts private equity to join enterprise AI venture, "
+                "sources say | Reuters"
+            ),
+            "url_source": (
+                "https://www.reuters.com/business/"
+                "openai-courts-private-equity-join-enterprise-ai-venture-sources-say-2026-03-16/"
+            ),
+            "published_time": None,
+        },
+        (
+            "[Purchase Licensing Rights](https://www.reutersagency.com/en/licensereuterscontent/)\n\n"
+            "[Milana Vinn](https://www.reuters.com/authors/milana-vinn/)\n"
+            "Thomson Reuters\n\n"
+            "Milana Vinn reports on technology, media, and telecom (TMT) mergers and acquisitions.\n\n"
+            "## Read Next\n\n"
+            "* [Another story](https://www.reuters.com/technology/example)\n\n"
+            "## [Business](https://www.reuters.com/business/)\n\n"
+            "* [Rail story](https://www.reuters.com/business/finance/example)\n\n"
+            "### About Reuters\n\n"
+            "Reuters, the news and media division of Thomson Reuters, is the world's largest multimedia news provider.\n\n"
+            "### LSEG Products\n\n"
+            "* [Workspace](https://www.lseg.com/en/data-analytics/products/workspace)\n"
+        ),
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    with pytest.raises(module.WebSaveScriptError) as exc_info:
+        module.save_url_database(
+            "https://www.reuters.com/business/openai-courts-private-equity-join-enterprise-ai-venture-sources-say-2026-03-16/",
+            "user-1",
+        )
+
+    err = exc_info.value
+    assert err.payload["code"] == "WEB_SAVE_BLOCKED_SITE"
+    assert "upsert_kwargs" not in captured
+
+
 def test_save_url_database_antibot_jina_timeout(monkeypatch):
     module = _load_save_url_module()
     _stub_db_dependencies(module)

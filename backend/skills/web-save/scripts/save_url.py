@@ -146,6 +146,20 @@ _JINA_TRUNCATION_MARKERS = (
     "sign in to continue reading",
     "article appears truncated",
 )
+_REUTERS_SHELL_MARKERS = (
+    "purchase licensing rights",
+    "read next",
+    "about reuters",
+    "lseg products",
+    "information you can trust",
+    "follow us",
+    "site index",
+)
+_REUTERS_BIO_MARKERS = (
+    "thomson reuters",
+    "reports on ",
+    "correspondent at reuters",
+)
 
 
 class WebSaveScriptError(Exception):
@@ -330,6 +344,45 @@ def _summarize_markdown(content: str) -> dict[str, int]:
         "truncation_hits": _count_truncation_markers(content),
         "link_density_pct": int((links / max(word_count, 1)) * 100),
     }
+
+
+def _count_reuters_prose_blocks(content: str) -> int:
+    blocks = [block.strip() for block in re.split(r"\n\s*\n", content) if block.strip()]
+    prose_blocks = 0
+    for block in blocks:
+        normalized = " ".join(block.split())
+        lowered = normalized.lower()
+        if any(marker in lowered for marker in _REUTERS_SHELL_MARKERS):
+            continue
+        if any(marker in lowered for marker in _REUTERS_BIO_MARKERS):
+            continue
+        if normalized.startswith(("#", "*", "-", "![", "[")):
+            continue
+        if normalized.count("](") >= 2:
+            continue
+        word_count = len(normalized.split())
+        if word_count < 12:
+            continue
+        prose_blocks += 1
+    return prose_blocks
+
+
+def _is_low_quality_reuters_fallback(
+    *,
+    source: str,
+    cleaned_content: str,
+    summary: dict[str, int],
+) -> bool:
+    host = urlparse(source).netloc.lower().strip(".")
+    if host.startswith("www."):
+        host = host[4:]
+    if host != "reuters.com":
+        return False
+
+    lowered = cleaned_content.lower()
+    shell_hits = sum(lowered.count(marker) for marker in _REUTERS_SHELL_MARKERS)
+    prose_blocks = _count_reuters_prose_blocks(cleaned_content)
+    return shell_hits >= 3 and prose_blocks < 3 and summary["link_density_pct"] >= 3
 
 
 def get_markdown_content(url: str, api_key: str) -> str:
@@ -566,6 +619,40 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 wsj_flags["truncated"],
                 wsj_flags["paywalled"],
             )
+            if _is_low_quality_reuters_fallback(
+                source=source,
+                cleaned_content=cleaned_content,
+                summary=cleaned_summary,
+            ):
+                logger.info(
+                    (
+                        "web-save fallback rejected source=%s provider=jina "
+                        "reason=low_quality_reuters_shell clean_noise=%s "
+                        "link_density_pct=%s prose_blocks=%s"
+                    ),
+                    source,
+                    cleaned_summary["noise_hits"],
+                    cleaned_summary["link_density_pct"],
+                    _count_reuters_prose_blocks(cleaned_content),
+                )
+                raise WebSaveScriptError(
+                    "FetchError",
+                    classify_web_save_failure(
+                        upstream_error_type="FetchError",
+                        upstream_message=(
+                            "Jina fallback returned low-quality Reuters shell content"
+                        ),
+                        url=url,
+                        target_url=target_url,
+                        mode=web_save_mode,
+                        local_parse_error=local_parse_error,
+                        local_antibot_detection=local_antibot_detection,
+                        local_antibot_stage=local_antibot_stage,
+                        local_antibot_rule_id=local_antibot_rule_id,
+                        upstream_antibot_detection=None,
+                        fallback_outcome="blocked_content",
+                    ),
+                )
             frontmatter = build_frontmatter(
                 cleaned_content,
                 meta={
