@@ -285,9 +285,9 @@ def get_job_status(
         if website:
             result["website"] = website_detail_payload(website)
         else:
-            result["status"] = "stalled"
+            result["status"] = "failed"
             result["error"] = {
-                "message": WebsiteProcessingService._PROCESSING_STALLED_MESSAGE
+                "message": WebsiteProcessingService._COMPLETED_MISSING_WEBSITE_MESSAGE
             }
             return result
 

@@ -56,7 +56,7 @@ def test_get_job_status_completed(test_client, test_db):
 def test_get_job_status_completed_without_website_is_not_completed(
     test_client, test_db
 ):
-    """GET /websites/jobs/{id} never reports completed without a website payload."""
+    """GET /websites/jobs/{id} fails if completion has no website payload."""
     job = WebsiteProcessingService.create_job(test_db, TEST_USER_ID, "https://example.com")
     WebsiteProcessingService.update_job(test_db, job.id, status="completed")
 
@@ -67,8 +67,11 @@ def test_get_job_status_completed_without_website_is_not_completed(
 
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "stalled"
-    assert data["error"]["message"] == "Website save stalled before completion. Try again."
+    assert data["status"] == "failed"
+    assert (
+        data["error"]["message"]
+        == "Unable to save website: save completed without a website."
+    )
 
 
 def test_get_job_status_failed(test_client, test_db):

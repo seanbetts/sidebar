@@ -16,6 +16,9 @@ class WebsiteProcessingService:
 
     _PROCESSING_STALLED_MESSAGE = "Website save stalled before completion. Try again."
     _QUEUED_STALLED_MESSAGE = "Website save is still waiting for a worker. Try again."
+    _COMPLETED_MISSING_WEBSITE_MESSAGE = (
+        "Unable to save website: save completed without a website."
+    )
 
     @staticmethod
     def create_job(db: Session, user_id: str, url: str) -> WebsiteProcessingJob:
