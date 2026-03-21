@@ -359,7 +359,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingProgrammaticText else { return }
-            (textView as? AccessoryTextView)?.cancelDeferredViewportAdjustment()
 
             isApplyingProgrammaticText = true
             viewModel.replaceAttributedContent(
@@ -375,9 +374,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isApplyingProgrammaticText, !isApplyingProgrammaticSelection else { return }
-            (textView as? AccessoryTextView)?.cancelDeferredViewportAdjustment()
 
-            let previousSelectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
             let selection = viewModel.selection(
                 fromUTF16Range: textView.selectedRange,
                 in: viewModel.attributedContent
@@ -386,14 +383,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 viewModel.selection = selection
                 viewModel.handleSelectionChange()
             }
-            if let accessoryTextView = textView as? AccessoryTextView,
-               accessoryTextView.isFirstResponder {
-                let isDirectTouchSelectionChange = accessoryTextView.consumeDirectTouchSelectionChange()
-                accessoryTextView.scheduleSelectionChangeVisibilityAdjustment(
-                    from: previousSelectedRange,
-                    isDirectTouchSelectionChange: isDirectTouchSelectionChange
-                )
-            }
         }
 
         func textView(
@@ -401,7 +390,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
-            (textView as? AccessoryTextView)?.cancelDeferredViewportAdjustment()
             let selection = viewModel.selection(fromUTF16Range: range, in: viewModel.attributedContent)
             if selection != viewModel.selection {
                 viewModel.selection = selection
