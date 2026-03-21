@@ -17,10 +17,13 @@ extension NativeNoteEditorViewModel {
         let typingBlockType: NotesSemanticDocument.BlockType
     }
 
+    func shouldHandleStructuralTextReplacement(_ replacementText: String) -> Bool {
+        !isReadOnly && replacementText.contains("\n")
+    }
+
     @discardableResult
     func handleTextReplacement(_ replacementText: String) -> Bool {
-        guard !isReadOnly else { return false }
-        guard replacementText.contains("\n") else { return false }
+        guard shouldHandleStructuralTextReplacement(replacementText) else { return false }
 
         guard let selectionRange = primarySelectionCharacterRange(in: attributedContent) else { return false }
         if selectionRange.isEmpty, replacementText == "\n" {

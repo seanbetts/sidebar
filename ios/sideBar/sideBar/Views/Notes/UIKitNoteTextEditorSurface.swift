@@ -401,13 +401,14 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
+            guard viewModel.shouldHandleStructuralTextReplacement(text) else { return true }
+
             let selection = viewModel.selection(fromUTF16Range: range, in: viewModel.attributedContent)
             if selection != viewModel.selection {
                 viewModel.selection = selection
                 viewModel.handleSelectionChange()
             }
 
-            guard text.contains("\n") else { return true }
             guard viewModel.handleTextReplacement(text) else { return true }
 
             applyCurrentEditorState(to: textView)
