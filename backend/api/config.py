@@ -164,6 +164,9 @@ class Settings(BaseSettings):
 
     # Website processing worker
     website_worker_concurrency: int = 4
+    playwright_render_concurrency: int = int(
+        os.getenv("PLAYWRIGHT_RENDER_CONCURRENCY", "1")
+    )
     website_save_timeout_seconds: int = 120
     website_worker_poll_seconds: int = 2
     website_worker_heartbeat_seconds: int = 15

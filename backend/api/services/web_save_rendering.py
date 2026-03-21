@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 import os
+import threading
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 from urllib.parse import urlparse
 
+from api.config import settings
 from api.services.web_save_antibot import AntibotDetection, detect_antibot_html
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_rules import Rule
 
 _DEFAULT_PLAYWRIGHT_BROWSERS_PATH = Path("/ms-playwright")
+_PLAYWRIGHT_RENDER_SEMAPHORE_LOCK = threading.Lock()
+_playwright_render_limit: int | None = None
+_playwright_render_semaphore: threading.BoundedSemaphore | None = None
 
 
 @dataclass(frozen=True)
@@ -100,6 +106,29 @@ def configure_playwright_browsers_path(
     return None
 
 
+def _get_playwright_render_semaphore() -> threading.BoundedSemaphore:
+    """Return a process-wide semaphore for Playwright-backed renders."""
+    global _playwright_render_limit, _playwright_render_semaphore
+
+    limit = max(1, settings.playwright_render_concurrency)
+    with _PLAYWRIGHT_RENDER_SEMAPHORE_LOCK:
+        if _playwright_render_semaphore is None or _playwright_render_limit != limit:
+            _playwright_render_limit = limit
+            _playwright_render_semaphore = threading.BoundedSemaphore(limit)
+        return _playwright_render_semaphore
+
+
+@contextmanager
+def limit_playwright_renders():
+    """Serialize heavyweight Playwright renders within the worker process."""
+    semaphore = _get_playwright_render_semaphore()
+    semaphore.acquire()
+    try:
+        yield
+    finally:
+        semaphore.release()
+
+
 def resolve_auto_render_wait_until(html: str) -> str | None:
     """Return the Playwright wait mode for special auto-render cases."""
     if has_unrendered_substack_native_video(html):
@@ -148,7 +177,7 @@ def render_html_with_playwright(
     except ImportError as exc:  # pragma: no cover - depends on optional dependency
         raise RuntimeError("Playwright is not installed") from exc
 
-    with sync_playwright() as playwright:
+    with limit_playwright_renders(), sync_playwright() as playwright:
         try:
             browser = playwright.chromium.launch(headless=True, channel="chrome")
         except Exception:

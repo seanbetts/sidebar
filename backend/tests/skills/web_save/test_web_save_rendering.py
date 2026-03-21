@@ -1,7 +1,10 @@
 import os
 import sys
+import threading
+import time
 from types import ModuleType
 
+from api.config import settings
 from api.services import web_save_rendering
 import pytest
 
@@ -282,3 +285,88 @@ def test_render_html_with_playwright_skips_browser_close_on_navigation_timeout(
 
     assert "browser_close" not in ops
     assert "playwright_exit" in ops
+
+
+def test_render_html_with_playwright_serializes_concurrent_renders(monkeypatch):
+    max_active = 0
+    active = 0
+    lock = threading.Lock()
+    completed: list[tuple[str, str]] = []
+    failures: list[BaseException] = []
+
+    monkeypatch.setattr(settings, "playwright_render_concurrency", 1, raising=False)
+
+    class FakePage:
+        def goto(self, *args, **kwargs):
+            nonlocal active, max_active
+            with lock:
+                active += 1
+                max_active = max(max_active, active)
+            time.sleep(0.05)
+            with lock:
+                active -= 1
+
+        def wait_for_selector(self, *args, **kwargs):
+            return None
+
+        def content(self) -> str:
+            return "<html></html>"
+
+        def title(self) -> str:
+            return "Rendered"
+
+        @property
+        def url(self) -> str:
+            return "https://example.com/rendered"
+
+    class FakeContext:
+        def new_page(self) -> FakePage:
+            return FakePage()
+
+    class FakeBrowser:
+        def new_context(self, *, user_agent: str | None = None):
+            return FakeContext()
+
+        def close(self) -> None:
+            return None
+
+    class FakeChromium:
+        def launch(self, *args, **kwargs):
+            return FakeBrowser()
+
+    class FakePlaywright:
+        chromium = FakeChromium()
+
+    class FakeSyncPlaywright:
+        def __enter__(self) -> FakePlaywright:
+            return FakePlaywright()
+
+        def __exit__(self, exc_type, exc, traceback) -> bool:
+            return False
+
+    fake_sync_module = ModuleType("playwright.sync_api")
+    fake_sync_module.sync_playwright = lambda: FakeSyncPlaywright()
+    fake_sync_module.TimeoutError = TimeoutError
+    fake_playwright_module = ModuleType("playwright")
+    fake_playwright_module.sync_api = fake_sync_module
+
+    monkeypatch.setitem(sys.modules, "playwright", fake_playwright_module)
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", fake_sync_module)
+
+    def run_render() -> None:
+        try:
+            completed.append(
+                web_save_rendering.render_html_with_playwright("https://example.com")
+            )
+        except BaseException as exc:  # pragma: no cover - assertion handled below
+            failures.append(exc)
+
+    threads = [threading.Thread(target=run_render) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert failures == []
+    assert len(completed) == 2
+    assert max_active == 1
