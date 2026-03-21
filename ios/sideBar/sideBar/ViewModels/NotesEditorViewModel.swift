@@ -306,6 +306,9 @@ public final class NotesEditorViewModel: ObservableObject {
         pendingEditSelectionTarget = target
         presentationMode = .edit
     }
+    func pendingEditSelectionTargetForCurrentEditSession() -> PendingEditSelectionTarget? {
+        pendingEditSelectionTarget
+    }
     public func consumePendingEditSelectionTarget() -> PendingEditSelectionTarget? {
         defer { pendingEditSelectionTarget = nil }; return pendingEditSelectionTarget
     }

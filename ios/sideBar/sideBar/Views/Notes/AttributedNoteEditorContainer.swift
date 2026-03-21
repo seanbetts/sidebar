@@ -125,6 +125,9 @@ struct AttributedNoteEditorContainer: View {
             canonicalContent: editorViewModel.canonicalContent,
             plainText: editorViewModel.content
         )
+        if let pendingSelectionTarget = editorViewModel.pendingEditSelectionTargetForCurrentEditSession() {
+            nativeViewModel.applySelectionTarget(pendingSelectionTarget)
+        }
 
         return noteId
     }

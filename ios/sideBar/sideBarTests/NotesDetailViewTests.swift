@@ -279,6 +279,11 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         )
 
         XCTAssertEqual(loadedNoteId, "n1")
+        assertInsertionPointUTF16Offset(
+            nativeViewModel.selection,
+            in: nativeViewModel.attributedContent,
+            equals: 5
+        )
         XCTAssertEqual(
             context.editorViewModel.consumePendingEditSelectionTarget(),
             .characterOffset(5)
