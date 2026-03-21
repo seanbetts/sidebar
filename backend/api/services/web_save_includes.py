@@ -192,11 +192,22 @@ def apply_include_reinsertion(
         insertion = find_insertion_point(extracted_tree, cloned, original_dom, node)
         if insertion and last_inserted is not None:
             parent, index = insertion
-            order = _element_order(extracted_tree)
-            prev_elem = parent[index - 1] if index > 0 else parent
-            if order.get(id(prev_elem), -1) < order.get(id(last_inserted), -1):
-                last_parent = last_inserted.getparent()
-                if last_parent is not None:
+            last_parent = last_inserted.getparent()
+            if last_parent is parent:
+                last_index = parent.index(last_inserted)
+                if index <= last_index:
+                    insertion = (parent, last_index + 1)
+            else:
+                order = _element_order(extracted_tree)
+                prev_elem = parent[index - 1] if index > 0 else parent
+                prev_order = order.get(id(prev_elem), -1)
+                last_order = order.get(id(last_inserted), -1)
+                if (
+                    prev_order != -1
+                    and last_order != -1
+                    and prev_order < last_order
+                    and last_parent is not None
+                ):
                     insertion = (last_parent, last_parent.index(last_inserted) + 1)
         if insertion:
             parent, index = insertion

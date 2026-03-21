@@ -2155,12 +2155,50 @@ def test_apply_include_reinsertion_uses_ancestor_siblings_for_position():
         include_selectors=[".duet--article--gallery"],
         removal_rules=[],
     )
+    before_index = updated.find("Before")
+    between_index = updated.find("Between")
     g1_index = updated.find("G1")
     g2_index = updated.find("G2")
-    # Both galleries must be reinserted, G1 before G2
-    assert g1_index != -1, "G1 gallery not reinserted"
-    assert g2_index != -1, "G2 gallery not reinserted"
-    assert g1_index < g2_index, "galleries should preserve original order"
+    after_index = updated.find("After")
+    assert before_index < g1_index < between_index < g2_index < after_index
+
+
+def test_apply_include_reinsertion_preserves_figure_order_with_repeated_anchors():
+    extracted_html = "<article><p>Repeat</p><p>Repeat</p><p>After</p></article>"
+    original_html = """
+    <html>
+      <body>
+        <article>
+          <p>Repeat</p>
+          <figure class="img-block">
+            <img src="https://example.com/a.jpg" alt="A" />
+            <figcaption>Image A</figcaption>
+          </figure>
+          <p>Repeat</p>
+          <figure class="img-block">
+            <img src="https://example.com/b.jpg" alt="B" />
+            <figcaption>Image B</figcaption>
+          </figure>
+          <p>After</p>
+        </article>
+      </body>
+    </html>
+    """
+    original_dom = lxml_html.fromstring(original_html)
+    updated = web_save_includes.apply_include_reinsertion(
+        extracted_html,
+        original_dom,
+        include_selectors=[".img-block"],
+        removal_rules=[],
+    )
+
+    first_repeat = updated.find("<p>Repeat</p>")
+    second_repeat = updated.find("<p>Repeat</p>", first_repeat + 1)
+    image_a_index = updated.find("Image A")
+    image_b_index = updated.find("Image B")
+    after_index = updated.find("After")
+
+    assert first_repeat < image_a_index < image_b_index < second_repeat < after_index
 
 
 def test_apply_include_reinsertion_prefers_nearest_ancestor_sibling_paragraph():
