@@ -6,6 +6,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+from urllib.parse import urlparse
 
 from api.services.web_save_antibot import AntibotDetection, detect_antibot_html
 from api.services.web_save_constants import USER_AGENT
@@ -112,6 +113,19 @@ def resolve_auto_render_wait_until(html: str) -> str | None:
 
 def should_auto_render_url(url: str, html: str, *, is_playwright_allowed) -> bool:
     """Return whether auto-rendering should run for the current page."""
+    host = urlparse(url).netloc.lower().strip(".")
+    if host.startswith("www."):
+        host = host[4:]
+
+    # Verge article pages already expose parseable body components in the
+    # initial HTML, so forcing Playwright on raw YouTube embed markers only
+    # adds latency without improving extraction quality.
+    if (
+        host.endswith("theverge.com")
+        and "duet--article--article-body-component" in html.lower()
+    ):
+        return False
+
     if has_unrendered_youtube_embed(html) or has_unrendered_substack_native_video(html):
         return True
     return resolve_auto_render_wait_until(html) is not None and is_playwright_allowed(

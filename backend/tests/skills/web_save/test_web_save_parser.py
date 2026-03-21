@@ -3037,6 +3037,42 @@ def test_parse_url_local_auto_rendering_skips_when_playwright_fails(monkeypatch)
     assert "Local parser should keep this when auto rendering fails." in parsed.content
 
 
+def test_parse_url_local_skips_auto_render_for_verge_article_body(monkeypatch):
+    html = """
+    <html>
+      <head><title>Verge Article</title></head>
+      <body>
+        <div class="duet--article--article-body-component">
+          <p>Verge article body.</p>
+          <div data-provider="youtube">https://www.youtube.com/embed/abc123xyzAA</div>
+        </div>
+      </body>
+    </html>
+    """
+    render_called = False
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.theverge.com/news/123", False
+
+    def fake_render(
+        url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"
+    ):
+        nonlocal render_called
+        render_called = True
+        return html, url
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "render_html_with_playwright", fake_render)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local("https://www.theverge.com/news/123")
+
+    assert render_called is False
+    assert "Verge article body." in parsed.content
+
+
 def test_parse_url_local_includes_hero_image(monkeypatch):
     html = """
     <html>
