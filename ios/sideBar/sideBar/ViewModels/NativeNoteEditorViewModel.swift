@@ -8,7 +8,11 @@ import SwiftUI
 public final class NativeNoteEditorViewModel: ObservableObject {
     @Published public var attributedContent: AttributedString = AttributedString() {
         didSet {
-            renderGeneration &+= 1
+            if suppressNextRenderGenerationIncrement {
+                suppressNextRenderGenerationIncrement = false
+            } else {
+                renderGeneration &+= 1
+            }
             cachedPersistenceSnapshot = nil
             cachedPersistenceSnapshotGeneration = nil
         }
@@ -30,6 +34,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     var lastHandledContentSourceGeneration: Int = 0
     var lastHandledSelectionSourceGeneration: Int = 0
     var lastSelectionLineSpan: ClosedRange<Int>?
+    var suppressNextRenderGenerationIncrement = false
     private(set) var renderGeneration: UInt64 = 0
     var onPersistenceSnapshotComputedForTesting: (() -> Void)?
     var cachedPersistenceSnapshot: PersistenceSnapshot?

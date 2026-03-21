@@ -48,6 +48,29 @@ extension NativeNoteEditorViewModel {
         _ text: NSAttributedString,
         selectedUTF16Range: NSRange
     ) {
+        replaceAttributedContent(
+            text,
+            selectedUTF16Range: selectedUTF16Range,
+            advancesRenderGeneration: true
+        )
+    }
+
+    func replaceAttributedContentFromLiveTextView(
+        _ text: NSAttributedString,
+        selectedUTF16Range: NSRange
+    ) {
+        replaceAttributedContent(
+            text,
+            selectedUTF16Range: selectedUTF16Range,
+            advancesRenderGeneration: false
+        )
+    }
+
+    private func replaceAttributedContent(
+        _ text: NSAttributedString,
+        selectedUTF16Range: NSRange,
+        advancesRenderGeneration: Bool
+    ) {
         let previousContent = attributedContent
         let previousSelection = selection
         var updatedContent = (try? AttributedString(text, including: \.noteTextEditor))
@@ -57,6 +80,7 @@ extension NativeNoteEditorViewModel {
 
         guard updatedContent != previousContent || updatedSelection != previousSelection else { return }
 
+        suppressNextRenderGenerationIncrement = !advancesRenderGeneration
         attributedContent = updatedContent
         selection = updatedSelection
         handleContentChange(previous: previousContent)

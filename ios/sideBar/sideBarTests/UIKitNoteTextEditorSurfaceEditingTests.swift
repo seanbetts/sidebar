@@ -404,6 +404,7 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
             ) as? AttributeMutationTrackingTextView
         )
         let initialAssignmentCount = textView.attributedTextAssignmentCount
+        let initialRenderGeneration = viewModel.renderGeneration
 
         textView.text = "Hello updated"
         textView.selectedRange = NSRange(location: 13, length: 0)
@@ -411,6 +412,16 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
 
         XCTAssertEqual(textView.attributedTextAssignmentCount, initialAssignmentCount + 1)
+        XCTAssertEqual(viewModel.renderGeneration, initialRenderGeneration)
+        XCTAssertEqual(String(viewModel.attributedContent.characters), "Hello updated")
+        XCTAssertEqual(
+            viewModel.selection,
+            viewModel.selection(
+                fromUTF16Range: NSRange(location: 13, length: 0),
+                in: viewModel.attributedContent
+            )
+        )
+        XCTAssertTrue(viewModel.hasUnsavedChanges)
     }
 }
 

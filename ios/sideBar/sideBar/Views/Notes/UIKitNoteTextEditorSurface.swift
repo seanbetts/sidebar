@@ -361,7 +361,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             guard !isApplyingProgrammaticText else { return }
 
             isApplyingProgrammaticText = true
-            viewModel.replaceAttributedContent(
+            viewModel.replaceAttributedContentFromLiveTextView(
                 textView.attributedText,
                 selectedUTF16Range: textView.selectedRange
             )
