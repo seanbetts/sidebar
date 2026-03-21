@@ -1,10 +1,11 @@
 import UIKit
 import XCTest
 @testable import ShareExtension
+import sideBarShared
 
 final class ShareLoadingViewTests: XCTestCase {
     func testLoadingViewUsesMinimalSheetBackground() {
-        let subject = ShareLoadingView(message: "Saving website...")
+        let subject = ShareLoadingView(message: ExtensionUserMessageCatalog.message(for: .savingWebsite))
         let lightTraits = UITraitCollection(userInterfaceStyle: .light)
         let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
 
@@ -15,7 +16,7 @@ final class ShareLoadingViewTests: XCTestCase {
     }
 
     func testLoadingViewDoesNotRenderCardContainer() {
-        let subject = ShareLoadingView(message: "Saving website...")
+        let subject = ShareLoadingView(message: ExtensionUserMessageCatalog.message(for: .savingWebsite))
 
         let cardContainer = subject.firstSubview(where: {
             $0.accessibilityIdentifier == "share-state-card"
@@ -24,11 +25,19 @@ final class ShareLoadingViewTests: XCTestCase {
     }
 
     func testLoadingViewOmitsBrandStack() {
-        let subject = ShareLoadingView(message: "Saving website...")
+        let subject = ShareLoadingView(message: ExtensionUserMessageCatalog.message(for: .savingWebsite))
         let brandStack = subject.firstSubview(where: {
             ($0 as? UIStackView)?.accessibilityIdentifier == "share-brand-stack"
         })
         XCTAssertNil(brandStack)
+    }
+
+    func testLoadingViewUsesQueueFirstCopy() {
+        let subject = ShareLoadingView(message: ExtensionUserMessageCatalog.message(for: .savingWebsite))
+
+        let label = subject.firstSubview(where: { $0 is UILabel }) as? UILabel
+
+        XCTAssertEqual(label?.text, "Saving for later...")
     }
 
     private func colorsEqual(

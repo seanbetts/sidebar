@@ -159,6 +159,17 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(normalized, "https://www.youtube.com/watch?v=abc123xyzAA")
     }
 
+    @MainActor
+    func testShowSaveURLResultDefaultsToSavedForLaterForShareExtensionWebsites() {
+        let controller = ShareViewController()
+        controller.loadViewIfNeeded()
+
+        controller.showSaveURLResult(["ok": true])
+
+        let label = controller.view.firstSubview(where: { $0 is UILabel }) as? UILabel
+        XCTAssertEqual(label?.text, ExtensionUserMessageCatalog.message(for: .savedForLater))
+    }
+
     func testMimeTypeForFilenameUsesKnownAndFallbackMappings() {
         let controller = ShareViewController()
 
@@ -198,5 +209,19 @@ final class ShareExtensionCoverageTests: XCTestCase {
             candidate.deleteLastPathComponent()
         }
         throw NSError(domain: "ShareExtensionCoverageTests", code: 1)
+    }
+}
+
+private extension UIView {
+    func firstSubview(where predicate: (UIView) -> Bool) -> UIView? {
+        if predicate(self) {
+            return self
+        }
+        for child in subviews {
+            if let match = child.firstSubview(where: predicate) {
+                return match
+            }
+        }
+        return nil
     }
 }

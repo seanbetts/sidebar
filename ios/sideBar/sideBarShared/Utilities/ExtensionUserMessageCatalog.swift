@@ -37,7 +37,7 @@ public enum ExtensionUserMessageCatalog {
         .websiteSaved: "Website saved.",
         .imageSaved: "Image saved.",
         .fileSaved: "File saved.",
-        .savingWebsite: "Saving website...",
+        .savingWebsite: "Saving for later...",
         .preparingImage: "Preparing image...",
         .preparingFile: "Preparing file...",
         .uploadingImage: "Uploading image...",

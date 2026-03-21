@@ -124,7 +124,7 @@ extension ShareViewController {
         let ok = payload["ok"] as? Bool ?? false
         if ok {
             let message = payload["message"] as? String
-                ?? ExtensionUserMessageCatalog.message(for: .websiteSaved)
+                ?? ExtensionUserMessageCatalog.message(for: .savedForLater)
             showSuccess(message: message)
             return
         }
