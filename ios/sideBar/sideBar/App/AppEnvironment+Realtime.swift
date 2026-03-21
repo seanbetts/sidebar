@@ -47,16 +47,4 @@ extension AppEnvironment: RealtimeEventHandler {
             await tasksViewModel.applyTaskGroupRealtimeEvent(payload)
         }
     }
-
-    public func handleWebsiteJobEvent(_ payload: RealtimePayload<WebsiteJobRealtimeRecord>) {
-        guard let record = payload.record else { return }
-        Task {
-            websitesViewModel.didReceiveWebsiteJobUpdate(
-                jobId: record.id,
-                status: record.status,
-                websiteId: record.websiteId,
-                errorMessage: record.errorMessage
-            )
-        }
-    }
 }

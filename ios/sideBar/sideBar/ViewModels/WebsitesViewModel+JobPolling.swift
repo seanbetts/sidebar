@@ -6,18 +6,18 @@ extension WebsitesViewModel {
 
     // MARK: - Job Polling
 
-    private static let jobPollIntervals: [TimeInterval] = [10, 15, 20, 30, 45, 60, 60]
+    private static let jobPollIntervals: [TimeInterval] = [2, 3, 5, 8, 13, 20, 30, 30]
     private static let jobPollMaxDuration: TimeInterval = 300
 
     func pollJobUntilComplete(
         jobId: String,
         pendingURL: URL,
-        previousSelectedId: String?
+        previousSelectedId: String?,
+        shouldSelectOnCompletion: Bool = true
     ) async {
         let startTime = Date()
         var attemptIndex = 0
         while Date().timeIntervalSince(startTime) < Self.jobPollMaxDuration {
-            guard hasPendingWebsite(for: pendingURL) else { return }
             let interval = attemptIndex < Self.jobPollIntervals.count
                 ? Self.jobPollIntervals[attemptIndex]
                 : Self.jobPollIntervals.last ?? 60
@@ -29,7 +29,13 @@ extension WebsitesViewModel {
                 switch response.status {
                 case "completed":
                     if let website = response.website {
-                        applySavedWebsite(website, pendingURL: pendingURL)
+                        applySavedWebsite(
+                            website,
+                            pendingURL: pendingURL,
+                            shouldSelectOnCompletion: shouldSelectOnCompletion
+                        )
+                    } else {
+                        removePendingWebsite(for: pendingURL.absoluteString)
                     }
                     endWebsiteSave()
                     jobPollingTasks.removeValue(forKey: jobId)
@@ -63,54 +69,5 @@ extension WebsitesViewModel {
             message: "Save timed out"
         )
         jobPollingTasks.removeValue(forKey: jobId)
-    }
-
-    func didReceiveWebsiteJobUpdate(
-        jobId: String,
-        status: String?,
-        websiteId: String?,
-        errorMessage: String?
-    ) {
-        guard let pending = pendingWebsiteByJobId(jobId) else { return }
-        guard let resolvedStatus = status else { return }
-        switch resolvedStatus {
-        case "completed":
-            jobPollingTasks[jobId]?.cancel()
-            jobPollingTasks.removeValue(forKey: jobId)
-            if let websiteId {
-                Task { [weak self] in
-                    guard let self else { return }
-                    do {
-                        let detail = try await self.api.get(id: websiteId)
-                        let pendingURL = URL(string: pending.url) ?? URL(string: "https://invalid")!
-                        self.applySavedWebsite(detail, pendingURL: pendingURL)
-                    } catch {
-                        self.logger.error("Failed to fetch completed website \(websiteId): \(error.localizedDescription, privacy: .public)")
-                    }
-                    self.endWebsiteSave()
-                }
-            } else {
-                endWebsiteSave()
-            }
-        case "canceled":
-            jobPollingTasks[jobId]?.cancel()
-            jobPollingTasks.removeValue(forKey: jobId)
-            let pendingURL = URL(string: pending.url) ?? URL(string: "https://invalid")!
-            removePendingWebsite(for: pendingURL.absoluteString)
-            endWebsiteSave()
-        case "failed", "stalled":
-            jobPollingTasks[jobId]?.cancel()
-            jobPollingTasks.removeValue(forKey: jobId)
-            let pendingURL = URL(string: pending.url) ?? URL(string: "https://invalid")!
-            let message = errorMessage ?? "Save failed"
-            endWebsiteSave()
-            failWebsiteSave(
-                previousSelectedId: nil,
-                pendingURL: pendingURL,
-                message: message
-            )
-        default:
-            break
-        }
     }
 }

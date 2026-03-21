@@ -14,7 +14,6 @@ extension SupabaseRealtimeAdapter {
         let shouldResubscribeTasks = currentUserId != userId || tasksChannel == nil
         let shouldResubscribeTaskProjects = currentUserId != userId || taskProjectsChannel == nil
         let shouldResubscribeTaskGroups = currentUserId != userId || taskGroupsChannel == nil
-        let shouldResubscribeWebsiteJobs = currentUserId != userId || websiteJobsChannel == nil
         currentUserId = userId
         if shouldResubscribeNotes {
             await subscribeToNotes(userId: userId)
@@ -37,9 +36,6 @@ extension SupabaseRealtimeAdapter {
         if shouldResubscribeTaskGroups {
             await subscribeToTaskGroups(userId: userId)
         }
-        if shouldResubscribeWebsiteJobs {
-            await subscribeToWebsiteJobs(userId: userId)
-        }
     }
 
     func stopInternal() async {
@@ -50,7 +46,6 @@ extension SupabaseRealtimeAdapter {
         tasksSubscriptions.removeAll()
         taskProjectsSubscriptions.removeAll()
         taskGroupsSubscriptions.removeAll()
-        websiteJobsSubscriptions.removeAll()
         let channels: [RealtimeChannelV2] = [
             notesChannel,
             websitesChannel,
@@ -58,8 +53,7 @@ extension SupabaseRealtimeAdapter {
             fileJobsChannel,
             tasksChannel,
             taskProjectsChannel,
-            taskGroupsChannel,
-            websiteJobsChannel
+            taskGroupsChannel
         ].compactMap { $0 }
         notesChannel = nil
         websitesChannel = nil
@@ -68,7 +62,6 @@ extension SupabaseRealtimeAdapter {
         tasksChannel = nil
         taskProjectsChannel = nil
         taskGroupsChannel = nil
-        websiteJobsChannel = nil
         await tokenStore.set(nil)
         currentUserId = nil
         for channel in channels {
@@ -465,34 +458,4 @@ extension SupabaseRealtimeAdapter {
             logger.error("Task groups subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
-
-    func subscribeToWebsiteJobs(userId: String) async {
-        if let existingChannel = websiteJobsChannel {
-            await client.realtimeV2.removeChannel(existingChannel)
-        }
-        websiteJobsSubscriptions.removeAll()
-        let channel = client.realtimeV2.channel("public:\(RealtimeTable.websiteJobs)")
-        let filter = "user_id=eq.\(userId)"
-        websiteJobsSubscriptions.append(
-            channel.onPostgresChange(
-                UpdateAction.self,
-                schema: "public",
-                table: RealtimeTable.websiteJobs,
-                filter: filter
-            ) { [weak self] action in
-                Task { @MainActor [weak self] in
-                    self?.handleWebsiteJobUpdate(SupabaseUpdateActionAdapter(action: action))
-                }
-            }
-        )
-        websiteJobsChannel = channel
-        do {
-            try await channel.subscribeWithError()
-        } catch is CancellationError {
-            // Expected during auth transitions
-        } catch {
-            logger.error("Website jobs subscription failed: \(error.localizedDescription, privacy: .public)")
-        }
-    }
-
 }

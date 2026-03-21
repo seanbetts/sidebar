@@ -253,7 +253,6 @@ private final class RecordingRealtimeHandler: RealtimeEventHandler {
     var taskPayload: RealtimePayload<TaskRealtimeRecord>?
     var taskProjectPayload: RealtimePayload<TaskProjectRealtimeRecord>?
     var taskGroupPayload: RealtimePayload<TaskGroupRealtimeRecord>?
-    var websiteJobPayload: RealtimePayload<WebsiteJobRealtimeRecord>?
     private let noteExpectation: XCTestExpectation?
     private let websiteExpectation: XCTestExpectation?
     private let ingestedExpectation: XCTestExpectation?
@@ -313,10 +312,6 @@ private final class RecordingRealtimeHandler: RealtimeEventHandler {
     func handleTaskGroupEvent(_ payload: RealtimePayload<TaskGroupRealtimeRecord>) {
         taskGroupPayload = payload
         taskGroupExpectation?.fulfill()
-    }
-
-    func handleWebsiteJobEvent(_ payload: RealtimePayload<WebsiteJobRealtimeRecord>) {
-        websiteJobPayload = payload
     }
 }
 

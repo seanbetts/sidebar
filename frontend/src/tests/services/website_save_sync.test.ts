@@ -151,9 +151,10 @@ describe('website_save_sync service', () => {
 		const { flushQueuedWebsiteSaves } = await loadWebsiteSaveSync();
 
 		const flushPromise = flushQueuedWebsiteSaves();
-		// Advance past two poll intervals (10s each)
-		await vi.advanceTimersByTimeAsync(10_000);
-		await vi.advanceTimersByTimeAsync(10_000);
+		// Advance past the first two poll intervals (2s, then 3s).
+		await vi.advanceTimersByTimeAsync(2_000);
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(websitesAPI.jobStatus).toHaveBeenCalledTimes(2);
 		const saved = await flushPromise;
 
 		expect(saved.map((item) => item.id)).toEqual(['saved-1', 'saved-2']);
@@ -190,8 +191,9 @@ describe('website_save_sync service', () => {
 		const { pollUntilComplete } = await loadWebsiteSaveSync();
 
 		const pollPromise = pollUntilComplete('job-1');
-		await vi.advanceTimersByTimeAsync(10_000);
-		await vi.advanceTimersByTimeAsync(15_000);
+		await vi.advanceTimersByTimeAsync(2_000);
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(websitesAPI.jobStatus).toHaveBeenCalledTimes(2);
 		const result = await pollPromise;
 
 		expect(result).toMatchObject({ id: 'saved-1' });
@@ -206,11 +208,50 @@ describe('website_save_sync service', () => {
 		});
 		const { pollUntilComplete } = await loadWebsiteSaveSync();
 
-		const pollPromise = pollUntilComplete('job-1').catch((e: Error) => e);
-		await vi.advanceTimersByTimeAsync(10_000);
-		const error = await pollPromise;
+		const onSettled = vi.fn();
+		pollUntilComplete('job-1').then(onSettled, onSettled);
+		await vi.advanceTimersByTimeAsync(2_000);
+		await vi.advanceTimersByTimeAsync(3_000);
 
-		expect(error).toBeInstanceOf(Error);
-		expect((error as Error).message).toBe('Content extraction failed');
+		expect(onSettled).toHaveBeenCalledWith(expect.any(Error));
+		expect(websitesAPI.jobStatus).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['stalled', 'canceled'])('throws when a job is %s', async (status) => {
+		websitesAPI.jobStatus.mockResolvedValueOnce({
+			job_id: 'job-1',
+			status,
+			error: { message: `${status} job` }
+		});
+		const { pollUntilComplete } = await loadWebsiteSaveSync();
+
+		const onSettled = vi.fn();
+		pollUntilComplete('job-1').then(onSettled, onSettled);
+		await vi.advanceTimersByTimeAsync(2_000);
+		await vi.advanceTimersByTimeAsync(3_000);
+
+		expect(onSettled).toHaveBeenCalledWith(expect.any(Error));
+		expect(websitesAPI.jobStatus).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps polling with the shorter backoff cadence', async () => {
+		websitesAPI.jobStatus
+			.mockResolvedValueOnce({ job_id: 'job-1', status: 'processing' })
+			.mockResolvedValueOnce({ job_id: 'job-1', status: 'processing' })
+			.mockResolvedValueOnce({
+				job_id: 'job-1',
+				status: 'completed',
+				website: COMPLETED_WEBSITE
+			});
+		const { pollUntilComplete } = await loadWebsiteSaveSync();
+
+		const pollPromise = pollUntilComplete('job-1');
+		await vi.advanceTimersByTimeAsync(2_000);
+		await vi.advanceTimersByTimeAsync(3_000);
+		await vi.advanceTimersByTimeAsync(5_000);
+		const result = await pollPromise;
+
+		expect(result).toMatchObject({ id: 'saved-1' });
+		expect(websitesAPI.jobStatus).toHaveBeenCalledTimes(3);
 	});
 });

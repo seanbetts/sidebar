@@ -15,8 +15,23 @@ const getStatus = (error: unknown): number | null => {
 	return typeof status === 'number' ? status : null;
 };
 
-const POLL_INTERVALS = [10, 15, 20, 30, 45, 60, 60];
+const POLL_INTERVALS = [2, 3, 5, 8, 13, 20, 30, 30];
 const POLL_MAX_DURATION_MS = 5 * 60 * 1000;
+
+const jobErrorMessage = (status: JobStatusPayload): string => {
+	if (status.error?.message) {
+		return status.error.message;
+	}
+
+	switch (status.status) {
+		case 'canceled':
+			return 'Save canceled';
+		case 'stalled':
+			return 'Save stalled';
+		default:
+			return 'Save failed';
+	}
+};
 
 /**
  * Poll a save job until it completes or times out.
@@ -32,9 +47,9 @@ export async function pollUntilComplete(jobId: string): Promise<SavedWebsiteDeta
 		try {
 			const status = await websitesAPI.jobStatus(jobId);
 			if (status.status === 'completed' && status.website) return status.website;
-			if (status.status === 'failed') {
+			if (['failed', 'stalled', 'canceled'].includes(status.status)) {
 				jobFailed = true;
-				throw new Error(status.error?.message ?? 'Save failed');
+				throw new Error(jobErrorMessage(status));
 			}
 		} catch (error) {
 			if (jobFailed) throw error;

@@ -265,13 +265,6 @@ extension WebsitesViewModel {
             status: status ?? defaultPendingWebsiteStatus(for: source)
         )
     }
-
-    func clearPendingIfNeeded(items: [WebsiteItem]) {
-        guard !pendingWebsites.isEmpty else { return }
-        let savedKeys = Set(items.map { canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url })
-        pendingWebsites.removeAll { savedKeys.contains($0.canonicalURL) }
-    }
-
     private func defaultPendingWebsiteStatus(for source: PendingWebsiteSource) -> PendingWebsiteStatus {
         switch source {
         case .directSave:

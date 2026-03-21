@@ -125,7 +125,6 @@ public final class WebsitesViewModel: ObservableObject {
         store.$items
             .sink { [weak self] items in
                 self?.items = items
-                self?.clearPendingIfNeeded(items: items)
                 self?.updatePanelDerivedState()
             }
             .store(in: &cancellables)
@@ -202,6 +201,10 @@ public final class WebsitesViewModel: ObservableObject {
         isLoadingDetail = false
     }
 
+    func showTranscriptFailureToast() {
+        toastCenter.show(message: "Couldn't get the transcript right now. Please try again.")
+    }
+
     public func selectWebsite(id: String) async {
         await loadById(id: id)
     }
@@ -233,7 +236,8 @@ public final class WebsitesViewModel: ObservableObject {
                 await self?.pollJobUntilComplete(
                     jobId: jobId,
                     pendingURL: url,
-                    previousSelectedId: previousSelectedId
+                    previousSelectedId: previousSelectedId,
+                    shouldSelectOnCompletion: true
                 )
             }
             return true
@@ -264,7 +268,8 @@ public final class WebsitesViewModel: ObservableObject {
                 await self?.pollJobUntilComplete(
                     jobId: jobId,
                     pendingURL: url,
-                    previousSelectedId: nil
+                    previousSelectedId: nil,
+                    shouldSelectOnCompletion: false
                 )
             }
             return true

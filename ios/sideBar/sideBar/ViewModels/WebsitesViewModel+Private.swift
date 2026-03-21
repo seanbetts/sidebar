@@ -4,14 +4,6 @@ import sideBarShared
 
 @MainActor
 extension WebsitesViewModel {
-    private var transcriptFailureToastMessage: String {
-        "Couldn't get the transcript right now. Please try again."
-    }
-
-    func showTranscriptFailureToast() {
-        toastCenter.show(message: transcriptFailureToastMessage)
-    }
-
     func normalizedWebsiteURL(from rawURL: String) -> URL? {
         guard let trimmed = rawURL.trimmedOrNil,
               let normalized = WebsiteURLValidator.normalizedCandidate(trimmed) else {
@@ -52,8 +44,14 @@ extension WebsitesViewModel {
         isLoadingDetail = false
     }
 
-    func applySavedWebsite(_ website: WebsiteDetail, pendingURL: URL) {
-        selectedWebsiteId = website.id
+    func applySavedWebsite(
+        _ website: WebsiteDetail,
+        pendingURL: URL,
+        shouldSelectOnCompletion: Bool
+    ) {
+        if shouldSelectOnCompletion {
+            selectedWebsiteId = website.id
+        }
         store.applyDetailUpdate(website, persist: true)
         store.insertItemAtTop(
             WebsiteItem(detail: website),
@@ -123,7 +121,8 @@ extension WebsitesViewModel {
                 await self?.pollJobUntilComplete(
                     jobId: jobId,
                     pendingURL: url,
-                    previousSelectedId: previousSelectedId
+                    previousSelectedId: previousSelectedId,
+                    shouldSelectOnCompletion: true
                 )
             }
             return true

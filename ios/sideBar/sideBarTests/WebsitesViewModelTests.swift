@@ -215,16 +215,6 @@ final class WebsitesViewModelTests: XCTestCase {
         _ = await saveTask.value
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "test-job-id")
         XCTAssertTrue(viewModel.isLoadingDetail)
-
-        viewModel.didReceiveWebsiteJobUpdate(
-            jobId: "test-job-id",
-            status: "completed",
-            websiteId: "saved-1",
-            errorMessage: nil
-        )
-        await Task.yield()
-
-        XCTAssertFalse(viewModel.isLoadingDetail)
     }
 
     func testSaveWebsiteSetsWatchingPendingTitleForYouTube() async {
@@ -260,16 +250,6 @@ final class WebsitesViewModelTests: XCTestCase {
         _ = await saveTask.value
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "test-job-id")
         XCTAssertTrue(viewModel.isLoadingDetail)
-
-        viewModel.didReceiveWebsiteJobUpdate(
-            jobId: "test-job-id",
-            status: "completed",
-            websiteId: "saved-1",
-            errorMessage: nil
-        )
-        await Task.yield()
-
-        XCTAssertFalse(viewModel.isLoadingDetail)
     }
 
     func testSaveWebsiteTreatsStalledJobAsFailure() async {
@@ -302,9 +282,11 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(saved)
         XCTAssertTrue(viewModel.isLoadingDetail)
 
-        try? await Task.sleep(for: .seconds(10.5))
-        await Task.yield()
+        let failed = await waitForCondition(timeoutNanoseconds: 3_000_000_000) {
+            viewModel.pendingWebsite?.status == .failed
+        }
 
+        XCTAssertTrue(failed)
         XCTAssertFalse(viewModel.isLoadingDetail)
         XCTAssertEqual(
             viewModel.saveErrorMessage,
@@ -313,6 +295,144 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.pendingWebsite?.url, "https://example.com")
         XCTAssertEqual(viewModel.pendingWebsite?.status, .failed)
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
+    }
+
+    func testSaveWebsiteCompletesViaPollingWithoutRealtimeJobUpdate() async {
+        let savedDetail = makeDetail(
+            id: "saved-1",
+            url: "https://example.com",
+            domain: "example.com"
+        )
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-1", status: "queued")
+            ),
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "completed",
+                    website: savedDetail,
+                    error: nil
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let saved = await viewModel.saveWebsite(url: "https://example.com")
+
+        XCTAssertTrue(saved)
+        let completed = await waitForCondition(timeoutNanoseconds: 3_000_000_000) {
+            viewModel.pendingWebsite == nil && viewModel.selectedWebsiteId == "saved-1"
+        }
+
+        XCTAssertTrue(completed)
+        XCTAssertEqual(viewModel.items.first?.id, "saved-1")
+        XCTAssertEqual(viewModel.active?.id, "saved-1")
+        XCTAssertFalse(viewModel.isLoadingDetail)
+        XCTAssertFalse(viewModel.isSavingWebsite)
+        XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
+    }
+
+    func testWebsiteRealtimeInsertDoesNotClearPendingSaveBeforePollCompletes() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-1", status: "queued")
+            ),
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "queued",
+                    website: nil,
+                    error: nil
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let saved = await viewModel.saveWebsite(url: "https://example.com")
+
+        XCTAssertTrue(saved)
+        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
+
+        let payload = RealtimePayload(
+            eventType: .insert,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: "saved-1",
+                title: "Saved",
+                url: "https://example.com",
+                domain: "example.com",
+                metadata: nil,
+                savedAt: nil,
+                publishedAt: nil,
+                readingTime: nil,
+                updatedAt: "2026-03-21T10:00:00Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+
+        await viewModel.applyRealtimeEvent(payload)
+        await Task.yield()
+
+        XCTAssertEqual(viewModel.items.first?.id, "saved-1")
+        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
+        XCTAssertEqual(viewModel.pendingWebsite?.status, .reading)
+
+        viewModel.jobPollingTasks["job-1"]?.cancel()
+        viewModel.jobPollingTasks.removeValue(forKey: "job-1")
+    }
+
+    func testSaveWebsitePollingCanceledClearsPendingState() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-1", status: "queued")
+            ),
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "canceled",
+                    website: nil,
+                    error: nil
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let saved = await viewModel.saveWebsite(url: "https://example.com")
+
+        XCTAssertTrue(saved)
+        let canceled = await waitForCondition(timeoutNanoseconds: 3_000_000_000) {
+            viewModel.pendingWebsite == nil && viewModel.jobPollingTasks.isEmpty
+        }
+
+        XCTAssertTrue(canceled)
+        XCTAssertFalse(viewModel.isLoadingDetail)
+        XCTAssertFalse(viewModel.isSavingWebsite)
+        XCTAssertNil(viewModel.saveErrorMessage)
     }
 
     func testRetryPendingWebsiteResubmitsFailedDirectSave() async {
@@ -401,7 +521,7 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
     }
 
-    func testClearPendingIfNeededCanonicalizesYouTubeURLs() async {
+    func testWebsiteRealtimeInsertDoesNotClearPendingYouTubeCandidate() async {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI()
         let store = WebsitesStore(api: api, cache: cache)
@@ -437,7 +557,11 @@ final class WebsitesViewModelTests: XCTestCase {
 
         await viewModel.applyRealtimeEvent(payload)
 
-        XCTAssertNil(viewModel.pendingWebsite)
+        XCTAssertNotNil(viewModel.pendingWebsite)
+        XCTAssertEqual(
+            viewModel.pendingWebsite?.canonicalURL,
+            "https://www.youtube.com/watch?v=abc123xyzAA"
+        )
     }
 
     func testShowPendingFromExtensionAccumulatesMultipleQueuedWebsites() async {
@@ -727,6 +851,59 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.pendingWebsites.first?.url, "https://queued.example/path")
         XCTAssertEqual(viewModel.pendingWebsites.first?.jobId, "test-job-id")
         XCTAssertNil(viewModel.saveErrorMessage)
+    }
+
+    func testSaveWebsiteWithoutSelectionDoesNotSelectSavedWebsiteOnPollCompletion() async {
+        let existing = makeItem(id: "site-existing")
+        let existingDetail = makeDetail(id: "site-existing")
+        let completedDetail = makeDetail(
+            id: "saved-1",
+            url: "https://new.example",
+            domain: "new.example"
+        )
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [existing])),
+            getResult: .success(existingDetail),
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-1", status: "queued")
+            ),
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "completed",
+                    website: completedDetail,
+                    error: nil
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        await viewModel.load()
+        await viewModel.selectWebsite(id: "site-existing")
+
+        let saved = await viewModel.saveWebsite(
+            url: "https://new.example",
+            selectAfterSave: false
+        )
+
+        XCTAssertTrue(saved)
+        let completed = await waitForCondition(timeoutNanoseconds: 3_000_000_000) {
+            viewModel.pendingWebsites.isEmpty
+                && viewModel.items.contains(where: { $0.id == "saved-1" })
+        }
+
+        XCTAssertTrue(completed)
+        XCTAssertEqual(viewModel.selectedWebsiteId, "site-existing")
+        XCTAssertEqual(viewModel.active?.id, "site-existing")
+        XCTAssertFalse(viewModel.isLoadingDetail)
+        XCTAssertFalse(viewModel.isSavingWebsite)
     }
 
     func testSaveWebsiteWithoutSelectionRecoversFromRequestFailureWhenListShowsSavedWebsite() async {

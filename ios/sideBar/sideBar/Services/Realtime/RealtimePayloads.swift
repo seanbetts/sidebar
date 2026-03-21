@@ -33,5 +33,4 @@ public enum RealtimeTable {
     public static let tasks = "tasks"
     public static let taskProjects = "task_projects"
     public static let taskGroups = "task_groups"
-    public static let websiteJobs = "website_processing_jobs"
 }
