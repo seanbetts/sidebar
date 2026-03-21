@@ -615,7 +615,7 @@ private final class SelectableNoteReadTextView: UITextView {
         return .characterOffset(characterOffset)
     }
 
-    func activationNormalizedViewportY(
+    func activationViewportAnchorY(
         for target: SelectableNoteReadView.ReadActivationTarget
     ) -> CGFloat? {
         let characterOffset: Int
@@ -634,7 +634,7 @@ private final class SelectableNoteReadTextView: UITextView {
         let viewport = bounds.inset(by: adjustedContentInset)
         guard viewport.height > 0 else { return nil }
         let caretRect = caretRect(for: position)
-        return min(max((caretRect.midY - viewport.minY) / viewport.height, 0), 1)
+        return caretRect.midY - viewport.minY
     }
 }
 
@@ -680,7 +680,7 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
         let point = recognizer.location(in: textView)
         guard let target = textView.activationTarget(at: point) else { return }
         if let onActivateEditingWithViewport {
-            onActivateEditingWithViewport(target, textView.activationNormalizedViewportY(for: target))
+            onActivateEditingWithViewport(target, textView.activationViewportAnchorY(for: target))
         } else {
             onActivateEditing?(target)
         }

@@ -22,7 +22,7 @@ struct AttributedNoteEditorContainer: View {
     @StateObject private var nativeViewModel: NativeNoteEditorViewModel
     @State private var loadedNoteId: String?
     @State private var pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
-    @State private var pendingSelectionNormalizedViewportY: CGFloat?
+    @State private var pendingSelectionViewportAnchorY: CGFloat?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     #if os(iOS)
     @State private var isSoftwareKeyboardVisible = false
@@ -142,7 +142,7 @@ struct AttributedNoteEditorContainer: View {
         )
         if loadedNoteId != previousLoadedNoteId {
             pendingSelectionTarget = editorViewModel.consumePendingEditSelectionTarget()
-            pendingSelectionNormalizedViewportY = editorViewModel.consumePendingEditNormalizedViewportY()
+            pendingSelectionViewportAnchorY = editorViewModel.consumePendingEditViewportAnchorY()
         }
     }
 
@@ -168,16 +168,18 @@ struct AttributedNoteEditorContainer: View {
             formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
             formattingBarPresentation: resolvedFormattingBarPresentation,
             pendingSelectionTarget: pendingSelectionTarget,
-            onPendingSelectionTargetApplied: { textView in
-                let normalizedViewportY = pendingSelectionNormalizedViewportY
+            onPendingSelectionTargetApplied: { _ in
                 pendingSelectionTarget = nil
-                pendingSelectionNormalizedViewportY = nil
-                guard let normalizedViewportY else { return }
+            },
+            onDidBeginEditing: { textView in
+                let viewportAnchorY = pendingSelectionViewportAnchorY
+                pendingSelectionViewportAnchorY = nil
+                guard let viewportAnchorY else { return }
                 DispatchQueue.main.async { [weak textView] in
                     guard let textView else { return }
                     textView.layoutIfNeeded()
                     textView.positionCurrentSelection(
-                        atNormalizedViewportY: normalizedViewportY
+                        atViewportAnchorY: viewportAnchorY
                     )
                 }
             }

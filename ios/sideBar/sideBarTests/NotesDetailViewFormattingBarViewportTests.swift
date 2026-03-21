@@ -149,11 +149,11 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         drainNotesHostingRunLoop()
         let readTargetRect = readTextView.caretRect(for: readTargetPosition)
         let readViewport = readTextView.bounds.inset(by: readTextView.adjustedContentInset)
-        let expectedNormalizedViewportY = (readTargetRect.midY - readViewport.minY) / readViewport.height
+        let expectedViewportAnchorY = readTargetRect.midY - readViewport.minY
 
         context.editorViewModel.enterEditMode(
             at: .characterOffset(targetOffset),
-            normalizedViewportY: expectedNormalizedViewportY
+            viewportAnchorY: expectedViewportAnchorY
         )
         await waitUntil {
             findTextView(
@@ -174,23 +174,21 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
             }
             let editorViewport = editorTextView.visibleViewportRect()
             let actualRelativeY = selectionRect.midY - editorViewport.minY
-            let expectedRelativeY = editorViewport.height * expectedNormalizedViewportY
-            return abs(actualRelativeY - expectedRelativeY) <= 24
+            return abs(actualRelativeY - expectedViewportAnchorY) <= 24
         }
 
         let selectionRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
         let editorViewport = editorTextView.visibleViewportRect()
         let actualRelativeY = selectionRect.midY - editorViewport.minY
-        let expectedRelativeY = editorViewport.height * expectedNormalizedViewportY
 
         XCTAssertEqual(editorTextView.selectedRange.location, targetOffset)
         XCTAssertEqual(
             actualRelativeY,
-            expectedRelativeY,
+            expectedViewportAnchorY,
             accuracy: 24,
             "selectionRect=\(selectionRect) editorViewport=\(editorViewport) "
                 + "contentOffset=\(editorTextView.contentOffset) "
-                + "expectedNormalizedViewportY=\(expectedNormalizedViewportY)"
+                + "expectedViewportAnchorY=\(expectedViewportAnchorY)"
         )
     }
 

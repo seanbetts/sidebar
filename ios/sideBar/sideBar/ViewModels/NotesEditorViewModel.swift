@@ -43,7 +43,7 @@ public final class NotesEditorViewModel: ObservableObject {
     @available(iOS 26.0, macOS 26.0, *)
     private var nativeEditorObservation: AnyCancellable?
     private var pendingEditSelectionTarget: PendingEditSelectionTarget?
-    private var pendingEditNormalizedViewportY: CGFloat?
+    private var pendingEditViewportAnchorY: CGFloat?
     private var syncRequestedWhileSaving = false
     private var cancellables = Set<AnyCancellable>()
 
@@ -94,7 +94,7 @@ public final class NotesEditorViewModel: ObservableObject {
             if detectedUnsupportedContent != nil {
                 presentationMode = .read
                 pendingEditSelectionTarget = nil
-                pendingEditNormalizedViewportY = nil
+                pendingEditViewportAnchorY = nil
             }
             if !isSaving {
                 saveErrorMessage = nil
@@ -118,7 +118,7 @@ public final class NotesEditorViewModel: ObservableObject {
         if !isSameNote || detectedUnsupportedContent != nil {
             presentationMode = .read
             pendingEditSelectionTarget = nil
-            pendingEditNormalizedViewportY = nil
+            pendingEditViewportAnchorY = nil
         }
         if !isSameNote {
             syncRequestedWhileSaving = false
@@ -306,11 +306,11 @@ public final class NotesEditorViewModel: ObservableObject {
     public func enterEditMode() { enterEditMode(at: .start) }
     public func enterEditMode(
         at target: PendingEditSelectionTarget,
-        normalizedViewportY: CGFloat? = nil
+        viewportAnchorY: CGFloat? = nil
     ) {
         guard currentNoteId != nil, unsupportedContent == nil else { return }
         pendingEditSelectionTarget = target
-        pendingEditNormalizedViewportY = normalizedViewportY
+        pendingEditViewportAnchorY = viewportAnchorY
         presentationMode = .edit
     }
     func pendingEditSelectionTargetForCurrentEditSession() -> PendingEditSelectionTarget? {
@@ -319,14 +319,14 @@ public final class NotesEditorViewModel: ObservableObject {
     public func consumePendingEditSelectionTarget() -> PendingEditSelectionTarget? {
         defer { pendingEditSelectionTarget = nil }; return pendingEditSelectionTarget
     }
-    public func consumePendingEditNormalizedViewportY() -> CGFloat? {
-        defer { pendingEditNormalizedViewportY = nil }
-        return pendingEditNormalizedViewportY
+    public func consumePendingEditViewportAnchorY() -> CGFloat? {
+        defer { pendingEditViewportAnchorY = nil }
+        return pendingEditViewportAnchorY
     }
     var debugPendingEditViewportOffset: CGPoint? { nil }
     public func exitEditModeToRead() {
         pendingEditSelectionTarget = nil
-        pendingEditNormalizedViewportY = nil
+        pendingEditViewportAnchorY = nil
         presentationMode = .read
     }
 
@@ -338,7 +338,7 @@ public final class NotesEditorViewModel: ObservableObject {
                 nativeEditorViewModel.selectionSnapshot(in: nativeEditorViewModel.attributedContent) : nil
             nativeEditorViewModel.loadDocument(canonicalContent: canonicalContent, plainText: plainText)
             if let target = consumePendingEditSelectionTarget() {
-                _ = consumePendingEditNormalizedViewportY()
+                _ = consumePendingEditViewportAnchorY()
                 nativeEditorViewModel.applySelectionTarget(target)
             } else if let selectionSnapshot {
                 let content = nativeEditorViewModel.attributedContent
@@ -436,7 +436,7 @@ extension NotesEditorViewModel {
         currentNoteId = nil
         presentationMode = .read
         pendingEditSelectionTarget = nil
-        pendingEditNormalizedViewportY = nil
+        pendingEditViewportAnchorY = nil
         content = ""
         canonicalContent = ""
         isDirty = false

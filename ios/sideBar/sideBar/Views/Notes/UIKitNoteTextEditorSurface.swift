@@ -97,6 +97,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let formattingBarPresentation: NoteFormattingBarPresentation
     let pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
     let onPendingSelectionTargetApplied: ((AccessoryTextView) -> Void)?
+    let onDidBeginEditing: ((AccessoryTextView) -> Void)?
     let makeTextView: (() -> AccessoryTextView)?
 
     init(
@@ -108,6 +109,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         formattingBarPresentation: NoteFormattingBarPresentation,
         pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget? = nil,
         onPendingSelectionTargetApplied: ((AccessoryTextView) -> Void)? = nil,
+        onDidBeginEditing: ((AccessoryTextView) -> Void)? = nil,
         makeTextView: (() -> AccessoryTextView)? = nil
     ) {
         self.viewModel = viewModel
@@ -118,6 +120,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         self.formattingBarPresentation = formattingBarPresentation
         self.pendingSelectionTarget = pendingSelectionTarget
         self.onPendingSelectionTargetApplied = onPendingSelectionTargetApplied
+        self.onDidBeginEditing = onDidBeginEditing
         self.makeTextView = makeTextView
     }
 
@@ -149,6 +152,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
     func updateUIView(_ containerView: EditorContainerView, context: Context) {
         let textView = containerView.textView
+        context.coordinator.onDidBeginEditing = onDidBeginEditing
         textView.isEditable = isEditable
         textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.maxReadableContentWidth = maxContentWidth
@@ -257,112 +261,12 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.scrollCurrentSelectionIntoView()
     }
 
-    private func scheduleAutofocusIfNeeded(for textView: AccessoryTextView) {
-        guard textView.shouldAutofocus,
-              textView.window != nil,
-              !textView.isFirstResponder,
-              !textView.hasScheduledAutofocus else {
-            return
-        }
-        textView.hasScheduledAutofocus = true
-        DispatchQueue.main.async { [weak textView] in
-            guard let textView, textView.shouldAutofocus, textView.window != nil else { return }
-            textView.hasScheduledAutofocus = false
-            guard !textView.isFirstResponder else { return }
-            textView.window?.makeKey()
-            _ = textView.becomeFirstResponder()
-        }
-    }
-
-    private func acknowledgePendingSelectionTargetIfNeeded(
-        _ pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?,
-        selectedRange: NSRange,
-        textView: AccessoryTextView,
-        coordinator: Coordinator
-    ) {
-        guard let pendingSelectionTarget, textView.selectedRange == selectedRange else {
-            coordinator.acknowledgedPendingSelectionTarget = nil
-            return
-        }
-        guard coordinator.acknowledgedPendingSelectionTarget != pendingSelectionTarget else { return }
-        coordinator.acknowledgedPendingSelectionTarget = pendingSelectionTarget
-        DispatchQueue.main.async { [weak textView] in
-            guard let textView else { return }
-            if textView.selectedRange == selectedRange {
-                let selection = viewModel.selection(
-                    fromUTF16Range: selectedRange,
-                    in: viewModel.attributedContent
-                )
-                if selection != viewModel.selection {
-                    viewModel.selection = selection
-                    viewModel.handleSelectionChange()
-                }
-            }
-            onPendingSelectionTargetApplied?(textView)
-        }
-    }
-
-    private func configureFormattingUI(
-        for textView: AccessoryTextView,
-        configuration: NoteFormattingBarConfiguration?
-    ) -> Bool {
-        textView.formattingCommandsEnabled = configuration?.isEnabled ?? false
-        textView.onTitleCommand = configuration?.onTitleShortcut
-        textView.onHeadingCommand = configuration?.onHeadingShortcut
-        textView.onSubheadingCommand = configuration?.onSubheadingShortcut
-        textView.onBodyCommand = configuration?.onBodyShortcut
-        textView.onBoldCommand = configuration?.onBoldTap
-        textView.onItalicCommand = configuration?.onItalicTap
-        textView.onUnderlineCommand = configuration?.onUnderlineTap
-
-        guard shouldShowFormattingAccessory else {
-            if textView.formattingAccessoryView != nil {
-                textView.formattingAccessoryView = nil
-                return true
-            }
-            return false
-        }
-
-        switch (textView.formattingAccessoryView as? UIKitNoteFormattingAccessoryView, configuration) {
-        case let (accessoryView?, configuration?):
-            accessoryView.apply(
-                configuration: configuration,
-                presentation: formattingBarPresentation
-            )
-            return false
-        case (nil, let configuration?):
-            textView.formattingAccessoryView = makeFormattingAccessoryView(
-                configuration: configuration
-            )
-            return true
-        case (_?, nil):
-            textView.formattingAccessoryView = nil
-            return true
-        case (nil, nil):
-            return false
-        }
-    }
-
-    private func makeFormattingAccessoryView(
-        configuration: NoteFormattingBarConfiguration
-    ) -> UIKitNoteFormattingAccessoryView {
-        let accessoryView = UIKitNoteFormattingAccessoryView(
-            configuration: configuration,
-            presentation: formattingBarPresentation
-        )
-        accessoryView.autoresizingMask = [.flexibleWidth]
-        return accessoryView
-    }
-
-    private var shouldShowFormattingAccessory: Bool {
-        isEditable && formattingBarPresentation == .keyboardAccessory
-    }
-
     final class Coordinator: NSObject, UITextViewDelegate {
         let viewModel: NativeNoteEditorViewModel
         var isApplyingProgrammaticText = false, isApplyingProgrammaticSelection = false
         fileprivate var lastAppliedRenderSignature: RenderSignature?
         var acknowledgedPendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
+        var onDidBeginEditing: ((AccessoryTextView) -> Void)?
 
         init(viewModel: NativeNoteEditorViewModel) {
             self.viewModel = viewModel
@@ -394,6 +298,11 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 viewModel.selection = selection
                 viewModel.handleSelectionChange()
             }
+        }
+
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            guard let textView = textView as? AccessoryTextView else { return }
+            onDidBeginEditing?(textView)
         }
 
         func textView(
@@ -446,6 +355,107 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
 @available(iOS 26.0, *)
 private extension UIKitNoteTextEditorSurface {
+    func scheduleAutofocusIfNeeded(for textView: AccessoryTextView) {
+        guard textView.shouldAutofocus,
+              textView.window != nil,
+              !textView.isFirstResponder,
+              !textView.hasScheduledAutofocus else {
+            return
+        }
+        textView.hasScheduledAutofocus = true
+        DispatchQueue.main.async { [weak textView] in
+            guard let textView, textView.shouldAutofocus, textView.window != nil else { return }
+            textView.hasScheduledAutofocus = false
+            guard !textView.isFirstResponder else { return }
+            textView.window?.makeKey()
+            _ = textView.becomeFirstResponder()
+        }
+    }
+
+    func acknowledgePendingSelectionTargetIfNeeded(
+        _ pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?,
+        selectedRange: NSRange,
+        textView: AccessoryTextView,
+        coordinator: Coordinator
+    ) {
+        guard let pendingSelectionTarget, textView.selectedRange == selectedRange else {
+            coordinator.acknowledgedPendingSelectionTarget = nil
+            return
+        }
+        guard coordinator.acknowledgedPendingSelectionTarget != pendingSelectionTarget else { return }
+        coordinator.acknowledgedPendingSelectionTarget = pendingSelectionTarget
+        DispatchQueue.main.async { [weak textView] in
+            guard let textView else { return }
+            if textView.selectedRange == selectedRange {
+                let selection = viewModel.selection(
+                    fromUTF16Range: selectedRange,
+                    in: viewModel.attributedContent
+                )
+                if selection != viewModel.selection {
+                    viewModel.selection = selection
+                    viewModel.handleSelectionChange()
+                }
+            }
+            onPendingSelectionTargetApplied?(textView)
+        }
+    }
+
+    func configureFormattingUI(
+        for textView: AccessoryTextView,
+        configuration: NoteFormattingBarConfiguration?
+    ) -> Bool {
+        textView.formattingCommandsEnabled = configuration?.isEnabled ?? false
+        textView.onTitleCommand = configuration?.onTitleShortcut
+        textView.onHeadingCommand = configuration?.onHeadingShortcut
+        textView.onSubheadingCommand = configuration?.onSubheadingShortcut
+        textView.onBodyCommand = configuration?.onBodyShortcut
+        textView.onBoldCommand = configuration?.onBoldTap
+        textView.onItalicCommand = configuration?.onItalicTap
+        textView.onUnderlineCommand = configuration?.onUnderlineTap
+
+        guard shouldShowFormattingAccessory else {
+            if textView.formattingAccessoryView != nil {
+                textView.formattingAccessoryView = nil
+                return true
+            }
+            return false
+        }
+
+        switch (textView.formattingAccessoryView as? UIKitNoteFormattingAccessoryView, configuration) {
+        case let (accessoryView?, configuration?):
+            accessoryView.apply(
+                configuration: configuration,
+                presentation: formattingBarPresentation
+            )
+            return false
+        case (nil, let configuration?):
+            textView.formattingAccessoryView = makeFormattingAccessoryView(
+                configuration: configuration
+            )
+            return true
+        case (_?, nil):
+            textView.formattingAccessoryView = nil
+            return true
+        case (nil, nil):
+            return false
+        }
+    }
+
+    func makeFormattingAccessoryView(
+        configuration: NoteFormattingBarConfiguration
+    ) -> UIKitNoteFormattingAccessoryView {
+        let accessoryView = UIKitNoteFormattingAccessoryView(
+            configuration: configuration,
+            presentation: formattingBarPresentation
+        )
+        accessoryView.autoresizingMask = [.flexibleWidth]
+        return accessoryView
+    }
+
+    var shouldShowFormattingAccessory: Bool {
+        isEditable && formattingBarPresentation == .keyboardAccessory
+    }
+
     func resolvedSelectedRange(
         pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?,
         textView: UITextView,
