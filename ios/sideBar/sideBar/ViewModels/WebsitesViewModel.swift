@@ -274,9 +274,7 @@ public final class WebsitesViewModel: ObservableObject {
             }
             return true
         } catch {
-            if await recoverSavedWebsiteWithoutSelection(pendingURL: normalizedURL) {
-                return true
-            }
+            updatePendingWebsiteStatus(for: normalizedURL.absoluteString, status: .failed)
             saveErrorMessage = ErrorMapping.message(for: error)
             return false
         }

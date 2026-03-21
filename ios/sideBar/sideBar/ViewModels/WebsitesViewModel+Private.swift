@@ -51,8 +51,12 @@ extension WebsitesViewModel {
     ) {
         if shouldSelectOnCompletion {
             selectedWebsiteId = website.id
+            store.applyDetailUpdate(website, persist: true)
+        } else if store.shouldPersistDetail(website) {
+            store.persistDetail(website)
+        } else {
+            store.clearPersistedDetail(id: website.id)
         }
-        store.applyDetailUpdate(website, persist: true)
         store.insertItemAtTop(
             WebsiteItem(detail: website),
             persist: true

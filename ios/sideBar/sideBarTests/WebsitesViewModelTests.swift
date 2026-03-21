@@ -855,11 +855,17 @@ final class WebsitesViewModelTests: XCTestCase {
 
     func testSaveWebsiteWithoutSelectionDoesNotSelectSavedWebsiteOnPollCompletion() async {
         let existing = makeItem(id: "site-existing")
-        let existingDetail = makeDetail(id: "site-existing")
+        let existingDetail = makeDetail(
+            id: "site-existing",
+            content: "Existing content",
+            updatedAt: "2026-03-20T10:00:00Z"
+        )
         let completedDetail = makeDetail(
             id: "saved-1",
             url: "https://new.example",
-            domain: "new.example"
+            domain: "new.example",
+            content: "New saved content",
+            updatedAt: "2026-03-21T10:00:00Z"
         )
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
@@ -902,11 +908,12 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(completed)
         XCTAssertEqual(viewModel.selectedWebsiteId, "site-existing")
         XCTAssertEqual(viewModel.active?.id, "site-existing")
+        XCTAssertEqual(viewModel.active?.content, "Existing content")
         XCTAssertFalse(viewModel.isLoadingDetail)
         XCTAssertFalse(viewModel.isSavingWebsite)
     }
 
-    func testSaveWebsiteWithoutSelectionRecoversFromRequestFailureWhenListShowsSavedWebsite() async {
+    func testSaveWebsiteWithoutSelectionFailsWhenSaveRequestFailsEvenIfListCouldContainWebsite() async {
         let savedItem = makeItem(
             id: "site-queued-1",
             url: "https://queued.example/path",
@@ -930,10 +937,11 @@ final class WebsitesViewModelTests: XCTestCase {
             selectAfterSave: false
         )
 
-        XCTAssertTrue(saved)
-        XCTAssertEqual(viewModel.items.first?.url, "https://queued.example/path")
-        XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
-        XCTAssertNil(viewModel.saveErrorMessage)
+        XCTAssertFalse(saved)
+        XCTAssertTrue(viewModel.items.isEmpty)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.url, "https://queued.example/path")
+        XCTAssertEqual(viewModel.pendingWebsites.first?.status, .failed)
+        XCTAssertEqual(viewModel.saveErrorMessage, ErrorMapping.message(for: MockError.forced))
     }
 
     func testLoadArchivedTracksLoadingState() async {
