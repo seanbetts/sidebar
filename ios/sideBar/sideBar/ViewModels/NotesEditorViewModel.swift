@@ -303,9 +303,6 @@ public final class NotesEditorViewModel: ObservableObject {
     public func enterEditMode() { enterEditMode(at: .start) }
     public func enterEditMode(at target: PendingEditSelectionTarget) {
         guard currentNoteId != nil, unsupportedContent == nil else { return }
-        if #available(iOS 26.0, macOS 26.0, *) {
-            primeSharedNativeEditorForEdit(target: target)
-        }
         pendingEditSelectionTarget = target
         presentationMode = .edit
     }
@@ -315,13 +312,6 @@ public final class NotesEditorViewModel: ObservableObject {
     var debugPendingEditViewportOffset: CGPoint? { nil }
     public func exitEditModeToRead() {
         pendingEditSelectionTarget = nil; presentationMode = .read
-    }
-
-    @available(iOS 26.0, macOS 26.0, *)
-    private func primeSharedNativeEditorForEdit(target: PendingEditSelectionTarget) {
-        let nativeEditorViewModel = sharedNativeEditor()
-        nativeEditorViewModel.loadDocument(canonicalContent: canonicalContent, plainText: content)
-        nativeEditorViewModel.applySelectionTarget(target)
     }
 
     private func syncNativeEditorContent(canonicalContent: String, plainText: String) {
@@ -407,6 +397,7 @@ public final class NotesEditorViewModel: ObservableObject {
             || nativeEditorViewModel.selection != previousSelection else {
             return
         }
+        nativeEditorViewModel.requestViewportPreservationOnNextProgrammaticRender()
         if !nativeEditorViewModel.hasUnsavedChanges {
             nativeEditorViewModel.hasUnsavedChanges = true
         }

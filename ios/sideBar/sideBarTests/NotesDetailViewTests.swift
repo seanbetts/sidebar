@@ -262,7 +262,7 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertTrue(didInvokeEscape)
     }
 
-    func testAttributedNoteEditorContainerConsumesPendingTargetOnceAfterEditorLoad() async throws {
+    func testAttributedNoteEditorContainerLeavesPendingTargetAvailableForMountedEditor() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -279,11 +279,10 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         )
 
         XCTAssertEqual(loadedNoteId, "n1")
-        assertInsertionPoint(
-            nativeViewModel.selectionSnapshot(in: nativeViewModel.attributedContent),
-            equals: 5
+        XCTAssertEqual(
+            context.editorViewModel.consumePendingEditSelectionTarget(),
+            .characterOffset(5)
         )
-        XCTAssertNil(context.editorViewModel.consumePendingEditSelectionTarget())
 
         nativeViewModel.setInsertionPoint(characterOffset: 1)
         loadedNoteId = AttributedNoteEditorContainer.loadNoteIfNeeded(
@@ -317,6 +316,8 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
             nativeViewModel: nativeViewModel,
             loadedNoteId: loadedNoteId
         )
+        let pendingTarget = try XCTUnwrap(context.editorViewModel.consumePendingEditSelectionTarget())
+        nativeViewModel.applySelectionTarget(pendingTarget)
 
         XCTAssertEqual(context.editorViewModel.presentationMode, .edit)
         assertInsertionPointUTF16Offset(
@@ -324,7 +325,6 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
             in: nativeViewModel.attributedContent,
             equals: 5
         )
-        XCTAssertNil(context.editorViewModel.consumePendingEditSelectionTarget())
 
         context.store.applyEditorUpdate(makeTestNote(id: "n1", plainText: refreshedText))
         await Task.yield()

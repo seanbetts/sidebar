@@ -21,6 +21,7 @@ struct AttributedNoteEditorContainer: View {
 
     @StateObject private var nativeViewModel: NativeNoteEditorViewModel
     @State private var loadedNoteId: String?
+    @State private var pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     #if os(iOS)
     @State private var isSoftwareKeyboardVisible = false
@@ -125,19 +126,19 @@ struct AttributedNoteEditorContainer: View {
             plainText: editorViewModel.content
         )
 
-        if let target = editorViewModel.consumePendingEditSelectionTarget() {
-            nativeViewModel.applySelectionTarget(target)
-        }
-
         return noteId
     }
 
     private func loadIfNeeded() {
+        let previousLoadedNoteId = loadedNoteId
         loadedNoteId = Self.loadNoteIfNeeded(
             editorViewModel: editorViewModel,
             nativeViewModel: nativeViewModel,
             loadedNoteId: loadedNoteId
         )
+        if loadedNoteId != previousLoadedNoteId {
+            pendingSelectionTarget = editorViewModel.consumePendingEditSelectionTarget()
+        }
     }
 
     private func applyAutosaveDelay(isOffline: Bool) {
@@ -160,7 +161,9 @@ struct AttributedNoteEditorContainer: View {
             isEditable: true,
             shouldAutofocus: autofocusEnabled,
             formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
-            formattingBarPresentation: resolvedFormattingBarPresentation
+            formattingBarPresentation: resolvedFormattingBarPresentation,
+            pendingSelectionTarget: pendingSelectionTarget,
+            onPendingSelectionTargetApplied: { pendingSelectionTarget = nil }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)

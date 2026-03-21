@@ -144,6 +144,7 @@ extension NativeNoteEditorViewModel {
             baseFontSize: baseFontSize
         )
         constrainEditorDocument(&updatedContent)
+        requestViewportPreservationOnNextProgrammaticRender()
         attributedContent = updatedContent
         selection = selection(from: selectionSnapshot, in: updatedContent)
     }
@@ -191,6 +192,7 @@ extension NativeNoteEditorViewModel {
 
         let selectionSnapshot = selectionSnapshot(in: attributedContent)
         var updatedSelection = selection
+        requestViewportPreservationOnNextProgrammaticRender()
         attributedContent.transformAttributes(in: &updatedSelection) { attrs in
             var state = inlineFormattingState(from: attrs)
             state.set(formatting, enabled: enabled)

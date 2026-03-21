@@ -22,6 +22,7 @@ func mountTextView(
     makeKeyAndVisible: Bool = false,
     formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
     formattingBarPresentation: NoteFormattingBarPresentation = .keyboardAccessory,
+    pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget? = nil,
     makeTextView: (() -> UIKitNoteTextEditorSurface.AccessoryTextView)? = nil,
     maxContentWidth: CGFloat? = nil,
     width: CGFloat = 360,
@@ -36,6 +37,7 @@ func mountTextView(
                 shouldAutofocus: autofocusEnabled,
                 formattingBarConfiguration: formattingBarConfiguration,
                 formattingBarPresentation: formattingBarPresentation,
+                pendingSelectionTarget: pendingSelectionTarget,
                 makeTextView: makeTextView
             )
         )
@@ -66,6 +68,37 @@ func mountTextView(
     }
     RunLoop.main.run(until: Date().addingTimeInterval(0.05))
     return try XCTUnwrap(findTextView(in: controller.view))
+}
+
+@MainActor
+@available(iOS 26.0, *)
+func mountTextView(
+    viewModel: NativeNoteEditorViewModel,
+    isEditable: Bool = true,
+    autofocusEnabled: Bool = false,
+    attachToWindow: Bool = true,
+    makeKeyAndVisible: Bool = false,
+    formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
+    formattingBarPresentation: NoteFormattingBarPresentation = .keyboardAccessory,
+    makeTextView: (() -> UIKitNoteTextEditorSurface.AccessoryTextView)? = nil,
+    maxContentWidth: CGFloat? = nil,
+    width: CGFloat = 360,
+    height: CGFloat = 320
+) throws -> UITextView {
+    try mountTextView(
+        viewModel: viewModel,
+        isEditable: isEditable,
+        autofocusEnabled: autofocusEnabled,
+        attachToWindow: attachToWindow,
+        makeKeyAndVisible: makeKeyAndVisible,
+        formattingBarConfiguration: formattingBarConfiguration,
+        formattingBarPresentation: formattingBarPresentation,
+        pendingSelectionTarget: nil,
+        makeTextView: makeTextView,
+        maxContentWidth: maxContentWidth,
+        width: width,
+        height: height
+    )
 }
 
 @MainActor

@@ -35,6 +35,7 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     var lastHandledSelectionSourceGeneration: Int = 0
     var lastSelectionLineSpan: ClosedRange<Int>?
     var suppressNextRenderGenerationIncrement = false
+    var shouldPreserveViewportOnNextProgrammaticRender = false
     private(set) var renderGeneration: UInt64 = 0
     var onPersistenceSnapshotComputedForTesting: (() -> Void)?
     var cachedPersistenceSnapshot: PersistenceSnapshot?
@@ -177,6 +178,15 @@ public final class NativeNoteEditorViewModel: ObservableObject {
         case .characterOffset(let offset):
             setInsertionPoint(characterOffset: offset)
         }
+    }
+
+    func requestViewportPreservationOnNextProgrammaticRender() {
+        shouldPreserveViewportOnNextProgrammaticRender = true
+    }
+
+    func consumeViewportPreservationOnNextProgrammaticRender() -> Bool {
+        defer { shouldPreserveViewportOnNextProgrammaticRender = false }
+        return shouldPreserveViewportOnNextProgrammaticRender
     }
 
 }

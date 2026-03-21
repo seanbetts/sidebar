@@ -25,6 +25,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var onSubheadingCommand: (() -> Void)?
         var onBodyCommand: (() -> Void)?
         var shouldAutofocus = false
+        var hasScheduledAutofocus = false
         var shouldRevealSelectionOnNextProgrammaticSelection = false
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { setNeedsLayout() }
@@ -56,18 +57,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         @objc private func handleBoldCommand() { onBoldCommand?() }
         @objc private func handleItalicCommand() { onItalicCommand?() }
         @objc private func handleUnderlineCommand() { onUnderlineCommand?() }
-
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            guard shouldAutofocus, window != nil, isFirstResponder == false else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.shouldAutofocus, self.window != nil, self.isFirstResponder == false else {
-                    return
-                }
-                self.window?.makeKey()
-                _ = self.becomeFirstResponder()
-            }
-        }
 
         override func layoutSubviews() {
             super.layoutSubviews()
@@ -106,6 +95,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let shouldAutofocus: Bool
     let formattingBarConfiguration: NoteFormattingBarConfiguration?
     let formattingBarPresentation: NoteFormattingBarPresentation
+    let pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
+    let onPendingSelectionTargetApplied: (() -> Void)?
     let makeTextView: (() -> AccessoryTextView)?
 
     init(
@@ -115,6 +106,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         shouldAutofocus: Bool = true,
         formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
         formattingBarPresentation: NoteFormattingBarPresentation,
+        pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget? = nil,
+        onPendingSelectionTargetApplied: (() -> Void)? = nil,
         makeTextView: (() -> AccessoryTextView)? = nil
     ) {
         self.viewModel = viewModel
@@ -123,6 +116,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         self.shouldAutofocus = shouldAutofocus
         self.formattingBarConfiguration = formattingBarConfiguration
         self.formattingBarPresentation = formattingBarPresentation
+        self.pendingSelectionTarget = pendingSelectionTarget
+        self.onPendingSelectionTargetApplied = onPendingSelectionTargetApplied
         self.makeTextView = makeTextView
     }
 
@@ -168,28 +163,30 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             renderGeneration: viewModel.renderGeneration,
             baseFontSize: viewModel.baseFontSize
         )
-        let selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
+        let selectedRange = resolvedSelectedRange(
+            pendingSelectionTarget: pendingSelectionTarget,
+            textView: textView,
+            coordinator: context.coordinator
+        )
         let isProgrammaticRenderUpdate = context.coordinator.lastAppliedRenderSignature != renderSignature
-        if isProgrammaticRenderUpdate {
-            let attributedText = bridgedAttributedText(from: viewModel.attributedContent)
-            context.coordinator.isApplyingProgrammaticText = true
-            textView.textStorage.setAttributedString(attributedText)
-            context.coordinator.isApplyingProgrammaticText = false
-            context.coordinator.lastAppliedRenderSignature = renderSignature
-        }
-
-        if textView.selectedRange != selectedRange {
-            context.coordinator.isApplyingProgrammaticSelection = true
-            textView.selectedRange = selectedRange
-            context.coordinator.isApplyingProgrammaticSelection = false
-            if textView.shouldRevealSelectionOnNextProgrammaticSelection {
-                textView.shouldRevealSelectionOnNextProgrammaticSelection = false
-                DispatchQueue.main.async { [weak textView] in
-                    textView?.layoutIfNeeded()
-                    textView?.scrollRangeToVisible(selectedRange)
-                }
-            }
-        }
+        applyRenderedTextIfNeeded(
+            to: textView,
+            coordinator: context.coordinator,
+            renderSignature: renderSignature,
+            isProgrammaticRenderUpdate: isProgrammaticRenderUpdate
+        )
+        applySelectionIfNeeded(
+            to: textView,
+            coordinator: context.coordinator,
+            selectedRange: selectedRange
+        )
+        acknowledgePendingSelectionTargetIfNeeded(
+            pendingSelectionTarget,
+            selectedRange: selectedRange,
+            textView: textView,
+            coordinator: context.coordinator
+        )
+        scheduleAutofocusIfNeeded(for: textView)
 
         let typingAttributes = bridgedTypingAttributes(from: viewModel.attributedContent)
         if NSDictionary(dictionary: textView.typingAttributes).isEqual(to: typingAttributes) == false {
@@ -220,6 +217,89 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             baseFontSize: viewModel.baseFontSize
         )
         return bridged.attributes(at: 0, effectiveRange: nil)
+    }
+
+    private func applyRenderedTextIfNeeded(
+        to textView: AccessoryTextView,
+        coordinator: Coordinator,
+        renderSignature: RenderSignature,
+        isProgrammaticRenderUpdate: Bool
+    ) {
+        guard isProgrammaticRenderUpdate else { return }
+        let preservedContentOffset = viewModel.consumeViewportPreservationOnNextProgrammaticRender() ?
+            textView.contentOffset : nil
+        let attributedText = bridgedAttributedText(from: viewModel.attributedContent)
+        coordinator.isApplyingProgrammaticText = true
+        textView.textStorage.setAttributedString(attributedText)
+        coordinator.isApplyingProgrammaticText = false
+        if let preservedContentOffset {
+            textView.layoutIfNeeded()
+            textView.setContentOffset(
+                Self.clampedContentOffset(preservedContentOffset, for: textView),
+                animated: false
+            )
+        }
+        coordinator.lastAppliedRenderSignature = renderSignature
+    }
+
+    private func applySelectionIfNeeded(
+        to textView: AccessoryTextView,
+        coordinator: Coordinator,
+        selectedRange: NSRange
+    ) {
+        guard textView.selectedRange != selectedRange else { return }
+        coordinator.isApplyingProgrammaticSelection = true
+        textView.selectedRange = selectedRange
+        coordinator.isApplyingProgrammaticSelection = false
+        guard textView.shouldRevealSelectionOnNextProgrammaticSelection else { return }
+        textView.shouldRevealSelectionOnNextProgrammaticSelection = false
+        textView.layoutIfNeeded()
+        textView.scrollCurrentSelectionIntoView()
+    }
+
+    private func scheduleAutofocusIfNeeded(for textView: AccessoryTextView) {
+        guard textView.shouldAutofocus,
+              textView.window != nil,
+              !textView.isFirstResponder,
+              !textView.hasScheduledAutofocus else {
+            return
+        }
+        textView.hasScheduledAutofocus = true
+        DispatchQueue.main.async { [weak textView] in
+            guard let textView, textView.shouldAutofocus, textView.window != nil else { return }
+            textView.hasScheduledAutofocus = false
+            guard !textView.isFirstResponder else { return }
+            textView.window?.makeKey()
+            _ = textView.becomeFirstResponder()
+        }
+    }
+
+    private func acknowledgePendingSelectionTargetIfNeeded(
+        _ pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?,
+        selectedRange: NSRange,
+        textView: AccessoryTextView,
+        coordinator: Coordinator
+    ) {
+        guard let pendingSelectionTarget, textView.selectedRange == selectedRange else {
+            coordinator.acknowledgedPendingSelectionTarget = nil
+            return
+        }
+        guard coordinator.acknowledgedPendingSelectionTarget != pendingSelectionTarget else { return }
+        coordinator.acknowledgedPendingSelectionTarget = pendingSelectionTarget
+        DispatchQueue.main.async { [weak textView] in
+            guard let textView else { return }
+            if textView.selectedRange == selectedRange {
+                let selection = viewModel.selection(
+                    fromUTF16Range: selectedRange,
+                    in: viewModel.attributedContent
+                )
+                if selection != viewModel.selection {
+                    viewModel.selection = selection
+                    viewModel.handleSelectionChange()
+                }
+            }
+            onPendingSelectionTargetApplied?()
+        }
     }
 
     private func configureFormattingUI(
@@ -282,6 +362,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         let viewModel: NativeNoteEditorViewModel
         var isApplyingProgrammaticText = false, isApplyingProgrammaticSelection = false
         fileprivate var lastAppliedRenderSignature: RenderSignature?
+        var acknowledgedPendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
 
         init(viewModel: NativeNoteEditorViewModel) {
             self.viewModel = viewModel
@@ -359,6 +440,37 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 baseFontSize: viewModel.baseFontSize
             )
             textView.typingAttributes = bridgedTypingSample.attributes(at: 0, effectiveRange: nil)
+        }
+    }
+}
+
+@available(iOS 26.0, *)
+private extension UIKitNoteTextEditorSurface {
+    func resolvedSelectedRange(
+        pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?,
+        textView: UITextView,
+        coordinator: Coordinator
+    ) -> NSRange {
+        if let pendingSelectionTarget {
+            if coordinator.acknowledgedPendingSelectionTarget == pendingSelectionTarget {
+                return textView.selectedRange
+            }
+            return pendingSelectedRange(for: pendingSelectionTarget, in: viewModel.attributedContent)
+        }
+        return viewModel.utf16SelectedRange(in: viewModel.attributedContent)
+    }
+
+    func pendingSelectedRange(
+        for target: NotesEditorViewModel.PendingEditSelectionTarget,
+        in text: AttributedString
+    ) -> NSRange {
+        switch target {
+        case .start:
+            return NSRange(location: 0, length: 0)
+        case .characterOffset(let offset):
+            let index = viewModel.index(forUTF16Offset: offset, in: text)
+            let utf16Offset = viewModel.utf16Offset(for: index, in: text)
+            return NSRange(location: utf16Offset, length: 0)
         }
     }
 }

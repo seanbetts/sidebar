@@ -300,7 +300,10 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
             nativeViewModel: nativeViewModel,
             loadedNoteId: nil
         )
-        let textView = try mountTextView(viewModel: nativeViewModel)
+        let textView = try mountTextView(
+            viewModel: nativeViewModel,
+            pendingSelectionTarget: context.editorViewModel.consumePendingEditSelectionTarget()
+        )
         XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
     }
 
