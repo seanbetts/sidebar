@@ -130,6 +130,87 @@ final class NotesEditorViewModelHydrationTests: XCTestCase {
             "Hello"
         )
     }
+
+    func testSaveAcknowledgementKeepsActiveEditorOnLocalSnapshot() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let savedNote = NotePayload(
+            id: "n1",
+            name: "Server title",
+            document: NotesSemanticDocumentProjection.document(fromPlainText: "Server echo"),
+            plainText: "Server echo",
+            path: "/note.md",
+            modified: 200,
+            created: nil
+        )
+        let api = HydrationMockNotesAPI(updateResult: .success(savedNote))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: HydrationTestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: ConnectivityMonitor(
+                baseUrl: URL(string: "http://localhost")!,
+                startMonitoring: false
+            ),
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: HydrationTestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            document: NotesSemanticDocumentProjection.document(fromPlainText: "Hello"),
+            plainText: "Hello",
+            path: "/note.md",
+            modified: 100,
+            created: nil
+        )
+
+        store.applyEditorUpdate(note)
+        try await waitUntilHydrated(timeoutSeconds: 2.0) {
+            viewModel.currentNoteId == "n1" && viewModel.content == "Hello"
+        }
+
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        viewModel.attachNativeEditor(nativeViewModel)
+        viewModel.enterEditMode()
+        nativeViewModel.attributedContent = AttributedString("Local edit")
+        nativeViewModel.handleContentChange(previous: AttributedString("Hello"))
+
+        try await waitUntilHydrated(timeoutSeconds: 2.0) {
+            nativeViewModel.hasUnsavedChanges
+        }
+
+        await viewModel.syncFromNativeEditor(nativeViewModel)
+
+        try await waitUntilHydrated(timeoutSeconds: 2.0) {
+            viewModel.content == "Local edit"
+                && notesViewModel.activeNote?.plainText == "Local edit"
+                && notesViewModel.activeNote?.name == "Local edit"
+                && notesViewModel.activeNote?.modified == 200
+        }
+
+        XCTAssertEqual(viewModel.content, "Local edit")
+        XCTAssertEqual(viewModel.canonicalContent, canonicalUIKitPlainTextPass("Local edit"))
+        XCTAssertEqual(notesViewModel.activeNote?.plainText, "Local edit")
+        XCTAssertEqual(notesViewModel.activeNote?.name, "Local edit")
+        XCTAssertEqual(notesViewModel.activeNote?.modified, 200)
+        XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
+        XCTAssertEqual(nativeViewModel.currentPersistenceSnapshot().plainText, "Local edit")
+    }
 }
 
 @MainActor

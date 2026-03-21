@@ -237,9 +237,9 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
 
-        let saved = await notesViewModel.updateNoteContent(id: noteId, document: snapshot.document)
+        let savedNote = await notesViewModel.updateNoteContent(id: noteId, document: snapshot.document)
         isSaving = false
-        if saved {
+        if let savedNote {
             try? draftStorage.markSynced(entityType: "note", entityId: noteId)
             nativeViewModel.markSaved(
                 plainText: snapshot.plainText,
@@ -250,6 +250,10 @@ public final class NotesEditorViewModel: ObservableObject {
             isDirty = false
             lastSavedAt = Date()
             isQueuedForSync = false
+            notesViewModel.applySavedNoteAcknowledgement(
+                serverNote: savedNote,
+                document: snapshot.document
+            )
         } else {
             saveErrorMessage = "Failed to save note"
             let queued = await enqueueNoteUpdate(

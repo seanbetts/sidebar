@@ -307,19 +307,32 @@ public final class NotesViewModel: ObservableObject {
         }
     }
 
-    public func updateNoteContent(id: String, document: NotesSemanticDocument) async -> Bool {
+    public func updateNoteContent(id: String, document: NotesSemanticDocument) async -> NotePayload? {
         do {
-            let updated = try await api.updateNote(id: id, document: document)
-            store.applyEditorUpdate(updated)
-            return true
+            return try await api.updateNote(id: id, document: document)
         } catch {
             if let urlError = error as? URLError,
                urlError.code == .notConnectedToInternet || urlError.code == .timedOut {
-                return false
+                return nil
             }
             toastCenter.show(message: "Failed to update note")
-            return false
+            return nil
         }
+    }
+
+    func applySavedNoteAcknowledgement(serverNote: NotePayload, document: NotesSemanticDocument) {
+        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
+        let acknowledged = NotePayload(
+            id: serverNote.id,
+            name: NotesSemanticDocumentProjection.title(from: document),
+            document: document,
+            documentVersion: document.version,
+            plainText: plainText,
+            path: serverNote.path,
+            modified: serverNote.modified,
+            created: serverNote.created
+        )
+        store.applyEditorUpdate(acknowledged)
     }
 
     public func applyLocalNoteSnapshot(id: String, document: NotesSemanticDocument) {
