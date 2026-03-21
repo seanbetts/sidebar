@@ -6,17 +6,20 @@ import logging
 import time
 import uuid
 from collections.abc import Callable
+from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from threading import Event, Thread
 
 from api.config import settings
 from api.db.session import SessionLocal, set_website_worker_scope
+from api.models.website import Website
 from api.models.website_processing_job import WebsiteProcessingJob
 from api.services.script_sentry import initialize_script_sentry
 from api.services.web_save_error_service import classify_web_save_result
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.websites_service import WebsitesService
 from sqlalchemy import and_, or_
+from sqlalchemy.orm.attributes import flag_modified
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +35,66 @@ def _now() -> datetime:
 def _set_worker_scope(db) -> None:
     """Set session GUCs for cross-user worker access."""
     set_website_worker_scope(db, enabled=True)
+
+
+def _snapshot_website_state(website: Website | None) -> dict[str, object] | None:
+    """Capture the mutable website fields so canceled runs can be rolled back."""
+    if website is None:
+        return None
+
+    return {
+        "id": website.id,
+        "user_id": website.user_id,
+        "url": website.url,
+        "url_full": website.url_full,
+        "domain": website.domain,
+        "title": website.title,
+        "content": website.content,
+        "source": website.source,
+        "saved_at": website.saved_at,
+        "published_at": website.published_at,
+        "reading_time": website.reading_time,
+        "metadata_": deepcopy(website.metadata_ or {}),
+        "is_archived": website.is_archived,
+        "updated_at": website.updated_at,
+        "last_opened_at": website.last_opened_at,
+        "deleted_at": website.deleted_at,
+    }
+
+
+def _restore_website_state(db, snapshot: dict[str, object] | None) -> bool:
+    """Restore a pre-run website snapshot after a canceled repeated save."""
+    if snapshot is None:
+        return False
+
+    website = (
+        db.query(Website)
+        .filter(
+            Website.user_id == snapshot["user_id"],
+            Website.id == snapshot["id"],
+        )
+        .first()
+    )
+    if website is None:
+        return False
+
+    website.url = str(snapshot["url"])
+    website.url_full = snapshot["url_full"]
+    website.domain = str(snapshot["domain"])
+    website.title = str(snapshot["title"])
+    website.content = str(snapshot["content"])
+    website.source = snapshot["source"]
+    website.saved_at = snapshot["saved_at"]
+    website.published_at = snapshot["published_at"]
+    website.reading_time = snapshot["reading_time"]
+    website.metadata_ = deepcopy(snapshot["metadata_"])
+    website.is_archived = bool(snapshot["is_archived"])
+    website.updated_at = snapshot["updated_at"]
+    website.last_opened_at = snapshot["last_opened_at"]
+    website.deleted_at = snapshot["deleted_at"]
+    flag_modified(website, "metadata_")
+    db.commit()
+    return True
 
 
 def _claim_job(db, worker_id: str) -> WebsiteProcessingJob | None:
@@ -165,6 +228,14 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
     if job.status == "canceled":
         logger.info("Skipping canceled job %s before execution", job.id)
         return
+    existing_website_snapshot = _snapshot_website_state(
+        WebsitesService.get_by_url(
+            db,
+            job.user_id,
+            job.url,
+            include_deleted=True,
+        )
+    )
 
     try:
         executor = SkillExecutor(settings.skills_dir, settings.workspace_base)
@@ -222,17 +293,28 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
 
     db.refresh(job)
     if job.status == "canceled":
-        WebsitesService.soft_delete_website(
-            db,
-            job.user_id,
-            website_uuid,
-            allow_missing=True,
-        )
-        logger.info(
-            "Job %s finished after cancellation; soft-deleted website_id=%s",
-            job.id,
-            raw_website_id,
-        )
+        if (
+            existing_website_snapshot
+            and existing_website_snapshot["id"] == website_uuid
+        ):
+            _restore_website_state(db, existing_website_snapshot)
+            logger.info(
+                "Job %s finished after cancellation; restored website_id=%s",
+                job.id,
+                raw_website_id,
+            )
+        else:
+            WebsitesService.soft_delete_website(
+                db,
+                job.user_id,
+                website_uuid,
+                allow_missing=True,
+            )
+            logger.info(
+                "Job %s finished after cancellation; soft-deleted website_id=%s",
+                job.id,
+                raw_website_id,
+            )
         return
 
     WebsiteProcessingService.update_job(

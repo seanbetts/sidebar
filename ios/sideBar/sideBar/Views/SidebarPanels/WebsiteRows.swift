@@ -11,6 +11,10 @@ struct PendingWebsiteRow: View, Equatable {
         lhs.pending == rhs.pending && lhs.useListStyling == rhs.useListStyling
     }
 
+    var leadingIconName: String? {
+        pending.status == .failed ? "globe" : nil
+    }
+
     var body: some View {
         SelectableRow(
             isSelected: false,
@@ -18,7 +22,13 @@ struct PendingWebsiteRow: View, Equatable {
             useListStyling: useListStyling
         ) {
             HStack(spacing: 8) {
-                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                if let leadingIconName {
+                    Image(systemName: leadingIconName)
+                        .appFont(.labelMd)
+                        .foregroundStyle(secondaryTextColor)
+                } else {
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     Text(displayTitle)
                         .appFont(SidebarTypography.primary)

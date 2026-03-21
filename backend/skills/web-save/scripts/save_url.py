@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Save URL as Markdown
+"""Save URL as Markdown.
 
 Fetch web page content and save it as markdown using Jina.ai Reader API.
 """
@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -39,9 +40,9 @@ try:
         extract_favicon_url,
         parse_url_local,
     )
-    from api.services.web_save_parser_youtube import fetch_youtube_duration_seconds
     from api.services.web_save_parser_apple_news import resolve_apple_news_source_url
     from api.services.web_save_parser_wsj import apply_wsj_content_guards
+    from api.services.web_save_parser_youtube import fetch_youtube_duration_seconds
     from api.services.web_save_tagger import (
         calculate_reading_time,
         compute_word_count,
@@ -443,6 +444,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         if resolve_apple_news_source_url is not None
         else url
     )
+    script_started_at = time.monotonic()
     web_save_mode = os.getenv("WEB_SAVE_MODE", "local").lower().strip()
     logger.info(
         "web-save script start url=%s target_url=%s mode=%s",
@@ -457,17 +459,19 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
     local_antibot_stage: str | None = None
     local_antibot_rule_id: str | None = None
     if web_save_mode in {"local", "compare"}:
+        local_parse_started_at = time.monotonic()
         try:
             parsed = parse_url_local(target_url)
             logger.info(
                 (
                     "web-save script local parse ok url=%s "
-                    "target_url=%s title=%s content_len=%s"
+                    "target_url=%s title=%s content_len=%s parse_elapsed_ms=%s"
                 ),
                 url,
                 target_url,
                 parsed.title,
                 len(parsed.content),
+                int((time.monotonic() - local_parse_started_at) * 1000),
             )
         except LocalParseFallbackError as exc:
             local_antibot_detection = exc.antibot_detection
@@ -476,8 +480,10 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             local_parse_error = str(exc)
             local_parse_error_type = type(exc).__name__
             logger.info(
-                "web-save local parse fallback requested target_url=%s fallback=%s rule=%s "
-                "stage=%s kind=%s reason=%s",
+                (
+                    "web-save local parse fallback requested target_url=%s "
+                    "fallback=%s rule=%s stage=%s kind=%s reason=%s"
+                ),
                 target_url,
                 exc.fallback,
                 exc.rule_id,
@@ -505,6 +511,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
 
     local_parsed = parsed
     if parsed is None or web_save_mode in {"jina", "compare"}:
+        fallback_started_at = time.monotonic()
         fallback_reason = (
             "forced_mode"
             if web_save_mode == "jina"
@@ -678,12 +685,16 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             )
             if web_save_mode == "compare" and local_parsed is not None:
                 logger.info(
-                    "Compare parse for %s: jina_len=%s local_len=%s jina_title=%s local_title=%s",
+                    (
+                        "Compare parse for %s: jina_len=%s local_len=%s "
+                        "jina_title=%s local_title=%s fallback_elapsed_ms=%s"
+                    ),
                     target_url,
                     len(cleaned_content),
                     len(local_parsed.content),
                     title,
                     local_parsed.title,
+                    int((time.monotonic() - fallback_started_at) * 1000),
                 )
         except WebSaveScriptError:
             raise
@@ -742,6 +753,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
 
     set_session_user_id(db, user_id)
     try:
+        upsert_started_at = time.monotonic()
         website = WebsitesService.upsert_website(
             db,
             user_id,
@@ -755,6 +767,12 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             pinned=False,
             archived=False,
         )
+        logger.info(
+            "web-save database upsert ok url=%s website_id=%s upsert_elapsed_ms=%s",
+            url,
+            website.id,
+            int((time.monotonic() - upsert_started_at) * 1000),
+        )
         favicon_url = parsed.favicon_url
         if favicon_url is None:
             try:
@@ -762,6 +780,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             except Exception:
                 favicon_url = None
 
+        favicon_started_at = time.monotonic()
         if FaviconService is not None and favicon_url:
             try:
                 metadata_payload = FaviconService.metadata_payload(
@@ -825,6 +844,17 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                         )
             except Exception as exc:
                 logger.warning("favicon handling failed url=%s error=%s", url, exc)
+        logger.info(
+            (
+                "web-save script complete url=%s website_id=%s "
+                "favicon_enabled=%s favicon_elapsed_ms=%s total_elapsed_ms=%s"
+            ),
+            url,
+            website.id,
+            bool(FaviconService is not None and favicon_url),
+            int((time.monotonic() - favicon_started_at) * 1000),
+            int((time.monotonic() - script_started_at) * 1000),
+        )
         return {
             "id": str(website.id),
             "title": website.title,

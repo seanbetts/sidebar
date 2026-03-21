@@ -234,3 +234,68 @@ def test_process_job_soft_deletes_website_when_canceled_midflight(
     assert website is not None
     assert job.status == "canceled"
     assert website.deleted_at is not None
+
+
+def test_process_job_restores_existing_website_when_repeated_save_is_canceled(
+    test_db, monkeypatch
+):
+    """Worker should restore an existing website row when a repeated save is canceled."""
+    from api.services.agent.skills import executor as executor_module
+    from api.services.website_processing_service import WebsiteProcessingService
+    from workers import website_processing_worker
+
+    existing_website = Website(
+        id=uuid4(),
+        user_id="test-user",
+        url="https://example.com/existing",
+        url_full="https://example.com/existing",
+        domain="example.com",
+        title="Original Title",
+        content="Original content",
+        source="web",
+        metadata_={"pinned": True, "archived": False},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        last_opened_at=None,
+        deleted_at=None,
+    )
+    test_db.add(existing_website)
+    test_db.commit()
+
+    class FakeExecutor:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def execute(self, *_args, **_kwargs):
+            website = test_db.query(Website).filter(Website.id == existing_website.id).one()
+            website.title = "Updated Title"
+            website.content = "Updated content"
+            website.metadata_ = {"pinned": False, "archived": False}
+            website.deleted_at = None
+            test_db.commit()
+            WebsiteProcessingService.update_job(test_db, job.id, status="canceled")
+            return {"success": True, "data": {"id": str(existing_website.id)}}
+
+    job = WebsiteProcessingJob(
+        user_id="test-user",
+        url="https://example.com/existing",
+        status="processing",
+        worker_id="worker-1",
+        lease_expires_at=datetime.now(UTC) + timedelta(minutes=1),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(job)
+    test_db.commit()
+
+    monkeypatch.setattr(executor_module, "SkillExecutor", FakeExecutor)
+
+    website_processing_worker._process_job(test_db, job)
+    test_db.refresh(job)
+    test_db.refresh(existing_website)
+
+    assert job.status == "canceled"
+    assert existing_website.deleted_at is None
+    assert existing_website.title == "Original Title"
+    assert existing_website.content == "Original content"
+    assert existing_website.metadata_ == {"pinned": True, "archived": False}

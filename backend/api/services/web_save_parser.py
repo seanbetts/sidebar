@@ -297,6 +297,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     start_time = time.monotonic()
     normalized = ensure_url(url)
     logger.info("web-save parse start url=%s", normalized)
+    fetch_started_at = time.monotonic()
     html, final_url, used_js_rendering = fetch_html(normalized, timeout=timeout)
     is_initial_tiktok_video = is_tiktok_video_url(final_url)
     html = strip_control_chars(html)
@@ -337,11 +338,15 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if not is_tiktok_video_url(final_url):
         raise_antibot_fallback_if_needed(html, stage="apple-unwrapped")
     logger.info(
-        "web-save fetched url=%s final_url=%s used_js=%s html_len=%s",
+        (
+            "web-save fetched url=%s final_url=%s used_js=%s html_len=%s "
+            "fetch_elapsed_ms=%s"
+        ),
         normalized,
         final_url,
         used_js_rendering,
         len(html),
+        int((time.monotonic() - fetch_started_at) * 1000),
     )
     initial_html = html
     initial_url = final_url
@@ -355,7 +360,14 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         )
     render_mode, wait_for, render_timeout = resolve_rendering_settings(pre_rules)
     if not used_js_rendering and render_mode == "force":
+        render_started_at = time.monotonic()
         try:
+            logger.info(
+                "web-save render start url=%s mode=force wait_for=%s timeout_ms=%s",
+                final_url,
+                wait_for,
+                render_timeout,
+            )
             html, final_url = render_html_with_playwright(
                 final_url, timeout=render_timeout, wait_for=wait_for
             )
@@ -366,17 +378,39 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         except LocalParseFallbackError:
             raise
         except Exception as exc:
-            logger.warning("web-save force render skip url=%s err=%s", final_url, exc)
+            logger.warning(
+                "web-save force render skip url=%s err=%s render_elapsed_ms=%s",
+                final_url,
+                exc,
+                int((time.monotonic() - render_started_at) * 1000),
+            )
+        else:
+            logger.info(
+                "web-save render done url=%s mode=force render_elapsed_ms=%s",
+                final_url,
+                int((time.monotonic() - render_started_at) * 1000),
+            )
     elif not used_js_rendering and render_mode == "auto":
         wait_until = resolve_auto_render_wait_until(html)
         if wait_until and should_auto_render_url(
             final_url, html, is_playwright_allowed=is_playwright_allowed
         ):
+            render_started_at = time.monotonic()
             try:
                 render_timeout_ms = (
                     min(render_timeout, 15000)
                     if wait_until == "domcontentloaded"
                     else render_timeout
+                )
+                logger.info(
+                    (
+                        "web-save render start url=%s mode=auto wait_for=%s "
+                        "wait_until=%s timeout_ms=%s"
+                    ),
+                    final_url,
+                    wait_for,
+                    wait_until,
+                    render_timeout_ms,
                 )
                 html, final_url = render_html_with_playwright(
                     final_url,
@@ -391,7 +425,18 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             except LocalParseFallbackError:
                 raise
             except Exception as exc:
-                logger.warning("web-save auto skip url=%s err=%s", final_url, exc)
+                logger.warning(
+                    "web-save auto skip url=%s err=%s render_elapsed_ms=%s",
+                    final_url,
+                    exc,
+                    int((time.monotonic() - render_started_at) * 1000),
+                )
+            else:
+                logger.info(
+                    "web-save render done url=%s mode=auto render_elapsed_ms=%s",
+                    final_url,
+                    int((time.monotonic() - render_started_at) * 1000),
+                )
 
     if html != initial_html or final_url != initial_url:
         pre_rules = engine.match_rules(final_url, html, phase="pre")
