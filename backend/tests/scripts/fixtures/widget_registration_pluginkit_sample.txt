@@ -5,4 +5,5 @@
      ai.sidebar.sidebar.sideBarWidgets(0.1)	F437C11D-2B23-4352-A1E9-583D840B315C	2026-03-14 17:19:09 +0000	/Users/sean/.git/worktrees/widget/mac/DerivedData/sideBarWidgets/Build/Products/Debug/sideBarWidgetsExtension.appex
      ai.sidebar.sidebar.sideBarWidgets(0.1)	6AC0EA4E-7D4D-4D92-B68B-D96C36FA26D3	2026-03-14 17:18:00 +0000	/private/tmp/sideBarWidgetStaging/Build/Products/Debug/sideBarWidgetsExtension.appex
      ai.sidebar.sidebar.sideBarWidgets(0.1)	1B84CFE3-C17B-4EC5-9A72-8D1785B7E3C6	2026-03-14 17:17:01 +0000	/Users/sean/DerivedData/sideBarWidgets-Old/Build/Products/Debug/sideBarWidgetsExtension.appex
+     ai.sidebar.sidebar.sideBarWidgets(0.1)	DB743ED5-58C5-48DB-B576-B16AA9DAED3B	2026-03-16 17:33:42 +0000	/private/var/folders/mt/xnblml7j63ggq9htz1jpwq5r0000gn/T/tmp.QX5taZhsLV/Build/Products/Debug/sideBar.app/Contents/PlugIns/sideBarWidgetsExtension.appex
      ai.sidebar.sidebar.sideBarWidgets(0.1)	ABCDEF12-1234-5678-9ABC-DEF123456789	2026-03-14 17:16:01 +0000	/private/tmp/sideBarWidgetStaging/sideBarWidgetsExtension.appex
