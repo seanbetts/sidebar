@@ -15,6 +15,7 @@ from api.services.web_save_parser_apple_news import (
     resolve_apple_news_source_url,
 )
 from api.services import web_save_parser_steam
+import api.services.web_save_parser_reuters as web_save_parser_reuters
 from api.services.web_save_parser_fallback import LocalParseFallbackError
 import api.services.web_save_parser_tiktok as web_save_parser_tiktok
 import api.services.web_save_parser_patreon as web_save_parser_patreon
@@ -461,6 +462,19 @@ def test_parse_url_local_reuters_article_without_article_tag_uses_domain_extract
     assert "\n## [Business]" not in parsed.content
     assert "About Reuters" not in parsed.content
     assert "sp.analytics.yahoo.com" not in parsed.content
+
+
+def test_reuters_tag_attr_text_handles_list_attributes():
+    soup = BeautifulSoup("<a>Link</a>", "html.parser")
+    anchor = soup.find("a")
+
+    assert anchor is not None
+    anchor["href"] = [" https://www.reuters.com/story ", "ignored"]
+
+    assert (
+        web_save_parser_reuters._tag_attr_text(anchor, "href")
+        == "https://www.reuters.com/story ignored"
+    )
 
 
 def test_extract_patreon_post_snapshot_extracts_locked_preview():

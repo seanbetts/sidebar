@@ -127,14 +127,14 @@ def _cleanup_reuters_article(article: Tag) -> None:
         node.decompose()
 
     for img in list(article.find_all("img")):
-        src = (img.get("src") or "").strip()
+        src = _tag_attr_text(img, "src")
         if src.startswith("blob:") or any(
             pattern in src for pattern in _TRACKING_IMAGE_PATTERNS
         ):
             img.decompose()
 
     for anchor in list(article.find_all("a")):
-        href = (anchor.get("href") or "").strip()
+        href = _tag_attr_text(anchor, "href")
         text = anchor.get_text(" ", strip=True)
         if not href and not text:
             anchor.decompose()
@@ -161,6 +161,16 @@ def _cleanup_reuters_article(article: Tag) -> None:
         normalized = paragraph.get_text(" ", strip=True).lower()
         if normalized in _DROP_EXACT_TEXT:
             paragraph.decompose()
+
+
+def _tag_attr_text(node: Tag, attribute: str) -> str:
+    """Return a normalized string for a BeautifulSoup tag attribute."""
+    value = node.get(attribute)
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, list):
+        return " ".join(part.strip() for part in value if isinstance(part, str)).strip()
+    return ""
 
 
 def _has_reuters_body_content(article: Tag) -> bool:
