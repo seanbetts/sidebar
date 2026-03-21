@@ -8,6 +8,13 @@ extension WebsitesViewModel {
 
     public func cancelWebsiteSave() async {
         guard let pending = cancelablePendingWebsite(),
+              pending.jobId != nil else { return }
+
+        await cancelPendingWebsite(id: pending.id)
+    }
+
+    public func cancelPendingWebsite(id: String) async {
+        guard let pending = pendingWebsite(id: id),
               let jobId = pending.jobId else { return }
 
         do {

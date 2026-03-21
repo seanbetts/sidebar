@@ -278,6 +278,25 @@ extension AppEnvironment {
         websitesViewModel.syncPendingWebsitesFromQueuedShares(storage.pendingShareStore.loadAll())
     }
 
+    public func cancelPendingWebsite(_ pending: WebsitesViewModel.PendingWebsiteItem) async {
+        guard pending.status != .failed, pending.jobId != nil else {
+            if let queueItemId = pending.queueItemId {
+                removePendingQueuedWebsite(queueItemId)
+            } else {
+                websitesViewModel.removePendingWebsite(id: pending.id)
+            }
+            return
+        }
+
+        await websitesViewModel.cancelPendingWebsite(id: pending.id)
+        guard websitesViewModel.pendingWebsite(id: pending.id) == nil else { return }
+
+        if let queueItemId = pending.queueItemId {
+            storage.pendingShareStore.remove(ids: [queueItemId])
+        }
+        websitesViewModel.syncPendingWebsitesFromQueuedShares(storage.pendingShareStore.loadAll())
+    }
+
     private func processPendingShares(_ pending: [PendingShareItem]) async -> [PendingShareItem] {
         let now = Date()
         var retainedItems: [PendingShareItem] = []
@@ -314,8 +333,8 @@ extension AppEnvironment {
         selectAfterSave: Bool
     ) async -> Bool {
         let now = Date()
-        let items = storage.pendingShareStore.loadAll()
-        guard let item = items.first(where: { $0.id == queueItemId }) else {
+        let snapshot = storage.pendingShareStore.loadAll()
+        guard let item = snapshot.first(where: { $0.id == queueItemId }) else {
             return true
         }
         let processed = await processPendingWebsite(
@@ -324,7 +343,8 @@ extension AppEnvironment {
             selectAfterSave: selectAfterSave,
             forceAttempt: true
         )
-        let updatedItems = items.compactMap { current -> PendingShareItem? in
+        let latestItems = storage.pendingShareStore.loadAll()
+        let updatedItems = latestItems.compactMap { current -> PendingShareItem? in
             if current.id == queueItemId {
                 return processed
             }
@@ -404,16 +424,18 @@ extension AppEnvironment {
         retainedItems: [PendingShareItem]
     ) -> (items: [PendingShareItem], hadConcurrentQueuedItems: Bool) {
         let processedIds = Set(processedSnapshot.map(\.id))
-        let retainedIds = Set(retainedItems.map(\.id))
         let latestItems = storage.pendingShareStore.loadAll()
+        let latestIds = Set(latestItems.map(\.id))
+        let filteredRetainedItems = retainedItems.filter { latestIds.contains($0.id) }
+        let retainedIds = Set(filteredRetainedItems.map(\.id))
         let concurrentItems = latestItems.filter { item in
             !processedIds.contains(item.id) && !retainedIds.contains(item.id)
         }
-        return (retainedItems + concurrentItems, !concurrentItems.isEmpty)
+        return (filteredRetainedItems + concurrentItems, !concurrentItems.isEmpty)
     }
 
     private func prunedQueuedWebsiteItems(_ items: [PendingShareItem]) -> [PendingShareItem] {
-        let savedKeys = Set(websitesViewModel.items.map {
+        let savedKeys = Set(websitesStore.items.map {
             websitesViewModel.canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url
         })
         guard !savedKeys.isEmpty else { return items }

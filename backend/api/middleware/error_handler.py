@@ -103,6 +103,20 @@ def _is_db_timeout(exc: DBAPIError) -> bool:
     )
 
 
+def _db_error_code(exc: Exception) -> str | None:
+    orig = getattr(exc, "orig", None)
+    code = getattr(orig, "pgcode", None)
+    if code is None:
+        return None
+    return str(code)
+
+
+def _db_error_message(exc: Exception) -> str:
+    orig = getattr(exc, "orig", None)
+    detail = orig or exc
+    return str(detail)
+
+
 async def db_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle database connectivity/timeouts with a fast 503."""
     is_timeout = isinstance(exc, DBAPIError) and _is_db_timeout(exc)
@@ -114,12 +128,22 @@ async def db_exception_handler(request: Request, exc: Exception) -> JSONResponse
     if is_timeout:
         message = "Database request timed out"
 
+    db_error_code = _db_error_code(exc)
+    db_error_message = _db_error_message(exc)
+
     logger.error(
-        "Database error",
+        "Database error %s %s type=%s code=%s message=%s",
+        request.method,
+        request.url.path,
+        exc.__class__.__name__,
+        db_error_code or "-",
+        db_error_message,
         extra={
             "path": request.url.path,
             "method": request.method,
             "db_error_type": exc.__class__.__name__,
+            "db_error_code": db_error_code,
+            "db_error_message": db_error_message,
         },
     )
 

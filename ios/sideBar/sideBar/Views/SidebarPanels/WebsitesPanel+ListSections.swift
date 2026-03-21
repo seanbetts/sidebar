@@ -170,6 +170,12 @@ extension WebsitesPanelView {
                 }
             },
             onRemove: {
+                if pending.jobId != nil, pending.status != .failed {
+                    Task {
+                        await appEnvironment.cancelPendingWebsite(pending)
+                    }
+                    return
+                }
                 if let queueItemId = pending.queueItemId {
                     appEnvironment.removePendingQueuedWebsite(queueItemId)
                     return

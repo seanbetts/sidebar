@@ -125,6 +125,12 @@ extension AppEnvironment {
             }
             .store(in: &cancellables)
 
+        websitesStore.$items
+            .sink { [weak self] _ in
+                self?.reconcileQueuedWebsitesWithSavedItems()
+            }
+            .store(in: &cancellables)
+
         ingestionViewModel.objectWillChange
             .sink { [weak self] _ in
                 self?.scheduleForwardedObjectWillChange()

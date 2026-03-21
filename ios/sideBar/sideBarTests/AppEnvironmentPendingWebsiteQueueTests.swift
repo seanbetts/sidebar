@@ -89,6 +89,129 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertTrue(environment.websitesViewModel.pendingWebsites.isEmpty)
         XCTAssertEqual(environment.websitesViewModel.items.first?.url, url)
     }
+
+    func testRemovePendingQueuedWebsiteDoesNotResurrectFailedItem() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let gate = AsyncGate()
+        let saveStarted = expectation(description: "queued website save started")
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(NSError(domain: "AppEnvironmentPendingWebsiteQueueTests", code: 2)),
+            onSave: { _ in
+                saveStarted.fulfill()
+                await gate.wait()
+            }
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        let queuedItem = storage.pendingShareStore.enqueueWebsite(url: url)
+        XCTAssertNotNil(queuedItem)
+
+        let consumeTask = Task {
+            await environment.consumePendingShares()
+        }
+
+        await fulfillment(of: [saveStarted], timeout: 1.0)
+        environment.removePendingQueuedWebsite(queuedItem!.id)
+        await gate.open()
+        await consumeTask.value
+
+        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
+        XCTAssertTrue(environment.websitesViewModel.pendingWebsites.isEmpty)
+    }
+
+    func testCancelPendingWebsiteCancelsBackendJobAndClearsQueuedState() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(NSError(domain: "AppEnvironmentPendingWebsiteQueueTests", code: 3)),
+            cancelResult: .success(())
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        let queuedItem = storage.pendingShareStore.enqueueWebsite(url: url)
+        XCTAssertNotNil(queuedItem)
+        environment.websitesViewModel.pendingWebsites = [
+            WebsitesViewModel.PendingWebsiteItem(
+                id: "pending-1",
+                title: "Reading...",
+                domain: "example.com",
+                url: url,
+                canonicalURL: url,
+                source: .queuedShare,
+                queueItemId: queuedItem?.id,
+                jobId: "job-1",
+                status: .reading
+            )
+        ]
+        environment.websitesViewModel.selectedWebsiteId = "pending-1"
+        environment.websitesViewModel.isLoadingDetail = true
+        environment.websitesViewModel.isSavingWebsite = true
+        environment.websitesViewModel.jobPollingTasks["job-1"] = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+            }
+        }
+
+        await environment.cancelPendingWebsite(environment.websitesViewModel.pendingWebsites[0])
+
+        XCTAssertEqual(websitesAPI.canceledJobIds, ["job-1"])
+        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
+        XCTAssertTrue(environment.websitesViewModel.pendingWebsites.isEmpty)
+        XCTAssertTrue(environment.websitesViewModel.jobPollingTasks.isEmpty)
+        XCTAssertFalse(environment.websitesViewModel.isLoadingDetail)
+        XCTAssertFalse(environment.websitesViewModel.isSavingWebsite)
+    }
+
+    func testSavedWebsiteListUpdatePrunesMatchingQueuedWebsiteState() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .failure(NSError(domain: "AppEnvironmentPendingWebsiteQueueTests", code: 4))
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        let queuedItem = storage.pendingShareStore.enqueueWebsite(url: url)
+        XCTAssertNotNil(queuedItem)
+        environment.websitesViewModel.syncPendingWebsitesFromQueuedShares(
+            storage.pendingShareStore.loadAll()
+        )
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsites.first?.url, url)
+
+        environment.websitesStore.insertItemAtTop(
+            WebsiteItem(
+                id: "saved-\(UUID().uuidString)",
+                title: "Saved",
+                url: url,
+                domain: "example.com",
+                savedAt: "2026-03-20T23:41:37Z",
+                publishedAt: nil,
+                pinned: false,
+                pinnedOrder: nil,
+                archived: false,
+                faviconUrl: nil,
+                faviconR2Key: nil,
+                youtubeTranscripts: nil,
+                readingTime: nil,
+                updatedAt: "2026-03-20T23:41:37Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            persist: false
+        )
+        for _ in 0..<20
+            where !storage.pendingShareStore.loadAll().isEmpty
+            || !environment.websitesViewModel.pendingWebsites.isEmpty {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
+        XCTAssertTrue(environment.websitesViewModel.pendingWebsites.isEmpty)
+    }
 }
 
 @MainActor
@@ -149,5 +272,23 @@ extension AppEnvironmentPendingWebsiteQueueTests {
         environment.tasksViewModel.reset()
         environment.chatViewModel.reset()
         environment.websitesViewModel.pendingWebsite = nil
+    }
+}
+
+private actor AsyncGate {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var isOpen = false
+
+    func wait() async {
+        guard !isOpen else { return }
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func open() {
+        isOpen = true
+        continuation?.resume()
+        continuation = nil
     }
 }

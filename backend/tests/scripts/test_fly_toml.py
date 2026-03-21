@@ -11,3 +11,9 @@ def test_fly_defaults_ytdlp_js_runtimes_to_deno_then_node() -> None:
     contents = FLY_TOML.read_text(encoding="utf-8")
 
     assert 'YT_DLP_JS_RUNTIMES = "deno,node"' in contents
+
+
+def test_fly_http_service_uses_longer_startup_grace_period() -> None:
+    contents = FLY_TOML.read_text(encoding="utf-8")
+
+    assert 'grace_period = "60s"' in contents

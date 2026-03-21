@@ -7,10 +7,12 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
     let saveResult: Result<WebsiteSaveJobResponse, Error>
     let detailResult: Result<WebsiteDetail, Error>
     let listResult: Result<WebsitesResponse, Error>
+    let cancelResult: Result<Void, Error>
     let onSave: ((String) async -> Void)?
     private(set) var lastSavedURL: String?
     private(set) var saveCallCount = 0
     private(set) var listCallCount = 0
+    private(set) var canceledJobIds: [String] = []
 
     init(
         saveResult: Result<WebsiteSaveJobResponse, Error>,
@@ -18,11 +20,13 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
             WebsitesResponse(items: [], archivedCount: 0)
         ),
         detailResult: Result<WebsiteDetail, Error> = .failure(DeepLinkWebsitesAPIError.forced),
+        cancelResult: Result<Void, Error> = .failure(DeepLinkWebsitesAPIError.forced),
         onSave: ((String) async -> Void)? = nil
     ) {
         self.saveResult = saveResult
         self.listResult = listResult
         self.detailResult = detailResult
+        self.cancelResult = cancelResult
         self.onSave = onSave
     }
 
@@ -52,6 +56,11 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
     func jobStatus(id: String) async throws -> WebsiteJobStatusResponse {
         _ = id
         throw DeepLinkWebsitesAPIError.forced
+    }
+
+    func cancel(jobId: String) async throws {
+        canceledJobIds.append(jobId)
+        try cancelResult.get()
     }
 
     func transcribeYouTube(id: String, url: String) async throws -> WebsiteTranscriptResponse {
