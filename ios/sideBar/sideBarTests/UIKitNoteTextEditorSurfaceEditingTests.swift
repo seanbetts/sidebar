@@ -308,6 +308,37 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
         XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
     }
 
+    func testPendingCaretTargetMountDoesNotPerformInitialSurfaceScroll() throws {
+        let plainText = (0..<60)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass(plainText),
+            plainText: plainText
+        )
+        let trackingTextView = ViewportTrackingAccessoryTextView()
+        let pendingSelectionTarget = NotesEditorViewModel.PendingEditSelectionTarget.characterOffset(
+            NSString(string: plainText).range(of: "Line 40 body text").location
+        )
+
+        _ = try mountTextView(
+            viewModel: viewModel,
+            autofocusEnabled: true,
+            attachToWindow: true,
+            makeKeyAndVisible: true,
+            pendingSelectionTarget: pendingSelectionTarget,
+            makeTextView: { trackingTextView },
+            width: 834,
+            height: 520
+        )
+
+        XCTAssertTrue(
+            trackingTextView.recordedContentOffsets.isEmpty,
+            "Surface mount should not scroll before the container handoff"
+        )
+    }
+
     func testPureSelectionChangesDoNotRewriteUIKitAttributedText() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(

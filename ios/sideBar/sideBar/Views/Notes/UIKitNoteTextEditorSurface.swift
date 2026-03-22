@@ -26,7 +26,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var onBodyCommand: (() -> Void)?
         var shouldAutofocus = false
         var hasScheduledAutofocus = false
-        var shouldRevealSelectionOnNextProgrammaticSelection = false
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { setNeedsLayout() }
         }
@@ -133,7 +132,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.isEditable = isEditable
         textView.allowsEditingTextAttributes = false
         textView.shouldAutofocus = isEditable && shouldAutofocus
-        textView.shouldRevealSelectionOnNextProgrammaticSelection = isEditable && shouldAutofocus
         textView.backgroundColor = .clear
         textView.textColor = .label
         textView.tintColor = NoteTextAppearance.caretTintColor
@@ -255,10 +253,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         coordinator.isApplyingProgrammaticSelection = true
         textView.selectedRange = selectedRange
         coordinator.isApplyingProgrammaticSelection = false
-        guard textView.shouldRevealSelectionOnNextProgrammaticSelection else { return }
-        textView.shouldRevealSelectionOnNextProgrammaticSelection = false
-        textView.layoutIfNeeded()
-        textView.scrollCurrentSelectionIntoView()
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
