@@ -344,7 +344,9 @@ extension NotesAttributedDocumentCodec {
                 )
             },
             checked: block.checked,
-            children: block.children?.map(renderingCopy)
+            children: block.children?.map { child in
+                renderingCopy(of: child)
+            }
         )
     }
 }

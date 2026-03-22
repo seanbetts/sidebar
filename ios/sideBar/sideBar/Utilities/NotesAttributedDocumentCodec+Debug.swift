@@ -337,7 +337,7 @@ extension NotesAttributedDocumentCodec {
             type: .codeBlock,
             content: [.init(text: "let value = 1", marks: [])]
         )
-        var identitySource = NotesPresentationIntentIdentitySource()
+        let identitySource = NotesPresentationIntentIdentitySource()
         _ = identitySource
         attributed.append(
             bridgedFoundationPresentationIntentText(
