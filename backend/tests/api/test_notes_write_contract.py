@@ -34,7 +34,7 @@ def test_parse_note_write_payload_rejects_legacy_content_field():
 
 def test_build_canonical_note_write_accepts_canonical_payload():
     document = {
-        "version": 1,
+        "version": 2,
         "blocks": [
             {"type": "title", "content": [{"text": "Strict title", "marks": []}]},
             {"type": "paragraph", "content": [{"text": "Body", "marks": []}]},
@@ -44,7 +44,7 @@ def test_build_canonical_note_write_accepts_canonical_payload():
     result = build_canonical_note_write(document)
 
     assert result.document == document
-    assert result.document_version == 1
+    assert result.document_version == 2
     assert result.plain_text == "Strict title\nBody"
     assert result.title == "Strict title"
 
@@ -80,9 +80,45 @@ def test_build_canonical_note_write_promotes_legacy_paragraph_block_zero_to_titl
     assert result.title == "Legacy title"
 
 
-def test_build_canonical_note_write_projects_link_labels_and_url_fallback():
+def test_build_canonical_note_write_upgrades_legacy_flat_list_blocks_to_version_two():
     document = {
         "version": 1,
+        "blocks": [
+            {"type": "title", "content": [{"text": "Strict title", "marks": []}]},
+            {
+                "type": "checklist",
+                "checked": True,
+                "content": [{"text": "Done", "marks": []}],
+            },
+        ],
+    }
+
+    result = build_canonical_note_write(document)
+
+    assert result.document_version == 2
+    assert result.document == {
+        "version": 2,
+        "blocks": [
+            {"type": "title", "content": [{"text": "Strict title", "marks": []}]},
+            {
+                "type": "checklist",
+                "children": [
+                    {
+                        "type": "list_item",
+                        "checked": True,
+                        "content": [{"text": "Done", "marks": []}],
+                    }
+                ],
+            },
+        ],
+    }
+    assert result.plain_text == "Strict title\n- [x] Done"
+    assert result.title == "Strict title"
+
+
+def test_build_canonical_note_write_projects_link_labels_and_url_fallback():
+    document = {
+        "version": 2,
         "blocks": [
             {
                 "type": "title",
@@ -116,7 +152,7 @@ def test_build_canonical_note_write_projects_link_labels_and_url_fallback():
 
 def test_build_canonical_note_write_rejects_unsupported_blocks():
     document = {
-        "version": 1,
+        "version": 2,
         "blocks": [
             {
                 "type": "title",

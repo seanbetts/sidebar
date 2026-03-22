@@ -5,16 +5,7 @@ enum NotesSemanticDocumentProjection {
     private static let maxTitleLength = 120
 
     static func plainText(from document: NotesSemanticDocument) -> String {
-        var orderedIndex = 0
-        return document.blocks.map { block in
-            let projected = projectedText(for: block, orderedIndex: orderedIndex)
-            if block.type == .orderedList {
-                orderedIndex += 1
-            } else {
-                orderedIndex = 0
-            }
-            return projected
-        }.joined(separator: "\n")
+        projectedLines(for: document.blocks).joined(separator: "\n")
     }
 
     static func title(from document: NotesSemanticDocument) -> String {
@@ -59,23 +50,62 @@ enum NotesSemanticDocumentProjection {
         return NotesSemanticDocument(blocks: blocks)
     }
 
-    private static func projectedText(for block: NotesSemanticDocument.Block, orderedIndex: Int) -> String {
-        let content = inlineText(from: block.content)
+    private static func projectedLines(
+        for blocks: [NotesSemanticDocument.Block],
+        quotePrefix: String = ""
+    ) -> [String] {
+        blocks.enumerated().flatMap { index, block in
+            projectedLines(for: block, orderedIndex: index, quotePrefix: quotePrefix)
+        }
+    }
+
+    private static func projectedLines(
+        for block: NotesSemanticDocument.Block,
+        orderedIndex: Int,
+        quotePrefix: String
+    ) -> [String] {
         switch block.type {
         case .title, .paragraph, .heading, .subheading, .listItem, .codeBlock:
-            return content
-        case .unorderedList:
-            return "- \(content)"
+            return prefixedLines(inlineText(from: block.content), prefix: quotePrefix)
         case .orderedList:
-            return "\(orderedIndex + 1). \(content)"
+            return (block.children ?? []).enumerated().flatMap { itemIndex, child in
+                projectedListItemLines(
+                    for: child,
+                    prefix: "\(quotePrefix)\(itemIndex + 1). "
+                )
+            }
+        case .unorderedList:
+            return (block.children ?? []).flatMap { child in
+                projectedListItemLines(for: child, prefix: "\(quotePrefix)- ")
+            }
         case .checklist:
-            return "- [\(block.checked == true ? "x" : " ")] \(content)"
+            return (block.children ?? []).flatMap { child in
+                let marker = child.checked == true ? "x" : " "
+                return projectedListItemLines(for: child, prefix: "\(quotePrefix)- [\(marker)] ")
+            }
         case .blockquote:
-            return "> \(content)"
+            return projectedLines(for: block.children ?? [], quotePrefix: "\(quotePrefix)> ")
         case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
             assertionFailure("Unsupported block type for plain-text projection: \(block.type.rawValue)")
-            return ""
+            return []
         }
+    }
+
+    private static func projectedListItemLines(
+        for block: NotesSemanticDocument.Block,
+        prefix: String
+    ) -> [String] {
+        let lines = prefixedLines(inlineText(from: block.content), prefix: prefix)
+        return lines.isEmpty ? [prefix.trimmingCharacters(in: .whitespaces)] : lines
+    }
+
+    private static func prefixedLines(
+        _ content: String,
+        prefix: String
+    ) -> [String] {
+        let lines = content.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard !lines.isEmpty else { return [prefix] }
+        return lines.map { "\(prefix)\($0)" }
     }
 
     private static func inlineText(from content: [NotesSemanticDocument.InlineSegment]) -> String {

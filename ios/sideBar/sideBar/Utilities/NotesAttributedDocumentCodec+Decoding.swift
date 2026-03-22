@@ -48,7 +48,7 @@ extension NotesAttributedDocumentCodec {
             )
         }
 
-        return NotesSemanticDocument(blocks: blocks)
+        return NotesSemanticDocument(blocks: groupedDecodedBlocks(from: blocks))
     }
 
     static func appendDecodedSegmentText(
@@ -118,7 +118,7 @@ extension NotesAttributedDocumentCodec {
         pendingBoundaryCount: inout Int,
         endedWithStructuralNewline: inout Bool
     ) {
-        let blockMarker = run.noteBlock
+        let blockMarker = run.noteBlock ?? presentationIntentBlockMarker(from: run)
         let runText = String(attributed[run.range].characters)
         if handleStructuralBoundaryRun(
             blockMarker: blockMarker,
@@ -265,6 +265,83 @@ extension NotesAttributedDocumentCodec {
         pendingBoundaryCount += runText.count
         endedWithStructuralNewline = true
         return true
+    }
+
+    static func groupedDecodedBlocks(
+        from blocks: [NotesSemanticDocument.Block]
+    ) -> [NotesSemanticDocument.Block] {
+        var grouped: [NotesSemanticDocument.Block] = []
+        var index = 0
+
+        while index < blocks.count {
+            let block = blocks[index]
+            switch block.type {
+            case .orderedList, .unorderedList:
+                var children: [NotesSemanticDocument.Block] = []
+                while index < blocks.count, blocks[index].type == block.type {
+                    children.append(.init(type: .listItem, content: blocks[index].content))
+                    index += 1
+                }
+                grouped.append(.init(type: block.type, children: children))
+            case .checklist:
+                var children: [NotesSemanticDocument.Block] = []
+                while index < blocks.count, blocks[index].type == .checklist {
+                    children.append(
+                        .init(
+                            type: .listItem,
+                            content: blocks[index].content,
+                            checked: blocks[index].checked
+                        )
+                    )
+                    index += 1
+                }
+                grouped.append(.init(type: .checklist, children: children))
+            case .blockquote:
+                var children: [NotesSemanticDocument.Block] = []
+                while index < blocks.count, blocks[index].type == .blockquote {
+                    children.append(.paragraph(blocks[index].content))
+                    index += 1
+                }
+                grouped.append(.init(type: .blockquote, children: children))
+            default:
+                grouped.append(block)
+                index += 1
+            }
+        }
+
+        return grouped
+    }
+
+    static func presentationIntentBlockMarker(
+        from run: AttributedString.Runs.Run
+    ) -> String? {
+        guard let intent = run.attributes[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] else {
+            return nil
+        }
+        let kinds = intent.components.map(\.kind)
+        if kinds.contains(.codeBlock(languageHint: nil))
+            || kinds.contains(where: {
+                if case .codeBlock = $0 { return true }
+                return false
+            }) {
+            return NotesSemanticDocument.BlockType.codeBlock.rawValue
+        }
+        if kinds.contains(.blockQuote) {
+            return NotesSemanticDocument.BlockType.blockquote.rawValue
+        }
+        if kinds.contains(.orderedList), kinds.contains(where: {
+            if case .listItem = $0 { return true }
+            return false
+        }) {
+            return NotesSemanticDocument.BlockType.orderedList.rawValue
+        }
+        if kinds.contains(.unorderedList), kinds.contains(where: {
+            if case .listItem = $0 { return true }
+            return false
+        }) {
+            return NotesSemanticDocument.BlockType.unorderedList.rawValue
+        }
+        return nil
     }
 
     static func decodeRunCharacters(

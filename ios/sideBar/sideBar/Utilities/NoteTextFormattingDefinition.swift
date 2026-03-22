@@ -12,7 +12,6 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
 
     var body: some AttributedTextFormattingDefinition<Scope> {
         NormalizeInlineFonts(baseFontSize: baseFontSize)
-        PresentationIntentConstraint()
         ListItemDelimiterConstraint()
     }
 
@@ -40,6 +39,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
                     underline: run.underlineStyle != nil,
                     strikethrough: run.strikethroughStyle != nil,
                     link: run.link,
+                    presentationIntent: run.attributes[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self],
                     blockType: resolvedBlockType,
                     noteBlock: run.noteBlock,
                     structuralBoundary: run.noteStructuralBoundary == true
@@ -55,6 +55,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
                 underline: snapshot.underline,
                 strikethrough: snapshot.strikethrough,
                 link: snapshot.link,
+                presentationIntent: snapshot.presentationIntent,
                 blockType: snapshot.blockType,
                 noteBlock: snapshot.noteBlock,
                 structuralBoundary: snapshot.structuralBoundary
@@ -69,6 +70,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         underline: Bool,
         strikethrough: Bool,
         link: URL?,
+        presentationIntent: PresentationIntent?,
         blockType: NotesSemanticDocument.BlockType,
         noteBlock: String?,
         structuralBoundary: Bool
@@ -114,6 +116,9 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         normalized[range].paragraphStyle = paragraphStyle(for: blockType)
         normalized[range].noteBlock = noteBlock
         normalized[range].noteStructuralBoundary = structuralBoundary ? true : nil
+        if let presentationIntent {
+            normalized[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = presentationIntent
+        }
         return normalized
     }
 }
@@ -156,16 +161,6 @@ private struct NormalizeInlineFonts: AttributedTextValueConstraint {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private struct PresentationIntentConstraint: AttributedTextValueConstraint {
-    typealias Scope = AttributeScopes.NoteTextEditorAttributes
-    typealias AttributeKey = AttributeScopes.FoundationAttributes.PresentationIntentAttribute
-
-    func constrain(_ container: inout Attributes) {
-        container[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
 private struct ListItemDelimiterConstraint: AttributedTextValueConstraint {
     typealias Scope = AttributeScopes.NoteTextEditorAttributes
     typealias AttributeKey = AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute
@@ -183,6 +178,7 @@ private extension NoteTextFormattingDefinition {
         let underline: Bool
         let strikethrough: Bool
         let link: URL?
+        let presentationIntent: PresentationIntent?
         let blockType: NotesSemanticDocument.BlockType
         let noteBlock: String?
         let structuralBoundary: Bool

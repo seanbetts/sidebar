@@ -5,6 +5,101 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
 final class NotesAttributedDocumentCodecTests: XCTestCase {
+    func testSemanticParagraphDocumentEncodesCharactersOnly() {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([
+                    .init(text: "Hello", marks: [.bold]),
+                    .init(text: " world", marks: [])
+                ]),
+                .paragraph([
+                    .init(text: "Again", marks: [.italic, .underline])
+                ])
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(
+            from: document,
+            baseFontSize: 18
+        )
+
+        XCTAssertEqual(String(attributed.characters), "Hello world\nAgain")
+    }
+
+    func testSingleParagraphBlockEncodesCharactersOnly() {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([
+                    .init(text: "Hello", marks: [.bold]),
+                    .init(text: " world", marks: [])
+                ])
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(
+            from: document,
+            baseFontSize: 18
+        )
+
+        XCTAssertEqual(String(attributed.characters), "Hello world")
+    }
+
+    func testCodeBlockEncodesCharactersOnlyWithoutInspectingIntent() {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Snippet", marks: [])]),
+                .init(type: .codeBlock, content: [.init(text: "let value = 1", marks: [])])
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(from: document, baseFontSize: 16)
+
+        XCTAssertEqual(String(attributed.characters), "Snippet\nlet value = 1")
+    }
+
+    func testStandaloneCodeBlockDocumentEncodesCharactersOnly() {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .codeBlock, content: [.init(text: "let value = 1", marks: [])])
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(from: document, baseFontSize: 16)
+
+        XCTAssertEqual(String(attributed.characters), "let value = 1")
+    }
+
+    func testStandaloneFoundationPresentationIntentAttributeDoesNotCrash() {
+        var text = AttributedString("hello")
+        let range = text.startIndex..<text.endIndex
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] =
+            PresentationIntent(.paragraph, identity: 1, parent: nil)
+
+        XCTAssertEqual(String(text.characters), "hello")
+    }
+
+    func testStandaloneFoundationCodeBlockIntentDoesNotCrash() {
+        var text = AttributedString("let value = 1")
+        let range = text.startIndex..<text.endIndex
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] =
+            PresentationIntent(.codeBlock(languageHint: nil), identity: 1, parent: nil)
+
+        XCTAssertEqual(String(text.characters), "let value = 1")
+    }
+
+    func testStandaloneFoundationNestedListIntentDoesNotCrash() {
+        var text = AttributedString("item")
+        let range = text.startIndex..<text.endIndex
+        let container = PresentationIntent(.orderedList, identity: 1, parent: nil)
+        let item = PresentationIntent(.listItem(ordinal: 1), identity: 2, parent: container)
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] =
+            PresentationIntent(.paragraph, identity: 3, parent: item)
+
+        XCTAssertEqual(String(text.characters), "item")
+    }
+
     func testSemanticParagraphDocumentProjectsToAttributedString() {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
@@ -169,6 +264,49 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         XCTAssertEqual(roundTrip, document)
     }
 
+    func testCodeBlockProjectsFoundationPresentationIntent() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Snippet", marks: [])]),
+                .init(type: .codeBlock, content: [.init(text: "let value = 1", marks: [])])
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(from: document, baseFontSize: 16)
+        let intent = try XCTUnwrap(notePresentationIntent(in: attributed, atCharacterOffset: 8))
+
+        XCTAssertEqual(intent.components.map(\.kind), [.codeBlock(languageHint: nil)])
+    }
+
+    func testOrderedListContainerProjectsAndRoundTripsUsingPresentationIntent() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .orderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "First", marks: [])]),
+                        .init(type: .listItem, content: [.init(text: "Second", marks: [])])
+                    ]
+                )
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(from: document, baseFontSize: 16)
+        let firstIntent = try XCTUnwrap(notePresentationIntent(in: attributed, atCharacterOffset: 8))
+        let secondIntent = try XCTUnwrap(notePresentationIntent(in: attributed, atCharacterOffset: 17))
+
+        XCTAssertEqual(
+            firstIntent.components.map(\.kind),
+            [.orderedList, .listItem(ordinal: 1), .paragraph]
+        )
+        XCTAssertEqual(
+            secondIntent.components.map(\.kind),
+            [.orderedList, .listItem(ordinal: 2), .paragraph]
+        )
+        XCTAssertEqual(NotesAttributedDocumentCodec.document(from: attributed), document)
+    }
+
     func testCodeBlockFollowedByParagraphRoundTripsAcrossSeparatorBoundary() {
         let document = NotesSemanticDocument(
             blocks: [
@@ -297,4 +435,15 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
 
         XCTAssertEqual(NotesUnsupportedContent.detect(in: document)?.blockTypes, [.table])
     }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func notePresentationIntent(
+    in text: AttributedString,
+    atCharacterOffset offset: Int
+) -> PresentationIntent? {
+    guard offset >= 0, offset < text.characters.count else { return nil }
+    let lower = text.index(text.startIndex, offsetByCharacters: offset)
+    let upper = text.index(afterCharacter: lower)
+    return text[lower..<upper].runs.first?.attributes[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
 }

@@ -51,14 +51,34 @@ final class NotesSemanticDocumentProjectionTests: XCTestCase {
                 .init(type: .title, content: [.init(text: "Release Notes", marks: [])]),
                 .init(type: .heading, content: [.init(text: "Sprint", marks: [])]),
                 .init(type: .subheading, content: [.init(text: "Today", marks: [])]),
-                .init(type: .unorderedList, content: [.init(text: "Ship schema", marks: [])]),
-                .init(type: .orderedList, content: [.init(text: "Run tests", marks: [])]),
+                .init(
+                    type: .unorderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Ship schema", marks: [])])
+                    ]
+                ),
+                .init(
+                    type: .orderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Run tests", marks: [])])
+                    ]
+                ),
                 .init(
                     type: .checklist,
-                    content: [.init(text: "Completed item", marks: [.strikethrough])],
-                    checked: true
+                    children: [
+                        .init(
+                            type: .listItem,
+                            content: [.init(text: "Completed item", marks: [.strikethrough])],
+                            checked: true
+                        )
+                    ]
                 ),
-                .init(type: .blockquote, content: [.init(text: "Quoted line", marks: [])]),
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Quoted line", marks: [])])
+                    ]
+                ),
                 .init(type: .codeBlock, content: [.init(text: "line 1\nline 2", marks: [])])
             ]
         )
@@ -75,6 +95,49 @@ final class NotesSemanticDocumentProjectionTests: XCTestCase {
             > Quoted line
             line 1
             line 2
+            """
+        )
+    }
+
+    func testPlainTextProjectionSupportsNestedVersionTwoContainers() {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Release Notes", marks: [])]),
+                .init(
+                    type: .orderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Run tests", marks: [])]),
+                        .init(type: .listItem, content: [.init(text: "Ship build", marks: [])])
+                    ]
+                ),
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Done", marks: [])], checked: true),
+                        .init(type: .listItem, content: [.init(text: "Next", marks: [])], checked: false)
+                    ]
+                ),
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Quoted line", marks: [])])
+                    ]
+                ),
+                .init(type: .codeBlock, content: [.init(text: "let x = 1", marks: [])])
+            ]
+        )
+
+        XCTAssertEqual(
+            NotesSemanticDocumentProjection.plainText(from: document),
+            """
+            Release Notes
+            1. Run tests
+            2. Ship build
+            - [x] Done
+            - [ ] Next
+            > Quoted line
+            let x = 1
             """
         )
     }
@@ -130,7 +193,52 @@ final class NotesSemanticDocumentProjectionTests: XCTestCase {
 
         let document = try XCTUnwrap(NotesSemanticDocumentCodec.decode(json))
 
+        XCTAssertEqual(document.version, NotesSemanticDocument.currentVersion)
         XCTAssertEqual(document.blocks[1].type, .checklist)
+        XCTAssertEqual(
+            document.blocks[1].children,
+            [
+                .init(
+                    type: .listItem,
+                    content: [.init(text: "Legacy item", marks: [])],
+                    checked: false
+                )
+            ]
+        )
         XCTAssertNil(document.blocks[1].checked)
+    }
+
+    func testSemanticDocumentCodecAdaptsVersionOneFlatOrderedListIntoVersionTwoContainer() throws {
+        let json = """
+        {
+          "version": 1,
+          "blocks": [
+            {
+              "type": "title",
+              "content": [{"text": "Title", "marks": []}]
+            },
+            {
+              "type": "ordered_list",
+              "content": [{"text": "First", "marks": []}]
+            }
+          ]
+        }
+        """
+
+        let document = try XCTUnwrap(NotesSemanticDocumentCodec.decode(json))
+
+        XCTAssertEqual(document.version, NotesSemanticDocument.currentVersion)
+        XCTAssertEqual(
+            document.blocks,
+            [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .orderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "First", marks: [])])
+                    ]
+                )
+            ]
+        )
     }
 }

@@ -7,7 +7,7 @@ from typing import Any
 
 from api.exceptions import BadRequestError
 
-NOTE_DOCUMENT_VERSION = 1
+NOTE_DOCUMENT_VERSION = 2
 
 ALLOWED_BLOCK_TYPES = {
     "title",
@@ -49,6 +49,17 @@ TITLE_NORMALIZABLE_BLOCK_TYPES = {
     "heading",
     "subheading",
 }
+ROOT_CONTAINER_TYPES = {"ordered_list", "unordered_list", "checklist", "blockquote"}
+LIST_CONTAINER_TYPES = {"ordered_list", "unordered_list", "checklist"}
+BLOCKQUOTE_CHILD_TYPES = {
+    "paragraph",
+    "heading",
+    "subheading",
+    "ordered_list",
+    "unordered_list",
+    "checklist",
+    "code_block",
+}
 
 
 def _invalid_document(message: str) -> BadRequestError:
@@ -67,48 +78,50 @@ def document_version(document: dict[str, Any]) -> int:
 def validate_note_document(
     document: Any, *, require_title_block: bool = True
 ) -> dict[str, Any]:
-    """Validate the semantic note document shape and return a copy."""
+    """Validate the semantic note document shape and return canonical v2."""
     if not isinstance(document, dict):
         raise _invalid_document("document must be an object")
 
     normalized = deepcopy(document)
     version = document_version(normalized)
-    if version != NOTE_DOCUMENT_VERSION:
+    if version not in {1, NOTE_DOCUMENT_VERSION}:
         raise _invalid_document(f"unsupported version {version}")
 
     blocks = normalized.get("blocks")
     if not isinstance(blocks, list):
         raise _invalid_document("blocks must be a list")
 
-    for index, block in enumerate(blocks):
-        _normalize_legacy_block_aliases(block)
-        _validate_block(block, index)
+    if version == 1:
+        blocks = [
+            _adapt_version_one_block(block, index=index)
+            for index, block in enumerate(blocks)
+        ]
 
-    if require_title_block and blocks:
-        if blocks[0]["type"] in TITLE_NORMALIZABLE_BLOCK_TYPES:
-            blocks[0]["type"] = "title"
-        elif blocks[0]["type"] != "title":
+    canonical_blocks = []
+    for index, block in enumerate(blocks):
+        normalized_block = _normalize_block(block, index=index, parent_type=None)
+        if normalized_block is not None:
+            canonical_blocks.append(normalized_block)
+
+    if require_title_block and canonical_blocks:
+        if canonical_blocks[0]["type"] in TITLE_NORMALIZABLE_BLOCK_TYPES:
+            canonical_blocks[0] = {
+                "type": "title",
+                "content": canonical_blocks[0].get("content", []),
+            }
+        elif canonical_blocks[0]["type"] != "title":
             raise _invalid_document("block 0 must be a title")
 
-    return normalized
+    return {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": canonical_blocks,
+    }
 
 
 def project_plain_text_from_document(document: Any) -> str:
     """Project deterministic plain text from a validated semantic document."""
     validated = validate_note_document(document)
-    projected_blocks: list[str] = []
-    ordered_index = 0
-
-    for index, block in enumerate(validated["blocks"]):
-        block_type = block["type"]
-        projected = _project_block(block, index=index, ordered_index=ordered_index)
-        projected_blocks.append(projected)
-        if block_type == "ordered_list":
-            ordered_index += 1
-        else:
-            ordered_index = 0
-
-    return "\n".join(projected_blocks)
+    return "\n".join(_project_lines(validated["blocks"]))
 
 
 def note_document_from_plain_text(plain_text: Any) -> dict[str, Any]:
@@ -135,17 +148,133 @@ def note_document_from_plain_text(plain_text: Any) -> dict[str, Any]:
     }
 
 
-def _validate_block(block: Any, index: int) -> None:
-    """Validate one semantic block."""
+def _adapt_version_one_block(block: Any, *, index: int) -> dict[str, Any]:
+    """Convert legacy flat v1 blocks into the nearest v2 shape."""
     if not isinstance(block, dict):
         raise _invalid_document(f"block {index} must be an object")
 
-    block_type = block.get("type")
+    normalized = deepcopy(block)
+    _normalize_legacy_block_aliases(normalized)
+    block_type = normalized.get("type")
     if not isinstance(block_type, str) or block_type not in ALLOWED_BLOCK_TYPES:
         raise _invalid_document(f"block {index} has an invalid type")
 
-    if block_type in SUPPORTED_BLOCK_TYPES:
-        _validate_supported_block(block, index)
+    if block_type in {"ordered_list", "unordered_list"}:
+        return {
+            "type": block_type,
+            "children": [
+                {
+                    "type": "list_item",
+                    "content": normalized.get("content", []),
+                }
+            ],
+        }
+    if block_type == "checklist":
+        return {
+            "type": "checklist",
+            "children": [
+                {
+                    "type": "list_item",
+                    "checked": bool(normalized.get("checked")),
+                    "content": normalized.get("content", []),
+                }
+            ],
+        }
+    if block_type == "blockquote":
+        return {
+            "type": "blockquote",
+            "children": [
+                {
+                    "type": "paragraph",
+                    "content": normalized.get("content", []),
+                }
+            ],
+        }
+    return normalized
+
+
+def _normalize_block(
+    block: Any,
+    *,
+    index: int,
+    parent_type: str | None,
+) -> dict[str, Any] | None:
+    """Normalize one block into canonical v2 form."""
+    if not isinstance(block, dict):
+        raise _invalid_document(f"block {index} must be an object")
+
+    normalized = deepcopy(block)
+    _normalize_legacy_block_aliases(normalized)
+    block_type = normalized.get("type")
+    if not isinstance(block_type, str) or block_type not in ALLOWED_BLOCK_TYPES:
+        raise _invalid_document(f"block {index} has an invalid type")
+
+    if block_type in LIST_CONTAINER_TYPES:
+        children = normalized.get("children")
+        if not isinstance(children, list):
+            raise _invalid_document(f"block {index} children must be a list")
+        normalized_children = []
+        for child_index, child in enumerate(children):
+            normalized_child = _normalize_block(
+                child,
+                index=child_index,
+                parent_type=block_type,
+            )
+            if normalized_child is not None and normalized_child["type"] == "list_item":
+                normalized_children.append(normalized_child)
+        if not normalized_children:
+            return None
+        return {
+            "type": block_type,
+            "children": normalized_children,
+        }
+
+    if block_type == "blockquote":
+        children = normalized.get("children")
+        if not isinstance(children, list):
+            raise _invalid_document(f"block {index} children must be a list")
+        normalized_children = []
+        for child_index, child in enumerate(children):
+            normalized_child = _normalize_block(
+                child,
+                index=child_index,
+                parent_type=block_type,
+            )
+            if normalized_child is None:
+                continue
+            if normalized_child["type"] in BLOCKQUOTE_CHILD_TYPES:
+                normalized_children.append(normalized_child)
+        if not normalized_children:
+            return None
+        return {
+            "type": "blockquote",
+            "children": normalized_children,
+        }
+
+    _validate_supported_leaf_block(normalized, index, parent_type=parent_type)
+
+    if block_type == "list_item":
+        if parent_type not in LIST_CONTAINER_TYPES:
+            return {
+                "type": "paragraph",
+                "content": normalized["content"],
+            }
+        canonical = {
+            "type": "list_item",
+            "content": normalized["content"],
+        }
+        if parent_type == "checklist":
+            canonical["checked"] = bool(normalized.get("checked"))
+        return canonical
+
+    if block_type not in SUPPORTED_BLOCK_TYPES:
+        return {"type": block_type}
+
+    canonical = {
+        "type": block_type,
+        "content": normalized["content"],
+    }
+    return canonical
 
 
 def _normalize_legacy_block_aliases(block: Any) -> None:
@@ -162,16 +291,28 @@ def _normalize_legacy_block_aliases(block: Any) -> None:
             block["checked"] = False
 
 
-def _validate_supported_block(block: dict[str, Any], index: int) -> None:
-    """Validate one supported semantic block."""
+def _validate_supported_leaf_block(
+    block: dict[str, Any],
+    index: int,
+    *,
+    parent_type: str | None,
+) -> None:
+    """Validate supported leaf blocks and their inline segments."""
+    block_type = block["type"]
+    if block_type not in SUPPORTED_BLOCK_TYPES:
+        return
+
     content = block.get("content")
     if not isinstance(content, list):
         raise _invalid_document(f"block {index} content must be a list")
 
-    if block["type"] == "checklist":
+    if block_type == "list_item":
         checked = block.get("checked")
-        if not isinstance(checked, bool):
-            raise _invalid_document(f"block {index} checked must be a boolean")
+        if parent_type == "checklist":
+            if not isinstance(checked, bool):
+                raise _invalid_document(f"block {index} checked must be a boolean")
+        elif checked is not None:
+            block.pop("checked", None)
 
     for segment_index, segment in enumerate(content):
         _validate_inline_segment(
@@ -225,52 +366,75 @@ def _validate_inline_segment(
             )
 
 
-def _project_block(block: dict[str, Any], *, index: int, ordered_index: int) -> str:
-    """Project one semantic block into deterministic plain text."""
-    block_type = block["type"]
-    if block_type == "title":
-        return _project_textual_block(block, index=index)
-    if block_type == "paragraph":
-        return _project_textual_block(block, index=index)
-    if block_type == "heading":
-        return _project_textual_block(block, index=index)
-    if block_type == "subheading":
-        return _project_textual_block(block, index=index)
-    if block_type == "list_item":
-        return _project_textual_block(block, index=index)
-    if block_type == "unordered_list":
-        return f"- {_project_textual_block(block, index=index)}"
-    if block_type == "ordered_list":
-        return f"{ordered_index + 1}. {_project_textual_block(block, index=index)}"
-    if block_type == "checklist":
-        marker = "x" if block["checked"] else " "
-        return f"- [{marker}] {_project_textual_block(block, index=index)}"
-    if block_type == "blockquote":
-        return f"> {_project_textual_block(block, index=index)}"
-    if block_type == "code_block":
-        return _project_textual_block(block, index=index)
-    raise _invalid_document(
-        f"unsupported block type for plain_text projection: {block_type}"
-    )
+def _project_lines(
+    blocks: list[dict[str, Any]], *, quote_prefix: str = ""
+) -> list[str]:
+    """Project canonical blocks into visible plain-text lines."""
+    lines: list[str] = []
+    for block in blocks:
+        block_type = block["type"]
+        if block_type in {
+            "title",
+            "paragraph",
+            "heading",
+            "subheading",
+            "code_block",
+        }:
+            lines.extend(
+                _prefixed_lines(_project_textual_block(block), prefix=quote_prefix)
+            )
+        elif block_type == "ordered_list":
+            for item_index, child in enumerate(block.get("children", []), start=1):
+                lines.extend(
+                    _prefixed_lines(
+                        _project_textual_block(child),
+                        prefix=f"{quote_prefix}{item_index}. ",
+                    )
+                )
+        elif block_type == "unordered_list":
+            for child in block.get("children", []):
+                lines.extend(
+                    _prefixed_lines(
+                        _project_textual_block(child), prefix=f"{quote_prefix}- "
+                    )
+                )
+        elif block_type == "checklist":
+            for child in block.get("children", []):
+                marker = "x" if child.get("checked") else " "
+                lines.extend(
+                    _prefixed_lines(
+                        _project_textual_block(child),
+                        prefix=f"{quote_prefix}- [{marker}] ",
+                    )
+                )
+        elif block_type == "blockquote":
+            lines.extend(
+                _project_lines(
+                    block.get("children", []), quote_prefix=f"{quote_prefix}> "
+                )
+            )
+        else:
+            raise _invalid_document(
+                f"unsupported block type for plain_text projection: {block_type}"
+            )
+    return lines
 
 
-def _project_textual_block(block: dict[str, Any], *, index: int) -> str:
+def _project_textual_block(block: dict[str, Any]) -> str:
     """Project a text-bearing block's inline content."""
     content = block["content"]
     if not isinstance(content, list):
-        raise _invalid_document(f"block {index} content must be a list")
-    return "".join(
-        _project_inline_segment_text(segment, block_index=index) for segment in content
-    )
+        raise _invalid_document("block content must be a list")
+    return "".join(_project_inline_segment_text(segment) for segment in content)
 
 
-def _project_inline_segment_text(segment: Any, *, block_index: int) -> str:
+def _project_inline_segment_text(segment: Any) -> str:
     """Project one inline segment to visible plain text."""
     if not isinstance(segment, dict):
-        raise _invalid_document(f"block {block_index} segment must be an object")
+        raise _invalid_document("block segment must be an object")
     text = segment.get("text")
     if not isinstance(text, str):
-        raise _invalid_document(f"block {block_index} segment text must be a string")
+        raise _invalid_document("block segment text must be a string")
     if text:
         return text
     link = segment.get("link")
@@ -279,3 +443,9 @@ def _project_inline_segment_text(segment: Any, *, block_index: int) -> str:
         if isinstance(link_url, str):
             return link_url
     return ""
+
+
+def _prefixed_lines(content: str, *, prefix: str) -> list[str]:
+    """Apply a visible prefix to every line in a block."""
+    lines = content.split("\n")
+    return [f"{prefix}{line}" for line in lines]

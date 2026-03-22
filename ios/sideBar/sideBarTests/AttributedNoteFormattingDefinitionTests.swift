@@ -10,21 +10,25 @@ import AppKit
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class AttributedNoteFormattingDefinitionTests: XCTestCase {
-    func testConstrainDocumentRemovesUnsupportedFoundationPresentationAttributes() {
+    func testConstrainDocumentPreservesFoundationPresentationIntentWhileRemovingListDelimiter() throws {
         var content = AttributedString("hello")
         let range = content.startIndex..<content.endIndex
-        content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+        let intent = PresentationIntent(
             .paragraph,
             identity: 1,
             parent: PresentationIntent(.unorderedList, identity: 2)
         )
+        content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = intent
         content[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "•"
         content[range].strikethroughStyle = .single
         content[range].underlineStyle = .single
 
         NoteTextFormattingDefinition(baseFontSize: 18).constrainDocument(&content)
 
-        XCTAssertNil(content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self])
+        XCTAssertEqual(
+            try XCTUnwrap(content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]),
+            intent
+        )
         XCTAssertNil(content[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self])
         XCTAssertEqual(content[range].strikethroughStyle, .single)
         XCTAssertEqual(content[range].underlineStyle, .single)
@@ -79,27 +83,36 @@ final class AttributedNoteFormattingDefinitionTests: XCTestCase {
         )
     }
 
-    func testConstrainDocumentPreservesAppOwnedBlockMarkerWhileRemovingPlatformListIntent() {
+    func testConstrainDocumentPreservesAppOwnedBlockMarkerAndPlatformListIntent() throws {
         var content = AttributedString("- item")
         let range = content.startIndex..<content.endIndex
         content[range].noteBlock = NoteTextBlockAttribute.unorderedListRawValue
-        content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(
+        let intent = PresentationIntent(
             .paragraph,
             identity: 1,
             parent: PresentationIntent(.unorderedList, identity: 2)
         )
+        content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = intent
         content[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "-"
 
         NoteTextFormattingDefinition(baseFontSize: 18).constrainDocument(&content)
 
         XCTAssertEqual(content[range].noteBlock, NoteTextBlockAttribute.unorderedListRawValue)
-        XCTAssertNil(content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self])
+        XCTAssertEqual(
+            try XCTUnwrap(content[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]),
+            intent
+        )
         XCTAssertNil(content[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self])
         XCTAssertEqual(
             NotesAttributedDocumentCodec.document(from: content),
             NotesSemanticDocument(
                 blocks: [
-                    .init(type: .unorderedList, content: [.init(text: "item", marks: [])], checked: nil)
+                    .init(
+                        type: .unorderedList,
+                        children: [
+                            .init(type: .listItem, content: [.init(text: "item", marks: [])])
+                        ]
+                    )
                 ]
             )
         )

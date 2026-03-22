@@ -71,16 +71,72 @@ def test_validate_note_document_accepts_supported_block_types() -> None:
             },
             {
                 "type": "unordered_list",
-                "content": [{"text": "Item", "marks": ["inline_code"]}],
+                "children": [
+                    {
+                        "type": "list_item",
+                        "content": [{"text": "Item", "marks": ["inline_code"]}],
+                    }
+                ],
             },
-            {"type": "ordered_list", "content": [{"text": "Item", "marks": []}]},
+            {
+                "type": "ordered_list",
+                "children": [
+                    {"type": "list_item", "content": [{"text": "Item", "marks": []}]}
+                ],
+            },
             {
                 "type": "checklist",
-                "checked": True,
-                "content": [{"text": "Done", "marks": []}],
+                "children": [
+                    {
+                        "type": "list_item",
+                        "checked": True,
+                        "content": [{"text": "Done", "marks": []}],
+                    }
+                ],
             },
-            {"type": "list_item", "content": [{"text": "Nested", "marks": []}]},
-            {"type": "blockquote", "content": [{"text": "Quoted", "marks": []}]},
+            {
+                "type": "blockquote",
+                "children": [
+                    {"type": "paragraph", "content": [{"text": "Quoted", "marks": []}]}
+                ],
+            },
+            {"type": "code_block", "content": [{"text": "let x = 1", "marks": []}]},
+        ],
+    }
+
+    validated = validate_note_document(document)
+
+    assert validated == document
+
+
+def test_validate_note_document_accepts_version_two_nested_container_blocks() -> None:
+    document = {
+        "version": 2,
+        "blocks": [
+            {"type": "title", "content": [{"text": "Title", "marks": []}]},
+            {
+                "type": "ordered_list",
+                "children": [
+                    {"type": "list_item", "content": [{"text": "First", "marks": []}]},
+                    {"type": "list_item", "content": [{"text": "Second", "marks": []}]},
+                ],
+            },
+            {
+                "type": "checklist",
+                "children": [
+                    {
+                        "type": "list_item",
+                        "checked": True,
+                        "content": [{"text": "Done", "marks": []}],
+                    }
+                ],
+            },
+            {
+                "type": "blockquote",
+                "children": [
+                    {"type": "paragraph", "content": [{"text": "Quoted", "marks": []}]}
+                ],
+            },
             {"type": "code_block", "content": [{"text": "let x = 1", "marks": []}]},
         ],
     }
@@ -183,7 +239,7 @@ def test_validate_note_document_promotes_legacy_paragraph_block_zero_to_title() 
 
 def test_validate_note_document_normalizes_legacy_task_list_alias() -> None:
     document = {
-        "version": NOTE_DOCUMENT_VERSION,
+        "version": 1,
         "blocks": [
             {
                 "type": "title",
@@ -198,8 +254,17 @@ def test_validate_note_document_normalizes_legacy_task_list_alias() -> None:
 
     validated = validate_note_document(document)
 
-    assert validated["blocks"][1]["type"] == "checklist"
-    assert validated["blocks"][1]["checked"] is False
+    assert validated["version"] == NOTE_DOCUMENT_VERSION
+    assert validated["blocks"][1] == {
+        "type": "checklist",
+        "children": [
+            {
+                "type": "list_item",
+                "checked": False,
+                "content": [{"text": "Legacy item", "marks": []}],
+            }
+        ],
+    }
 
 
 def test_validate_note_document_normalizes_heading_block_zero_to_title() -> None:
@@ -216,3 +281,25 @@ def test_validate_note_document_normalizes_heading_block_zero_to_title() -> None
     validated = validate_note_document(document)
 
     assert validated["blocks"][0]["type"] == "title"
+
+
+def test_validate_note_document_normalizes_root_list_item_to_paragraph() -> None:
+    document = {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            {
+                "type": "list_item",
+                "checked": True,
+                "content": [{"text": "Orphan", "marks": []}],
+            }
+        ],
+    }
+
+    validated = validate_note_document(document)
+
+    assert validated["blocks"] == [
+        {
+            "type": "title",
+            "content": [{"text": "Orphan", "marks": []}],
+        }
+    ]
