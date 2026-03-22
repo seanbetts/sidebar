@@ -208,6 +208,34 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
     }
 
+    func testReorderPinnedWebsitesRejectsStalePinnedSetWithoutCallingAPI() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        api.updatePinnedOrderResult = .success(())
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        store.updateListItem(
+            makePinnedWebsiteItem(id: "w1", pinnedOrder: 0, updatedAt: "2026-03-21T10:00:00Z"),
+            persist: false
+        )
+        store.updateListItem(
+            makePinnedWebsiteItem(id: "w2", pinnedOrder: 1, updatedAt: "2026-03-21T11:00:00Z"),
+            persist: false
+        )
+        let previousOrder = viewModel.panelPinnedItemsSorted.map(\.id)
+
+        let success = await viewModel.reorderPinnedWebsites(ids: ["w2"])
+
+        XCTAssertFalse(success)
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+        XCTAssertEqual(viewModel.panelPinnedItemsSorted.map(\.id), previousOrder)
+    }
+
     func testSaveWebsiteQueuesPendingSelectionUntilJobCompletes() async {
         let item = makeItem(id: "site-1")
         let detail = makeDetail(id: "site-1")
