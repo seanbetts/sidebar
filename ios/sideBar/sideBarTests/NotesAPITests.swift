@@ -134,7 +134,10 @@ final class NotesAPITests: XCTestCase {
         XCTAssertNil(rawPayload["content_format"])
         XCTAssertEqual(rawPayload["plain_text"] as? String, "Hello world")
         XCTAssertNotNil(rawPayload["document"])
-        XCTAssertEqual(rawPayload["document_version"] as? Int, 1)
+        XCTAssertEqual(
+            rawPayload["document_version"] as? Int,
+            NotesSemanticDocument.currentVersion
+        )
     }
 
     func testNotePayloadRejectsLegacyOnlyResponsePayload() {

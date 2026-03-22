@@ -4,7 +4,7 @@ import sideBarShared
 
 @MainActor
 final class RealtimeMappersTests: XCTestCase {
-    func testMapNoteUsesTitleAndUpdatedAt() {
+    func testMapNoteUsesSemanticTitleAndUpdatedAt() {
         let document = NotesSemanticDocument(
             blocks: [
                 .paragraph([.init(text: "Body", marks: [.bold])])
@@ -40,7 +40,7 @@ final class RealtimeMappersTests: XCTestCase {
 
         let mapped = record.flatMap(RealtimeMappers.mapNote)
 
-        XCTAssertEqual(mapped?.name, "Title")
+        XCTAssertEqual(mapped?.name, "Body")
         XCTAssertEqual(mapped?.path, "n1")
         XCTAssertEqual(mapped?.content, "Body")
         XCTAssertEqual(mapped?.plainText, "Body")
