@@ -31,25 +31,6 @@ def get_notes_definitions() -> dict:
             "script": "save_note_document.py",
             "build_args": pm.build_notes_create_args,
         },
-        "Update Note": {
-            "description": (
-                "Update an existing semantic note document in the database by ID."
-            ),
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "note_id": {"type": "string", "description": "Note UUID"},
-                    "document": {
-                        "type": "object",
-                        "description": "Semantic note document with version and blocks",
-                    },
-                },
-                "required": ["note_id", "document"],
-            },
-            "skill": "notes",
-            "script": "save_note_document.py",
-            "build_args": pm.build_notes_update_args,
-        },
         "Delete Note": {
             "description": "Delete a note in the database by ID.",
             "input_schema": {

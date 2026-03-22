@@ -85,17 +85,13 @@ def test_notes_tool_definitions_use_document_payloads_and_semantic_writer() -> N
     definitions = get_notes_definitions()
 
     create = definitions["Create Note"]
-    update = definitions["Update Note"]
     scratchpad_update = definitions["Update Scratchpad"]
 
     assert create["script"] == "save_note_document.py"
-    assert update["script"] == "save_note_document.py"
+    assert "Update Note" not in definitions
     assert "document" in create["input_schema"]["properties"]
     assert "content" not in create["input_schema"]["properties"]
     assert create["input_schema"]["required"] == ["document"]
-    assert "document" in update["input_schema"]["properties"]
-    assert "content" not in update["input_schema"]["properties"]
-    assert update["input_schema"]["required"] == ["note_id", "document"]
     assert "document" in scratchpad_update["input_schema"]["properties"]
     assert "content" not in scratchpad_update["input_schema"]["properties"]
     assert scratchpad_update["input_schema"]["required"] == ["document"]

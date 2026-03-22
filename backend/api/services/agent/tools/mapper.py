@@ -410,7 +410,6 @@ class ToolMapper:
                 log_params["content"] = "<redacted>"
             if "content" in log_params and display_name in [
                 "Create Note",
-                "Update Note",
                 "Write File",
             ]:
                 log_params.pop("content", None)

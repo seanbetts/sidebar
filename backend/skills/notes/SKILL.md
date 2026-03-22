@@ -13,10 +13,14 @@ metadata:
 
 Database-backed operations for semantic note documents and scratchpad content.
 Legacy markdown note writers and legacy RTF migration helpers are retired.
+The assistant-facing Notes tool surface currently supports creating, reading,
+listing, organizing, and scratchpad management. In-place note editing is not
+currently exposed because the low-level update path still replaces the full
+document.
 
 ## Scripts
 
-- `save_note_document.py` - Create, update, or append semantic note documents
+- `save_note_document.py` - Internal primitive for create, full-document replace, or append semantic note documents
 - `read_note.py` - Fetch a note by ID
 - `list_notes.py` - List notes with filters
 - `rename_note.py` - Rename a note title
@@ -40,23 +44,33 @@ All scripts support `--json` output.
 Notes writes use canonical semantic note documents:
 
 - `document.version` is currently `1`
-- `document.blocks` currently supports paragraph blocks for AI writes
-- paragraph `content` is a list of inline segments with `text` and `marks`
-- supported inline marks are `bold`, `italic`, and `underline`
+- `document.blocks` supports `title`, `paragraph`, `heading`, `subheading`,
+  `unordered_list`, `ordered_list`, `checklist`, `list_item`, `blockquote`,
+  and `code_block`
+- block `0` is normalized to `title`
+- block `content` is a list of inline segments with `text`, `marks`, and
+  optional `link`
+- supported inline marks are `bold`, `italic`, `underline`, `strikethrough`,
+  and `inline_code`
 
 Titles are derived from the first non-empty projected plain-text line. Literal `#`
 prefixes remain part of the title when they are part of the content.
 
+`save_note_document.py --mode update` remains available as an internal
+full-document replace primitive. It is not currently exposed as an assistant
+tool because it is not a safe patch-style edit operation.
+
 ## Append Behavior
 
-Append is document-native:
+Append is currently an internal document-native primitive:
 
 - pass a semantic `document` body to `save_note_document.py --mode append`
 - appended blocks are concatenated onto the existing note document in order
 - existing and appended inline formatting is preserved
+- this is not currently exposed in the assistant-facing Notes tool surface
 
 ## Scratchpad Behavior
 
 Scratchpad is stored as a semantic document and no longer uses markdown H1
-synthesis. The scratchpad title is kept as a plain paragraph block, and the
-scripts return canonical `document` data plus derived `plain_text`.
+synthesis. The scratchpad title is kept as block `0` `title`, and the scripts
+return canonical `document` data plus derived `plain_text`.
