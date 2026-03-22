@@ -232,6 +232,91 @@ final class IngestionStoreTests: XCTestCase {
         XCTAssertEqual(snapshot.files.map(\.id), ["file-1"])
     }
 
+    func testApplyPinnedOrderReordersPinnedFiles() async {
+        let cache = TestCacheClient()
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let widgetDataManager = makeWidgetDataManager()
+        let store = IngestionStore(
+            api: IngestionStoreTestsSupport.MockIngestionAPI(),
+            cache: cache,
+            widgetDataManager: widgetDataManager,
+            userDefaults: defaults
+        )
+        let first = IngestionStoreTestsSupport.makeItem(
+            id: "file-a",
+            filename: "A.pdf",
+            pinned: true,
+            pinnedOrder: 0,
+            status: "ready",
+            stage: "ready"
+        )
+        let second = IngestionStoreTestsSupport.makeItem(
+            id: "file-b",
+            filename: "B.pdf",
+            pinned: true,
+            pinnedOrder: 1,
+            status: "ready",
+            stage: "ready"
+        )
+        let unpinned = IngestionStoreTestsSupport.makeItem(
+            id: "file-c",
+            filename: "C.pdf",
+            pinned: false,
+            status: "ready",
+            stage: "ready"
+        )
+        store.applyListUpdate([first, second, unpinned], persist: false)
+
+        store.applyPinnedOrder(["file-b", "file-a"])
+
+        XCTAssertEqual(store.pinnedFileOrder(), ["file-b", "file-a"])
+        XCTAssertEqual(
+            store.items
+                .filter { $0.file.pinned == true }
+                .sorted { ($0.file.pinnedOrder ?? Int.max) < ($1.file.pinnedOrder ?? Int.max) }
+                .map(\.file.id),
+            ["file-b", "file-a"]
+        )
+    }
+
+    func testApplyPinnedOrderRestoresWidgetSnapshotWhenPreviousOrderIsReapplied() async {
+        let cache = TestCacheClient()
+        let defaults = IngestionStoreTestsSupport.makeDefaults()
+        let widgetDataManager = makeWidgetDataManager()
+        let store = IngestionStore(
+            api: IngestionStoreTestsSupport.MockIngestionAPI(),
+            cache: cache,
+            widgetDataManager: widgetDataManager,
+            userDefaults: defaults
+        )
+        let first = IngestionStoreTestsSupport.makeItem(
+            id: "file-a",
+            filename: "A.pdf",
+            pinned: true,
+            pinnedOrder: 0,
+            status: "ready",
+            stage: "ready"
+        )
+        let second = IngestionStoreTestsSupport.makeItem(
+            id: "file-b",
+            filename: "B.pdf",
+            pinned: true,
+            pinnedOrder: 1,
+            status: "ready",
+            stage: "ready"
+        )
+        store.applyListUpdate([first, second], persist: false)
+
+        let previousOrder = store.pinnedFileOrder()
+
+        store.applyPinnedOrder(["file-b", "file-a"])
+        store.applyPinnedOrder(previousOrder)
+
+        let snapshot: WidgetFileData = widgetDataManager.load(for: .files)
+        XCTAssertEqual(snapshot.files.map(\.id), ["file-a", "file-b"])
+        XCTAssertEqual(snapshot.totalCount, 2)
+    }
+
     func testApplyIngestedFileEventSkipsWebsiteTranscriptRecords() async {
         let cache = TestCacheClient()
         let defaults = IngestionStoreTestsSupport.makeDefaults()

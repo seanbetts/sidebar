@@ -102,6 +102,25 @@ extension IngestionViewModel {
         }
     }
 
+    public func reorderPinnedFiles(ids: [String]) async -> Bool {
+        guard !isOfflineForIngestion() else {
+            return false
+        }
+        let previousOrder = store.pinnedFileOrder()
+        guard ids.count == previousOrder.count, Set(ids) == Set(previousOrder) else {
+            return false
+        }
+        store.applyPinnedOrder(ids)
+        do {
+            try await api.updatePinnedOrder(ids: ids)
+            return true
+        } catch {
+            store.applyPinnedOrder(previousOrder)
+            errorMessage = "Failed to reorder pinned files"
+            return false
+        }
+    }
+
     public func applyIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) async {
         store.applyIngestedFileEvent(payload)
         if let selectedFileId, selectedFileId == payload.record?.id || selectedFileId == payload.oldRecord?.id {

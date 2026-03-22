@@ -120,6 +120,10 @@ private struct PollingStressIngestionAPI: IngestionProviding {
         _ = clientUpdatedAt
     }
 
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
     func delete(fileId: String, clientUpdatedAt: String?) async throws {
         _ = fileId
         _ = clientUpdatedAt

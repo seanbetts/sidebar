@@ -9,6 +9,7 @@ public protocol IngestionProviding {
     func getContent(fileId: String, kind: String, range: String?) async throws -> Data
     func cancel(fileId: String) async throws
     func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws
+    func updatePinnedOrder(ids: [String]) async throws
     func delete(fileId: String, clientUpdatedAt: String?) async throws
     func rename(fileId: String, filename: String, clientUpdatedAt: String?) async throws
     func ingestYouTube(url: String) async throws -> String

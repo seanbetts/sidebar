@@ -45,6 +45,11 @@ enum IngestionStoreTestsSupport {
             throw MockError.forced
         }
 
+        func updatePinnedOrder(ids: [String]) async throws {
+            _ = ids
+            throw MockError.forced
+        }
+
         func delete(fileId: String, clientUpdatedAt: String?) async throws {
             _ = fileId
             _ = clientUpdatedAt

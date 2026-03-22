@@ -467,6 +467,117 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.panelPinnedItems.map(\.file.id), ["file-1"])
     }
 
+    func testReorderPinnedFilesPersistsOptimisticOrder() async {
+        let recorder = PinnedOrderRecorder()
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            updatePinnedOrderResult: .success(()),
+            youtubeResult: .failure(MockError.forced),
+            pinnedOrderRecorder: recorder
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        store.applyListUpdate(
+            [
+                makePinnedListItem(id: "file-a", pinnedOrder: 0),
+                makePinnedListItem(id: "file-b", pinnedOrder: 1),
+                makeListItem(id: "file-c")
+            ],
+            persist: false
+        )
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+
+        let success = await viewModel.reorderPinnedFiles(ids: ["file-b", "file-a"])
+        let recordedOrders = await recorder.snapshot()
+
+        XCTAssertTrue(success)
+        XCTAssertEqual(viewModel.panelPinnedItems.map(\.file.id), ["file-b", "file-a"])
+        XCTAssertEqual(recordedOrders, [["file-b", "file-a"]])
+    }
+
+    func testReorderPinnedFilesRestoresPreviousOrderWhenRequestFails() async {
+        let recorder = PinnedOrderRecorder()
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            updatePinnedOrderResult: .failure(MockError.forced),
+            youtubeResult: .failure(MockError.forced),
+            pinnedOrderRecorder: recorder
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        store.applyListUpdate(
+            [
+                makePinnedListItem(id: "file-a", pinnedOrder: 0),
+                makePinnedListItem(id: "file-b", pinnedOrder: 1)
+            ],
+            persist: false
+        )
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+
+        let success = await viewModel.reorderPinnedFiles(ids: ["file-b", "file-a"])
+        let recordedOrders = await recorder.snapshot()
+
+        XCTAssertFalse(success)
+        XCTAssertEqual(viewModel.panelPinnedItems.map(\.file.id), ["file-a", "file-b"])
+        XCTAssertEqual(viewModel.errorMessage, "Failed to reorder pinned files")
+        XCTAssertEqual(recordedOrders, [["file-b", "file-a"]])
+    }
+
+    func testReorderPinnedFilesDoesNotCallAPIWhenOffline() async {
+        let recorder = PinnedOrderRecorder()
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            updatePinnedOrderResult: .success(()),
+            youtubeResult: .failure(MockError.forced),
+            pinnedOrderRecorder: recorder
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        store.applyListUpdate(
+            [
+                makePinnedListItem(id: "file-a", pinnedOrder: 0),
+                makePinnedListItem(id: "file-b", pinnedOrder: 1)
+            ],
+            persist: false
+        )
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+        )
+
+        let success = await viewModel.reorderPinnedFiles(ids: ["file-b", "file-a"])
+        let updatePinnedOrderCallCount = await recorder.callCount()
+
+        XCTAssertFalse(success)
+        XCTAssertEqual(viewModel.panelPinnedItems.map(\.file.id), ["file-a", "file-b"])
+        XCTAssertEqual(updatePinnedOrderCallCount, 0)
+    }
+
     func testClearFailedUploadShowsToastWhenDeleteFails() async {
         let failedItem = makeListItem(id: "file-1", status: "failed", stage: "failed")
         let api = MockIngestionAPI(
@@ -1000,6 +1111,29 @@ final class IngestionViewModelTests: XCTestCase {
         )
     }
 
+    private func makePinnedListItem(id: String, pinnedOrder: Int) -> IngestionListItem {
+        IngestionListItem(
+            file: IngestedFileMeta(
+                id: id,
+                filenameOriginal: "\(id).txt",
+                path: nil,
+                mimeOriginal: "text/plain",
+                sizeBytes: 10,
+                sha256: nil,
+                pinned: true,
+                pinnedOrder: pinnedOrder,
+                category: nil,
+                sourceUrl: nil,
+                sourceMetadata: nil,
+                createdAt: "2026-01-10T00:00:00Z",
+                updatedAt: nil,
+                deletedAt: nil
+            ),
+            job: makeJob(),
+            recommendedViewer: "text_original"
+        )
+    }
+
     private func makeFile(id: String) -> IngestedFileMeta {
         IngestedFileMeta(
             id: id,
@@ -1096,6 +1230,22 @@ private struct TestNetworkStatus: NetworkStatusProviding {
     let isOffline: Bool
 }
 
+private actor PinnedOrderRecorder {
+    private var calls: [[String]] = []
+
+    func record(_ ids: [String]) {
+        calls.append(ids)
+    }
+
+    func snapshot() -> [[String]] {
+        calls
+    }
+
+    func callCount() -> Int {
+        calls.count
+    }
+}
+
 private actor PollingSleepRecorder {
     private var recordedIntervals: [UInt64] = []
 
@@ -1115,8 +1265,10 @@ private struct MockIngestionAPI: IngestionProviding {
     let contentResultsByKind: [String: Result<Data, Error>]
     let cancelResult: Result<Void, Error>
     let pinResult: Result<Void, Error>
+    let updatePinnedOrderResult: Result<Void, Error>
     let youtubeResult: Result<String, Error>
     let onCancel: ((String) -> Void)?
+    let pinnedOrderRecorder: PinnedOrderRecorder?
 
     init(
         listResult: Result<IngestionListResponse, Error>,
@@ -1125,8 +1277,10 @@ private struct MockIngestionAPI: IngestionProviding {
         contentResultsByKind: [String: Result<Data, Error>] = [:],
         cancelResult: Result<Void, Error> = .success(()),
         pinResult: Result<Void, Error>,
+        updatePinnedOrderResult: Result<Void, Error> = .success(()),
         youtubeResult: Result<String, Error>,
-        onCancel: ((String) -> Void)? = nil
+        onCancel: ((String) -> Void)? = nil,
+        pinnedOrderRecorder: PinnedOrderRecorder? = nil
     ) {
         self.listResult = listResult
         self.metaResult = metaResult
@@ -1134,8 +1288,10 @@ private struct MockIngestionAPI: IngestionProviding {
         self.contentResultsByKind = contentResultsByKind
         self.cancelResult = cancelResult
         self.pinResult = pinResult
+        self.updatePinnedOrderResult = updatePinnedOrderResult
         self.youtubeResult = youtubeResult
         self.onCancel = onCancel
+        self.pinnedOrderRecorder = pinnedOrderRecorder
     }
 
     func list() async throws -> IngestionListResponse {
@@ -1166,6 +1322,11 @@ private struct MockIngestionAPI: IngestionProviding {
         _ = pinned
         _ = clientUpdatedAt
         return try pinResult.get()
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        await pinnedOrderRecorder?.record(ids)
+        return try updatePinnedOrderResult.get()
     }
 
     func delete(fileId: String, clientUpdatedAt: String?) async throws {
