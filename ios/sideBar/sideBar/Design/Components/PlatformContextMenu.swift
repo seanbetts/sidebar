@@ -3,10 +3,13 @@ import SwiftUI
 #if os(iOS)
 import UIKit
 
-/// iPhone uses the same SwiftUI context menu path as iPad/macOS to avoid
-/// clipped row previews during the long-press highlight animation.
 func shouldUseUIKitContextMenu(on idiom: UIUserInterfaceIdiom) -> Bool {
-    false
+    switch idiom {
+    case .phone, .pad:
+        true
+    default:
+        false
+    }
 }
 
 private struct UIKitContextMenuView<Content: View>: UIViewRepresentable {
