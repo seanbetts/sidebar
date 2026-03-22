@@ -55,7 +55,7 @@ extension NotesAttributedDocumentCodec {
         return applyingDetectedLinks(to: attributed)
     }
 
-    private static func attributedBoundary(
+    static func attributedBoundary(
         for blockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat
     ) -> AttributedString {
@@ -93,7 +93,7 @@ extension NotesAttributedDocumentCodec {
         return boundary
     }
 
-    private static func attributedParagraph(
+    static func attributedParagraph(
         from segments: [NotesSemanticDocument.InlineSegment],
         blockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat,
@@ -182,7 +182,7 @@ extension NotesAttributedDocumentCodec {
         return paragraph
     }
 
-    private static func attributedSemanticParagraph(
+    static func attributedSemanticParagraph(
         from segments: [NotesSemanticDocument.InlineSegment],
         blockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat,

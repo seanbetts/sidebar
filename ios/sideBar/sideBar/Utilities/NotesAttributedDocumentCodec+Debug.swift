@@ -178,4 +178,240 @@ extension NotesAttributedDocumentCodec {
             identitySource: identitySource
         )
     }
+
+    static func debugManualTitleThenAttributedBlockCodeBlockText(
+        baseFontSize: CGFloat
+    ) -> AttributedString {
+        var attributed = attributedParagraph(
+            from: [.init(text: "Snippet", marks: [])],
+            blockType: .title,
+            baseFontSize: baseFontSize
+        )
+        attributed.append(
+            attributedBoundary(
+                for: .codeBlock,
+                baseFontSize: baseFontSize
+            )
+        )
+        let identitySource = NotesPresentationIntentIdentitySource()
+        attributed.append(
+            attributedBlock(
+                from: .init(type: .codeBlock, content: [.init(text: "let value = 1", marks: [])]),
+                baseFontSize: baseFontSize,
+                identitySource: identitySource,
+                semanticParent: nil
+            )
+        )
+        return attributed
+    }
+
+    static func debugManualTitleThenPassthroughCodeBlockText(
+        baseFontSize: CGFloat
+    ) -> AttributedString {
+        var attributed = attributedParagraph(
+            from: [.init(text: "Snippet", marks: [])],
+            blockType: .title,
+            baseFontSize: baseFontSize
+        )
+        attributed.append(
+            attributedBoundary(
+                for: .codeBlock,
+                baseFontSize: baseFontSize
+            )
+        )
+        attributed.append(debugPassthroughCodeBlockText("let value = 1"))
+        return attributed
+    }
+
+    static func debugManualTitleThenInlineSemanticCodeBlockText(
+        baseFontSize: CGFloat
+    ) -> AttributedString {
+        var attributed = attributedParagraph(
+            from: [.init(text: "Snippet", marks: [])],
+            blockType: .title,
+            baseFontSize: baseFontSize
+        )
+        attributed.append(
+            attributedBoundary(
+                for: .codeBlock,
+                baseFontSize: baseFontSize
+            )
+        )
+        let block = NotesSemanticDocument.Block(
+            type: .codeBlock,
+            content: [.init(text: "let value = 1", marks: [])]
+        )
+        let identitySource = NotesPresentationIntentIdentitySource()
+        attributed.append(
+            bridgedFoundationPresentationIntentText(
+                block.content.map(\.text).joined(),
+                presentationIntent: PresentationIntent(
+                    .codeBlock(languageHint: nil),
+                    identity: identitySource.makeIdentity(),
+                    parent: nil
+                )
+            )
+        )
+        return attributed
+    }
+
+    static func debugManualTitleThenSemanticStringFixedIdentityCodeBlockText(
+        baseFontSize: CGFloat
+    ) -> AttributedString {
+        var attributed = attributedParagraph(
+            from: [.init(text: "Snippet", marks: [])],
+            blockType: .title,
+            baseFontSize: baseFontSize
+        )
+        attributed.append(
+            attributedBoundary(
+                for: .codeBlock,
+                baseFontSize: baseFontSize
+            )
+        )
+        let block = NotesSemanticDocument.Block(
+            type: .codeBlock,
+            content: [.init(text: "let value = 1", marks: [])]
+        )
+        attributed.append(
+            bridgedFoundationPresentationIntentText(
+                block.content.map(\.text).joined(),
+                presentationIntent: PresentationIntent(
+                    .codeBlock(languageHint: nil),
+                    identity: 1,
+                    parent: nil
+                )
+            )
+        )
+        return attributed
+    }
+
+    static func debugManualTitleThenExtractedIdentitySemanticCodeBlockText(
+        baseFontSize: CGFloat
+    ) -> AttributedString {
+        var attributed = attributedParagraph(
+            from: [.init(text: "Snippet", marks: [])],
+            blockType: .title,
+            baseFontSize: baseFontSize
+        )
+        attributed.append(
+            attributedBoundary(
+                for: .codeBlock,
+                baseFontSize: baseFontSize
+            )
+        )
+        let block = NotesSemanticDocument.Block(
+            type: .codeBlock,
+            content: [.init(text: "let value = 1", marks: [])]
+        )
+        let identitySource = NotesPresentationIntentIdentitySource()
+        let identity = identitySource.makeIdentity()
+        attributed.append(
+            bridgedFoundationPresentationIntentText(
+                block.content.map(\.text).joined(),
+                presentationIntent: PresentationIntent(
+                    .codeBlock(languageHint: nil),
+                    identity: identity,
+                    parent: nil
+                )
+            )
+        )
+        return attributed
+    }
+
+    static func debugManualTitleThenUnusedIdentitySourceFixedIdentityCodeBlockText(
+        baseFontSize: CGFloat
+    ) -> AttributedString {
+        var attributed = attributedParagraph(
+            from: [.init(text: "Snippet", marks: [])],
+            blockType: .title,
+            baseFontSize: baseFontSize
+        )
+        attributed.append(
+            attributedBoundary(
+                for: .codeBlock,
+                baseFontSize: baseFontSize
+            )
+        )
+        let block = NotesSemanticDocument.Block(
+            type: .codeBlock,
+            content: [.init(text: "let value = 1", marks: [])]
+        )
+        let identitySource = NotesPresentationIntentIdentitySource()
+        _ = identitySource
+        attributed.append(
+            bridgedFoundationPresentationIntentText(
+                block.content.map(\.text).joined(),
+                presentationIntent: PresentationIntent(
+                    .codeBlock(languageHint: nil),
+                    identity: 1,
+                    parent: nil
+                )
+            )
+        )
+        return attributed
+    }
+
+    static func debugManualTitleThenExpiredIdentitySourceCodeBlockText(
+        baseFontSize: CGFloat
+    ) -> AttributedString {
+        var attributed = attributedParagraph(
+            from: [.init(text: "Snippet", marks: [])],
+            blockType: .title,
+            baseFontSize: baseFontSize
+        )
+        attributed.append(
+            attributedBoundary(
+                for: .codeBlock,
+                baseFontSize: baseFontSize
+            )
+        )
+        let block = NotesSemanticDocument.Block(
+            type: .codeBlock,
+            content: [.init(text: "let value = 1", marks: [])]
+        )
+        let identity: Int = {
+            let identitySource = NotesPresentationIntentIdentitySource()
+            return identitySource.makeIdentity()
+        }()
+        attributed.append(
+            bridgedFoundationPresentationIntentText(
+                block.content.map(\.text).joined(),
+                presentationIntent: PresentationIntent(
+                    .codeBlock(languageHint: nil),
+                    identity: identity,
+                    parent: nil
+                )
+            )
+        )
+        return attributed
+    }
+
+    static func debugBlockArrayParagraphThenCodeBlockText(
+        baseFontSize: CGFloat
+    ) -> AttributedString {
+        let blocks: [NotesSemanticDocument.Block] = [
+            .init(type: .paragraph, content: [.init(text: "Snippet", marks: [])]),
+            .init(type: .codeBlock, content: [.init(text: "let value = 1", marks: [])])
+        ]
+        let identitySource = NotesPresentationIntentIdentitySource()
+        return attributedBlocks(
+            from: blocks,
+            baseFontSize: baseFontSize,
+            identitySource: identitySource
+        )
+    }
+
+    private static func debugPassthroughCodeBlockText(
+        _ plainText: String
+    ) -> AttributedString {
+        bridgedFoundationPresentationIntentText(
+            plainText,
+            presentationIntent: PresentationIntent(
+                .codeBlock(languageHint: nil),
+                identity: 1,
+                parent: nil
+            )
+        )
+    }
 }

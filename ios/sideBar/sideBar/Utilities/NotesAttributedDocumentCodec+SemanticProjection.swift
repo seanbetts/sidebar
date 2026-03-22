@@ -135,7 +135,7 @@ extension NotesAttributedDocumentCodec {
         }
     }
 
-    private static func attributedBlock(
+    static func attributedBlock(
         from block: NotesSemanticDocument.Block,
         baseFontSize: CGFloat,
         identitySource: NotesPresentationIntentIdentitySource,

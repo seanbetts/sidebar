@@ -266,6 +266,112 @@ final class NotesCodecCrashTests: XCTestCase {
         XCTAssertEqual(intent.components.map(\.kind), [.codeBlock(languageHint: nil)])
     }
 
+    func testModuleManualTitleThenAttributedBlockCodeBlockTextCanBeInspected() throws {
+        let attributed =
+            NotesAttributedDocumentCodec.debugManualTitleThenAttributedBlockCodeBlockText(
+                baseFontSize: 16
+            )
+
+        let intent = try XCTUnwrap(
+            diagnosticPresentationIntent(in: attributed, atCharacterOffset: 8)
+        )
+
+        XCTAssertEqual(intent.components.map(\.kind), [.codeBlock(languageHint: nil)])
+    }
+
+    func testModuleManualTitleThenAttributedBlockCodeBlockTextConstructs() {
+        let attributed =
+            NotesAttributedDocumentCodec.debugManualTitleThenAttributedBlockCodeBlockText(
+                baseFontSize: 16
+            )
+
+        XCTAssertEqual(String(attributed.characters), "Snippet\nlet value = 1")
+    }
+
+    func testModuleManualTitleThenAttributedBlockCodeBlockTextCanBeReadFromFullRuns() throws {
+        let attributed =
+            NotesAttributedDocumentCodec.debugManualTitleThenAttributedBlockCodeBlockText(
+                baseFontSize: 16
+            )
+
+        let intent = try XCTUnwrap(
+            attributed.runs.last?.attributes[
+                AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self
+            ]
+        )
+
+        XCTAssertEqual(intent.components.map(\.kind), [.codeBlock(languageHint: nil)])
+    }
+
+    func testModuleManualTitleThenPassthroughCodeBlockTextConstructs() {
+        let attributed =
+            NotesAttributedDocumentCodec.debugManualTitleThenPassthroughCodeBlockText(
+                baseFontSize: 16
+            )
+
+        XCTAssertEqual(String(attributed.characters), "Snippet\nlet value = 1")
+    }
+
+    func testModuleManualTitleThenInlineSemanticCodeBlockTextConstructs() {
+        let attributed =
+            NotesAttributedDocumentCodec.debugManualTitleThenInlineSemanticCodeBlockText(
+                baseFontSize: 16
+            )
+
+        XCTAssertEqual(String(attributed.characters), "Snippet\nlet value = 1")
+    }
+
+    func testModuleManualTitleThenSemanticStringFixedIdentityCodeBlockTextConstructs() {
+        let attributed =
+            NotesAttributedDocumentCodec
+                .debugManualTitleThenSemanticStringFixedIdentityCodeBlockText(
+                    baseFontSize: 16
+                )
+
+        XCTAssertEqual(String(attributed.characters), "Snippet\nlet value = 1")
+    }
+
+    func testModuleManualTitleThenExtractedIdentitySemanticCodeBlockTextConstructs() {
+        let attributed =
+            NotesAttributedDocumentCodec
+                .debugManualTitleThenExtractedIdentitySemanticCodeBlockText(
+                    baseFontSize: 16
+                )
+
+        XCTAssertEqual(String(attributed.characters), "Snippet\nlet value = 1")
+    }
+
+    func testModuleManualTitleThenUnusedIdentitySourceFixedIdentityCodeBlockTextConstructs() {
+        let attributed =
+            NotesAttributedDocumentCodec
+                .debugManualTitleThenUnusedIdentitySourceFixedIdentityCodeBlockText(
+                    baseFontSize: 16
+                )
+
+        XCTAssertEqual(String(attributed.characters), "Snippet\nlet value = 1")
+    }
+
+    func testModuleManualTitleThenExpiredIdentitySourceCodeBlockTextConstructs() {
+        let attributed =
+            NotesAttributedDocumentCodec.debugManualTitleThenExpiredIdentitySourceCodeBlockText(
+                baseFontSize: 16
+            )
+
+        XCTAssertEqual(String(attributed.characters), "Snippet\nlet value = 1")
+    }
+
+    func testModuleBlockArrayParagraphThenCodeBlockTextCanBeInspected() throws {
+        let attributed = NotesAttributedDocumentCodec.debugBlockArrayParagraphThenCodeBlockText(
+            baseFontSize: 16
+        )
+
+        let intent = try XCTUnwrap(
+            diagnosticPresentationIntent(in: attributed, atCharacterOffset: 8)
+        )
+
+        XCTAssertEqual(intent.components.map(\.kind), [.codeBlock(languageHint: nil)])
+    }
+
     func testStandaloneFoundationNestedListIntentDoesNotCrash() {
         var text = AttributedString("item")
         let range = text.startIndex..<text.endIndex
