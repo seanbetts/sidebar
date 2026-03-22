@@ -74,8 +74,11 @@ struct TaskPanelRow: View, Equatable {
         )
         if contextMenuItems.isEmpty {
             row
+                .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
         } else {
-            row.platformContextMenu(items: contextMenuItems)
+            row
+                .platformContextMenu(items: contextMenuItems)
+                .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
         }
     }
 

@@ -160,6 +160,11 @@ extension ConversationsPanelView {
                             onDelete: { presentDelete(conversation) }
                         )
                         .platformContextMenu(items: conversationContextMenuItemsList(for: conversation))
+                        .listRowBackground(
+                            DesignTokens.Colors.sidebarRowBackground(
+                                isSelected: viewModel.selectedConversationId == conversation.id
+                            )
+                        )
                     }
                 } header: {
                     sidebarProminentSectionHeader(group.title)
