@@ -41,7 +41,7 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
         )
 
         harness.store.applyEditorUpdate(note)
-        await Task.yield()
+        try await waitUntilSemanticNoteHydrated(harness.viewModel, note: note)
 
         let nativeViewModel = harness.viewModel.makeNativeEditorViewModel()
         nativeViewModel.attributedContent = NotesAttributedDocumentCodec.attributedString(from: savedDocument)
@@ -49,7 +49,9 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
         try await waitUntilSemantic(timeoutSeconds: 3.0) { nativeViewModel.hasUnsavedChanges }
 
         await harness.viewModel.syncFromNativeEditor(nativeViewModel)
-        await waitForNotesViewModelMirror()
+        try await waitUntilSemantic(timeoutSeconds: 3.0) {
+            harness.notesViewModel.activeNote?.name == "Saved title"
+        }
 
         XCTAssertEqual(harness.api.updatedDocuments, [savedDocument])
         XCTAssertEqual(harness.notesViewModel.activeNote?.name, "Saved title")
@@ -85,7 +87,7 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
         )
 
         harness.store.applyEditorUpdate(note)
-        await Task.yield()
+        try await waitUntilSemanticNoteHydrated(harness.viewModel, note: note)
 
         let nativeViewModel = harness.viewModel.makeNativeEditorViewModel()
         harness.viewModel.attachNativeEditor(nativeViewModel)
@@ -108,9 +110,9 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
         )
 
         harness.store.applyEditorUpdate(otherNote)
-        await Task.yield()
+        try await waitUntilSemanticNoteHydrated(harness.viewModel, note: otherNote)
         harness.store.applyEditorUpdate(savedNote)
-        await Task.yield()
+        try await waitUntilSemanticNoteHydrated(harness.viewModel, note: savedNote)
 
         let reloadedRange = semanticCharacterRange(length: 5, in: nativeViewModel.attributedContent)
         XCTAssertTrue(noteRangeHasBoldTrait(nativeViewModel.attributedContent, range: reloadedRange))
@@ -138,7 +140,7 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
         )
 
         harness.store.applyEditorUpdate(note)
-        await Task.yield()
+        try await waitUntilSemanticNoteHydrated(harness.viewModel, note: note)
 
         let nativeViewModel = harness.viewModel.makeNativeEditorViewModel()
         nativeViewModel.attributedContent = AttributedString("Queued title\nBody")
@@ -146,7 +148,9 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
         try await waitUntilSemantic(timeoutSeconds: 3.0) { nativeViewModel.hasUnsavedChanges }
 
         await harness.viewModel.syncFromNativeEditor(nativeViewModel)
-        await waitForNotesViewModelMirror()
+        try await waitUntilSemantic(timeoutSeconds: 3.0) {
+            harness.notesViewModel.activeNote?.name == "Queued title"
+        }
 
         let payload = try queuedNoteUpdatePayload(
             in: harness.persistence.container.viewContext,
@@ -222,7 +226,7 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
         )
 
         harness.store.applyEditorUpdate(note)
-        await Task.yield()
+        try await waitUntilSemanticNoteHydrated(harness.viewModel, note: note)
 
         let nativeViewModel = harness.viewModel.makeNativeEditorViewModel()
         nativeViewModel.attributedContent = AttributedString("Live title\nLive body")
@@ -334,11 +338,17 @@ private func waitUntilSemantic(timeoutSeconds: TimeInterval, condition: @escapin
 }
 
 @MainActor
-private func waitForNotesViewModelMirror() async {
-    await withCheckedContinuation { continuation in
-        DispatchQueue.main.async {
-            continuation.resume()
-        }
+private func waitUntilSemanticNoteHydrated(
+    _ viewModel: NotesEditorViewModel,
+    note: NotePayload
+) async throws {
+    let unsupported = NotesUnsupportedContent.detect(in: note.document)
+    try await waitUntilSemantic(timeoutSeconds: 5.0) {
+        viewModel.currentNoteId == note.id
+            && viewModel.content == note.plainText
+            && NotesSemanticDocumentCodec.decode(viewModel.canonicalContent) == note.document
+            && viewModel.isReadOnly == (unsupported != nil)
+            && viewModel.unsupportedContent?.blockTypes == unsupported?.blockTypes
     }
 }
 
