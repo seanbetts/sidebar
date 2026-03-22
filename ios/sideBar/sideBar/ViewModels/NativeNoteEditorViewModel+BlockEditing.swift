@@ -54,7 +54,9 @@ extension NativeNoteEditorViewModel {
     }
 
     func blockPlainText(_ block: NotesSemanticDocument.Block) -> String {
-        block.content.map(\.text).joined()
+        NotesSemanticDocumentProjection.plainText(
+            from: NotesSemanticDocument(blocks: [block])
+        )
     }
 
     func inlineTextLength(_ content: [NotesSemanticDocument.InlineSegment]) -> Int {

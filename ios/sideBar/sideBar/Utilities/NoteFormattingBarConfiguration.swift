@@ -15,6 +15,10 @@ struct NoteFormattingBarConfiguration {
     let isInlineCodeActive: Bool
     let isCodeBlockActive: Bool
     let isCodeBlockEnabled: Bool
+    let isUnorderedListActive: Bool
+    let isUnorderedListEnabled: Bool
+    let isOrderedListActive: Bool
+    let isOrderedListEnabled: Bool
     let isEnabled: Bool
     let onTextStyleSelection: @MainActor @Sendable (NoteTextStyle) -> Void
     let onBoldTap: @MainActor @Sendable () -> Void
@@ -23,6 +27,8 @@ struct NoteFormattingBarConfiguration {
     let onStrikethroughTap: @MainActor @Sendable () -> Void
     let onInlineCodeTap: @MainActor @Sendable () -> Void
     let onCodeBlockTap: @MainActor @Sendable () -> Void
+    let onUnorderedListTap: @MainActor @Sendable () -> Void
+    let onOrderedListTap: @MainActor @Sendable () -> Void
     let onTitleShortcut: @MainActor @Sendable () -> Void
     let onHeadingShortcut: @MainActor @Sendable () -> Void
     let onSubheadingShortcut: @MainActor @Sendable () -> Void
@@ -42,6 +48,10 @@ struct NoteFormattingBarConfiguration {
         isInlineCodeActive: Bool = false,
         isCodeBlockActive: Bool = false,
         isCodeBlockEnabled: Bool = false,
+        isUnorderedListActive: Bool = false,
+        isUnorderedListEnabled: Bool = false,
+        isOrderedListActive: Bool = false,
+        isOrderedListEnabled: Bool = false,
         isEnabled: Bool,
         onTextStyleSelection: @escaping @MainActor @Sendable (NoteTextStyle) -> Void = { _ in },
         onBoldTap: @escaping @MainActor @Sendable () -> Void,
@@ -50,6 +60,8 @@ struct NoteFormattingBarConfiguration {
         onStrikethroughTap: @escaping @MainActor @Sendable () -> Void,
         onInlineCodeTap: @escaping @MainActor @Sendable () -> Void = {},
         onCodeBlockTap: @escaping @MainActor @Sendable () -> Void = {},
+        onUnorderedListTap: @escaping @MainActor @Sendable () -> Void = {},
+        onOrderedListTap: @escaping @MainActor @Sendable () -> Void = {},
         onTitleShortcut: @escaping @MainActor @Sendable () -> Void = {},
         onHeadingShortcut: @escaping @MainActor @Sendable () -> Void = {},
         onSubheadingShortcut: @escaping @MainActor @Sendable () -> Void = {},
@@ -68,6 +80,10 @@ struct NoteFormattingBarConfiguration {
         self.isInlineCodeActive = isInlineCodeActive
         self.isCodeBlockActive = isCodeBlockActive
         self.isCodeBlockEnabled = isCodeBlockEnabled
+        self.isUnorderedListActive = isUnorderedListActive
+        self.isUnorderedListEnabled = isUnorderedListEnabled
+        self.isOrderedListActive = isOrderedListActive
+        self.isOrderedListEnabled = isOrderedListEnabled
         self.isEnabled = isEnabled
         self.onTextStyleSelection = onTextStyleSelection
         self.onBoldTap = onBoldTap
@@ -76,6 +92,8 @@ struct NoteFormattingBarConfiguration {
         self.onStrikethroughTap = onStrikethroughTap
         self.onInlineCodeTap = onInlineCodeTap
         self.onCodeBlockTap = onCodeBlockTap
+        self.onUnorderedListTap = onUnorderedListTap
+        self.onOrderedListTap = onOrderedListTap
         self.onTitleShortcut = onTitleShortcut
         self.onHeadingShortcut = onHeadingShortcut
         self.onSubheadingShortcut = onSubheadingShortcut

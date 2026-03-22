@@ -167,14 +167,17 @@ extension NotesAttributedDocumentCodec {
         visiblePrefix: String? = nil,
         presentationIntent: PresentationIntent
     ) -> AttributedString {
-        let plainText = (visiblePrefix ?? "") + segments.map(\.text).joined()
-        guard !plainText.isEmpty else { return AttributedString("") }
-        return styledPresentationIntentText(
-            plainText,
+        var paragraph = attributedParagraph(
+            from: segments,
             blockType: blockType,
             baseFontSize: baseFontSize,
-            presentationIntent: presentationIntent
+            visiblePrefix: visiblePrefix
         )
+        guard !paragraph.characters.isEmpty else { return paragraph }
+        let range = paragraph.startIndex..<paragraph.endIndex
+        paragraph[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] =
+            presentationIntent
+        return paragraph
     }
 
     static func styledPresentationIntentText(

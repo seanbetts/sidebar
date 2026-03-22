@@ -77,6 +77,13 @@ extension NativeNoteEditorViewModel {
                 selectionOffset: selectionOffset,
                 blockText: blockText
             )
+        case .unorderedList, .orderedList:
+            mutation = mutateListReturn(
+                in: document,
+                blockInfo: blockInfo,
+                selectionOffset: selectionOffset,
+                blockText: blockText
+            )
         default:
             mutation = nil
         }
@@ -291,6 +298,59 @@ extension NativeNoteEditorViewModel {
         )
     }
 
+    private func mutateListReturn(
+        in document: NotesSemanticDocument,
+        blockInfo: DocumentBlockInfo,
+        selectionOffset: Int,
+        blockText: String
+    ) -> ReturnKeyMutation? {
+        guard selectionOffset == blockText.count else { return nil }
+        guard blockInfo.block.type == .unorderedList || blockInfo.block.type == .orderedList else {
+            return nil
+        }
+
+        var children = blockInfo.block.children ?? []
+        if let lastChild = children.last, isEmptyListItem(lastChild) {
+            children.removeLast()
+
+            let updatedListBlock = NotesSemanticDocument.Block(
+                type: blockInfo.block.type,
+                children: children
+            )
+            var updatedBlocks = document.blocks
+            updatedBlocks[blockInfo.index] = updatedListBlock
+            updatedBlocks.insert(.paragraph([.init(text: "", marks: [])]), at: blockInfo.index + 1)
+
+            let updatedListTextLength = blockPlainText(updatedListBlock).count
+            return ReturnKeyMutation(
+                document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
+                insertionOffset: blockInfo.range.lowerBound + updatedListTextLength + 1,
+                typingBlockType: .paragraph
+            )
+        }
+
+        children.append(.init(type: .listItem, content: [.init(text: "", marks: [])]))
+
+        let updatedBlock = NotesSemanticDocument.Block(
+            type: blockInfo.block.type,
+            children: children
+        )
+        var updatedBlocks = document.blocks
+        updatedBlocks[blockInfo.index] = updatedBlock
+
+        let updatedBlockTextLength = blockPlainText(updatedBlock).count
+        return ReturnKeyMutation(
+            document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
+            insertionOffset: blockInfo.range.lowerBound + updatedBlockTextLength,
+            typingBlockType: blockInfo.block.type
+        )
+    }
+
+    private func isEmptyListItem(_ block: NotesSemanticDocument.Block) -> Bool {
+        guard block.type == .listItem else { return false }
+        return block.content.allSatisfy { $0.text.isEmpty }
+    }
+
     private func replaceTextAcrossTextStyleBlocks(
         in document: NotesSemanticDocument,
         startBlockInfo: DocumentBlockInfo,
@@ -420,55 +480,4 @@ extension NativeNoteEditorViewModel {
         }
     }
 
-    func inlineMarksForStructuralInsertion() -> [NotesSemanticDocument.InlineMark] {
-        let typingState = inlineFormattingState(
-            from: typingAttributesForInsertion(in: attributedContent)
-        )
-        return NotesSemanticDocument.InlineMark.storageOrder.compactMap { mark in
-            switch mark {
-            case .bold:
-                return typingState.bold ? .bold : nil
-            case .italic:
-                return typingState.italic ? .italic : nil
-            case .underline:
-                return typingState.underline ? .underline : nil
-            case .strikethrough:
-                return typingState.strikethrough ? .strikethrough : nil
-            case .inlineCode:
-                return typingState.inlineCode ? .inlineCode : nil
-            }
-        }
-    }
-
-    func appendSegmentText(
-        _ text: String,
-        marks: [NotesSemanticDocument.InlineMark],
-        to segments: inout [NotesSemanticDocument.InlineSegment]
-    ) {
-        guard !text.isEmpty else { return }
-        if let last = segments.last, last.marks == marks, last.link == nil {
-            segments[segments.count - 1] = .init(text: last.text + text, marks: marks)
-        } else {
-            segments.append(.init(text: text, marks: marks))
-        }
-    }
-
-    func appendSegments(
-        _ appended: [NotesSemanticDocument.InlineSegment],
-        to segments: inout [NotesSemanticDocument.InlineSegment]
-    ) {
-        for segment in appended {
-            if let last = segments.last,
-               last.marks == segment.marks,
-               last.link == segment.link {
-                segments[segments.count - 1] = .init(
-                    text: last.text + segment.text,
-                    marks: segment.marks,
-                    link: segment.link
-                )
-            } else {
-                segments.append(segment)
-            }
-        }
-    }
 }

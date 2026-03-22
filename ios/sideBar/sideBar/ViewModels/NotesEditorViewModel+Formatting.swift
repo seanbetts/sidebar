@@ -61,6 +61,18 @@ extension NotesEditorViewModel {
         return nativeEditorViewModel.canApplyCodeBlock()
     }
 
+    public func isListActive(_ listType: NotesSemanticDocument.BlockType) -> Bool {
+        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
+              canApplyFormattingCommands() else { return false }
+        return nativeEditorViewModel.isListActive(listType)
+    }
+
+    public func canApplyList(_ listType: NotesSemanticDocument.BlockType) -> Bool {
+        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
+              canApplyFormattingCommands() else { return false }
+        return nativeEditorViewModel.canApplyList(listType)
+    }
+
     public func setTextStyle(_ style: NoteTextStyle) {
         guard let nativeEditorViewModel = attachedNativeEditorViewModel,
               canApplyFormattingCommands() else { return }
@@ -80,6 +92,19 @@ extension NotesEditorViewModel {
         let previousContent = nativeEditorViewModel.attributedContent
         let previousSelection = nativeEditorViewModel.selection
         nativeEditorViewModel.toggleCodeBlock()
+        finalizeNativeEditorMutation(
+            nativeEditorViewModel,
+            previousContent: previousContent,
+            previousSelection: previousSelection
+        )
+    }
+
+    public func toggleList(_ listType: NotesSemanticDocument.BlockType) {
+        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
+              canApplyFormattingCommands() else { return }
+        let previousContent = nativeEditorViewModel.attributedContent
+        let previousSelection = nativeEditorViewModel.selection
+        nativeEditorViewModel.toggleList(listType)
         finalizeNativeEditorMutation(
             nativeEditorViewModel,
             previousContent: previousContent,
@@ -106,6 +131,10 @@ extension NotesEditorViewModel {
             isInlineCodeActive: isFormattingActive(.inlineCode),
             isCodeBlockActive: isCodeBlockActive(),
             isCodeBlockEnabled: canApplyCodeBlock(),
+            isUnorderedListActive: isListActive(.unorderedList),
+            isUnorderedListEnabled: canApplyList(.unorderedList),
+            isOrderedListActive: isListActive(.orderedList),
+            isOrderedListEnabled: canApplyList(.orderedList),
             isEnabled: canApplyFormattingCommands(),
             onTextStyleSelection: { [weak self] in self?.setTextStyle($0) },
             onBoldTap: { [weak self] in self?.toggleFormatting(.bold) },
@@ -114,6 +143,8 @@ extension NotesEditorViewModel {
             onStrikethroughTap: { [weak self] in self?.toggleFormatting(.strikethrough) },
             onInlineCodeTap: { [weak self] in self?.toggleFormatting(.inlineCode) },
             onCodeBlockTap: { [weak self] in self?.toggleCodeBlock() },
+            onUnorderedListTap: { [weak self] in self?.toggleList(.unorderedList) },
+            onOrderedListTap: { [weak self] in self?.toggleList(.orderedList) },
             onTitleShortcut: { [weak self] in self?.setTextStyle(.title) },
             onHeadingShortcut: { [weak self] in self?.setTextStyle(.heading) },
             onSubheadingShortcut: { [weak self] in self?.setTextStyle(.subheading) },

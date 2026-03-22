@@ -109,6 +109,24 @@ extension NativeNoteEditorViewModel {
         return touchedBlocks.allSatisfy(canToggleCodeBlock(for:))
     }
 
+    func canApplyList(_ listType: NotesSemanticDocument.BlockType) -> Bool {
+        guard !isReadOnly else { return false }
+        guard listType == .unorderedList || listType == .orderedList else { return false }
+        let document = currentPersistenceSnapshot().document
+        let touchedBlocks = touchedBlockInfos(in: document)
+        guard !touchedBlocks.isEmpty else { return false }
+        return touchedBlocks.allSatisfy(canConvertBlockToListItem(for:)) ||
+            touchedBlocks.allSatisfy { canUnwrapList(for: $0, listType: listType) }
+    }
+
+    func isListActive(_ listType: NotesSemanticDocument.BlockType) -> Bool {
+        guard listType == .unorderedList || listType == .orderedList else { return false }
+        let document = currentPersistenceSnapshot().document
+        let touchedBlocks = touchedBlockInfos(in: document)
+        guard !touchedBlocks.isEmpty else { return false }
+        return touchedBlocks.allSatisfy { $0.block.type == listType }
+    }
+
     func canApplyTextStyle(_ style: NoteTextStyle) -> Bool {
         guard !isReadOnly else { return false }
         guard isTextStyleSectionEnabled() else { return false }
@@ -202,6 +220,63 @@ extension NativeNoteEditorViewModel {
         selection = selection(from: selectionSnapshot, in: updatedContent)
     }
 
+    func toggleList(_ listType: NotesSemanticDocument.BlockType) {
+        guard canApplyList(listType) else { return }
+
+        let document = currentPersistenceSnapshot().document
+        let touchedBlocks = touchedBlockInfos(in: document)
+        guard let firstIndex = touchedBlocks.first?.index,
+              let lastIndex = touchedBlocks.last?.index else { return }
+
+        let selectionSnapshot = selectionSnapshot(in: attributedContent)
+        let replacementBlocks: [NotesSemanticDocument.Block]
+        if isListActive(listType) {
+            replacementBlocks = touchedBlocks.flatMap { blockInfo in
+                (blockInfo.block.children ?? []).map { child in
+                    NotesSemanticDocument.Block(
+                        type: .paragraph,
+                        content: child.content
+                    )
+                }
+            }
+        } else {
+            let listItems = touchedBlocks.map { blockInfo in
+                NotesSemanticDocument.Block(
+                    type: .listItem,
+                    content: blockInfo.block.content
+                )
+            }
+            replacementBlocks = [.init(type: listType, children: listItems)]
+        }
+
+        var updatedBlocks = document.blocks
+        updatedBlocks.replaceSubrange(
+            firstIndex...lastIndex,
+            with: replacementBlocks
+        )
+
+        let updatedDocument = NotesSemanticDocument(
+            version: document.version,
+            blocks: updatedBlocks
+        )
+
+        var updatedContent = NotesAttributedDocumentCodec.attributedString(
+            from: updatedDocument,
+            baseFontSize: baseFontSize
+        )
+        constrainEditorDocument(&updatedContent)
+        requestViewportPreservationOnNextProgrammaticRender()
+        attributedContent = updatedContent
+        selection = selection(from: selectionSnapshot, in: updatedContent)
+    }
+
+    private func canUnwrapList(
+        for blockInfo: DocumentBlockInfo,
+        listType: NotesSemanticDocument.BlockType
+    ) -> Bool {
+        blockInfo.block.type == listType
+    }
+
     func toggleFormatting(_ formatting: NoteFormatting) {
         let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
         guard !nonEmptyRanges.isEmpty else {
@@ -269,6 +344,10 @@ extension NativeNoteEditorViewModel {
         let runSnapshots = formattingRunSnapshots(in: attributedContent, within: range)
         guard !runSnapshots.isEmpty else { return false }
         return runSnapshots.allSatisfy { $0.state.contains(formatting) }
+    }
+
+    private func canConvertBlockToListItem(for blockInfo: DocumentBlockInfo) -> Bool {
+        blockInfo.index != 0 && blockInfo.block.type == .paragraph
     }
 
     private func formattingRunSnapshots(in text: AttributedString) -> [FormattingRunSnapshot] {

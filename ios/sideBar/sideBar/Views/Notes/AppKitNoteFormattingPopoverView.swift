@@ -178,10 +178,38 @@ private extension AppKitNoteFormattingPopoverView {
     }
 
     private var blockGroupDefinitions: [(String, [InlineActionItem])] {
-        [
+        let unorderedListAction: (@MainActor @Sendable () -> Void)?
+        if currentConfiguration.isUnorderedListEnabled {
+            unorderedListAction = { [weak self] in
+                self?.currentConfiguration.onUnorderedListTap()
+                self?.onDismissRequested()
+            }
+        } else {
+            unorderedListAction = nil
+        }
+
+        let orderedListAction: (@MainActor @Sendable () -> Void)?
+        if currentConfiguration.isOrderedListEnabled {
+            orderedListAction = { [weak self] in
+                self?.currentConfiguration.onOrderedListTap()
+                self?.onDismissRequested()
+            }
+        } else {
+            orderedListAction = nil
+        }
+
+        return [
             ("note-formatting-future-list-group", [
-                InlineActionItem(identifier: "note-formatting-unordered-list", symbol: "list.bullet", action: nil),
-                InlineActionItem(identifier: "note-formatting-ordered-list", symbol: "list.number", action: nil),
+                InlineActionItem(
+                    identifier: "note-formatting-unordered-list",
+                    symbol: "list.bullet",
+                    action: unorderedListAction
+                ),
+                InlineActionItem(
+                    identifier: "note-formatting-ordered-list",
+                    symbol: "list.number",
+                    action: orderedListAction
+                ),
                 InlineActionItem(identifier: "note-formatting-checklist", symbol: "checklist", action: nil)
             ]),
             ("note-formatting-future-blockquote-group", [
@@ -405,21 +433,37 @@ private extension AppKitNoteFormattingPopoverView {
 
     private func updateInlineButtons() {
         let buttonStates = [
-            ("note-formatting-bold", currentConfiguration.isBoldActive),
-            ("note-formatting-italic", currentConfiguration.isItalicActive),
-            ("note-formatting-underline", currentConfiguration.isUnderlineActive),
-            ("note-formatting-strikethrough", currentConfiguration.isStrikethroughActive),
-            ("note-formatting-inline-code", currentConfiguration.isInlineCodeActive),
-            ("note-formatting-code-block", currentConfiguration.isCodeBlockActive)
+            ("note-formatting-bold", currentConfiguration.isBoldActive, currentConfiguration.isEnabled),
+            ("note-formatting-italic", currentConfiguration.isItalicActive, currentConfiguration.isEnabled),
+            ("note-formatting-underline", currentConfiguration.isUnderlineActive, currentConfiguration.isEnabled),
+            ("note-formatting-strikethrough", currentConfiguration.isStrikethroughActive, currentConfiguration.isEnabled),
+            ("note-formatting-inline-code", currentConfiguration.isInlineCodeActive, currentConfiguration.isEnabled),
+            (
+                "note-formatting-code-block",
+                currentConfiguration.isCodeBlockActive,
+                currentConfiguration.isCodeBlockEnabled
+            ),
+            (
+                "note-formatting-unordered-list",
+                currentConfiguration.isUnorderedListActive,
+                currentConfiguration.isUnorderedListEnabled
+            ),
+            (
+                "note-formatting-ordered-list",
+                currentConfiguration.isOrderedListActive,
+                currentConfiguration.isOrderedListEnabled
+            )
         ]
 
-        for (identifier, isActive) in buttonStates {
+        for (identifier, isActive, isEnabled) in buttonStates {
             guard let button = inlineButtons[identifier] else { continue }
             button.layer?.backgroundColor = isActive
                 ? NSColor.quaternaryLabelColor.withAlphaComponent(0.28).cgColor
                 : NSColor.clear.cgColor
             button.layer?.cornerRadius = 14
             button.layer?.cornerCurve = .continuous
+            button.isEnabled = isEnabled
+            button.contentTintColor = isEnabled ? .labelColor : .secondaryLabelColor
         }
     }
 }

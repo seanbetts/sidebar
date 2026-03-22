@@ -376,7 +376,7 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         )
         XCTAssertEqual(
             noteParagraphStyle(in: attributed, atCharacterOffset: 5),
-            NoteTextParagraphMetrics.paragraphStyle(for: .heading, baseFontSize: baseFontSize)
+            NoteTextParagraphMetrics.paragraphStyle(for: .title, baseFontSize: baseFontSize)
         )
         XCTAssertEqual(
             noteBlockValue(in: attributed, atCharacterOffset: 13),
@@ -384,7 +384,7 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         )
         XCTAssertEqual(
             noteParagraphStyle(in: attributed, atCharacterOffset: 13),
-            NoteTextParagraphMetrics.paragraphStyle(for: .subheading, baseFontSize: baseFontSize)
+            NoteTextParagraphMetrics.paragraphStyle(for: .heading, baseFontSize: baseFontSize)
         )
         XCTAssertEqual(
             noteBlockValue(in: attributed, atCharacterOffset: 21),
@@ -392,7 +392,7 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         )
         XCTAssertEqual(
             noteParagraphStyle(in: attributed, atCharacterOffset: 21),
-            NoteTextParagraphMetrics.paragraphStyle(for: .paragraph, baseFontSize: baseFontSize)
+            NoteTextParagraphMetrics.paragraphStyle(for: .subheading, baseFontSize: baseFontSize)
         )
     }
 

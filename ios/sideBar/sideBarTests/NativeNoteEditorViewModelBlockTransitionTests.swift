@@ -297,7 +297,7 @@ final class NativeNoteEditorBlockTransitionTests: XCTestCase {
         )
         XCTAssertEqual(
             noteParagraphStyle(in: viewModel.attributedContent, atCharacterOffset: 13),
-            NoteTextParagraphMetrics.paragraphStyle(for: .paragraph, baseFontSize: baseFontSize)
+            NoteTextParagraphMetrics.paragraphStyle(for: .heading, baseFontSize: baseFontSize)
         )
     }
 }
