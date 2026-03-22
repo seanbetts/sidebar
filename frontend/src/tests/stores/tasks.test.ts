@@ -53,8 +53,12 @@ vi.mock('$lib/utils/cache', () => ({
 	isCacheStale: vi.fn(() => false)
 }));
 
-vi.mock('svelte-sonner', () => ({
+const { toast } = vi.hoisted(() => ({
 	toast: { message: vi.fn() }
+}));
+
+vi.mock('svelte-sonner', () => ({
+	toast
 }));
 
 describe('tasksStore', () => {
@@ -356,6 +360,49 @@ describe('tasksStore', () => {
 		const state = get(tasksStore);
 		expect(state.tasks).toHaveLength(1);
 		expect(state.tasks[0].id).toBe('task-11');
+	});
+
+	it('shows the next repeating task date in the completion toast', async () => {
+		const currentDue = '2026-03-22';
+		const nextDue = '2026-03-29';
+		const expectedDate = new Intl.DateTimeFormat(undefined, {
+			day: 'numeric',
+			month: 'long'
+		}).format(new Date(`${nextDue}T00:00:00`));
+		tasksAPI.list.mockResolvedValue({
+			scope: 'upcoming',
+			tasks: [
+				{
+					id: 'task-10',
+					title: 'Repeat',
+					status: 'open',
+					deadline: currentDue,
+					repeating: true,
+					groupId: null,
+					projectId: null
+				}
+			],
+			groups: [],
+			projects: []
+		});
+		taskSync.enqueueTaskOperation.mockResolvedValue({
+			nextTasks: [
+				{
+					id: 'task-11',
+					title: 'Repeat',
+					status: 'open',
+					deadline: nextDue,
+					repeating: true,
+					groupId: null,
+					projectId: null
+				}
+			]
+		});
+
+		await tasksStore.load({ type: 'upcoming' }, { force: true });
+		await tasksStore.completeTask('task-10');
+
+		expect(toast.message).toHaveBeenCalledWith(`Repeat next scheduled for ${expectedDate}`);
 	});
 
 	it('updates notes locally after applying', async () => {

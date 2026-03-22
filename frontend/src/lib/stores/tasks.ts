@@ -34,6 +34,17 @@ const CACHE_VERSION = '2.0';
 const META_CACHE_KEY = 'tasks.meta';
 const COUNTS_CACHE_KEY = 'tasks.counts';
 const isBrowser = typeof window !== 'undefined';
+const nextScheduledDateFormatter = new Intl.DateTimeFormat(undefined, {
+	day: 'numeric',
+	month: 'long'
+});
+
+const formatNextScheduledDate = (deadline?: string | null): string | null => {
+	if (!deadline) return null;
+	const date = new Date(`${deadline.slice(0, 10)}T00:00:00`);
+	if (Number.isNaN(date.getTime())) return null;
+	return nextScheduledDateFormatter.format(date);
+};
 
 const defaultState: TasksState = {
 	selection: { type: 'today' },
@@ -93,7 +104,13 @@ function createTasksStore() {
 		onNextTasks: (nextTasks) => {
 			if (!nextTasks.length) return;
 			if (nextTasks.length === 1) {
-				toast.message(`Next instance scheduled: "${nextTasks[0].title}"`);
+				const nextTask = nextTasks[0];
+				const nextScheduledDate = formatNextScheduledDate(nextTask.deadline);
+				if (nextScheduledDate) {
+					toast.message(`${nextTask.title} next scheduled for ${nextScheduledDate}`);
+					return;
+				}
+				toast.message(`Next instance scheduled: ${nextTask.title}`);
 				return;
 			}
 			toast.message(`Next instances scheduled: ${nextTasks.length}`);
