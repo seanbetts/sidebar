@@ -6,12 +6,16 @@ import SwiftUI
 
 public struct WebsitesPanel: View {
     @EnvironmentObject var appEnvironment: AppEnvironment
+    @StateObject private var pinnedReorderState = WebsitesPanelPinnedReorderState()
 
     public init() {
     }
 
     public var body: some View {
-        WebsitesPanelView(viewModel: appEnvironment.websitesViewModel)
+        WebsitesPanelView(
+            viewModel: appEnvironment.websitesViewModel,
+            pinnedReorderState: pinnedReorderState
+        )
     }
 }
 struct WebsitesPanelView: View {
@@ -21,6 +25,8 @@ struct WebsitesPanelView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
     @Environment(\.colorScheme) var colorScheme
+    @State var pinnedReorderNetworkAvailabilityOverride: Bool?
+    let pinnedReorderState: WebsitesPanelPinnedReorderState
     @State var hasLoaded = false
     @State var isInitialLoadPending = false
     @State var isArchiveExpanded = false
@@ -38,6 +44,19 @@ struct WebsitesPanelView: View {
     @State var isExporting = false
     @State var exportFilename: String = "website"
     @FocusState var isSearchFocused: Bool
+
+    @MainActor
+    init(
+        viewModel: WebsitesViewModel,
+        pinnedReorderState: WebsitesPanelPinnedReorderState? = nil,
+        pinnedReorderNetworkAvailability: Bool? = nil
+    ) {
+        self.viewModel = viewModel
+        self.pinnedReorderState = pinnedReorderState ?? WebsitesPanelPinnedReorderState()
+        _pinnedReorderNetworkAvailabilityOverride = State(
+            initialValue: pinnedReorderNetworkAvailability
+        )
+    }
 
     static var shouldSubmitWebsiteAlertFromTextField: Bool {
         #if os(macOS)
@@ -277,10 +296,7 @@ extension WebsitesPanelView {
                 if listSectionLayout.contains(.primaryContent) {
                     if !pinnedItemsSorted.isEmpty {
                         Section {
-                            ForEach(pinnedItemsSorted, id: \.id) { item in
-                                let index = staggerIndex(for: item.id, section: "pinned")
-                                websiteListRow(item: item, index: index, allowArchive: true)
-                            }
+                            pinnedWebsitesSection()
                         } header: {
                             sidebarProminentSectionHeader("Pinned")
                         }
@@ -349,6 +365,9 @@ extension WebsitesPanelView {
             .sidebarPanelListStyle()
             .scrollContentBackground(.hidden)
             .background(panelBackground)
+            .onChange(of: pinnedItemsSorted.map(\.id)) { _, newValue in
+                handlePinnedSetChanged(newValue)
+            }
             .refreshable {
                 await viewModel.load()
             }
