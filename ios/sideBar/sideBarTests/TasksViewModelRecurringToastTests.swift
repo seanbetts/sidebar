@@ -5,6 +5,9 @@ import sideBarShared
 @MainActor
 final class TasksViewModelRecurringToastTests: XCTestCase {
     func testCompleteTaskSuccessShowsRecurringScheduleSuccessToastWithDate() async {
+        let expectedDate = TasksUtils.tasksDateFormatter
+            .date(from: "2026-03-04")?
+            .formatted(.dateTime.day().month(.wide))
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Weekly review", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
@@ -38,7 +41,7 @@ final class TasksViewModelRecurringToastTests: XCTestCase {
 
         XCTAssertEqual(
             sut.toastCenter.toast?.message,
-            "Next instance scheduled for 2026-03-04: \"Weekly review\""
+            "Weekly review next scheduled for \(expectedDate ?? "March 4")"
         )
         if case .success? = sut.toastCenter.toast?.style {
             // expected

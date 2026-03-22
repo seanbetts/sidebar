@@ -250,10 +250,10 @@ extension TasksViewModel {
         let count = nextTasks.count
         let message: String
         if count == 1, let nextTask = nextTasks.first {
-            if let date = nextScheduledDateKey(for: nextTask) {
-                message = "Next instance scheduled for \(date): \"\(nextTask.title)\""
+            if let date = nextScheduledDateText(for: nextTask) {
+                message = "\(nextTask.title) next scheduled for \(date)"
             } else {
-                message = "Next instance scheduled: \"\(nextTask.title)\""
+                message = "Next instance scheduled: \(nextTask.title)"
             }
         } else if let nextDate = nextTasks.compactMap({ nextScheduledDateKey(for: $0) }).min() {
             message = "\(count) recurring instances scheduled (next: \(nextDate))"
@@ -271,5 +271,22 @@ extension TasksViewModel {
             return String(nextInstanceDate.prefix(10))
         }
         return nil
+    }
+
+    private func nextScheduledDateText(for task: TaskItem) -> String? {
+        if let date = TasksUtils.parseTaskDate(task) {
+            return date.formatted(.dateTime.day().month(.wide))
+        }
+        guard
+            let nextInstanceDate = task.nextInstanceDate,
+            nextInstanceDate.count >= 10
+        else {
+            return nil
+        }
+        let dateKey = String(nextInstanceDate.prefix(10))
+        guard let date = TasksUtils.tasksDateFormatter.date(from: dateKey) else {
+            return nil
+        }
+        return date.formatted(.dateTime.day().month(.wide))
     }
 }

@@ -338,7 +338,11 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
             "Surface mount should not scroll before the container handoff"
         )
     }
+}
 
+@MainActor
+@available(iOS 26.0, *)
+extension UIKitNoteTextEditorSurfaceEditingTests {
     func testPureSelectionChangesDoNotRewriteUIKitAttributedText() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
