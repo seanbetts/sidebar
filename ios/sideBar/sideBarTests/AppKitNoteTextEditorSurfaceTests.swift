@@ -153,6 +153,31 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         )
     }
 
+    func testMountedAppKitEditorAddsVerticalPaddingAroundCodeBlocks() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([.init(text: "Before", marks: [])]),
+                .init(type: .codeBlock, content: [.init(text: "let x = 1\nprint(x)", marks: [])]),
+                .paragraph([.init(text: "After", marks: [])])
+            ]
+        )
+        let baseFontSize = NoteTextTypography.defaultBodyFontSize
+        let minimumExtraBoundaryGap: CGFloat = (baseFontSize * 0.5) - 0.5
+        let textView = try mountEditorTextView(
+            document: document,
+            baseFontSize: baseFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 240)
+        )
+
+        let gapAbove = try lineGap(in: textView, fromCharacterAt: 0, toCharacterAt: 7)
+        let internalGap = try lineGap(in: textView, fromCharacterAt: 7, toCharacterAt: 17)
+        let gapBelow = try lineGap(in: textView, fromCharacterAt: 17, toCharacterAt: 26)
+
+        XCTAssertGreaterThan(gapAbove, internalGap + minimumExtraBoundaryGap)
+        XCTAssertGreaterThan(gapBelow, internalGap + minimumExtraBoundaryGap)
+    }
+
     func testMountedAppKitEditorUsesSecondaryLabelCaretTint() throws {
         let textView = try mountEditorTextView(
             document: NotesSemanticDocumentProjection.document(fromPlainText: "Hello"),

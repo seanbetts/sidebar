@@ -41,32 +41,42 @@ extension NotesAttributedDocumentCodec {
 
     static func paragraphStyle(
         for blockType: NotesSemanticDocument.BlockType,
-        baseFontSize: CGFloat
+        baseFontSize: CGFloat,
+        additionalSpacingBefore: CGFloat = 0,
+        additionalSpacingAfter: CGFloat = 0
     ) -> NSParagraphStyle {
         switch blockType {
         case .unorderedList, .orderedList, .checklist:
             return NoteTextParagraphMetrics.paragraphStyle(
                 for: blockType,
                 baseFontSize: baseFontSize,
+                additionalSpacingBefore: additionalSpacingBefore,
+                additionalSpacingAfter: additionalSpacingAfter,
                 headIndent: baseFontSize
             )
         case .blockquote:
             return NoteTextParagraphMetrics.paragraphStyle(
                 for: blockType,
                 baseFontSize: baseFontSize,
+                additionalSpacingBefore: additionalSpacingBefore,
+                additionalSpacingAfter: additionalSpacingAfter,
                 headIndent: baseFontSize * 1.25
             )
         case .codeBlock:
             return NoteTextParagraphMetrics.paragraphStyle(
                 for: blockType,
                 baseFontSize: baseFontSize,
+                additionalSpacingBefore: additionalSpacingBefore,
+                additionalSpacingAfter: additionalSpacingAfter,
                 headIndent: baseFontSize * 0.75,
                 tailIndent: baseFontSize * 0.75
             )
         default:
             return NoteTextParagraphMetrics.paragraphStyle(
                 for: blockType,
-                baseFontSize: baseFontSize
+                baseFontSize: baseFontSize,
+                additionalSpacingBefore: additionalSpacingBefore,
+                additionalSpacingAfter: additionalSpacingAfter
             )
         }
     }

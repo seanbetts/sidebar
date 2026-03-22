@@ -59,11 +59,23 @@ extension NotesAttributedDocumentCodec {
         for blockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat
     ) -> AttributedString {
+        attributedBoundary(
+            after: nil,
+            before: blockType,
+            baseFontSize: baseFontSize
+        )
+    }
+
+    static func attributedBoundary(
+        after previousBlockType: NotesSemanticDocument.BlockType?,
+        before nextBlockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat
+    ) -> AttributedString {
         var boundary = AttributedString("\n")
         let range = boundary.startIndex..<boundary.endIndex
         boundary[range].font = blockFont(
             baseFontSize: baseFontSize,
-            blockType: blockType,
+            blockType: nextBlockType,
             bold: false,
             italic: false
         )
@@ -71,7 +83,7 @@ extension NotesAttributedDocumentCodec {
         boundary[range][AttributeScopes.UIKitAttributes.FontAttribute.self] =
             noteEditorPlatformFont(
                 baseFontSize: baseFontSize,
-                blockType: blockType,
+                blockType: nextBlockType,
                 bold: false,
                 italic: false
             )
@@ -79,16 +91,22 @@ extension NotesAttributedDocumentCodec {
         boundary[range][AttributeScopes.AppKitAttributes.FontAttribute.self] =
             noteEditorPlatformFont(
                 baseFontSize: baseFontSize,
-                blockType: blockType,
+                blockType: nextBlockType,
                 bold: false,
                 italic: false
             )
         #endif
+        let boundaryOwner = previousBlockType ?? nextBlockType
+        let additionalSpacingAfter =
+            (previousBlockType == .codeBlock || nextBlockType == .codeBlock)
+            ? NoteTextParagraphMetrics.codeBlockBoundaryPadding(baseFontSize: baseFontSize)
+            : 0
         boundary[range].paragraphStyle = paragraphStyle(
-            for: blockType,
-            baseFontSize: baseFontSize
+            for: boundaryOwner,
+            baseFontSize: baseFontSize,
+            additionalSpacingAfter: additionalSpacingAfter
         )
-        boundary[range].noteBlock = blockMarker(for: blockType)
+        boundary[range].noteBlock = blockMarker(for: nextBlockType)
         boundary[range].noteStructuralBoundary = true
         return boundary
     }
@@ -97,86 +115,38 @@ extension NotesAttributedDocumentCodec {
         from segments: [NotesSemanticDocument.InlineSegment],
         blockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat,
+        additionalSpacingBefore: CGFloat = 0,
+        additionalSpacingAfter: CGFloat = 0,
         visiblePrefix: String? = nil
     ) -> AttributedString {
         var paragraph = AttributedString()
+        let paragraphStyle = paragraphStyle(
+            for: blockType,
+            baseFontSize: baseFontSize,
+            additionalSpacingBefore: additionalSpacingBefore,
+            additionalSpacingAfter: additionalSpacingAfter
+        )
 
         if let visiblePrefix {
-            var prefix = AttributedString(visiblePrefix)
-            if !prefix.characters.isEmpty {
-                let range = prefix.startIndex..<prefix.endIndex
-                prefix[range].font = blockFont(
-                    baseFontSize: baseFontSize,
+            paragraph.append(
+                styledParagraphPiece(
+                    visiblePrefix,
                     blockType: blockType,
-                    bold: false,
-                    italic: false
+                    baseFontSize: baseFontSize,
+                    paragraphStyle: paragraphStyle
                 )
-                prefix[range].paragraphStyle = paragraphStyle(
-                    for: blockType,
-                    baseFontSize: baseFontSize
-                )
-                if let blockMarker = blockMarker(for: blockType) {
-                    prefix[range].noteBlock = blockMarker
-                }
-            }
-            paragraph.append(prefix)
+            )
         }
 
         for segment in segments {
-            var piece = AttributedString(segment.text)
-            if !piece.characters.isEmpty {
-                let range = piece.startIndex..<piece.endIndex
-                let marks = Set(segment.marks)
-                let inlineCode = marks.contains(.inlineCode)
-                piece[range].font = blockFont(
-                    baseFontSize: baseFontSize,
+            paragraph.append(
+                styledParagraphPiece(
+                    segment,
                     blockType: blockType,
-                    bold: marks.contains(.bold),
-                    italic: marks.contains(.italic),
-                    inlineCode: inlineCode
+                    baseFontSize: baseFontSize,
+                    paragraphStyle: paragraphStyle
                 )
-                #if os(iOS)
-                piece[range][AttributeScopes.UIKitAttributes.FontAttribute.self] =
-                    noteEditorPlatformFont(
-                        baseFontSize: baseFontSize,
-                        blockType: blockType,
-                        bold: marks.contains(.bold),
-                        italic: marks.contains(.italic),
-                        inlineCode: inlineCode
-                    )
-                piece[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
-                    NoteTextAppearance.backgroundColor(
-                        for: blockType,
-                        inlineCode: inlineCode
-                    )
-                #elseif os(macOS)
-                piece[range][AttributeScopes.AppKitAttributes.FontAttribute.self] =
-                    noteEditorPlatformFont(
-                        baseFontSize: baseFontSize,
-                        blockType: blockType,
-                        bold: marks.contains(.bold),
-                        italic: marks.contains(.italic),
-                        inlineCode: inlineCode
-                    )
-                piece[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
-                    NoteTextAppearance.backgroundColor(
-                        for: blockType,
-                        inlineCode: inlineCode
-                    )
-                #endif
-                piece[range].underlineStyle = marks.contains(.underline) ? .single : nil
-                piece[range].strikethroughStyle =
-                    marks.contains(.strikethrough) ? .single : nil
-                piece[range].link = segment.link.flatMap { URL(string: $0.url) }
-                piece[range].paragraphStyle = paragraphStyle(
-                    for: blockType,
-                    baseFontSize: baseFontSize
-                )
-                if let blockMarker = blockMarker(for: blockType) {
-                    piece[range].noteBlock = blockMarker
-                }
-            }
-            paragraph.append(piece)
+            )
         }
 
         return paragraph
@@ -203,6 +173,8 @@ extension NotesAttributedDocumentCodec {
         _ plainText: String,
         blockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat,
+        additionalSpacingBefore: CGFloat = 0,
+        additionalSpacingAfter: CGFloat = 0,
         presentationIntent: PresentationIntent
     ) -> AttributedString {
         var attributed = bridgedFoundationPresentationIntentText(
@@ -247,7 +219,9 @@ extension NotesAttributedDocumentCodec {
         #endif
         attributed[range].paragraphStyle = paragraphStyle(
             for: blockType,
-            baseFontSize: baseFontSize
+            baseFontSize: baseFontSize,
+            additionalSpacingBefore: additionalSpacingBefore,
+            additionalSpacingAfter: additionalSpacingAfter
         )
         if let blockMarker = blockMarker(for: blockType) {
             attributed[range].noteBlock = blockMarker
@@ -267,5 +241,103 @@ extension NotesAttributedDocumentCodec {
             ] = presentationIntent
         }
         return attributed
+    }
+
+    private static func styledParagraphPiece(
+        _ text: String,
+        blockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat,
+        paragraphStyle: NSParagraphStyle
+    ) -> AttributedString {
+        var piece = AttributedString(text)
+        guard !piece.characters.isEmpty else { return piece }
+
+        let range = piece.startIndex..<piece.endIndex
+        piece[range].font = blockFont(
+            baseFontSize: baseFontSize,
+            blockType: blockType,
+            bold: false,
+            italic: false
+        )
+        #if os(iOS)
+        piece[range][AttributeScopes.UIKitAttributes.FontAttribute.self] =
+            noteEditorPlatformFont(
+                baseFontSize: baseFontSize,
+                blockType: blockType,
+                bold: false,
+                italic: false
+            )
+        #elseif os(macOS)
+        piece[range][AttributeScopes.AppKitAttributes.FontAttribute.self] =
+            noteEditorPlatformFont(
+                baseFontSize: baseFontSize,
+                blockType: blockType,
+                bold: false,
+                italic: false
+            )
+        #endif
+        piece[range].paragraphStyle = paragraphStyle
+        if let blockMarker = blockMarker(for: blockType) {
+            piece[range].noteBlock = blockMarker
+        }
+        return piece
+    }
+
+    private static func styledParagraphPiece(
+        _ segment: NotesSemanticDocument.InlineSegment,
+        blockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat,
+        paragraphStyle: NSParagraphStyle
+    ) -> AttributedString {
+        var piece = AttributedString(segment.text)
+        guard !piece.characters.isEmpty else { return piece }
+
+        let range = piece.startIndex..<piece.endIndex
+        let marks = Set(segment.marks)
+        let inlineCode = marks.contains(.inlineCode)
+        piece[range].font = blockFont(
+            baseFontSize: baseFontSize,
+            blockType: blockType,
+            bold: marks.contains(.bold),
+            italic: marks.contains(.italic),
+            inlineCode: inlineCode
+        )
+        #if os(iOS)
+        piece[range][AttributeScopes.UIKitAttributes.FontAttribute.self] =
+            noteEditorPlatformFont(
+                baseFontSize: baseFontSize,
+                blockType: blockType,
+                bold: marks.contains(.bold),
+                italic: marks.contains(.italic),
+                inlineCode: inlineCode
+            )
+        piece[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
+            NoteTextAppearance.backgroundColor(
+                for: blockType,
+                inlineCode: inlineCode
+            )
+        #elseif os(macOS)
+        piece[range][AttributeScopes.AppKitAttributes.FontAttribute.self] =
+            noteEditorPlatformFont(
+                baseFontSize: baseFontSize,
+                blockType: blockType,
+                bold: marks.contains(.bold),
+                italic: marks.contains(.italic),
+                inlineCode: inlineCode
+            )
+        piece[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
+            NoteTextAppearance.backgroundColor(
+                for: blockType,
+                inlineCode: inlineCode
+            )
+        #endif
+        piece[range].underlineStyle = marks.contains(.underline) ? .single : nil
+        piece[range].strikethroughStyle = marks.contains(.strikethrough) ? .single : nil
+        piece[range].link = segment.link.flatMap { URL(string: $0.url) }
+        piece[range].paragraphStyle = paragraphStyle
+        if let blockMarker = blockMarker(for: blockType) {
+            piece[range].noteBlock = blockMarker
+        }
+        return piece
     }
 }

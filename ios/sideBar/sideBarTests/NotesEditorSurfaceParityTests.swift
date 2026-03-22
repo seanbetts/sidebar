@@ -262,6 +262,7 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         XCTAssertTrue(readFont.fontDescriptor.symbolicTraits.contains(.traitMonoSpace))
         #endif
     }
+
 }
 
 private func assertMatchingFontTraits(
@@ -425,74 +426,4 @@ private func singleCharacterRange(
     return lower..<upper
 }
 
-@MainActor
-@available(iOS 26.0, macOS 26.0, *)
-private func lineGap(
-    in textView: UITextView,
-    fromCharacterAt firstIndex: Int,
-    toCharacterAt secondIndex: Int
-) throws -> CGFloat {
-    let firstRect = try glyphRect(in: textView, characterIndex: firstIndex)
-    let secondRect = try glyphRect(in: textView, characterIndex: secondIndex)
-    return secondRect.minY - firstRect.maxY
-}
-
-@MainActor
-@available(iOS 26.0, macOS 26.0, *)
-private func glyphRect(
-    in textView: UITextView,
-    characterIndex: Int
-) throws -> CGRect {
-    let layoutManager = textView.layoutManager
-    let textContainer = textView.textContainer
-    textContainer.size = CGSize(width: textView.bounds.width, height: CGFloat.greatestFiniteMagnitude)
-    layoutManager.ensureLayout(for: textContainer)
-    let glyphRange = layoutManager.glyphRange(
-        forCharacterRange: NSRange(location: characterIndex, length: 1),
-        actualCharacterRange: nil
-    )
-    return layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-}
-
-@MainActor
-@available(iOS 26.0, macOS 26.0, *)
-private func makeReadTextView(
-    attributedContent: NSAttributedString,
-    frame: CGRect
-) -> UITextView {
-    let textView = UITextView(frame: frame)
-    textView.backgroundColor = .clear
-    textView.isEditable = false
-    textView.isSelectable = true
-    textView.isScrollEnabled = true
-    textView.alwaysBounceVertical = true
-    textView.adjustsFontForContentSizeCategory = false
-    textView.attributedText = attributedContent
-    textView.setNeedsLayout()
-    textView.layoutIfNeeded()
-    return textView
-}
-
-@MainActor
-@available(iOS 26.0, macOS 26.0, *)
-private func makeEditorTextView(
-    document: NotesSemanticDocument,
-    baseFontSize: CGFloat,
-    frame: CGRect
-) throws -> UITextView {
-    let textView = UITextView(frame: frame)
-    textView.adjustsFontForContentSizeCategory = false
-    textView.isEditable = true
-    textView.isScrollEnabled = true
-    textView.backgroundColor = .clear
-    textView.attributedText = NSAttributedString(
-        try constrainedEditorDocument(
-            document: document,
-            baseFontSize: baseFontSize
-        )
-    )
-    textView.setNeedsLayout()
-    textView.layoutIfNeeded()
-    return textView
-}
 #endif

@@ -41,6 +41,13 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
                     link: run.link,
                     presentationIntent: run.attributes[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self],
                     blockType: resolvedBlockType,
+                    paragraphStyle: paragraphStyle(
+                        for: range,
+                        blockType: resolvedBlockType,
+                        noteBlock: run.noteBlock,
+                        structuralBoundary: run.noteStructuralBoundary == true,
+                        in: text
+                    ),
                     noteBlock: run.noteBlock,
                     structuralBoundary: run.noteStructuralBoundary == true
                 )
@@ -57,6 +64,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
                 link: snapshot.link,
                 presentationIntent: snapshot.presentationIntent,
                 blockType: snapshot.blockType,
+                paragraphStyle: snapshot.paragraphStyle,
                 noteBlock: snapshot.noteBlock,
                 structuralBoundary: snapshot.structuralBoundary
             )
@@ -72,6 +80,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         link: URL?,
         presentationIntent: PresentationIntent?,
         blockType: NotesSemanticDocument.BlockType,
+        paragraphStyle: NSParagraphStyle,
         noteBlock: String?,
         structuralBoundary: Bool
     ) -> AttributedString {
@@ -113,7 +122,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         normalized[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
             NoteTextAppearance.backgroundColor(for: blockType, inlineCode: traits.monospaced)
         #endif
-        normalized[range].paragraphStyle = paragraphStyle(for: blockType)
+        normalized[range].paragraphStyle = paragraphStyle
         normalized[range].noteBlock = noteBlock
         normalized[range].noteStructuralBoundary = structuralBoundary ? true : nil
         if let presentationIntent {
@@ -180,6 +189,7 @@ private extension NoteTextFormattingDefinition {
         let link: URL?
         let presentationIntent: PresentationIntent?
         let blockType: NotesSemanticDocument.BlockType
+        let paragraphStyle: NSParagraphStyle
         let noteBlock: String?
         let structuralBoundary: Bool
     }
@@ -292,29 +302,4 @@ private extension NoteTextFormattingDefinition {
         return next == range.upperBound && text.characters[range.lowerBound].isNewline
     }
 
-    func paragraphStyle(for blockType: NotesSemanticDocument.BlockType) -> NSParagraphStyle {
-        switch blockType {
-        case .unorderedList, .orderedList, .checklist:
-            return NoteTextParagraphMetrics.paragraphStyle(
-                for: blockType,
-                baseFontSize: baseFontSize,
-                headIndent: baseFontSize
-            )
-        case .blockquote:
-            return NoteTextParagraphMetrics.paragraphStyle(
-                for: blockType,
-                baseFontSize: baseFontSize,
-                headIndent: baseFontSize * 1.25
-            )
-        case .codeBlock:
-            return NoteTextParagraphMetrics.paragraphStyle(
-                for: blockType,
-                baseFontSize: baseFontSize,
-                headIndent: baseFontSize * 0.75,
-                tailIndent: baseFontSize * 0.75
-            )
-        default:
-            return NoteTextParagraphMetrics.paragraphStyle(for: blockType, baseFontSize: baseFontSize)
-        }
-    }
 }

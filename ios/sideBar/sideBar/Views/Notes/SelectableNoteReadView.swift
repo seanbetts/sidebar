@@ -135,7 +135,7 @@ struct SelectableNoteReadView: View {
             }
             mutable.addAttribute(
                 .paragraphStyle,
-                value: paragraphStyle(for: blockType, baseFontSize: baseFontSize),
+                value: run.paragraphStyle ?? paragraphStyle(for: blockType, baseFontSize: baseFontSize),
                 range: nsRange
             )
             if run.underlineStyle != nil {

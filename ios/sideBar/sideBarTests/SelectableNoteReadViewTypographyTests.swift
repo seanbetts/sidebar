@@ -151,6 +151,39 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
             tolerance: 0.05
         )
     }
+
+    func testMakePlatformAttributedContentPreservesContextualParagraphSpacingAroundCodeBlocksOnIOS() throws {
+        let baseFontSize: CGFloat = 16
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([.init(text: "Before", marks: [])]),
+                .init(type: .codeBlock, content: [.init(text: "let x = 1", marks: [])]),
+                .paragraph([.init(text: "After", marks: [])])
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+
+        let beforeStyle = try XCTUnwrap(
+            attributed.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
+        )
+        let codeBlockStyle = try XCTUnwrap(
+            attributed.attribute(.paragraphStyle, at: 7, effectiveRange: nil) as? NSParagraphStyle
+        )
+        let afterStyle = try XCTUnwrap(
+            attributed.attribute(.paragraphStyle, at: 17, effectiveRange: nil) as? NSParagraphStyle
+        )
+        let padding = NoteTextParagraphMetrics.codeBlockBoundaryPadding(baseFontSize: baseFontSize)
+
+        XCTAssertEqual(beforeStyle.paragraphSpacing, 4 + padding, accuracy: 0.001)
+        XCTAssertEqual(codeBlockStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(codeBlockStyle.paragraphSpacing, 0, accuracy: 0.001)
+        XCTAssertEqual(afterStyle.paragraphSpacingBefore, padding, accuracy: 0.001)
+    }
     #endif
 
     private func fontPointSize(in attributed: NSAttributedString, at location: Int) throws -> CGFloat {
