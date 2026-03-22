@@ -160,11 +160,13 @@ struct NotesTreeRow: View {
                 row
             }
         }
+        #if os(macOS)
         .sidebarListSwipeActions(
             leadingTitle: onRename == nil ? nil : "Rename",
             onLeading: onRename,
             onDelete: onDelete
         )
+        #endif
     }
 
     private var primaryTextColor: Color {

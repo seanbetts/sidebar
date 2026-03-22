@@ -157,30 +157,6 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         XCTAssertFalse(titles.contains("Reorder"))
     }
 
-    func testSwipeActionArchivesReturnsFalseForArchivedItem() {
-        let item = makeWebsiteItem(archived: true)
-
-        let result = WebsitesPanelView.swipeActionArchives(item: item, allowArchive: true)
-
-        XCTAssertFalse(result)
-    }
-
-    func testSwipeActionArchivesReturnsTrueForActiveItemWhenAllowed() {
-        let item = makeWebsiteItem(archived: false)
-
-        let result = WebsitesPanelView.swipeActionArchives(item: item, allowArchive: true)
-
-        XCTAssertTrue(result)
-    }
-
-    func testSwipeActionArchivesRespectsExplicitDisallow() {
-        let item = makeWebsiteItem(archived: false)
-
-        let result = WebsitesPanelView.swipeActionArchives(item: item, allowArchive: false)
-
-        XCTAssertFalse(result)
-    }
-
     private func makeView(
         isNetworkAvailable: Bool = true,
         items: [WebsiteItem]? = nil

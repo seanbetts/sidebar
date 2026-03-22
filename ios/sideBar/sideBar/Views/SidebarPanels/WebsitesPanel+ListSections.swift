@@ -82,10 +82,6 @@ extension WebsitesPanelView {
         )
     }
 
-    static func swipeActionArchives(item: WebsiteItem, allowArchive: Bool) -> Bool {
-        allowArchive && !item.archived
-    }
-
     func open(item: WebsiteItem) {
         selection = item.id
         Task { await viewModel.selectWebsite(id: item.id) }
@@ -119,7 +115,6 @@ extension WebsitesPanelView {
         allowArchive: Bool
     ) -> some View {
         let isSelected = selection == item.id
-        let shouldArchive = Self.swipeActionArchives(item: item, allowArchive: allowArchive)
         let row = WebsiteRow(
             item: item,
             isSelected: isSelected,
@@ -137,16 +132,6 @@ extension WebsitesPanelView {
         row
         #else
         row
-            .sidebarListSwipeActions(
-                leadingTitle: shouldArchive ? "Archive" : "Unarchive",
-                leadingSystemImage: shouldArchive ? "archivebox" : "tray.and.arrow.up",
-                onLeading: {
-                    Task { await viewModel.setArchived(id: item.id, archived: shouldArchive) }
-                },
-                onDelete: {
-                    deleteTarget = item
-                }
-            )
         #endif
     }
 
