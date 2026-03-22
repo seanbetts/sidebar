@@ -296,80 +296,7 @@ final class NotesStoreTests: XCTestCase {
     }
 
     func testApplyPinnedOrderUpdatesPinnedNodesAcrossFoldersAndCanRestorePreviousOrder() async {
-        let tree = FileTree(children: [
-            FileNode(
-                name: "Folder A",
-                path: "/folder-a",
-                type: .directory,
-                size: nil,
-                modified: nil,
-                created: nil,
-                children: [
-                    FileNode(
-                        name: "A.md",
-                        path: "/a.md",
-                        type: .file,
-                        size: nil,
-                        modified: nil,
-                        created: nil,
-                        children: nil,
-                        expanded: nil,
-                        pinned: true,
-                        pinnedOrder: 1,
-                        archived: false,
-                        folderMarker: nil
-                    )
-                ],
-                expanded: nil,
-                pinned: nil,
-                pinnedOrder: nil,
-                archived: nil,
-                folderMarker: nil
-            ),
-            FileNode(
-                name: "B.md",
-                path: "/b.md",
-                type: .file,
-                size: nil,
-                modified: nil,
-                created: nil,
-                children: nil,
-                expanded: nil,
-                pinned: true,
-                pinnedOrder: 0,
-                archived: false,
-                folderMarker: nil
-            ),
-            FileNode(
-                name: "Nested",
-                path: "/nested",
-                type: .directory,
-                size: nil,
-                modified: nil,
-                created: nil,
-                children: [
-                    FileNode(
-                        name: "C.md",
-                        path: "/nested/c.md",
-                        type: .file,
-                        size: nil,
-                        modified: nil,
-                        created: nil,
-                        children: nil,
-                        expanded: nil,
-                        pinned: true,
-                        pinnedOrder: 2,
-                        archived: false,
-                        folderMarker: nil
-                    )
-                ],
-                expanded: nil,
-                pinned: nil,
-                pinnedOrder: nil,
-                archived: nil,
-                folderMarker: nil
-            )
-        ])
+        let tree = makePinnedOrderTree()
         let api = NotesStoreTestsSupport.MockNotesAPI(
             treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
             noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
@@ -421,6 +348,56 @@ final class NotesStoreTests: XCTestCase {
         await firstRefresh.value
     }
 
+}
+
+private func makePinnedOrderTree() -> FileTree {
+    FileTree(children: [
+        noteDirectory(
+            name: "Folder A",
+            path: "/folder-a",
+            children: [pinnedNote(name: "A.md", path: "/a.md", pinnedOrder: 1)]
+        ),
+        pinnedNote(name: "B.md", path: "/b.md", pinnedOrder: 0),
+        noteDirectory(
+            name: "Nested",
+            path: "/nested",
+            children: [pinnedNote(name: "C.md", path: "/nested/c.md", pinnedOrder: 2)]
+        )
+    ])
+}
+
+private func noteDirectory(name: String, path: String, children: [FileNode]) -> FileNode {
+    FileNode(
+        name: name,
+        path: path,
+        type: .directory,
+        size: nil,
+        modified: nil,
+        created: nil,
+        children: children,
+        expanded: nil,
+        pinned: nil,
+        pinnedOrder: nil,
+        archived: nil,
+        folderMarker: nil
+    )
+}
+
+private func pinnedNote(name: String, path: String, pinnedOrder: Int) -> FileNode {
+    FileNode(
+        name: name,
+        path: path,
+        type: .file,
+        size: nil,
+        modified: nil,
+        created: nil,
+        children: nil,
+        expanded: nil,
+        pinned: true,
+        pinnedOrder: pinnedOrder,
+        archived: false,
+        folderMarker: nil
+    )
 }
 
 private func currentPinnedOrder(in tree: FileTree?) -> [String] {
