@@ -90,6 +90,11 @@ final class DeepLinkWebsitesAPI: WebsitesProviding {
         throw DeepLinkWebsitesAPIError.forced
     }
 
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+        throw DeepLinkWebsitesAPIError.forced
+    }
+
     func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
         _ = clientUpdatedAt

@@ -13,6 +13,7 @@ public protocol WebsitesProviding {
     func pin(id: String, pinned: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem
     func rename(id: String, title: String, clientUpdatedAt: String?) async throws -> WebsiteItem
     func archive(id: String, archived: Bool, clientUpdatedAt: String?) async throws -> WebsiteItem
+    func updatePinnedOrder(ids: [String]) async throws
     func delete(id: String, clientUpdatedAt: String?) async throws
     func sync(_ payload: WebsiteSyncRequest) async throws -> WebsiteSyncResponse
 }

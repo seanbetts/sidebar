@@ -113,6 +113,11 @@ private final class ReconciliationMockWebsitesAPI: WebsitesProviding {
         throw ReconciliationMockError.forced
     }
 
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+        throw ReconciliationMockError.forced
+    }
+
     func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
         _ = clientUpdatedAt

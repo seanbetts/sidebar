@@ -129,6 +129,85 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(cached?.items.first?.id, "site-1")
     }
 
+    func testReorderPinnedWebsitesOptimisticallyUpdatesStoreAndCallsAPI() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        api.updatePinnedOrderResult = .success(())
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        store.updateListItem(
+            makePinnedWebsiteItem(id: "w1", pinnedOrder: 0, updatedAt: "2026-03-21T10:00:00Z"),
+            persist: false
+        )
+        store.updateListItem(
+            makePinnedWebsiteItem(id: "w2", pinnedOrder: 1, updatedAt: "2026-03-21T11:00:00Z"),
+            persist: false
+        )
+
+        let success = await viewModel.reorderPinnedWebsites(ids: ["w2", "w1"])
+
+        XCTAssertTrue(success)
+        XCTAssertEqual(api.updatedPinnedOrderIDs, [["w2", "w1"]])
+        XCTAssertEqual(viewModel.panelPinnedItemsSorted.map(\.id), ["w2", "w1"])
+    }
+
+    func testReorderPinnedWebsitesRollsBackAndShowsErrorWhenAPIFails() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        api.updatePinnedOrderResult = .failure(MockError.forced)
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        store.updateListItem(
+            makePinnedWebsiteItem(id: "w1", pinnedOrder: 0, updatedAt: "2026-03-21T10:00:00Z"),
+            persist: false
+        )
+        store.updateListItem(
+            makePinnedWebsiteItem(id: "w2", pinnedOrder: 1, updatedAt: "2026-03-21T11:00:00Z"),
+            persist: false
+        )
+
+        let success = await viewModel.reorderPinnedWebsites(ids: ["w2", "w1"])
+
+        XCTAssertFalse(success)
+        XCTAssertEqual(viewModel.panelPinnedItemsSorted.map(\.id), ["w1", "w2"])
+        XCTAssertEqual(viewModel.errorMessage, "Failed to reorder pinned websites")
+    }
+
+    func testReorderPinnedWebsitesDoesNotCallAPIWhenOffline() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+        )
+        store.updateListItem(
+            makePinnedWebsiteItem(id: "w1", pinnedOrder: 0, updatedAt: "2026-03-21T10:00:00Z"),
+            persist: false
+        )
+        store.updateListItem(
+            makePinnedWebsiteItem(id: "w2", pinnedOrder: 1, updatedAt: "2026-03-21T11:00:00Z"),
+            persist: false
+        )
+
+        let success = await viewModel.reorderPinnedWebsites(ids: ["w2", "w1"])
+
+        XCTAssertFalse(success)
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+    }
+
     func testSaveWebsiteQueuesPendingSelectionUntilJobCompletes() async {
         let item = makeItem(id: "site-1")
         let detail = makeDetail(id: "site-1")
@@ -1538,6 +1617,9 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let transcribeHandler: ((_ id: String, _ url: String) async throws -> WebsiteTranscriptResponse)?
     private(set) var lastSavedUrl: String?
     private(set) var canceledJobIds: [String] = []
+    private(set) var updatedPinnedOrderIDs: [[String]] = []
+    private(set) var updatePinnedOrderCallCount = 0
+    var updatePinnedOrderResult: Result<Void, Error> = .success(())
     private(set) var deleteRequestUpdatedAts: [String?] = []
     private var queuedListResults: [Result<WebsitesResponse, Error>] = []
     private var queuedGetResults: [Result<WebsiteDetail, Error>] = []
@@ -1639,6 +1721,12 @@ private final class MockWebsitesAPI: WebsitesProviding {
         return try archiveResult.get()
     }
 
+    func updatePinnedOrder(ids: [String]) async throws {
+        updatePinnedOrderCallCount += 1
+        updatedPinnedOrderIDs.append(ids)
+        try updatePinnedOrderResult.get()
+    }
+
     func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
         deleteRequestUpdatedAts.append(clientUpdatedAt)
@@ -1718,6 +1806,10 @@ private final class ControlledWebsitesAPI: WebsitesProviding {
         return makeItem(id: id)
     }
 
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
     func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
         _ = clientUpdatedAt
@@ -1786,6 +1878,10 @@ private final class ControlledArchivedWebsitesAPI: WebsitesProviding {
         _ = archived
         _ = clientUpdatedAt
         return makeItem(id: id)
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
     }
 
     func delete(id: String, clientUpdatedAt: String?) async throws {
@@ -1869,6 +1965,31 @@ private func makeItem(
         publishedAt: nil,
         pinned: false,
         pinnedOrder: nil,
+        archived: false,
+        faviconUrl: nil,
+        faviconR2Key: nil,
+        youtubeTranscripts: nil,
+        readingTime: nil,
+        updatedAt: updatedAt,
+        lastOpenedAt: nil,
+        deletedAt: nil
+    )
+}
+
+private func makePinnedWebsiteItem(
+    id: String,
+    pinnedOrder: Int,
+    updatedAt: String
+) -> WebsiteItem {
+    WebsiteItem(
+        id: id,
+        title: "Site",
+        url: "https://example.com/\(id)",
+        domain: "example.com",
+        savedAt: updatedAt,
+        publishedAt: nil,
+        pinned: true,
+        pinnedOrder: pinnedOrder,
         archived: false,
         faviconUrl: nil,
         faviconR2Key: nil,

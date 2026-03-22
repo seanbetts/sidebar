@@ -172,6 +172,11 @@ private final class WebsitesWidgetDataMockAPI: WebsitesProviding {
         throw WebsitesWidgetDataMockError.forced
     }
 
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+        throw WebsitesWidgetDataMockError.forced
+    }
+
     func delete(id: String, clientUpdatedAt: String?) async throws {
         _ = id
         _ = clientUpdatedAt

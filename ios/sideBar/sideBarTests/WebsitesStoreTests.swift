@@ -13,6 +13,70 @@ final class WebsitesStoreTests: XCTestCase {
             )!
         )
     }
+
+    func testApplyPinnedOrderUpdatesPinnedRowsAndWidgetOrder() async {
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
+        let widgetDataManager = makeWidgetDataManager()
+        let store = WebsitesStore(
+            api: api,
+            cache: TestCacheClient(),
+            widgetDataManager: widgetDataManager
+        )
+
+        store.updateListItem(
+            makeWebsiteItem(
+                id: "w1",
+                pinned: true,
+                pinnedOrder: 0,
+                savedAt: "2026-03-21T10:00:00Z"
+            ),
+            persist: false
+        )
+        store.updateListItem(
+            makeWebsiteItem(
+                id: "w2",
+                pinned: true,
+                pinnedOrder: 1,
+                savedAt: "2026-03-21T11:00:00Z"
+            ),
+            persist: false
+        )
+        store.updateListItem(
+            makeWebsiteItem(
+                id: "w3",
+                pinned: false,
+                pinnedOrder: nil,
+                savedAt: "2026-03-21T12:00:00Z"
+            ),
+            persist: false
+        )
+
+        let previousOrder = store.pinnedWebsiteOrder()
+
+        store.applyPinnedOrder(["w2", "w1"])
+
+        XCTAssertEqual(
+            store.items.filter(\.pinned).sorted(by: byPinnedOrder).map(\.id),
+            ["w2", "w1"]
+        )
+        let snapshot: WidgetWebsiteData = widgetDataManager.load(for: .websites)
+        XCTAssertEqual(
+            snapshot.websites.map(\.id),
+            ["w2", "w1", "w3"]
+        )
+
+        store.applyPinnedOrder(previousOrder)
+
+        let restoredSnapshot: WidgetWebsiteData = widgetDataManager.load(for: .websites)
+        XCTAssertEqual(
+            restoredSnapshot.websites.map(\.id),
+            ["w1", "w2", "w3"]
+        )
+    }
+
     func testLoadListUsesOfflineStoreWhenCacheMissing() async {
         let item = WebsiteItem(
             id: "w1",
@@ -342,6 +406,15 @@ final class WebsitesStoreTests: XCTestCase {
 }
 
 private extension WebsitesStoreTests {
+    func byPinnedOrder(_ lhs: WebsiteItem, _ rhs: WebsiteItem) -> Bool {
+        let leftOrder = lhs.pinnedOrder ?? Int.max
+        let rightOrder = rhs.pinnedOrder ?? Int.max
+        if leftOrder != rightOrder {
+            return leftOrder < rightOrder
+        }
+        return lhs.id < rhs.id
+    }
+
     func makeWebsiteItem(id: String, archived: Bool, updatedAt: String?) -> WebsiteItem {
         WebsiteItem(
             id: id,
@@ -358,6 +431,32 @@ private extension WebsitesStoreTests {
             youtubeTranscripts: nil,
             readingTime: nil,
             updatedAt: updatedAt,
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+    }
+
+    func makeWebsiteItem(
+        id: String,
+        pinned: Bool,
+        pinnedOrder: Int?,
+        savedAt: String?
+    ) -> WebsiteItem {
+        WebsiteItem(
+            id: id,
+            title: id.capitalized,
+            url: "https://example.com/\(id)",
+            domain: "example.com",
+            savedAt: savedAt,
+            publishedAt: nil,
+            pinned: pinned,
+            pinnedOrder: pinnedOrder,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: savedAt,
             lastOpenedAt: nil,
             deletedAt: nil
         )
@@ -791,6 +890,11 @@ final class WebsitesStoreMockWebsitesAPI: WebsitesProviding {
         _ = id
         _ = archived
         _ = clientUpdatedAt
+        throw WebsitesStoreMockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
         throw WebsitesStoreMockError.forced
     }
 
