@@ -1,12 +1,14 @@
+import SwiftUI
 import XCTest
 @testable import sideBar
 
 @MainActor
 final class SidebarMenuItemTests: XCTestCase {
-    func testDeleteMenuItemUsesExplicitDestructiveTintPolicy() {
+    func testDeleteMenuItemUsesSidebarTintPolicyAndDestructiveRole() {
         let item = SidebarMenuItem.delete {}
 
-        XCTAssertEqual(sidebarMenuItemTintPolicy(for: item), .destructiveText)
+        XCTAssertEqual(sidebarMenuItemTintPolicy(for: item), .sidebarText)
+        XCTAssertEqual(item.role, .destructive)
     }
 
     func testCopyMenuItemUsesSidebarTextTintPolicy() {
