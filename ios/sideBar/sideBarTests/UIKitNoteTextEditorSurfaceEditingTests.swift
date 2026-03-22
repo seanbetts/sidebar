@@ -295,6 +295,7 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
         let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "A👍🏽B"))
         let nativeViewModel = NativeNoteEditorViewModel()
         context.editorViewModel.enterEditMode(at: .characterOffset(5))
+        let pendingSelectionTarget = context.editorViewModel.consumePendingEditSelectionTarget()
         _ = AttributedNoteEditorContainer.loadNoteIfNeeded(
             editorViewModel: context.editorViewModel,
             nativeViewModel: nativeViewModel,
@@ -302,7 +303,7 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
         )
         let textView = try mountTextView(
             viewModel: nativeViewModel,
-            pendingSelectionTarget: context.editorViewModel.consumePendingEditSelectionTarget()
+            pendingSelectionTarget: pendingSelectionTarget
         )
         XCTAssertEqual(textView.selectedRange, NSRange(location: 5, length: 0))
     }

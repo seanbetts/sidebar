@@ -51,7 +51,7 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         let environment = makeNotesDetailTestEnvironment()
         let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
         let readTextView = try XCTUnwrap(findTextView(in: controller.view))
-        let targetOffset = NSString(string: plainText).range(of: "Line 79 body text").location
+        let targetLineOffset = NSString(string: plainText).range(of: "Line 79 body text").location
         let readBottomOffset = max(
             readTextView.contentSize.height
                 + readTextView.adjustedContentInset.bottom
@@ -61,8 +61,28 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
 
         readTextView.setContentOffset(CGPoint(x: 0, y: readBottomOffset), animated: false)
         drainNotesHostingRunLoop()
+        let targetPosition = try XCTUnwrap(
+            readTextView.position(from: readTextView.beginningOfDocument, offset: targetLineOffset)
+        )
+        let targetCaretRect = readTextView.caretRect(for: targetPosition)
+        let tapPoint = CGPoint(x: targetCaretRect.midX, y: targetCaretRect.midY)
+        let targetOffset = try XCTUnwrap(
+            SelectableNoteReadView.characterOffsetForEditingActivation(
+                in: readTextView,
+                at: tapPoint
+            )
+        )
+        let readTargetPosition = try XCTUnwrap(
+            readTextView.position(from: readTextView.beginningOfDocument, offset: targetOffset)
+        )
+        let readTargetRect = readTextView.caretRect(for: readTargetPosition)
+        let readViewport = readTextView.bounds.inset(by: readTextView.adjustedContentInset)
+        let viewportAnchorY = readTargetRect.midY - readViewport.minY
 
-        context.editorViewModel.enterEditMode(at: .characterOffset(targetOffset))
+        context.editorViewModel.enterEditMode(
+            at: .characterOffset(targetOffset),
+            viewportAnchorY: viewportAnchorY
+        )
         drainNotesHostingRunLoop()
         drainNotesHostingRunLoop()
 
@@ -79,7 +99,10 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(editorTextView.selectedRange.location, targetOffset)
         XCTAssertTrue(
             visibleViewport.intersects(selectionRect.insetBy(dx: 0, dy: -1)),
-            "viewport=\(visibleViewport) selection=\(selectionRect) contentOffset=\(editorTextView.contentOffset)"
+            "viewport=\(visibleViewport) selection=\(selectionRect) "
+                + "contentOffset=\(editorTextView.contentOffset) "
+                + "contentSize=\(editorTextView.contentSize) "
+                + "adjustedInset=\(editorTextView.adjustedContentInset)"
         )
     }
 
