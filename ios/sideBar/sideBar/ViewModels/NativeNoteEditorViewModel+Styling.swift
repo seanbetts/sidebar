@@ -78,7 +78,6 @@ extension NativeNoteEditorViewModel {
         #endif
         attrs.underlineStyle = state.underline ? .single : nil
         attrs.strikethroughStyle = state.strikethrough ? .single : nil
-        attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
         attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
     }
 
@@ -124,7 +123,6 @@ extension NativeNoteEditorViewModel {
         #endif
         text[range].underlineStyle = state.underline ? .single : nil
         text[range].strikethroughStyle = state.strikethrough ? .single : nil
-        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
         text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
     }
 
@@ -168,7 +166,6 @@ extension NativeNoteEditorViewModel {
         attrs.noteBlock = blockMarker(for: blockType)
         attrs.noteStructuralBoundary = nil
         attrs.link = nil
-        attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = nil
         attrs[AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
     }
 

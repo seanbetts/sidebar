@@ -59,6 +59,30 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertTrue(noteRangeIsUnderlined(viewModel.attributedContent, range: selectedRange))
     }
 
+    func testApplyFormattingPreservesCodeBlockPresentationIntentOnSelectedRange() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Snippet", marks: [])]),
+                .init(type: .codeBlock, content: [.init(text: "let x = 1", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let start = viewModel.index(forCharacterOffset: 8, in: viewModel.attributedContent)
+        let end = viewModel.index(forCharacterOffset: 11, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: start..<end)
+
+        viewModel.applyFormatting(.bold)
+
+        let intent = try XCTUnwrap(
+            notePresentationIntent(in: viewModel.attributedContent, atCharacterOffset: 8)
+        )
+        XCTAssertEqual(intent.components.map(\.kind), [.codeBlock(languageHint: nil)])
+    }
+
 #if os(macOS)
     func testApplyFormattingDoesNotMirrorPlatformFontTraitsIntoLiveDocument() async {
         let viewModel = NativeNoteEditorViewModel()
@@ -196,6 +220,36 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
                 range: punctuationStart..<punctuationEnd
             )
         )
+    }
+
+    func testTypingAttributesInsideCodeBlockPreservePresentationIntentForInsertedText() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Snippet", marks: [])]),
+                .init(type: .codeBlock, content: [.init(text: "let x = 1", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        let typingAttributes = viewModel.typingAttributesForInsertion(in: viewModel.attributedContent)
+        let typingIntent = try XCTUnwrap(
+            typingAttributes[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
+        )
+
+        XCTAssertEqual(typingIntent.components.map(\.kind), [.codeBlock(languageHint: nil)])
+
+        noteAppendTypedText("!", to: viewModel)
+
+        let insertedIntent = try XCTUnwrap(
+            notePresentationIntent(in: viewModel.attributedContent, atCharacterOffset: 16)
+        )
+        XCTAssertEqual(insertedIntent.components.map(\.kind), [.codeBlock(languageHint: nil)])
     }
 
     func testFormattingCommandsUpdateCanonicalSnapshotWithoutWrapperOwnedState() async throws {
@@ -449,6 +503,20 @@ final class NativeNoteEditorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.autosaveToken, 1)
         XCTAssertTrue(viewModel.hasUnsavedChanges)
     }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func notePresentationIntent(
+    in text: AttributedString,
+    atCharacterOffset offset: Int
+) -> PresentationIntent? {
+    guard offset >= 0, offset < text.characters.count else { return nil }
+    let lower = text.index(text.startIndex, offsetByCharacters: offset)
+    let upper = text.index(afterCharacter: lower)
+    return text[lower..<upper]
+        .runs
+        .first?
+        .attributes[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
 }
 
 @available(iOS 26.0, macOS 26.0, *)

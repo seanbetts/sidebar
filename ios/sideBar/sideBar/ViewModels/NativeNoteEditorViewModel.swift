@@ -71,6 +71,8 @@ public final class NativeNoteEditorViewModel: ObservableObject {
     func typingAttributesForInsertion(in text: AttributedString) -> AttributeContainer {
         var sourceAttributes = selection.typingAttributes(in: text)
         sourceAttributes.noteStructuralBoundary = nil
+        let sourcePresentationIntent =
+            sourceAttributes[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]
         let semanticBlockType = semanticBlockTypeAtSelectionStart(
             in: currentPersistenceSnapshot().document
         ) ?? .paragraph
@@ -87,6 +89,10 @@ public final class NativeNoteEditorViewModel: ObservableObject {
             inlineState: inlineState,
             to: &attrs
         )
+        if let sourcePresentationIntent {
+            attrs[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] =
+                sourcePresentationIntent
+        }
         return attrs
     }
 
