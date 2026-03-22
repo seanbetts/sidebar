@@ -50,6 +50,7 @@ public final class NotesViewModel: ObservableObject {
     private let networkStatus: any NetworkStatusProviding
     private let searchTask = ManagedTask()
     private var cancellables = Set<AnyCancellable>()
+    private var activeNoteMirrorTask: Task<Void, Never>?
     private var pendingNoteId: String?
     var searchDebounceDelay: TimeInterval = 0.3
 
@@ -78,9 +79,13 @@ public final class NotesViewModel: ObservableObject {
 
         store.$activeNote
             .sink { [weak self] note in
-                self?.activeNote = note
+                self?.scheduleActiveNoteMirror(note)
             }
             .store(in: &cancellables)
+    }
+
+    deinit {
+        activeNoteMirrorTask?.cancel()
     }
 
     public func loadTree() async {

@@ -113,6 +113,54 @@ final class NotesEditorViewModelTests: XCTestCase {
         )
     }
 
+    func testHandleNoteUpdateHydratesOnNextMainActorTurn() async {
+        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
+        let cache = TestCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toast = ToastCenter()
+        let notesViewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toast,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        let viewModel = NotesEditorViewModel(
+            notesViewModel: notesViewModel,
+            draftStorage: draftStorage,
+            writeQueue: writeQueue,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        store.applyEditorUpdate(note)
+
+        XCTAssertNil(viewModel.currentNoteId)
+        XCTAssertEqual(viewModel.content, "")
+
+        await waitUntilNoteHydrated(viewModel, note: note)
+
+        XCTAssertEqual(viewModel.currentNoteId, "n1")
+        XCTAssertEqual(viewModel.content, "Hello")
+    }
+
     func testHandleNoteUpdateClearsContentWhenNoteNil() async {
         let api = MockNotesAPI(updateResult: .failure(MockError.forced))
         let cache = TestCacheClient()

@@ -45,6 +45,7 @@ public final class NotesEditorViewModel: ObservableObject {
     private var pendingEditSelectionTarget: PendingEditSelectionTarget?
     private var pendingEditViewportAnchorY: CGFloat?
     private var syncRequestedWhileSaving = false
+    private var pendingNoteUpdateTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     init(
@@ -60,9 +61,13 @@ public final class NotesEditorViewModel: ObservableObject {
 
         notesViewModel.$activeNote
             .sink { [weak self] note in
-                self?.handleNoteUpdate(note)
+                self?.scheduleNoteUpdate(note)
             }
             .store(in: &cancellables)
+    }
+
+    deinit {
+        pendingNoteUpdateTask?.cancel()
     }
 
     private func handleNoteUpdate(_ note: NotePayload?) {

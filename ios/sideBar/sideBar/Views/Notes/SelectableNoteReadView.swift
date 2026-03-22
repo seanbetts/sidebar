@@ -608,21 +608,29 @@ private final class SelectableNoteReadTextView: UITextView {
 
     private func linkAttribute(at point: CGPoint) -> Any? {
         guard attributedText.length > 0 else { return nil }
-        guard let closestPosition = closestPosition(to: point) else { return nil }
-        let characterIndex = min(
-            max(offset(from: beginningOfDocument, to: closestPosition), 0),
-            attributedText.length
+        let layoutManager = self.layoutManager
+        let textContainer = self.textContainer
+
+        let containerPoint = CGPoint(
+            x: point.x - textContainerInset.left,
+            y: point.y - textContainerInset.top
         )
-        guard characterIndex < attributedText.length,
-              let start = position(from: beginningOfDocument, offset: characterIndex),
-              let end = position(from: start, offset: 1),
-              let range = textRange(from: start, to: end) else {
+        layoutManager.ensureLayout(for: textContainer)
+        let glyphIndex = layoutManager.glyphIndex(
+            for: containerPoint,
+            in: textContainer,
+            fractionOfDistanceThroughGlyph: nil
+        )
+        guard glyphIndex < layoutManager.numberOfGlyphs else { return nil }
+
+        let glyphRange = NSRange(location: glyphIndex, length: 1)
+        let glyphBounds = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+        guard glyphBounds.insetBy(dx: -1, dy: -1).contains(containerPoint) else {
             return nil
         }
-        let characterRect = firstRect(for: range)
-        guard characterRect.insetBy(dx: -1, dy: -1).contains(point) else {
-            return nil
-        }
+
+        let characterIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
+        guard characterIndex < attributedText.length else { return nil }
         return attributedText.attribute(.link, at: characterIndex, effectiveRange: nil)
     }
 

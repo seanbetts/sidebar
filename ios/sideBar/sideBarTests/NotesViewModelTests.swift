@@ -147,7 +147,7 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoadingArchived)
     }
 
-    func testStoreActiveNoteMirrorsImmediately() async {
+    func testStoreActiveNoteMirrorsOnNextMainActorTurn() async throws {
         let api = NotesAPISpy()
         let cache = InMemoryCacheClient()
         let store = NotesStore(api: api, cache: cache)
@@ -169,6 +169,10 @@ final class NotesViewModelTests: XCTestCase {
 
         store.applyEditorUpdate(note)
 
+        XCTAssertNil(viewModel.activeNote)
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.activeNote?.id == "note-id"
+        }
         XCTAssertEqual(viewModel.activeNote?.id, "note-id")
     }
 

@@ -1,6 +1,9 @@
 import XCTest
 #if os(macOS)
 import AppKit
+#elseif os(iOS)
+import SwiftUI
+import UIKit
 #endif
 @testable import sideBar
 
@@ -169,5 +172,115 @@ private func makeActivationMouseEvent(
             pressure: pressure
         )
     )
+}
+#endif
+
+#if os(iOS)
+@MainActor
+@available(iOS 26.0, *)
+final class SelectableNoteReadActivationIOSTests: NotesDetailViewHostingTestCase {
+    func testLinkTapDoesNotActivateEditing() throws {
+        var capturedTarget: NotesEditorViewModel.PendingEditSelectionTarget?
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([
+                    .init(text: "https://example.com", marks: [])
+                ])
+            ]
+        )
+
+        let controller = mount(
+            SelectableNoteReadView(
+                document: document,
+                maxContentWidth: 320,
+                onActivateEditing: { target in
+                    capturedTarget = target
+                }
+            ),
+            frame: CGRect(x: 0, y: 0, width: 320, height: 180),
+            makeKeyAndVisible: true
+        )
+        let textView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        let containerView = try XCTUnwrap(textView.superview)
+        let expectedURL = try XCTUnwrap(URL(string: "https://example.com"))
+        let linkValue = textView.attributedText.attribute(
+            .link,
+            at: 0,
+            effectiveRange: nil
+        ) as? URL
+        XCTAssertEqual(linkValue, expectedURL)
+
+        let tapPoint = try localTapPoint(
+            in: textView,
+            characterIndex: 0,
+            horizontalBias: 0.5
+        )
+        let recognizer = ReadActivationTapGestureRecognizer(location: tapPoint)
+        recognizer.setValue(UIGestureRecognizer.State.ended.rawValue, forKey: "state")
+
+        containerView.perform(
+            NSSelectorFromString("handleActivationTapGesture:"),
+            with: recognizer
+        )
+
+        XCTAssertNil(capturedTarget)
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
+private func localTapPoint(
+    in textView: UITextView,
+    characterIndex: Int,
+    horizontalBias: CGFloat
+) throws -> CGPoint {
+    guard characterIndex < textView.attributedText.length else {
+        throw XCTSkip("Unable to resolve tap point")
+    }
+    let layoutManager = textView.layoutManager
+    let textContainer = textView.textContainer
+
+    textContainer.size = CGSize(
+        width: textView.bounds.width - textView.textContainerInset.left - textView.textContainerInset.right,
+        height: .greatestFiniteMagnitude
+    )
+    layoutManager.ensureLayout(for: textContainer)
+    let glyphRange = layoutManager.glyphRange(
+        forCharacterRange: NSRange(location: characterIndex, length: 1),
+        actualCharacterRange: nil
+    )
+    let glyphRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+    return CGPoint(
+        x: textView.textContainerInset.left + glyphRect.minX + (glyphRect.width * horizontalBias),
+        y: textView.textContainerInset.top + glyphRect.midY
+    )
+}
+
+private func findDescendantTextView(in view: UIView) -> UITextView? {
+    if let textView = view as? UITextView {
+        return textView
+    }
+
+    for subview in view.subviews {
+        if let match = findDescendantTextView(in: subview) {
+            return match
+        }
+    }
+
+    return nil
+}
+
+private final class ReadActivationTapGestureRecognizer: UITapGestureRecognizer, @unchecked Sendable {
+    private let testLocation: CGPoint
+
+    init(location: CGPoint) {
+        self.testLocation = location
+        super.init(target: nil, action: nil)
+    }
+
+    override func location(in view: UIView?) -> CGPoint {
+        testLocation
+    }
 }
 #endif
