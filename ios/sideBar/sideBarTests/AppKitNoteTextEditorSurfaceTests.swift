@@ -121,7 +121,7 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(backgroundColor, NoteTextAppearance.inlineCodeBackgroundColor)
     }
 
-    func testMountedAppKitEditorRendersCodeBlockBackgroundAsSingleRect() throws {
+    func testMountedAppKitEditorDoesNotDrawCustomCodeBlockBackground() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
@@ -143,21 +143,14 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
             x: textView.textContainerInset.width + shortLineRect.maxX + ((longLineRect.maxX - shortLineRect.maxX) * 0.5),
             y: textView.textContainerInset.height + shortLineRect.midY
         )
-        let blockRect = try XCTUnwrap(
-            NoteCodeBlockBackgroundLayout.rects(
-                textStorage: textView.textStorage,
-                layoutManager: textView.layoutManager,
-                textContainer: textView.textContainer,
-                insetX: textView.textContainerInset.width,
-                insetY: textView.textContainerInset.height
-            ).first
-        )
+        let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
 
         XCTAssertTrue(notePlatformFontTraits(from: font).monospaced)
-        XCTAssertTrue(blockRect.contains(samplePoint))
-        XCTAssertGreaterThan(blockRect.maxX, textView.textContainerInset.width + longLineRect.maxX)
-        XCTAssertLessThan(blockRect.minY, textView.textContainerInset.height + longLineRect.minY)
-        XCTAssertGreaterThan(blockRect.maxY, textView.textContainerInset.height + shortLineRect.maxY)
+        assertColorsApproximatelyNotEqual(
+            sampledColor,
+            NoteTextAppearance.inlineCodeBackgroundColor,
+            tolerance: 0.05
+        )
     }
 
     func testMountedAppKitEditorUsesSecondaryLabelCaretTint() throws {
@@ -414,5 +407,55 @@ private func assertParagraphStyle(
 
 private enum AppKitNoteTextEditorSurfaceTestError: Error {
     case missingAttribute
+}
+
+@MainActor
+private func samplePixelColor(
+    in view: NSView,
+    at point: NSPoint,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) -> NSColor? {
+    let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
+    guard let rep else {
+        XCTFail("Expected bitmap image rep", file: file, line: line)
+        return nil
+    }
+
+    view.cacheDisplay(in: view.bounds, to: rep)
+    let pixelX = Int(point.x.rounded(.down))
+    let pixelY = Int(point.y.rounded(.down))
+    guard pixelX >= 0, pixelX < rep.pixelsWide, pixelY >= 0, pixelY < rep.pixelsHigh else {
+        XCTFail("Sample point out of bounds: \(point)", file: file, line: line)
+        return nil
+    }
+
+    return rep.colorAt(x: pixelX, y: pixelY)
+}
+
+@MainActor
+private func assertColorsApproximatelyNotEqual(
+    _ actual: NSColor,
+    _ expected: NSColor,
+    tolerance: CGFloat,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    let actualColor = actual.usingColorSpace(.deviceRGB)
+    let expectedColor = expected.usingColorSpace(.deviceRGB)
+    XCTAssertNotNil(actualColor, file: file, line: line)
+    XCTAssertNotNil(expectedColor, file: file, line: line)
+    guard let actualColor, let expectedColor else { return }
+
+    let redDelta = abs(actualColor.redComponent - expectedColor.redComponent)
+    let greenDelta = abs(actualColor.greenComponent - expectedColor.greenComponent)
+    let blueDelta = abs(actualColor.blueComponent - expectedColor.blueComponent)
+    let alphaDelta = abs(actualColor.alphaComponent - expectedColor.alphaComponent)
+    let matchesExpectedWithinTolerance = redDelta <= tolerance &&
+        greenDelta <= tolerance &&
+        blueDelta <= tolerance &&
+        alphaDelta <= tolerance
+
+    XCTAssertFalse(matchesExpectedWithinTolerance, file: file, line: line)
 }
 #endif

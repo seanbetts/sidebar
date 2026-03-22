@@ -34,11 +34,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             updateTextContainerInset()
         }
 
-        override func draw(_ dirtyRect: NSRect) {
-            drawCodeBlockBackgrounds(in: dirtyRect)
-            super.draw(dirtyRect)
-        }
-
         private func updateTextContainerInset() {
             let extraHorizontalInset = max((bounds.width - maxReadableContentWidth) / 2, 0)
             let resolvedInset = NSSize(
@@ -47,26 +42,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             )
             guard textContainerInset != resolvedInset else { return }
             textContainerInset = resolvedInset
-        }
-
-        private func drawCodeBlockBackgrounds(in dirtyRect: NSRect) {
-            let blockRects = NoteCodeBlockBackgroundLayout.rects(
-                textStorage: textStorage,
-                layoutManager: layoutManager,
-                textContainer: textContainer,
-                insetX: textContainerInset.width,
-                insetY: textContainerInset.height
-            )
-            guard blockRects.isEmpty == false else { return }
-
-            NoteTextAppearance.codeBlockBackgroundColor.setFill()
-            for blockRect in blockRects where blockRect.intersects(dirtyRect) {
-                NSBezierPath(
-                    roundedRect: blockRect,
-                    xRadius: NoteCodeBlockBackgroundLayout.cornerRadius,
-                    yRadius: NoteCodeBlockBackgroundLayout.cornerRadius
-                ).fill()
-            }
         }
     }
 

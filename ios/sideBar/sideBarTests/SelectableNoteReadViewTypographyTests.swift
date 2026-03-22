@@ -126,7 +126,7 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         )
     }
 
-    func testMountedReadViewRendersCodeBlockBackgroundAsSingleRectOnIOS() throws {
+    func testMountedReadViewDoesNotDrawCustomCodeBlockBackgroundOnIOS() throws {
         let document = NotesSemanticDocument(
             blocks: [
                 .init(type: .codeBlock, content: [.init(text: "abcdefghij\nab", marks: [])])
@@ -145,7 +145,7 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
         let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
 
-        assertColorsApproximatelyEqual(
+        assertColorsApproximatelyNotEqual(
             sampledColor.resolvedColor(with: darkTraits),
             UIColor.secondarySystemFill.resolvedColor(with: darkTraits),
             tolerance: 0.05
@@ -257,6 +257,45 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(actualGreen, expectedGreen, accuracy: tolerance, file: file, line: line)
         XCTAssertEqual(actualBlue, expectedBlue, accuracy: tolerance, file: file, line: line)
         XCTAssertEqual(actualAlpha, expectedAlpha, accuracy: tolerance, file: file, line: line)
+    }
+
+    private func assertColorsApproximatelyNotEqual(
+        _ actual: UIColor,
+        _ expected: UIColor,
+        tolerance: CGFloat,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        var actualRed: CGFloat = 0
+        var actualGreen: CGFloat = 0
+        var actualBlue: CGFloat = 0
+        var actualAlpha: CGFloat = 0
+        var expectedRed: CGFloat = 0
+        var expectedGreen: CGFloat = 0
+        var expectedBlue: CGFloat = 0
+        var expectedAlpha: CGFloat = 0
+
+        XCTAssertTrue(
+            actual.getRed(&actualRed, green: &actualGreen, blue: &actualBlue, alpha: &actualAlpha),
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            expected.getRed(&expectedRed, green: &expectedGreen, blue: &expectedBlue, alpha: &expectedAlpha),
+            file: file,
+            line: line
+        )
+
+        let redDelta = abs(actualRed - expectedRed)
+        let greenDelta = abs(actualGreen - expectedGreen)
+        let blueDelta = abs(actualBlue - expectedBlue)
+        let alphaDelta = abs(actualAlpha - expectedAlpha)
+        let matchesExpectedWithinTolerance = redDelta <= tolerance &&
+            greenDelta <= tolerance &&
+            blueDelta <= tolerance &&
+            alphaDelta <= tolerance
+
+        XCTAssertFalse(matchesExpectedWithinTolerance, file: file, line: line)
     }
     #endif
 }

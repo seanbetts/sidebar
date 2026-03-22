@@ -63,30 +63,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             updateViewportInsets()
         }
 
-        override func draw(_ rect: CGRect) {
-            drawCodeBlockBackgrounds(in: rect)
-            super.draw(rect)
-        }
-
-        private func drawCodeBlockBackgrounds(in rect: CGRect) {
-            let blockRects = NoteCodeBlockBackgroundLayout.rects(
-                textStorage: textStorage,
-                layoutManager: layoutManager,
-                textContainer: textContainer,
-                insetX: textContainerInset.left,
-                insetY: textContainerInset.top
-            )
-            guard blockRects.isEmpty == false else { return }
-
-            NoteTextAppearance.codeBlockBackgroundColor.setFill()
-            for blockRect in blockRects where blockRect.intersects(rect) {
-                UIBezierPath(
-                    roundedRect: blockRect,
-                    cornerRadius: NoteCodeBlockBackgroundLayout.cornerRadius
-                ).fill()
-            }
-        }
-
     }
 
     final class EditorContainerView: UIView {
