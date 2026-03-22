@@ -4,6 +4,13 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension FilesPanelView {
+    var pinnedItems: [IngestionListItem] {
+        let items = viewModel.panelPinnedItems
+        guard !pinnedReorderDisplayedIDs.isEmpty else { return items }
+        let lookup = Dictionary(uniqueKeysWithValues: items.map { ($0.file.id, $0) })
+        return pinnedReorderDisplayedIDs.compactMap { lookup[$0] }
+    }
+
     func renameSheet() -> some View {
         RenameItemSheet(
             title: "Rename File",
@@ -157,10 +164,6 @@ extension FilesPanelView {
 
     var searchResults: [IngestionListItem] {
         viewModel.panelSearchResults
-    }
-
-    var pinnedItems: [IngestionListItem] {
-        viewModel.panelPinnedItems
     }
 
     var categorizedItems: [String: [IngestionListItem]] {

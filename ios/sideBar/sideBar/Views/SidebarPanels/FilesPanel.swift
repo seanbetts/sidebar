@@ -10,6 +10,7 @@ import UIKit
 
 public struct FilesPanel: View {
     @EnvironmentObject var environment: AppEnvironment
+    @StateObject private var pinnedReorderState = FilesPanelPinnedReorderState()
     private let showsHeader: Bool
 
     public init(showsHeader: Bool = true) {
@@ -19,7 +20,8 @@ public struct FilesPanel: View {
     public var body: some View {
         FilesPanelView(
             viewModel: environment.ingestionViewModel,
-            showsHeader: showsHeader
+            showsHeader: showsHeader,
+            pinnedReorderState: pinnedReorderState
         )
     }
 }
@@ -27,6 +29,9 @@ struct FilesPanelView: View {
     @EnvironmentObject var appEnvironment: AppEnvironment
     @ObservedObject var viewModel: IngestionViewModel
     let showsHeader: Bool
+    @State var pinnedReorderNetworkAvailabilityOverride: Bool?
+    @State var pinnedReorderAutoExitDelayOverride: TimeInterval?
+    let pinnedReorderState: FilesPanelPinnedReorderState
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
@@ -47,6 +52,25 @@ struct FilesPanelView: View {
     @State var renameValue: String = ""
     @State var isRenameSheetPresented = false
     @FocusState var isSearchFocused: Bool
+
+    @MainActor
+    init(
+        viewModel: IngestionViewModel,
+        showsHeader: Bool,
+        pinnedReorderState: FilesPanelPinnedReorderState? = nil,
+        pinnedReorderNetworkAvailability: Bool? = nil,
+        pinnedReorderAutoExitDelay: TimeInterval? = nil
+    ) {
+        self.viewModel = viewModel
+        self.showsHeader = showsHeader
+        self.pinnedReorderState = pinnedReorderState ?? FilesPanelPinnedReorderState()
+        _pinnedReorderNetworkAvailabilityOverride = State(
+            initialValue: pinnedReorderNetworkAvailability
+        )
+        _pinnedReorderAutoExitDelayOverride = State(
+            initialValue: pinnedReorderAutoExitDelay
+        )
+    }
 
     var body: some View {
         content
@@ -278,26 +302,7 @@ extension FilesPanelView {
             } else {
                 if !pinnedItems.isEmpty {
                     Section {
-                        ForEach(pinnedItems, id: \.file.id) { item in
-                            let index = staggerIndex(for: item.file.id)
-                            let isSelected = viewModel.selectedFileId == item.file.id
-                            let row = FilesIngestionRow(
-                                item: item,
-                                isSelected: isSelected,
-                                onPinToggle: pinAction(for: item),
-                                onDelete: deleteAction(for: item)
-                            )
-                            .platformContextMenu(items: fileContextMenuItemsList(for: item))
-                            .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
-                            if isFolder(item) {
-                                row
-                                    .staggeredAppear(index: index, isActive: listAppeared)
-                            } else {
-                                row
-                                    .staggeredAppear(index: index, isActive: listAppeared)
-                                    .onTapGesture { open(item: item) }
-                            }
-                        }
+                        pinnedFilesSection()
                     } header: {
                         sidebarProminentSectionHeader("Pinned")
                     }
@@ -357,8 +362,14 @@ extension FilesPanelView {
 
         }
         .sidebarPanelListStyle()
+        #if os(iOS)
+        .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
+        #endif
         .scrollContentBackground(.hidden)
         .background(panelBackground)
+        .onChange(of: pinnedItems.map { $0.file.id }) { _, newValue in
+            handlePinnedSetChanged(newValue)
+        }
         .refreshable {
             await viewModel.load()
         }
