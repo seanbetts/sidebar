@@ -115,8 +115,7 @@ extension NativeNoteEditorViewModel {
         let document = currentPersistenceSnapshot().document
         let touchedBlocks = touchedBlockInfos(in: document)
         guard !touchedBlocks.isEmpty else { return false }
-        return touchedBlocks.allSatisfy(canConvertBlockToListItem(for:)) ||
-            touchedBlocks.allSatisfy { canUnwrapList(for: $0, listType: listType) }
+        return touchedBlocks.allSatisfy(canConvertBlockForListToggle(for:))
     }
 
     func isListActive(_ listType: NotesSemanticDocument.BlockType) -> Bool {
@@ -240,12 +239,7 @@ extension NativeNoteEditorViewModel {
                 }
             }
         } else {
-            let listItems = touchedBlocks.map { blockInfo in
-                NotesSemanticDocument.Block(
-                    type: .listItem,
-                    content: blockInfo.block.content
-                )
-            }
+            let listItems = listItemsForListToggle(from: touchedBlocks)
             replacementBlocks = [.init(type: listType, children: listItems)]
         }
 
@@ -259,6 +253,14 @@ extension NativeNoteEditorViewModel {
             version: document.version,
             blocks: updatedBlocks
         )
+        let updatedBlockInfos = documentBlockInfos(in: updatedDocument)
+        let remappedSelectionSnapshot = remappedSelectionSnapshotForListToggle(
+            selectionSnapshot,
+            oldBlocks: touchedBlocks.map(\.block),
+            oldRegionStart: touchedBlocks.first?.range.lowerBound ?? 0,
+            newBlocks: replacementBlocks,
+            newRegionStart: updatedBlockInfos[firstIndex].range.lowerBound
+        )
 
         var updatedContent = NotesAttributedDocumentCodec.attributedString(
             from: updatedDocument,
@@ -267,7 +269,7 @@ extension NativeNoteEditorViewModel {
         constrainEditorDocument(&updatedContent)
         requestViewportPreservationOnNextProgrammaticRender()
         attributedContent = updatedContent
-        selection = selection(from: selectionSnapshot, in: updatedContent)
+        selection = selection(from: remappedSelectionSnapshot, in: updatedContent)
     }
 
     private func canUnwrapList(
@@ -346,8 +348,34 @@ extension NativeNoteEditorViewModel {
         return runSnapshots.allSatisfy { $0.state.contains(formatting) }
     }
 
-    private func canConvertBlockToListItem(for blockInfo: DocumentBlockInfo) -> Bool {
-        blockInfo.index != 0 && blockInfo.block.type == .paragraph
+    private func canConvertBlockForListToggle(for blockInfo: DocumentBlockInfo) -> Bool {
+        guard blockInfo.index != 0 else { return false }
+        switch blockInfo.block.type {
+        case .paragraph, .orderedList, .unorderedList:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func listItemsForListToggle(
+        from touchedBlocks: [DocumentBlockInfo]
+    ) -> [NotesSemanticDocument.Block] {
+        touchedBlocks.flatMap { blockInfo in
+            switch blockInfo.block.type {
+            case .orderedList, .unorderedList:
+                return blockInfo.block.children ?? []
+            case .paragraph:
+                return [
+                    NotesSemanticDocument.Block(
+                        type: .listItem,
+                        content: blockInfo.block.content
+                    )
+                ]
+            default:
+                return [NotesSemanticDocument.Block]()
+            }
+        }
     }
 
     private func formattingRunSnapshots(in text: AttributedString) -> [FormattingRunSnapshot] {

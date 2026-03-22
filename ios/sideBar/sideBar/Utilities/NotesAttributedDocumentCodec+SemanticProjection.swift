@@ -304,7 +304,7 @@ extension NotesAttributedDocumentCodec {
             )
             let prefix = switch block.type {
             case .orderedList:
-                "\(index + 1). "
+                "\(index + 1).\t"
             case .unorderedList:
                 "- "
             case .checklist:
@@ -372,7 +372,7 @@ extension NotesAttributedDocumentCodec {
         case .unorderedList:
             return "- "
         case .orderedList:
-            return "\(orderedListIndex + 1). "
+            return "\(orderedListIndex + 1).\t"
         case .checklist:
             return "- [\(block.checked == true ? "x" : " ")] "
         case .blockquote:

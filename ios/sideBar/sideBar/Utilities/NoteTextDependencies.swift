@@ -39,6 +39,10 @@ enum NoteTextParagraphMetrics {
         12
     }
 
+    static func orderedListContentIndent(baseFontSize: CGFloat) -> CGFloat {
+        baseFontSize * 1.5
+    }
+
     private struct StyleMetrics {
         let lineSpacing: CGFloat
         let spacingAfter: CGFloat
@@ -49,7 +53,10 @@ enum NoteTextParagraphMetrics {
         let spacingBefore: CGFloat
         let spacingAfter: CGFloat
         let headIndent: CGFloat
+        let firstLineHeadIndent: CGFloat
         let tailIndent: CGFloat
+        let tabStops: [NSTextTab]
+        let defaultTabInterval: CGFloat
     }
 
     static func bodyParagraphStyle(
@@ -71,7 +78,10 @@ enum NoteTextParagraphMetrics {
         additionalSpacingBefore: CGFloat = 0,
         additionalSpacingAfter: CGFloat = 0,
         headIndent: CGFloat = 0,
-        tailIndent: CGFloat = 0
+        firstLineHeadIndent: CGFloat? = nil,
+        tailIndent: CGFloat = 0,
+        tabStops: [NSTextTab] = [],
+        defaultTabInterval: CGFloat = 0
     ) -> NSParagraphStyle {
         let metrics = styleMetrics(for: blockType, baseFontSize: baseFontSize)
         return paragraphStyle(
@@ -80,7 +90,10 @@ enum NoteTextParagraphMetrics {
                 spacingBefore: additionalSpacingBefore,
                 spacingAfter: metrics.spacingAfter + additionalSpacingAfter,
                 headIndent: headIndent,
-                tailIndent: tailIndent
+                firstLineHeadIndent: firstLineHeadIndent ?? headIndent,
+                tailIndent: tailIndent,
+                tabStops: tabStops,
+                defaultTabInterval: defaultTabInterval
             )
         )
     }
@@ -100,7 +113,10 @@ enum NoteTextParagraphMetrics {
                     ? codeBlockPaddingAfter(baseFontSize: baseFontSize)
                     : 0,
                 headIndent: 0,
-                tailIndent: 0
+                firstLineHeadIndent: 0,
+                tailIndent: 0,
+                tabStops: [],
+                defaultTabInterval: 0
             )
         )
     }
@@ -113,10 +129,12 @@ enum NoteTextParagraphMetrics {
         style.paragraphSpacingBefore = configuration.spacingBefore
         style.paragraphSpacing = configuration.spacingAfter
         style.headIndent = configuration.headIndent
-        style.firstLineHeadIndent = configuration.headIndent
+        style.firstLineHeadIndent = configuration.firstLineHeadIndent
         if configuration.tailIndent != 0 {
             style.tailIndent = -configuration.tailIndent
         }
+        style.tabStops = configuration.tabStops
+        style.defaultTabInterval = configuration.defaultTabInterval
         return style
     }
 

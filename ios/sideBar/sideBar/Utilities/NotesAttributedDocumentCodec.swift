@@ -93,7 +93,7 @@ extension NotesAttributedDocumentCodec {
     }
 
     static func orderedListPrefixLength(in text: String) -> Int {
-        guard let range = text.range(of: #"^\d+\. "#, options: .regularExpression) else {
+        guard let range = text.range(of: #"^\d+\.\s"#, options: .regularExpression) else {
             return 0
         }
         return text.distance(from: text.startIndex, to: range.upperBound)

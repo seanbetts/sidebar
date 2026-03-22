@@ -73,6 +73,73 @@ final class NativeNoteEditorListTransitionTests: XCTestCase {
         XCTAssertEqual(snapshot.plainText, "Title\n1. Alpha\n2. Beta")
     }
 
+    func testToggleUnorderedListPreservesSelectionAcrossInsertedPrefixes() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .paragraph([.init(text: "First", marks: [])]),
+                .paragraph([.init(text: "Second", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let selectionStart = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
+        let selectionEnd = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
+
+        viewModel.toggleList(.unorderedList)
+
+        XCTAssertEqual(String(viewModel.attributedContent.characters), "Title\n- First\n- Second")
+        switch viewModel.selectionSnapshot(in: viewModel.attributedContent) {
+        case .ranges(let ranges):
+            XCTAssertEqual(ranges, [8..<22])
+        case .insertionPoint(let offset):
+            XCTFail("Expected selection range, got insertion point at \(offset)")
+        }
+    }
+
+    func testToggleOrderedListConvertsActiveUnorderedListInPlace() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .unorderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "First", marks: [.bold])]),
+                        .init(type: .listItem, content: [.init(text: "Second", marks: [.italic])])
+                    ]
+                )
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let selectionStart = viewModel.index(forCharacterOffset: 8, in: viewModel.attributedContent)
+        let selectionEnd = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
+
+        viewModel.toggleList(.orderedList)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .orderedList])
+        XCTAssertEqual(
+            snapshot.document.blocks[1],
+            .init(
+                type: .orderedList,
+                children: [
+                    .init(type: .listItem, content: [.init(text: "First", marks: [.bold])]),
+                    .init(type: .listItem, content: [.init(text: "Second", marks: [.italic])])
+                ]
+            )
+        )
+        XCTAssertEqual(snapshot.plainText, "Title\n1. First\n2. Second")
+    }
+
     func testHandleReturnKeyAtEndOfUnorderedListContinuesWithNewListItem() async throws {
         let document = NotesSemanticDocument(
             blocks: [

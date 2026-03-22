@@ -34,11 +34,25 @@ extension NativeNoteEditorViewModel {
 
     func paragraphStyle(for blockType: NotesSemanticDocument.BlockType) -> NSParagraphStyle {
         switch blockType {
-        case .unorderedList, .orderedList, .checklist:
+        case .unorderedList, .checklist:
             return NoteTextParagraphMetrics.paragraphStyle(
                 for: blockType,
                 baseFontSize: baseFontSize,
                 headIndent: baseFontSize
+            )
+        case .orderedList:
+            let contentIndent = NoteTextParagraphMetrics.orderedListContentIndent(
+                baseFontSize: baseFontSize
+            )
+            return NoteTextParagraphMetrics.paragraphStyle(
+                for: blockType,
+                baseFontSize: baseFontSize,
+                headIndent: contentIndent,
+                firstLineHeadIndent: 0,
+                tabStops: [
+                    NSTextTab(textAlignment: .left, location: contentIndent)
+                ],
+                defaultTabInterval: contentIndent
             )
         case .blockquote:
             return NoteTextParagraphMetrics.paragraphStyle(

@@ -9,13 +9,29 @@ extension NoteTextFormattingDefinition {
         additionalSpacingAfter: CGFloat = 0
     ) -> NSParagraphStyle {
         switch blockType {
-        case .unorderedList, .orderedList, .checklist:
+        case .unorderedList, .checklist:
             return NoteTextParagraphMetrics.paragraphStyle(
                 for: blockType,
                 baseFontSize: baseFontSize,
                 additionalSpacingBefore: additionalSpacingBefore,
                 additionalSpacingAfter: additionalSpacingAfter,
                 headIndent: baseFontSize
+            )
+        case .orderedList:
+            let contentIndent = NoteTextParagraphMetrics.orderedListContentIndent(
+                baseFontSize: baseFontSize
+            )
+            return NoteTextParagraphMetrics.paragraphStyle(
+                for: blockType,
+                baseFontSize: baseFontSize,
+                additionalSpacingBefore: additionalSpacingBefore,
+                additionalSpacingAfter: additionalSpacingAfter,
+                headIndent: contentIndent,
+                firstLineHeadIndent: 0,
+                tabStops: [
+                    NSTextTab(textAlignment: .left, location: contentIndent)
+                ],
+                defaultTabInterval: contentIndent
             )
         case .blockquote:
             return NoteTextParagraphMetrics.paragraphStyle(
