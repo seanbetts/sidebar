@@ -99,6 +99,48 @@ extension NotesAttributedDocumentCodec {
         return text.distance(from: text.startIndex, to: range.upperBound)
     }
 
+    static func normalizedSegmentsAndCheckedState(
+        from segments: [NotesSemanticDocument.InlineSegment],
+        blockType: NotesSemanticDocument.BlockType
+    ) -> (segments: [NotesSemanticDocument.InlineSegment], checked: Bool?) {
+        let combinedText = segments.map(\.text).joined()
+        switch blockType {
+        case .unorderedList:
+            return (
+                droppingPrefixCharacters(
+                    count: combinedText.hasPrefix("- ") ? 2 : 0,
+                    from: segments
+                ),
+                nil
+            )
+        case .orderedList:
+            return (
+                droppingPrefixCharacters(
+                    count: orderedListPrefixLength(in: combinedText),
+                    from: segments
+                ),
+                nil
+            )
+        case .checklist:
+            let checked = combinedText.hasPrefix("- [x] ")
+            let prefixLength = (checked || combinedText.hasPrefix("- [ ] ")) ? 6 : 0
+            return (
+                droppingPrefixCharacters(count: prefixLength, from: segments),
+                checked
+            )
+        case .blockquote:
+            return (
+                droppingPrefixCharacters(
+                    count: combinedText.hasPrefix("> ") ? 2 : 0,
+                    from: segments
+                ),
+                nil
+            )
+        default:
+            return (segments, nil)
+        }
+    }
+
     static func droppingPrefixCharacters(
         count: Int,
         from segments: [NotesSemanticDocument.InlineSegment]

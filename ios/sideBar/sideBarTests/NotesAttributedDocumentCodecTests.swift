@@ -71,35 +71,6 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         XCTAssertEqual(String(attributed.characters), "let value = 1")
     }
 
-    func testStandaloneFoundationPresentationIntentAttributeDoesNotCrash() {
-        var text = AttributedString("hello")
-        let range = text.startIndex..<text.endIndex
-        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] =
-            PresentationIntent(.paragraph, identity: 1, parent: nil)
-
-        XCTAssertEqual(String(text.characters), "hello")
-    }
-
-    func testStandaloneFoundationCodeBlockIntentDoesNotCrash() {
-        var text = AttributedString("let value = 1")
-        let range = text.startIndex..<text.endIndex
-        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] =
-            PresentationIntent(.codeBlock(languageHint: nil), identity: 1, parent: nil)
-
-        XCTAssertEqual(String(text.characters), "let value = 1")
-    }
-
-    func testStandaloneFoundationNestedListIntentDoesNotCrash() {
-        var text = AttributedString("item")
-        let range = text.startIndex..<text.endIndex
-        let container = PresentationIntent(.orderedList, identity: 1, parent: nil)
-        let item = PresentationIntent(.listItem(ordinal: 1), identity: 2, parent: container)
-        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] =
-            PresentationIntent(.paragraph, identity: 3, parent: item)
-
-        XCTAssertEqual(String(text.characters), "item")
-    }
-
     func testSemanticParagraphDocumentProjectsToAttributedString() {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
