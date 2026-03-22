@@ -281,9 +281,6 @@ extension WebsitesPanelView {
                 }
             }
             .sidebarPanelListStyle()
-            #if os(iOS)
-            .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
-            #endif
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .refreshable {
@@ -374,6 +371,9 @@ extension WebsitesPanelView {
 }
             }
             .sidebarPanelListStyle()
+            #if os(iOS)
+            .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
+            #endif
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .onChange(of: pinnedItemsSorted.map(\.id)) { _, newValue in

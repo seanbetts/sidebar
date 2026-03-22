@@ -60,12 +60,19 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         )
 
         XCTAssertFalse(panel.canStartPinnedReorder)
+        XCTAssertFalse(panel.isPinnedReorderEditActive)
+    }
+
+    func testPinnedReorderShowsMoveHandlesWheneverPinnedSectionCanReorder() async {
+        let view = await makeView()
+
+        XCTAssertTrue(view.isPinnedReorderEditActive)
     }
 
     func testPinnedReorderLifecycleHelpersTrackCurrentInteraction() async {
         let view = await makeView()
 
-        XCTAssertFalse(view.isPinnedReorderEditActive)
+        XCTAssertFalse(view.isPinnedReordering)
 
         view.enterPinnedReorder(from: "note-a")
         XCTAssertTrue(view.isPinnedReordering)
@@ -75,12 +82,12 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         view.completePinnedReorder()
         XCTAssertFalse(view.isPinnedReordering)
         XCTAssertNil(view.pinnedReorderSourceID)
-        XCTAssertFalse(view.isPinnedReorderEditActive)
+        XCTAssertTrue(view.isPinnedReorderEditActive)
 
         view.enterPinnedReorder(from: "note-a")
         view.cancelPinnedReorder()
         XCTAssertFalse(view.isPinnedReordering)
-        XCTAssertFalse(view.isPinnedReorderEditActive)
+        XCTAssertTrue(view.isPinnedReorderEditActive)
     }
 
     func testPinnedReorderCancelsWhenPinnedSetChangesMidGesture() async {
@@ -96,6 +103,7 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         let offlineView = await makeView(isNetworkAvailable: false)
 
         XCTAssertFalse(offlineView.canStartPinnedReorder)
+        XCTAssertFalse(offlineView.isPinnedReorderEditActive)
     }
 
     func testPinnedReorderMoveKeepsSessionActiveUntilTimeoutAndPersistsFinalOrder() async {
@@ -211,17 +219,8 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertFalse(actions.contains(.rename))
     }
 
-    func testPinnedNoteContextMenuIncludesReorderWhenPinnedSectionCanReorder() async {
+    func testPinnedNoteContextMenuDoesNotIncludeReorderWhenHandlesAreAlwaysVisible() async {
         let view = await makeView()
-        let item = view.pinnedItems[0]
-
-        let titles = view.noteContextMenuItemsList(for: item).map(\.title)
-
-        XCTAssertTrue(titles.contains("Reorder"))
-    }
-
-    func testPinnedNoteContextMenuHidesReorderWhenPinnedSectionCannotReorder() async {
-        let view = await makeView(isNetworkAvailable: false)
         let item = view.pinnedItems[0]
 
         let titles = view.noteContextMenuItemsList(for: item).map(\.title)

@@ -28,7 +28,7 @@ extension NotesPanelView {
     }
 
     func noteContextMenuItemsList(for item: FileNodeItem) -> [SidebarMenuItem] {
-        var items: [SidebarMenuItem] = noteContextMenuActions(for: item).map { action in
+        let items: [SidebarMenuItem] = noteContextMenuActions(for: item).map { action in
             switch action {
             case .pin:
                 return SidebarMenuItem.pin(isPinned: item.pinned) {
@@ -65,16 +65,6 @@ extension NotesPanelView {
             }
         }
 
-        if shouldShowPinnedReorderAction(for: item),
-            let pinIndex = items.firstIndex(where: { $0.title == "Unpin" || $0.title == "Pin" }) {
-            items.insert(
-                SidebarMenuItem.reorder {
-                    enterPinnedReorder(from: item.id)
-                },
-                at: pinIndex + 1
-            )
-        }
-
         return items
     }
 
@@ -99,10 +89,6 @@ extension NotesPanelView {
 
     func noteContextMenuActions(for item: FileNodeItem) -> [NoteContextMenuAction] {
         Self.noteContextMenuActions(for: item)
-    }
-
-    private func shouldShowPinnedReorderAction(for item: FileNodeItem) -> Bool {
-        item.isFile && item.pinned && canStartPinnedReorder
     }
 
     private func beginMove(for item: FileNodeItem) {

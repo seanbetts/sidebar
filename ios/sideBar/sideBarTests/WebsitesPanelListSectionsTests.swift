@@ -57,12 +57,19 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         )
 
         XCTAssertFalse(panel.canStartPinnedReorder)
+        XCTAssertFalse(panel.isPinnedReorderEditActive)
+    }
+
+    func testPinnedReorderShowsMoveHandlesWheneverPinnedSectionCanReorder() async {
+        let view = await makeView()
+
+        XCTAssertTrue(view.isPinnedReorderEditActive)
     }
 
     func testPinnedReorderLifecycleHelpersTrackCurrentInteraction() async {
         let view = await makeView()
 
-        XCTAssertFalse(view.isPinnedReorderEditActive)
+        XCTAssertFalse(view.isPinnedReordering)
 
         view.enterPinnedReorder(from: "w1")
         XCTAssertTrue(view.isPinnedReordering)
@@ -72,13 +79,14 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         view.completePinnedReorder()
         XCTAssertFalse(view.isPinnedReordering)
         XCTAssertNil(view.pinnedReorderSourceID)
-        XCTAssertFalse(view.isPinnedReorderEditActive)
+        XCTAssertTrue(view.isPinnedReorderEditActive)
     }
 
     func testPinnedReorderRejectsOfflineActivation() async {
         let offlineView = await makeView(isNetworkAvailable: false)
 
         XCTAssertFalse(offlineView.canStartPinnedReorder)
+        XCTAssertFalse(offlineView.isPinnedReorderEditActive)
     }
 
     func testPinnedReorderMoveKeepsSessionActiveUntilTimeoutAndPersistsFinalOrder() async {
@@ -140,17 +148,8 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         XCTAssertEqual(view.reorderedPinnedIDs(moving: "w1", to: "w2"), ["w1", "w2"])
     }
 
-    func testPinnedWebsiteContextMenuIncludesReorderWhenPinnedSectionCanReorder() async {
+    func testPinnedWebsiteContextMenuDoesNotIncludeReorderWhenHandlesAreAlwaysVisible() async {
         let view = await makeView()
-        let item = view.pinnedItemsSorted[0]
-
-        let titles = view.websiteContextMenuItemsList(for: item).map(\.title)
-
-        XCTAssertTrue(titles.contains("Reorder"))
-    }
-
-    func testPinnedWebsiteContextMenuHidesReorderWhenPinnedSectionCannotReorder() async {
-        let view = await makeView(isNetworkAvailable: false)
         let item = view.pinnedItemsSorted[0]
 
         let titles = view.websiteContextMenuItemsList(for: item).map(\.title)

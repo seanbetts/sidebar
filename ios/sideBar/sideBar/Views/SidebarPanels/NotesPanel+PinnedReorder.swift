@@ -48,7 +48,7 @@ extension NotesPanelView {
     }
 
     var isPinnedReorderEditActive: Bool {
-        isPinnedReordering
+        pinnedReorderCanInteract || isPinnedReordering
     }
 
     func enterPinnedReorder(from sourceID: String) {
@@ -106,10 +106,18 @@ extension NotesPanelView {
     }
 
     func movePinnedNotes(from source: IndexSet, to destination: Int) {
+        #if os(iOS)
+        guard pinnedReorderCanInteract else { return }
+        let reorderedIDs = reorderedPinnedIDs(from: source, to: destination)
+        Task {
+            _ = await viewModel.reorderPinnedNotes(ids: reorderedIDs)
+        }
+        #else
         guard isPinnedReordering else { return }
         let reorderedIDs = reorderedPinnedIDs(from: source, to: destination)
         pinnedReorderState.displayedIDs = reorderedIDs
         schedulePinnedReorderAutoExit()
+        #endif
     }
 
     func performPinnedDrop(sourceID: String, destinationID: String) {
@@ -209,15 +217,22 @@ extension NotesPanelView {
     }
 
     private func schedulePinnedReorderAutoExit() {
+        #if os(iOS)
+        return
+        #else
         pinnedReorderState.autoExitTask?.cancel()
         let delay = pinnedReorderAutoExitDelay
         pinnedReorderState.autoExitTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             await commitPinnedReorderIfNeeded()
         }
+        #endif
     }
 
     private func commitPinnedReorderIfNeeded() async {
+        #if os(iOS)
+        return
+        #else
         guard isPinnedReordering else { return }
         pinnedReorderState.autoExitTask?.cancel()
         pinnedReorderState.autoExitTask = nil
@@ -236,5 +251,6 @@ extension NotesPanelView {
         pinnedReorderState.isPersisting = true
         _ = await viewModel.reorderPinnedNotes(ids: finalIDs)
         completePinnedReorder()
+        #endif
     }
 }
