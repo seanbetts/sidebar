@@ -81,14 +81,17 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertNotNil(textView.textLayoutManager)
     }
 
-    func testReadSurfaceUsesZeroInternalTextViewPaddingOnIOS() throws {
+    func testReadSurfaceUsesBaseReadableTextViewPaddingOnIOS() throws {
         let textView = try makeReadTextView(
             plainText: "One\nTwo",
             frame: CGRect(x: 0, y: 0, width: 320, height: 120)
         )
 
         XCTAssertEqual(textView.textContainer.lineFragmentPadding, 0)
-        XCTAssertEqual(textView.textContainerInset, .zero)
+        XCTAssertEqual(textView.textContainerInset.top, NoteTextLayout.verticalPadding, accuracy: 0.001)
+        XCTAssertEqual(textView.textContainerInset.left, NoteTextLayout.horizontalPadding, accuracy: 0.001)
+        XCTAssertEqual(textView.textContainerInset.bottom, NoteTextLayout.verticalPadding, accuracy: 0.001)
+        XCTAssertEqual(textView.textContainerInset.right, NoteTextLayout.horizontalPadding, accuracy: 0.001)
     }
 
     func testMakePlatformAttributedContentUsesDynamicLabelColorOnIOS() throws {

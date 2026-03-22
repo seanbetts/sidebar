@@ -41,7 +41,6 @@ struct SelectableNoteReadView: View {
 
     var body: some View {
         let baseFontSize = Self.readBaseFontSize(for: resolvedTextSizeOption)
-        #if os(macOS)
         PlatformSelectableNoteReadView(
             attributedContent: Self.makePlatformAttributedContent(
                 from: document,
@@ -54,22 +53,6 @@ struct SelectableNoteReadView: View {
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
-        #else
-        PlatformSelectableNoteReadView(
-            attributedContent: Self.makePlatformAttributedContent(
-                from: document,
-                baseFontSize: baseFontSize
-            ),
-            onActivateEditing: onActivateEditing,
-            onActivateEditingWithViewport: onActivateEditingWithViewport,
-            onViewportOffsetChange: onViewportOffsetChange
-        )
-        .padding(.horizontal, NoteTextLayout.horizontalPadding)
-        .padding(.vertical, NoteTextLayout.verticalPadding)
-        .frame(maxWidth: maxContentWidth)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DesignTokens.Colors.background)
-        #endif
     }
 
     private var resolvedTextSizeOption: AppTextSizeOption { AppTextSizeOption.resolved(from: appTextSizeRaw) }
@@ -516,6 +499,7 @@ private final class SelectableNoteReadTextView: NSTextView {
 @available(iOS 26.0, macOS 26.0, *)
 private struct PlatformSelectableNoteReadView: UIViewRepresentable {
     let attributedContent: NSAttributedString
+    let maxReadableContentWidth: CGFloat
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     let onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     let onViewportOffsetChange: ((CGPoint) -> Void)?
@@ -531,7 +515,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
         textView.adjustsFontForContentSizeCategory = false
         textView.textColor = .label
         textView.textContainer.lineFragmentPadding = 0
-        textView.textContainerInset = .zero
+        textView.maxReadableContentWidth = maxReadableContentWidth
         textView.linkTextAttributes = [
             .foregroundColor: UIColor.link,
             .underlineStyle: NSUnderlineStyle.single.rawValue
@@ -547,6 +531,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
 
     func updateUIView(_ containerView: SelectableNoteReadContainerView, context: Context) {
         let readTextView = containerView.textView
+        readTextView.maxReadableContentWidth = maxReadableContentWidth
         readTextView.onActivateEditing = onActivateEditing
         readTextView.onActivateEditingWithViewport = onActivateEditingWithViewport
         readTextView.onViewportOffsetChange = onViewportOffsetChange
@@ -560,10 +545,20 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
 
 @available(iOS 26.0, macOS 26.0, *)
 private final class SelectableNoteReadTextView: UITextView {
+    private static let baseTextContainerInsets = UIEdgeInsets(
+        top: NoteTextLayout.verticalPadding,
+        left: NoteTextLayout.horizontalPadding,
+        bottom: NoteTextLayout.verticalPadding,
+        right: NoteTextLayout.horizontalPadding
+    )
+
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     var onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     var onViewportOffsetChange: ((CGPoint) -> Void)? {
         didSet { reportViewportOffsetIfNeeded(force: true) }
+    }
+    var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
+        didSet { setNeedsLayout() }
     }
     private var lastReportedViewportOffset: CGPoint?
 
@@ -580,7 +575,20 @@ private final class SelectableNoteReadTextView: UITextView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        updateTextContainerInsets()
         reportViewportOffsetIfNeeded()
+    }
+
+    private func updateTextContainerInsets() {
+        let extraHorizontalInset = max((bounds.width - maxReadableContentWidth) / 2, 0)
+        let resolvedInsets = UIEdgeInsets(
+            top: Self.baseTextContainerInsets.top,
+            left: Self.baseTextContainerInsets.left + extraHorizontalInset,
+            bottom: Self.baseTextContainerInsets.bottom,
+            right: Self.baseTextContainerInsets.right + extraHorizontalInset
+        )
+        guard textContainerInset != resolvedInsets else { return }
+        textContainerInset = resolvedInsets
     }
 
     private func reportViewportOffsetIfNeeded(force: Bool = false) {

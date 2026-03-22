@@ -333,14 +333,15 @@ func findDescendantTextView(in view: NSView) -> NSTextView? {
 func makeReadTextView(
     plainText: String,
     frame: CGRect,
-    baseFontSize: CGFloat = 16
+    baseFontSize: CGFloat = 16,
+    maxContentWidth: CGFloat? = nil
 ) throws -> UITextView {
     let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
     let controller = UIHostingController(
         rootView: AnyView(
             SelectableNoteReadView(
                 document: document,
-                maxContentWidth: frame.width,
+                maxContentWidth: maxContentWidth ?? frame.width,
                 onActivateEditing: { _ in }
             )
         )
