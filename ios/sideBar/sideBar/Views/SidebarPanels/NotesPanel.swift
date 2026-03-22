@@ -29,6 +29,7 @@ struct NotesPanelView: View {
     #endif
     @Environment(\.colorScheme) var colorScheme
     @State var pinnedReorderNetworkAvailabilityOverride: Bool?
+    @State var pinnedReorderAutoExitDelayOverride: TimeInterval?
     let pinnedReorderState: NotesPanelPinnedReorderState
     @State var hasLoaded = false
     @State var isArchiveExpanded = false
@@ -52,12 +53,16 @@ struct NotesPanelView: View {
     init(
         viewModel: NotesViewModel,
         pinnedReorderState: NotesPanelPinnedReorderState? = nil,
-        pinnedReorderNetworkAvailability: Bool? = nil
+        pinnedReorderNetworkAvailability: Bool? = nil,
+        pinnedReorderAutoExitDelay: TimeInterval? = nil
     ) {
         self.viewModel = viewModel
         self.pinnedReorderState = pinnedReorderState ?? NotesPanelPinnedReorderState()
         _pinnedReorderNetworkAvailabilityOverride = State(
             initialValue: pinnedReorderNetworkAvailability
+        )
+        _pinnedReorderAutoExitDelayOverride = State(
+            initialValue: pinnedReorderAutoExitDelay
         )
     }
 

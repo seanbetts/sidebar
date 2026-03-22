@@ -28,7 +28,7 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         await viewModel.loadTree()
         let panel = NotesPanelView(viewModel: viewModel)
 
-        XCTAssertEqual(panel.pinnedItems.map(\.id), ["pin-first", "pin-second"])
+        XCTAssertEqual(panel.pinnedItems.map { $0.id }, ["pin-first", "pin-second"])
     }
 
     func testPinnedItemsReflectLocallyUpdatedPinnedOrder() async {
@@ -36,7 +36,9 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
             makeFile(path: "note-a", name: "A.md", created: 100, pinned: true, pinnedOrder: 0),
             makeFile(path: "note-b", name: "B.md", created: 200, pinned: true, pinnedOrder: 1)
         ])
-        let (viewModel, store) = makeViewModelAndStore(tree: initialTree)
+        let fixture = makeViewModelAndStore(tree: initialTree)
+        let viewModel = fixture.viewModel
+        let store = fixture.store
 
         await viewModel.loadTree()
         let panel = NotesPanelView(viewModel: viewModel)
@@ -47,7 +49,7 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         ])
         store.applyTreeUpdate(updatedTree, persist: false)
 
-        XCTAssertEqual(panel.pinnedItems.map(\.id), ["note-b", "note-a"])
+        XCTAssertEqual(panel.pinnedItems.map { $0.id }, ["note-b", "note-a"])
     }
 
     func testPinnedReorderAffordancesRequireAtLeastTwoPinnedNotes() async {
@@ -63,22 +65,22 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
     func testPinnedReorderLifecycleHelpersTrackCurrentInteraction() async {
         let view = await makeView()
 
-        XCTAssertEqual(view.pinnedReorderEditMode, .inactive)
+        XCTAssertFalse(view.isPinnedReorderEditActive)
 
         view.enterPinnedReorder(from: "note-a")
         XCTAssertTrue(view.isPinnedReordering)
         XCTAssertEqual(view.pinnedReorderSourceID, "note-a")
-        XCTAssertEqual(view.pinnedReorderEditMode, .active)
+        XCTAssertTrue(view.isPinnedReorderEditActive)
 
         view.completePinnedReorder()
         XCTAssertFalse(view.isPinnedReordering)
         XCTAssertNil(view.pinnedReorderSourceID)
-        XCTAssertEqual(view.pinnedReorderEditMode, .inactive)
+        XCTAssertFalse(view.isPinnedReorderEditActive)
 
         view.enterPinnedReorder(from: "note-a")
         view.cancelPinnedReorder()
         XCTAssertFalse(view.isPinnedReordering)
-        XCTAssertEqual(view.pinnedReorderEditMode, .inactive)
+        XCTAssertFalse(view.isPinnedReorderEditActive)
     }
 
     func testPinnedReorderCancelsWhenPinnedSetChangesMidGesture() async {
@@ -94,6 +96,23 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         let offlineView = await makeView(isNetworkAvailable: false)
 
         XCTAssertFalse(offlineView.canStartPinnedReorder)
+    }
+
+    func testPinnedReorderMoveKeepsSessionActiveUntilTimeoutAndPersistsFinalOrder() async {
+        let (view, api) = await makeViewWithAPI(autoExitDelay: 0.05)
+
+        view.enterPinnedReorder(from: "note-a")
+        view.movePinnedNotes(from: IndexSet(integer: 0), to: 2)
+
+        XCTAssertTrue(view.isPinnedReordering)
+        XCTAssertEqual(view.pinnedItems.map { $0.id }, ["note-b", "note-a"])
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+
+        try? await Task.sleep(nanoseconds: 120_000_000)
+
+        XCTAssertFalse(view.isPinnedReordering)
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
+        XCTAssertEqual(api.lastPinnedOrderIDs, ["note-b", "note-a"])
     }
 
     func testPinnedReorderDropTargetsRejectNonPinnedOrCrossSectionItems() async {
@@ -259,7 +278,7 @@ private func makeViewModel(tree: FileTree, archivedTree: FileTree? = nil) -> Not
 private func makeViewModelAndStore(
     tree: FileTree,
     archivedTree: FileTree? = nil
-) -> (viewModel: NotesViewModel, store: NotesStore) {
+) -> NotesPanelTestFixture {
     let resolvedArchivedTree = archivedTree ?? FileTree(children: [])
     let api = StaticTreeNotesAPI(tree: tree, archivedTree: resolvedArchivedTree)
     let store = NotesStore(api: api, cache: InMemoryCacheClient())
@@ -269,7 +288,7 @@ private func makeViewModelAndStore(
         toastCenter: ToastCenter(),
         networkStatus: PanelTestNetworkStatus(isNetworkAvailable: true)
     )
-    return (viewModel, store)
+    return NotesPanelTestFixture(viewModel: viewModel, store: store, api: api)
 }
 
 @MainActor
@@ -277,16 +296,33 @@ private func makeView(
     isNetworkAvailable: Bool = true,
     tree: FileTree? = nil
 ) async -> NotesPanelView {
+    let (view, _) = await makeViewWithAPI(
+        isNetworkAvailable: isNetworkAvailable,
+        tree: tree
+    )
+    return view
+}
+
+@MainActor
+private func makeViewWithAPI(
+    isNetworkAvailable: Bool = true,
+    tree: FileTree? = nil,
+    autoExitDelay: TimeInterval? = nil
+) async -> (NotesPanelView, StaticTreeNotesAPI) {
     let resolvedTree = tree ?? FileTree(children: [
         makeFile(path: "note-a", name: "A.md", created: 100, pinned: true, pinnedOrder: 0),
         makeFile(path: "note-b", name: "B.md", created: 200, pinned: true, pinnedOrder: 1)
     ])
-    let (viewModel, _) = makeViewModelAndStore(tree: resolvedTree)
+    let fixture = makeViewModelAndStore(tree: resolvedTree)
+    let viewModel = fixture.viewModel
+    let api = fixture.api
     await viewModel.loadTree()
-    return NotesPanelView(
+    let view = NotesPanelView(
         viewModel: viewModel,
-        pinnedReorderNetworkAvailability: isNetworkAvailable
+        pinnedReorderNetworkAvailability: isNetworkAvailable,
+        pinnedReorderAutoExitDelay: autoExitDelay
     )
+    return (view, api)
 }
 
 private func makeFile(
@@ -314,6 +350,12 @@ private func makeFile(
     )
 }
 
+private struct NotesPanelTestFixture {
+    let viewModel: NotesViewModel
+    let store: NotesStore
+    let api: StaticTreeNotesAPI
+}
+
 @MainActor
 private struct PanelTestNetworkStatus: NetworkStatusProviding {
     let isNetworkAvailable: Bool
@@ -327,6 +369,8 @@ private enum StaticTreeAPIError: Error {
 private final class StaticTreeNotesAPI: NotesProviding {
     private let tree: FileTree
     private let archivedTree: FileTree
+    private(set) var updatePinnedOrderCallCount = 0
+    private(set) var lastPinnedOrderIDs: [String] = []
 
     init(tree: FileTree, archivedTree: FileTree) {
         self.tree = tree
@@ -397,7 +441,8 @@ private final class StaticTreeNotesAPI: NotesProviding {
     }
 
     func updatePinnedOrder(ids: [String]) async throws {
-        _ = ids
+        updatePinnedOrderCallCount += 1
+        lastPinnedOrderIDs = ids
     }
 
     func deleteNote(id: String) async throws -> NotePayload {

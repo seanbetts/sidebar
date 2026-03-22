@@ -186,7 +186,10 @@ extension WebsitesPanelView {
     }
 
     var pinnedItemsSorted: [WebsiteItem] {
-        viewModel.panelPinnedItemsSorted
+        let items = viewModel.panelPinnedItemsSorted
+        guard !pinnedReorderDisplayedIDs.isEmpty else { return items }
+        let lookup = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        return pinnedReorderDisplayedIDs.compactMap { lookup[$0] }
     }
 
     var pinnedItems: [WebsiteItem] {

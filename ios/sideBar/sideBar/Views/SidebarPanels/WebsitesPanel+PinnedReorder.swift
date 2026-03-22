@@ -9,8 +9,11 @@ import AppKit
 @MainActor
 final class WebsitesPanelPinnedReorderState: ObservableObject {
     @Published var isReordering = false
+    @Published var isPersisting = false
     @Published var sourceID: String?
     @Published var snapshotIDs: [String] = []
+    @Published var displayedIDs: [String] = []
+    var autoExitTask: Task<Void, Never>?
 }
 
 extension WebsitesPanelView {
@@ -21,7 +24,7 @@ extension WebsitesPanelView {
     }
 
     var canStartPinnedReorder: Bool {
-        pinnedReorderCanInteract && !isPinnedReordering
+        pinnedReorderCanInteract && !isPinnedReordering && !isPinnedReorderPersisting
     }
 
     var isPinnedReordering: Bool {
@@ -32,8 +35,16 @@ extension WebsitesPanelView {
         pinnedReorderState.sourceID
     }
 
-    var pinnedReorderEditMode: EditMode {
-        isPinnedReordering ? .active : .inactive
+    var pinnedReorderDisplayedIDs: [String] {
+        pinnedReorderState.displayedIDs
+    }
+
+    var isPinnedReorderPersisting: Bool {
+        pinnedReorderState.isPersisting
+    }
+
+    var isPinnedReorderEditActive: Bool {
+        isPinnedReordering
     }
 
     func enterPinnedReorder(from sourceID: String) {
@@ -41,12 +52,18 @@ extension WebsitesPanelView {
         pinnedReorderState.isReordering = true
         pinnedReorderState.sourceID = sourceID
         pinnedReorderState.snapshotIDs = pinnedItemsSorted.map(\.id)
+        pinnedReorderState.displayedIDs = pinnedReorderState.snapshotIDs
+        schedulePinnedReorderAutoExit()
     }
 
     func completePinnedReorder() {
+        pinnedReorderState.autoExitTask?.cancel()
+        pinnedReorderState.autoExitTask = nil
         pinnedReorderState.isReordering = false
+        pinnedReorderState.isPersisting = false
         pinnedReorderState.sourceID = nil
         pinnedReorderState.snapshotIDs = []
+        pinnedReorderState.displayedIDs = []
     }
 
     func cancelPinnedReorder() {
@@ -54,7 +71,7 @@ extension WebsitesPanelView {
     }
 
     func handlePinnedSetChanged(_ pinnedIDs: [String]) {
-        guard isPinnedReordering else { return }
+        guard isPinnedReordering || isPinnedReorderPersisting else { return }
         guard pinnedIDs != pinnedReorderState.snapshotIDs else { return }
         cancelPinnedReorder()
     }
@@ -87,19 +104,15 @@ extension WebsitesPanelView {
     func movePinnedWebsites(from source: IndexSet, to destination: Int) {
         guard isPinnedReordering else { return }
         let reorderedIDs = reorderedPinnedIDs(from: source, to: destination)
-        Task { @MainActor in
-            _ = await viewModel.reorderPinnedWebsites(ids: reorderedIDs)
-            completePinnedReorder()
-        }
+        pinnedReorderState.displayedIDs = reorderedIDs
+        schedulePinnedReorderAutoExit()
     }
 
     func performPinnedDrop(sourceID: String, destinationID: String) {
         guard isPinnedReordering || pinnedReorderCanInteract else { return }
         let reorderedIDs = reorderedPinnedIDs(moving: sourceID, to: destinationID)
-        Task { @MainActor in
-            _ = await viewModel.reorderPinnedWebsites(ids: reorderedIDs)
-            completePinnedReorder()
-        }
+        pinnedReorderState.displayedIDs = reorderedIDs
+        schedulePinnedReorderAutoExit()
     }
 
     func canAcceptPinnedDrop(
@@ -170,8 +183,42 @@ extension WebsitesPanelView {
         pinnedReorderNetworkIsAvailable && pinnedItemsSorted.count > 1
     }
 
+    private var pinnedReorderAutoExitDelay: TimeInterval {
+        pinnedReorderAutoExitDelayOverride ?? 4
+    }
+
     private var pinnedReorderNetworkIsAvailable: Bool {
         pinnedReorderNetworkAvailabilityOverride
             ?? (appEnvironment.isNetworkAvailable && !appEnvironment.isOffline)
+    }
+
+    private func schedulePinnedReorderAutoExit() {
+        pinnedReorderState.autoExitTask?.cancel()
+        let delay = pinnedReorderAutoExitDelay
+        pinnedReorderState.autoExitTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            await commitPinnedReorderIfNeeded()
+        }
+    }
+
+    private func commitPinnedReorderIfNeeded() async {
+        guard isPinnedReordering else { return }
+        pinnedReorderState.autoExitTask?.cancel()
+        pinnedReorderState.autoExitTask = nil
+
+        let snapshotIDs = pinnedReorderState.snapshotIDs
+        let finalIDs = pinnedReorderState.displayedIDs.isEmpty ? snapshotIDs : pinnedReorderState.displayedIDs
+
+        pinnedReorderState.isReordering = false
+        pinnedReorderState.sourceID = nil
+
+        guard finalIDs != snapshotIDs else {
+            completePinnedReorder()
+            return
+        }
+
+        pinnedReorderState.isPersisting = true
+        _ = await viewModel.reorderPinnedWebsites(ids: finalIDs)
+        completePinnedReorder()
     }
 }

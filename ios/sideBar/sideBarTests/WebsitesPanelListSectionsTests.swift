@@ -29,7 +29,7 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
     }
 
     func testPinnedItemsReflectLocallyUpdatedPinnedOrder() async {
-        let (viewModel, store) = makeViewModelAndStore(
+        let fixture = makeViewModelAndStore(
             items: [
                 makeWebsiteItem(id: "w1", pinned: true, pinnedOrder: 0),
                 makeWebsiteItem(id: "w2", pinned: true, pinnedOrder: 1),
@@ -37,6 +37,8 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
             ],
             networkIsAvailable: true
         )
+        let viewModel = fixture.viewModel
+        let store = fixture.store
         await viewModel.load()
         let panel = WebsitesPanelView(
             viewModel: viewModel,
@@ -45,7 +47,7 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
 
         store.applyPinnedOrder(["w2", "w1"])
 
-        XCTAssertEqual(panel.pinnedItemsSorted.map(\.id), ["w2", "w1"])
+        XCTAssertEqual(panel.pinnedItemsSorted.map { $0.id }, ["w2", "w1"])
     }
 
     func testPinnedReorderAffordancesRequireAtLeastTwoPinnedSites() async {
@@ -60,23 +62,40 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
     func testPinnedReorderLifecycleHelpersTrackCurrentInteraction() async {
         let view = await makeView()
 
-        XCTAssertEqual(view.pinnedReorderEditMode, .inactive)
+        XCTAssertFalse(view.isPinnedReorderEditActive)
 
         view.enterPinnedReorder(from: "w1")
         XCTAssertTrue(view.isPinnedReordering)
         XCTAssertEqual(view.pinnedReorderSourceID, "w1")
-        XCTAssertEqual(view.pinnedReorderEditMode, .active)
+        XCTAssertTrue(view.isPinnedReorderEditActive)
 
         view.completePinnedReorder()
         XCTAssertFalse(view.isPinnedReordering)
         XCTAssertNil(view.pinnedReorderSourceID)
-        XCTAssertEqual(view.pinnedReorderEditMode, .inactive)
+        XCTAssertFalse(view.isPinnedReorderEditActive)
     }
 
     func testPinnedReorderRejectsOfflineActivation() async {
         let offlineView = await makeView(isNetworkAvailable: false)
 
         XCTAssertFalse(offlineView.canStartPinnedReorder)
+    }
+
+    func testPinnedReorderMoveKeepsSessionActiveUntilTimeoutAndPersistsFinalOrder() async {
+        let (view, api) = await makeViewWithAPI(autoExitDelay: 0.05)
+
+        view.enterPinnedReorder(from: "w1")
+        view.movePinnedWebsites(from: IndexSet(integer: 0), to: 2)
+
+        XCTAssertTrue(view.isPinnedReordering)
+        XCTAssertEqual(view.pinnedItemsSorted.map { $0.id }, ["w2", "w1"])
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
+
+        try? await Task.sleep(nanoseconds: 120_000_000)
+
+        XCTAssertFalse(view.isPinnedReordering)
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
+        XCTAssertEqual(api.lastPinnedOrderIDs, ["w2", "w1"])
     }
 
     func testPinnedReorderCancelsWhenPinnedSetChangesMidGesture() async {
@@ -167,22 +186,41 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         isNetworkAvailable: Bool = true,
         items: [WebsiteItem]? = nil
     ) async -> WebsitesPanelView {
+        let (view, _) = await makeViewWithAPI(
+            isNetworkAvailable: isNetworkAvailable,
+            items: items
+        )
+        return view
+    }
+
+    private func makeViewWithAPI(
+        isNetworkAvailable: Bool = true,
+        items: [WebsiteItem]? = nil,
+        autoExitDelay: TimeInterval? = nil
+    ) async -> (WebsitesPanelView, WebsitesPanelTestWebsitesAPI) {
         let resolvedItems = items ?? [
             makeWebsiteItem(id: "w1", pinned: true, pinnedOrder: 0),
             makeWebsiteItem(id: "w2", pinned: true, pinnedOrder: 1)
         ]
-        let (viewModel, _) = makeViewModelAndStore(items: resolvedItems, networkIsAvailable: isNetworkAvailable)
-        await viewModel.load()
-        return WebsitesPanelView(
-            viewModel: viewModel,
-            pinnedReorderNetworkAvailability: isNetworkAvailable
+        let fixture = makeViewModelAndStore(
+            items: resolvedItems,
+            networkIsAvailable: isNetworkAvailable
         )
+        let viewModel = fixture.viewModel
+        let api = fixture.api
+        await viewModel.load()
+        let view = WebsitesPanelView(
+            viewModel: viewModel,
+            pinnedReorderNetworkAvailability: isNetworkAvailable,
+            pinnedReorderAutoExitDelay: autoExitDelay
+        )
+        return (view, api)
     }
 
     private func makeViewModelAndStore(
         items: [WebsiteItem],
         networkIsAvailable: Bool
-    ) -> (viewModel: WebsitesViewModel, store: WebsitesStore) {
+    ) -> WebsitesPanelTestFixture {
         let api = WebsitesPanelTestWebsitesAPI(
             listResponse: WebsitesResponse(items: items),
             archivedListResponse: WebsitesResponse(items: [])
@@ -195,7 +233,7 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
             networkStatus: WebsitesPanelTestNetworkStatus(isNetworkAvailable: networkIsAvailable)
         )
         items.forEach { store.updateListItem($0, persist: false) }
-        return (viewModel, store)
+        return WebsitesPanelTestFixture(viewModel: viewModel, store: store, api: api)
     }
 
     private func makeWebsiteItem(
@@ -225,6 +263,12 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
     }
 }
 
+private struct WebsitesPanelTestFixture {
+    let viewModel: WebsitesViewModel
+    let store: WebsitesStore
+    let api: WebsitesPanelTestWebsitesAPI
+}
+
 private struct WebsitesPanelTestNetworkStatus: NetworkStatusProviding {
     let isNetworkAvailable: Bool
     let isOffline: Bool = false
@@ -233,6 +277,8 @@ private struct WebsitesPanelTestNetworkStatus: NetworkStatusProviding {
 private final class WebsitesPanelTestWebsitesAPI: WebsitesProviding {
     let listResponse: WebsitesResponse
     let archivedListResponse: WebsitesResponse
+    private(set) var updatePinnedOrderCallCount = 0
+    private(set) var lastPinnedOrderIDs: [String] = []
 
     init(listResponse: WebsitesResponse, archivedListResponse: WebsitesResponse) {
         self.listResponse = listResponse
@@ -297,8 +343,8 @@ private final class WebsitesPanelTestWebsitesAPI: WebsitesProviding {
     }
 
     func updatePinnedOrder(ids: [String]) async throws {
-        _ = ids
-        throw WebsitesPanelTestError.unused
+        updatePinnedOrderCallCount += 1
+        lastPinnedOrderIDs = ids
     }
 
     func delete(id: String, clientUpdatedAt: String?) async throws {

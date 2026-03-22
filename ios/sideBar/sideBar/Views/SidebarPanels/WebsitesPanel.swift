@@ -26,6 +26,7 @@ struct WebsitesPanelView: View {
     #endif
     @Environment(\.colorScheme) var colorScheme
     @State var pinnedReorderNetworkAvailabilityOverride: Bool?
+    @State var pinnedReorderAutoExitDelayOverride: TimeInterval?
     let pinnedReorderState: WebsitesPanelPinnedReorderState
     @State var hasLoaded = false
     @State var isInitialLoadPending = false
@@ -49,12 +50,16 @@ struct WebsitesPanelView: View {
     init(
         viewModel: WebsitesViewModel,
         pinnedReorderState: WebsitesPanelPinnedReorderState? = nil,
-        pinnedReorderNetworkAvailability: Bool? = nil
+        pinnedReorderNetworkAvailability: Bool? = nil,
+        pinnedReorderAutoExitDelay: TimeInterval? = nil
     ) {
         self.viewModel = viewModel
         self.pinnedReorderState = pinnedReorderState ?? WebsitesPanelPinnedReorderState()
         _pinnedReorderNetworkAvailabilityOverride = State(
             initialValue: pinnedReorderNetworkAvailability
+        )
+        _pinnedReorderAutoExitDelayOverride = State(
+            initialValue: pinnedReorderAutoExitDelay
         )
     }
 
@@ -276,7 +281,9 @@ extension WebsitesPanelView {
                 }
             }
             .sidebarPanelListStyle()
-            .environment(\.editMode, .constant(pinnedReorderEditMode))
+            #if os(iOS)
+            .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
+            #endif
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .refreshable {
@@ -359,7 +366,9 @@ extension WebsitesPanelView {
                                 let index = staggerIndex(for: item.id, section: "archived")
                                 websiteListRow(item: item, index: index, allowArchive: false)
             }
-            .environment(\.editMode, .constant(pinnedReorderEditMode))
+            #if os(iOS)
+            .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
+            #endif
         }
     }
 }
