@@ -149,10 +149,10 @@ enum NotesAttributedDocumentCodec {
                 piece[range].link = segment.link.flatMap { URL(string: $0.url) }
                 #if os(iOS)
                 piece[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
-                    inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+                    NoteTextAppearance.backgroundColor(for: blockType, inlineCode: inlineCode)
                 #elseif os(macOS)
                 piece[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
-                    inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+                    NoteTextAppearance.backgroundColor(for: blockType, inlineCode: inlineCode)
                 #endif
                 piece[range].paragraphStyle = paragraphStyle(for: blockType, baseFontSize: baseFontSize)
                 if let blockMarker = blockMarker(for: blockType) {

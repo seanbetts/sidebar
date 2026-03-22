@@ -50,7 +50,7 @@ public final class NotesViewModel: ObservableObject {
     private let networkStatus: any NetworkStatusProviding
     private let searchTask = ManagedTask()
     private var cancellables = Set<AnyCancellable>()
-    private var activeNoteMirrorTask: Task<Void, Never>?
+    var activeNoteMirrorTask: Task<Void, Never>?
     private var pendingNoteId: String?
     var searchDebounceDelay: TimeInterval = 0.3
 
@@ -86,6 +86,10 @@ public final class NotesViewModel: ObservableObject {
 
     deinit {
         activeNoteMirrorTask?.cancel()
+    }
+
+    func setMirroredActiveNote(_ note: NotePayload?) {
+        activeNote = note
     }
 
     public func loadTree() async {

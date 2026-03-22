@@ -6,7 +6,7 @@ extension NotesViewModel {
         activeNoteMirrorTask = Task { @MainActor [weak self] in
             await Task.yield()
             guard Task.isCancelled == false else { return }
-            self?.activeNote = note
+            self?.setMirroredActiveNote(note)
         }
     }
 }

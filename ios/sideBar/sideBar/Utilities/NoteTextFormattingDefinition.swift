@@ -106,10 +106,10 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         normalized[range].link = link
         #if os(iOS)
         normalized[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
-            traits.monospaced ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+            NoteTextAppearance.backgroundColor(for: blockType, inlineCode: traits.monospaced)
         #elseif os(macOS)
         normalized[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
-            traits.monospaced ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+            NoteTextAppearance.backgroundColor(for: blockType, inlineCode: traits.monospaced)
         #endif
         normalized[range].paragraphStyle = paragraphStyle(for: blockType)
         normalized[range].noteBlock = noteBlock

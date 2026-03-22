@@ -129,7 +129,16 @@ private extension AppKitNoteFormattingPopoverView {
     }
 
     private var inlineGroupDefinitions: [(String, [InlineActionItem])] {
-        [
+        let codeBlockAction: (@MainActor @Sendable () -> Void)?
+        if currentConfiguration.isCodeBlockEnabled {
+            codeBlockAction = { [weak self] in
+                self?.currentConfiguration.onCodeBlockTap()
+                self?.onDismissRequested()
+            }
+        } else {
+            codeBlockAction = nil
+        }
+        return [
             (
                 "note-formatting-inline-group",
                 [
@@ -161,7 +170,7 @@ private extension AppKitNoteFormattingPopoverView {
                     InlineActionItem(
                         identifier: "note-formatting-code-block",
                         symbol: "chevron.left.forwardslash.chevron.right",
-                        action: nil
+                        action: codeBlockAction
                     )
                 ]
             )
@@ -170,9 +179,6 @@ private extension AppKitNoteFormattingPopoverView {
 
     private var blockGroupDefinitions: [(String, [InlineActionItem])] {
         [
-            ("note-formatting-link-group", [
-                InlineActionItem(identifier: "note-formatting-link", symbol: "link", action: nil)
-            ]),
             ("note-formatting-future-list-group", [
                 InlineActionItem(identifier: "note-formatting-unordered-list", symbol: "list.bullet", action: nil),
                 InlineActionItem(identifier: "note-formatting-ordered-list", symbol: "list.number", action: nil),
@@ -403,7 +409,8 @@ private extension AppKitNoteFormattingPopoverView {
             ("note-formatting-italic", currentConfiguration.isItalicActive),
             ("note-formatting-underline", currentConfiguration.isUnderlineActive),
             ("note-formatting-strikethrough", currentConfiguration.isStrikethroughActive),
-            ("note-formatting-inline-code", currentConfiguration.isInlineCodeActive)
+            ("note-formatting-inline-code", currentConfiguration.isInlineCodeActive),
+            ("note-formatting-code-block", currentConfiguration.isCodeBlockActive)
         ]
 
         for (identifier, isActive) in buttonStates {

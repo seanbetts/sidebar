@@ -69,7 +69,16 @@ private extension UIKitNoteFormattingPopoverView {
     }
 
     private var inlineGroupDefinitions: [(String, [InlineActionItem])] {
-        [
+        let codeBlockAction: (@MainActor @Sendable () -> Void)?
+        if currentConfiguration.isCodeBlockEnabled {
+            codeBlockAction = { [weak self] in
+                self?.currentConfiguration.onCodeBlockTap()
+                self?.onDismissRequested()
+            }
+        } else {
+            codeBlockAction = nil
+        }
+        return [
             (
                 "note-formatting-inline-group",
                 [
@@ -101,7 +110,7 @@ private extension UIKitNoteFormattingPopoverView {
                     InlineActionItem(
                         identifier: "note-formatting-code-block",
                         symbol: "chevron.left.forwardslash.chevron.right",
-                        action: nil
+                        action: codeBlockAction
                     )
                 ]
             )
@@ -110,10 +119,6 @@ private extension UIKitNoteFormattingPopoverView {
 
     private var blockGroupDefinitions: [(String, [InlineActionItem])] {
         [
-            (
-                "note-formatting-link-group",
-                [InlineActionItem(identifier: "note-formatting-link", symbol: "link", action: nil)]
-            ),
             (
                 "note-formatting-future-list-group",
                 [
@@ -332,7 +337,8 @@ private extension UIKitNoteFormattingPopoverView {
             ("note-formatting-italic", currentConfiguration.isItalicActive, "italic"),
             ("note-formatting-underline", currentConfiguration.isUnderlineActive, "underline"),
             ("note-formatting-strikethrough", currentConfiguration.isStrikethroughActive, "strikethrough"),
-            ("note-formatting-inline-code", currentConfiguration.isInlineCodeActive, "curlybraces")
+            ("note-formatting-inline-code", currentConfiguration.isInlineCodeActive, "curlybraces"),
+            ("note-formatting-code-block", currentConfiguration.isCodeBlockActive, "chevron.left.forwardslash.chevron.right")
         ]
 
         for (identifier, isActive, symbol) in buttonStates {

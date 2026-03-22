@@ -49,12 +49,37 @@ extension NotesEditorViewModel {
         return nativeEditorViewModel.canApplyTextStyle(style)
     }
 
+    public func isCodeBlockActive() -> Bool {
+        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
+              canApplyFormattingCommands() else { return false }
+        return nativeEditorViewModel.isCodeBlockActive()
+    }
+
+    public func canApplyCodeBlock() -> Bool {
+        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
+              canApplyFormattingCommands() else { return false }
+        return nativeEditorViewModel.canApplyCodeBlock()
+    }
+
     public func setTextStyle(_ style: NoteTextStyle) {
         guard let nativeEditorViewModel = attachedNativeEditorViewModel,
               canApplyFormattingCommands() else { return }
         let previousContent = nativeEditorViewModel.attributedContent
         let previousSelection = nativeEditorViewModel.selection
         nativeEditorViewModel.setTextStyle(style)
+        finalizeNativeEditorMutation(
+            nativeEditorViewModel,
+            previousContent: previousContent,
+            previousSelection: previousSelection
+        )
+    }
+
+    public func toggleCodeBlock() {
+        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
+              canApplyFormattingCommands() else { return }
+        let previousContent = nativeEditorViewModel.attributedContent
+        let previousSelection = nativeEditorViewModel.selection
+        nativeEditorViewModel.toggleCodeBlock()
         finalizeNativeEditorMutation(
             nativeEditorViewModel,
             previousContent: previousContent,
@@ -79,6 +104,8 @@ extension NotesEditorViewModel {
             isUnderlineActive: isFormattingActive(.underline),
             isStrikethroughActive: isFormattingActive(.strikethrough),
             isInlineCodeActive: isFormattingActive(.inlineCode),
+            isCodeBlockActive: isCodeBlockActive(),
+            isCodeBlockEnabled: canApplyCodeBlock(),
             isEnabled: canApplyFormattingCommands(),
             onTextStyleSelection: { [weak self] in self?.setTextStyle($0) },
             onBoldTap: { [weak self] in self?.toggleFormatting(.bold) },
@@ -86,6 +113,7 @@ extension NotesEditorViewModel {
             onUnderlineTap: { [weak self] in self?.toggleFormatting(.underline) },
             onStrikethroughTap: { [weak self] in self?.toggleFormatting(.strikethrough) },
             onInlineCodeTap: { [weak self] in self?.toggleFormatting(.inlineCode) },
+            onCodeBlockTap: { [weak self] in self?.toggleCodeBlock() },
             onTitleShortcut: { [weak self] in self?.setTextStyle(.title) },
             onHeadingShortcut: { [weak self] in self?.setTextStyle(.heading) },
             onSubheadingShortcut: { [weak self] in self?.setTextStyle(.subheading) },

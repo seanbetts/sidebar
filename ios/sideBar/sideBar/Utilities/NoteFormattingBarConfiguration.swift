@@ -13,6 +13,8 @@ struct NoteFormattingBarConfiguration {
     let isUnderlineActive: Bool
     let isStrikethroughActive: Bool
     let isInlineCodeActive: Bool
+    let isCodeBlockActive: Bool
+    let isCodeBlockEnabled: Bool
     let isEnabled: Bool
     let onTextStyleSelection: @MainActor @Sendable (NoteTextStyle) -> Void
     let onBoldTap: @MainActor @Sendable () -> Void
@@ -20,6 +22,7 @@ struct NoteFormattingBarConfiguration {
     let onUnderlineTap: @MainActor @Sendable () -> Void
     let onStrikethroughTap: @MainActor @Sendable () -> Void
     let onInlineCodeTap: @MainActor @Sendable () -> Void
+    let onCodeBlockTap: @MainActor @Sendable () -> Void
     let onTitleShortcut: @MainActor @Sendable () -> Void
     let onHeadingShortcut: @MainActor @Sendable () -> Void
     let onSubheadingShortcut: @MainActor @Sendable () -> Void
@@ -37,6 +40,8 @@ struct NoteFormattingBarConfiguration {
         isUnderlineActive: Bool,
         isStrikethroughActive: Bool,
         isInlineCodeActive: Bool = false,
+        isCodeBlockActive: Bool = false,
+        isCodeBlockEnabled: Bool = false,
         isEnabled: Bool,
         onTextStyleSelection: @escaping @MainActor @Sendable (NoteTextStyle) -> Void = { _ in },
         onBoldTap: @escaping @MainActor @Sendable () -> Void,
@@ -44,6 +49,7 @@ struct NoteFormattingBarConfiguration {
         onUnderlineTap: @escaping @MainActor @Sendable () -> Void,
         onStrikethroughTap: @escaping @MainActor @Sendable () -> Void,
         onInlineCodeTap: @escaping @MainActor @Sendable () -> Void = {},
+        onCodeBlockTap: @escaping @MainActor @Sendable () -> Void = {},
         onTitleShortcut: @escaping @MainActor @Sendable () -> Void = {},
         onHeadingShortcut: @escaping @MainActor @Sendable () -> Void = {},
         onSubheadingShortcut: @escaping @MainActor @Sendable () -> Void = {},
@@ -60,6 +66,8 @@ struct NoteFormattingBarConfiguration {
         self.isUnderlineActive = isUnderlineActive
         self.isStrikethroughActive = isStrikethroughActive
         self.isInlineCodeActive = isInlineCodeActive
+        self.isCodeBlockActive = isCodeBlockActive
+        self.isCodeBlockEnabled = isCodeBlockEnabled
         self.isEnabled = isEnabled
         self.onTextStyleSelection = onTextStyleSelection
         self.onBoldTap = onBoldTap
@@ -67,6 +75,7 @@ struct NoteFormattingBarConfiguration {
         self.onUnderlineTap = onUnderlineTap
         self.onStrikethroughTap = onStrikethroughTap
         self.onInlineCodeTap = onInlineCodeTap
+        self.onCodeBlockTap = onCodeBlockTap
         self.onTitleShortcut = onTitleShortcut
         self.onHeadingShortcut = onHeadingShortcut
         self.onSubheadingShortcut = onSubheadingShortcut

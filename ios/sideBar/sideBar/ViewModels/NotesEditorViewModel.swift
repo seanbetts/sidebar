@@ -45,7 +45,7 @@ public final class NotesEditorViewModel: ObservableObject {
     private var pendingEditSelectionTarget: PendingEditSelectionTarget?
     private var pendingEditViewportAnchorY: CGFloat?
     private var syncRequestedWhileSaving = false
-    private var pendingNoteUpdateTask: Task<Void, Never>?
+    var pendingNoteUpdateTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     init(
@@ -70,7 +70,7 @@ public final class NotesEditorViewModel: ObservableObject {
         pendingNoteUpdateTask?.cancel()
     }
 
-    private func handleNoteUpdate(_ note: NotePayload?) {
+    func handleNoteUpdate(_ note: NotePayload?) {
         let previousNoteId = currentNoteId
         guard let note else {
             resetStateForNoActiveNote()

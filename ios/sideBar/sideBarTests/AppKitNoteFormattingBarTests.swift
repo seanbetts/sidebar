@@ -32,25 +32,19 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
     }
 
     func testFormattingPopoverMatchesIOSSectionStructureOnMacOS() async throws {
-        let harness = await MountedNotesDetailHarness()
-        defer { harness.dispose() }
-        harness.mount()
-        await harness.settle()
+        let popover = AppKitNoteFormattingPopoverView(configuration: makeEnabledFormattingConfiguration())
+        popover.frame = NSRect(x: 0, y: 0, width: 400, height: 260)
+        popover.layoutSubtreeIfNeeded()
 
-        harness.context.makeView().activateReadSurfaceEditing(at: .start)
-        await waitUntil(timeout: .seconds(2)) {
-            harness.context.editorViewModel.presentationMode == .edit
-        }
-
-        try await openFormattingPopover()
-
-        let popover = try XCTUnwrap(findFormattingPopover())
         XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-text-style-strip"))
         XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-inline-group"))
         XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-code-group"))
-        XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-link-group"))
         XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-future-list-group"))
         XCTAssertNotNil(findDescendantView(in: popover, identifier: "note-formatting-future-blockquote-group"))
+        XCTAssertEqual(
+            (findDescendantView(in: popover, identifier: "note-formatting-code-block") as? NSButton)?.isEnabled,
+            true
+        )
         XCTAssertEqual(findTextStyleButtonIdentifiers(in: popover), [
             "note-formatting-text-style-title",
             "note-formatting-text-style-heading",
@@ -418,6 +412,33 @@ private func findTextStyleStrip(in popover: NSView) -> NSStackView? {
 @MainActor
 private func findTextStyleScrollView(in popover: NSView) -> NSScrollView? {
     findDescendantView(in: popover, identifier: "note-formatting-text-style-strip") as? NSScrollView
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func makeEnabledFormattingConfiguration() -> NoteFormattingBarConfiguration {
+    .init(
+        activeTextStyle: .body,
+        isTextStyleSectionEnabled: true,
+        isBodyTextStyleEnabled: true,
+        isTitleTextStyleEnabled: true,
+        isHeadingTextStyleEnabled: true,
+        isSubheadingTextStyleEnabled: true,
+        isBoldActive: false,
+        isItalicActive: false,
+        isUnderlineActive: false,
+        isStrikethroughActive: false,
+        isInlineCodeActive: false,
+        isCodeBlockEnabled: true,
+        isEnabled: true,
+        onTextStyleSelection: { _ in },
+        onBoldTap: {},
+        onItalicTap: {},
+        onUnderlineTap: {},
+        onStrikethroughTap: {},
+        onInlineCodeTap: {},
+        onCodeBlockTap: {}
+    )
 }
 
 @MainActor

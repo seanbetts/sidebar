@@ -10,8 +10,26 @@ enum NoteTextAppearance {
     #if canImport(UIKit)
     static var caretTintColor: UIColor { .secondaryLabel }
     static var inlineCodeBackgroundColor: UIColor { .secondarySystemFill }
+    static var codeBlockBackgroundColor: UIColor { inlineCodeBackgroundColor }
+
+    static func backgroundColor(
+        for blockType: NotesSemanticDocument.BlockType,
+        inlineCode: Bool
+    ) -> UIColor? {
+        _ = blockType
+        return inlineCode ? inlineCodeBackgroundColor : nil
+    }
     #elseif canImport(AppKit)
     static var caretTintColor: NSColor { .secondaryLabelColor }
     static var inlineCodeBackgroundColor: NSColor { .quaternaryLabelColor.withAlphaComponent(0.18) }
+    static var codeBlockBackgroundColor: NSColor { inlineCodeBackgroundColor }
+
+    static func backgroundColor(
+        for blockType: NotesSemanticDocument.BlockType,
+        inlineCode: Bool
+    ) -> NSColor? {
+        _ = blockType
+        return inlineCode ? inlineCodeBackgroundColor : nil
+    }
     #endif
 }

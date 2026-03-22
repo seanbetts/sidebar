@@ -121,6 +121,45 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(backgroundColor, NoteTextAppearance.inlineCodeBackgroundColor)
     }
 
+    func testMountedAppKitEditorRendersCodeBlockBackgroundAsSingleRect() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .codeBlock, content: [.init(text: "abcdefghij\nab", marks: [])])
+            ]
+        )
+        let textView = try mountEditorTextView(
+            document: document,
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+
+        let font = try fontAttribute(in: textView, at: 0)
+        XCTAssertNil(textView.textStorage?.attribute(.backgroundColor, at: 0, effectiveRange: nil))
+
+        let longLineRect = try glyphRect(in: textView, characterIndex: 9)
+        let shortLineRect = try glyphRect(in: textView, characterIndex: 12)
+        let samplePoint = NSPoint(
+            x: textView.textContainerInset.width + shortLineRect.maxX + ((longLineRect.maxX - shortLineRect.maxX) * 0.5),
+            y: textView.textContainerInset.height + shortLineRect.midY
+        )
+        let blockRect = try XCTUnwrap(
+            NoteCodeBlockBackgroundLayout.rects(
+                textStorage: textView.textStorage,
+                layoutManager: textView.layoutManager,
+                textContainer: textView.textContainer,
+                insetX: textView.textContainerInset.width,
+                insetY: textView.textContainerInset.height
+            ).first
+        )
+
+        XCTAssertTrue(notePlatformFontTraits(from: font).monospaced)
+        XCTAssertTrue(blockRect.contains(samplePoint))
+        XCTAssertGreaterThan(blockRect.maxX, textView.textContainerInset.width + longLineRect.maxX)
+        XCTAssertLessThan(blockRect.minY, textView.textContainerInset.height + longLineRect.minY)
+        XCTAssertGreaterThan(blockRect.maxY, textView.textContainerInset.height + shortLineRect.maxY)
+    }
+
     func testMountedAppKitEditorUsesSecondaryLabelCaretTint() throws {
         let textView = try mountEditorTextView(
             document: NotesSemanticDocumentProjection.document(fromPlainText: "Hello"),

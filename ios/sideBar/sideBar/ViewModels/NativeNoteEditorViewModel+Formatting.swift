@@ -94,6 +94,21 @@ extension NativeNoteEditorViewModel {
         return touchedBlocks.allSatisfy { NoteTextStyle(blockType: $0.block.type) != nil }
     }
 
+    func isCodeBlockActive() -> Bool {
+        let document = currentPersistenceSnapshot().document
+        let touchedBlocks = touchedBlockInfos(in: document)
+        guard !touchedBlocks.isEmpty else { return false }
+        return touchedBlocks.allSatisfy { $0.block.type == .codeBlock }
+    }
+
+    func canApplyCodeBlock() -> Bool {
+        guard !isReadOnly else { return false }
+        let document = currentPersistenceSnapshot().document
+        let touchedBlocks = touchedBlockInfos(in: document)
+        guard !touchedBlocks.isEmpty else { return false }
+        return touchedBlocks.allSatisfy(canToggleCodeBlock(for:))
+    }
+
     func canApplyTextStyle(_ style: NoteTextStyle) -> Bool {
         guard !isReadOnly else { return false }
         guard isTextStyleSectionEnabled() else { return false }
@@ -126,6 +141,44 @@ extension NativeNoteEditorViewModel {
             guard block.type != style.blockType else { continue }
             updatedBlocks[blockInfo.index] = .init(
                 type: style.blockType,
+                content: block.content,
+                checked: block.checked
+            )
+            didMutate = true
+        }
+
+        guard didMutate else { return }
+
+        let updatedDocument = NotesSemanticDocument(
+            version: document.version,
+            blocks: updatedBlocks
+        )
+
+        var updatedContent = NotesAttributedDocumentCodec.attributedString(
+            from: updatedDocument,
+            baseFontSize: baseFontSize
+        )
+        constrainEditorDocument(&updatedContent)
+        requestViewportPreservationOnNextProgrammaticRender()
+        attributedContent = updatedContent
+        selection = selection(from: selectionSnapshot, in: updatedContent)
+    }
+
+    func toggleCodeBlock() {
+        guard canApplyCodeBlock() else { return }
+
+        let document = currentPersistenceSnapshot().document
+        let touchedBlocks = touchedBlockInfos(in: document)
+        let targetType: NotesSemanticDocument.BlockType = isCodeBlockActive() ? .paragraph : .codeBlock
+        let selectionSnapshot = selectionSnapshot(in: attributedContent)
+        var didMutate = false
+        var updatedBlocks = document.blocks
+
+        for blockInfo in touchedBlocks {
+            let block = updatedBlocks[blockInfo.index]
+            guard block.type != targetType else { continue }
+            updatedBlocks[blockInfo.index] = .init(
+                type: targetType,
                 content: block.content,
                 checked: block.checked
             )
@@ -249,5 +302,15 @@ extension NativeNoteEditorViewModel {
     private struct FormattingRunSnapshot {
         let range: Range<Int>
         let state: InlineFormattingState
+    }
+
+    func canToggleCodeBlock(for blockInfo: DocumentBlockInfo) -> Bool {
+        guard blockInfo.index != 0 else { return false }
+        switch blockInfo.block.type {
+        case .title, .paragraph, .heading, .subheading, .codeBlock:
+            return true
+        default:
+            return false
+        }
     }
 }

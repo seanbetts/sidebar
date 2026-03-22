@@ -102,7 +102,6 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(
             bottomRow.arrangedSubviews.compactMap(\.accessibilityIdentifier),
             [
-                "note-formatting-link-group",
                 "note-formatting-future-list-group",
                 "note-formatting-future-blockquote-group"
             ]
@@ -127,14 +126,14 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         let codeGroup: UIVisualEffectView = try XCTUnwrap(
             findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-code-group")
         )
-        let linkGroup: UIVisualEffectView = try XCTUnwrap(
-            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-link-group")
+        let codeBlockButton: UIButton = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-code-block")
         )
 
         XCTAssertTrue(shell.effect is UIGlassEffect)
         XCTAssertTrue(inlineGroup.effect is UIGlassEffect)
         XCTAssertTrue(codeGroup.effect is UIGlassEffect)
-        XCTAssertTrue(linkGroup.effect is UIGlassEffect)
+        XCTAssertTrue(codeBlockButton.isEnabled)
     }
 
     func testPopoverTextStylesUseCanonicalOrderAndTypographyTokens() throws {
@@ -507,13 +506,15 @@ private extension UIKitNoteFormattingBarTests {
             isUnderlineActive: false,
             isStrikethroughActive: false,
             isInlineCodeActive: false,
+            isCodeBlockEnabled: true,
             isEnabled: true,
             onTextStyleSelection: { _ in },
             onBoldTap: {},
             onItalicTap: {},
             onUnderlineTap: {},
             onStrikethroughTap: {},
-            onInlineCodeTap: {}
+            onInlineCodeTap: {},
+            onCodeBlockTap: {}
         )
     }
 

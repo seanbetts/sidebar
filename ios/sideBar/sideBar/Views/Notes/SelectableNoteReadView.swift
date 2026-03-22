@@ -417,6 +417,11 @@ private final class SelectableNoteReadTextView: NSTextView {
         updateTextContainerInset()
     }
 
+    override func draw(_ dirtyRect: NSRect) {
+        drawCodeBlockBackgrounds(in: dirtyRect)
+        super.draw(dirtyRect)
+    }
+
     override func mouseDown(with event: NSEvent) {
         didDragSelectionGesture = false
         super.mouseDown(with: event)
@@ -476,6 +481,26 @@ private final class SelectableNoteReadTextView: NSTextView {
         )
         guard textContainerInset != resolvedInset else { return }
         textContainerInset = resolvedInset
+    }
+
+    private func drawCodeBlockBackgrounds(in dirtyRect: NSRect) {
+        let blockRects = NoteCodeBlockBackgroundLayout.rects(
+            textStorage: textStorage,
+            layoutManager: layoutManager,
+            textContainer: textContainer,
+            insetX: textContainerInset.width,
+            insetY: textContainerInset.height
+        )
+        guard blockRects.isEmpty == false else { return }
+
+        NoteTextAppearance.codeBlockBackgroundColor.setFill()
+        for blockRect in blockRects where blockRect.intersects(dirtyRect) {
+            NSBezierPath(
+                roundedRect: blockRect,
+                xRadius: NoteCodeBlockBackgroundLayout.cornerRadius,
+                yRadius: NoteCodeBlockBackgroundLayout.cornerRadius
+            ).fill()
+        }
     }
 
     private func linkAttribute(at point: NSPoint) -> Any? {
@@ -588,6 +613,11 @@ private final class SelectableNoteReadTextView: UITextView {
         reportViewportOffsetIfNeeded()
     }
 
+    override func draw(_ rect: CGRect) {
+        drawCodeBlockBackgrounds(in: rect)
+        super.draw(rect)
+    }
+
     private func updateTextContainerInsets() {
         let extraHorizontalInset = max((bounds.width - maxReadableContentWidth) / 2, 0)
         let resolvedInsets = UIEdgeInsets(
@@ -598,6 +628,25 @@ private final class SelectableNoteReadTextView: UITextView {
         )
         guard textContainerInset != resolvedInsets else { return }
         textContainerInset = resolvedInsets
+    }
+
+    private func drawCodeBlockBackgrounds(in rect: CGRect) {
+        let blockRects = NoteCodeBlockBackgroundLayout.rects(
+            textStorage: textStorage,
+            layoutManager: layoutManager,
+            textContainer: textContainer,
+            insetX: textContainerInset.left,
+            insetY: textContainerInset.top
+        )
+        guard blockRects.isEmpty == false else { return }
+
+        NoteTextAppearance.codeBlockBackgroundColor.setFill()
+        for blockRect in blockRects where blockRect.intersects(rect) {
+            UIBezierPath(
+                roundedRect: blockRect,
+                cornerRadius: NoteCodeBlockBackgroundLayout.cornerRadius
+            ).fill()
+        }
     }
 
     private func reportViewportOffsetIfNeeded(force: Bool = false) {

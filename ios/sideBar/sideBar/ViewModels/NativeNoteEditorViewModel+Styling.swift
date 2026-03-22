@@ -41,6 +41,7 @@ extension NativeNoteEditorViewModel {
 
     func applyInlineFormattingState(
         _ state: InlineFormattingState,
+        blockType: NotesSemanticDocument.BlockType = .paragraph,
         to attrs: inout AttributeContainer
     ) {
         let font = inlineStyledFont(
@@ -70,10 +71,10 @@ extension NativeNoteEditorViewModel {
         #endif
         #if os(iOS)
         attrs[AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
-            state.inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+            NoteTextAppearance.backgroundColor(for: blockType, inlineCode: state.inlineCode)
         #elseif os(macOS)
         attrs[AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
-            state.inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+            NoteTextAppearance.backgroundColor(for: blockType, inlineCode: state.inlineCode)
         #endif
         attrs.underlineStyle = state.underline ? .single : nil
         attrs.strikethroughStyle = state.strikethrough ? .single : nil
@@ -83,6 +84,7 @@ extension NativeNoteEditorViewModel {
 
     func applyInlineFormattingState(
         _ state: InlineFormattingState,
+        blockType: NotesSemanticDocument.BlockType = .paragraph,
         to text: inout AttributedString,
         range: Range<AttributedString.Index>
     ) {
@@ -115,10 +117,10 @@ extension NativeNoteEditorViewModel {
         #endif
         #if os(iOS)
         text[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
-            state.inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+            NoteTextAppearance.backgroundColor(for: blockType, inlineCode: state.inlineCode)
         #elseif os(macOS)
         text[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
-            state.inlineCode ? NoteTextAppearance.inlineCodeBackgroundColor : nil
+            NoteTextAppearance.backgroundColor(for: blockType, inlineCode: state.inlineCode)
         #endif
         text[range].underlineStyle = state.underline ? .single : nil
         text[range].strikethroughStyle = state.strikethrough ? .single : nil
@@ -131,7 +133,7 @@ extension NativeNoteEditorViewModel {
         inlineState: InlineFormattingState,
         to attrs: inout AttributeContainer
     ) {
-        applyInlineFormattingState(inlineState, to: &attrs)
+        applyInlineFormattingState(inlineState, blockType: blockType, to: &attrs)
         attrs.font = noteEditorInlineFont(
             baseFontSize: baseFontSize,
             blockType: blockType,

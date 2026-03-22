@@ -277,6 +277,20 @@ func makeReadTextView(
     baseFontSize: CGFloat = 16
 ) throws -> NSTextView {
     let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
+    return try makeReadTextView(
+        document: document,
+        frame: frame,
+        baseFontSize: baseFontSize
+    )
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+func makeReadTextView(
+    document: NotesSemanticDocument,
+    frame: NSRect,
+    baseFontSize: CGFloat = 16
+) throws -> NSTextView {
     let attributed = SelectableNoteReadView.makePlatformAttributedContent(
         from: document,
         baseFontSize: baseFontSize
@@ -337,6 +351,22 @@ func makeReadTextView(
     maxContentWidth: CGFloat? = nil
 ) throws -> UITextView {
     let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
+    return try makeReadTextView(
+        document: document,
+        frame: frame,
+        baseFontSize: baseFontSize,
+        maxContentWidth: maxContentWidth
+    )
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+func makeReadTextView(
+    document: NotesSemanticDocument,
+    frame: CGRect,
+    baseFontSize: CGFloat = 16,
+    maxContentWidth: CGFloat? = nil
+) throws -> UITextView {
     let controller = UIHostingController(
         rootView: AnyView(
             SelectableNoteReadView(

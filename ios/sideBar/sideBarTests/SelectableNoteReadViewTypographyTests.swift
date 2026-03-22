@@ -125,6 +125,32 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
             UIColor.secondarySystemFill.resolvedColor(with: darkTraits)
         )
     }
+
+    func testMountedReadViewRendersCodeBlockBackgroundAsSingleRectOnIOS() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .codeBlock, content: [.init(text: "abcdefghij\nab", marks: [])])
+            ]
+        )
+        let textView = try makeReadTextView(document: document, frame: CGRect(x: 0, y: 0, width: 320, height: 180))
+        let codeBlockAttributed = SelectableNoteReadView.makePlatformAttributedContent(from: document, baseFontSize: 16)
+        XCTAssertNil(codeBlockAttributed.attribute(.backgroundColor, at: 0, effectiveRange: nil))
+
+        let longLineRect = try characterRect(in: textView, characterIndex: 9)
+        let shortLineRect = try characterRect(in: textView, characterIndex: 12)
+        let samplePoint = CGPoint(
+            x: shortLineRect.maxX + ((longLineRect.maxX - shortLineRect.maxX) * 0.5),
+            y: shortLineRect.midY
+        )
+        let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+
+        assertColorsApproximatelyEqual(
+            sampledColor.resolvedColor(with: darkTraits),
+            UIColor.secondarySystemFill.resolvedColor(with: darkTraits),
+            tolerance: 0.05
+        )
+    }
     #endif
 
     private func fontPointSize(in attributed: NSAttributedString, at location: Int) throws -> CGFloat {
@@ -159,4 +185,78 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         return CGFloat(NSFontManager.shared.weight(of: font))
         #endif
     }
+
+    #if os(iOS)
+    private func samplePixelColor(
+        in view: UIView,
+        at point: CGPoint,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> UIColor? {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(bounds: view.bounds, format: format).image { context in
+            view.layer.render(in: context.cgContext)
+        }
+        guard let cgImage = image.cgImage,
+              let dataProvider = cgImage.dataProvider,
+              let data = dataProvider.data else {
+            XCTFail("Expected rendered pixel data", file: file, line: line)
+            return nil
+        }
+
+        let pixelX = Int(point.x.rounded(.down))
+        let pixelY = Int(point.y.rounded(.down))
+        guard pixelX >= 0, pixelX < cgImage.width, pixelY >= 0, pixelY < cgImage.height else {
+            XCTFail("Sample point out of bounds: \(point)", file: file, line: line)
+            return nil
+        }
+
+        let bytes = CFDataGetBytePtr(data)
+        let bytesPerPixel = cgImage.bitsPerPixel / 8
+        let offset = (pixelY * cgImage.bytesPerRow) + (pixelX * bytesPerPixel)
+        let alpha = CGFloat(bytes?[offset + 3] ?? 0) / 255
+        guard alpha > 0 else { return UIColor(red: 0, green: 0, blue: 0, alpha: 0) }
+
+        return UIColor(
+            red: (CGFloat(bytes?[offset] ?? 0) / 255) / alpha,
+            green: (CGFloat(bytes?[offset + 1] ?? 0) / 255) / alpha,
+            blue: (CGFloat(bytes?[offset + 2] ?? 0) / 255) / alpha,
+            alpha: alpha
+        )
+    }
+
+    private func assertColorsApproximatelyEqual(
+        _ actual: UIColor,
+        _ expected: UIColor,
+        tolerance: CGFloat,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        var actualRed: CGFloat = 0
+        var actualGreen: CGFloat = 0
+        var actualBlue: CGFloat = 0
+        var actualAlpha: CGFloat = 0
+        var expectedRed: CGFloat = 0
+        var expectedGreen: CGFloat = 0
+        var expectedBlue: CGFloat = 0
+        var expectedAlpha: CGFloat = 0
+
+        XCTAssertTrue(
+            actual.getRed(&actualRed, green: &actualGreen, blue: &actualBlue, alpha: &actualAlpha),
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            expected.getRed(&expectedRed, green: &expectedGreen, blue: &expectedBlue, alpha: &expectedAlpha),
+            file: file,
+            line: line
+        )
+
+        XCTAssertEqual(actualRed, expectedRed, accuracy: tolerance, file: file, line: line)
+        XCTAssertEqual(actualGreen, expectedGreen, accuracy: tolerance, file: file, line: line)
+        XCTAssertEqual(actualBlue, expectedBlue, accuracy: tolerance, file: file, line: line)
+        XCTAssertEqual(actualAlpha, expectedAlpha, accuracy: tolerance, file: file, line: line)
+    }
+    #endif
 }
