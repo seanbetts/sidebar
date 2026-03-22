@@ -55,10 +55,18 @@ extension NoteTextFormattingDefinition {
             let previousBlockType = previousBlockType(before: range.lowerBound, in: text)
             let nextBlockType = NoteTextBlockAttribute.blockType(from: noteBlock) ?? blockType
             let boundaryOwner = previousBlockType ?? nextBlockType
-            let additionalSpacingAfter =
-                (previousBlockType == .codeBlock || nextBlockType == .codeBlock)
-                ? NoteTextParagraphMetrics.codeBlockBoundaryPadding(baseFontSize: baseFontSize)
-                : 0
+            let additionalSpacingAfter: CGFloat
+            if previousBlockType == .codeBlock {
+                additionalSpacingAfter = NoteTextParagraphMetrics.codeBlockPaddingAfter(
+                    baseFontSize: baseFontSize
+                )
+            } else if nextBlockType == .codeBlock {
+                additionalSpacingAfter = NoteTextParagraphMetrics.codeBlockPaddingBefore(
+                    baseFontSize: baseFontSize
+                )
+            } else {
+                additionalSpacingAfter = 0
+            }
             return paragraphStyle(
                 for: boundaryOwner,
                 additionalSpacingAfter: additionalSpacingAfter
@@ -119,7 +127,7 @@ extension NoteTextFormattingDefinition {
               previousStructuralBoundaryBlockType(before: range.lowerBound, in: text) == .codeBlock else {
             return 0
         }
-        return NoteTextParagraphMetrics.codeBlockBoundaryPadding(baseFontSize: baseFontSize)
+        return NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize)
     }
 
     func additionalSpacingAfter(
@@ -133,7 +141,7 @@ extension NoteTextFormattingDefinition {
               nextStructuralBoundaryBlockType(after: range.upperBound, in: text) == .codeBlock else {
             return 0
         }
-        return NoteTextParagraphMetrics.codeBlockBoundaryPadding(baseFontSize: baseFontSize)
+        return NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
     }
 
     func containsVisibleCharacters(

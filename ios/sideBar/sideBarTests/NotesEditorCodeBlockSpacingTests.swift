@@ -17,7 +17,8 @@ final class NotesEditorCodeBlockSpacingTests: XCTestCase {
             ]
         )
         let baseFontSize = NoteTextTypography.defaultBodyFontSize
-        let minimumExtraBoundaryGap: CGFloat = (baseFontSize * 0.5) - 0.5
+        let expectedGapAboveDelta = NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
+        let expectedGapBelowDelta = NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize)
 
         let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
             from: document,
@@ -40,10 +41,12 @@ final class NotesEditorCodeBlockSpacingTests: XCTestCase {
         let editorInternalGap = try lineGap(in: editorTextView, fromCharacterAt: 7, toCharacterAt: 17)
         let editorGapBelow = try lineGap(in: editorTextView, fromCharacterAt: 17, toCharacterAt: 26)
 
-        XCTAssertGreaterThan(readGapAbove, readInternalGap + minimumExtraBoundaryGap)
-        XCTAssertGreaterThan(readGapBelow, readInternalGap + minimumExtraBoundaryGap)
-        XCTAssertGreaterThan(editorGapAbove, editorInternalGap + minimumExtraBoundaryGap)
-        XCTAssertGreaterThan(editorGapBelow, editorInternalGap + minimumExtraBoundaryGap)
+        XCTAssertGreaterThan(readGapAbove - readInternalGap, expectedGapAboveDelta - 0.75)
+        XCTAssertGreaterThan(readGapBelow - readInternalGap, expectedGapBelowDelta - 0.75)
+        XCTAssertGreaterThan(readGapBelow - readGapAbove, 3)
+        XCTAssertGreaterThan(editorGapAbove - editorInternalGap, expectedGapAboveDelta - 0.75)
+        XCTAssertGreaterThan(editorGapBelow - editorInternalGap, expectedGapBelowDelta - 0.75)
+        XCTAssertGreaterThan(editorGapBelow - editorGapAbove, 3)
     }
 }
 

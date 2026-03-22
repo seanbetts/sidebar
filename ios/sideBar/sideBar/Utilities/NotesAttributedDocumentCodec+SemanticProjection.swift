@@ -407,7 +407,7 @@ extension NotesAttributedDocumentCodec {
         baseFontSize: CGFloat
     ) -> CGFloat {
         guard blockType != .codeBlock, previousBlockType == .codeBlock else { return 0 }
-        return NoteTextParagraphMetrics.codeBlockBoundaryPadding(baseFontSize: baseFontSize)
+        return NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize)
     }
 
     private static func additionalSpacingAfter(
@@ -416,6 +416,6 @@ extension NotesAttributedDocumentCodec {
         baseFontSize: CGFloat
     ) -> CGFloat {
         guard blockType != .codeBlock, nextBlockType == .codeBlock else { return 0 }
-        return NoteTextParagraphMetrics.codeBlockBoundaryPadding(baseFontSize: baseFontSize)
+        return NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
     }
 }

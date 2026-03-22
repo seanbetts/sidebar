@@ -31,8 +31,12 @@ enum NoteTextTypography {
 
 @available(iOS 26.0, macOS 26.0, *)
 enum NoteTextParagraphMetrics {
-    static func codeBlockBoundaryPadding(baseFontSize: CGFloat) -> CGFloat {
-        baseFontSize * 0.5
+    static func codeBlockPaddingBefore(baseFontSize: CGFloat) -> CGFloat {
+        6
+    }
+
+    static func codeBlockPaddingAfter(baseFontSize: CGFloat) -> CGFloat {
+        12
     }
 
     private struct StyleMetrics {
@@ -90,10 +94,10 @@ enum NoteTextParagraphMetrics {
             configuration: ParagraphStyleConfiguration(
                 lineSpacing: 0,
                 spacingBefore: nextBlockType == .codeBlock
-                    ? codeBlockBoundaryPadding(baseFontSize: baseFontSize)
+                    ? codeBlockPaddingBefore(baseFontSize: baseFontSize)
                     : 0,
                 spacingAfter: previousBlockType == .codeBlock
-                    ? codeBlockBoundaryPadding(baseFontSize: baseFontSize)
+                    ? codeBlockPaddingAfter(baseFontSize: baseFontSize)
                     : 0,
                 headIndent: 0,
                 tailIndent: 0

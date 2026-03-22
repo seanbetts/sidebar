@@ -177,12 +177,13 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         let afterStyle = try XCTUnwrap(
             attributed.attribute(.paragraphStyle, at: 17, effectiveRange: nil) as? NSParagraphStyle
         )
-        let padding = NoteTextParagraphMetrics.codeBlockBoundaryPadding(baseFontSize: baseFontSize)
+        let paddingBefore = NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
+        let paddingAfter = NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize)
 
-        XCTAssertEqual(beforeStyle.paragraphSpacing, 4 + padding, accuracy: 0.001)
+        XCTAssertEqual(beforeStyle.paragraphSpacing, 4 + paddingBefore, accuracy: 0.001)
         XCTAssertEqual(codeBlockStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
         XCTAssertEqual(codeBlockStyle.paragraphSpacing, 0, accuracy: 0.001)
-        XCTAssertEqual(afterStyle.paragraphSpacingBefore, padding, accuracy: 0.001)
+        XCTAssertEqual(afterStyle.paragraphSpacingBefore, paddingAfter, accuracy: 0.001)
     }
     #endif
 

@@ -163,7 +163,8 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
             ]
         )
         let baseFontSize = NoteTextTypography.defaultBodyFontSize
-        let minimumExtraBoundaryGap: CGFloat = (baseFontSize * 0.5) - 0.5
+        let expectedGapAboveDelta = NoteTextParagraphMetrics.codeBlockPaddingBefore(baseFontSize: baseFontSize)
+        let expectedGapBelowDelta = NoteTextParagraphMetrics.codeBlockPaddingAfter(baseFontSize: baseFontSize)
         let textView = try mountEditorTextView(
             document: document,
             baseFontSize: baseFontSize,
@@ -174,8 +175,9 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         let internalGap = try lineGap(in: textView, fromCharacterAt: 7, toCharacterAt: 17)
         let gapBelow = try lineGap(in: textView, fromCharacterAt: 17, toCharacterAt: 26)
 
-        XCTAssertGreaterThan(gapAbove, internalGap + minimumExtraBoundaryGap)
-        XCTAssertGreaterThan(gapBelow, internalGap + minimumExtraBoundaryGap)
+        XCTAssertGreaterThan(gapAbove - internalGap, expectedGapAboveDelta - 0.75)
+        XCTAssertGreaterThan(gapBelow - internalGap, expectedGapBelowDelta - 0.75)
+        XCTAssertGreaterThan(gapBelow - gapAbove, 2)
     }
 
     func testMountedAppKitEditorUsesSecondaryLabelCaretTint() throws {
