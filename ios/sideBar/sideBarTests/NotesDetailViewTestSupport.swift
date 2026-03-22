@@ -8,8 +8,7 @@ import UIKit
 import sideBarShared
 @testable import sideBar
 // Keep the fast lane to a few lifetime cycles; the longer mixed teardown soak remains quarantined in the mounted macOS repro suite.
-let notesLifetimeSmokeIterations = 4
-private let notesHostingDrainDuration: TimeInterval = 0.01
+let notesLifetimeSmokeIterations = 4; private let notesHostingDrainDuration: TimeInterval = 0.01
 @MainActor
 struct NotesDetailViewTestContext {
     let store: NotesStore
@@ -132,10 +131,11 @@ func makeNotesDetailViewTestContext(
         networkStatus: NotesDetailViewTestNetworkStatus(isNetworkAvailable: true)
     )
     store.applyEditorUpdate(note)
-    await withCheckedContinuation { continuation in
-        DispatchQueue.main.async {
-            continuation.resume()
-        }
+    await waitUntil(timeout: .seconds(2)) {
+        notesViewModel.activeNote?.id == note.id
+            && editorViewModel.currentNoteId == note.id
+            && editorViewModel.content == note.plainText
+            && NotesSemanticDocumentCodec.decode(editorViewModel.canonicalContent) == note.document
     }
     return NotesDetailViewTestContext(
         store: store,

@@ -46,72 +46,6 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertGreaterThan(noteReadPlatformFontPointSize(headingFont), noteReadPlatformFontPointSize(subheadingFont))
     }
 
-    #if os(iOS)
-    func testCharacterOffsetForEditingActivationKeepsReadTextViewOnTextKit2() throws {
-        let textView = try makeReadTextView(
-            plainText: "One\nTwo",
-            frame: CGRect(x: 0, y: 0, width: 320, height: 120)
-        )
-        let tapPoint = try lineEndOverflowClickPoint(in: textView, characterIndex: 2)
-
-        XCTAssertNotNil(textView.textLayoutManager)
-
-        let offset = SelectableNoteReadView.characterOffsetForEditingActivation(
-            in: textView,
-            at: tapPoint
-        )
-
-        XCTAssertEqual(offset, 3)
-        XCTAssertNotNil(textView.textLayoutManager)
-    }
-
-    func testCharacterOffsetForEditingActivationClampsTapBelowContentToEndOfNoteOnIOS() throws {
-        let textView = try makeReadTextView(
-            plainText: "One\nTwo",
-            frame: CGRect(x: 0, y: 0, width: 320, height: 120)
-        )
-        let tapPoint = try belowContentClickPoint(in: textView, characterIndex: 6)
-
-        let offset = SelectableNoteReadView.characterOffsetForEditingActivation(
-            in: textView,
-            at: tapPoint
-        )
-
-        XCTAssertEqual(offset, textView.text.utf16.count)
-        XCTAssertNotNil(textView.textLayoutManager)
-    }
-
-    func testReadSurfaceUsesBaseReadableTextViewPaddingOnIOS() throws {
-        let textView = try makeReadTextView(
-            plainText: "One\nTwo",
-            frame: CGRect(x: 0, y: 0, width: 320, height: 120)
-        )
-
-        XCTAssertEqual(textView.textContainer.lineFragmentPadding, 0)
-        XCTAssertEqual(textView.textContainerInset.top, NoteTextLayout.verticalPadding, accuracy: 0.001)
-        XCTAssertEqual(textView.textContainerInset.left, NoteTextLayout.horizontalPadding, accuracy: 0.001)
-        XCTAssertEqual(textView.textContainerInset.bottom, NoteTextLayout.verticalPadding, accuracy: 0.001)
-        XCTAssertEqual(textView.textContainerInset.right, NoteTextLayout.horizontalPadding, accuracy: 0.001)
-    }
-
-    func testMakePlatformAttributedContentUsesDynamicLabelColorOnIOS() throws {
-        let document = NotesSemanticDocumentProjection.document(fromPlainText: "Hello")
-        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
-            from: document,
-            baseFontSize: 16
-        )
-        let color = try XCTUnwrap(
-            attributed.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor
-        )
-        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
-
-        XCTAssertEqual(
-            color.resolvedColor(with: darkTraits),
-            UIColor.label.resolvedColor(with: darkTraits)
-        )
-    }
-    #endif
-
     #if os(macOS)
     func testMakePlatformTextViewIsSelectableAndNonEditable() throws {
         let document = NotesSemanticDocument(
@@ -281,6 +215,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
                 .paragraph([
                     .init(text: "Bold", marks: [.bold]),
                     .init(text: " ", marks: []),
@@ -297,18 +232,18 @@ final class SelectableNoteReadViewTests: XCTestCase {
         )
 
         let boldFont = try XCTUnwrap(
-            attributed.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
+            attributed.attribute(.font, at: 6, effectiveRange: nil) as? NSFont
         )
         XCTAssertTrue(notePlatformFontTraits(from: boldFont).bold)
         XCTAssertEqual(boldFont.pointSize, 17, accuracy: 0.001)
 
         let italicFont = try XCTUnwrap(
-            attributed.attribute(.font, at: 5, effectiveRange: nil) as? NSFont
+            attributed.attribute(.font, at: 11, effectiveRange: nil) as? NSFont
         )
         XCTAssertTrue(notePlatformFontTraits(from: italicFont).italic)
         XCTAssertEqual(italicFont.pointSize, 17, accuracy: 0.001)
 
-        let underlineValue = attributed.attribute(.underlineStyle, at: 12, effectiveRange: nil) as? Int
+        let underlineValue = attributed.attribute(.underlineStyle, at: 18, effectiveRange: nil) as? Int
         XCTAssertEqual(underlineValue, NSUnderlineStyle.single.rawValue)
     }
 

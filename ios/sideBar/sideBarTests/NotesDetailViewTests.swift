@@ -141,8 +141,11 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         nativeViewModel.handleContentChange(previous: previous)
 
         context.makeView().handleCloseShortcut()
-        await Task.yield()
-        await Task.yield()
+        await waitUntil {
+            api.updateCallCount == 1 &&
+                context.editorViewModel.presentationMode == .read &&
+                context.notesViewModel.activeNote?.plainText == "Updated from edit mode"
+        }
 
         XCTAssertEqual(api.updateCallCount, 1)
         XCTAssertEqual(context.editorViewModel.presentationMode, .read)
@@ -177,7 +180,8 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
             .handled
         )
         await waitUntil {
-            context.editorViewModel.presentationMode == .read
+            context.editorViewModel.presentationMode == .read &&
+                context.editorViewModel.saveErrorMessage == "Failed to save note"
         }
 
         let cachedDocument = try XCTUnwrap(
@@ -208,7 +212,8 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
 
         context.makeView().handleCloseShortcut()
         await waitUntil {
-            context.editorViewModel.presentationMode == .read
+            context.editorViewModel.presentationMode == .read &&
+                context.editorViewModel.saveErrorMessage == "Failed to save note"
         }
 
         let cachedDocument = try XCTUnwrap(
@@ -332,8 +337,9 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         )
 
         context.store.applyEditorUpdate(makeTestNote(id: "n1", plainText: refreshedText))
-        await Task.yield()
-        await Task.yield()
+        await waitUntil {
+            String(nativeViewModel.attributedContent.characters) == refreshedText
+        }
 
         XCTAssertEqual(String(nativeViewModel.attributedContent.characters), refreshedText)
         assertInsertionPointUTF16Offset(

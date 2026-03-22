@@ -69,7 +69,6 @@ public final class NotesEditorViewModel: ObservableObject {
     deinit {
         pendingNoteUpdateTask?.cancel()
     }
-
     func handleNoteUpdate(_ note: NotePayload?) {
         let previousNoteId = currentNoteId
         guard let note else {
@@ -84,12 +83,10 @@ public final class NotesEditorViewModel: ObservableObject {
         }
         let normalized = normalizedEditorSnapshot(for: note)
         let detectedUnsupportedContent = NotesUnsupportedContent.detect(in: note.document)
-        if let detectedUnsupportedContent {
-            detectedUnsupportedContent.reportDetected(
-                context: "NotesEditorViewModel.handleNoteUpdate",
-                logger: logger
-            )
-        }
+        detectedUnsupportedContent?.reportDetected(
+            context: "NotesEditorViewModel.handleNoteUpdate",
+            logger: logger
+        )
         currentNoteId = note.id
         unsupportedContent = detectedUnsupportedContent
         if isSameNote,
@@ -100,9 +97,6 @@ public final class NotesEditorViewModel: ObservableObject {
                 presentationMode = .read
                 pendingEditSelectionTarget = nil
                 pendingEditViewportAnchorY = nil
-            }
-            if !isSaving {
-                saveErrorMessage = nil
             }
             return
         }
@@ -117,7 +111,9 @@ public final class NotesEditorViewModel: ObservableObject {
         isDirty = false
         isSaving = false
         lastSavedAt = nil
-        saveErrorMessage = nil
+        if !isSameNote {
+            saveErrorMessage = nil
+        }
         isReadOnly = detectedUnsupportedContent != nil
         isQueuedForSync = false
         if !isSameNote || detectedUnsupportedContent != nil {
