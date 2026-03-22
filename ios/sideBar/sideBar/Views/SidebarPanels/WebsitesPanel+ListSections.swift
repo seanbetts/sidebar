@@ -121,10 +121,10 @@ extension WebsitesPanelView {
             useListStyling: useListStyling,
             faviconBaseUrl: appEnvironment.container.config.r2Endpoint,
             r2FaviconBucket: appEnvironment.container.config.r2FaviconBucket,
-            r2FaviconPublicBaseUrl: appEnvironment.container.config.r2FaviconPublicBaseUrl
+            r2FaviconPublicBaseUrl: appEnvironment.container.config.r2FaviconPublicBaseUrl,
+            onSelect: { open(item: item) }
         )
         .staggeredAppear(index: index, isActive: listAppeared)
-        .onTapGesture { open(item: item) }
         .platformContextMenu(items: websiteContextMenuItemsList(for: item))
         .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
 

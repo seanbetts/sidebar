@@ -148,82 +148,59 @@ extension FilesPanelView {
             let row = FilesIngestionRow(
                 item: item,
                 isSelected: isSelected,
+                onSelect: nil,
                 onPinToggle: pinAction(for: item),
                 onDelete: deleteAction(for: item)
             )
             .platformContextMenu(items: fileContextMenuItemsList(for: item))
             .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
             .staggeredAppear(index: index, isActive: listAppeared)
-
-            #if os(iOS)
-            row
-            #elseif os(macOS)
-            if pinnedReorderCanInteract || isPinnedReordering {
-                row
-                    .onDrag {
-                        enterPinnedReorder(from: item.file.id)
-                        return NSItemProvider(object: item.file.id as NSString)
-                    }
-                    .dropDestination(for: String.self) { sourceIDs, _ in
-                        guard let sourceID = sourceIDs.first else { return false }
-                        guard sourceID != item.file.id else { return false }
-                        guard canAcceptPinnedDrop(
-                            isPinned: true,
-                            sourceSection: .pinned,
-                            destinationSection: .pinned
-                        ) else {
-                            return false
-                        }
-                        performPinnedDrop(sourceID: sourceID, destinationID: item.file.id)
-                        return true
-                    }
-            } else {
-                row
-            }
-            #else
-            row
-            #endif
+            pinnedReorderableRow(row, itemID: item.file.id)
         } else {
             let row = FilesIngestionRow(
                 item: item,
                 isSelected: isSelected,
+                onSelect: { open(item: item) },
                 onPinToggle: pinAction(for: item),
                 onDelete: deleteAction(for: item)
             )
             .platformContextMenu(items: fileContextMenuItemsList(for: item))
             .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
             .staggeredAppear(index: index, isActive: listAppeared)
-            .onTapGesture { open(item: item) }
-
-            #if os(iOS)
-            row
-            #elseif os(macOS)
-            if pinnedReorderCanInteract || isPinnedReordering {
-                row
-                    .onDrag {
-                        enterPinnedReorder(from: item.file.id)
-                        return NSItemProvider(object: item.file.id as NSString)
-                    }
-                    .dropDestination(for: String.self) { sourceIDs, _ in
-                        guard let sourceID = sourceIDs.first else { return false }
-                        guard sourceID != item.file.id else { return false }
-                        guard canAcceptPinnedDrop(
-                            isPinned: true,
-                            sourceSection: .pinned,
-                            destinationSection: .pinned
-                        ) else {
-                            return false
-                        }
-                        performPinnedDrop(sourceID: sourceID, destinationID: item.file.id)
-                        return true
-                    }
-            } else {
-                row
-            }
-            #else
-            row
-            #endif
+            pinnedReorderableRow(row, itemID: item.file.id)
         }
+    }
+
+    @ViewBuilder
+    private func pinnedReorderableRow<Row: View>(_ row: Row, itemID: String) -> some View {
+        #if os(iOS)
+        row
+        #elseif os(macOS)
+        if pinnedReorderCanInteract || isPinnedReordering {
+            row
+                .onDrag {
+                    enterPinnedReorder(from: itemID)
+                    return NSItemProvider(object: itemID as NSString)
+                }
+                .dropDestination(for: String.self) { sourceIDs, _ in
+                    guard let sourceID = sourceIDs.first else { return false }
+                    guard sourceID != itemID else { return false }
+                    guard canAcceptPinnedDrop(
+                        isPinned: true,
+                        sourceSection: .pinned,
+                        destinationSection: .pinned
+                    ) else {
+                        return false
+                    }
+                    performPinnedDrop(sourceID: sourceID, destinationID: itemID)
+                    return true
+                }
+        } else {
+            row
+        }
+        #else
+        row
+        #endif
     }
 
     private var pinnedReorderCanInteract: Bool {

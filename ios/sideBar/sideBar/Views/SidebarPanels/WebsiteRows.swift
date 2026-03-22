@@ -107,6 +107,7 @@ struct WebsiteRow: View, Equatable {
     let faviconBaseUrl: URL?
     let r2FaviconBucket: String?
     let r2FaviconPublicBaseUrl: URL?
+    let onSelect: (() -> Void)?
     private let titleText: String
     private let subtitleText: String
 
@@ -116,7 +117,8 @@ struct WebsiteRow: View, Equatable {
         useListStyling: Bool = true,
         faviconBaseUrl: URL? = nil,
         r2FaviconBucket: String? = nil,
-        r2FaviconPublicBaseUrl: URL? = nil
+        r2FaviconPublicBaseUrl: URL? = nil,
+        onSelect: (() -> Void)? = nil
     ) {
         self.item = item
         self.isSelected = isSelected
@@ -124,6 +126,7 @@ struct WebsiteRow: View, Equatable {
         self.faviconBaseUrl = faviconBaseUrl
         self.r2FaviconBucket = r2FaviconBucket
         self.r2FaviconPublicBaseUrl = r2FaviconPublicBaseUrl
+        self.onSelect = onSelect
         self.titleText = item.title.isEmpty ? item.url : item.title
         self.subtitleText = WebsiteRow.formatSubtitle(
             domain: item.domain,
@@ -153,7 +156,8 @@ struct WebsiteRow: View, Equatable {
         SelectableRow(
             isSelected: isSelected,
             insets: rowInsets,
-            useListStyling: useListStyling
+            useListStyling: useListStyling,
+            primaryAction: onSelect
         ) {
             HStack(spacing: 8) {
                 FaviconImageView(

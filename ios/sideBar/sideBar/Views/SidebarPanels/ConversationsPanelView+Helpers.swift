@@ -144,16 +144,17 @@ extension ConversationsPanelView {
                                 leading: conversationRowHorizontalInset,
                                 bottom: 0,
                                 trailing: conversationRowHorizontalInset
-                            )
-                        ) {
+                            ),
+                            primaryAction: {
+                                Task { await viewModel.selectConversation(id: conversation.id) }
+                            },
+                            content: {
                             ConversationRow(
                                 conversation: conversation,
                                 isSelected: viewModel.selectedConversationId == conversation.id
                             )
-                        }
-                        .onTapGesture {
-                            Task { await viewModel.selectConversation(id: conversation.id) }
-                        }
+                            }
+                        )
                         .sidebarListSwipeActions(
                             leadingTitle: "Rename",
                             onLeading: { beginRename(conversation) },

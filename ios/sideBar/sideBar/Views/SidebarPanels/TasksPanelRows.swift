@@ -7,6 +7,7 @@ struct TaskPanelRow: View, Equatable {
     let isSelected: Bool
     let indent: CGFloat
     let useListStyling: Bool
+    let primaryAction: (() -> Void)?
     let onRename: (() -> Void)?
     let onDelete: (() -> Void)?
 
@@ -17,6 +18,7 @@ struct TaskPanelRow: View, Equatable {
         isSelected: Bool = false,
         indent: CGFloat = 0,
         useListStyling: Bool = true,
+        primaryAction: (() -> Void)? = nil,
         onRename: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil
     ) {
@@ -26,6 +28,7 @@ struct TaskPanelRow: View, Equatable {
         self.isSelected = isSelected
         self.indent = indent
         self.useListStyling = useListStyling
+        self.primaryAction = primaryAction
         self.onRename = onRename
         self.onDelete = onDelete
     }
@@ -43,7 +46,8 @@ struct TaskPanelRow: View, Equatable {
         let row = SelectableRow(
             isSelected: isSelected,
             insets: rowInsets,
-            useListStyling: useListStyling
+            useListStyling: useListStyling,
+            primaryAction: primaryAction
         ) {
             HStack(spacing: 8) {
                 Image(systemName: iconName)

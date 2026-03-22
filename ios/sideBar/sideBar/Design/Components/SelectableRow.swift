@@ -3,11 +3,16 @@ import SwiftUI
 struct SelectableRow<Content: View>: View {
     let isSelected: Bool
     let content: Content
+    private let primaryAction: (() -> Void)?
     private let rowInsets: EdgeInsets
     private let useListStyling: Bool
     private let verticalPadding: CGFloat
     private let customRowBackground: Color?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var usesButtonBackedPrimaryAction: Bool {
+        primaryAction != nil
+    }
 
     init(
         isSelected: Bool,
@@ -20,6 +25,7 @@ struct SelectableRow<Content: View>: View {
         verticalPadding: CGFloat = DesignTokens.Spacing.xs,
         useListStyling: Bool = true,
         rowBackground: Color? = nil,
+        primaryAction: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.isSelected = isSelected
@@ -27,6 +33,7 @@ struct SelectableRow<Content: View>: View {
         self.useListStyling = useListStyling
         self.verticalPadding = verticalPadding
         self.customRowBackground = rowBackground
+        self.primaryAction = primaryAction
         self.content = content()
     }
 
@@ -38,12 +45,23 @@ struct SelectableRow<Content: View>: View {
             .animation(Motion.quick(reduceMotion: reduceMotion), value: isSelected)
             .accessibilityAddTraits(isSelected ? .isSelected : [])
 
+        let interactiveRowContent = Group {
+            if let primaryAction {
+                Button(action: primaryAction) {
+                    rowContent
+                }
+                .buttonStyle(.plain)
+            } else {
+                rowContent
+            }
+        }
+
         if useListStyling {
-            rowContent
+            interactiveRowContent
                 .listRowInsets(rowInsets)
                 .listRowBackground(selectedRowBackground)
         } else {
-            rowContent
+            interactiveRowContent
                 .padding(.leading, rowInsets.leading)
                 .padding(.trailing, rowInsets.trailing)
                 .background(selectedRowBackground)

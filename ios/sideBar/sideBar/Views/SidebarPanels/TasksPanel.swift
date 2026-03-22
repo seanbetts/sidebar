@@ -279,18 +279,18 @@ extension TasksPanelView {
             count: count,
             isSelected: isCompact ? false : viewModel.selection == selection,
             indent: indent,
+            primaryAction: {
+                let isAlreadySelected = viewModel.selection == selection
+                if isCompact {
+                    environment.tasksPhoneDetailRouteId = selection.cacheKey
+                }
+                environment.commandSelection = .tasks
+                guard !isAlreadySelected else { return }
+                Task { await viewModel.load(selection: selection) }
+            },
             onRename: onRename,
             onDelete: onDelete
         )
-        .onTapGesture {
-            let isAlreadySelected = viewModel.selection == selection
-            if isCompact {
-                environment.tasksPhoneDetailRouteId = selection.cacheKey
-            }
-            environment.commandSelection = .tasks
-            guard !isAlreadySelected else { return }
-            Task { await viewModel.load(selection: selection) }
-        }
     }
 
 }

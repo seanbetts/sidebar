@@ -124,7 +124,8 @@ struct NotesTreeRow: View {
             isSelected: isSelected,
             insets: rowInsets,
             verticalPadding: rowVerticalPadding,
-            useListStyling: useListStyling
+            useListStyling: useListStyling,
+            primaryAction: item.isFile ? onSelect : nil
         ) {
             HStack(spacing: 8) {
                 Image(systemName: item.isFile ? "doc.text" : "folder")
@@ -152,13 +153,7 @@ struct NotesTreeRow: View {
         }
 
         Group {
-            if item.isFile {
-                row.onTapGesture {
-                    onSelect()
-                }
-            } else {
-                row
-            }
+            row
         }
         #if os(macOS)
         .sidebarListSwipeActions(

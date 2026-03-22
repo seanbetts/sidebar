@@ -285,6 +285,7 @@ extension FilesPanelView {
                     let row = FilesIngestionRow(
                         item: item,
                         isSelected: isSelected,
+                        onSelect: isFolder(item) ? nil : { open(item: item) },
                         onPinToggle: pinAction(for: item),
                         onDelete: deleteAction(for: item)
                     )
@@ -296,7 +297,6 @@ extension FilesPanelView {
                     } else {
                         row
                             .staggeredAppear(index: index, isActive: listAppeared)
-                            .onTapGesture { open(item: item) }
                     }
                 }
             } else {
@@ -323,6 +323,7 @@ extension FilesPanelView {
                                         let row = FilesIngestionRow(
                                             item: item,
                                             isSelected: viewModel.selectedFileId == item.file.id,
+                                            onSelect: isFolder(item) ? nil : { open(item: item) },
                                             onPinToggle: pinAction(for: item),
                                             onDelete: deleteAction(for: item)
                                         )
@@ -339,7 +340,6 @@ extension FilesPanelView {
                                                     index: index,
                                                     isActive: listAppeared
                                                 )
-                                                .onTapGesture { open(item: item) }
                                         }
                                     }
                                 } label: {

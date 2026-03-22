@@ -4,17 +4,20 @@ import SwiftUI
 struct FilesIngestionRow: View, Equatable {
     let item: IngestionListItem
     let isSelected: Bool
+    let onSelect: (() -> Void)?
     let onPinToggle: (() -> Void)?
     let onDelete: (() -> Void)?
 
     init(
         item: IngestionListItem,
         isSelected: Bool,
+        onSelect: (() -> Void)? = nil,
         onPinToggle: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil
     ) {
         self.item = item
         self.isSelected = isSelected
+        self.onSelect = onSelect
         self.onPinToggle = onPinToggle
         self.onDelete = onDelete
     }
@@ -34,7 +37,11 @@ struct FilesIngestionRow: View, Equatable {
     }
 
     var body: some View {
-        SelectableRow(isSelected: isSelected, insets: rowInsets) {
+        SelectableRow(
+            isSelected: isSelected,
+            insets: rowInsets,
+            primaryAction: onSelect
+        ) {
             HStack(spacing: 8) {
                 if isProcessing {
                     LoadingIndicatorView(size: LoadingIndicatorSize.inline)
