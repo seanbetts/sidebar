@@ -482,6 +482,9 @@ extension NotesViewModel {
             return false
         }
         let previousOrder = store.pinnedNoteOrder()
+        guard ids.count == previousOrder.count, Set(ids) == Set(previousOrder) else {
+            return false
+        }
         store.applyPinnedOrder(ids)
         do {
             try await api.updatePinnedOrder(ids: ids)

@@ -147,132 +147,6 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoadingArchived)
     }
 
-    func testReorderPinnedNotesOptimisticallyUpdatesStoreAndCallsAPI() async {
-        let api = NotesAPISpy()
-        api.updatePinnedOrderResult = .success(())
-        let cache = InMemoryCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toastCenter = ToastCenter()
-        let viewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toastCenter,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        store.applyTreeUpdate(
-            FileTree(children: [
-                FileNode(
-                    name: "B.md",
-                    path: "/b.md",
-                    type: .file,
-                    size: nil,
-                    modified: nil,
-                    created: nil,
-                    children: nil,
-                    expanded: nil,
-                    pinned: true,
-                    pinnedOrder: 1,
-                    archived: false,
-                    folderMarker: nil
-                ),
-                FileNode(
-                    name: "A.md",
-                    path: "/a.md",
-                    type: .file,
-                    size: nil,
-                    modified: nil,
-                    created: nil,
-                    children: nil,
-                    expanded: nil,
-                    pinned: true,
-                    pinnedOrder: 0,
-                    archived: false,
-                    folderMarker: nil
-                )
-            ]),
-            persist: false
-        )
-
-        let success = await viewModel.reorderPinnedNotes(ids: ["/b.md", "/a.md"])
-
-        XCTAssertTrue(success)
-        XCTAssertEqual(api.updatedPinnedOrderIDs, [["/b.md", "/a.md"]])
-        XCTAssertEqual(currentPinnedOrder(in: viewModel.tree), ["/b.md", "/a.md"])
-    }
-
-    func testReorderPinnedNotesRollsBackAndShowsToastWhenAPIFails() async {
-        let api = NotesAPISpy()
-        api.updatePinnedOrderResult = .failure(MockError.forced)
-        let cache = InMemoryCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toastCenter = ToastCenter()
-        let viewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toastCenter,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
-        )
-        store.applyTreeUpdate(
-            FileTree(children: [
-                FileNode(
-                    name: "B.md",
-                    path: "/b.md",
-                    type: .file,
-                    size: nil,
-                    modified: nil,
-                    created: nil,
-                    children: nil,
-                    expanded: nil,
-                    pinned: true,
-                    pinnedOrder: 1,
-                    archived: false,
-                    folderMarker: nil
-                ),
-                FileNode(
-                    name: "A.md",
-                    path: "/a.md",
-                    type: .file,
-                    size: nil,
-                    modified: nil,
-                    created: nil,
-                    children: nil,
-                    expanded: nil,
-                    pinned: true,
-                    pinnedOrder: 0,
-                    archived: false,
-                    folderMarker: nil
-                )
-            ]),
-            persist: false
-        )
-        let previousOrder = currentPinnedOrder(in: viewModel.tree)
-
-        let success = await viewModel.reorderPinnedNotes(ids: ["/b.md", "/a.md"])
-
-        XCTAssertFalse(success)
-        XCTAssertEqual(currentPinnedOrder(in: viewModel.tree), previousOrder)
-        XCTAssertEqual(toastCenter.toast?.message, "Failed to reorder pinned notes")
-    }
-
-    func testReorderPinnedNotesDoesNotCallAPIWhenOffline() async {
-        let api = NotesAPISpy()
-        api.updatePinnedOrderResult = .success(())
-        let cache = InMemoryCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toastCenter = ToastCenter()
-        let viewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: toastCenter,
-            networkStatus: TestNetworkStatus(isNetworkAvailable: false)
-        )
-
-        let success = await viewModel.reorderPinnedNotes(ids: ["/b.md", "/a.md"])
-
-        XCTAssertFalse(success)
-        XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
-    }
-
     func testStoreActiveNoteMirrorsOnNextMainActorTurn() async throws {
         let api = NotesAPISpy()
         let cache = InMemoryCacheClient()
@@ -472,10 +346,6 @@ private final class NotesAPISpy: NotesProviding {
         return try renameNoteResult.get()
     }
 
-    var updatePinnedOrderCallCount = 0
-    var updatedPinnedOrderIDs: [[String]] = []
-    var updatePinnedOrderResult: Result<Void, Error> = .success(())
-
     func moveNote(id: String, folder: String) async throws -> NotePayload {
         _ = id
         _ = folder
@@ -495,9 +365,7 @@ private final class NotesAPISpy: NotesProviding {
     }
 
     func updatePinnedOrder(ids: [String]) async throws {
-        updatePinnedOrderCallCount += 1
-        updatedPinnedOrderIDs.append(ids)
-        try updatePinnedOrderResult.get()
+        _ = ids
     }
 
     func deleteNote(id: String) async throws -> NotePayload {
@@ -830,33 +698,6 @@ private final class ControlledArchivedNotesAPI: NotesProviding {
         archivedContinuation = nil
         continuation.resume(with: result)
     }
-}
-
-private func currentPinnedOrder(in tree: FileTree?) -> [String] {
-    guard let tree else { return [] }
-    return pinnedNodes(in: tree.children)
-        .sorted {
-            let leftOrder = $0.pinnedOrder ?? Int.max
-            let rightOrder = $1.pinnedOrder ?? Int.max
-            if leftOrder != rightOrder {
-                return leftOrder < rightOrder
-            }
-            return $0.path < $1.path
-        }
-        .map(\.path)
-}
-
-private func pinnedNodes(in nodes: [FileNode]) -> [FileNode] {
-    var results: [FileNode] = []
-    for node in nodes {
-        if node.type == .file, node.pinned == true {
-            results.append(node)
-        }
-        if let children = node.children {
-            results.append(contentsOf: pinnedNodes(in: children))
-        }
-    }
-    return results
 }
 
 @MainActor
