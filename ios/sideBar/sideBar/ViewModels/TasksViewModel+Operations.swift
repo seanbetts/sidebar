@@ -1,6 +1,8 @@
 import Foundation
 
 extension TasksViewModel {
+    private static let recurringScheduleToastDuration: TimeInterval = 4
+
     func taskSelectionKind(_ selection: TaskSelection) -> String {
         switch selection {
         case .none:
@@ -260,7 +262,11 @@ extension TasksViewModel {
         } else {
             message = "\(count) recurring instances scheduled"
         }
-        toastCenter.show(message: message, style: .success)
+        toastCenter.show(
+            message: message,
+            style: .success,
+            duration: Self.recurringScheduleToastDuration
+        )
     }
 
     private func nextScheduledDateKey(for task: TaskItem) -> String? {

@@ -50,6 +50,43 @@ final class TasksViewModelRecurringToastTests: XCTestCase {
         }
     }
 
+    func testCompleteTaskSuccessKeepsRecurringScheduleToastVisiblePastThreeSeconds() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "task-1", title: "Weekly review", status: "open", updatedAt: "u1")
+        api.enqueueListResponse(scope: "today", tasks: [task])
+        api.enqueueListResponse(scope: "today", tasks: [])
+        api.applyResult = .success(
+            TaskSyncResponse(
+                applied: ["op-1"],
+                tasks: [],
+                nextTasks: [
+                    TaskItem(
+                        id: "task-2",
+                        title: "Weekly review",
+                        status: "open",
+                        deadline: "2026-03-04",
+                        updatedAt: "u2"
+                    )
+                ],
+                conflicts: [],
+                updates: nil,
+                serverUpdatedSince: nil
+            )
+        )
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+
+        await sut.viewModel.completeTask(task: task)
+        await eventually {
+            sut.toastCenter.toast != nil
+        }
+
+        try? await Task.sleep(nanoseconds: 3_000_000_000)
+
+        XCTAssertNotNil(sut.toastCenter.toast)
+    }
+
     private struct SUT {
         let viewModel: TasksViewModel
         let toastCenter: ToastCenter
