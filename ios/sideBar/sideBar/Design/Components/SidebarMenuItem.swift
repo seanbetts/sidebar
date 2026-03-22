@@ -44,6 +44,10 @@ extension SidebarMenuItem {
         SidebarMenuItem(title: "Move", systemImage: "arrow.forward.folder", role: nil, handler: handler)
     }
 
+    static func reorder(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Reorder", systemImage: "line.3.horizontal", role: nil, handler: handler)
+    }
+
     static func copy(handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(title: "Copy", systemImage: "doc.on.doc", role: nil, handler: handler)
     }

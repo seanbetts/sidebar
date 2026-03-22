@@ -60,13 +60,17 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
     func testPinnedReorderLifecycleHelpersTrackCurrentInteraction() async {
         let view = await makeView()
 
+        XCTAssertEqual(view.pinnedReorderEditMode, .inactive)
+
         view.enterPinnedReorder(from: "w1")
         XCTAssertTrue(view.isPinnedReordering)
         XCTAssertEqual(view.pinnedReorderSourceID, "w1")
+        XCTAssertEqual(view.pinnedReorderEditMode, .active)
 
         view.completePinnedReorder()
         XCTAssertFalse(view.isPinnedReordering)
         XCTAssertNil(view.pinnedReorderSourceID)
+        XCTAssertEqual(view.pinnedReorderEditMode, .inactive)
     }
 
     func testPinnedReorderRejectsOfflineActivation() async {
@@ -115,6 +119,24 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
 
         XCTAssertEqual(view.reorderedPinnedIDs(from: IndexSet(integer: 0), to: 2), ["w2", "w1"])
         XCTAssertEqual(view.reorderedPinnedIDs(moving: "w1", to: "w2"), ["w1", "w2"])
+    }
+
+    func testPinnedWebsiteContextMenuIncludesReorderWhenPinnedSectionCanReorder() async {
+        let view = await makeView()
+        let item = view.pinnedItemsSorted[0]
+
+        let titles = view.websiteContextMenuItemsList(for: item).map(\.title)
+
+        XCTAssertTrue(titles.contains("Reorder"))
+    }
+
+    func testPinnedWebsiteContextMenuHidesReorderWhenPinnedSectionCannotReorder() async {
+        let view = await makeView(isNetworkAvailable: false)
+        let item = view.pinnedItemsSorted[0]
+
+        let titles = view.websiteContextMenuItemsList(for: item).map(\.title)
+
+        XCTAssertFalse(titles.contains("Reorder"))
     }
 
     func testSwipeActionArchivesReturnsFalseForArchivedItem() {

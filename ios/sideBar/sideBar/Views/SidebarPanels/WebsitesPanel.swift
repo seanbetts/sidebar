@@ -276,6 +276,7 @@ extension WebsitesPanelView {
                 }
             }
             .sidebarPanelListStyle()
+            .environment(\.editMode, .constant(pinnedReorderEditMode))
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .refreshable {
@@ -357,10 +358,11 @@ extension WebsitesPanelView {
                             ForEach(archivedItems, id: \.id) { item in
                                 let index = staggerIndex(for: item.id, section: "archived")
                                 websiteListRow(item: item, index: index, allowArchive: false)
-                            }
-                        }
-                    }
-                }
+            }
+            .environment(\.editMode, .constant(pinnedReorderEditMode))
+        }
+    }
+}
             }
             .sidebarPanelListStyle()
             .scrollContentBackground(.hidden)

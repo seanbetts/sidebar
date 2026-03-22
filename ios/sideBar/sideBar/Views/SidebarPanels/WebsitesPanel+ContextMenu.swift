@@ -13,7 +13,7 @@ extension WebsitesPanelView {
     }
 
     func websiteContextMenuItemsList(for item: WebsiteItem) -> [SidebarMenuItem] {
-        [
+        var items: [SidebarMenuItem] = [
             .pin(isPinned: item.pinned) {
                 Task { await viewModel.setPinned(id: item.id, pinned: !item.pinned) }
             },
@@ -45,6 +45,21 @@ extension WebsitesPanelView {
                 deleteTarget = item
             }
         ]
+
+        if shouldShowPinnedReorderAction(for: item) {
+            items.insert(
+                .reorder {
+                    enterPinnedReorder(from: item.id)
+                },
+                at: 1
+            )
+        }
+
+        return items
+    }
+
+    private func shouldShowPinnedReorderAction(for item: WebsiteItem) -> Bool {
+        item.pinned && canStartPinnedReorder
     }
 
     @MainActor

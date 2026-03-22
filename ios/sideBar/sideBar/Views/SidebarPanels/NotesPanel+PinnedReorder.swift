@@ -36,6 +36,10 @@ extension NotesPanelView {
         pinnedReorderState.sourceID
     }
 
+    var pinnedReorderEditMode: EditMode {
+        isPinnedReordering ? .active : .inactive
+    }
+
     func enterPinnedReorder(from sourceID: String) {
         guard canStartPinnedReorder else { return }
         pinnedReorderState.isReordering = true
@@ -123,7 +127,6 @@ extension NotesPanelView {
                 pinnedNoteRow(item: item)
             }
             .onMove(perform: movePinnedNotes)
-            .environment(\.editMode, .constant(isPinnedReordering ? .active : .inactive))
             #else
             ForEach(pinnedItems) { item in
                 pinnedNoteRow(item: item)
@@ -151,10 +154,6 @@ extension NotesPanelView {
 
         #if os(iOS)
         row
-            .contentShape(Rectangle())
-            .onLongPressGesture {
-                enterPinnedReorder(from: item.id)
-            }
         #elseif os(macOS)
         if pinnedReorderCanInteract || isPinnedReordering {
             row

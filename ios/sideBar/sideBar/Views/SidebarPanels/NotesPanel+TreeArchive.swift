@@ -107,6 +107,7 @@ extension NotesPanelView {
             }
         }
         .sidebarPanelListStyle()
+        .environment(\.editMode, .constant(pinnedReorderEditMode))
         .scrollContentBackground(.hidden)
         .background(panelBackground)
         .refreshable {

@@ -32,6 +32,10 @@ extension WebsitesPanelView {
         pinnedReorderState.sourceID
     }
 
+    var pinnedReorderEditMode: EditMode {
+        isPinnedReordering ? .active : .inactive
+    }
+
     func enterPinnedReorder(from sourceID: String) {
         guard canStartPinnedReorder else { return }
         pinnedReorderState.isReordering = true
@@ -116,7 +120,6 @@ extension WebsitesPanelView {
                 pinnedWebsiteRow(item: item)
             }
             .onMove(perform: movePinnedWebsites)
-            .environment(\.editMode, .constant(isPinnedReordering ? .active : .inactive))
             #else
             ForEach(pinnedItemsSorted, id: \.id) { item in
                 pinnedWebsiteRow(item: item)
@@ -135,10 +138,6 @@ extension WebsitesPanelView {
 
         #if os(iOS)
         row
-            .contentShape(Rectangle())
-            .onLongPressGesture {
-                enterPinnedReorder(from: item.id)
-            }
         #elseif os(macOS)
         if pinnedReorderCanInteract || isPinnedReordering {
             row

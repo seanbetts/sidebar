@@ -63,17 +63,22 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
     func testPinnedReorderLifecycleHelpersTrackCurrentInteraction() async {
         let view = await makeView()
 
+        XCTAssertEqual(view.pinnedReorderEditMode, .inactive)
+
         view.enterPinnedReorder(from: "note-a")
         XCTAssertTrue(view.isPinnedReordering)
         XCTAssertEqual(view.pinnedReorderSourceID, "note-a")
+        XCTAssertEqual(view.pinnedReorderEditMode, .active)
 
         view.completePinnedReorder()
         XCTAssertFalse(view.isPinnedReordering)
         XCTAssertNil(view.pinnedReorderSourceID)
+        XCTAssertEqual(view.pinnedReorderEditMode, .inactive)
 
         view.enterPinnedReorder(from: "note-a")
         view.cancelPinnedReorder()
         XCTAssertFalse(view.isPinnedReordering)
+        XCTAssertEqual(view.pinnedReorderEditMode, .inactive)
     }
 
     func testPinnedReorderCancelsWhenPinnedSetChangesMidGesture() async {
@@ -185,6 +190,24 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
 
         XCTAssertTrue(actions.contains(.shareText))
         XCTAssertFalse(actions.contains(.rename))
+    }
+
+    func testPinnedNoteContextMenuIncludesReorderWhenPinnedSectionCanReorder() async {
+        let view = await makeView()
+        let item = view.pinnedItems[0]
+
+        let titles = view.noteContextMenuItemsList(for: item).map(\.title)
+
+        XCTAssertTrue(titles.contains("Reorder"))
+    }
+
+    func testPinnedNoteContextMenuHidesReorderWhenPinnedSectionCannotReorder() async {
+        let view = await makeView(isNetworkAvailable: false)
+        let item = view.pinnedItems[0]
+
+        let titles = view.noteContextMenuItemsList(for: item).map(\.title)
+
+        XCTAssertFalse(titles.contains("Reorder"))
     }
 
     func testFileNodeDisplayNamePreservesMarkdownLikeSuffixes() {
