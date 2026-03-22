@@ -8,12 +8,16 @@ import UIKit
 
 public struct NotesPanel: View {
     @EnvironmentObject var environment: AppEnvironment
+    @StateObject private var pinnedReorderState = NotesPanelPinnedReorderState()
 
     public init() {
     }
 
     public var body: some View {
-        NotesPanelView(viewModel: environment.notesRuntime.viewModel)
+        NotesPanelView(
+            viewModel: environment.notesRuntime.viewModel,
+            pinnedReorderState: pinnedReorderState
+        )
     }
 }
 
@@ -24,6 +28,8 @@ struct NotesPanelView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
     @Environment(\.colorScheme) var colorScheme
+    @State var pinnedReorderNetworkAvailabilityOverride: Bool?
+    let pinnedReorderState: NotesPanelPinnedReorderState
     @State var hasLoaded = false
     @State var isArchiveExpanded = false
     @State var isNewFolderPresented = false
@@ -41,6 +47,19 @@ struct NotesPanelView: View {
     @State var isExporting = false
     @State var exportFilename: String = "note"
     @FocusState var isSearchFocused: Bool
+
+    @MainActor
+    init(
+        viewModel: NotesViewModel,
+        pinnedReorderState: NotesPanelPinnedReorderState? = nil,
+        pinnedReorderNetworkAvailability: Bool? = nil
+    ) {
+        self.viewModel = viewModel
+        self.pinnedReorderState = pinnedReorderState ?? NotesPanelPinnedReorderState()
+        _pinnedReorderNetworkAvailabilityOverride = State(
+            initialValue: pinnedReorderNetworkAvailability
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {

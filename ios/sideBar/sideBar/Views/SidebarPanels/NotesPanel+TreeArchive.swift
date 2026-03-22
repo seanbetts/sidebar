@@ -33,29 +33,7 @@ extension NotesPanelView {
                 }
             case .content:
                 Section {
-                    if pinnedItems.isEmpty {
-                        Text("No pinned notes")
-                            .appFont(.caption)
-                            .foregroundStyle(.secondary)
-                            .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
-                    } else {
-                        ForEach(pinnedItems) { item in
-                            let isSelected = viewModel.selectedNoteId == item.id
-                            NotesTreeRow(
-                                item: item,
-                                isSelected: isSelected,
-                                onSelect: {
-                                    requestNoteSelection(id: item.id)
-                                },
-                                onRename: nil,
-                                onDelete: {
-                                    confirmDelete(for: item)
-                                }
-                            )
-                            .platformContextMenu(items: noteContextMenuItemsList(for: item))
-                            .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
-                        }
-                    }
+                    pinnedNotesSection()
                 } header: {
                     sidebarProminentSectionHeader("Pinned")
                 }
@@ -133,6 +111,9 @@ extension NotesPanelView {
         .background(panelBackground)
         .refreshable {
             await viewModel.loadTree()
+        }
+        .onChange(of: pinnedItems.map(\.id)) { _, newValue in
+            handlePinnedSetChanged(newValue)
         }
     }
 

@@ -31,6 +31,92 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertEqual(panel.pinnedItems.map(\.id), ["pin-first", "pin-second"])
     }
 
+    func testPinnedItemsReflectLocallyUpdatedPinnedOrder() async {
+        let initialTree = FileTree(children: [
+            makeFile(path: "note-a", name: "A.md", created: 100, pinned: true, pinnedOrder: 0),
+            makeFile(path: "note-b", name: "B.md", created: 200, pinned: true, pinnedOrder: 1)
+        ])
+        let (viewModel, store) = makeViewModelAndStore(tree: initialTree)
+
+        await viewModel.loadTree()
+        let panel = NotesPanelView(viewModel: viewModel)
+
+        let updatedTree = FileTree(children: [
+            makeFile(path: "note-a", name: "A.md", created: 100, pinned: true, pinnedOrder: 1),
+            makeFile(path: "note-b", name: "B.md", created: 200, pinned: true, pinnedOrder: 0)
+        ])
+        store.applyTreeUpdate(updatedTree, persist: false)
+
+        XCTAssertEqual(panel.pinnedItems.map(\.id), ["note-b", "note-a"])
+    }
+
+    func testPinnedReorderAffordancesRequireAtLeastTwoPinnedNotes() async {
+        let panel = await makeView(
+            tree: FileTree(children: [
+                makeFile(path: "note-a", name: "A.md", created: 100, pinned: true, pinnedOrder: 0)
+            ])
+        )
+
+        XCTAssertFalse(panel.canStartPinnedReorder)
+    }
+
+    func testPinnedReorderLifecycleHelpersTrackCurrentInteraction() async {
+        let view = await makeView()
+
+        view.enterPinnedReorder(from: "note-a")
+        XCTAssertTrue(view.isPinnedReordering)
+        XCTAssertEqual(view.pinnedReorderSourceID, "note-a")
+
+        view.completePinnedReorder()
+        XCTAssertFalse(view.isPinnedReordering)
+        XCTAssertNil(view.pinnedReorderSourceID)
+
+        view.enterPinnedReorder(from: "note-a")
+        view.cancelPinnedReorder()
+        XCTAssertFalse(view.isPinnedReordering)
+    }
+
+    func testPinnedReorderCancelsWhenPinnedSetChangesMidGesture() async {
+        let view = await makeView()
+
+        view.enterPinnedReorder(from: "note-a")
+        view.handlePinnedSetChanged(["note-b"])
+
+        XCTAssertFalse(view.isPinnedReordering)
+    }
+
+    func testPinnedReorderRejectsOfflineActivation() async {
+        let offlineView = await makeView(isNetworkAvailable: false)
+
+        XCTAssertFalse(offlineView.canStartPinnedReorder)
+    }
+
+    func testPinnedReorderDropTargetsRejectNonPinnedOrCrossSectionItems() async {
+        let view = await makeView()
+
+        XCTAssertFalse(
+            view.canAcceptPinnedDrop(
+                isPinned: false,
+                sourceSection: .mainNotes,
+                destinationSection: .pinned
+            )
+        )
+        XCTAssertFalse(
+            view.canAcceptPinnedDrop(
+                isPinned: true,
+                sourceSection: .mainNotes,
+                destinationSection: .pinned
+            )
+        )
+        XCTAssertFalse(
+            view.canAcceptPinnedDrop(
+                isPinned: true,
+                sourceSection: .pinned,
+                destinationSection: .mainNotes
+            )
+        )
+    }
+
     func testMainNodesSortFolderChildrenByMostRecentCreated() async {
         let folder = FileNode(
             name: "Work",
@@ -143,14 +229,40 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
 
 @MainActor
 private func makeViewModel(tree: FileTree, archivedTree: FileTree? = nil) -> NotesViewModel {
+    makeViewModelAndStore(tree: tree, archivedTree: archivedTree).viewModel
+}
+
+@MainActor
+private func makeViewModelAndStore(
+    tree: FileTree,
+    archivedTree: FileTree? = nil
+) -> (viewModel: NotesViewModel, store: NotesStore) {
     let resolvedArchivedTree = archivedTree ?? FileTree(children: [])
     let api = StaticTreeNotesAPI(tree: tree, archivedTree: resolvedArchivedTree)
     let store = NotesStore(api: api, cache: InMemoryCacheClient())
-    return NotesViewModel(
+    let viewModel = NotesViewModel(
         api: api,
         store: store,
         toastCenter: ToastCenter(),
         networkStatus: PanelTestNetworkStatus(isNetworkAvailable: true)
+    )
+    return (viewModel, store)
+}
+
+@MainActor
+private func makeView(
+    isNetworkAvailable: Bool = true,
+    tree: FileTree? = nil
+) async -> NotesPanelView {
+    let resolvedTree = tree ?? FileTree(children: [
+        makeFile(path: "note-a", name: "A.md", created: 100, pinned: true, pinnedOrder: 0),
+        makeFile(path: "note-b", name: "B.md", created: 200, pinned: true, pinnedOrder: 1)
+    ])
+    let (viewModel, _) = makeViewModelAndStore(tree: resolvedTree)
+    await viewModel.loadTree()
+    return NotesPanelView(
+        viewModel: viewModel,
+        pinnedReorderNetworkAvailability: isNetworkAvailable
     )
 }
 
