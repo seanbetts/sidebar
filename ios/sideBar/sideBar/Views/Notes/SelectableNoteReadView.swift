@@ -147,6 +147,15 @@ struct SelectableNoteReadView: View {
             } else {
                 mutable.removeAttribute(.underlineStyle, range: nsRange)
             }
+            if run.strikethroughStyle != nil {
+                mutable.addAttribute(
+                    .strikethroughStyle,
+                    value: NSUnderlineStyle.single.rawValue,
+                    range: nsRange
+                )
+            } else {
+                mutable.removeAttribute(.strikethroughStyle, range: nsRange)
+            }
         }
 
         mutable.addAttribute(

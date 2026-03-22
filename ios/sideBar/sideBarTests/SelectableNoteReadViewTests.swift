@@ -312,6 +312,27 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(underlineValue, NSUnderlineStyle.single.rawValue)
     }
 
+    func testMakePlatformAttributedContentPreservesStrikethrough() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([
+                    .init(text: "Active", marks: []),
+                    .init(text: " ", marks: []),
+                    .init(text: "Done", marks: [.strikethrough])
+                ])
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 17
+        )
+
+        let strikethroughValue = attributed.attribute(.strikethroughStyle, at: 7, effectiveRange: nil) as? Int
+        XCTAssertEqual(strikethroughValue, NSUnderlineStyle.single.rawValue)
+    }
+
     func testBridgedPlatformFontTraitsDoNotAddFormattingWithoutSwiftUIFont() throws {
         var attributed = AttributedString("Bold Italic Underline")
 
@@ -349,6 +370,20 @@ final class SelectableNoteReadViewTests: XCTestCase {
 
         let underlineValue = rendered.attribute(.underlineStyle, at: 12, effectiveRange: nil) as? Int
         XCTAssertEqual(underlineValue, NSUnderlineStyle.single.rawValue)
+    }
+
+    func testBridgedPlatformAttributedStringPreservesStrikethroughWithoutSwiftUIFont() throws {
+        var attributed = AttributedString("Active Done")
+        let strikethroughStart = attributed.index(attributed.startIndex, offsetByCharacters: 7)
+        attributed[strikethroughStart..<attributed.endIndex].strikethroughStyle = .single
+
+        let rendered = SelectableNoteReadView.bridgedPlatformAttributedString(
+            from: attributed,
+            baseFontSize: 16
+        )
+
+        let strikethroughValue = rendered.attribute(.strikethroughStyle, at: 7, effectiveRange: nil) as? Int
+        XCTAssertEqual(strikethroughValue, NSUnderlineStyle.single.rawValue)
     }
 
     func testSwiftUIFontTraitsOverrideConflictingBridgedPlatformFontTraits() throws {
