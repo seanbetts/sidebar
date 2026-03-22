@@ -92,27 +92,50 @@ def test_project_plain_text_handles_supported_rich_block_types_deterministically
             {"type": "subheading", "content": [{"text": "Status", "marks": []}]},
             {
                 "type": "unordered_list",
-                "content": [{"text": "Ship schema", "marks": []}],
+                "children": [
+                    {
+                        "type": "list_item",
+                        "content": [{"text": "Ship schema", "marks": []}],
+                    }
+                ],
             },
             {
                 "type": "ordered_list",
-                "content": [{"text": "Run tests", "marks": []}],
-            },
-            {
-                "type": "ordered_list",
-                "content": [{"text": "Review output", "marks": []}],
+                "children": [
+                    {
+                        "type": "list_item",
+                        "content": [{"text": "Run tests", "marks": []}],
+                    },
+                    {
+                        "type": "list_item",
+                        "content": [{"text": "Review output", "marks": []}],
+                    },
+                ],
             },
             {
                 "type": "checklist",
-                "checked": True,
-                "content": [{"text": "Done item", "marks": []}],
+                "children": [
+                    {
+                        "type": "list_item",
+                        "checked": True,
+                        "content": [{"text": "Done item", "marks": []}],
+                    },
+                    {
+                        "type": "list_item",
+                        "checked": False,
+                        "content": [{"text": "Open item", "marks": []}],
+                    },
+                ],
             },
             {
-                "type": "checklist",
-                "checked": False,
-                "content": [{"text": "Open item", "marks": []}],
+                "type": "blockquote",
+                "children": [
+                    {
+                        "type": "paragraph",
+                        "content": [{"text": "Quoted line", "marks": []}],
+                    }
+                ],
             },
-            {"type": "blockquote", "content": [{"text": "Quoted line", "marks": []}]},
             {
                 "type": "code_block",
                 "content": [{"text": "line 1\nline 2", "marks": []}],

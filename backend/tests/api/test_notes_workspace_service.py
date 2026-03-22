@@ -4,7 +4,11 @@ from types import SimpleNamespace
 
 import pytest
 from api.services import notes_workspace_service as service_module
-from api.services.notes_document_types import note_document_from_plain_text
+from api.services.notes_document_types import (
+    NOTE_DOCUMENT_VERSION,
+    note_document_from_plain_text,
+    validate_note_document,
+)
 from api.services.notes_workspace_service import NotesWorkspaceService
 from api.models.note import Note
 from sqlalchemy import inspect
@@ -60,7 +64,7 @@ def _note(title="Title", content="Body", folder="", pinned=False):
         title=title,
         content="",
         document=note_document_from_plain_text(content),
-        document_version=1,
+        document_version=NOTE_DOCUMENT_VERSION,
         plain_text=content,
         content_format="rtf",
         folder_path=folder,
@@ -97,7 +101,7 @@ def test_build_note_payload_includes_explicit_state_fields():
     assert payload["title"] == "Alpha"
     assert payload["name"] == "Alpha"
     assert payload["document"] == note_document_from_plain_text("Body")
-    assert payload["document_version"] == 1
+    assert payload["document_version"] == NOTE_DOCUMENT_VERSION
     assert payload["plain_text"] == "Body"
     assert payload["folder"] == "Inbox"
     assert payload["pinned"] is True
@@ -135,7 +139,8 @@ def test_create_note_fallback_uses_block_zero_title_semantics(monkeypatch):
     assert result["title"] == "New Note"
     assert result["name"] == "New Note"
     assert result["plain_text"] == "   \nBody title"
-    assert result["document"] == document
+    assert result["document"] == validate_note_document(document)
+    assert result["document_version"] == NOTE_DOCUMENT_VERSION
 
 
 def test_create_note_fallback_normalizes_block_zero_to_title(monkeypatch):
@@ -168,6 +173,7 @@ def test_create_note_fallback_normalizes_block_zero_to_title(monkeypatch):
     assert result["title"] == "Semantic Heading"
     assert result["name"] == "Semantic Heading"
     assert result["plain_text"] == "Semantic Heading\nBody line"
+    assert result["document_version"] == NOTE_DOCUMENT_VERSION
     assert result["document"]["blocks"][0]["type"] == "title"
 
 
@@ -200,7 +206,7 @@ def test_list_tree_query_defers_note_content_columns(test_db):
         user_id="user-1",
         title="Heavy note",
         document=note_document_from_plain_text("Body"),
-        document_version=1,
+        document_version=NOTE_DOCUMENT_VERSION,
         plain_text="Body",
         folder_path="",
         pinned=False,

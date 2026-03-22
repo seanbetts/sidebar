@@ -12,6 +12,8 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 from api.exceptions import BadRequestError, NoteNotFoundError
 from api.models.note import Note
 from api.services.notes_document_types import (
+    NOTE_DOCUMENT_VERSION,
+    document_version,
     note_document_from_plain_text,
     project_plain_text_from_document,
     validate_note_document,
@@ -218,7 +220,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             user_id=user_id,
             title="__folder__",
             document=note_document_from_plain_text(""),
-            document_version=1,
+            document_version=NOTE_DOCUMENT_VERSION,
             plain_text="",
             folder_path=path,
             pinned=False,
@@ -423,7 +425,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
                 "modified": updated_at.timestamp() if updated_at else None,
                 "created": None,
                 "document": fallback_document,
-                "document_version": 1,
+                "document_version": document_version(fallback_document),
                 "plain_text": fallback_plain_text,
                 "folder": resolved_folder,
                 "pinned": False,

@@ -7,7 +7,11 @@ from pathlib import Path
 import pytest
 from sqlalchemy import text
 from api.exceptions import BadRequestError, ConflictError
-from api.services.notes_document_types import note_document_from_plain_text
+from api.services.notes_document_types import (
+    NOTE_DOCUMENT_VERSION,
+    note_document_from_plain_text,
+    validate_note_document,
+)
 from api.schemas.filters import NoteFilters
 from api.services.notes_service import NotesService
 
@@ -23,6 +27,10 @@ def db_session(test_db):
 
 def _document(plain_text: str) -> dict[str, object]:
     return note_document_from_plain_text(plain_text)
+
+
+def _canonical_document(document: dict[str, object]) -> dict[str, object]:
+    return validate_note_document(document)
 
 
 def _load_notes_script_module(script_name: str, module_name: str):
@@ -85,7 +93,7 @@ def test_create_and_read_note(db_session):
     assert fetched is not None
     assert fetched.title == "# Test Note"
     assert fetched.document == _document(content)
-    assert fetched.document_version == 1
+    assert fetched.document_version == NOTE_DOCUMENT_VERSION
     assert fetched.plain_text == content
     assert fetched.last_opened_at is not None
 
@@ -105,7 +113,7 @@ def test_update_note_title(db_session):
 
     assert updated.title == "# New Title"
     assert updated.document == _document("# New Title\n\nBody")
-    assert updated.document_version == 1
+    assert updated.document_version == NOTE_DOCUMENT_VERSION
     assert updated.plain_text == "# New Title\n\nBody"
 
 
@@ -152,7 +160,7 @@ def test_create_note_derives_title_and_plain_text_from_semantic_document_project
 
     assert note.title == "# Semantic Title"
     assert note.plain_text == "# Semantic Title\nBody line"
-    assert note.document == document
+    assert note.document == _canonical_document(document)
 
 
 def test_create_note_normalizes_block_zero_to_title_before_deriving_title(db_session):
@@ -195,7 +203,7 @@ def test_create_note_preserves_literal_hash_prefix_from_semantic_document(db_ses
 
     assert note.title == "## Literal heading markers"
     assert note.plain_text == "## Literal heading markers"
-    assert note.document == document
+    assert note.document == _canonical_document(document)
 
 
 def test_save_note_document_script_create_preserves_canonical_link_segments(
@@ -243,7 +251,7 @@ def test_save_note_document_script_create_preserves_canonical_link_segments(
     )
 
     assert created is not None
-    assert created.document == document
+    assert created.document == _canonical_document(document)
     assert created.title == "Sidebar Docs"
     assert created.plain_text == "Sidebar Docs\nhttps://example.com/reference"
 
@@ -274,7 +282,7 @@ def test_update_note_derives_title_and_plain_text_from_semantic_document_project
 
     assert updated.title == "# After Title"
     assert updated.plain_text == "# After Title\nUpdated body"
-    assert updated.document == document
+    assert updated.document == _canonical_document(document)
 
 
 def test_save_note_document_script_create_accepts_semantic_document_without_heading_injection(
@@ -314,7 +322,7 @@ def test_save_note_document_script_create_accepts_semantic_document_without_head
     assert result["title"] == "Semantic Title"
     assert created.title == "Semantic Title"
     assert created.plain_text == "Semantic Title\nBody line"
-    assert created.document == document
+    assert created.document == _canonical_document(document)
 
 
 def test_save_note_document_script_update_accepts_semantic_document(db_session, monkeypatch):
@@ -353,7 +361,7 @@ def test_save_note_document_script_update_accepts_semantic_document(db_session, 
     assert result["title"] == "Updated title"
     assert updated.title == "Updated title"
     assert updated.plain_text == "Updated title\nUpdated body"
-    assert updated.document == document
+    assert updated.document == _canonical_document(document)
 
 
 def test_save_note_document_script_append_concatenates_document_blocks_in_order(
@@ -397,7 +405,7 @@ def test_save_note_document_script_append_concatenates_document_blocks_in_order(
     assert result["id"] == str(original.id)
     assert updated.title == "Original title"
     assert updated.plain_text == "Original title\nAppended line"
-    assert updated.document == {
+    assert updated.document == _canonical_document({
         "version": 1,
         "blocks": [
             {
@@ -409,7 +417,7 @@ def test_save_note_document_script_append_concatenates_document_blocks_in_order(
                 "content": [{"text": "Appended line", "marks": ["italic"]}],
             },
         ],
-    }
+    })
 
 
 def test_save_note_document_script_append_rejects_documents_outside_phase_one_projection(
@@ -498,7 +506,7 @@ def test_scratchpad_update_stores_body_as_semantic_document_without_markdown_hea
     assert note.title == module.SCRATCHPAD_TITLE
     assert note.plain_text == f"{module.SCRATCHPAD_TITLE}\nBody line"
     assert not note.plain_text.startswith(f"# {module.SCRATCHPAD_TITLE}")
-    assert note.document == {
+    assert note.document == _canonical_document({
         "version": 1,
         "blocks": [
             {
@@ -510,7 +518,7 @@ def test_scratchpad_update_stores_body_as_semantic_document_without_markdown_hea
                 "content": [{"text": "Body line", "marks": ["italic"]}],
             },
         ],
-    }
+    })
 
 
 def test_scratchpad_clear_resets_to_plain_title_document_without_markdown_heading(
@@ -548,7 +556,7 @@ def test_scratchpad_clear_resets_to_plain_title_document_without_markdown_headin
     assert note.title == clear_module.SCRATCHPAD_TITLE
     assert note.plain_text == clear_module.SCRATCHPAD_TITLE
     assert not note.plain_text.startswith(f"# {clear_module.SCRATCHPAD_TITLE}")
-    assert note.document == {
+    assert note.document == _canonical_document({
         "version": 1,
         "blocks": [
             {
@@ -556,7 +564,7 @@ def test_scratchpad_clear_resets_to_plain_title_document_without_markdown_headin
                 "content": [{"text": clear_module.SCRATCHPAD_TITLE, "marks": []}],
             }
         ],
-    }
+    })
 
 
 def test_read_note_script_returns_canonical_document_and_plain_text(db_session, monkeypatch):
@@ -616,7 +624,7 @@ def test_download_note_script_treats_plain_text_as_export_only(db_session, monke
         "filename": "Export title.txt",
     }
     assert refreshed is not None
-    assert refreshed.document == document
+    assert refreshed.document == _canonical_document(document)
     assert refreshed.plain_text == "Export title\nExport body"
 
 

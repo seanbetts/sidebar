@@ -1,7 +1,10 @@
 import pytest
 
 from api.exceptions import BadRequestError
-from api.services.notes_document_types import note_document_from_plain_text
+from api.services.notes_document_types import (
+    NOTE_DOCUMENT_VERSION,
+    note_document_from_plain_text,
+)
 from api.services.notes_write_contract import (
     MAX_NOTE_PLAIN_TEXT_CHARS,
     build_canonical_note_write,
@@ -15,7 +18,7 @@ def test_build_canonical_note_write_projects_plain_text_and_title():
     result = build_canonical_note_write(document)
 
     assert result.document == document
-    assert result.document_version == 1
+    assert result.document_version == NOTE_DOCUMENT_VERSION
     assert result.plain_text == "\n# Hello\nWorld"
     assert result.title == "New Note"
 
