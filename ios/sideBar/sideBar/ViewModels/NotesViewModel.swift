@@ -475,3 +475,21 @@ public final class NotesViewModel: ObservableObject {
         }
     }
 }
+
+extension NotesViewModel {
+    public func reorderPinnedNotes(ids: [String]) async -> Bool {
+        guard networkStatus.isNetworkAvailable, !networkStatus.isOffline else {
+            return false
+        }
+        let previousOrder = store.pinnedNoteOrder()
+        store.applyPinnedOrder(ids)
+        do {
+            try await api.updatePinnedOrder(ids: ids)
+            return true
+        } catch {
+            store.applyPinnedOrder(previousOrder)
+            toastCenter.show(message: "Failed to reorder pinned notes")
+            return false
+        }
+    }
+}

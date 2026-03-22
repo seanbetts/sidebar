@@ -295,6 +295,99 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertNil(archivedNode.pinnedOrder)
     }
 
+    func testApplyPinnedOrderUpdatesPinnedNodesAcrossFoldersAndCanRestorePreviousOrder() async {
+        let tree = FileTree(children: [
+            FileNode(
+                name: "Folder A",
+                path: "/folder-a",
+                type: .directory,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: [
+                    FileNode(
+                        name: "A.md",
+                        path: "/a.md",
+                        type: .file,
+                        size: nil,
+                        modified: nil,
+                        created: nil,
+                        children: nil,
+                        expanded: nil,
+                        pinned: true,
+                        pinnedOrder: 1,
+                        archived: false,
+                        folderMarker: nil
+                    )
+                ],
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            ),
+            FileNode(
+                name: "B.md",
+                path: "/b.md",
+                type: .file,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: nil,
+                expanded: nil,
+                pinned: true,
+                pinnedOrder: 0,
+                archived: false,
+                folderMarker: nil
+            ),
+            FileNode(
+                name: "Nested",
+                path: "/nested",
+                type: .directory,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: [
+                    FileNode(
+                        name: "C.md",
+                        path: "/nested/c.md",
+                        type: .file,
+                        size: nil,
+                        modified: nil,
+                        created: nil,
+                        children: nil,
+                        expanded: nil,
+                        pinned: true,
+                        pinnedOrder: 2,
+                        archived: false,
+                        folderMarker: nil
+                    )
+                ],
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
+        let store = NotesStore(api: api, cache: TestCacheClient())
+        store.applyTreeUpdate(tree, persist: false)
+
+        let previousOrder = currentPinnedOrder(in: store.tree)
+
+        store.applyPinnedOrder(["/b.md", "/a.md", "/nested/c.md"])
+
+        XCTAssertEqual(currentPinnedOrder(in: store.tree), ["/b.md", "/a.md", "/nested/c.md"])
+
+        store.applyPinnedOrder(previousOrder)
+
+        XCTAssertEqual(currentPinnedOrder(in: store.tree), previousOrder)
+    }
+
     func testConcurrentArchivedTreeRefreshTimesOutInsteadOfWaitingIndefinitely() async throws {
         let cached = FileTree(children: [])
         let fresh = FileTree(children: [])
@@ -328,4 +421,31 @@ final class NotesStoreTests: XCTestCase {
         await firstRefresh.value
     }
 
+}
+
+private func currentPinnedOrder(in tree: FileTree?) -> [String] {
+    guard let tree else { return [] }
+    return pinnedNodes(in: tree.children)
+        .sorted {
+            let leftOrder = $0.pinnedOrder ?? Int.max
+            let rightOrder = $1.pinnedOrder ?? Int.max
+            if leftOrder != rightOrder {
+                return leftOrder < rightOrder
+            }
+            return $0.path < $1.path
+        }
+        .map(\.path)
+}
+
+private func pinnedNodes(in nodes: [FileNode]) -> [FileNode] {
+    var results: [FileNode] = []
+    for node in nodes {
+        if node.type == .file, node.pinned == true {
+            results.append(node)
+        }
+        if let children = node.children {
+            results.append(contentsOf: pinnedNodes(in: children))
+        }
+    }
+    return results
 }
