@@ -40,7 +40,11 @@ enum NoteTextParagraphMetrics {
     }
 
     static func orderedListContentIndent(baseFontSize: CGFloat) -> CGFloat {
-        baseFontSize * 1.5
+        baseFontSize * 2.5
+    }
+
+    static func orderedListMarkerIndent(baseFontSize: CGFloat) -> CGFloat {
+        baseFontSize
     }
 
     private struct StyleMetrics {

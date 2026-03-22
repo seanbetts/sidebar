@@ -106,18 +106,21 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         let expectedIndent = NoteTextParagraphMetrics.orderedListContentIndent(
             baseFontSize: baseFontSize
         )
+        let expectedMarkerIndent = NoteTextParagraphMetrics.orderedListMarkerIndent(
+            baseFontSize: baseFontSize
+        )
         let style = NoteTextParagraphMetrics.paragraphStyle(
             for: .orderedList,
             baseFontSize: baseFontSize,
             headIndent: expectedIndent,
-            firstLineHeadIndent: 0,
+            firstLineHeadIndent: expectedMarkerIndent,
             tabStops: [
                 NSTextTab(textAlignment: .left, location: expectedIndent)
             ],
             defaultTabInterval: expectedIndent
         )
 
-        XCTAssertEqual(style.firstLineHeadIndent, 0, accuracy: 0.001)
+        XCTAssertEqual(style.firstLineHeadIndent, expectedMarkerIndent, accuracy: 0.001)
         XCTAssertEqual(style.headIndent, expectedIndent, accuracy: 0.001)
         XCTAssertEqual(style.tabStops.count, 1)
         XCTAssertEqual(style.tabStops.first?.location ?? 0, expectedIndent, accuracy: 0.001)

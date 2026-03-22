@@ -221,11 +221,14 @@ struct SelectableNoteReadView: View {
             let contentIndent = NoteTextParagraphMetrics.orderedListContentIndent(
                 baseFontSize: baseFontSize
             )
+            let markerIndent = NoteTextParagraphMetrics.orderedListMarkerIndent(
+                baseFontSize: baseFontSize
+            )
             return NoteTextParagraphMetrics.paragraphStyle(
                 for: blockType,
                 baseFontSize: baseFontSize,
                 headIndent: contentIndent,
-                firstLineHeadIndent: 0,
+                firstLineHeadIndent: markerIndent,
                 tabStops: [
                     NSTextTab(textAlignment: .left, location: contentIndent)
                 ],
