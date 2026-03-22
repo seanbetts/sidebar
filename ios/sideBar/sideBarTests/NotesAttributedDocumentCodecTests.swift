@@ -269,11 +269,11 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
 
         XCTAssertEqual(
             firstIntent.components.map(\.kind),
-            [.orderedList, .listItem(ordinal: 1), .paragraph]
+            [.paragraph, .listItem(ordinal: 1), .orderedList]
         )
         XCTAssertEqual(
             secondIntent.components.map(\.kind),
-            [.orderedList, .listItem(ordinal: 2), .paragraph]
+            [.paragraph, .listItem(ordinal: 2), .orderedList]
         )
         XCTAssertEqual(NotesAttributedDocumentCodec.document(from: attributed), document)
     }

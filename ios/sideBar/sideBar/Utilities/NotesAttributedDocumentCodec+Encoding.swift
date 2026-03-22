@@ -2,10 +2,10 @@ import Foundation
 import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
-final class NotesPresentationIntentIdentitySource {
+struct NotesPresentationIntentIdentitySource {
     private var nextIdentity = 1
 
-    func makeIdentity() -> Int {
+    mutating func makeIdentity() -> Int {
         let identity = nextIdentity
         nextIdentity += 1
         return identity
@@ -27,11 +27,11 @@ extension NotesAttributedDocumentCodec {
 
         let attributed: AttributedString
         if usesPresentationIntentProjection(blocks: document.blocks) {
-            let identitySource = NotesPresentationIntentIdentitySource()
+            var identitySource = NotesPresentationIntentIdentitySource()
             attributed = attributedBlocks(
                 from: document.blocks,
                 baseFontSize: baseFontSize,
-                identitySource: identitySource
+                identitySource: &identitySource
             )
         } else {
             attributed = legacyAttributedBlocks(
@@ -191,10 +191,68 @@ extension NotesAttributedDocumentCodec {
     ) -> AttributedString {
         let plainText = (visiblePrefix ?? "") + segments.map(\.text).joined()
         guard !plainText.isEmpty else { return AttributedString("") }
-        return bridgedFoundationPresentationIntentText(
+        return styledPresentationIntentText(
+            plainText,
+            blockType: blockType,
+            baseFontSize: baseFontSize,
+            presentationIntent: presentationIntent
+        )
+    }
+
+    static func styledPresentationIntentText(
+        _ plainText: String,
+        blockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat,
+        presentationIntent: PresentationIntent
+    ) -> AttributedString {
+        var attributed = bridgedFoundationPresentationIntentText(
             plainText,
             presentationIntent: presentationIntent
         )
+        guard !attributed.characters.isEmpty else { return attributed }
+
+        let range = attributed.startIndex..<attributed.endIndex
+        attributed[range].font = blockFont(
+            baseFontSize: baseFontSize,
+            blockType: blockType,
+            bold: false,
+            italic: false
+        )
+        #if os(iOS)
+        attributed[range][AttributeScopes.UIKitAttributes.FontAttribute.self] =
+            noteEditorPlatformFont(
+                baseFontSize: baseFontSize,
+                blockType: blockType,
+                bold: false,
+                italic: false
+            )
+        attributed[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
+            NoteTextAppearance.backgroundColor(
+                for: blockType,
+                inlineCode: false
+            )
+        #elseif os(macOS)
+        attributed[range][AttributeScopes.AppKitAttributes.FontAttribute.self] =
+            noteEditorPlatformFont(
+                baseFontSize: baseFontSize,
+                blockType: blockType,
+                bold: false,
+                italic: false
+            )
+        attributed[range][AttributeScopes.AppKitAttributes.BackgroundColorAttribute.self] =
+            NoteTextAppearance.backgroundColor(
+                for: blockType,
+                inlineCode: false
+            )
+        #endif
+        attributed[range].paragraphStyle = paragraphStyle(
+            for: blockType,
+            baseFontSize: baseFontSize
+        )
+        if let blockMarker = blockMarker(for: blockType) {
+            attributed[range].noteBlock = blockMarker
+        }
+        return attributed
     }
 
     static func bridgedFoundationPresentationIntentText(

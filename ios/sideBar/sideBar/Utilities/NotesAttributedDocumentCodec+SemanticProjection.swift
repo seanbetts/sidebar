@@ -6,7 +6,7 @@ extension NotesAttributedDocumentCodec {
     static func attributedBlocks(
         from blocks: [NotesSemanticDocument.Block],
         baseFontSize: CGFloat,
-        identitySource: NotesPresentationIntentIdentitySource
+        identitySource: inout NotesPresentationIntentIdentitySource
     ) -> AttributedString {
         guard let firstBlock = blocks.first else {
             return AttributedString()
@@ -15,7 +15,7 @@ extension NotesAttributedDocumentCodec {
         var attributed = renderedTopLevelBlock(
             firstBlock,
             baseFontSize: baseFontSize,
-            identitySource: identitySource
+            identitySource: &identitySource
         )
 
         for block in blocks.dropFirst() {
@@ -29,7 +29,7 @@ extension NotesAttributedDocumentCodec {
                 renderedTopLevelBlock(
                     block,
                     baseFontSize: baseFontSize,
-                    identitySource: identitySource
+                    identitySource: &identitySource
                 )
             )
         }
@@ -94,7 +94,7 @@ extension NotesAttributedDocumentCodec {
     private static func renderedTopLevelBlock(
         _ sourceBlock: NotesSemanticDocument.Block,
         baseFontSize: CGFloat,
-        identitySource: NotesPresentationIntentIdentitySource
+        identitySource: inout NotesPresentationIntentIdentitySource
     ) -> AttributedString {
         let block = renderingCopy(of: sourceBlock)
         switch block.type {
@@ -105,8 +105,10 @@ extension NotesAttributedDocumentCodec {
                 baseFontSize: baseFontSize
             )
         case .codeBlock:
-            return bridgedFoundationPresentationIntentText(
+            return styledPresentationIntentText(
                 block.content.map(\.text).joined(),
+                blockType: .codeBlock,
+                baseFontSize: baseFontSize,
                 presentationIntent: PresentationIntent(
                     .codeBlock(languageHint: nil),
                     identity: identitySource.makeIdentity(),
@@ -117,14 +119,14 @@ extension NotesAttributedDocumentCodec {
             return attributedListContainer(
                 from: block,
                 baseFontSize: baseFontSize,
-                identitySource: identitySource,
+                identitySource: &identitySource,
                 semanticParent: nil
             )
         case .blockquote:
             return attributedBlockquote(
                 from: block,
                 baseFontSize: baseFontSize,
-                identitySource: identitySource,
+                identitySource: &identitySource,
                 semanticParent: nil
             )
         case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
@@ -138,7 +140,7 @@ extension NotesAttributedDocumentCodec {
     static func attributedBlock(
         from block: NotesSemanticDocument.Block,
         baseFontSize: CGFloat,
-        identitySource: NotesPresentationIntentIdentitySource,
+        identitySource: inout NotesPresentationIntentIdentitySource,
         semanticParent: PresentationIntent?
     ) -> AttributedString {
         switch block.type {
@@ -149,8 +151,10 @@ extension NotesAttributedDocumentCodec {
                 baseFontSize: baseFontSize
             )
         case .codeBlock:
-            return bridgedFoundationPresentationIntentText(
+            return styledPresentationIntentText(
                 block.content.map(\.text).joined(),
+                blockType: .codeBlock,
+                baseFontSize: baseFontSize,
                 presentationIntent: PresentationIntent(
                     .codeBlock(languageHint: nil),
                     identity: identitySource.makeIdentity(),
@@ -161,14 +165,14 @@ extension NotesAttributedDocumentCodec {
             return attributedListContainer(
                 from: block,
                 baseFontSize: baseFontSize,
-                identitySource: identitySource,
+                identitySource: &identitySource,
                 semanticParent: semanticParent
             )
         case .blockquote:
             return attributedBlockquote(
                 from: block,
                 baseFontSize: baseFontSize,
-                identitySource: identitySource,
+                identitySource: &identitySource,
                 semanticParent: semanticParent
             )
         case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
@@ -212,7 +216,7 @@ extension NotesAttributedDocumentCodec {
     private static func attributedListContainer(
         from block: NotesSemanticDocument.Block,
         baseFontSize: CGFloat,
-        identitySource: NotesPresentationIntentIdentitySource,
+        identitySource: inout NotesPresentationIntentIdentitySource,
         semanticParent: PresentationIntent?
     ) -> AttributedString {
         let containerKind: PresentationIntent.Kind = switch block.type {
@@ -273,7 +277,7 @@ extension NotesAttributedDocumentCodec {
     private static func attributedBlockquote(
         from block: NotesSemanticDocument.Block,
         baseFontSize: CGFloat,
-        identitySource: NotesPresentationIntentIdentitySource,
+        identitySource: inout NotesPresentationIntentIdentitySource,
         semanticParent: PresentationIntent?
     ) -> AttributedString {
         let quoteIntent = PresentationIntent(

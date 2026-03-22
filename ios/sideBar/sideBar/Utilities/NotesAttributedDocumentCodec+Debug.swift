@@ -7,7 +7,7 @@ extension NotesAttributedDocumentCodec {
         _ plainText: String,
         baseFontSize: CGFloat
     ) -> AttributedString {
-        let identitySource = NotesPresentationIntentIdentitySource()
+        var identitySource = NotesPresentationIntentIdentitySource()
         return attributedBlocks(
             from: [
                 .init(
@@ -16,7 +16,7 @@ extension NotesAttributedDocumentCodec {
                 )
             ],
             baseFontSize: baseFontSize,
-            identitySource: identitySource
+            identitySource: &identitySource
         )
     }
 
@@ -24,14 +24,14 @@ extension NotesAttributedDocumentCodec {
         _ plainText: String,
         baseFontSize: CGFloat
     ) -> AttributedString {
-        let identitySource = NotesPresentationIntentIdentitySource()
+        var identitySource = NotesPresentationIntentIdentitySource()
         return attributedBlock(
             from: .init(
                 type: .codeBlock,
                 content: [.init(text: plainText, marks: [])]
             ),
             baseFontSize: baseFontSize,
-            identitySource: identitySource,
+            identitySource: &identitySource,
             semanticParent: nil
         )
     }
@@ -54,7 +54,7 @@ extension NotesAttributedDocumentCodec {
     static func debugIdentitySourceBridgeCodeBlockText(
         _ plainText: String
     ) -> AttributedString {
-        let identitySource = NotesPresentationIntentIdentitySource()
+        var identitySource = NotesPresentationIntentIdentitySource()
         return bridgedFoundationPresentationIntentText(
             plainText,
             presentationIntent: PresentationIntent(
@@ -144,11 +144,11 @@ extension NotesAttributedDocumentCodec {
 
         let attributed: AttributedString
         if usesPresentationIntentProjection(blocks: document.blocks) {
-            let identitySource = NotesPresentationIntentIdentitySource()
+            var identitySource = NotesPresentationIntentIdentitySource()
             attributed = attributedBlocks(
                 from: document.blocks,
                 baseFontSize: baseFontSize,
-                identitySource: identitySource
+                identitySource: &identitySource
             )
         } else {
             attributed = legacyAttributedBlocks(
@@ -171,11 +171,11 @@ extension NotesAttributedDocumentCodec {
             .init(type: .title, content: [.init(text: "Snippet", marks: [])]),
             .init(type: .codeBlock, content: [.init(text: "let value = 1", marks: [])])
         ]
-        let identitySource = NotesPresentationIntentIdentitySource()
+        var identitySource = NotesPresentationIntentIdentitySource()
         return attributedBlocks(
             from: blocks,
             baseFontSize: baseFontSize,
-            identitySource: identitySource
+            identitySource: &identitySource
         )
     }
 
@@ -193,12 +193,12 @@ extension NotesAttributedDocumentCodec {
                 baseFontSize: baseFontSize
             )
         )
-        let identitySource = NotesPresentationIntentIdentitySource()
+        var identitySource = NotesPresentationIntentIdentitySource()
         attributed.append(
             attributedBlock(
                 from: .init(type: .codeBlock, content: [.init(text: "let value = 1", marks: [])]),
                 baseFontSize: baseFontSize,
-                identitySource: identitySource,
+                identitySource: &identitySource,
                 semanticParent: nil
             )
         )
@@ -241,7 +241,7 @@ extension NotesAttributedDocumentCodec {
             type: .codeBlock,
             content: [.init(text: "let value = 1", marks: [])]
         )
-        let identitySource = NotesPresentationIntentIdentitySource()
+        var identitySource = NotesPresentationIntentIdentitySource()
         attributed.append(
             bridgedFoundationPresentationIntentText(
                 block.content.map(\.text).joined(),
@@ -304,7 +304,7 @@ extension NotesAttributedDocumentCodec {
             type: .codeBlock,
             content: [.init(text: "let value = 1", marks: [])]
         )
-        let identitySource = NotesPresentationIntentIdentitySource()
+        var identitySource = NotesPresentationIntentIdentitySource()
         let identity = identitySource.makeIdentity()
         attributed.append(
             bridgedFoundationPresentationIntentText(
@@ -337,7 +337,7 @@ extension NotesAttributedDocumentCodec {
             type: .codeBlock,
             content: [.init(text: "let value = 1", marks: [])]
         )
-        let identitySource = NotesPresentationIntentIdentitySource()
+        var identitySource = NotesPresentationIntentIdentitySource()
         _ = identitySource
         attributed.append(
             bridgedFoundationPresentationIntentText(
@@ -371,7 +371,7 @@ extension NotesAttributedDocumentCodec {
             content: [.init(text: "let value = 1", marks: [])]
         )
         let identity: Int = {
-            let identitySource = NotesPresentationIntentIdentitySource()
+            var identitySource = NotesPresentationIntentIdentitySource()
             return identitySource.makeIdentity()
         }()
         attributed.append(
@@ -394,11 +394,11 @@ extension NotesAttributedDocumentCodec {
             .init(type: .paragraph, content: [.init(text: "Snippet", marks: [])]),
             .init(type: .codeBlock, content: [.init(text: "let value = 1", marks: [])])
         ]
-        let identitySource = NotesPresentationIntentIdentitySource()
+        var identitySource = NotesPresentationIntentIdentitySource()
         return attributedBlocks(
             from: blocks,
             baseFontSize: baseFontSize,
-            identitySource: identitySource
+            identitySource: &identitySource
         )
     }
 
