@@ -191,11 +191,7 @@ struct AttributedNoteEditorContainer: View {
             viewModel: nativeViewModel,
             maxContentWidth: maxContentWidth,
             isEditable: true,
-            shouldAutofocus: autofocusEnabled,
-            pendingSelectionViewportAnchorY: pendingSelectionViewportAnchorY,
-            onPendingSelectionViewportAnchorApplied: {
-                pendingSelectionViewportAnchorY = nil
-            }
+            shouldAutofocus: autofocusEnabled
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)

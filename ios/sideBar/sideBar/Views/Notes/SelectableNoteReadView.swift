@@ -308,8 +308,7 @@ struct SelectableNoteReadView: View {
     #if os(macOS)
     static func makePlatformTextView(
         attributedContent: NSAttributedString,
-        onActivateEditing: ((ReadActivationTarget) -> Void)? = nil,
-        onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)? = nil
+        onActivateEditing: ((ReadActivationTarget) -> Void)? = nil
     ) -> NSTextView {
         let textView = SelectableNoteReadTextView()
         textView.drawsBackground = false
@@ -333,7 +332,7 @@ struct SelectableNoteReadView: View {
             .underlineStyle: NSUnderlineStyle.single.rawValue
         ]
         textView.onActivateEditing = onActivateEditing
-        textView.onActivateEditingWithViewport = onActivateEditingWithViewport
+        textView.installActivationClickRecognizerIfNeeded()
         textView.textStorage?.setAttributedString(attributedContent)
         return textView
     }
@@ -365,14 +364,6 @@ struct SelectableNoteReadView: View {
         let insertionIndex = textView.characterIndexForInsertion(at: point)
         return min(max(insertionIndex, 0), plainText.length)
     }
-
-    static func activateEditingForTesting(
-        in textView: NSTextView,
-        at point: NSPoint
-    ) {
-        guard let readTextView = textView as? SelectableNoteReadTextView else { return }
-        readTextView.activateEditingForTesting(at: point)
-    }
     #endif
 }
 
@@ -388,8 +379,7 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let textView = SelectableNoteReadView.makePlatformTextView(
             attributedContent: attributedContent,
-            onActivateEditing: onActivateEditing,
-            onActivateEditingWithViewport: onActivateEditingWithViewport
+            onActivateEditing: onActivateEditing
         )
         guard let readTextView = textView as? SelectableNoteReadTextView else {
             preconditionFailure("Expected SelectableNoteReadTextView for macOS read surface")
@@ -411,7 +401,6 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
         }
         textView.maxReadableContentWidth = maxReadableContentWidth
         textView.onActivateEditing = onActivateEditing
-        textView.onActivateEditingWithViewport = onActivateEditingWithViewport
         if textView.textStorage?.isEqual(to: attributedContent) == false {
             textView.textStorage?.setAttributedString(attributedContent)
         }
@@ -422,7 +411,6 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
             return
         }
         textView.onActivateEditing = nil
-        textView.onActivateEditingWithViewport = nil
         scrollView.documentView = nil
     }
 }
@@ -435,7 +423,6 @@ private final class SelectableNoteReadTextView: NSTextView {
     )
 
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
-    var onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
         didSet { needsLayout = true }
     }
@@ -464,18 +451,33 @@ private final class SelectableNoteReadTextView: NSTextView {
         activateEditingIfNeeded(at: point)
     }
 
-    private func activateEditingIfNeeded(at point: NSPoint) {
-        guard let target = activationTarget(at: point), canTriggerActivationNow else { return }
-        lastActivationTimestamp = ProcessInfo.processInfo.systemUptime
-        if let onActivateEditingWithViewport {
-            onActivateEditingWithViewport(target, activationViewportAnchorY(for: target))
-        } else {
-            onActivateEditing?(target)
+    func installActivationClickRecognizerIfNeeded() {
+        let hasRecognizer = gestureRecognizers.contains { recognizer in
+            guard let clickRecognizer = recognizer as? NSClickGestureRecognizer else {
+                return false
+            }
+            return clickRecognizer.numberOfClicksRequired == 1
         }
+        guard hasRecognizer == false else { return }
+
+        let clickRecognizer = NSClickGestureRecognizer(
+            target: self,
+            action: #selector(handleActivationClickGesture(_:))
+        )
+        clickRecognizer.numberOfClicksRequired = 1
+        addGestureRecognizer(clickRecognizer)
     }
 
-    fileprivate func activateEditingForTesting(at point: NSPoint) {
-        activateEditingIfNeeded(at: point)
+    @objc
+    private func handleActivationClickGesture(_ recognizer: NSClickGestureRecognizer) {
+        guard recognizer.state == .ended else { return }
+        activateEditingIfNeeded(at: recognizer.location(in: self))
+    }
+
+    private func activateEditingIfNeeded(at point: NSPoint) {
+        guard let onActivateEditing, let target = activationTarget(at: point), canTriggerActivationNow else { return }
+        lastActivationTimestamp = ProcessInfo.processInfo.systemUptime
+        onActivateEditing(target)
     }
 
     private var canTriggerActivationNow: Bool {
@@ -491,50 +493,6 @@ private final class SelectableNoteReadTextView: NSTextView {
         )
         guard textContainerInset != resolvedInset else { return }
         textContainerInset = resolvedInset
-    }
-
-    private func activationViewportAnchorY(
-        for target: SelectableNoteReadView.ReadActivationTarget
-    ) -> CGFloat? {
-        let characterOffset: Int
-        switch target {
-        case .start:
-            characterOffset = 0
-        case .characterOffset(let offset):
-            characterOffset = offset
-        }
-        guard let selectionMidY = selectionMidY(forCharacterOffset: characterOffset),
-              let scrollView = enclosingScrollView else {
-            return nil
-        }
-        return selectionMidY - scrollView.contentView.bounds.minY
-    }
-
-    private func selectionMidY(forCharacterOffset characterOffset: Int) -> CGFloat? {
-        guard let layoutManager,
-              let textContainer else {
-            return nil
-        }
-        textContainer.containerSize = NSSize(
-            width: max(bounds.width, 0),
-            height: CGFloat.greatestFiniteMagnitude
-        )
-        layoutManager.ensureLayout(for: textContainer)
-        guard layoutManager.numberOfGlyphs > 0 else {
-            return textContainerInset.height
-        }
-        let clampedCharacterOffset = min(max(characterOffset, 0), string.utf16.count)
-        let glyphIndex: Int
-        if clampedCharacterOffset >= string.utf16.count {
-            glyphIndex = max(layoutManager.numberOfGlyphs - 1, 0)
-        } else {
-            glyphIndex = layoutManager.glyphIndexForCharacter(at: clampedCharacterOffset)
-        }
-        let lineRect = layoutManager.lineFragmentUsedRect(
-            forGlyphAt: glyphIndex,
-            effectiveRange: nil
-        )
-        return textContainerInset.height + lineRect.midY
     }
 
     private func linkAttribute(at point: NSPoint) -> Any? {
