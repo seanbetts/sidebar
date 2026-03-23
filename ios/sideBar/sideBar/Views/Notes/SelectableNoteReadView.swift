@@ -15,6 +15,9 @@ struct SelectableNoteReadView: View {
     var onActivateEditing: ((ReadActivationTarget) -> Void)?
     var onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)?
     var onViewportOffsetChange: ((CGPoint) -> Void)?
+    var initialViewportOffset: CGPoint?
+    var onInitialViewportOffsetApplied: (() -> Void)?
+    var shouldRestoreFocusOnAppear: Bool
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
 
     init(
@@ -22,13 +25,19 @@ struct SelectableNoteReadView: View {
         maxContentWidth: CGFloat,
         onActivateEditing: ((ReadActivationTarget) -> Void)? = nil,
         onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)? = nil,
-        onViewportOffsetChange: ((CGPoint) -> Void)? = nil
+        onViewportOffsetChange: ((CGPoint) -> Void)? = nil,
+        initialViewportOffset: CGPoint? = nil,
+        onInitialViewportOffsetApplied: (() -> Void)? = nil,
+        shouldRestoreFocusOnAppear: Bool = false
     ) {
         self.document = document
         self.maxContentWidth = maxContentWidth
         self.onActivateEditing = onActivateEditing
         self.onActivateEditingWithViewport = onActivateEditingWithViewport
         self.onViewportOffsetChange = onViewportOffsetChange
+        self.initialViewportOffset = initialViewportOffset
+        self.onInitialViewportOffsetApplied = onInitialViewportOffsetApplied
+        self.shouldRestoreFocusOnAppear = shouldRestoreFocusOnAppear
     }
 
     init(
@@ -49,7 +58,10 @@ struct SelectableNoteReadView: View {
             maxReadableContentWidth: maxContentWidth,
             onActivateEditing: onActivateEditing,
             onActivateEditingWithViewport: onActivateEditingWithViewport,
-            onViewportOffsetChange: onViewportOffsetChange
+            onViewportOffsetChange: onViewportOffsetChange,
+            initialViewportOffset: initialViewportOffset,
+            onInitialViewportOffsetApplied: onInitialViewportOffsetApplied,
+            shouldRestoreFocusOnAppear: shouldRestoreFocusOnAppear
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
@@ -378,12 +390,77 @@ struct SelectableNoteReadView: View {
 
 #if os(macOS)
 @available(iOS 26.0, macOS 26.0, *)
+private final class SelectableNoteReadScrollView: NSScrollView {
+    var onViewportOffsetChange: ((CGPoint) -> Void)?
+    var pendingViewportOffset: CGPoint?
+    var onPendingViewportOffsetApplied: (() -> Void)?
+    var shouldRestoreFocusOnAppear = false
+    private var lastReportedViewportOffset: CGPoint?
+
+    override func layout() {
+        super.layout()
+        applyPendingViewportOffsetIfNeeded()
+        restoreReadFocusIfNeeded()
+        reportViewportOffsetIfNeeded(force: true)
+    }
+
+    override func reflectScrolledClipView(_ clipView: NSClipView) {
+        super.reflectScrolledClipView(clipView)
+        reportViewportOffsetIfNeeded()
+    }
+
+    private func applyPendingViewportOffsetIfNeeded() {
+        guard let pendingViewportOffset else { return }
+        if pendingViewportOffset.y > 0,
+           (documentView?.frame.height ?? 0) <= contentView.bounds.height {
+            return
+        }
+        let maxX = max((documentView?.frame.width ?? 0) - contentView.bounds.width, 0)
+        let maxY = max((documentView?.frame.height ?? 0) - contentView.bounds.height, 0)
+        let clampedOffset = CGPoint(
+            x: min(max(pendingViewportOffset.x, 0), maxX),
+            y: min(max(pendingViewportOffset.y, 0), maxY)
+        )
+        guard contentView.bounds.origin != clampedOffset else {
+            self.pendingViewportOffset = nil
+            onPendingViewportOffsetApplied?()
+            return
+        }
+        contentView.scroll(to: clampedOffset)
+        reflectScrolledClipView(contentView)
+        self.pendingViewportOffset = nil
+        onPendingViewportOffsetApplied?()
+    }
+
+    private func restoreReadFocusIfNeeded() {
+        guard shouldRestoreFocusOnAppear,
+              let textView = documentView as? NSTextView,
+              window?.firstResponder !== textView else { return }
+        shouldRestoreFocusOnAppear = false
+        DispatchQueue.main.async { [weak self, weak textView] in
+            guard let self, let textView else { return }
+            self.window?.makeFirstResponder(textView)
+        }
+    }
+
+    private func reportViewportOffsetIfNeeded(force: Bool = false) {
+        let viewportOffset = contentView.bounds.origin
+        guard force || lastReportedViewportOffset != viewportOffset else { return }
+        lastReportedViewportOffset = viewportOffset
+        onViewportOffsetChange?(viewportOffset)
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     let attributedContent: NSAttributedString
     let maxReadableContentWidth: CGFloat
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     let onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     let onViewportOffsetChange: ((CGPoint) -> Void)?
+    let initialViewportOffset: CGPoint?
+    let onInitialViewportOffsetApplied: (() -> Void)?
+    let shouldRestoreFocusOnAppear: Bool
 
     func makeNSView(context: Context) -> NSScrollView {
         let textView = SelectableNoteReadView.makePlatformTextView(
@@ -395,12 +472,16 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
             preconditionFailure("Expected SelectableNoteReadTextView for macOS read surface")
         }
         readTextView.maxReadableContentWidth = maxReadableContentWidth
-        let scrollView = NSScrollView()
+        let scrollView = SelectableNoteReadScrollView()
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.hasHorizontalScroller = false
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
+        scrollView.onViewportOffsetChange = onViewportOffsetChange
+        scrollView.pendingViewportOffset = initialViewportOffset
+        scrollView.onPendingViewportOffsetApplied = onInitialViewportOffsetApplied
+        scrollView.shouldRestoreFocusOnAppear = shouldRestoreFocusOnAppear
         scrollView.documentView = readTextView
         return scrollView
     }
@@ -408,6 +489,14 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? SelectableNoteReadTextView else {
             return
+        }
+        if let trackingScrollView = scrollView as? SelectableNoteReadScrollView {
+            trackingScrollView.onViewportOffsetChange = onViewportOffsetChange
+            if trackingScrollView.pendingViewportOffset == nil {
+                trackingScrollView.pendingViewportOffset = initialViewportOffset
+            }
+            trackingScrollView.onPendingViewportOffsetApplied = onInitialViewportOffsetApplied
+            trackingScrollView.shouldRestoreFocusOnAppear = shouldRestoreFocusOnAppear
         }
         textView.maxReadableContentWidth = maxReadableContentWidth
         textView.onActivateEditing = onActivateEditing
@@ -418,6 +507,12 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ scrollView: NSScrollView, coordinator: ()) {
+        if let trackingScrollView = scrollView as? SelectableNoteReadScrollView {
+            trackingScrollView.onViewportOffsetChange = nil
+            trackingScrollView.onPendingViewportOffsetApplied = nil
+            trackingScrollView.pendingViewportOffset = nil
+            trackingScrollView.shouldRestoreFocusOnAppear = false
+        }
         guard let textView = scrollView.documentView as? SelectableNoteReadTextView else {
             return
         }

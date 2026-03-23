@@ -22,6 +22,10 @@ struct NotesDetailView: View {
     @State private var showSavedIndicator = false
     @State private var lastSavedTimestamp: TimeInterval = 0
     @State private var savedIndicatorTask: Task<Void, Never>?
+    @State var lastReadViewportOffset: CGPoint = .zero
+    @State var lastEditorViewportOffset: CGPoint = .zero
+    @State var pendingReadViewportOffset: CGPoint?
+    @State var shouldRestoreReadFocusOnAppear = false
     #if os(iOS)
     @State private var activeFormattingBarPresentation: NoteFormattingBarPresentation?
     #endif
@@ -198,6 +202,7 @@ extension NotesDetailView {
                 AttributedNoteEditorContainer(
                     editorViewModel: editorViewModel,
                     maxContentWidth: contentMaxWidth,
+                    onViewportOffsetChange: handleEditorViewportOffsetChange,
                     onEscape: handleEscapeKey
                 )
                 #endif
@@ -207,7 +212,10 @@ extension NotesDetailView {
                     maxContentWidth: contentMaxWidth,
                     onActivateEditing: activateReadSurfaceEditing,
                     onActivateEditingWithViewport: activateReadSurfaceEditing,
-                    onViewportOffsetChange: handleReadViewportOffsetChange
+                    onViewportOffsetChange: handleReadViewportOffsetChange,
+                    initialViewportOffset: pendingReadViewportOffset,
+                    onInitialViewportOffsetApplied: handlePendingReadViewportOffsetApplied,
+                    shouldRestoreFocusOnAppear: shouldRestoreReadFocusOnAppear
                 )
             }
         } else if viewModel.selectedNoteId != nil {

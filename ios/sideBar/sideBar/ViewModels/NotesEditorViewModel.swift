@@ -19,22 +19,22 @@ public final class NotesEditorViewModel: ObservableObject {
         /// UTF-16 text-system offset produced by the read surface hit-testing APIs.
         case characterOffset(Int)
     }
-    @Published public private(set) var content: String = ""
-    @Published public private(set) var canonicalContent: String = ""
+    @Published public internal(set) var content: String = ""
+    @Published public internal(set) var canonicalContent: String = ""
     @Published public private(set) var currentNoteId: String?
     @Published public private(set) var presentationMode: PresentationMode = .read
-    @Published public private(set) var isDirty: Bool = false
-    @Published public private(set) var isSaving: Bool = false
-    @Published public private(set) var lastSavedAt: Date?
-    @Published public private(set) var saveErrorMessage: String?
+    @Published public internal(set) var isDirty: Bool = false
+    @Published public internal(set) var isSaving: Bool = false
+    @Published public internal(set) var lastSavedAt: Date?
+    @Published public internal(set) var saveErrorMessage: String?
     @Published public private(set) var isReadOnly: Bool = true
-    @Published public private(set) var isQueuedForSync: Bool = false
+    @Published public internal(set) var isQueuedForSync: Bool = false
     @Published private(set) var unsupportedContent: NotesUnsupportedContent?
 
-    private let notesViewModel: NotesViewModel
-    private let draftStorage: DraftStorage
+    let notesViewModel: NotesViewModel
+    let draftStorage: DraftStorage
     private let writeQueue: WriteQueue
-    private let networkStatus: any NetworkStatusProviding
+    let networkStatus: any NetworkStatusProviding
     private let logger = Logger(subsystem: "sideBar", category: "AttributedEditorMigration")
     @available(iOS 26.0, macOS 26.0, *)
     private weak var nativeEditorViewModel: NativeNoteEditorViewModel?
@@ -46,6 +46,8 @@ public final class NotesEditorViewModel: ObservableObject {
     private var pendingEditViewportAnchorY: CGFloat?
     private var syncRequestedWhileSaving = false
     var pendingNoteUpdateTask: Task<Void, Never>?
+    var pendingReadModeSaveTask: Task<Void, Never>?
+    var pendingReadModeSaveTaskID: UInt64 = 0
     private var cancellables = Set<AnyCancellable>()
 
     init(
@@ -68,6 +70,7 @@ public final class NotesEditorViewModel: ObservableObject {
 
     deinit {
         pendingNoteUpdateTask?.cancel()
+        pendingReadModeSaveTask?.cancel()
     }
     func handleNoteUpdate(_ note: NotePayload?) {
         let previousNoteId = currentNoteId
@@ -350,7 +353,7 @@ public final class NotesEditorViewModel: ObservableObject {
         }
     }
 
-    private func enqueueNoteUpdate(
+    func enqueueNoteUpdate(
         noteId: String,
         payload: NoteUpdateRequest,
         snapshot: ServerSnapshot?
@@ -379,7 +382,7 @@ public final class NotesEditorViewModel: ObservableObject {
         await syncFromNativeEditor(nativeViewModel)
     }
 
-    private func makeServerSnapshot(noteId: String) -> ServerSnapshot? {
+    func makeServerSnapshot(noteId: String) -> ServerSnapshot? {
         guard let note = notesViewModel.activeNote, note.id == noteId else {
             return nil
         }

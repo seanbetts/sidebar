@@ -3,14 +3,6 @@ import AppKit
 import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
-struct AppKitNoteTextEditorSurface: NSViewRepresentable {
-    fileprivate struct RenderSignature: Equatable {
-        let renderGeneration: UInt64
-        let baseFontSize: CGFloat
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
 private struct AppKitNoteTextEditorScrollLayoutContext {
     let layoutManager: NSLayoutManager
     let textContainer: NSTextContainer
@@ -18,7 +10,35 @@ private struct AppKitNoteTextEditorScrollLayoutContext {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-extension AppKitNoteTextEditorSurface {
+private final class AppKitNoteEditorScrollView: NSScrollView {
+    var onViewportOffsetChange: ((CGPoint) -> Void)?
+    private var lastReportedViewportOffset: CGPoint?
+
+    override func layout() {
+        super.layout()
+        reportViewportOffsetIfNeeded(force: true)
+    }
+
+    override func reflectScrolledClipView(_ clipView: NSClipView) {
+        super.reflectScrolledClipView(clipView)
+        reportViewportOffsetIfNeeded()
+    }
+
+    private func reportViewportOffsetIfNeeded(force: Bool = false) {
+        let viewportOffset = contentView.bounds.origin
+        guard force || lastReportedViewportOffset != viewportOffset else { return }
+        lastReportedViewportOffset = viewportOffset
+        onViewportOffsetChange?(viewportOffset)
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+struct AppKitNoteTextEditorSurface: NSViewRepresentable {
+    fileprivate struct RenderSignature: Equatable {
+        let renderGeneration: UInt64
+        let baseFontSize: CGFloat
+    }
+
     final class EditorTextView: NSTextView {
         private static let baseTextContainerInset = NSSize(
             width: NoteTextLayout.horizontalPadding,
@@ -141,6 +161,7 @@ extension AppKitNoteTextEditorSurface {
     let maxContentWidth: CGFloat
     let isEditable: Bool
     let shouldAutofocus: Bool
+    let onViewportOffsetChange: ((CGPoint) -> Void)?
     let pendingSelectionViewportAnchorY: CGFloat?
     let onPendingSelectionViewportAnchorApplied: (() -> Void)?
 
@@ -149,6 +170,7 @@ extension AppKitNoteTextEditorSurface {
         maxContentWidth: CGFloat,
         isEditable: Bool,
         shouldAutofocus: Bool = true,
+        onViewportOffsetChange: ((CGPoint) -> Void)? = nil,
         pendingSelectionViewportAnchorY: CGFloat? = nil,
         onPendingSelectionViewportAnchorApplied: (() -> Void)? = nil
     ) {
@@ -156,6 +178,7 @@ extension AppKitNoteTextEditorSurface {
         self.maxContentWidth = maxContentWidth
         self.isEditable = isEditable
         self.shouldAutofocus = shouldAutofocus
+        self.onViewportOffsetChange = onViewportOffsetChange
         self.pendingSelectionViewportAnchorY = pendingSelectionViewportAnchorY
         self.onPendingSelectionViewportAnchorApplied = onPendingSelectionViewportAnchorApplied
     }
@@ -196,12 +219,13 @@ extension AppKitNoteTextEditorSurface {
             Self.scheduleAutofocusIfNeeded(for: textView, coordinator: coordinator)
         }
 
-        let scrollView = NSScrollView()
+        let scrollView = AppKitNoteEditorScrollView()
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.hasHorizontalScroller = false
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
+        scrollView.onViewportOffsetChange = onViewportOffsetChange
         scrollView.documentView = textView
 
         context.coordinator.textView = textView
@@ -216,6 +240,9 @@ extension AppKitNoteTextEditorSurface {
         textView.pendingSelectionViewportAnchorY = pendingSelectionViewportAnchorY
         textView.onPendingSelectionViewportAnchorApplied = onPendingSelectionViewportAnchorApplied
         textView.maxReadableContentWidth = maxContentWidth
+        if let trackingScrollView = scrollView as? AppKitNoteEditorScrollView {
+            trackingScrollView.onViewportOffsetChange = onViewportOffsetChange
+        }
 
         let renderSignature = RenderSignature(
             renderGeneration: viewModel.renderGeneration,
@@ -248,6 +275,9 @@ extension AppKitNoteTextEditorSurface {
         if let textView = scrollView.documentView as? NSTextView,
            textView.window?.firstResponder === textView {
             textView.window?.makeFirstResponder(nil)
+        }
+        if let trackingScrollView = scrollView as? AppKitNoteEditorScrollView {
+            trackingScrollView.onViewportOffsetChange = nil
         }
     }
 

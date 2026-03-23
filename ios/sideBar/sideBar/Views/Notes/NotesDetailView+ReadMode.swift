@@ -78,7 +78,18 @@ extension NotesDetailView {
     }
 
     func handleReadViewportOffsetChange(_ offset: CGPoint) {
-        _ = offset
+        lastReadViewportOffset = offset
+    }
+
+    func handleEditorViewportOffsetChange(_ offset: CGPoint) {
+        lastEditorViewportOffset = offset
+    }
+
+    func handlePendingReadViewportOffsetApplied() {
+        pendingReadViewportOffset = nil
+        #if os(macOS)
+        shouldRestoreReadFocusOnAppear = false
+        #endif
     }
 
     func handleCloseShortcut(editedDocument: NotesSemanticDocument? = nil) {
@@ -88,6 +99,13 @@ extension NotesDetailView {
             return
         }
         let document = editedDocument ?? editorViewModel.currentSemanticDocumentSnapshot()
+        #if os(macOS)
+        editorViewModel.applyReadModeSnapshot(document)
+        pendingReadViewportOffset = lastEditorViewportOffset
+        shouldRestoreReadFocusOnAppear = true
+        editorViewModel.exitEditModeToRead()
+        editorViewModel.scheduleReadModeSave(of: document)
+        #else
         if let noteId = viewModel.activeNote?.id {
             viewModel.applyLocalNoteSnapshot(id: noteId, document: document)
         }
@@ -95,6 +113,7 @@ extension NotesDetailView {
             await editorViewModel.saveIfNeeded()
             editorViewModel.exitEditModeToRead()
         }
+        #endif
     }
 
     func handleEscapeKey(_ document: NotesSemanticDocument) {

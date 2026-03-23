@@ -37,6 +37,13 @@ final class MountedNotesDetailHarness {
         return retainedEnvironment
     }
 
+    var mountedView: NSView {
+        guard let hostingController else {
+            fatalError("MountedNotesDetailHarness view accessed before mount or after dispose")
+        }
+        return hostingController.view
+    }
+
     init(
         note: NotePayload = makeTestNote(),
         api: any NotesProviding = NotesDetailViewRecordingNotesAPI()
