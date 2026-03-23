@@ -9,12 +9,8 @@ import UIKit
 final class NotesEditorSurfaceParityTests: XCTestCase {
     func testMakePlatformTextViewDoesNotAutoAdjustForContentSizeCategory() throws {
         let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\n\nTwo")
-        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
-            from: document,
-            baseFontSize: 16
-        )
-        let textView = makeReadTextView(
-            attributedContent: readAttributed,
+        let textView = try makeReadTextView(
+            document: document,
             frame: CGRect(x: 0, y: 0, width: 420, height: 240)
         )
 
