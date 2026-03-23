@@ -16,22 +16,35 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         )
 
         var shouldAutofocus = false
+        private var didScheduleAutofocus = false
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { needsLayout = true }
         }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            guard shouldAutofocus, window != nil else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.shouldAutofocus, self.window != nil else { return }
-                self.window?.makeFirstResponder(self)
-            }
+            scheduleAutofocusIfNeeded()
         }
 
         override func layout() {
             super.layout()
             updateTextContainerInset()
+        }
+
+        func scheduleAutofocusIfNeeded() {
+            guard shouldAutofocus, !didScheduleAutofocus, let window else { return }
+            didScheduleAutofocus = true
+            DispatchQueue.main.async { [weak self, weak window] in
+                guard let self,
+                      self.shouldAutofocus,
+                      let window,
+                      self.window === window,
+                      window.firstResponder !== self else {
+                    return
+                }
+                window.makeFirstResponder(self)
+                self.scrollRangeToVisible(self.selectedRange())
+            }
         }
 
         private func updateTextContainerInset() {
@@ -110,14 +123,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         textView.isEditable = isEditable
         textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.maxReadableContentWidth = maxContentWidth
-        if isEditable,
-           shouldAutofocus,
-           textView.window != nil,
-           textView.window?.firstResponder !== textView {
-            DispatchQueue.main.async {
-                textView.window?.makeFirstResponder(textView)
-            }
-        }
 
         let renderSignature = RenderSignature(
             renderGeneration: viewModel.renderGeneration,
@@ -137,6 +142,8 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             textView.setSelectedRange(selectedRange)
             context.coordinator.isApplyingProgrammaticSelection = false
         }
+
+        textView.scheduleAutofocusIfNeeded()
 
         let typingAttributes = bridgedTypingAttributes(from: viewModel.attributedContent)
         if NSDictionary(dictionary: textView.typingAttributes).isEqual(to: typingAttributes) == false {

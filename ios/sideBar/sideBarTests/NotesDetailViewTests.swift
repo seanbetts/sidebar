@@ -196,6 +196,46 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
     }
 
+    func testEscapeFromEditorReturnsToReadBeforeDelayedSaveCompletes() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let api = NotesDetailViewDelayingNotesAPI(updateDelayNanoseconds: 500_000_000)
+        let context = await makeNotesDetailViewTestContext(api: api)
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+        let view = context.makeView()
+        let container = AttributedNoteEditorContainer(
+            editorViewModel: context.editorViewModel,
+            maxContentWidth: 640,
+            onEscape: view.handleEscapeKey
+        )
+
+        let previous = nativeViewModel.attributedContent
+        nativeViewModel.attributedContent = AttributedString("Delayed save body")
+        nativeViewModel.handleContentChange(previous: previous)
+
+        XCTAssertEqual(
+            container.handleEscapeKey(
+                document: nativeViewModel.currentPersistenceSnapshot().document
+            ),
+            .handled
+        )
+        await waitUntil(timeout: .milliseconds(150)) {
+            context.editorViewModel.presentationMode == .read
+        }
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        await waitUntil(timeout: .milliseconds(150)) {
+            context.notesViewModel.activeNote?.plainText == "Delayed save body"
+                && api.updateCallCount == 1
+        }
+        XCTAssertEqual(context.notesViewModel.activeNote?.plainText, "Delayed save body")
+        XCTAssertEqual(api.updateCallCount, 1)
+    }
+
     func testHandleCloseShortcutPreservesUnsavedContentWithoutExplicitDocumentWhenSaveFails() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")

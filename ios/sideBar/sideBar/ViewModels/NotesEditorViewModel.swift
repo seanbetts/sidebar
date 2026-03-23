@@ -22,7 +22,7 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var content: String = ""
     @Published public private(set) var canonicalContent: String = ""
     @Published public private(set) var currentNoteId: String?
-    @Published public private(set) var presentationMode: PresentationMode = .read
+    @Published public internal(set) var presentationMode: PresentationMode = .read
     @Published public private(set) var isDirty: Bool = false
     @Published public private(set) var isSaving: Bool = false
     @Published public private(set) var lastSavedAt: Date?
@@ -37,13 +37,13 @@ public final class NotesEditorViewModel: ObservableObject {
     private let networkStatus: any NetworkStatusProviding
     private let logger = Logger(subsystem: "sideBar", category: "AttributedEditorMigration")
     @available(iOS 26.0, macOS 26.0, *)
-    private weak var nativeEditorViewModel: NativeNoteEditorViewModel?
+    weak var nativeEditorViewModel: NativeNoteEditorViewModel?
     @available(iOS 26.0, macOS 26.0, *)
     private var sharedNativeEditorViewModel: NativeNoteEditorViewModel?
     @available(iOS 26.0, macOS 26.0, *)
     private var nativeEditorObservation: AnyCancellable?
-    private var pendingEditSelectionTarget: PendingEditSelectionTarget?
-    private var pendingEditViewportAnchorY: CGFloat?
+    var pendingEditSelectionTarget: PendingEditSelectionTarget?
+    var pendingEditViewportAnchorY: CGFloat?
     private var syncRequestedWhileSaving = false
     var pendingNoteUpdateTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
@@ -66,9 +66,8 @@ public final class NotesEditorViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    deinit {
-        pendingNoteUpdateTask?.cancel()
-    }
+    deinit { pendingNoteUpdateTask?.cancel() }
+
     func handleNoteUpdate(_ note: NotePayload?) {
         let previousNoteId = currentNoteId
         guard let note else {
@@ -267,70 +266,6 @@ public final class NotesEditorViewModel: ObservableObject {
         await syncFromNativeEditorIfRequested(nativeViewModel)
     }
 
-    public func saveIfNeeded() async {
-        guard !isSaving else { return }
-        if #available(iOS 26.0, macOS 26.0, *) {
-            guard let nativeViewModel = nativeEditorViewModel else {
-                guard isDirty else { return }
-                return
-            }
-            let snapshot = nativeViewModel.currentPersistenceSnapshot()
-            let hasNativeDelta = nativeViewModel.hasUnsavedChanges ||
-                snapshot.canonicalContent != canonicalContent ||
-                snapshot.plainText != content
-            guard hasNativeDelta || isDirty else { return }
-            await syncFromNativeEditor(nativeViewModel)
-            return
-        }
-        guard isDirty else { return }
-    }
-
-    public func currentPlainTextSnapshot(fallback: String = "") -> String {
-        if #available(iOS 26.0, macOS 26.0, *), let nativeEditorViewModel {
-            let plainText = nativeEditorViewModel.currentPersistenceSnapshot().plainText
-            return plainText.isEmpty ? fallback : plainText
-        }
-        return content.isEmpty ? fallback : content
-    }
-
-    public func currentSemanticDocumentSnapshot() -> NotesSemanticDocument {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            if let nativeEditorViewModel {
-                return nativeEditorViewModel.currentPersistenceSnapshot().document
-            }
-        }
-        if let document = NotesSemanticDocumentCodec.decode(canonicalContent) { return document }
-        return NotesSemanticDocumentProjection.document(fromPlainText: content)
-    }
-
-    public var isEditingNote: Bool { presentationMode == .edit }
-    public func enterEditMode() { enterEditMode(at: .start) }
-    public func enterEditMode(
-        at target: PendingEditSelectionTarget,
-        viewportAnchorY: CGFloat? = nil
-    ) {
-        guard currentNoteId != nil, unsupportedContent == nil else { return }
-        pendingEditSelectionTarget = target
-        pendingEditViewportAnchorY = viewportAnchorY
-        presentationMode = .edit
-    }
-    func pendingEditSelectionTargetForCurrentEditSession() -> PendingEditSelectionTarget? {
-        pendingEditSelectionTarget
-    }
-    public func consumePendingEditSelectionTarget() -> PendingEditSelectionTarget? {
-        defer { pendingEditSelectionTarget = nil }; return pendingEditSelectionTarget
-    }
-    public func consumePendingEditViewportAnchorY() -> CGFloat? {
-        defer { pendingEditViewportAnchorY = nil }
-        return pendingEditViewportAnchorY
-    }
-    var debugPendingEditViewportOffset: CGPoint? { nil }
-    public func exitEditModeToRead() {
-        pendingEditSelectionTarget = nil
-        pendingEditViewportAnchorY = nil
-        presentationMode = .read
-    }
-
     private func syncNativeEditorContent(canonicalContent: String, plainText: String) {
         if #available(iOS 26.0, macOS 26.0, *) {
             guard let nativeEditorViewModel,
@@ -425,9 +360,7 @@ public final class NotesEditorViewModel: ObservableObject {
         )
         isDirty = true
     }
-
 }
-
 extension NotesEditorViewModel {
     private func resetStateForNoActiveNote() {
         if #available(iOS 26.0, macOS 26.0, *) {
@@ -481,15 +414,86 @@ extension NotesEditorViewModel {
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    private func resetNativeEditorObservation() { nativeEditorObservation?.cancel(); nativeEditorObservation = nil }
+    private func resetNativeEditorObservation() {
+        nativeEditorObservation?.cancel(); nativeEditorObservation = nil
+    }
     public func setDirty(_ dirty: Bool) { guard isDirty != dirty else { return }; isDirty = dirty }
     public func setReadOnly(_ readOnly: Bool) { guard isReadOnly != readOnly else { return }; isReadOnly = readOnly }
     @available(iOS 26.0, macOS 26.0, *)
-    fileprivate func alignPersistenceBaseline(with nativeViewModel: NativeNoteEditorViewModel) {
+    func alignPersistenceBaseline(with nativeViewModel: NativeNoteEditorViewModel) {
         let snapshot = nativeViewModel.currentPersistenceSnapshot(); content = snapshot.plainText
         canonicalContent = snapshot.canonicalContent
     }
     fileprivate func normalizedEditorSnapshot(for note: NotePayload) -> (content: String, plainText: String) {
         (content: NotesSemanticDocumentCodec.encode(note.document) ?? "", plainText: note.plainText)
+    }
+
+    func saveDocumentSnapshotIfNeeded(_ document: NotesSemanticDocument, force: Bool = false) async {
+        guard !isSaving, let noteId = currentNoteId else { return }
+        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
+        let encodedContent = NotesSemanticDocumentCodec.encode(document) ?? ""
+        let hasSnapshotDelta = encodedContent != canonicalContent || plainText != content
+        guard force || hasSnapshotDelta || isDirty else { return }
+        isSaving = true
+        saveErrorMessage = nil
+        do {
+            try draftStorage.saveDraft(
+                entityType: "note",
+                entityId: noteId,
+                content: plainText,
+                canonicalContent: encodedContent
+            )
+        } catch {
+            saveErrorMessage = "Failed to save draft"
+        }
+
+        let payload = NoteUpdateRequest(document: document, plainText: plainText); let serverSnapshot = makeServerSnapshot(noteId: noteId)
+
+        if !networkStatus.isNetworkAvailable {
+            let queued = await enqueueNoteUpdate(
+                noteId: noteId,
+                payload: payload,
+                snapshot: serverSnapshot
+            )
+            if queued {
+                notesViewModel.applyLocalNoteSnapshot(id: noteId, document: document)
+            }
+            content = plainText
+            canonicalContent = encodedContent
+            isSaving = false
+            isDirty = false
+            isQueuedForSync = queued
+            return
+        }
+
+        let savedNote = await notesViewModel.updateNoteContent(id: noteId, document: document)
+        isSaving = false
+        if let savedNote {
+            try? draftStorage.markSynced(entityType: "note", entityId: noteId)
+            content = plainText
+            canonicalContent = encodedContent
+            isDirty = false
+            lastSavedAt = Date()
+            isQueuedForSync = false
+            notesViewModel.applySavedNoteAcknowledgement(
+                serverNote: savedNote,
+                document: document
+            )
+        } else {
+            saveErrorMessage = "Failed to save note"
+            let queued = await enqueueNoteUpdate(
+                noteId: noteId,
+                payload: payload,
+                snapshot: serverSnapshot
+            )
+            if queued {
+                notesViewModel.applyLocalNoteSnapshot(id: noteId, document: document)
+            }
+            isQueuedForSync = queued
+        }
+    }
+    func applyReadModeSnapshot(_ document: NotesSemanticDocument) {
+        content = NotesSemanticDocumentProjection.plainText(from: document)
+        canonicalContent = NotesSemanticDocumentCodec.encode(document) ?? ""
     }
 }

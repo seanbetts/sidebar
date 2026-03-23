@@ -95,5 +95,27 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
         harness.dispose()
     }
 
+    func testMountedDetailEditActivationMakesEditorFirstResponderOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness(
+            note: makeTestNote(plainText: "Short note")
+        )
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .characterOffset(0))
+
+        await waitUntil(timeout: .seconds(2)) {
+            guard let editorTextView = findDescendantTextView(in: harness.mountedView) else { return false }
+            return editorTextView.isEditable
+                && harness.mountedView.window?.firstResponder === editorTextView
+        }
+
+        let editorTextView = try XCTUnwrap(findDescendantTextView(in: harness.mountedView))
+        XCTAssertTrue(editorTextView.isEditable)
+        XCTAssertTrue(harness.mountedView.window?.firstResponder === editorTextView)
+        XCTAssertEqual(editorTextView.selectedRange(), NSRange(location: 0, length: 0))
+        harness.dispose()
+    }
+
 }
 #endif
