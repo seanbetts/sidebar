@@ -161,6 +161,26 @@ _REUTERS_BIO_MARKERS = (
     "reports on ",
     "correspondent at reuters",
 )
+_FASTCOMPANY_SHELL_MARKERS = (
+    "featured video",
+    "more videos",
+    "explore topics",
+    "fast company & inc",
+    "search by queryly",
+    "newsguard",
+    "modern ceo",
+)
+_FASTCOMPANY_SKIP_LINE_MARKERS = (
+    "share",
+    "facebook linkedin bluesky x link",
+    "add on google",
+    "listen to this article",
+    "0:00 / 0:00",
+    "advertisement",
+    "login",
+    "subscribe",
+)
+_FASTCOMPANY_PREVIEW_CUTOFF = "expand to continue reading"
 
 
 class WebSaveScriptError(Exception):
@@ -386,6 +406,124 @@ def _is_low_quality_reuters_fallback(
     return shell_hits >= 3 and prose_blocks < 3 and summary["link_density_pct"] >= 3
 
 
+def _normalize_host(value: str) -> str:
+    host = urlparse(value).netloc.lower().strip(".")
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
+def _normalize_fastcompany_byline(line: str) -> str:
+    return re.sub(r"^BY\[", "By [", line, count=1)
+
+
+def _extract_fastcompany_preview_markdown(content: str, *, source: str) -> str | None:
+    if _normalize_host(source) != "fastcompany.com":
+        return None
+
+    lines = [line.rstrip() for line in content.splitlines()]
+    if not lines:
+        return None
+
+    date_index = next(
+        (
+            idx
+            for idx, line in enumerate(lines)
+            if re.match(r"^\d{2}-\d{2}-\d{4}", line.strip())
+        ),
+        None,
+    )
+    if date_index is None:
+        return None
+
+    cutoff_index = next(
+        (
+            idx
+            for idx, line in enumerate(lines[date_index:], start=date_index)
+            if _FASTCOMPANY_PREVIEW_CUTOFF in line.lower()
+        ),
+        len(lines),
+    )
+
+    preview_lines = lines[date_index:cutoff_index]
+    cleaned_lines: list[str] = []
+    paragraph_started = False
+
+    for raw_line in preview_lines:
+        line = raw_line.strip()
+        if not line:
+            if cleaned_lines and cleaned_lines[-1]:
+                cleaned_lines.append("")
+            continue
+
+        lowered = line.lower()
+        if any(marker == lowered for marker in _FASTCOMPANY_SKIP_LINE_MARKERS):
+            continue
+        if any(marker in lowered for marker in _FASTCOMPANY_SHELL_MARKERS):
+            continue
+        if line.startswith("![Image 5:"):
+            continue
+        if line.startswith("03-") and "](" in line:
+            continue
+        if line.startswith("BY["):
+            cleaned_lines.append(_normalize_fastcompany_byline(line))
+            continue
+        if (
+            line.startswith("![Image 4:")
+            or line.startswith("**")
+            or line.startswith("#")
+        ):
+            cleaned_lines.append(line)
+            continue
+        if line.startswith("[") and "](" in line and not line.startswith("[#"):
+            continue
+        if re.match(r"^\d+:\d+\s*/\s*\d+:\d+$", line):
+            continue
+
+        if len(line.split()) >= 12:
+            paragraph_started = True
+        if paragraph_started:
+            cleaned_lines.append(line)
+
+    preview = "\n".join(cleaned_lines).strip()
+    if not preview:
+        return None
+    preview = re.sub(r"\n{3,}", "\n\n", preview).strip()
+    if cutoff_index < len(lines):
+        preview += "\n\nWarning: This article appears truncated."
+    return preview
+
+
+def _count_fastcompany_prose_blocks(content: str) -> int:
+    blocks = [block.strip() for block in re.split(r"\n\s*\n", content) if block.strip()]
+    prose_blocks = 0
+    for block in blocks:
+        lowered = block.lower()
+        if any(marker in lowered for marker in _FASTCOMPANY_SHELL_MARKERS):
+            continue
+        if block.startswith(("#", "*", "-", "![", "[")):
+            continue
+        if len(block.split()) < 12:
+            continue
+        prose_blocks += 1
+    return prose_blocks
+
+
+def _is_low_quality_fastcompany_fallback(
+    *,
+    source: str,
+    cleaned_content: str,
+    summary: dict[str, int],
+) -> bool:
+    if _normalize_host(source) != "fastcompany.com":
+        return False
+
+    lowered = cleaned_content.lower()
+    shell_hits = sum(lowered.count(marker) for marker in _FASTCOMPANY_SHELL_MARKERS)
+    prose_blocks = _count_fastcompany_prose_blocks(cleaned_content)
+    return shell_hits >= 2 and prose_blocks < 3 and summary["link_density_pct"] >= 3
+
+
 def get_markdown_content(url: str, api_key: str) -> str:
     """Fetch markdown content from Jina.ai API.
 
@@ -573,6 +711,11 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 cleaned_content = JinaService.clean_markdown_for_source(
                     cleaned_content, source
                 )
+            fastcompany_preview = _extract_fastcompany_preview_markdown(
+                cleaned_content, source=source
+            )
+            if fastcompany_preview:
+                cleaned_content = fastcompany_preview
             if apply_wsj_content_guards is not None:
                 cleaned_content, wsj_flags = apply_wsj_content_guards(
                     domain=urlparse(source).netloc.lower().strip("."),
@@ -657,6 +800,36 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                         local_antibot_stage=local_antibot_stage,
                         local_antibot_rule_id=local_antibot_rule_id,
                         upstream_antibot_detection=None,
+                        fallback_outcome="blocked_content",
+                    ),
+                )
+            if _is_low_quality_fastcompany_fallback(
+                source=source,
+                cleaned_content=cleaned_content,
+                summary=cleaned_summary,
+            ):
+                logger.info(
+                    (
+                        "web-save fallback rejected source=%s provider=jina "
+                        "reason=fastcompany_shell"
+                    ),
+                    source,
+                )
+                raise WebSaveScriptError(
+                    "FetchError",
+                    classify_web_save_failure(
+                        upstream_error_type="FetchError",
+                        upstream_message=(
+                            "Jina fallback returned low-quality Fast Company "
+                            "shell content"
+                        ),
+                        url=url,
+                        target_url=target_url,
+                        mode=web_save_mode,
+                        local_parse_error=local_parse_error,
+                        local_antibot_detection=local_antibot_detection,
+                        local_antibot_stage=local_antibot_stage,
+                        local_antibot_rule_id=local_antibot_rule_id,
                         fallback_outcome="blocked_content",
                     ),
                 )

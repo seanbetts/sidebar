@@ -359,6 +359,142 @@ def test_save_url_database_antibot_jina_reuters_shell_content_is_rejected(
     assert "upsert_kwargs" not in captured
 
 
+def test_save_url_database_jina_fastcompany_preview_is_cleaned(monkeypatch):
+    module = _load_save_url_module()
+    captured = _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        LocalParseFallbackError(
+            fallback="jina",
+            rule_id="antibot-fetch-challenge",
+            antibot_detection=AntibotDetection(
+                "generic", "captcha-delivery.com challenge"
+            ),
+            stage="fetch",
+        )
+    )
+    preview_content = (
+        "03-23-2026[MOST INNOVATIVE COMPANIES](https://www.fastcompany.com/section/most-innovative-companies)\n\n"
+        "[# Google CEO Sundar Pichai’s plan to make Gemini the only AI that matters]"
+        "(https://www.fastcompany.com/91502632/google-most-innovative-companies-2026)\n\n"
+        "Under Pichai, the company that invented modern AI is finally winning the race to deploy it.\n\n"
+        "SHARE\n\n"
+        "Facebook LinkedIn Bluesky X Link\n\n"
+        "ADD ON GOOGLE\n\n"
+        "![Image 4: Google CEO Sundar Pichai’s plan to make Gemini the only AI that matters]"
+        "(https://images.fastcompany.com/hero.jpg)\n\n"
+        "**Sundar Pichai**, CEO Of Google And Parent Company Alphabet\n\n"
+        "![Image 5: Author's image](https://images.fastcompany.com/author.jpg)\n"
+        "BY[Harry McCracken](https://www.fastcompany.com/user/harry-mccracken)\n\n"
+        "Listen to this Article[More info](https://www.fastcompany.com/about-us#voice)\n\n"
+        "0:00 / 0:00\n\n"
+        "Sundar Pichai was blindsided by ChatGPT. Soon after being named Google CEO in 2015, he’d declared that the world was entering an AI-first era.\n\n"
+        "Pichai remembers his instinctive response to ChatGPT: “Wow, this technology is going to diffuse earlier and faster than we were expecting.”\n\n"
+        "Expand to continue reading ↓\n\n"
+        "#### Explore Topics\n\n"
+        "* [google](https://www.fastcompany.com/section/google)\n\n"
+        "Featured Video\n\n"
+        "Fast Company & Inc © 2026 Mansueto Ventures, LLC\n"
+    )
+    module.get_markdown_content = lambda _url, _key: (
+        "Title: Sundar Pichai’s plan to make Google Gemini the only AI that matters - Fast Company\n"
+        "URL Source: https://www.fastcompany.com/91502632/google-most-innovative-companies-2026\n"
+        "Markdown Content:\n"
+        f"{preview_content}"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Sundar Pichai’s plan to make Google Gemini the only AI that matters - Fast Company",
+            "url_source": "https://www.fastcompany.com/91502632/google-most-innovative-companies-2026",
+            "published_time": None,
+        },
+        preview_content,
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    module.save_url_database(
+        "https://www.fastcompany.com/91502632/google-most-innovative-companies-2026",
+        "user-1",
+    )
+
+    saved_content = captured["upsert_kwargs"]["content"]
+    assert "SHARE" not in saved_content
+    assert "Explore Topics" not in saved_content
+    assert "Featured Video" not in saved_content
+    assert "Fast Company & Inc" not in saved_content
+    assert "By [Harry McCracken]" in saved_content
+    assert "Sundar Pichai was blindsided by ChatGPT." in saved_content
+    assert "Warning: This article appears truncated." in saved_content
+
+
+def test_save_url_database_antibot_jina_fastcompany_shell_content_is_rejected(
+    monkeypatch,
+):
+    module = _load_save_url_module()
+    captured = _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        LocalParseFallbackError(
+            fallback="jina",
+            rule_id="antibot-fetch-challenge",
+            antibot_detection=AntibotDetection(
+                "generic", "captcha-delivery.com challenge"
+            ),
+            stage="fetch",
+        )
+    )
+    shell_content = (
+        "LOGIN\n\n"
+        "[SUBSCRIBE](https://www.fastcompany.com/subscribe)\n\n"
+        "#### Explore Topics\n\n"
+        "* [google](https://www.fastcompany.com/section/google)\n\n"
+        "Featured Video\n\n"
+        "More Videos\n\n"
+        "#### Modern CEO\n\n"
+        "Fast Company & Inc © 2026 Mansueto Ventures, LLC\n\n"
+        "[search by queryly](https://www.queryly.com/)\n"
+    )
+    module.get_markdown_content = lambda _url, _key: (
+        "Title: Fast Company shell\n"
+        "URL Source: https://www.fastcompany.com/91502632/google-most-innovative-companies-2026\n"
+        "Markdown Content:\n"
+        f"{shell_content}"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Fast Company shell",
+            "url_source": "https://www.fastcompany.com/91502632/google-most-innovative-companies-2026",
+            "published_time": None,
+        },
+        shell_content,
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    with pytest.raises(module.WebSaveScriptError) as exc_info:
+        module.save_url_database(
+            "https://www.fastcompany.com/91502632/google-most-innovative-companies-2026",
+            "user-1",
+        )
+
+    err = exc_info.value
+    assert err.payload["code"] == "WEB_SAVE_BLOCKED_SITE"
+    assert "upsert_kwargs" not in captured
+
+
 def test_save_url_database_antibot_jina_timeout(monkeypatch):
     module = _load_save_url_module()
     _stub_db_dependencies(module)
