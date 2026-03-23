@@ -31,14 +31,8 @@ struct NotesDetailViewTestContext {
 enum NotesDetailViewTestRetainer {
     static var environments: [AppEnvironment] = []
     #if os(macOS)
-    struct ParkedHostBatch {
-        let environments: [AppEnvironment]
-        let hostingControllers: [NSHostingController<AnyView>]
-        let hostingWindows: [NSWindow]
-    }
     static var hostingControllers: [NSHostingController<AnyView>] = []
     static var hostingWindows: [NSWindow] = []
-    static var parkedHostBatches: [ParkedHostBatch] = []
     #elseif os(iOS)
     struct ParkedHostBatch {
         let environments: [AppEnvironment]
@@ -91,21 +85,11 @@ enum NotesDetailViewTestRetainer {
         hostingWindows.removeAll()
         drainNotesHostingRunLoop()
         #elseif os(macOS)
-        let parkedBatch = ParkedHostBatch(
-            environments: environments,
-            hostingControllers: hostingControllers,
-            hostingWindows: hostingWindows
-        )
         hostingWindows.forEach { window in
-            window.makeFirstResponder(nil)
             window.orderOut(nil)
+            window.contentViewController = nil
         }
         drainNotesHostingRunLoop()
-        if parkedBatch.environments.isEmpty == false
-            || parkedBatch.hostingControllers.isEmpty == false
-            || parkedBatch.hostingWindows.isEmpty == false {
-            parkedHostBatches.append(parkedBatch)
-        }
         hostingControllers.removeAll()
         hostingWindows.removeAll()
         drainNotesHostingRunLoop()
@@ -494,4 +478,23 @@ final class NotesDetailViewTestAuthSession: AuthSession {
 
 enum NotesDetailViewTestError: Error {
     case forced
+}
+
+@MainActor
+func waitUntil(
+    timeout: Duration = .seconds(1),
+    pollInterval: Duration = .milliseconds(10),
+    file: StaticString = #filePath,
+    line: UInt = #line,
+    condition: @escaping @MainActor () -> Bool
+) async {
+    let clock = ContinuousClock()
+    let deadline = clock.now + timeout
+    while !condition() {
+        if clock.now >= deadline {
+            XCTFail("Timed out waiting for condition", file: file, line: line)
+            return
+        }
+        try? await Task.sleep(for: pollInterval)
+    }
 }

@@ -15,7 +15,6 @@ struct AttributedNoteEditorContainer: View {
     @ObservedObject var editorViewModel: NotesEditorViewModel
     let maxContentWidth: CGFloat
     let autofocusEnabled: Bool
-    let onViewportOffsetChange: ((CGPoint) -> Void)?
     let onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)?
     let onEscape: ((NotesSemanticDocument) -> Void)?
     @EnvironmentObject var environment: AppEnvironment
@@ -33,14 +32,12 @@ struct AttributedNoteEditorContainer: View {
         editorViewModel: NotesEditorViewModel,
         maxContentWidth: CGFloat,
         autofocusEnabled: Bool = true,
-        onViewportOffsetChange: ((CGPoint) -> Void)? = nil,
         onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)? = nil,
         onEscape: ((NotesSemanticDocument) -> Void)?
     ) {
         self.editorViewModel = editorViewModel
         self.maxContentWidth = maxContentWidth
         self.autofocusEnabled = autofocusEnabled
-        self.onViewportOffsetChange = onViewportOffsetChange
         self.onFormattingBarPresentationChange = onFormattingBarPresentationChange
         self.onEscape = onEscape
         _nativeViewModel = StateObject(wrappedValue: editorViewModel.sharedNativeEditor())
@@ -195,7 +192,6 @@ struct AttributedNoteEditorContainer: View {
             maxContentWidth: maxContentWidth,
             isEditable: true,
             shouldAutofocus: autofocusEnabled,
-            onViewportOffsetChange: onViewportOffsetChange,
             pendingSelectionViewportAnchorY: pendingSelectionViewportAnchorY,
             onPendingSelectionViewportAnchorApplied: {
                 pendingSelectionViewportAnchorY = nil
