@@ -187,7 +187,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(activationCount, 1)
     }
 
-    func testMakePlatformTextViewInstallsActivationClickRecognizer() {
+    func testMakePlatformTextViewDoesNotInstallRedundantActivationClickRecognizer() {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
@@ -207,8 +207,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
 
         let clickRecognizers = textView.gestureRecognizers.compactMap { $0 as? NSClickGestureRecognizer }
 
-        XCTAssertEqual(clickRecognizers.count, 1)
-        XCTAssertEqual(clickRecognizers.first?.numberOfClicksRequired, 1)
+        XCTAssertEqual(clickRecognizers.count, 0)
     }
 
     func testMakePlatformAttributedContentPreservesBoldItalicUnderlineAndBaseSize() throws {

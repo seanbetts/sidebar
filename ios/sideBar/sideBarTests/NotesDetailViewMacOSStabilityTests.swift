@@ -95,5 +95,62 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
         harness.dispose()
     }
 
+    func testMountedDetailEditActivationFromMiddlePreservesViewportAnchorOnMacOS() async throws {
+        let plainText = (0..<120)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: plainText))
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment)
+        let readTextView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        let readScrollView = try XCTUnwrap(readTextView.enclosingScrollView)
+        let targetOffset = NSString(string: plainText).range(of: "Line 70 body text").location
+        let initialTargetRect = try glyphRect(in: readTextView, characterIndex: targetOffset)
+        let targetReadOffset = max(
+            initialTargetRect.midY - (readScrollView.contentView.bounds.height * 0.55),
+            0
+        )
+        readScrollView.contentView.scroll(to: NSPoint(x: 0, y: targetReadOffset))
+        readScrollView.reflectScrolledClipView(readScrollView.contentView)
+        drainNotesHostingRunLoop()
+
+        let expectedViewportAnchorY = try mountedViewportAnchorY(
+            in: readTextView,
+            scrollView: readScrollView,
+            characterIndex: targetOffset
+        )
+
+        context.makeView().activateReadSurfaceEditing(
+            at: .characterOffset(targetOffset),
+            viewportAnchorY: expectedViewportAnchorY
+        )
+        await waitUntil(timeout: .seconds(2)) {
+            guard let editorTextView = findDescendantTextView(in: controller.view) else { return false }
+            return editorTextView.isEditable
+        }
+
+        let editorTextView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        let editorScrollView = try XCTUnwrap(editorTextView.enclosingScrollView)
+        let actualViewportAnchorY = try mountedViewportAnchorY(
+            in: editorTextView,
+            scrollView: editorScrollView,
+            characterIndex: targetOffset
+        )
+
+        XCTAssertEqual(editorTextView.selectedRange(), NSRange(location: targetOffset, length: 0))
+        XCTAssertEqual(actualViewportAnchorY, expectedViewportAnchorY, accuracy: 24)
+    }
+
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func mountedViewportAnchorY(
+    in textView: NSTextView,
+    scrollView: NSScrollView,
+    characterIndex: Int
+) throws -> CGFloat {
+    let rect = try glyphRect(in: textView, characterIndex: characterIndex)
+    return rect.midY - scrollView.contentView.bounds.minY
 }
 #endif

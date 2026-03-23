@@ -8,7 +8,17 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         let renderGeneration: UInt64
         let baseFontSize: CGFloat
     }
+}
 
+@available(iOS 26.0, macOS 26.0, *)
+private struct AppKitNoteTextEditorScrollLayoutContext {
+    let layoutManager: NSLayoutManager
+    let textContainer: NSTextContainer
+    let contentHeight: CGFloat
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+extension AppKitNoteTextEditorSurface {
     final class EditorTextView: NSTextView {
         private static let baseTextContainerInset = NSSize(
             width: NoteTextLayout.horizontalPadding,
@@ -16,22 +26,42 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         )
 
         var shouldAutofocus = false
+        var pendingSelectionViewportAnchorY: CGFloat?
+        var onPendingSelectionViewportAnchorApplied: (() -> Void)?
+        var onDidMoveToWindow: (() -> Void)?
+        private var isApplyingPendingViewportAnchor = false
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { needsLayout = true }
         }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            guard shouldAutofocus, window != nil else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.shouldAutofocus, self.window != nil else { return }
-                self.window?.makeFirstResponder(self)
-            }
+            onDidMoveToWindow?()
         }
 
         override func layout() {
             super.layout()
             updateTextContainerInset()
+            applyPendingViewportAnchorIfNeeded()
+        }
+
+        func positionCurrentSelection(atViewportAnchorY viewportAnchorY: CGFloat) {
+            guard let scrollView = enclosingScrollView,
+                  let clipView = scrollView.contentView as NSClipView?,
+                  let layout = ensureDocumentLayoutForScrolling(),
+                  let selectionMidY = selectionMidY(layoutManager: layout.layoutManager, textContainer: layout.textContainer) else {
+                return
+            }
+            let visibleRect = clipView.bounds
+            guard visibleRect.height > 0 else { return }
+            let clampedViewportAnchorY = min(max(viewportAnchorY, 0), visibleRect.height)
+            let targetMidY = visibleRect.minY + clampedViewportAnchorY
+            var targetOrigin = visibleRect.origin
+            targetOrigin.y += selectionMidY - targetMidY
+            let maxY = max(layout.contentHeight - visibleRect.height, 0)
+            targetOrigin.y = min(max(targetOrigin.y, 0), maxY)
+            clipView.scroll(to: targetOrigin)
+            scrollView.reflectScrolledClipView(clipView)
         }
 
         private func updateTextContainerInset() {
@@ -43,23 +73,91 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             guard textContainerInset != resolvedInset else { return }
             textContainerInset = resolvedInset
         }
+
+        private func ensureDocumentLayoutForScrolling() -> AppKitNoteTextEditorScrollLayoutContext? {
+            guard let layoutManager,
+                  let textContainer else {
+                return nil
+            }
+            let availableWidth = max(bounds.width - (textContainerInset.width * 2), 0)
+            textContainer.containerSize = NSSize(
+                width: availableWidth,
+                height: CGFloat.greatestFiniteMagnitude
+            )
+            layoutManager.ensureLayout(for: textContainer)
+            let contentHeight = max(
+                ceil(layoutManager.usedRect(for: textContainer).height + (textContainerInset.height * 2)),
+                enclosingScrollView?.contentView.bounds.height ?? 0
+            )
+            if abs(frame.height - contentHeight) > 0.5 {
+                setFrameSize(NSSize(width: frame.width, height: contentHeight))
+            }
+            return AppKitNoteTextEditorScrollLayoutContext(
+                layoutManager: layoutManager,
+                textContainer: textContainer,
+                contentHeight: contentHeight
+            )
+        }
+
+        private func selectionMidY(
+            layoutManager: NSLayoutManager,
+            textContainer: NSTextContainer
+        ) -> CGFloat? {
+            guard layoutManager.numberOfGlyphs > 0 else {
+                return textContainerInset.height
+            }
+            let selectionLocation = min(max(selectedRange().location, 0), string.utf16.count)
+            let glyphIndex: Int
+            if selectionLocation >= string.utf16.count {
+                glyphIndex = max(layoutManager.numberOfGlyphs - 1, 0)
+            } else {
+                glyphIndex = layoutManager.glyphIndexForCharacter(at: selectionLocation)
+            }
+            let lineRect = layoutManager.lineFragmentUsedRect(
+                forGlyphAt: glyphIndex,
+                effectiveRange: nil
+            )
+            return textContainerInset.height + lineRect.midY
+        }
+
+        private func applyPendingViewportAnchorIfNeeded() {
+            guard let pendingSelectionViewportAnchorY,
+                  window != nil,
+                  isApplyingPendingViewportAnchor == false else {
+                return
+            }
+            isApplyingPendingViewportAnchor = true
+            defer { isApplyingPendingViewportAnchor = false }
+            if shouldAutofocus, window?.firstResponder !== self {
+                window?.makeFirstResponder(self)
+            }
+            positionCurrentSelection(atViewportAnchorY: pendingSelectionViewportAnchorY)
+            self.pendingSelectionViewportAnchorY = nil
+            onPendingSelectionViewportAnchorApplied?()
+        }
     }
 
     @ObservedObject var viewModel: NativeNoteEditorViewModel
     let maxContentWidth: CGFloat
     let isEditable: Bool
     let shouldAutofocus: Bool
+    let pendingSelectionViewportAnchorY: CGFloat?
+    let onPendingSelectionViewportAnchorApplied: (() -> Void)?
 
     init(
         viewModel: NativeNoteEditorViewModel,
         maxContentWidth: CGFloat,
         isEditable: Bool,
-        shouldAutofocus: Bool = true
+        shouldAutofocus: Bool = true,
+        pendingSelectionViewportAnchorY: CGFloat? = nil,
+        onPendingSelectionViewportAnchorApplied: (() -> Void)? = nil
     ) {
         self.viewModel = viewModel
         self.maxContentWidth = maxContentWidth
         self.isEditable = isEditable
         self.shouldAutofocus = shouldAutofocus
+        self.pendingSelectionViewportAnchorY = pendingSelectionViewportAnchorY
+        self.onPendingSelectionViewportAnchorApplied = onPendingSelectionViewportAnchorApplied
     }
 
     func makeCoordinator() -> Coordinator {
@@ -75,6 +173,8 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         textView.importsGraphics = false
         textView.allowsUndo = true
         textView.shouldAutofocus = isEditable && shouldAutofocus
+        textView.pendingSelectionViewportAnchorY = pendingSelectionViewportAnchorY
+        textView.onPendingSelectionViewportAnchorApplied = onPendingSelectionViewportAnchorApplied
         textView.maxReadableContentWidth = maxContentWidth
         textView.textColor = .labelColor
         textView.insertionPointColor = NoteTextAppearance.caretTintColor
@@ -91,6 +191,10 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         textView.autoresizingMask = [.width]
         textView.delegate = context.coordinator
         textView.setAccessibilityLabel("Notes editor")
+        textView.onDidMoveToWindow = { [weak textView, weak coordinator = context.coordinator] in
+            guard let textView, let coordinator else { return }
+            Self.scheduleAutofocusIfNeeded(for: textView, coordinator: coordinator)
+        }
 
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
@@ -109,15 +213,9 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
 
         textView.isEditable = isEditable
         textView.shouldAutofocus = isEditable && shouldAutofocus
+        textView.pendingSelectionViewportAnchorY = pendingSelectionViewportAnchorY
+        textView.onPendingSelectionViewportAnchorApplied = onPendingSelectionViewportAnchorApplied
         textView.maxReadableContentWidth = maxContentWidth
-        if isEditable,
-           shouldAutofocus,
-           textView.window != nil,
-           textView.window?.firstResponder !== textView {
-            DispatchQueue.main.async {
-                textView.window?.makeFirstResponder(textView)
-            }
-        }
 
         let renderSignature = RenderSignature(
             renderGeneration: viewModel.renderGeneration,
@@ -138,6 +236,8 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             context.coordinator.isApplyingProgrammaticSelection = false
         }
 
+        Self.scheduleAutofocusIfNeeded(for: textView, coordinator: context.coordinator)
+
         let typingAttributes = bridgedTypingAttributes(from: viewModel.attributedContent)
         if NSDictionary(dictionary: textView.typingAttributes).isEqual(to: typingAttributes) == false {
             textView.typingAttributes = typingAttributes
@@ -148,6 +248,28 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         if let textView = scrollView.documentView as? NSTextView,
            textView.window?.firstResponder === textView {
             textView.window?.makeFirstResponder(nil)
+        }
+    }
+
+    private static func scheduleAutofocusIfNeeded(
+        for textView: EditorTextView,
+        coordinator: Coordinator
+    ) {
+        guard textView.shouldAutofocus,
+              textView.window != nil,
+              coordinator.hasScheduledAutofocus == false,
+              textView.window?.firstResponder !== textView || textView.pendingSelectionViewportAnchorY != nil else {
+            return
+        }
+        coordinator.hasScheduledAutofocus = true
+        DispatchQueue.main.async { [weak textView, weak coordinator] in
+            guard let textView, let coordinator else { return }
+            coordinator.hasScheduledAutofocus = false
+            guard textView.shouldAutofocus, textView.window != nil else { return }
+            if textView.window?.firstResponder !== textView {
+                textView.window?.makeFirstResponder(textView)
+            }
+            textView.layoutSubtreeIfNeeded()
         }
     }
 
@@ -175,6 +297,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         var isApplyingProgrammaticText = false
         var isApplyingProgrammaticSelection = false
         fileprivate var lastAppliedRenderSignature: RenderSignature?
+        var hasScheduledAutofocus = false
 
         init(viewModel: NativeNoteEditorViewModel) {
             self.viewModel = viewModel

@@ -144,5 +144,85 @@ final class SelectableNoteReadViewMountedMacOSTests: XCTestCase {
             drainNotesHostingRunLoop()
         }
     }
+
+    func testMountedReadSurfaceActivationReportsViewportAnchorOnMacOS() throws {
+        let plainText = (0..<120)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
+        let hostFrame = NSRect(x: 0, y: 0, width: 900, height: 700)
+        var capturedTarget: SelectableNoteReadView.ReadActivationTarget?
+        var capturedViewportAnchorY: CGFloat?
+        let controller = NSHostingController(
+            rootView: AnyView(
+                SelectableNoteReadView(
+                    document: document,
+                    maxContentWidth: 640,
+                    onActivateEditingWithViewport: { target, viewportAnchorY in
+                        capturedTarget = target
+                        capturedViewportAnchorY = viewportAnchorY
+                    }
+                )
+            )
+        )
+        let window = NSWindow(
+            contentRect: hostFrame,
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = controller
+        window.orderFront(nil)
+        controller.view.frame = hostFrame
+        controller.view.layoutSubtreeIfNeeded()
+        window.contentView?.layoutSubtreeIfNeeded()
+        drainNotesHostingRunLoop()
+
+        let textView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        let scrollView = try XCTUnwrap(textView.enclosingScrollView)
+        let targetOffset = NSString(string: plainText).range(of: "Line 70 body text").location
+        let readTargetRect = try glyphRect(in: textView, characterIndex: targetOffset)
+        let targetReadOffset = max(
+            readTargetRect.midY - (scrollView.contentView.bounds.height * 0.55),
+            0
+        )
+        scrollView.contentView.scroll(to: NSPoint(x: 0, y: targetReadOffset))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+        drainNotesHostingRunLoop()
+
+        let expectedViewportAnchorY = try viewportAnchorY(
+            in: textView,
+            scrollView: scrollView,
+            characterIndex: targetOffset
+        )
+        let clickPoint = try makeSelectionPoint(
+            in: textView,
+            characterIndex: targetOffset,
+            horizontalBias: 0.15
+        )
+        SelectableNoteReadView.activateEditingForTesting(
+            in: textView,
+            at: clickPoint
+        )
+
+        guard case .characterOffset(let activatedOffset)? = capturedTarget else {
+            XCTFail("Expected character-offset activation target")
+            return
+        }
+        let actualViewportAnchorY = try XCTUnwrap(capturedViewportAnchorY)
+        XCTAssertEqual(activatedOffset, targetOffset)
+        XCTAssertEqual(actualViewportAnchorY, expectedViewportAnchorY, accuracy: 2)
+    }
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
+private func viewportAnchorY(
+    in textView: NSTextView,
+    scrollView: NSScrollView,
+    characterIndex: Int
+) throws -> CGFloat {
+    let rect = try glyphRect(in: textView, characterIndex: characterIndex)
+    return textView.textContainerInset.height + rect.midY - scrollView.contentView.bounds.minY
 }
 #endif
