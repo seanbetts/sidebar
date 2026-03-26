@@ -23,6 +23,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
+            updateTextContainerInset()
             scheduleAutofocusIfNeeded()
         }
 
