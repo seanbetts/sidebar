@@ -146,6 +146,11 @@ User-facing product docs live in `docs/product/` and are deployed via Mintlify t
 - Otherwise, make reasonable assumptions, note them briefly in the final summary, and continue.
 - Prefer: follow the required process skill, then implement, run checks, fix, and summarize.
 - Prefer evidence over assumptions: inspect logs, run curls, and write small one-off scripts to confirm hypotheses when debugging.
+- For UI, AppKit/UIKit, lifecycle, focus, layout, scrolling, or timing bugs that are not reproduced cleanly in tests, prefer temporary debug instrumentation over guesswork:
+  - add deterministic, opt-in tracing behind an environment variable or equivalent debug gate
+  - log the real app path first, then make the smallest fix that matches the captured evidence
+  - add or tighten a regression test once the root cause is known
+  - remove or disable the temporary instrumentation before committing
 - If unsure, read more code in the relevant module before asking. If still blocked, ask one concise plain-text question.
 - Do not pause to check in after intermediate steps or partial progress.
 - When a planning skill requires a spec or plan document, use the location that skill requires unless the user says otherwise.
