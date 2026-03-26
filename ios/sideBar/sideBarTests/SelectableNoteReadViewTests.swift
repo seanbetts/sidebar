@@ -144,7 +144,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertTrue(noteRangeIsUnderlined(selected, range: underlineStart..<selected.endIndex))
     }
 
-    func testMakePlatformTextViewFiresEditActivationAfterSingleClick() throws {
+    func testMakePlatformTextViewFiresEditActivationAfterSingleClick() async throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
@@ -184,6 +184,13 @@ final class SelectableNoteReadViewTests: XCTestCase {
         textView.mouseDown(with: mouseDown)
         textView.mouseUp(with: mouseUp)
 
+        for _ in 0..<3 {
+            drainNotesHostingRunLoop()
+            await Task.yield()
+        }
+        await waitUntil(timeout: .milliseconds(150)) {
+            activationCount == 1
+        }
         XCTAssertEqual(activationCount, 1)
     }
 

@@ -117,5 +117,28 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
         harness.dispose()
     }
 
+    func testMountedDetailEditActivationKeepsCaretAtRequestedMidDocumentOffsetOnMacOS() async throws {
+        let longLine = Array(repeating: "Long wrapped segment", count: 40).joined(separator: " ")
+        let targetOffset = 57
+        let harness = await MountedNotesDetailHarness(
+            note: makeTestNote(plainText: longLine)
+        )
+        harness.mount()
+        await harness.settle()
+
+        harness.context.makeView().activateReadSurfaceEditing(at: .characterOffset(targetOffset))
+
+        await waitUntil(timeout: .seconds(2)) {
+            guard let editorTextView = findDescendantTextView(in: harness.mountedView) else { return false }
+            return editorTextView.isEditable
+                && harness.mountedView.window?.firstResponder === editorTextView
+                && editorTextView.selectedRange() == NSRange(location: targetOffset, length: 0)
+        }
+
+        let editorTextView = try XCTUnwrap(findDescendantTextView(in: harness.mountedView))
+        XCTAssertEqual(editorTextView.selectedRange(), NSRange(location: targetOffset, length: 0))
+        harness.dispose()
+    }
+
 }
 #endif

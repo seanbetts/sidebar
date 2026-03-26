@@ -43,7 +43,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                     return
                 }
                 window.makeFirstResponder(self)
-                self.scrollRangeToVisible(self.selectedRange())
             }
         }
 

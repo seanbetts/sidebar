@@ -11,7 +11,7 @@ import UIKit
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class SelectableNoteReadActivationTests: XCTestCase {
-    func testNonLinkClickActivatesEditingWithCharacterOffsetTarget() throws {
+    func testNonLinkClickActivatesEditingWithCharacterOffsetTarget() async throws {
         var capturedTarget: NotesEditorViewModel.PendingEditSelectionTarget?
         let textView = try makeReadActivationTextView(
             plainText: "Hello world",
@@ -41,6 +41,14 @@ final class SelectableNoteReadActivationTests: XCTestCase {
             pressure: 0
         ))
 
+        XCTAssertNil(capturedTarget)
+        for _ in 0..<3 {
+            drainNotesHostingRunLoop()
+            await Task.yield()
+        }
+        await waitUntil(timeout: .milliseconds(150)) {
+            capturedTarget == .characterOffset(0)
+        }
         XCTAssertEqual(capturedTarget, .characterOffset(0))
     }
 

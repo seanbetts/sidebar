@@ -304,6 +304,10 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         )
 
         XCTAssertEqual(result, .handled)
+        #if os(macOS)
+        XCTAssertFalse(didInvokeEscape)
+        await waitUntil(timeout: .milliseconds(150)) { didInvokeEscape }
+        #endif
         XCTAssertTrue(didInvokeEscape)
     }
 

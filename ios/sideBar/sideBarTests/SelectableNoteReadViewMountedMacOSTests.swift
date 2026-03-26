@@ -113,6 +113,57 @@ final class SelectableNoteReadViewMountedMacOSTests: XCTestCase {
         XCTAssertEqual(textView.textContainerInset.height, NoteTextLayout.verticalPadding, accuracy: 0.001)
     }
 
+    func testCharacterOffsetForEditingActivationDoesNotExpandMountedReadableColumnWidthOnMacOS() throws {
+        let document = NotesSemanticDocumentProjection.document(
+            fromPlainText: String(repeating: "Long wrapped line ", count: 40)
+        )
+        let hostFrame = NSRect(x: 0, y: 0, width: 1000, height: 360)
+        let controller = NSHostingController(
+            rootView: AnyView(
+                SelectableNoteReadView(
+                    document: document,
+                    maxContentWidth: 800,
+                    onActivateEditing: { _ in }
+                )
+            )
+        )
+        let window = NSWindow(
+            contentRect: hostFrame,
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = controller
+        window.orderFront(nil)
+        controller.view.frame = hostFrame
+        controller.view.layoutSubtreeIfNeeded()
+        window.contentView?.layoutSubtreeIfNeeded()
+        drainNotesHostingRunLoop()
+
+        let textView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        guard let layoutManager = textView.layoutManager,
+              let textContainer = textView.textContainer else {
+            throw XCTSkip("Missing read text layout infrastructure")
+        }
+        textView.layoutSubtreeIfNeeded()
+        layoutManager.ensureLayout(for: textContainer)
+
+        let initialContainerWidth = textContainer.containerSize.width
+        let initialUsedWidth = layoutManager.usedRect(for: textContainer).width
+        let clickPoint = NSPoint(
+            x: textView.textContainerInset.width + min(initialUsedWidth * 0.5, 200),
+            y: textView.textContainerInset.height + 40
+        )
+
+        _ = SelectableNoteReadView.characterOffsetForEditingActivation(
+            in: textView,
+            at: clickPoint
+        )
+
+        XCTAssertEqual(textContainer.containerSize.width, initialContainerWidth, accuracy: 0.001)
+        XCTAssertEqual(layoutManager.usedRect(for: textContainer).width, initialUsedWidth, accuracy: 0.5)
+    }
+
     func testMountedReadSurfaceCanUnmountRepeatedlyWithoutCrashing() throws {
         let document = NotesSemanticDocumentProjection.document(fromPlainText: "One\nTwo")
 

@@ -153,7 +153,14 @@ struct AttributedNoteEditorContainer: View {
 
     func handleEscapeKey(document: NotesSemanticDocument? = nil) -> KeyPress.Result {
         guard editorViewModel.currentNoteId != nil else { return .ignored }
-        onEscape?(document ?? nativeViewModel.currentPersistenceSnapshot().document)
+        let resolvedDocument = document ?? nativeViewModel.currentPersistenceSnapshot().document
+        #if os(macOS)
+        DispatchQueue.main.async {
+            onEscape?(resolvedDocument)
+        }
+        #else
+        onEscape?(resolvedDocument)
+        #endif
         return .handled
     }
 

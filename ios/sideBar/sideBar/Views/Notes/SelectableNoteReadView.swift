@@ -342,7 +342,7 @@ struct SelectableNoteReadView: View {
         at point: NSPoint
     ) -> Int? {
         guard let layoutManager = textView.layoutManager, let textContainer = textView.textContainer else { return nil }
-        textContainer.containerSize = NSSize(width: max(textView.bounds.width, 0), height: CGFloat.greatestFiniteMagnitude)
+        textView.layoutSubtreeIfNeeded()
         layoutManager.ensureLayout(for: textContainer)
         let plainText = textView.string as NSString
         guard plainText.length > 0 else { return 0 }
@@ -475,9 +475,13 @@ private final class SelectableNoteReadTextView: NSTextView {
     }
 
     private func activateEditingIfNeeded(at point: NSPoint) {
-        guard let onActivateEditing, let target = activationTarget(at: point), canTriggerActivationNow else { return }
+        let target = activationTarget(at: point)
+        let canTriggerActivationNow = canTriggerActivationNow
+        guard let onActivateEditing, let target, canTriggerActivationNow else { return }
         lastActivationTimestamp = ProcessInfo.processInfo.systemUptime
-        onActivateEditing(target)
+        DispatchQueue.main.async {
+            onActivateEditing(target)
+        }
     }
 
     private var canTriggerActivationNow: Bool {
