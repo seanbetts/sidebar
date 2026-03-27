@@ -32,6 +32,8 @@ public final class NotesEditorViewModel: ObservableObject {
     var heldReadSurfaceViewportOffset: CGPoint = .zero
     var heldReadSurfaceActivationTarget: PendingEditSelectionTarget?
     var heldReadSurfaceViewportAnchorY: CGFloat?
+    var liveEditorViewportOffset: CGPoint?
+    var pendingReadViewportOffset: CGPoint?
     private let notesViewModel: NotesViewModel
     private let draftStorage: DraftStorage
     private let writeQueue: WriteQueue
@@ -97,6 +99,8 @@ public final class NotesEditorViewModel: ObservableObject {
                 heldReadSurfaceViewportOffset = .zero
                 heldReadSurfaceActivationTarget = nil
                 heldReadSurfaceViewportAnchorY = nil
+                liveEditorViewportOffset = nil
+                pendingReadViewportOffset = nil
             }
             return
         }
@@ -124,6 +128,8 @@ public final class NotesEditorViewModel: ObservableObject {
             heldReadSurfaceViewportOffset = .zero
             heldReadSurfaceActivationTarget = nil
             heldReadSurfaceViewportAnchorY = nil
+            liveEditorViewportOffset = nil
+            pendingReadViewportOffset = nil
         }
         if !isSameNote {
             syncRequestedWhileSaving = false
@@ -341,26 +347,6 @@ public final class NotesEditorViewModel: ObservableObject {
         nativeEditorViewModel
     }
 
-    @available(iOS 26.0, macOS 26.0, *)
-    func finalizeNativeEditorMutation(
-        _ nativeEditorViewModel: NativeNoteEditorViewModel,
-        previousContent: AttributedString,
-        previousSelection: AttributedTextSelection
-    ) {
-        guard nativeEditorViewModel.attributedContent != previousContent
-            || nativeEditorViewModel.selection != previousSelection else {
-            return
-        }
-        nativeEditorViewModel.requestViewportPreservationOnNextProgrammaticRender()
-        if !nativeEditorViewModel.hasUnsavedChanges {
-            nativeEditorViewModel.hasUnsavedChanges = true
-        }
-        nativeEditorViewModel.scheduleAutosave()
-        nativeEditorViewModel.lastSelectionLineSpan = nativeEditorViewModel.selectionLineSpan(
-            in: nativeEditorViewModel.attributedContent
-        )
-        isDirty = true
-    }
 }
 extension NotesEditorViewModel {
     private func resetStateForNoActiveNote() {
@@ -376,6 +362,8 @@ extension NotesEditorViewModel {
         heldReadSurfaceViewportOffset = .zero
         heldReadSurfaceActivationTarget = nil
         heldReadSurfaceViewportAnchorY = nil
+        liveEditorViewportOffset = nil
+        pendingReadViewportOffset = nil
         content = ""
         canonicalContent = ""
         isDirty = false

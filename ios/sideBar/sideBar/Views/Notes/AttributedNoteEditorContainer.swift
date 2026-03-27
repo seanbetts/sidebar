@@ -241,6 +241,9 @@ struct AttributedNoteEditorContainer: View {
                         ]
                     )
                 }
+            },
+            onViewportOffsetChange: { offset in
+                editorViewModel.recordLiveEditorViewportOffset(offset)
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)

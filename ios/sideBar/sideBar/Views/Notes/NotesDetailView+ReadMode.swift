@@ -105,6 +105,7 @@ extension NotesDetailView {
             ]
         )
         #endif
+        pendingReadSurfaceViewportOffset = nil
         editorViewModel.heldReadSurfaceViewportOffset = offset
     }
 

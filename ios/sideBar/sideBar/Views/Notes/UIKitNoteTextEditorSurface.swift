@@ -17,6 +17,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         var formattingAccessoryView: UIView?
         var formattingCommandsEnabled = false
+        var onViewportOffsetChange: ((CGPoint) -> Void)?
         var onBoldCommand: (() -> Void)?
         var onItalicCommand: (() -> Void)?
         var onUnderlineCommand: (() -> Void)?
@@ -35,6 +36,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         override var inputAccessoryView: UIView? {
             get { formattingAccessoryView }
             set { formattingAccessoryView = newValue }
+        }
+
+        override var contentOffset: CGPoint {
+            didSet { onViewportOffsetChange?(contentOffset) }
         }
 
         override var keyCommands: [UIKeyCommand]? {
@@ -169,6 +174,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let formattingBarPresentation: NoteFormattingBarPresentation
     let pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?; let pendingSelectionViewportAnchorY: CGFloat?
     let onPendingSelectionTargetApplied: ((AccessoryTextView) -> Void)?; let onDidBeginEditing: ((AccessoryTextView) -> Void)?
+    let onViewportOffsetChange: ((CGPoint) -> Void)?
     let makeTextView: (() -> AccessoryTextView)?
 
     init(
@@ -182,6 +188,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         pendingSelectionViewportAnchorY: CGFloat? = nil,
         onPendingSelectionTargetApplied: ((AccessoryTextView) -> Void)? = nil,
         onDidBeginEditing: ((AccessoryTextView) -> Void)? = nil,
+        onViewportOffsetChange: ((CGPoint) -> Void)? = nil,
         makeTextView: (() -> AccessoryTextView)? = nil
     ) {
         self.viewModel = viewModel
@@ -194,6 +201,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         self.pendingSelectionViewportAnchorY = pendingSelectionViewportAnchorY
         self.onPendingSelectionTargetApplied = onPendingSelectionTargetApplied
         self.onDidBeginEditing = onDidBeginEditing
+        self.onViewportOffsetChange = onViewportOffsetChange
         self.makeTextView = makeTextView
     }
 
@@ -212,6 +220,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.accessibilityIdentifier = "notes-editor-text-view"
         textView.textContainer.lineFragmentPadding = 0
         textView.maxReadableContentWidth = maxContentWidth
+        textView.onViewportOffsetChange = onViewportOffsetChange
         textView.delegate = context.coordinator
         textView.textFormattingConfiguration = nil
         if shouldShowFormattingAccessory, let formattingBarConfiguration {
@@ -228,6 +237,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.isEditable = isEditable
         textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.maxReadableContentWidth = maxContentWidth
+        textView.onViewportOffsetChange = onViewportOffsetChange
         if pendingSelectionViewportAnchorY != nil, textView.shouldAutofocus, !textView.isFirstResponder {
             textView.suppressAutofocusReveal = true
         }
@@ -294,24 +304,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         if textView.isFirstResponder {
             textView.resignFirstResponder()
         }
-    }
-
-    private func bridgedAttributedText(from text: AttributedString) -> NSAttributedString {
-        SelectableNoteReadView.bridgedPlatformAttributedString(
-            from: text,
-            baseFontSize: viewModel.baseFontSize
-        )
-    }
-
-    private func bridgedTypingAttributes(from text: AttributedString) -> [NSAttributedString.Key: Any] {
-        var sample = AttributedString("x")
-        let range = sample.startIndex..<sample.endIndex
-        sample[range].mergeAttributes(viewModel.typingAttributesForInsertion(in: text))
-        let bridged = SelectableNoteReadView.bridgedPlatformAttributedString(
-            from: sample,
-            baseFontSize: viewModel.baseFontSize
-        )
-        return bridged.attributes(at: 0, effectiveRange: nil)
     }
 
     private func applyRenderedTextIfNeeded(

@@ -1578,7 +1578,7 @@ private func canonicalSnapshotOutput(_ markdown: String) -> String {
 }
 
 @MainActor
-private struct NotesEditorViewModelTestContext {
+struct NotesEditorViewModelTestContext {
     let store: NotesStore
     let notesViewModel: NotesViewModel
     let draftStorage: DraftStorage
@@ -1587,7 +1587,7 @@ private struct NotesEditorViewModelTestContext {
 }
 
 @MainActor
-private func makeNotesEditorViewModelTestContext(
+func makeNotesEditorViewModelTestContext(
     api: any NotesProviding,
     networkAvailable: Bool = true
 ) -> NotesEditorViewModelTestContext {

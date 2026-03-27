@@ -27,11 +27,12 @@ extension NotesDetailView {
         initialViewportAnchorY: CGFloat? = nil,
         reportsViewportOffsetChanges: Bool = true
     ) -> some View {
+        let resolvedInitialViewportOffset = initialViewportOffset ?? pendingReadSurfaceViewportOffset
         let viewportOffsetHandler = reportsViewportOffsetChanges ? handleReadViewportOffsetChange : nil
         return SelectableNoteReadView(
             document: currentReadDocument,
             maxContentWidth: contentMaxWidth,
-            initialViewportOffset: initialViewportOffset,
+            initialViewportOffset: resolvedInitialViewportOffset,
             initialViewportAnchorTarget: initialViewportAnchorTarget,
             initialViewportAnchorY: initialViewportAnchorY,
             onActivateEditing: activateReadSurfaceEditing,
