@@ -2,13 +2,41 @@
 import SwiftUI
 import UIKit
 
-@available(iOS 26.0, *)
-struct UIKitNoteTextEditorSurface: UIViewRepresentable {
-    fileprivate struct RenderSignature: Equatable {
-        let renderGeneration: UInt64
-        let baseFontSize: CGFloat
+private struct UIKitNoteTextEditorRenderSignature: Equatable {
+    let renderGeneration: UInt64
+    let baseFontSize: CGFloat
+}
+
+private struct UIKitNoteTextEditorViewportSnapshot: Equatable {
+    let contentOffset: CGPoint
+    let selectedRange: NSRange
+    let selectionViewportAnchorY: CGFloat?
+}
+
+final class UIKitNoteTextEditorContainerView: UIView {
+    let textView: UIKitNoteTextEditorSurface.AccessoryTextView
+
+    init(textView: UIKitNoteTextEditorSurface.AccessoryTextView) {
+        self.textView = textView
+        super.init(frame: .zero)
+        backgroundColor = .clear
+        textView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(textView)
+        NSLayoutConstraint.activate([
+            textView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            textView.topAnchor.constraint(equalTo: topAnchor),
+            textView.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor)
+        ])
     }
 
+    @available(*, unavailable) required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+@available(iOS 26.0, *)
+struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     class AccessoryTextView: UITextView {
         static let baseTextContainerInsets = UIEdgeInsets(
             top: NoteTextLayout.verticalPadding, left: NoteTextLayout.horizontalPadding,
@@ -17,7 +45,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         var formattingAccessoryView: UIView?
         var formattingCommandsEnabled = false
-        var onViewportOffsetChange: ((CGPoint) -> Void)?
+        var onViewportSnapshotChange: ((CGPoint, NSRange, CGFloat?) -> Void)?
         var onBoldCommand: (() -> Void)?
         var onItalicCommand: (() -> Void)?
         var onUnderlineCommand: (() -> Void)?
@@ -28,6 +56,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var shouldAutofocus = false
         var hasScheduledAutofocus = false
         var suppressAutofocusReveal = false
+        private var lastReportedViewportSnapshot: UIKitNoteTextEditorViewportSnapshot?
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { setNeedsLayout() }
         }
@@ -39,7 +68,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
 
         override var contentOffset: CGPoint {
-            didSet { onViewportOffsetChange?(contentOffset) }
+            didSet { reportViewportSnapshotIfNeeded() }
         }
 
         override var keyCommands: [UIKeyCommand]? {
@@ -67,6 +96,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             super.layoutSubviews()
             updateTextContainerInsets()
             updateViewportInsets()
+            reportViewportSnapshotIfNeeded()
         }
 
         override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
@@ -144,28 +174,22 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             super.scrollRangeToVisible(range)
         }
 
-    }
-
-    final class EditorContainerView: UIView {
-        let textView: AccessoryTextView
-
-        init(textView: AccessoryTextView) {
-            self.textView = textView
-            super.init(frame: .zero)
-            backgroundColor = .clear
-            textView.translatesAutoresizingMaskIntoConstraints = false
-            addSubview(textView)
-            NSLayoutConstraint.activate([
-                textView.leadingAnchor.constraint(equalTo: leadingAnchor),
-                textView.trailingAnchor.constraint(equalTo: trailingAnchor),
-                textView.topAnchor.constraint(equalTo: topAnchor),
-                textView.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor)
-            ])
+        func reportViewportSnapshotIfNeeded(force: Bool = false) {
+            let snapshot = UIKitNoteTextEditorViewportSnapshot(
+                contentOffset: contentOffset,
+                selectedRange: selectedRange,
+                selectionViewportAnchorY: currentSelectionViewportAnchorY()
+            )
+            guard force || snapshot != lastReportedViewportSnapshot else { return }
+            lastReportedViewportSnapshot = snapshot
+            onViewportSnapshotChange?(
+                snapshot.contentOffset,
+                snapshot.selectedRange,
+                snapshot.selectionViewportAnchorY
+            )
         }
 
-        @available(*, unavailable) required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     }
-
     @ObservedObject var viewModel: NativeNoteEditorViewModel
     let maxContentWidth: CGFloat
     let isEditable: Bool
@@ -174,7 +198,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let formattingBarPresentation: NoteFormattingBarPresentation
     let pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?; let pendingSelectionViewportAnchorY: CGFloat?
     let onPendingSelectionTargetApplied: ((AccessoryTextView) -> Void)?; let onDidBeginEditing: ((AccessoryTextView) -> Void)?
-    let onViewportOffsetChange: ((CGPoint) -> Void)?
+    let onViewportSnapshotChange: ((CGPoint, NSRange, CGFloat?) -> Void)?
+    let onTextViewReady: ((AccessoryTextView) -> Void)?
     let makeTextView: (() -> AccessoryTextView)?
 
     init(
@@ -188,7 +213,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         pendingSelectionViewportAnchorY: CGFloat? = nil,
         onPendingSelectionTargetApplied: ((AccessoryTextView) -> Void)? = nil,
         onDidBeginEditing: ((AccessoryTextView) -> Void)? = nil,
-        onViewportOffsetChange: ((CGPoint) -> Void)? = nil,
+        onViewportSnapshotChange: ((CGPoint, NSRange, CGFloat?) -> Void)? = nil,
+        onTextViewReady: ((AccessoryTextView) -> Void)? = nil,
         makeTextView: (() -> AccessoryTextView)? = nil
     ) {
         self.viewModel = viewModel
@@ -201,7 +227,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         self.pendingSelectionViewportAnchorY = pendingSelectionViewportAnchorY
         self.onPendingSelectionTargetApplied = onPendingSelectionTargetApplied
         self.onDidBeginEditing = onDidBeginEditing
-        self.onViewportOffsetChange = onViewportOffsetChange
+        self.onViewportSnapshotChange = onViewportSnapshotChange
+        self.onTextViewReady = onTextViewReady
         self.makeTextView = makeTextView
     }
 
@@ -209,7 +236,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         Coordinator(viewModel: viewModel)
     }
 
-    func makeUIView(context: Context) -> EditorContainerView {
+    func makeUIView(context: Context) -> UIKitNoteTextEditorContainerView {
         let textView = makeTextView?() ?? AccessoryTextView()
         textView.isEditable = isEditable
         textView.allowsEditingTextAttributes = false
@@ -220,7 +247,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.accessibilityIdentifier = "notes-editor-text-view"
         textView.textContainer.lineFragmentPadding = 0
         textView.maxReadableContentWidth = maxContentWidth
-        textView.onViewportOffsetChange = onViewportOffsetChange
+        textView.onViewportSnapshotChange = onViewportSnapshotChange
         textView.delegate = context.coordinator
         textView.textFormattingConfiguration = nil
         if shouldShowFormattingAccessory, let formattingBarConfiguration {
@@ -228,16 +255,18 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 configuration: formattingBarConfiguration
             )
         }
-        return EditorContainerView(textView: textView)
+        onTextViewReady?(textView)
+        return UIKitNoteTextEditorContainerView(textView: textView)
     }
 
-    func updateUIView(_ containerView: EditorContainerView, context: Context) {
+    func updateUIView(_ containerView: UIKitNoteTextEditorContainerView, context: Context) {
         let textView = containerView.textView
+        onTextViewReady?(textView)
         context.coordinator.onDidBeginEditing = onDidBeginEditing
         textView.isEditable = isEditable
         textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.maxReadableContentWidth = maxContentWidth
-        textView.onViewportOffsetChange = onViewportOffsetChange
+        textView.onViewportSnapshotChange = onViewportSnapshotChange
         if pendingSelectionViewportAnchorY != nil, textView.shouldAutofocus, !textView.isFirstResponder {
             textView.suppressAutofocusReveal = true
         }
@@ -257,7 +286,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         if needsAccessoryReload, textView.isFirstResponder {
             textView.reloadInputViews()
         }
-        let renderSignature = RenderSignature(
+        let renderSignature = UIKitNoteTextEditorRenderSignature(
             renderGeneration: viewModel.renderGeneration,
             baseFontSize: viewModel.baseFontSize
         )
@@ -299,7 +328,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         )
     }
 
-    static func dismantleUIView(_ containerView: EditorContainerView, coordinator: Void) {
+    static func dismantleUIView(_ containerView: UIKitNoteTextEditorContainerView, coordinator: Void) {
         let textView = containerView.textView
         if textView.isFirstResponder {
             textView.resignFirstResponder()
@@ -309,7 +338,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     private func applyRenderedTextIfNeeded(
         to textView: AccessoryTextView,
         coordinator: Coordinator,
-        renderSignature: RenderSignature,
+        renderSignature: UIKitNoteTextEditorRenderSignature,
         isProgrammaticRenderUpdate: Bool
     ) {
         guard isProgrammaticRenderUpdate else { return }
@@ -343,7 +372,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     final class Coordinator: NSObject, UITextViewDelegate {
         let viewModel: NativeNoteEditorViewModel
         var isApplyingProgrammaticText = false, isApplyingProgrammaticSelection = false
-        fileprivate var lastAppliedRenderSignature: RenderSignature?
+        fileprivate var lastAppliedRenderSignature: UIKitNoteTextEditorRenderSignature?
         var acknowledgedPendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
         var onDidBeginEditing: ((AccessoryTextView) -> Void)?
 
@@ -360,7 +389,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 selectedUTF16Range: textView.selectedRange
             )
             isApplyingProgrammaticText = false
-            lastAppliedRenderSignature = RenderSignature(
+            lastAppliedRenderSignature = UIKitNoteTextEditorRenderSignature(
                 renderGeneration: viewModel.renderGeneration,
                 baseFontSize: viewModel.baseFontSize
             )
@@ -377,6 +406,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 viewModel.selection = selection
                 viewModel.handleSelectionChange()
             }
+            (textView as? AccessoryTextView)?.reportViewportSnapshotIfNeeded(force: true)
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
@@ -412,7 +442,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             isApplyingProgrammaticText = true
             textView.textStorage.setAttributedString(bridgedText)
             isApplyingProgrammaticText = false
-            lastAppliedRenderSignature = RenderSignature(
+            lastAppliedRenderSignature = UIKitNoteTextEditorRenderSignature(
                 renderGeneration: viewModel.renderGeneration,
                 baseFontSize: viewModel.baseFontSize
             )

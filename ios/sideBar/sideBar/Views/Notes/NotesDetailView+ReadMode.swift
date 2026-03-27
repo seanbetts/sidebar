@@ -55,7 +55,8 @@ extension NotesDetailView {
         guard let activeNote = viewModel.activeNote else {
             return NotesSemanticDocumentProjection.document(fromPlainText: "")
         }
-        if editorViewModel.currentNoteId == activeNote.id,
+        if editorViewModel.presentationMode == .edit,
+           editorViewModel.currentNoteId == activeNote.id,
            let document = NotesSemanticDocumentCodec.decode(editorViewModel.canonicalContent) {
             return document
         }
@@ -105,8 +106,42 @@ extension NotesDetailView {
             ]
         )
         #endif
-        pendingReadSurfaceViewportOffset = nil
+        let hasPendingReadRestoration =
+            editorViewModel.pendingReadSurfaceViewportOffset != nil
+            || editorViewModel.pendingReadSurfaceViewportAnchorTarget != nil
+            || editorViewModel.pendingReadSurfaceViewportAnchorY != nil
+        if hasPendingReadRestoration {
+            return
+        }
+        if isHoldingEditorSurfaceDuringReadExit {
+            guard pendingReadExitHoldTargetOffset != nil else {
+                return
+            }
+            if let targetOffset = pendingReadExitHoldTargetOffset {
+                let matchesExitTarget =
+                    abs(offset.x - targetOffset.x) <= 1
+                    && abs(offset.y - targetOffset.y) <= 2
+                if matchesExitTarget == false {
+                    return
+                }
+            } else if hasPendingReadRestoration {
+                return
+            }
+            isHoldingEditorSurfaceDuringReadExit = false
+            pendingReadExitHoldTargetOffset = nil
+        }
         editorViewModel.heldReadSurfaceViewportOffset = offset
+    }
+
+    func handleReadInitialViewportRestorationApplied() {
+        if let restoredOffset = editorViewModel.pendingReadSurfaceViewportOffset {
+            editorViewModel.heldReadSurfaceViewportOffset = restoredOffset
+        }
+        editorViewModel.clearPendingReadSurfaceViewportRestoration()
+        if isHoldingEditorSurfaceDuringReadExit {
+            isHoldingEditorSurfaceDuringReadExit = false
+            pendingReadExitHoldTargetOffset = nil
+        }
     }
 
     func handleCloseShortcut(editedDocument: NotesSemanticDocument? = nil) {
@@ -126,7 +161,7 @@ extension NotesDetailView {
         if let noteId = viewModel.activeNote?.id {
             viewModel.applyLocalNoteSnapshot(id: noteId, document: document)
         }
-        editorViewModel.applyReadModeSnapshot(document)
+        editorViewModel.applyReadModeSnapshotDeferred(document)
         editorViewModel.exitEditModeToRead()
         Task {
             await editorViewModel.saveDocumentSnapshotIfNeeded(document, force: true)
@@ -135,8 +170,14 @@ extension NotesDetailView {
         if let noteId = viewModel.activeNote?.id {
             viewModel.applyLocalNoteSnapshot(id: noteId, document: document)
         }
+        editorViewModel.applyReadModeSnapshotDeferred(document)
+        isHoldingEditorSurfaceDuringReadExit = true
+        pendingReadExitHoldTargetOffset = nil
         Task {
             await editorViewModel.saveIfNeeded()
+            if #available(iOS 26.0, *) {
+                editorViewModel.captureLiveEditorViewportSnapshotFromAttachedTextView()
+            }
             editorViewModel.exitEditModeToRead()
         }
         #endif

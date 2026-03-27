@@ -242,8 +242,15 @@ struct AttributedNoteEditorContainer: View {
                     )
                 }
             },
-            onViewportOffsetChange: { offset in
-                editorViewModel.recordLiveEditorViewportOffset(offset)
+            onViewportSnapshotChange: { offset, selectedUTF16Range, selectionViewportAnchorY in
+                editorViewModel.recordLiveEditorViewportSnapshot(
+                    offset: offset,
+                    selectedUTF16Range: selectedUTF16Range,
+                    selectionViewportAnchorY: selectionViewportAnchorY
+                )
+            },
+            onTextViewReady: { textView in
+                editorViewModel.attachNativeEditorTextView(textView)
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)

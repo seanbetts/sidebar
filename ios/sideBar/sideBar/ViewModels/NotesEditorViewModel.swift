@@ -2,6 +2,10 @@ import Foundation
 import Combine
 import OSLog
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
+// swiftlint:disable file_length
 // MARK: - NotesEditorViewModel
 @MainActor
 /// Manages note display state.
@@ -17,6 +21,11 @@ public final class NotesEditorViewModel: ObservableObject {
         /// UTF-16 text-system offset produced by the read surface hit-testing APIs.
         case characterOffset(Int)
     }
+    struct PendingReadViewportRestoration: Equatable {
+        let offset: CGPoint?
+        let target: PendingEditSelectionTarget?
+        let viewportAnchorY: CGFloat?
+    }
     @Published public private(set) var content: String = ""
     @Published public private(set) var canonicalContent: String = ""
     @Published public private(set) var currentNoteId: String?
@@ -28,12 +37,18 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var isReadOnly: Bool = true
     @Published public private(set) var isQueuedForSync: Bool = false
     @Published public internal(set) var isHoldingReadSurfaceDuringEditEntry: Bool = false
+    @Published public internal(set) var pendingReadSurfaceViewportOffset: CGPoint?
+    @Published public internal(set) var pendingReadSurfaceViewportAnchorTarget: PendingEditSelectionTarget?
+    @Published public internal(set) var pendingReadSurfaceViewportAnchorY: CGFloat?
     @Published private(set) var unsupportedContent: NotesUnsupportedContent?
     var heldReadSurfaceViewportOffset: CGPoint = .zero
     var heldReadSurfaceActivationTarget: PendingEditSelectionTarget?
     var heldReadSurfaceViewportAnchorY: CGFloat?
     var liveEditorViewportOffset: CGPoint?
-    var pendingReadViewportOffset: CGPoint?
+    var liveEditorSelectionTarget: PendingEditSelectionTarget?
+    var liveEditorSelectionViewportAnchorY: CGFloat?
+    var pendingReadViewportRestoration: PendingReadViewportRestoration?
+    var debugLastExitReadViewportRestoration: PendingReadViewportRestoration?
     private let notesViewModel: NotesViewModel
     private let draftStorage: DraftStorage
     private let writeQueue: WriteQueue
@@ -41,6 +56,10 @@ public final class NotesEditorViewModel: ObservableObject {
     private let logger = Logger(subsystem: "sideBar", category: "AttributedEditorMigration")
     @available(iOS 26.0, macOS 26.0, *)
     weak var nativeEditorViewModel: NativeNoteEditorViewModel?
+    #if os(iOS)
+    @available(iOS 26.0, *)
+    weak var nativeEditorTextView: UITextView?
+    #endif
     @available(iOS 26.0, macOS 26.0, *)
     private var sharedNativeEditorViewModel: NativeNoteEditorViewModel?
     @available(iOS 26.0, macOS 26.0, *)
@@ -100,7 +119,13 @@ public final class NotesEditorViewModel: ObservableObject {
                 heldReadSurfaceActivationTarget = nil
                 heldReadSurfaceViewportAnchorY = nil
                 liveEditorViewportOffset = nil
-                pendingReadViewportOffset = nil
+                liveEditorSelectionTarget = nil
+                liveEditorSelectionViewportAnchorY = nil
+                pendingReadViewportRestoration = nil
+                pendingReadSurfaceViewportOffset = nil
+                pendingReadSurfaceViewportAnchorTarget = nil
+                pendingReadSurfaceViewportAnchorY = nil
+                debugLastExitReadViewportRestoration = nil
             }
             return
         }
@@ -129,7 +154,13 @@ public final class NotesEditorViewModel: ObservableObject {
             heldReadSurfaceActivationTarget = nil
             heldReadSurfaceViewportAnchorY = nil
             liveEditorViewportOffset = nil
-            pendingReadViewportOffset = nil
+            liveEditorSelectionTarget = nil
+            liveEditorSelectionViewportAnchorY = nil
+            pendingReadViewportRestoration = nil
+            pendingReadSurfaceViewportOffset = nil
+            pendingReadSurfaceViewportAnchorTarget = nil
+            pendingReadSurfaceViewportAnchorY = nil
+            debugLastExitReadViewportRestoration = nil
         }
         if !isSameNote {
             syncRequestedWhileSaving = false
@@ -354,6 +385,11 @@ extension NotesEditorViewModel {
             resetNativeEditorObservation()
             sharedNativeEditorViewModel = nil
         }
+        #if os(iOS)
+        if #available(iOS 26.0, *) {
+            nativeEditorTextView = nil
+        }
+        #endif
         currentNoteId = nil
         presentationMode = .read
         pendingEditSelectionTarget = nil
@@ -363,7 +399,10 @@ extension NotesEditorViewModel {
         heldReadSurfaceActivationTarget = nil
         heldReadSurfaceViewportAnchorY = nil
         liveEditorViewportOffset = nil
-        pendingReadViewportOffset = nil
+        liveEditorSelectionTarget = nil
+        liveEditorSelectionViewportAnchorY = nil
+        pendingReadViewportRestoration = nil
+        debugLastExitReadViewportRestoration = nil
         content = ""
         canonicalContent = ""
         isDirty = false
@@ -486,3 +525,4 @@ extension NotesEditorViewModel {
         }
     }
 }
+// swiftlint:enable file_length

@@ -22,9 +22,10 @@ struct NotesDetailView: View {
     @State private var showSavedIndicator = false
     @State private var lastSavedTimestamp: TimeInterval = 0
     @State private var savedIndicatorTask: Task<Void, Never>?
-    @State var pendingReadSurfaceViewportOffset: CGPoint?
     #if os(iOS)
     @State private var activeFormattingBarPresentation: NoteFormattingBarPresentation?
+    @State var isHoldingEditorSurfaceDuringReadExit = false
+    @State var pendingReadExitHoldTargetOffset: CGPoint?
     #endif
     @Environment(\.workspaceColumn) private var workspaceColumn
     @AppStorage(AppStorageKeys.workspaceExpanded) var isWorkspaceExpanded: Bool = false
@@ -101,9 +102,10 @@ struct NotesDetailView: View {
         }
         .onChange(of: editorViewModel.currentNoteId) { _, _ in
             resetSavedIndicator()
-            pendingReadSurfaceViewportOffset = nil
             #if os(iOS)
             activeFormattingBarPresentation = nil
+            isHoldingEditorSurfaceDuringReadExit = false
+            pendingReadExitHoldTargetOffset = nil
             #endif
         }
         #if os(iOS)
@@ -112,9 +114,22 @@ struct NotesDetailView: View {
                 activeFormattingBarPresentation = nil
             }
             if newMode == .read {
-                pendingReadSurfaceViewportOffset = editorViewModel.consumePendingReadViewportOffset()
+                pendingReadExitHoldTargetOffset = editorViewModel.pendingReadSurfaceViewportOffset
+                if pendingReadExitHoldTargetOffset != nil {
+                    isHoldingEditorSurfaceDuringReadExit = true
+                }
             } else {
-                pendingReadSurfaceViewportOffset = nil
+                isHoldingEditorSurfaceDuringReadExit = false
+                pendingReadExitHoldTargetOffset = nil
+                editorViewModel.clearPendingReadSurfaceViewportRestoration()
+            }
+        }
+        .onChange(of: editorViewModel.pendingReadSurfaceViewportOffset) { _, newOffset in
+            if let newOffset {
+                pendingReadExitHoldTargetOffset = newOffset
+                if isHoldingEditorSurfaceDuringReadExit {
+                    isHoldingEditorSurfaceDuringReadExit = true
+                }
             }
         }
         #endif

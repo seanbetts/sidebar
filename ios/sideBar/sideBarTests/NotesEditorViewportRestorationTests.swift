@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class NotesEditorViewportRestorationTests: XCTestCase {
-    func testExitEditModeStoresPendingReadViewportOffset() async {
+    func testExitEditModeStoresPendingReadViewportRestoration() async {
         let context = makeNotesEditorViewModelTestContext(
             api: EditViewportMockNotesAPI(updateResult: .failure(EditViewportMockError.forced))
         )
@@ -23,15 +23,23 @@ final class NotesEditorViewportRestorationTests: XCTestCase {
                 NotesSemanticDocumentCodec.decode(context.viewModel.canonicalContent) == note.document
         }
         context.viewModel.enterEditMode()
-        context.viewModel.recordLiveEditorViewportOffset(CGPoint(x: 0, y: 312))
+        context.viewModel.recordLiveEditorViewportSnapshot(
+            offset: CGPoint(x: 0, y: 312),
+            selectedUTF16Range: NSRange(location: 2, length: 0),
+            selectionViewportAnchorY: 187
+        )
 
         context.viewModel.exitEditModeToRead()
 
         XCTAssertEqual(
-            context.viewModel.consumePendingReadViewportOffset(),
-            CGPoint(x: 0, y: 312)
+            context.viewModel.consumePendingReadViewportRestoration(),
+            NotesEditorViewModel.PendingReadViewportRestoration(
+                offset: CGPoint(x: 0, y: 312),
+                target: nil,
+                viewportAnchorY: nil
+            )
         )
-        XCTAssertNil(context.viewModel.consumePendingReadViewportOffset())
+        XCTAssertNil(context.viewModel.consumePendingReadViewportRestoration())
     }
 }
 

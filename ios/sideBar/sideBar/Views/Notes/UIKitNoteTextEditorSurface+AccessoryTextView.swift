@@ -84,6 +84,26 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         selectionRectInContentCoordinates(for: selectedRange)
     }
 
+    func currentSelectionViewportAnchorY() -> CGFloat? {
+        guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else {
+            return nil
+        }
+        return viewportAnchorY(forSelectionRect: selectionRect)
+    }
+
+    func viewportAnchorY(forSelectedRange range: NSRange) -> CGFloat? {
+        guard let selectionRect = selectionRectInContentCoordinates(for: range) else {
+            return nil
+        }
+        return viewportAnchorY(forSelectionRect: selectionRect)
+    }
+
+    private func viewportAnchorY(forSelectionRect selectionRect: CGRect) -> CGFloat? {
+        let visibleViewport = visibleViewportRect()
+        guard visibleViewport.height > 0 else { return nil }
+        return selectionRect.midY - visibleViewport.minY
+    }
+
     func selectionRectInContentCoordinates(for range: NSRange) -> CGRect? {
         guard range.location != NSNotFound else { return nil }
         if range.length == 0,

@@ -3,16 +3,28 @@ import SwiftUI
 extension NotesDetailView {
     var supportedNoteSurface: some View {
         ZStack {
-            if isShowingReadSurface || editorViewModel.isHoldingReadSurfaceDuringEditEntry {
+            if isShowingReadSurface
+                || editorViewModel.isHoldingReadSurfaceDuringEditEntry
+                || isHoldingEditorSurfaceDuringReadExit {
                 configuredReadSurface()
-                    .allowsHitTesting(isShowingReadSurface && !editorViewModel.isHoldingReadSurfaceDuringEditEntry)
+                    .allowsHitTesting(
+                        isShowingReadSurface
+                            && !editorViewModel.isHoldingReadSurfaceDuringEditEntry
+                            && !isHoldingEditorSurfaceDuringReadExit
+                    )
             }
 
-            if isShowingEditorSurface {
+            if isShowingEditorSurface || isHoldingEditorSurfaceDuringReadExit {
                 configuredEditorSurface
                     .opacity(editorViewModel.isHoldingReadSurfaceDuringEditEntry ? 0 : 1)
-                    .allowsHitTesting(!editorViewModel.isHoldingReadSurfaceDuringEditEntry)
-                    .accessibilityHidden(editorViewModel.isHoldingReadSurfaceDuringEditEntry)
+                    .allowsHitTesting(
+                        isShowingEditorSurface
+                            && !editorViewModel.isHoldingReadSurfaceDuringEditEntry
+                            && !isHoldingEditorSurfaceDuringReadExit
+                    )
+                    .accessibilityHidden(
+                        editorViewModel.isHoldingReadSurfaceDuringEditEntry
+                    )
             }
         }
     }
@@ -27,17 +39,23 @@ extension NotesDetailView {
         initialViewportAnchorY: CGFloat? = nil,
         reportsViewportOffsetChanges: Bool = true
     ) -> some View {
-        let resolvedInitialViewportOffset = initialViewportOffset ?? pendingReadSurfaceViewportOffset
+        let resolvedInitialViewportAnchorTarget =
+            initialViewportAnchorTarget ?? editorViewModel.pendingReadSurfaceViewportAnchorTarget
+        let resolvedInitialViewportAnchorY =
+            initialViewportAnchorY ?? editorViewModel.pendingReadSurfaceViewportAnchorY
+        let resolvedInitialViewportOffset =
+            initialViewportOffset ?? editorViewModel.pendingReadSurfaceViewportOffset
         let viewportOffsetHandler = reportsViewportOffsetChanges ? handleReadViewportOffsetChange : nil
         return SelectableNoteReadView(
             document: currentReadDocument,
             maxContentWidth: contentMaxWidth,
             initialViewportOffset: resolvedInitialViewportOffset,
-            initialViewportAnchorTarget: initialViewportAnchorTarget,
-            initialViewportAnchorY: initialViewportAnchorY,
+            initialViewportAnchorTarget: resolvedInitialViewportAnchorTarget,
+            initialViewportAnchorY: resolvedInitialViewportAnchorY,
             onActivateEditing: activateReadSurfaceEditing,
             onActivateEditingWithViewport: activateReadSurfaceEditing,
-            onViewportOffsetChange: viewportOffsetHandler
+            onViewportOffsetChange: viewportOffsetHandler,
+            onInitialViewportRestorationApplied: handleReadInitialViewportRestorationApplied
         )
     }
 

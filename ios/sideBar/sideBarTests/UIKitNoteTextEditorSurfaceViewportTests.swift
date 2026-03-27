@@ -33,7 +33,7 @@ extension UIKitNoteTextEditorSurfaceTests {
             height: 320
         )
 
-        XCTAssertTrue(textView.superview is UIKitNoteTextEditorSurface.EditorContainerView)
+        XCTAssertTrue(textView.superview is UIKitNoteTextEditorContainerView)
     }
 
     func testKeyboardNotificationDoesNotChangeViewportInsetsWhenLayoutOwnsKeyboardSpace() throws {

@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 extension NotesEditorViewModel {
     public func saveIfNeeded() async {
@@ -62,7 +65,10 @@ extension NotesEditorViewModel {
         pendingEditSelectionTarget = target
         pendingEditViewportAnchorY = viewportAnchorY
         liveEditorViewportOffset = nil
-        pendingReadViewportOffset = nil
+        liveEditorSelectionTarget = nil
+        liveEditorSelectionViewportAnchorY = nil
+        pendingReadViewportRestoration = nil
+        clearPendingReadSurfaceViewportRestoration()
         #if os(iOS)
         isHoldingReadSurfaceDuringEditEntry = viewportAnchorY != nil
         heldReadSurfaceActivationTarget = viewportAnchorY == nil ? nil : target
@@ -95,16 +101,107 @@ extension NotesEditorViewModel {
         liveEditorViewportOffset = offset
     }
 
-    public func consumePendingReadViewportOffset() -> CGPoint? {
-        defer { pendingReadViewportOffset = nil }
-        return pendingReadViewportOffset
+    public func recordLiveEditorViewportSnapshot(
+        offset: CGPoint,
+        selectedUTF16Range: NSRange,
+        selectionViewportAnchorY: CGFloat?
+    ) {
+        liveEditorViewportOffset = offset
+        if selectedUTF16Range.location != NSNotFound {
+            liveEditorSelectionTarget = .characterOffset(selectedUTF16Range.location)
+        } else {
+            liveEditorSelectionTarget = nil
+        }
+        liveEditorSelectionViewportAnchorY = selectionViewportAnchorY
+    }
+
+    #if os(iOS)
+    @available(iOS 26.0, *)
+    public func attachNativeEditorTextView(_ textView: UITextView) {
+        nativeEditorTextView = textView
+    }
+
+    @available(iOS 26.0, *)
+    public func detachNativeEditorTextView(_ textView: UITextView) {
+        guard nativeEditorTextView === textView else { return }
+        nativeEditorTextView = nil
+    }
+
+    @available(iOS 26.0, *)
+    public func captureLiveEditorViewportSnapshotFromAttachedTextView() {
+        guard let textView = nativeEditorTextView as? UIKitNoteTextEditorSurface.AccessoryTextView,
+              let nativeEditorViewModel else {
+            return
+        }
+        let selectedUTF16Range = nativeEditorViewModel.utf16SelectedRange(
+            in: nativeEditorViewModel.attributedContent
+        )
+        recordLiveEditorViewportSnapshot(
+            offset: textView.contentOffset,
+            selectedUTF16Range: selectedUTF16Range,
+            selectionViewportAnchorY: textView.viewportAnchorY(forSelectedRange: selectedUTF16Range)
+        )
+    }
+    #endif
+
+    func consumePendingReadViewportRestoration() -> PendingReadViewportRestoration? {
+        defer { pendingReadViewportRestoration = nil }
+        return pendingReadViewportRestoration
     }
 
     public func exitEditModeToRead() {
         pendingEditSelectionTarget = nil
         pendingEditViewportAnchorY = nil
-        pendingReadViewportOffset = liveEditorViewportOffset
+        #if os(iOS)
+        if #available(iOS 26.0, *),
+           let textView = nativeEditorTextView as? UIKitNoteTextEditorSurface.AccessoryTextView,
+           let nativeEditorViewModel {
+            liveEditorViewportOffset = textView.contentOffset
+            let selectedUTF16Range = nativeEditorViewModel.utf16SelectedRange(
+                in: nativeEditorViewModel.attributedContent
+            )
+            if selectedUTF16Range.location != NSNotFound {
+                liveEditorSelectionTarget = .characterOffset(selectedUTF16Range.location)
+                liveEditorSelectionViewportAnchorY = textView.viewportAnchorY(
+                    forSelectedRange: selectedUTF16Range
+                )
+            } else {
+                liveEditorSelectionTarget = nil
+                liveEditorSelectionViewportAnchorY = nil
+            }
+        }
+        #endif
+        let restoration = PendingReadViewportRestoration(
+            offset: liveEditorViewportOffset,
+            target: nil,
+            viewportAnchorY: nil
+        )
+        pendingReadViewportRestoration = restoration
+        setPendingReadSurfaceViewportRestoration(
+            offset: restoration.offset,
+            target: restoration.target,
+            viewportAnchorY: restoration.viewportAnchorY
+        )
+        debugLastExitReadViewportRestoration = restoration
+        #if os(iOS)
+        if #available(iOS 26.0, *) {
+            NotesIOSDebugTrace.log(
+                "NotesEditorViewModel.exitEditModeToRead",
+                extras: [
+                    "offset": liveEditorViewportOffset.map {
+                        "{x:\(String(format: "%.2f", $0.x)),y:\(String(format: "%.2f", $0.y))}"
+                    } ?? "nil",
+                    "target": liveEditorSelectionTarget.map { "\($0)" } ?? "nil",
+                    "viewportAnchorY": liveEditorSelectionViewportAnchorY.map {
+                        String(format: "%.2f", $0)
+                    } ?? "nil"
+                ]
+            )
+        }
+        #endif
         liveEditorViewportOffset = nil
+        liveEditorSelectionTarget = nil
+        liveEditorSelectionViewportAnchorY = nil
         isHoldingReadSurfaceDuringEditEntry = false
         heldReadSurfaceActivationTarget = nil
         heldReadSurfaceViewportAnchorY = nil
