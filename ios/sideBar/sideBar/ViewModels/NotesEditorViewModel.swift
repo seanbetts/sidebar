@@ -3,7 +3,6 @@ import Combine
 import OSLog
 import SwiftUI
 // MARK: - NotesEditorViewModel
-
 @MainActor
 /// Manages note display state.
 public final class NotesEditorViewModel: ObservableObject {
@@ -12,7 +11,6 @@ public final class NotesEditorViewModel: ObservableObject {
         case read
         case edit
     }
-
     /// One-shot selection target consumed when the native editor enters edit mode.
     public enum PendingEditSelectionTarget: Equatable {
         case start
@@ -29,8 +27,11 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var saveErrorMessage: String?
     @Published public private(set) var isReadOnly: Bool = true
     @Published public private(set) var isQueuedForSync: Bool = false
+    @Published public internal(set) var isHoldingReadSurfaceDuringEditEntry: Bool = false
     @Published private(set) var unsupportedContent: NotesUnsupportedContent?
-
+    var heldReadSurfaceViewportOffset: CGPoint = .zero
+    var heldReadSurfaceActivationTarget: PendingEditSelectionTarget?
+    var heldReadSurfaceViewportAnchorY: CGFloat?
     private let notesViewModel: NotesViewModel
     private let draftStorage: DraftStorage
     private let writeQueue: WriteQueue
@@ -47,7 +48,6 @@ public final class NotesEditorViewModel: ObservableObject {
     private var syncRequestedWhileSaving = false
     var pendingNoteUpdateTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
-
     init(
         notesViewModel: NotesViewModel,
         draftStorage: DraftStorage,
@@ -58,16 +58,13 @@ public final class NotesEditorViewModel: ObservableObject {
         self.draftStorage = draftStorage
         self.writeQueue = writeQueue
         self.networkStatus = networkStatus
-
         notesViewModel.$activeNote
             .sink { [weak self] note in
                 self?.scheduleNoteUpdate(note)
             }
             .store(in: &cancellables)
     }
-
     deinit { pendingNoteUpdateTask?.cancel() }
-
     func handleNoteUpdate(_ note: NotePayload?) {
         let previousNoteId = currentNoteId
         guard let note else {
@@ -96,6 +93,10 @@ public final class NotesEditorViewModel: ObservableObject {
                 presentationMode = .read
                 pendingEditSelectionTarget = nil
                 pendingEditViewportAnchorY = nil
+                isHoldingReadSurfaceDuringEditEntry = false
+                heldReadSurfaceViewportOffset = .zero
+                heldReadSurfaceActivationTarget = nil
+                heldReadSurfaceViewportAnchorY = nil
             }
             return
         }
@@ -119,6 +120,10 @@ public final class NotesEditorViewModel: ObservableObject {
             presentationMode = .read
             pendingEditSelectionTarget = nil
             pendingEditViewportAnchorY = nil
+            isHoldingReadSurfaceDuringEditEntry = false
+            heldReadSurfaceViewportOffset = .zero
+            heldReadSurfaceActivationTarget = nil
+            heldReadSurfaceViewportAnchorY = nil
         }
         if !isSameNote {
             syncRequestedWhileSaving = false
@@ -128,7 +133,6 @@ public final class NotesEditorViewModel: ObservableObject {
             await self?.applyDraftIfAvailable(for: note)
         }
     }
-
     private func applyDraftIfAvailable(for note: NotePayload) async {
         do {
             guard let draft = try draftStorage.getDraft(entityType: "note", entityId: note.id) else { return }
@@ -164,12 +168,10 @@ public final class NotesEditorViewModel: ObservableObject {
         if let sharedNativeEditorViewModel {
             return sharedNativeEditorViewModel
         }
-
         let viewModel = buildNativeEditorViewModel()
         sharedNativeEditorViewModel = viewModel
         return viewModel
     }
-
     @available(iOS 26.0, macOS 26.0, *)
     private func buildNativeEditorViewModel() -> NativeNoteEditorViewModel {
         let viewModel = NativeNoteEditorViewModel()
@@ -184,7 +186,6 @@ public final class NotesEditorViewModel: ObservableObject {
             syncRequestedWhileSaving = true
             return
         }
-
         let snapshot = nativeViewModel.currentPersistenceSnapshot()
         let hasSnapshotDelta =
             snapshot.canonicalContent != canonicalContent || snapshot.plainText != content
@@ -371,6 +372,10 @@ extension NotesEditorViewModel {
         presentationMode = .read
         pendingEditSelectionTarget = nil
         pendingEditViewportAnchorY = nil
+        isHoldingReadSurfaceDuringEditEntry = false
+        heldReadSurfaceViewportOffset = .zero
+        heldReadSurfaceActivationTarget = nil
+        heldReadSurfaceViewportAnchorY = nil
         content = ""
         canonicalContent = ""
         isDirty = false
@@ -382,7 +387,6 @@ extension NotesEditorViewModel {
         unsupportedContent = nil
         syncRequestedWhileSaving = false
     }
-
     @available(iOS 26.0, macOS 26.0, *)
     public func attachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
         nativeEditorViewModel = nativeViewModel
@@ -417,6 +421,7 @@ extension NotesEditorViewModel {
     private func resetNativeEditorObservation() {
         nativeEditorObservation?.cancel(); nativeEditorObservation = nil
     }
+    func applyEditorSnapshot(plainText: String, canonicalContent: String) { content = plainText; self.canonicalContent = canonicalContent }
     public func setDirty(_ dirty: Bool) { guard isDirty != dirty else { return }; isDirty = dirty }
     public func setReadOnly(_ readOnly: Bool) { guard isReadOnly != readOnly else { return }; isReadOnly = readOnly }
     @available(iOS 26.0, macOS 26.0, *)
@@ -491,9 +496,5 @@ extension NotesEditorViewModel {
             }
             isQueuedForSync = queued
         }
-    }
-    func applyReadModeSnapshot(_ document: NotesSemanticDocument) {
-        content = NotesSemanticDocumentProjection.plainText(from: document)
-        canonicalContent = NotesSemanticDocumentCodec.encode(document) ?? ""
     }
 }

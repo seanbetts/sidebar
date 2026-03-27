@@ -348,14 +348,20 @@ func makeReadTextView(
     plainText: String,
     frame: CGRect,
     baseFontSize: CGFloat = 16,
-    maxContentWidth: CGFloat? = nil
+    maxContentWidth: CGFloat? = nil,
+    initialViewportOffset: CGPoint? = nil,
+    initialViewportAnchorTarget: NotesEditorViewModel.PendingEditSelectionTarget? = nil,
+    initialViewportAnchorY: CGFloat? = nil
 ) throws -> UITextView {
     let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
     return try makeReadTextView(
         document: document,
         frame: frame,
         baseFontSize: baseFontSize,
-        maxContentWidth: maxContentWidth
+        maxContentWidth: maxContentWidth,
+        initialViewportOffset: initialViewportOffset,
+        initialViewportAnchorTarget: initialViewportAnchorTarget,
+        initialViewportAnchorY: initialViewportAnchorY
     )
 }
 
@@ -365,13 +371,19 @@ func makeReadTextView(
     document: NotesSemanticDocument,
     frame: CGRect,
     baseFontSize: CGFloat = 16,
-    maxContentWidth: CGFloat? = nil
+    maxContentWidth: CGFloat? = nil,
+    initialViewportOffset: CGPoint? = nil,
+    initialViewportAnchorTarget: NotesEditorViewModel.PendingEditSelectionTarget? = nil,
+    initialViewportAnchorY: CGFloat? = nil
 ) throws -> UITextView {
     let controller = UIHostingController(
         rootView: AnyView(
             SelectableNoteReadView(
                 document: document,
                 maxContentWidth: maxContentWidth ?? frame.width,
+                initialViewportOffset: initialViewportOffset,
+                initialViewportAnchorTarget: initialViewportAnchorTarget,
+                initialViewportAnchorY: initialViewportAnchorY,
                 onActivateEditing: { _ in }
             )
         )

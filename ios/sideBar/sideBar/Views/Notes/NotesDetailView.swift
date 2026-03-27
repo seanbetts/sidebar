@@ -8,7 +8,7 @@ import AppKit
 struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
     @ObservedObject var editorViewModel: NotesEditorViewModel
-    private let contentMaxWidth: CGFloat = NoteTextLayout.maxContentWidth
+    let contentMaxWidth: CGFloat = NoteTextLayout.maxContentWidth
     @EnvironmentObject var environment: AppEnvironment
     @Binding var isMoveSheetPresented: Bool
     @Binding var moveSelection: String
@@ -186,29 +186,8 @@ extension NotesDetailView {
                     subtitle: unsupportedContentPlaceholderMessage,
                     iconName: "exclamationmark.triangle"
                 )
-            } else if isShowingEditorSurface {
-                #if os(iOS)
-                AttributedNoteEditorContainer(
-                    editorViewModel: editorViewModel,
-                    maxContentWidth: contentMaxWidth,
-                    onFormattingBarPresentationChange: handleFormattingBarPresentationChange,
-                    onEscape: handleEscapeKey
-                )
-                #else
-                AttributedNoteEditorContainer(
-                    editorViewModel: editorViewModel,
-                    maxContentWidth: contentMaxWidth,
-                    onEscape: handleEscapeKey
-                )
-                #endif
             } else {
-                SelectableNoteReadView(
-                    document: currentReadDocument,
-                    maxContentWidth: contentMaxWidth,
-                    onActivateEditing: activateReadSurfaceEditing,
-                    onActivateEditingWithViewport: activateReadSurfaceEditing,
-                    onViewportOffsetChange: handleReadViewportOffsetChange
-                )
+                supportedNoteSurface
             }
         } else if viewModel.selectedNoteId != nil {
             if let error = viewModel.errorMessage {
@@ -435,7 +414,7 @@ extension NotesDetailView {
         .floatingTopTrailing
     }
 
-    private func handleFormattingBarPresentationChange(_ presentation: NoteFormattingBarPresentation) {
+    func handleFormattingBarPresentationChange(_ presentation: NoteFormattingBarPresentation) {
         activeFormattingBarPresentation = presentation
     }
 

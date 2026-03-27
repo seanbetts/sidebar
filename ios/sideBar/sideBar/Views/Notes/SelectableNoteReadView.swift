@@ -12,6 +12,9 @@ struct SelectableNoteReadView: View {
 
     let document: NotesSemanticDocument
     let maxContentWidth: CGFloat
+    var initialViewportOffset: CGPoint?
+    var initialViewportAnchorTarget: ReadActivationTarget?
+    var initialViewportAnchorY: CGFloat?
     var onActivateEditing: ((ReadActivationTarget) -> Void)?
     var onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)?
     var onViewportOffsetChange: ((CGPoint) -> Void)?
@@ -20,12 +23,18 @@ struct SelectableNoteReadView: View {
     init(
         document: NotesSemanticDocument,
         maxContentWidth: CGFloat,
+        initialViewportOffset: CGPoint? = nil,
+        initialViewportAnchorTarget: ReadActivationTarget? = nil,
+        initialViewportAnchorY: CGFloat? = nil,
         onActivateEditing: ((ReadActivationTarget) -> Void)? = nil,
         onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)? = nil,
         onViewportOffsetChange: ((CGPoint) -> Void)? = nil
     ) {
         self.document = document
         self.maxContentWidth = maxContentWidth
+        self.initialViewportOffset = initialViewportOffset
+        self.initialViewportAnchorTarget = initialViewportAnchorTarget
+        self.initialViewportAnchorY = initialViewportAnchorY
         self.onActivateEditing = onActivateEditing
         self.onActivateEditingWithViewport = onActivateEditingWithViewport
         self.onViewportOffsetChange = onViewportOffsetChange
@@ -47,6 +56,9 @@ struct SelectableNoteReadView: View {
                 baseFontSize: baseFontSize
             ),
             maxReadableContentWidth: maxContentWidth,
+            initialViewportOffset: initialViewportOffset,
+            initialViewportAnchorTarget: initialViewportAnchorTarget,
+            initialViewportAnchorY: initialViewportAnchorY,
             onActivateEditing: onActivateEditing,
             onActivateEditingWithViewport: onActivateEditingWithViewport,
             onViewportOffsetChange: onViewportOffsetChange
@@ -530,6 +542,9 @@ private final class SelectableNoteReadTextView: NSTextView {
 private struct PlatformSelectableNoteReadView: UIViewRepresentable {
     let attributedContent: NSAttributedString
     let maxReadableContentWidth: CGFloat
+    let initialViewportOffset: CGPoint?
+    let initialViewportAnchorTarget: SelectableNoteReadView.ReadActivationTarget?
+    let initialViewportAnchorY: CGFloat?
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     let onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     let onViewportOffsetChange: ((CGPoint) -> Void)?
@@ -546,6 +561,10 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
         textView.textColor = .label
         textView.textContainer.lineFragmentPadding = 0
         textView.maxReadableContentWidth = maxReadableContentWidth
+        textView.initialViewportOffset = initialViewportOffset
+        textView.initialViewportAnchorTarget = initialViewportAnchorTarget
+        textView.initialViewportAnchorY = initialViewportAnchorY
+        textView.accessibilityIdentifier = "notes-read-text-view"
         textView.linkTextAttributes = [
             .foregroundColor: UIColor.link,
             .underlineStyle: NSUnderlineStyle.single.rawValue
@@ -562,6 +581,9 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
     func updateUIView(_ containerView: SelectableNoteReadContainerView, context: Context) {
         let readTextView = containerView.textView
         readTextView.maxReadableContentWidth = maxReadableContentWidth
+        readTextView.initialViewportOffset = initialViewportOffset
+        readTextView.initialViewportAnchorTarget = initialViewportAnchorTarget
+        readTextView.initialViewportAnchorY = initialViewportAnchorY
         readTextView.onActivateEditing = onActivateEditing
         readTextView.onActivateEditingWithViewport = onActivateEditingWithViewport
         readTextView.onViewportOffsetChange = onViewportOffsetChange
@@ -584,13 +606,37 @@ private final class SelectableNoteReadTextView: UITextView {
 
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     var onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
-    var onViewportOffsetChange: ((CGPoint) -> Void)? {
-        didSet { reportViewportOffsetIfNeeded(force: true) }
+    var onViewportOffsetChange: ((CGPoint) -> Void)?
+    var initialViewportOffset: CGPoint? {
+        didSet {
+            guard initialViewportOffset != oldValue else { return }
+            hasAppliedInitialViewportOffset = initialViewportOffset == nil
+            lastAppliedInitialViewportOffset = nil
+            setNeedsLayout()
+        }
+    }
+    var initialViewportAnchorTarget: SelectableNoteReadView.ReadActivationTarget? {
+        didSet {
+            guard initialViewportAnchorTarget != oldValue else { return }
+            hasAppliedInitialViewportOffset = initialViewportOffset == nil && initialViewportAnchorTarget == nil
+            lastAppliedInitialViewportOffset = nil
+            setNeedsLayout()
+        }
+    }
+    var initialViewportAnchorY: CGFloat? {
+        didSet {
+            guard initialViewportAnchorY != oldValue else { return }
+            hasAppliedInitialViewportOffset = initialViewportOffset == nil && initialViewportAnchorTarget == nil
+            lastAppliedInitialViewportOffset = nil
+            setNeedsLayout()
+        }
     }
     var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
         didSet { setNeedsLayout() }
     }
     private var lastReportedViewportOffset: CGPoint?
+    private var hasAppliedInitialViewportOffset = true
+    private var lastAppliedInitialViewportOffset: CGPoint?
 
     override var contentOffset: CGPoint {
         didSet {
@@ -606,6 +652,10 @@ private final class SelectableNoteReadTextView: UITextView {
     override func layoutSubviews() {
         super.layoutSubviews()
         updateTextContainerInsets()
+        #if os(iOS)
+        NotesIOSDebugTrace.log("SelectableNoteReadTextView.layoutSubviews", textView: self)
+        #endif
+        applyInitialViewportOffsetIfNeeded()
         reportViewportOffsetIfNeeded()
     }
 
@@ -627,31 +677,128 @@ private final class SelectableNoteReadTextView: UITextView {
         onViewportOffsetChange?(contentOffset)
     }
 
+    private func applyInitialViewportOffsetIfNeeded() {
+        guard bounds.width > 0, bounds.height > 0 else {
+            hasAppliedInitialViewportOffset = true
+            return
+        }
+        let restoration = resolvedInitialViewportRestoration()
+        guard let restoration else {
+            hasAppliedInitialViewportOffset = true
+            return
+        }
+        let clampedOffset = restoration.offset
+        guard lastAppliedInitialViewportOffset != clampedOffset else {
+            hasAppliedInitialViewportOffset = true
+            return
+        }
+        let needsOffsetUpdate =
+            abs(contentOffset.x - clampedOffset.x) > 0.5 || abs(contentOffset.y - clampedOffset.y) > 0.5
+        #if os(iOS)
+        let requestedOffset = "{x:\(String(format: "%.2f", restoration.requestedOffset.x)),"
+            + "y:\(String(format: "%.2f", restoration.requestedOffset.y))}"
+        let appliedOffset = "{x:\(String(format: "%.2f", clampedOffset.x)),"
+            + "y:\(String(format: "%.2f", clampedOffset.y))}"
+        if needsOffsetUpdate {
+            NotesIOSDebugTrace.log(
+                "SelectableNoteReadTextView.applyInitialViewportOffset",
+                textView: self,
+                extras: [
+                    "mode": restoration.mode,
+                    "requestedOffset": requestedOffset,
+                    "appliedOffset": appliedOffset,
+                    "viewportAnchorY": restoration.viewportAnchorY
+                ]
+            )
+        }
+        #endif
+        if needsOffsetUpdate {
+            super.setContentOffset(clampedOffset, animated: false)
+        }
+        lastAppliedInitialViewportOffset = clampedOffset
+        hasAppliedInitialViewportOffset = true
+        reportViewportOffsetIfNeeded(force: true)
+    }
+
+    private struct InitialViewportRestoration {
+        let mode: String
+        let offset: CGPoint
+        let requestedOffset: CGPoint
+        let viewportAnchorY: String
+    }
+
+    private func resolvedInitialViewportRestoration() -> InitialViewportRestoration? {
+        if lastAppliedInitialViewportOffset == nil,
+           let initialViewportOffset {
+            return InitialViewportRestoration(
+                mode: initialViewportAnchorTarget == nil ? "offset" : "offset-bootstrap",
+                offset: clampedContentOffset(for: initialViewportOffset),
+                requestedOffset: initialViewportOffset,
+                viewportAnchorY: initialViewportAnchorY.map {
+                    String(format: "%.2f", $0)
+                } ?? "nil"
+            )
+        }
+        if let initialViewportAnchorTarget,
+           let initialViewportAnchorY,
+           let requestedOffset = SelectableNoteReadView.contentOffset(
+                forViewportAnchorY: initialViewportAnchorY,
+                in: self,
+                target: initialViewportAnchorTarget
+           ) {
+            return InitialViewportRestoration(
+                mode: "anchor",
+                offset: clampedContentOffset(for: requestedOffset),
+                requestedOffset: requestedOffset,
+                viewportAnchorY: String(format: "%.2f", initialViewportAnchorY)
+            )
+        }
+        if let initialViewportOffset {
+            return InitialViewportRestoration(
+                mode: "offset",
+                offset: clampedContentOffset(for: initialViewportOffset),
+                requestedOffset: initialViewportOffset,
+                viewportAnchorY: "nil"
+            )
+        }
+        return nil
+    }
+
+    private func clampedContentOffset(for proposedOffset: CGPoint) -> CGPoint {
+        let minimumX = -adjustedContentInset.left
+        let minimumY = -adjustedContentInset.top
+        let maximumX = max(
+            contentSize.width + adjustedContentInset.right - bounds.width,
+            minimumX
+        )
+        let maximumY = max(
+            contentSize.height + adjustedContentInset.bottom - bounds.height,
+            minimumY
+        )
+        return CGPoint(
+            x: min(max(proposedOffset.x, minimumX), maximumX),
+            y: min(max(proposedOffset.y, minimumY), maximumY)
+        )
+    }
+
     private func linkAttribute(at point: CGPoint) -> Any? {
         guard attributedText.length > 0 else { return nil }
-        let layoutManager = self.layoutManager
-        let textContainer = self.textContainer
-
-        let containerPoint = CGPoint(
-            x: point.x - textContainerInset.left,
-            y: point.y - textContainerInset.top
+        guard let position = closestPosition(to: point) else { return nil }
+        let characterIndex = min(
+            max(offset(from: beginningOfDocument, to: position), 0),
+            attributedText.length
         )
-        layoutManager.ensureLayout(for: textContainer)
-        let glyphIndex = layoutManager.glyphIndex(
-            for: containerPoint,
-            in: textContainer,
-            fractionOfDistanceThroughGlyph: nil
-        )
-        guard glyphIndex < layoutManager.numberOfGlyphs else { return nil }
-
-        let glyphRange = NSRange(location: glyphIndex, length: 1)
-        let glyphBounds = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-        guard glyphBounds.insetBy(dx: -1, dy: -1).contains(containerPoint) else {
+        guard characterIndex < attributedText.length,
+              let characterStart = self.position(from: beginningOfDocument, offset: characterIndex),
+              let characterEnd = self.position(from: characterStart, offset: 1),
+              let characterRange = textRange(from: characterStart, to: characterEnd) else {
             return nil
         }
-
-        let characterIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
-        guard characterIndex < attributedText.length else { return nil }
+        let characterRect = firstRect(for: characterRange)
+        guard characterRect.isNull == false,
+              characterRect.insetBy(dx: -1, dy: -1).contains(point) else {
+            return nil
+        }
         return attributedText.attribute(.link, at: characterIndex, effectiveRange: nil)
     }
 
@@ -662,25 +809,14 @@ private final class SelectableNoteReadTextView: UITextView {
     }
 
     func activationViewportAnchorY(
-        for target: SelectableNoteReadView.ReadActivationTarget
+        at point: CGPoint,
+        target: SelectableNoteReadView.ReadActivationTarget
     ) -> CGFloat? {
-        let characterOffset: Int
-        switch target {
-        case .start:
-            characterOffset = 0
-        case .characterOffset(let offset):
-            characterOffset = offset
-        }
-        guard let position = position(
-            from: beginningOfDocument,
-            offset: min(max(characterOffset, 0), attributedText.length)
-        ) else {
-            return nil
-        }
-        let viewport = bounds.inset(by: adjustedContentInset)
-        guard viewport.height > 0 else { return nil }
-        let caretRect = caretRect(for: position)
-        return caretRect.midY - viewport.minY
+        SelectableNoteReadView.viewportAnchorYForEditingActivation(
+            in: self,
+            target: target,
+            fallbackPoint: point
+        )
     }
 }
 
@@ -726,7 +862,10 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
         let point = recognizer.location(in: textView)
         guard let target = textView.activationTarget(at: point) else { return }
         if let onActivateEditingWithViewport {
-            onActivateEditingWithViewport(target, textView.activationViewportAnchorY(for: target))
+            onActivateEditingWithViewport(
+                target,
+                textView.activationViewportAnchorY(at: point, target: target)
+            )
         } else {
             onActivateEditing?(target)
         }
@@ -744,6 +883,56 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
 
 @available(iOS 26.0, macOS 26.0, *)
 extension SelectableNoteReadView {
+    static func viewportAnchorYForEditingActivation(
+        in textView: UITextView,
+        target: ReadActivationTarget,
+        fallbackPoint: CGPoint? = nil
+    ) -> CGFloat? {
+        let visibleViewport = CGRect(
+            origin: textView.contentOffset,
+            size: textView.bounds.size
+        ).inset(by: textView.adjustedContentInset)
+        let viewportHeight = visibleViewport.height
+        guard viewportHeight > 0 else { return nil }
+        if case .characterOffset(let offset) = target,
+           let position = textView.position(from: textView.beginningOfDocument, offset: offset) {
+            let anchorY = textView.caretRect(for: position).midY - visibleViewport.minY
+            if anchorY >= 0, anchorY <= viewportHeight {
+                return anchorY
+            }
+        }
+        if let fallbackPoint {
+            let viewportMinY = textView.contentOffset.y + textView.adjustedContentInset.top
+            return min(max(fallbackPoint.y - viewportMinY, 0), viewportHeight)
+        }
+        return nil
+    }
+
+    static func contentOffset(
+        forViewportAnchorY viewportAnchorY: CGFloat,
+        in textView: UITextView,
+        target: ReadActivationTarget
+    ) -> CGPoint? {
+        let viewportHeight = textView.bounds.inset(by: textView.adjustedContentInset).height
+        guard viewportHeight > 0 else { return nil }
+
+        let clampedViewportAnchorY = min(max(viewportAnchorY, 0), viewportHeight)
+        let targetPosition: UITextPosition?
+        switch target {
+        case .start:
+            targetPosition = textView.beginningOfDocument
+        case .characterOffset(let offset):
+            targetPosition = textView.position(from: textView.beginningOfDocument, offset: offset)
+        }
+        guard let targetPosition else { return nil }
+
+        let targetCaretRect = textView.caretRect(for: targetPosition)
+        return CGPoint(
+            x: textView.contentOffset.x,
+            y: targetCaretRect.midY - clampedViewportAnchorY - textView.adjustedContentInset.top
+        )
+    }
+
     static func characterOffsetForEditingActivation(
         in textView: UITextView,
         at point: CGPoint

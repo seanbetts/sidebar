@@ -179,10 +179,11 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
             viewportAnchorY: expectedViewportAnchorY
         )
         await waitUntil {
-            findTextView(
-                in: controller.view,
-                accessibilityIdentifier: "notes-editor-text-view"
-            ) is UIKitNoteTextEditorSurface.AccessoryTextView
+            context.editorViewModel.isHoldingReadSurfaceDuringEditEntry == false &&
+                findTextView(
+                    in: controller.view,
+                    accessibilityIdentifier: "notes-editor-text-view"
+                ) is UIKitNoteTextEditorSurface.AccessoryTextView
         }
 
         let editorTextView = try XCTUnwrap(
@@ -215,7 +216,7 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
         )
     }
 
-    func testReadToEditActivationFromMiddleAppliesViewportAnchorOnFirstEditTick() async throws {
+    func testReadToEditActivationFromMiddleKeepsReadSurfaceMountedUntilViewportCorrectionCompletes() async throws {
         let plainText = (0..<120)
             .map { index in "Line \(index) body text" }
             .joined(separator: "\n")
@@ -244,27 +245,72 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
             at: .characterOffset(targetOffset),
             viewportAnchorY: expectedViewportAnchorY
         )
-        drainNotesHostingRunLoop()
+        XCTAssertTrue(context.editorViewModel.isHoldingReadSurfaceDuringEditEntry)
 
-        let editorTextView = try XCTUnwrap(
+        XCTAssertEqual(
+            context.editorViewModel.presentationMode,
+            .edit
+        )
+
+        await waitUntil(timeout: .seconds(2)) {
+            context.editorViewModel.isHoldingReadSurfaceDuringEditEntry == false
+                && findTextView(
+                    in: controller.view,
+                    accessibilityIdentifier: "notes-editor-text-view"
+                ) is UIKitNoteTextEditorSurface.AccessoryTextView
+        }
+    }
+
+    func testReadToEditActivationFromMiddleKeepsHeldReadSurfaceAtExistingViewportOffset() async throws {
+        let plainText = (0..<120)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: plainText))
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(findTextView(in: controller.view))
+        let targetOffset = NSString(string: plainText).range(of: "Line 70 body text").location
+
+        let readTargetPosition = try XCTUnwrap(
+            readTextView.position(from: readTextView.beginningOfDocument, offset: targetOffset)
+        )
+        let initialReadTargetRect = readTextView.caretRect(for: readTargetPosition)
+        let readViewportHeight = readTextView.bounds.inset(by: readTextView.adjustedContentInset).height
+        let targetReadOffset = max(
+            initialReadTargetRect.midY - (readViewportHeight * 0.55),
+            -readTextView.adjustedContentInset.top
+        )
+        readTextView.setContentOffset(CGPoint(x: 0, y: targetReadOffset), animated: false)
+        drainNotesHostingRunLoop()
+        let readTargetRect = readTextView.caretRect(for: readTargetPosition)
+        let readViewport = readTextView.bounds.inset(by: readTextView.adjustedContentInset)
+        let expectedViewportAnchorY = readTargetRect.midY - readViewport.minY
+
+        context.editorViewModel.enterEditMode(
+            at: .characterOffset(targetOffset),
+            viewportAnchorY: expectedViewportAnchorY
+        )
+
+        await waitUntil {
+            context.editorViewModel.isHoldingReadSurfaceDuringEditEntry &&
+                findTextView(
+                    in: controller.view,
+                    accessibilityIdentifier: "notes-read-text-view"
+                ) != nil
+        }
+
+        let heldReadTextView = try XCTUnwrap(
             findTextView(
                 in: controller.view,
-                accessibilityIdentifier: "notes-editor-text-view"
-            ) as? UIKitNoteTextEditorSurface.AccessoryTextView
+                accessibilityIdentifier: "notes-read-text-view"
+            )
         )
-        let selectionRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
-        let editorViewport = editorTextView.visibleViewportRect()
-        let actualRelativeY = selectionRect.midY - editorViewport.minY
 
-        XCTAssertEqual(editorTextView.selectedRange.location, targetOffset)
-        XCTAssertEqual(
-            actualRelativeY,
-            expectedViewportAnchorY,
-            accuracy: 24,
-            "selectionRect=\(selectionRect) editorViewport=\(editorViewport) "
-                + "contentOffset=\(editorTextView.contentOffset) "
-                + "expectedViewportAnchorY=\(expectedViewportAnchorY)"
+        XCTAssertTrue(
+            heldReadTextView === readTextView,
+            "The live read surface should stay mounted during edit-entry hold instead of remounting a second read text view."
         )
+        XCTAssertEqual(heldReadTextView.contentOffset.y, targetReadOffset, accuracy: 1)
     }
 
     func testFloatingPopoverTextStyleTapKeepsViewportStable() async throws {

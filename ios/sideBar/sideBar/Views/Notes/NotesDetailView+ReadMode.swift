@@ -35,7 +35,12 @@ extension NotesDetailView {
     }
 
     var isFloatingFormattingBarVisible: Bool {
+        #if os(iOS)
         formattingBarPresentation == .floatingTopTrailing
+            && !editorViewModel.isHoldingReadSurfaceDuringEditEntry
+        #else
+        formattingBarPresentation == .floatingTopTrailing
+        #endif
     }
 
     var unsupportedContentPlaceholderTitle: String {
@@ -67,6 +72,17 @@ extension NotesDetailView {
     ) {
         guard currentUnsupportedContent == nil else { return }
         #if os(iOS)
+        NotesIOSDebugTrace.log(
+            "NotesDetailView.activateReadSurfaceEditing",
+            extras: [
+                "isShowingEditorSurface": "\(isShowingEditorSurface)",
+                "isShowingReadSurface": "\(isShowingReadSurface)",
+                "target": "\(target)",
+                "viewportAnchorY": viewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil"
+            ]
+        )
+        #endif
+        #if os(iOS)
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),
             to: nil,
@@ -78,7 +94,18 @@ extension NotesDetailView {
     }
 
     func handleReadViewportOffsetChange(_ offset: CGPoint) {
-        _ = offset
+        #if os(iOS)
+        if editorViewModel.isHoldingReadSurfaceDuringEditEntry {
+            return
+        }
+        NotesIOSDebugTrace.log(
+            "NotesDetailView.handleReadViewportOffsetChange",
+            extras: [
+                "offset": "{x:\(String(format: "%.2f", offset.x)),y:\(String(format: "%.2f", offset.y))}"
+            ]
+        )
+        #endif
+        editorViewModel.heldReadSurfaceViewportOffset = offset
     }
 
     func handleCloseShortcut(editedDocument: NotesSemanticDocument? = nil) {

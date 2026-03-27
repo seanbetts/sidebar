@@ -4,6 +4,8 @@ import UIKit
 @available(iOS 26.0, *)
 extension UIKitNoteTextEditorSurface.AccessoryTextView {
     private static let selectionViewportTolerance: CGFloat = 2
+    private static let viewportAnchorConvergenceTolerance: CGFloat = 1
+    private static let maximumViewportAnchorPasses = 3
 
     func updateViewportInsets() {
         let bottomInset = Self.baseTextContainerInsets.bottom
@@ -35,6 +37,13 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
     }
 
     func positionCurrentSelection(atViewportAnchorY viewportAnchorY: CGFloat) {
+        NotesIOSDebugTrace.log(
+            "AccessoryTextView.positionCurrentSelection.begin",
+            textView: self,
+            extras: [
+                "viewportAnchorY": String(format: "%.2f", viewportAnchorY)
+            ]
+        )
         guard selectedRange.location != NSNotFound else { return }
         guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else {
             scrollCurrentSelectionIntoView()
@@ -47,18 +56,18 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         }
 
         let clampedViewportAnchorY = min(max(viewportAnchorY, 0), visibleViewport.height)
-        let targetMidY = visibleViewport.minY + clampedViewportAnchorY
-        var targetOffset = contentOffset
-        targetOffset.y += selectionRect.midY - targetMidY
-        setContentOffset(
-            UIKitNoteTextEditorSurface.clampedContentOffset(targetOffset, for: self),
-            animated: false
-        )
-        layoutIfNeeded()
+        convergeSelectionPosition(toViewportAnchorY: clampedViewportAnchorY)
 
         if isCurrentSelectionIntersectingViewport() == false {
             scrollSelectionRectIntoView(selectionRect)
         }
+        NotesIOSDebugTrace.log(
+            "AccessoryTextView.positionCurrentSelection.end",
+            textView: self,
+            extras: [
+                "viewportAnchorY": String(format: "%.2f", viewportAnchorY)
+            ]
+        )
     }
 
     func isCurrentSelectionVisible() -> Bool {
@@ -128,6 +137,28 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         if isCurrentSelectionVisible() == false {
             scrollRectToVisible(selectionRect, animated: false)
         }
+    }
+
+    private func convergeSelectionPosition(toViewportAnchorY viewportAnchorY: CGFloat) {
+        for _ in 0..<Self.maximumViewportAnchorPasses {
+            layoutIfNeeded()
+            guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else { return }
+            let visibleViewport = visibleViewportRect()
+            guard visibleViewport.height > 0 else { return }
+
+            let targetMidY = visibleViewport.minY + viewportAnchorY
+            let requiredDeltaY = selectionRect.midY - targetMidY
+            guard abs(requiredDeltaY) > Self.viewportAnchorConvergenceTolerance else { return }
+
+            var targetOffset = contentOffset
+            targetOffset.y += requiredDeltaY
+            setContentOffset(
+                UIKitNoteTextEditorSurface.clampedContentOffset(targetOffset, for: self),
+                animated: false
+            )
+        }
+
+        layoutIfNeeded()
     }
 
     private func textRange(for range: NSRange) -> UITextRange? {

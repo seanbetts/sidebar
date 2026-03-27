@@ -234,6 +234,118 @@ final class SelectableNoteReadActivationIOSTests: NotesDetailViewHostingTestCase
 
         XCTAssertNil(capturedTarget)
     }
+
+    func testViewportAnchorForScrolledTapStaysRelativeToVisibleReadViewport() throws {
+        let plainText = (0..<120)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let targetOffset = NSString(string: plainText).range(of: "Line 70 body text").location
+
+        let controller = mount(
+            SelectableNoteReadView(
+                document: NotesSemanticDocumentProjection.document(fromPlainText: plainText),
+                maxContentWidth: 672
+            ),
+            frame: CGRect(x: 0, y: 0, width: 672, height: 867),
+            makeKeyAndVisible: true
+        )
+        let textView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        let targetPosition = try XCTUnwrap(
+            textView.position(from: textView.beginningOfDocument, offset: targetOffset)
+        )
+        let initialTargetRect = textView.caretRect(for: targetPosition)
+        let readViewportHeight = textView.bounds.inset(by: textView.adjustedContentInset).height
+        let targetReadOffset = max(
+            initialTargetRect.midY - (readViewportHeight * 0.55),
+            -textView.adjustedContentInset.top
+        )
+
+        textView.setContentOffset(CGPoint(x: 0, y: targetReadOffset), animated: false)
+        drainNotesHostingRunLoop()
+        drainNotesHostingRunLoop()
+
+        let targetRect = textView.caretRect(for: targetPosition)
+        let visibleViewport = CGRect(
+            origin: textView.contentOffset,
+            size: textView.bounds.size
+        ).inset(by: textView.adjustedContentInset)
+        let tapPoint = CGPoint(
+            x: targetRect.midX,
+            y: targetRect.midY
+        )
+        let expectedViewportAnchorY = targetRect.midY - visibleViewport.minY
+        let capturedViewportAnchorY = SelectableNoteReadView.viewportAnchorYForEditingActivation(
+            in: textView,
+            target: .characterOffset(targetOffset),
+            fallbackPoint: tapPoint
+        )
+
+        XCTAssertLessThanOrEqual(
+            try XCTUnwrap(capturedViewportAnchorY),
+            visibleViewport.height + 1,
+            "Activation viewport anchor should remain relative to the visible read viewport"
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(capturedViewportAnchorY),
+            expectedViewportAnchorY,
+            accuracy: 1,
+            "tapPoint=\(tapPoint) bounds=\(textView.bounds) contentOffset=\(textView.contentOffset) "
+                + "adjustedInset=\(textView.adjustedContentInset) visibleViewport=\(visibleViewport)"
+        )
+    }
+
+    func testViewportAnchorUsesTapLocationWhenReadViewportResetsBeforeActivation() throws {
+        let plainText = (0..<120)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let targetOffset = NSString(string: plainText).range(of: "Line 70 body text").location
+
+        let controller = mount(
+            SelectableNoteReadView(
+                document: NotesSemanticDocumentProjection.document(fromPlainText: plainText),
+                maxContentWidth: 672
+            ),
+            frame: CGRect(x: 0, y: 0, width: 672, height: 867),
+            makeKeyAndVisible: true
+        )
+        let textView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        let targetPosition = try XCTUnwrap(
+            textView.position(from: textView.beginningOfDocument, offset: targetOffset)
+        )
+        let initialTargetRect = textView.caretRect(for: targetPosition)
+        let readViewportHeight = textView.bounds.inset(by: textView.adjustedContentInset).height
+        let targetReadOffset = max(
+            initialTargetRect.midY - (readViewportHeight * 0.55),
+            -textView.adjustedContentInset.top
+        )
+
+        textView.setContentOffset(CGPoint(x: 0, y: targetReadOffset), animated: false)
+        drainNotesHostingRunLoop()
+        drainNotesHostingRunLoop()
+
+        let targetRect = textView.caretRect(for: targetPosition)
+        let tapPoint = CGPoint(
+            x: targetRect.midX - textView.contentOffset.x,
+            y: targetRect.midY - textView.contentOffset.y
+        )
+        let expectedViewportAnchorY = tapPoint.y - textView.adjustedContentInset.top
+
+        textView.setContentOffset(.zero, animated: false)
+        drainNotesHostingRunLoop()
+
+        let capturedViewportAnchorY = SelectableNoteReadView.viewportAnchorYForEditingActivation(
+            in: textView,
+            target: .characterOffset(targetOffset),
+            fallbackPoint: tapPoint
+        )
+
+        XCTAssertEqual(
+            try XCTUnwrap(capturedViewportAnchorY),
+            expectedViewportAnchorY,
+            accuracy: 1,
+            "Viewport anchor should stay tied to the tapped location even if UIKit resets the read offset before activation"
+        )
+    }
 }
 
 @MainActor
@@ -246,22 +358,20 @@ private func localTapPoint(
     guard characterIndex < textView.attributedText.length else {
         throw XCTSkip("Unable to resolve tap point")
     }
-    let layoutManager = textView.layoutManager
-    let textContainer = textView.textContainer
+    guard let start = textView.position(from: textView.beginningOfDocument, offset: characterIndex),
+          let end = textView.position(from: start, offset: 1),
+          let textRange = textView.textRange(from: start, to: end) else {
+        throw XCTSkip("Unable to resolve tap point")
+    }
 
-    textContainer.size = CGSize(
-        width: textView.bounds.width - textView.textContainerInset.left - textView.textContainerInset.right,
-        height: .greatestFiniteMagnitude
-    )
-    layoutManager.ensureLayout(for: textContainer)
-    let glyphRange = layoutManager.glyphRange(
-        forCharacterRange: NSRange(location: characterIndex, length: 1),
-        actualCharacterRange: nil
-    )
-    let glyphRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+    let characterRect = textView.firstRect(for: textRange)
+    guard characterRect.isNull == false, characterRect.isEmpty == false else {
+        throw XCTSkip("Unable to resolve tap point")
+    }
+
     return CGPoint(
-        x: textView.textContainerInset.left + glyphRect.minX + (glyphRect.width * horizontalBias),
-        y: textView.textContainerInset.top + glyphRect.midY
+        x: characterRect.minX + (characterRect.width * horizontalBias),
+        y: characterRect.midY
     )
 }
 

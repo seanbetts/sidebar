@@ -23,6 +23,8 @@ func mountTextView(
     formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
     formattingBarPresentation: NoteFormattingBarPresentation = .keyboardAccessory,
     pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget? = nil,
+    pendingSelectionViewportAnchorY: CGFloat? = nil,
+    onDidBeginEditing: ((UIKitNoteTextEditorSurface.AccessoryTextView) -> Void)? = nil,
     makeTextView: (() -> UIKitNoteTextEditorSurface.AccessoryTextView)? = nil,
     maxContentWidth: CGFloat? = nil,
     width: CGFloat = 360,
@@ -38,6 +40,8 @@ func mountTextView(
                 formattingBarConfiguration: formattingBarConfiguration,
                 formattingBarPresentation: formattingBarPresentation,
                 pendingSelectionTarget: pendingSelectionTarget,
+                pendingSelectionViewportAnchorY: pendingSelectionViewportAnchorY,
+                onDidBeginEditing: onDidBeginEditing,
                 makeTextView: makeTextView
             )
         )
@@ -80,6 +84,8 @@ func mountTextView(
     makeKeyAndVisible: Bool = false,
     formattingBarConfiguration: NoteFormattingBarConfiguration? = nil,
     formattingBarPresentation: NoteFormattingBarPresentation = .keyboardAccessory,
+    pendingSelectionViewportAnchorY: CGFloat? = nil,
+    onDidBeginEditing: ((UIKitNoteTextEditorSurface.AccessoryTextView) -> Void)? = nil,
     makeTextView: (() -> UIKitNoteTextEditorSurface.AccessoryTextView)? = nil,
     maxContentWidth: CGFloat? = nil,
     width: CGFloat = 360,
@@ -94,6 +100,8 @@ func mountTextView(
         formattingBarConfiguration: formattingBarConfiguration,
         formattingBarPresentation: formattingBarPresentation,
         pendingSelectionTarget: nil,
+        pendingSelectionViewportAnchorY: pendingSelectionViewportAnchorY,
+        onDidBeginEditing: onDidBeginEditing,
         makeTextView: makeTextView,
         maxContentWidth: maxContentWidth,
         width: width,

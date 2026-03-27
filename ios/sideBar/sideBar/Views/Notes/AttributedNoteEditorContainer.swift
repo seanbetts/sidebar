@@ -16,6 +16,7 @@ struct AttributedNoteEditorContainer: View {
     let maxContentWidth: CGFloat
     let autofocusEnabled: Bool
     let onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)?
+    let onInitialPresentationReady: (() -> Void)?
     let onEscape: ((NotesSemanticDocument) -> Void)?
     @EnvironmentObject var environment: AppEnvironment
 
@@ -33,12 +34,14 @@ struct AttributedNoteEditorContainer: View {
         maxContentWidth: CGFloat,
         autofocusEnabled: Bool = true,
         onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)? = nil,
+        onInitialPresentationReady: (() -> Void)? = nil,
         onEscape: ((NotesSemanticDocument) -> Void)?
     ) {
         self.editorViewModel = editorViewModel
         self.maxContentWidth = maxContentWidth
         self.autofocusEnabled = autofocusEnabled
         self.onFormattingBarPresentationChange = onFormattingBarPresentationChange
+        self.onInitialPresentationReady = onInitialPresentationReady
         self.onEscape = onEscape
         _nativeViewModel = StateObject(wrappedValue: editorViewModel.sharedNativeEditor())
     }
@@ -143,6 +146,18 @@ struct AttributedNoteEditorContainer: View {
         if loadedNoteId != previousLoadedNoteId {
             pendingSelectionTarget = editorViewModel.consumePendingEditSelectionTarget()
             pendingSelectionViewportAnchorY = editorViewModel.consumePendingEditViewportAnchorY()
+            #if os(iOS)
+            NotesIOSDebugTrace.log(
+                "AttributedNoteEditorContainer.loadIfNeeded.newNote",
+                extras: [
+                    "loadedNoteId": loadedNoteId ?? "nil",
+                    "pendingSelectionTarget": String(describing: pendingSelectionTarget),
+                    "pendingSelectionViewportAnchorY": pendingSelectionViewportAnchorY.map {
+                        String(format: "%.2f", $0)
+                    } ?? "nil"
+                ]
+            )
+            #endif
         }
     }
 
@@ -175,18 +190,55 @@ struct AttributedNoteEditorContainer: View {
             formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
             formattingBarPresentation: resolvedFormattingBarPresentation,
             pendingSelectionTarget: pendingSelectionTarget,
+            pendingSelectionViewportAnchorY: pendingSelectionViewportAnchorY,
             onPendingSelectionTargetApplied: { _ in
                 pendingSelectionTarget = nil
             },
             onDidBeginEditing: { textView in
                 let viewportAnchorY = pendingSelectionViewportAnchorY
                 pendingSelectionViewportAnchorY = nil
-                guard let viewportAnchorY else { return }
+                NotesIOSDebugTrace.log(
+                    "AttributedNoteEditorContainer.onDidBeginEditing",
+                    textView: textView,
+                    extras: [
+                        "viewportAnchorY": viewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil"
+                    ]
+                )
+                guard let viewportAnchorY else {
+                    textView.suppressAutofocusReveal = false
+                    DispatchQueue.main.async {
+                        onInitialPresentationReady?()
+                    }
+                    return
+                }
+                NotesIOSDebugTrace.log(
+                    "AttributedNoteEditorContainer.onDidBeginEditing.enqueueViewportCorrection",
+                    textView: textView,
+                    extras: [
+                        "viewportAnchorY": String(format: "%.2f", viewportAnchorY)
+                    ]
+                )
                 DispatchQueue.main.async { [weak textView] in
                     guard let textView else { return }
+                    defer { textView.suppressAutofocusReveal = false }
+                    NotesIOSDebugTrace.log(
+                        "AttributedNoteEditorContainer.onDidBeginEditing.fireViewportCorrection.begin",
+                        textView: textView,
+                        extras: [
+                            "viewportAnchorY": String(format: "%.2f", viewportAnchorY)
+                        ]
+                    )
                     textView.layoutIfNeeded()
                     textView.positionCurrentSelection(
                         atViewportAnchorY: viewportAnchorY
+                    )
+                    onInitialPresentationReady?()
+                    NotesIOSDebugTrace.log(
+                        "AttributedNoteEditorContainer.onDidBeginEditing.fireViewportCorrection.end",
+                        textView: textView,
+                        extras: [
+                            "viewportAnchorY": String(format: "%.2f", viewportAnchorY)
+                        ]
                     )
                 }
             }

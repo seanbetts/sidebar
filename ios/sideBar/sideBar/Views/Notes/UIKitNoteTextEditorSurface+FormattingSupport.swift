@@ -11,12 +11,21 @@ extension UIKitNoteTextEditorSurface {
             return
         }
         textView.hasScheduledAutofocus = true
+        NotesIOSDebugTrace.log("UIKitNoteTextEditorSurface.scheduleAutofocusIfNeeded.enqueue", textView: textView)
         DispatchQueue.main.async { [weak textView] in
             guard let textView, textView.shouldAutofocus, textView.window != nil else { return }
             textView.hasScheduledAutofocus = false
             guard !textView.isFirstResponder else { return }
+            NotesIOSDebugTrace.log("UIKitNoteTextEditorSurface.scheduleAutofocusIfNeeded.fire.begin", textView: textView)
             textView.window?.makeKey()
-            _ = textView.becomeFirstResponder()
+            let becameFirstResponder = textView.becomeFirstResponder()
+            NotesIOSDebugTrace.log(
+                "UIKitNoteTextEditorSurface.scheduleAutofocusIfNeeded.fire.end",
+                textView: textView,
+                extras: [
+                    "becameFirstResponder": "\(becameFirstResponder)"
+                ]
+            )
         }
     }
 

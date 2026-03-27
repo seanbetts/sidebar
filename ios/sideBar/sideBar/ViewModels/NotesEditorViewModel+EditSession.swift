@@ -47,8 +47,29 @@ extension NotesEditorViewModel {
         viewportAnchorY: CGFloat? = nil
     ) {
         guard currentNoteId != nil, unsupportedContent == nil else { return }
+        #if os(iOS)
+        if #available(iOS 26.0, *) {
+            NotesIOSDebugTrace.log(
+                "NotesEditorViewModel.enterEditMode",
+                extras: [
+                    "target": "\(target)",
+                    "viewportAnchorY": viewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil",
+                    "currentNoteId": currentNoteId ?? "nil"
+                ]
+            )
+        }
+        #endif
         pendingEditSelectionTarget = target
         pendingEditViewportAnchorY = viewportAnchorY
+        #if os(iOS)
+        isHoldingReadSurfaceDuringEditEntry = viewportAnchorY != nil
+        heldReadSurfaceActivationTarget = viewportAnchorY == nil ? nil : target
+        heldReadSurfaceViewportAnchorY = viewportAnchorY
+        #else
+        isHoldingReadSurfaceDuringEditEntry = false
+        heldReadSurfaceActivationTarget = nil
+        heldReadSurfaceViewportAnchorY = nil
+        #endif
         presentationMode = .edit
     }
 
@@ -71,6 +92,9 @@ extension NotesEditorViewModel {
     public func exitEditModeToRead() {
         pendingEditSelectionTarget = nil
         pendingEditViewportAnchorY = nil
+        isHoldingReadSurfaceDuringEditEntry = false
+        heldReadSurfaceActivationTarget = nil
+        heldReadSurfaceViewportAnchorY = nil
         presentationMode = .read
     }
 }
