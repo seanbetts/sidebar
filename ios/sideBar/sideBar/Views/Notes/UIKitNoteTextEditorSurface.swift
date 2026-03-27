@@ -62,7 +62,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             super.layoutSubviews()
             updateTextContainerInsets()
             updateViewportInsets()
-            NotesIOSDebugTrace.log("AccessoryTextView.layoutSubviews", textView: self)
         }
 
         override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {

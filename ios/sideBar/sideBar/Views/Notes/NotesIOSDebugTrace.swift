@@ -25,8 +25,6 @@ enum NotesIOSDebugTrace {
         components.append(contentsOf: sortedExtras)
 
         if let textView {
-            components.append("viewID=\(viewIdentifier(for: textView))")
-            components.append("textLength=\(textView.attributedText.length)")
             components.append("bounds=\(format(textView.bounds))")
             components.append("contentOffset=\(format(textView.contentOffset))")
             components.append("contentSize=\(format(textView.contentSize))")
@@ -50,11 +48,6 @@ enum NotesIOSDebugTrace {
             return nil
         }
         return textView.selectionRectInContentCoordinates()
-    }
-
-    private static func viewIdentifier(for textView: UITextView) -> String {
-        let pointer = Unmanaged.passUnretained(textView).toOpaque()
-        return String(describing: pointer)
     }
 
     private static func format(_ point: CGPoint) -> String {

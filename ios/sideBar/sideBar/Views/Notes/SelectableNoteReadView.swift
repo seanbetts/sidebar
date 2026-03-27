@@ -652,9 +652,6 @@ private final class SelectableNoteReadTextView: UITextView {
     override func layoutSubviews() {
         super.layoutSubviews()
         updateTextContainerInsets()
-        #if os(iOS)
-        NotesIOSDebugTrace.log("SelectableNoteReadTextView.layoutSubviews", textView: self)
-        #endif
         applyInitialViewportOffsetIfNeeded()
         reportViewportOffsetIfNeeded()
     }
