@@ -254,6 +254,82 @@ extension ChatViewModelTests {
         XCTAssertEqual(reconciled.last?.content, localStreaming.content)
     }
 
+    func testIsSameMessageSnapshotTreatsSyntheticToolNewlineAsEquivalent() async {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+        let toolCalls = [
+            ToolCall(
+                id: "tool-1",
+                name: "Search",
+                parameters: [:],
+                status: .success
+            )
+        ]
+        let local = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "Found this\n\nHere is the answer",
+            status: .complete,
+            toolCalls: toolCalls,
+            needsNewline: false,
+            timestamp: "2026-01-02T00:00:01Z",
+            error: nil
+        )
+        let incoming = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "Found thisHere is the answer",
+            status: .complete,
+            toolCalls: toolCalls,
+            needsNewline: nil,
+            timestamp: "2026-01-02T00:00:01Z",
+            error: nil
+        )
+
+        XCTAssertTrue(viewModel.isSameMessageSnapshot(current: [local], incoming: [incoming]))
+    }
+
+    func testIsSameMessageSnapshotMatchesSyntheticToolNewlineAfterExistingParagraphBreak() async {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+        let toolCalls = [
+            ToolCall(
+                id: "tool-1",
+                name: "Search",
+                parameters: [:],
+                status: .success
+            )
+        ]
+        let local = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "Intro paragraph\n\nTool result\n\nFinal answer",
+            status: .complete,
+            toolCalls: toolCalls,
+            needsNewline: false,
+            timestamp: "2026-01-02T00:00:01Z",
+            error: nil
+        )
+        let incoming = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "Intro paragraph\n\nTool resultFinal answer",
+            status: .complete,
+            toolCalls: toolCalls,
+            needsNewline: nil,
+            timestamp: "2026-01-02T00:00:01Z",
+            error: nil
+        )
+
+        XCTAssertTrue(viewModel.isSameMessageSnapshot(current: [local], incoming: [incoming]))
+    }
+
     func testStartAttachmentPollingMarksAttachmentFailedWhenStatusRequestFails() async {
         let cache = TestCacheClient()
         let conversationsAPI = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))

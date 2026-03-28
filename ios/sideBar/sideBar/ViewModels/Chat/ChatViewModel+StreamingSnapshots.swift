@@ -66,8 +66,50 @@ extension ChatViewModel {
         guard let currentLast = current.last, let incomingLast = incoming.last else {
             return current.isEmpty && incoming.isEmpty
         }
-        return currentLast.id == incomingLast.id
-            && currentLast.content == incomingLast.content
-            && currentLast.status == incomingLast.status
+        guard currentLast.id == incomingLast.id,
+              currentLast.status == incomingLast.status else {
+            return false
+        }
+        if currentLast.content == incomingLast.content {
+            return true
+        }
+        return messagesDifferOnlyBySyntheticToolNewline(currentLast, incomingLast)
+            || messagesDifferOnlyBySyntheticToolNewline(incomingLast, currentLast)
+    }
+
+    private func messagesDifferOnlyBySyntheticToolNewline(_ local: Message, _ server: Message) -> Bool {
+        guard local.role == .assistant,
+              server.role == .assistant,
+              local.status == .complete,
+              server.status == .complete,
+              local.content.count == server.content.count + 2,
+              local.needsNewline == false,
+              server.needsNewline == nil,
+              local.error == server.error,
+              local.errorDetails == server.errorDetails,
+              toolCallSnapshotSignature(local.toolCalls) == toolCallSnapshotSignature(server.toolCalls) else {
+            return false
+        }
+
+        return removingSingleSyntheticToolNewline(from: local.content, matching: server.content)
+    }
+
+    private func removingSingleSyntheticToolNewline(from content: String, matching expected: String) -> Bool {
+        var searchRange = content.startIndex..<content.endIndex
+        while let range = content.range(of: "\n\n", range: searchRange) {
+            var normalized = content
+            normalized.removeSubrange(range)
+            if normalized == expected {
+                return true
+            }
+            searchRange = range.upperBound..<content.endIndex
+        }
+        return false
+    }
+
+    private func toolCallSnapshotSignature(_ toolCalls: [ToolCall]?) -> String {
+        (toolCalls ?? []).map {
+            "\($0.id):\($0.name):\($0.status.rawValue):\($0.skillId ?? ""):\($0.iconKey ?? "")"
+        }.joined(separator: "|")
     }
 }
