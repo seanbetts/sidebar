@@ -121,7 +121,7 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(backgroundColor, NoteTextAppearance.inlineCodeBackgroundColor)
     }
 
-    func testMountedAppKitEditorDoesNotDrawCustomCodeBlockBackground() throws {
+    func testMountedAppKitEditorDrawsCustomCodeBlockBackground() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
@@ -146,9 +146,38 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
 
         XCTAssertTrue(notePlatformFontTraits(from: font).monospaced)
-        assertColorsApproximatelyNotEqual(
+        assertColorsApproximatelyEqual(
             sampledColor,
-            NoteTextAppearance.inlineCodeBackgroundColor,
+            NoteTextAppearance.codeBlockBackgroundColor,
+            tolerance: 0.05
+        )
+    }
+
+    func testMountedAppKitReadSurfaceDrawsCustomCodeBlockBackground() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .codeBlock, content: [.init(text: "abcdefghij\nab", marks: [])])
+            ]
+        )
+        let textView = try makeReadTextView(
+            document: document,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+
+        XCTAssertNil(textView.textStorage?.attribute(.backgroundColor, at: 0, effectiveRange: nil))
+
+        let longLineRect = try glyphRect(in: textView, characterIndex: 9)
+        let shortLineRect = try glyphRect(in: textView, characterIndex: 12)
+        let samplePoint = NSPoint(
+            x: textView.textContainerInset.width + shortLineRect.maxX + ((longLineRect.maxX - shortLineRect.maxX) * 0.5),
+            y: textView.textContainerInset.height + shortLineRect.midY
+        )
+        let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
+
+        assertColorsApproximatelyEqual(
+            sampledColor,
+            NoteTextAppearance.codeBlockBackgroundColor,
             tolerance: 0.05
         )
     }
@@ -484,5 +513,25 @@ private func assertColorsApproximatelyNotEqual(
         alphaDelta <= tolerance
 
     XCTAssertFalse(matchesExpectedWithinTolerance, file: file, line: line)
+}
+
+@MainActor
+private func assertColorsApproximatelyEqual(
+    _ actual: NSColor,
+    _ expected: NSColor,
+    tolerance: CGFloat,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    let actualColor = actual.usingColorSpace(.deviceRGB)
+    let expectedColor = expected.usingColorSpace(.deviceRGB)
+    XCTAssertNotNil(actualColor, file: file, line: line)
+    XCTAssertNotNil(expectedColor, file: file, line: line)
+    guard let actualColor, let expectedColor else { return }
+
+    XCTAssertEqual(actualColor.redComponent, expectedColor.redComponent, accuracy: tolerance, file: file, line: line)
+    XCTAssertEqual(actualColor.greenComponent, expectedColor.greenComponent, accuracy: tolerance, file: file, line: line)
+    XCTAssertEqual(actualColor.blueComponent, expectedColor.blueComponent, accuracy: tolerance, file: file, line: line)
+    XCTAssertEqual(actualColor.alphaComponent, expectedColor.alphaComponent, accuracy: tolerance, file: file, line: line)
 }
 #endif

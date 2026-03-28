@@ -190,6 +190,12 @@ func mountSurfaceHost(
 
 @MainActor
 @available(iOS 26.0, *)
+extension UIKitNoteTextEditorSurface.AccessoryTextView {
+    var debugPendingInitialViewportOffset: CGPoint? { nil }
+}
+
+@MainActor
+@available(iOS 26.0, *)
 final class FormattingPresentationState: ObservableObject {
     @Published var presentation: NoteFormattingBarPresentation
 

@@ -454,6 +454,12 @@ private final class SelectableNoteReadTextView: NSTextView {
     override func layout() {
         super.layout()
         updateTextContainerInset()
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        drawCodeBlockBackgrounds(in: dirtyRect)
+        super.draw(dirtyRect)
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -519,6 +525,28 @@ private final class SelectableNoteReadTextView: NSTextView {
         )
         guard textContainerInset != resolvedInset else { return }
         textContainerInset = resolvedInset
+    }
+
+    private func drawCodeBlockBackgrounds(in dirtyRect: NSRect) {
+        guard let textStorage,
+              let layoutManager,
+              let textContainer else { return }
+        let backgroundRects = NoteTextCodeBlockBackgroundLayout.blockRects(
+            in: textStorage,
+            layoutManager: layoutManager,
+            textContainer: textContainer,
+            textContainerInset: textContainerInset
+        )
+        guard backgroundRects.isEmpty == false else { return }
+
+        NoteTextAppearance.codeBlockBackgroundColor.setFill()
+        for backgroundRect in backgroundRects where backgroundRect.intersects(dirtyRect) {
+            NSBezierPath(
+                roundedRect: backgroundRect,
+                xRadius: NoteTextAppearance.codeBlockCornerRadius,
+                yRadius: NoteTextAppearance.codeBlockCornerRadius
+            ).fill()
+        }
     }
 
     private func linkAttribute(at point: NSPoint) -> Any? {
@@ -685,6 +713,7 @@ private final class SelectableNoteReadTextView: UITextView {
     override var contentOffset: CGPoint {
         didSet {
             reportViewportOffsetIfNeeded()
+            setNeedsDisplay()
         }
     }
 
@@ -698,6 +727,7 @@ private final class SelectableNoteReadTextView: UITextView {
             }
             applyInitialViewportOffsetIfNeeded()
             reportViewportOffsetIfNeeded()
+            setNeedsDisplay()
         }
     }
 
@@ -711,6 +741,12 @@ private final class SelectableNoteReadTextView: UITextView {
         updateTextContainerInsets()
         applyInitialViewportOffsetIfNeeded()
         reportViewportOffsetIfNeeded()
+        setNeedsDisplay()
+    }
+
+    override func draw(_ rect: CGRect) {
+        drawCodeBlockBackgrounds(in: rect)
+        super.draw(rect)
     }
 
     private func updateTextContainerInsets() {
@@ -723,6 +759,28 @@ private final class SelectableNoteReadTextView: UITextView {
         )
         guard textContainerInset != resolvedInsets else { return }
         textContainerInset = resolvedInsets
+    }
+
+    private func drawCodeBlockBackgrounds(in rect: CGRect) {
+        guard let attributedText, attributedText.length > 0 else { return }
+        let backgroundRects = NoteTextCodeBlockBackgroundLayout.blockRects(
+            in: attributedText,
+            layoutManager: layoutManager,
+            textContainer: textContainer,
+            textContainerInset: CGSize(
+                width: textContainerInset.left,
+                height: textContainerInset.top
+            )
+        )
+        guard backgroundRects.isEmpty == false else { return }
+
+        NoteTextAppearance.codeBlockBackgroundColor.setFill()
+        for backgroundRect in backgroundRects where backgroundRect.intersects(rect) {
+            UIBezierPath(
+                roundedRect: backgroundRect,
+                cornerRadius: NoteTextAppearance.codeBlockCornerRadius
+            ).fill()
+        }
     }
 
     private func reportViewportOffsetIfNeeded(force: Bool = false) {

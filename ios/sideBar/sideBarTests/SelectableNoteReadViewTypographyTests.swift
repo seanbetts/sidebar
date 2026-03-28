@@ -152,7 +152,7 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         )
     }
 
-    func testMountedReadViewDoesNotDrawCustomCodeBlockBackgroundOnIOS() throws {
+    func testMountedReadViewDrawsCustomCodeBlockBackgroundOnIOS() throws {
         let document = NotesSemanticDocument(
             blocks: [
                 .init(type: .codeBlock, content: [.init(text: "abcdefghij\nab", marks: [])])
@@ -171,9 +171,9 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
         let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
 
-        assertColorsApproximatelyNotEqual(
+        assertColorsApproximatelyEqual(
             sampledColor.resolvedColor(with: darkTraits),
-            UIColor.secondarySystemFill.resolvedColor(with: darkTraits),
+            NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: darkTraits),
             tolerance: 0.05
         )
     }

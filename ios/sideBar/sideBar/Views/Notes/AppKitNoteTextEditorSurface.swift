@@ -35,6 +35,12 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         override func layout() {
             super.layout()
             updateTextContainerInset()
+            needsDisplay = true
+        }
+
+        override func draw(_ dirtyRect: NSRect) {
+            drawCodeBlockBackgrounds(in: dirtyRect)
+            super.draw(dirtyRect)
         }
 
         func scheduleAutofocusIfNeeded() {
@@ -60,6 +66,28 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             )
             guard textContainerInset != resolvedInset else { return }
             textContainerInset = resolvedInset
+        }
+
+        private func drawCodeBlockBackgrounds(in dirtyRect: NSRect) {
+            guard let textStorage,
+                  let layoutManager,
+                  let textContainer else { return }
+            let backgroundRects = NoteTextCodeBlockBackgroundLayout.blockRects(
+                in: textStorage,
+                layoutManager: layoutManager,
+                textContainer: textContainer,
+                textContainerInset: textContainerInset
+            )
+            guard backgroundRects.isEmpty == false else { return }
+
+            NoteTextAppearance.codeBlockBackgroundColor.setFill()
+            for backgroundRect in backgroundRects where backgroundRect.intersects(dirtyRect) {
+                NSBezierPath(
+                    roundedRect: backgroundRect,
+                    xRadius: NoteTextAppearance.codeBlockCornerRadius,
+                    yRadius: NoteTextAppearance.codeBlockCornerRadius
+                ).fill()
+            }
         }
     }
 
