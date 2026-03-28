@@ -41,6 +41,48 @@ final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
         XCTAssertTrue(shouldScroll)
     }
 
+    func testTerminalStreamingTransitionDoesNotAnimateBottomScroll() {
+        let oldMessage = makeMessage(content: "Final answer", status: .streaming)
+        let newMessage = makeMessage(content: "Final answer", status: .complete)
+
+        let shouldAnimate = ChatMessageListScrollBehavior.shouldAnimateLastMessageChange(
+            from: ChatMessageScrollSignature(message: oldMessage),
+            to: ChatMessageScrollSignature(message: newMessage),
+            isStreaming: false,
+            shouldScrollToBottom: false
+        )
+
+        XCTAssertFalse(shouldAnimate)
+    }
+
+    func testTerminalStreamingTransitionWithFinalContentFlushDoesNotAnimateBottomScroll() {
+        let oldMessage = makeMessage(content: "Final", status: .streaming)
+        let newMessage = makeMessage(content: "Final answer", status: .complete)
+
+        let shouldAnimate = ChatMessageListScrollBehavior.shouldAnimateLastMessageChange(
+            from: ChatMessageScrollSignature(message: oldMessage),
+            to: ChatMessageScrollSignature(message: newMessage),
+            isStreaming: false,
+            shouldScrollToBottom: false
+        )
+
+        XCTAssertFalse(shouldAnimate)
+    }
+
+    func testCompletedMessageContentChangeStillAnimatesWhenNotATerminalStreamTransition() {
+        let oldMessage = makeMessage(content: "Before", status: .complete)
+        let newMessage = makeMessage(content: "After", status: .complete)
+
+        let shouldAnimate = ChatMessageListScrollBehavior.shouldAnimateLastMessageChange(
+            from: ChatMessageScrollSignature(message: oldMessage),
+            to: ChatMessageScrollSignature(message: newMessage),
+            isStreaming: false,
+            shouldScrollToBottom: false
+        )
+
+        XCTAssertTrue(shouldAnimate)
+    }
+
     func testMessageScrollSignatureChangesWhenStatusChanges() {
         let message = makeMessage()
         let changedStatusMessage = Message(
@@ -116,14 +158,16 @@ final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
     }
 
     private func makeMessage(
+        content: String = "Hello world",
+        status: MessageStatus = .streaming,
         toolCalls: [ToolCall]? = nil,
         needsNewline: Bool? = false
     ) -> Message {
         Message(
             id: "message-1",
             role: .assistant,
-            content: "Hello world",
-            status: .streaming,
+            content: content,
+            status: status,
             toolCalls: toolCalls,
             needsNewline: needsNewline,
             timestamp: "2026-02-18T19:10:00Z",

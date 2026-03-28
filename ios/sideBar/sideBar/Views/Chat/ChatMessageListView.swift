@@ -106,7 +106,15 @@ struct ChatMessageListView: View {
                         }
                         return
                     }
-                    scrollToBottom(proxy: proxy, animated: shouldScrollToBottom == false)
+                    scrollToBottom(
+                        proxy: proxy,
+                        animated: ChatMessageListScrollBehavior.shouldAnimateLastMessageChange(
+                            from: oldToken.lastMessageSignature,
+                            to: newToken.lastMessageSignature,
+                            isStreaming: viewModel.isStreaming,
+                            shouldScrollToBottom: shouldScrollToBottom
+                        )
+                    )
                     return
                 }
 
@@ -236,6 +244,24 @@ private struct ScrollChangeToken: Equatable {
     let lastMessageSignature: ChatMessageScrollSignature
     let activeToolSignature: String
     let bottomInset: CGFloat
+}
+
+enum ChatMessageListScrollBehavior {
+    static func shouldAnimateLastMessageChange(
+        from oldSignature: ChatMessageScrollSignature,
+        to newSignature: ChatMessageScrollSignature,
+        isStreaming: Bool,
+        shouldScrollToBottom: Bool
+    ) -> Bool {
+        guard !isStreaming, !shouldScrollToBottom else {
+            return false
+        }
+        let isTerminalStreamTransition = oldSignature.id == newSignature.id
+            && !oldSignature.id.isEmpty
+            && oldSignature.status == .streaming
+            && newSignature.status != .streaming
+        return !isTerminalStreamTransition
+    }
 }
 
 struct ChatMessageScrollSignature: Equatable {
