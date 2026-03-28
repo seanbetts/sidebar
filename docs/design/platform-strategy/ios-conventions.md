@@ -9,7 +9,7 @@ description: iPhone and iPad conventions for navigation, layout, input, and inte
 | Owner | AI coding agent |
 | Outputs | this doc |
 | Dependencies | [overview](./overview) |
-| Blocking approval | scratchpad iPhone UX decision |
+| Blocking approval | none |
 
 ## Purpose
 
@@ -58,9 +58,15 @@ Settings presented as `.sheet`. Grab indicator visible (`.presentationDragIndica
 
 ### Scratchpad
 
-Scratchpad on iPhone is currently only accessible from the navigation bar of `ChatView` — i.e., only when a conversation is open. It is not accessible from the Chat section list, from any other section, or from a persistent entry point. The button is hidden when no conversation is open.
+Scratchpad on iPhone is presented as a `.sheet` (same presentation as Settings) and is accessible from the navigation bar of any section that shows the profile/settings avatar — positioned immediately to the left of it.
 
-This is a significant discoverability gap. The best UX for scratchpad on iPhone is an open design question.
+**Rules**:
+- Scratchpad button appears wherever the profile/settings avatar appears in a section title bar
+- Scratchpad button is always to the left of the profile/settings avatar
+- Presented as `.sheet` with grab indicator, matching the Settings presentation pattern
+- Scratchpad is not accessible from the Chat section (remove the current `ChatView` nav bar button)
+
+**Current state**: The scratchpad button exists only in `ChatView` nav bar when a conversation is open. This should be removed and replaced with the above pattern.
 
 ### Layout
 
@@ -205,7 +211,7 @@ Confirmed. All panel lists use native SwiftUI `.refreshable`: Chat, Notes, Tasks
 
 ## Open questions
 
-- Scratchpad UX: scratchpad is only accessible on iPhone when inside an open conversation (`ChatView` nav bar). There is no persistent entry point. Options include: a floating button visible across sections, a tab bar item, the floating action dock, or keeping it conversation-only. What is the intended iPhone UX for scratchpad?
+None.
 
 ---
 
