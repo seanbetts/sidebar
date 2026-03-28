@@ -51,6 +51,7 @@ extension NotesEditorViewModel {
     ) {
         guard currentNoteId != nil, unsupportedContent == nil else { return }
         pendingEditSelectionTarget = target
+        pendingEditViewportOffset = viewportAnchorY == nil ? nil : heldReadSurfaceViewportOffset
         pendingEditViewportAnchorY = viewportAnchorY
         liveEditorViewportOffset = nil
         liveEditorSelectionTarget = nil
@@ -78,12 +79,17 @@ extension NotesEditorViewModel {
         return pendingEditSelectionTarget
     }
 
+    public func consumePendingEditViewportOffset() -> CGPoint? {
+        defer { pendingEditViewportOffset = nil }
+        return pendingEditViewportOffset
+    }
+
     public func consumePendingEditViewportAnchorY() -> CGFloat? {
         defer { pendingEditViewportAnchorY = nil }
         return pendingEditViewportAnchorY
     }
 
-    var debugPendingEditViewportOffset: CGPoint? { nil }
+    var debugPendingEditViewportOffset: CGPoint? { pendingEditViewportOffset }
 
     public func recordLiveEditorViewportOffset(_ offset: CGPoint) {
         liveEditorViewportOffset = offset
@@ -139,6 +145,7 @@ extension NotesEditorViewModel {
 
     public func exitEditModeToRead(captureAttachedTextViewSnapshot: Bool = true) {
         pendingEditSelectionTarget = nil
+        pendingEditViewportOffset = nil
         pendingEditViewportAnchorY = nil
         #if os(iOS)
         if captureAttachedTextViewSnapshot,

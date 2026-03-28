@@ -64,7 +64,12 @@ extension NativeNoteEditorViewModel {
                 headIndent: baseFontSize * 1.25
             )
         case .codeBlock:
-            return NoteTextParagraphMetrics.paragraphStyle(for: blockType, baseFontSize: baseFontSize)
+            return NoteTextParagraphMetrics.paragraphStyle(
+                for: blockType,
+                baseFontSize: baseFontSize,
+                headIndent: baseFontSize * 0.75,
+                tailIndent: baseFontSize * 0.75
+            )
         default:
             return NoteTextParagraphMetrics.paragraphStyle(for: blockType, baseFontSize: baseFontSize)
         }

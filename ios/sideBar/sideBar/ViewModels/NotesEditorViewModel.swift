@@ -67,6 +67,7 @@ public final class NotesEditorViewModel: ObservableObject {
     @available(iOS 26.0, macOS 26.0, *)
     private var hasScheduledNativeEditorObjectWillChange = false
     var pendingEditSelectionTarget: PendingEditSelectionTarget?
+    var pendingEditViewportOffset: CGPoint?
     var pendingEditViewportAnchorY: CGFloat?
     private var syncRequestedWhileSaving = false
     var pendingNoteUpdateTask: Task<Void, Never>?
@@ -114,20 +115,7 @@ public final class NotesEditorViewModel: ObservableObject {
             isReadOnly = detectedUnsupportedContent != nil
             if detectedUnsupportedContent != nil {
                 presentationMode = .read
-                pendingEditSelectionTarget = nil
-                pendingEditViewportAnchorY = nil
-                isHoldingReadSurfaceDuringEditEntry = false
-                heldReadSurfaceViewportOffset = .zero
-                heldReadSurfaceActivationTarget = nil
-                heldReadSurfaceViewportAnchorY = nil
-                liveEditorViewportOffset = nil
-                liveEditorSelectionTarget = nil
-                liveEditorSelectionViewportAnchorY = nil
-                pendingReadViewportRestoration = nil
-                pendingReadSurfaceViewportOffset = nil
-                pendingReadSurfaceViewportAnchorTarget = nil
-                pendingReadSurfaceViewportAnchorY = nil
-                debugLastExitReadViewportRestoration = nil
+                clearEditSessionState()
             }
             return
         }
@@ -149,20 +137,7 @@ public final class NotesEditorViewModel: ObservableObject {
         isQueuedForSync = false
         if !isSameNote || detectedUnsupportedContent != nil {
             presentationMode = .read
-            pendingEditSelectionTarget = nil
-            pendingEditViewportAnchorY = nil
-            isHoldingReadSurfaceDuringEditEntry = false
-            heldReadSurfaceViewportOffset = .zero
-            heldReadSurfaceActivationTarget = nil
-            heldReadSurfaceViewportAnchorY = nil
-            liveEditorViewportOffset = nil
-            liveEditorSelectionTarget = nil
-            liveEditorSelectionViewportAnchorY = nil
-            pendingReadViewportRestoration = nil
-            pendingReadSurfaceViewportOffset = nil
-            pendingReadSurfaceViewportAnchorTarget = nil
-            pendingReadSurfaceViewportAnchorY = nil
-            debugLastExitReadViewportRestoration = nil
+            clearEditSessionState()
         }
         if !isSameNote {
             syncRequestedWhileSaving = false
@@ -382,6 +357,24 @@ public final class NotesEditorViewModel: ObservableObject {
 
 }
 extension NotesEditorViewModel {
+    private func clearEditSessionState() {
+        pendingEditSelectionTarget = nil
+        pendingEditViewportOffset = nil
+        pendingEditViewportAnchorY = nil
+        isHoldingReadSurfaceDuringEditEntry = false
+        heldReadSurfaceViewportOffset = .zero
+        heldReadSurfaceActivationTarget = nil
+        heldReadSurfaceViewportAnchorY = nil
+        liveEditorViewportOffset = nil
+        liveEditorSelectionTarget = nil
+        liveEditorSelectionViewportAnchorY = nil
+        pendingReadViewportRestoration = nil
+        pendingReadSurfaceViewportOffset = nil
+        pendingReadSurfaceViewportAnchorTarget = nil
+        pendingReadSurfaceViewportAnchorY = nil
+        debugLastExitReadViewportRestoration = nil
+    }
+
     private func resetStateForNoActiveNote() {
         if #available(iOS 26.0, macOS 26.0, *) {
             resetNativeEditorObservation()
@@ -394,17 +387,7 @@ extension NotesEditorViewModel {
         #endif
         currentNoteId = nil
         presentationMode = .read
-        pendingEditSelectionTarget = nil
-        pendingEditViewportAnchorY = nil
-        isHoldingReadSurfaceDuringEditEntry = false
-        heldReadSurfaceViewportOffset = .zero
-        heldReadSurfaceActivationTarget = nil
-        heldReadSurfaceViewportAnchorY = nil
-        liveEditorViewportOffset = nil
-        liveEditorSelectionTarget = nil
-        liveEditorSelectionViewportAnchorY = nil
-        pendingReadViewportRestoration = nil
-        debugLastExitReadViewportRestoration = nil
+        clearEditSessionState()
         content = ""
         canonicalContent = ""
         isDirty = false

@@ -23,6 +23,7 @@ struct AttributedNoteEditorContainer: View {
     @StateObject private var nativeViewModel: NativeNoteEditorViewModel
     @State private var loadedNoteId: String?
     @State private var pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
+    @State private var pendingSelectionViewportOffset: CGPoint?
     @State private var pendingSelectionViewportAnchorY: CGFloat?
     @State private var shouldSkipDidBeginEditingPresentationReady = false
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
@@ -159,6 +160,7 @@ struct AttributedNoteEditorContainer: View {
         )
         if loadedNoteId != previousLoadedNoteId {
             pendingSelectionTarget = editorViewModel.consumePendingEditSelectionTarget()
+            pendingSelectionViewportOffset = editorViewModel.consumePendingEditViewportOffset()
             pendingSelectionViewportAnchorY = editorViewModel.consumePendingEditViewportAnchorY()
             #if os(iOS)
             if NotesIOSParityDebugTrace.isEnabled {
@@ -167,6 +169,7 @@ struct AttributedNoteEditorContainer: View {
                     details:
                         "loadedNoteId=\(loadedNoteId ?? "nil") "
                         + "pendingSelectionTarget=\(String(describing: pendingSelectionTarget)) "
+                        + "pendingSelectionViewportOffset=\(String(describing: pendingSelectionViewportOffset)) "
                         + "pendingSelectionViewportAnchorY=\(pendingSelectionViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
                         + NotesIOSParityDebugTrace.documentSummary(
                             nativeViewModel.currentPersistenceSnapshot().document
@@ -198,6 +201,7 @@ struct AttributedNoteEditorContainer: View {
     @ViewBuilder
     private var platformEditorSurface: some View {
         #if os(iOS)
+        let viewportBootstrapTolerance: CGFloat = 6
         UIKitNoteTextEditorSurface(
             viewModel: nativeViewModel,
             maxContentWidth: maxContentWidth,
@@ -222,6 +226,12 @@ struct AttributedNoteEditorContainer: View {
                     )
                 }
                 if shouldSkipDidBeginEditingPresentationReady {
+                    if NotesIOSParityDebugTrace.isEnabled {
+                        NotesIOSParityDebugTrace.log(
+                            "AttributedNoteEditorContainer.onDidBeginEditing.skipPresentationReady",
+                            details: NotesIOSParityDebugTrace.textViewSummary(textView)
+                        )
+                    }
                     shouldSkipDidBeginEditingPresentationReady = false
                     textView.suppressAutofocusReveal = false
                     return
@@ -254,10 +264,30 @@ struct AttributedNoteEditorContainer: View {
             },
             onTextViewReady: { textView in
                 editorViewModel.attachNativeEditorTextView(textView)
+                if let pendingSelectionViewportOffset,
+                   !textView.isFirstResponder,
+                   textView.hasScheduledAutofocus == false {
+                    let clampedOffset = UIKitNoteTextEditorSurface.clampedContentOffset(
+                        pendingSelectionViewportOffset,
+                        for: textView
+                    )
+                    if abs(textView.contentOffset.x - clampedOffset.x) > 0.5
+                        || abs(textView.contentOffset.y - clampedOffset.y) > 0.5 {
+                        textView.setContentOffset(clampedOffset, animated: false)
+                    }
+                }
                 guard autofocusEnabled,
                       let viewportAnchorY = pendingSelectionViewportAnchorY,
                       !textView.isFirstResponder,
                       !textView.hasScheduledAutofocus else { return }
+                if NotesIOSParityDebugTrace.isEnabled {
+                    NotesIOSParityDebugTrace.log(
+                        "AttributedNoteEditorContainer.onTextViewReady.scheduleAnchoredPosition",
+                        details:
+                            "viewportAnchorY=\(String(format: "%.2f", viewportAnchorY)) "
+                            + NotesIOSParityDebugTrace.textViewSummary(textView)
+                    )
+                }
                 textView.suppressAutofocusReveal = true
                 textView.hasScheduledAutofocus = true
                 DispatchQueue.main.async { [weak textView] in
@@ -267,10 +297,29 @@ struct AttributedNoteEditorContainer: View {
                         return
                     }
                     textView.layoutIfNeeded()
-                    textView.positionCurrentSelection(atViewportAnchorY: viewportAnchorY)
+                    let shouldRepairSelectionAnchor: Bool
+                    if let currentViewportAnchorY = textView.currentSelectionViewportAnchorY(),
+                       pendingSelectionViewportOffset != nil {
+                        shouldRepairSelectionAnchor =
+                            abs(currentViewportAnchorY - viewportAnchorY) > viewportBootstrapTolerance
+                    } else {
+                        shouldRepairSelectionAnchor = true
+                    }
+                    if shouldRepairSelectionAnchor {
+                        textView.positionCurrentSelection(atViewportAnchorY: viewportAnchorY)
+                    }
+                    if NotesIOSParityDebugTrace.isEnabled {
+                        NotesIOSParityDebugTrace.log(
+                            "AttributedNoteEditorContainer.onTextViewReady.anchoredPositionApplied",
+                            details:
+                                "viewportAnchorY=\(String(format: "%.2f", viewportAnchorY)) "
+                                + NotesIOSParityDebugTrace.textViewSummary(textView)
+                        )
+                    }
                     textView.hasScheduledAutofocus = false
                     shouldSkipDidBeginEditingPresentationReady = true
                     onInitialPresentationReady?()
+                    pendingSelectionViewportOffset = nil
                     pendingSelectionViewportAnchorY = nil
                 }
             }
