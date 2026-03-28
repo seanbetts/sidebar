@@ -15,6 +15,7 @@
         "pages": [
           "index",
           "workbook",
+          "implementation-gaps",
           "principles",
           "system-inheritance",
           "voice-and-content"
