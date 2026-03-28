@@ -3,6 +3,33 @@ title: Design System Workbook
 description: Working brief for the internal sideBar design-system documentation and its target information architecture.
 ---
 
+## Progress tracker
+
+| # | Section | Output doc(s) | Status |
+|---|---|---|---|
+| 1 | Design principles | [principles.md](./principles) | approved |
+| 2 | System inheritance | [system-inheritance.md](./system-inheritance) | drafted |
+| 3 | Platform strategy | [overview](./platform-strategy/overview), [iOS](./platform-strategy/ios-conventions), [macOS](./platform-strategy/macos-conventions), [web](./platform-strategy/web-conventions) | drafted (web: placeholder) |
+| 4 | Foundations | foundations/ | not started |
+| 5 | Token model | foundations/token-model.md | not started |
+| 6 | Accessibility | foundations/accessibility.md | not started |
+| 7 | Voice, character, and content | [voice-and-content.md](./voice-and-content) | not started |
+| 8 | Component library | components/ | not started |
+| 9 | Iconography | foundations/iconography.md | not started |
+| 10 | Interaction patterns | patterns/ | not started |
+| 11 | Navigation shells, windows, commands, search | patterns/navigation.md + related | not started |
+| 12 | Wait UX | patterns/wait-ux.md | not started |
+| 13 | Feedback and haptics | patterns/feedback-and-haptics.md | not started |
+| 14 | Onboarding | patterns/onboarding.md | not started |
+| 15 | Handoffs | patterns/handoffs.md | not started |
+| 16 | AI assistant UI | patterns/ai-assistant-ui.md | not started |
+| 17 | AI-agent implementation rules | agent-rules/ | not started |
+| 18 | Design-to-code parity | agent-rules/design-to-code-parity.md | not started |
+| 19 | Current UI audit | [current-ui-audit](./audits/current-ui-audit), [token-audit](./audits/token-audit), [component-inventory](./audits/component-inventory), [system-framework-usage](./audits/system-framework-usage-audit) | drafted |
+| 20 | Prioritisation | n/a | not started |
+
+---
+
 ## Purpose
 
 This workbook is the starting point for creating a practical design system for sideBar across iOS, macOS, and web.

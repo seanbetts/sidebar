@@ -5,13 +5,10 @@ description: Draft practical decision rules for what good product design looks l
 
 | Field | Value |
 |---|---|
-| Status | drafted |
-| Owner | both (agent draft, Sean to review and approve) |
-| Inputs needed | workbook, product docs, codebase inspection (all read), Sean's product intent |
+| Status | approved |
+| Owner | both |
 | Outputs | this doc |
-| Dependencies | [current-ui-audit](./audits/current-ui-audit) (complete) |
-| Codebase review required | yes (complete) |
-| Human judgement required | yes - Sean should confirm, extend, or revise the principles based on product intent |
+| Dependencies | [current-ui-audit](./audits/current-ui-audit) |
 
 ## Purpose
 
@@ -22,18 +19,6 @@ Define what "good" looks like in sideBar. These principles are practical decisio
 ## Why this matters
 
 Without explicit principles, the product accumulates inconsistency: each new screen is built by reasoning from scratch, and the AI coding agent makes arbitrary choices in uncovered territory. Principles give every UI decision a shared starting point.
-
----
-
-## Note on this draft
-
-These principles are derived from:
-- the design workbook
-- the product documentation
-- the assistant identity and soul documentation
-- direct codebase inspection
-
-They represent what the product already implies by how it is built, not a redesign. Sean should confirm, challenge, or extend each one. Principles in draft status should not be treated as final.
 
 ---
 
@@ -146,7 +131,7 @@ The product has two distinct voice registers that apply to different surfaces. T
 - Empty states and error states in Chat/Skills: can be warmer and more human.
 - Error messages across the whole product: honest and direct. Never alarming, never vague.
 - Loading and waiting states: considered, not abandoned.
-- When writing UI copy, refer to the voice and content guide (to be created).
+- When writing UI copy, refer to [voice-and-content.md](./voice-and-content).
 - The product voice is distinct from the assistant's self-authored identity. The product voice is the developer-authored layer. The assistant's voice emerges from its own identity and soul.
 
 ---
@@ -185,23 +170,17 @@ This is a summary of the native-first policy. For full detail see `system-inheri
 
 ---
 
-## First-pass note on voice and character
+## Voice and identity scope
 
-sideBar's product voice and the assistant's self-authored identity are separate things. This is documented in the product docs and should not be collapsed.
+sideBar's product voice and the assistant's self-authored identity are separate things. This distinction must be maintained.
 
 - **Product voice** (developer-authored): The tone used in UI copy, docs, support, and marketing. This is what the design system specifies. Two registers apply: calm and capable for scaffolding sections; grounded and human for Chat and Skills.
 - **Assistant identity** (self-managed): The name, tone, values, and boundaries sideBar defines for itself in Settings. This evolves over time and is not specified by the design system.
 - **User-controlled settings**: Communication style and working relationship. Controlled by the user, layered on top of the assistant's identity.
 
-For design system purposes, the product voice is in scope. The assistant's own identity is not developer-specified beyond the product model it runs on. This distinction must be maintained.
+For design system purposes, the product voice is in scope. The assistant's own identity is not developer-specified beyond the product model it runs on.
 
-Full definition of the product voice belongs in `voice-and-content.md`.
-
----
-
-## Open questions
-
-- Should "calm and focused" be more explicit about visual density? (Is sideBar aiming for sparse or dense layouts?)
+Full definition of the product voice is in [voice-and-content.md](./voice-and-content).
 
 ---
 
