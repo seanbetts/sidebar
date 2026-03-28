@@ -1,27 +1,28 @@
 # sideBar
 
-A full-stack AI assistant platform featuring real-time streaming chat with Claude, integrated note-taking, website archival, and an extensible agent skills system backed by Supabase and R2.
+A cross-platform personal AI workspace for iPhone, iPad, Mac, and web. sideBar combines streaming chat, notes, tasks, saved websites, files, and persistent memories with an extensible skills system, backed by Supabase and Cloudflare R2.
 
 > **For AI Agents:** See [AGENTS.md](./AGENTS.md) for detailed development instructions.
 
 ## Features
 
-- **AI Chat** - Real-time streaming conversations with Claude (Anthropic) with multi-turn tool use
-- **Note Taking** - Rich markdown editor with TipTap for organizing thoughts and knowledge
-- **Website Archival** - Save and archive web pages for later reference
-- **Memory Tool** - Persistent user memories stored in the database
-- **User Profiles** - Personalized communication styles and custom prompts
-- **Agent Skills** - Extensible system for file operations, web scraping, and document processing
-- **Location-Aware** - Context-aware prompts with current location and weather
-- **Theme Support** - Dark/light mode toggle
-- **Secure Execution** - Sandboxed skill execution with tmpfs isolation and resource limits
+- **Bring your own AI provider** - Connect Anthropic, OpenAI, or Google with your own API key
+- **Context-aware chat** - Real-time streaming conversations that can pull from your notes, tasks, websites, files, memories, and recent activity
+- **Notes, tasks, websites, and files** - Built-in personal workspace for writing, planning, saving pages, and working with documents
+- **Skills system** - Required, Standard, and Store skills that let sideBar search the web, manage content, and connect to external services
+- **Cross-device sync** - Your content syncs across iPhone, iPad, Mac, and web, with offline reading for existing content
+- **Widgets and extensions** - Home screen widgets, lock screen widgets, Share extension, and Safari extension support
+- **Personalization** - User profile, communication style, working relationship, and persistent memories
+- **Transparency and control** - Inline skill status, prompt preview, and per-skill enable/disable controls
+- **Secure execution** - Sandboxed skill execution with tmpfs isolation and resource limits
 
 ## Architecture
 
 sideBar is built as a modern, containerized full-stack application:
 
-- **Frontend**: SvelteKit 5 with TypeScript, Tailwind CSS, and TipTap editor (port 3000)
-- **Backend**: FastAPI with AsyncAnthropic for Claude streaming (port 8001)
+- **Apple app**: SwiftUI app for iPhone, iPad, and Mac, plus widgets and extensions
+- **Web app**: SvelteKit 5 with TypeScript, Tailwind CSS, and TipTap editor (port 3000)
+- **Backend**: FastAPI with SSE chat streaming and a provider-aware AI gateway for Anthropic, OpenAI, and Google (port 8001)
 - **Database**: Supabase Postgres (SQLAlchemy ORM)
 - **Object Storage**: Cloudflare R2 for workspace files and assets
 - **Containerization**: Docker Compose orchestrating all services
@@ -338,16 +339,18 @@ sideBar implements multiple security layers:
 
 ## External Services
 
-- **[Anthropic Claude](https://docs.anthropic.com)** - Main AI engine for chat and tool use
+- **[Anthropic](https://docs.anthropic.com)** - Supported BYOK AI provider for chat and titles
+- **[OpenAI](https://platform.openai.com/docs/overview)** - Supported BYOK AI provider for chat, titles, and transcription-backed skills
+- **[Google AI](https://ai.google.dev/docs)** - Supported BYOK AI provider for chat and titles
 - **[Supabase](https://supabase.com/docs)** - PostgreSQL database with RLS
 - **[Cloudflare R2](https://developers.cloudflare.com/r2)** - Object storage for workspace files
 - **[Doppler](https://docs.doppler.com)** - Secrets management
-- **[Google Gemini](https://ai.google.dev/docs)** - Conversation title generation
 - **[Jina AI](https://jina.ai/reader)** - Web scraping and content extraction
 
 ## Resources
 
 **Documentation:**
+- [Product Documentation](./docs/product/)
 - [Architecture & Design Decisions](./docs/ARCHITECTURE.md)
 - [API Migration Guide](./docs/API_MIGRATION_GUIDE.md)
 - [Local Development Guide](./docs/LOCAL_DEVELOPMENT.md)
