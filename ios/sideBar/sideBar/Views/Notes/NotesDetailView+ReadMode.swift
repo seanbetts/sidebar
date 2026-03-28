@@ -73,17 +73,6 @@ extension NotesDetailView {
     ) {
         guard currentUnsupportedContent == nil else { return }
         #if os(iOS)
-        NotesIOSDebugTrace.log(
-            "NotesDetailView.activateReadSurfaceEditing",
-            extras: [
-                "isShowingEditorSurface": "\(isShowingEditorSurface)",
-                "isShowingReadSurface": "\(isShowingReadSurface)",
-                "target": "\(target)",
-                "viewportAnchorY": viewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil"
-            ]
-        )
-        #endif
-        #if os(iOS)
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),
             to: nil,
@@ -99,12 +88,6 @@ extension NotesDetailView {
         if editorViewModel.isHoldingReadSurfaceDuringEditEntry {
             return
         }
-        NotesIOSDebugTrace.log(
-            "NotesDetailView.handleReadViewportOffsetChange",
-            extras: [
-                "offset": "{x:\(String(format: "%.2f", offset.x)),y:\(String(format: "%.2f", offset.y))}"
-            ]
-        )
         #endif
         let hasPendingReadRestoration =
             editorViewModel.pendingReadSurfaceViewportOffset != nil
@@ -134,13 +117,16 @@ extension NotesDetailView {
     }
 
     func handleReadInitialViewportRestorationApplied() {
-        if let restoredOffset = editorViewModel.pendingReadSurfaceViewportOffset {
-            editorViewModel.heldReadSurfaceViewportOffset = restoredOffset
-        }
-        editorViewModel.clearPendingReadSurfaceViewportRestoration()
-        if isHoldingEditorSurfaceDuringReadExit {
-            isHoldingEditorSurfaceDuringReadExit = false
-            pendingReadExitHoldTargetOffset = nil
+        let restoredOffset = editorViewModel.pendingReadSurfaceViewportOffset
+        DispatchQueue.main.async {
+            if let restoredOffset {
+                editorViewModel.heldReadSurfaceViewportOffset = restoredOffset
+            }
+            editorViewModel.clearPendingReadSurfaceViewportRestoration()
+            if isHoldingEditorSurfaceDuringReadExit {
+                isHoldingEditorSurfaceDuringReadExit = false
+                pendingReadExitHoldTargetOffset = nil
+            }
         }
     }
 
@@ -171,14 +157,27 @@ extension NotesDetailView {
             viewModel.applyLocalNoteSnapshot(id: noteId, document: document)
         }
         editorViewModel.applyReadModeSnapshotDeferred(document)
-        isHoldingEditorSurfaceDuringReadExit = true
-        pendingReadExitHoldTargetOffset = nil
+        let capturedViewportBeforeDismissal: Bool
+        if #available(iOS 26.0, *) {
+            capturedViewportBeforeDismissal =
+                editorViewModel.captureLiveEditorViewportSnapshotFromAttachedTextView()
+        } else {
+            capturedViewportBeforeDismissal = false
+        }
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        if #available(iOS 26.0, *) {
+            _ = editorViewModel.nativeEditorTextView?.resignFirstResponder()
+        }
         Task {
             await editorViewModel.saveIfNeeded()
-            if #available(iOS 26.0, *) {
-                editorViewModel.captureLiveEditorViewportSnapshotFromAttachedTextView()
-            }
-            editorViewModel.exitEditModeToRead()
+            editorViewModel.exitEditModeToRead(
+                captureAttachedTextViewSnapshot: capturedViewportBeforeDismissal == false
+            )
         }
         #endif
     }

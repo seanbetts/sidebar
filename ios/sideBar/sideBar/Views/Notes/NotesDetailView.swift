@@ -22,10 +22,10 @@ struct NotesDetailView: View {
     @State private var showSavedIndicator = false
     @State private var lastSavedTimestamp: TimeInterval = 0
     @State private var savedIndicatorTask: Task<Void, Never>?
-    #if os(iOS)
-    @State private var activeFormattingBarPresentation: NoteFormattingBarPresentation?
     @State var isHoldingEditorSurfaceDuringReadExit = false
     @State var pendingReadExitHoldTargetOffset: CGPoint?
+    #if os(iOS)
+    @State private var activeFormattingBarPresentation: NoteFormattingBarPresentation?
     #endif
     @Environment(\.workspaceColumn) private var workspaceColumn
     @AppStorage(AppStorageKeys.workspaceExpanded) var isWorkspaceExpanded: Bool = false
@@ -121,7 +121,6 @@ struct NotesDetailView: View {
             } else {
                 isHoldingEditorSurfaceDuringReadExit = false
                 pendingReadExitHoldTargetOffset = nil
-                editorViewModel.clearPendingReadSurfaceViewportRestoration()
             }
         }
         .onChange(of: editorViewModel.pendingReadSurfaceViewportOffset) { _, newOffset in

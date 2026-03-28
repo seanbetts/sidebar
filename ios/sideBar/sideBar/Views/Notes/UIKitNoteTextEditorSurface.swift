@@ -100,77 +100,17 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
 
         override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
-            if suppressAutofocusReveal, animated {
-                let requestedOffsetSummary = [
-                    "x:\(String(format: "%.2f", contentOffset.x))",
-                    "y:\(String(format: "%.2f", contentOffset.y))"
-                ].joined(separator: ",")
-                NotesIOSDebugTrace.log(
-                    "AccessoryTextView.setContentOffset.suppressedAutofocusReveal",
-                    textView: self,
-                    extras: [
-                        "requestedContentOffset": "{\(requestedOffsetSummary)}"
-                    ]
-                )
-                return
-            }
-            NotesIOSDebugTrace.log(
-                "AccessoryTextView.setContentOffset",
-                textView: self,
-                extras: [
-                    "requestedContentOffset": "{x:\(String(format: "%.2f", contentOffset.x)),y:\(String(format: "%.2f", contentOffset.y))}",
-                    "animated": "\(animated)"
-                ]
-            )
+            if suppressAutofocusReveal, animated { return }
             super.setContentOffset(contentOffset, animated: animated)
         }
 
         override func scrollRectToVisible(_ rect: CGRect, animated: Bool) {
-            let rectSummary = [
-                "x:\(String(format: "%.2f", rect.origin.x))",
-                "y:\(String(format: "%.2f", rect.origin.y))",
-                "w:\(String(format: "%.2f", rect.size.width))",
-                "h:\(String(format: "%.2f", rect.size.height))"
-            ].joined(separator: ",")
-            if suppressAutofocusReveal, animated {
-                NotesIOSDebugTrace.log(
-                    "AccessoryTextView.scrollRectToVisible.suppressedAutofocusReveal",
-                    textView: self,
-                    extras: [
-                        "rect": "{\(rectSummary)}"
-                    ]
-                )
-                return
-            }
-            NotesIOSDebugTrace.log(
-                "AccessoryTextView.scrollRectToVisible",
-                textView: self,
-                extras: [
-                    "rect": "{\(rectSummary)}",
-                    "animated": "\(animated)"
-                ]
-            )
+            if suppressAutofocusReveal, animated { return }
             super.scrollRectToVisible(rect, animated: animated)
         }
 
         override func scrollRangeToVisible(_ range: NSRange) {
-            if suppressAutofocusReveal {
-                NotesIOSDebugTrace.log(
-                    "AccessoryTextView.scrollRangeToVisible.suppressedAutofocusReveal",
-                    textView: self,
-                    extras: [
-                        "range": "{loc:\(range.location),len:\(range.length)}"
-                    ]
-                )
-                return
-            }
-            NotesIOSDebugTrace.log(
-                "AccessoryTextView.scrollRangeToVisible",
-                textView: self,
-                extras: [
-                    "range": "{loc:\(range.location),len:\(range.length)}"
-                ]
-            )
+            if suppressAutofocusReveal { return }
             super.scrollRangeToVisible(range)
         }
 
@@ -270,15 +210,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         if pendingSelectionViewportAnchorY != nil, textView.shouldAutofocus, !textView.isFirstResponder {
             textView.suppressAutofocusReveal = true
         }
-        NotesIOSDebugTrace.log(
-            "UIKitNoteTextEditorSurface.updateUIView.begin",
-            textView: textView,
-            extras: [
-                "renderGeneration": "\(viewModel.renderGeneration)",
-                "baseFontSize": String(format: "%.2f", viewModel.baseFontSize),
-                "pendingSelectionTarget": String(describing: pendingSelectionTarget)
-            ]
-        )
         let needsAccessoryReload = configureFormattingUI(
             for: textView,
             configuration: formattingBarConfiguration
@@ -319,19 +250,12 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         if NSDictionary(dictionary: textView.typingAttributes).isEqual(to: typingAttributes) == false {
             textView.typingAttributes = typingAttributes
         }
-        NotesIOSDebugTrace.log(
-            "UIKitNoteTextEditorSurface.updateUIView.end",
-            textView: textView,
-            extras: [
-                "selectedRange": "{loc:\(textView.selectedRange.location),len:\(textView.selectedRange.length)}"
-            ]
-        )
     }
 
     static func dismantleUIView(_ containerView: UIKitNoteTextEditorContainerView, coordinator: Void) {
         let textView = containerView.textView
         if textView.isFirstResponder {
-            textView.resignFirstResponder()
+            _ = textView.resignFirstResponder()
         }
     }
 
@@ -411,7 +335,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             guard let textView = textView as? AccessoryTextView else { return }
-            NotesIOSDebugTrace.log("UIKitNoteTextEditorSurface.textViewDidBeginEditing", textView: textView)
             onDidBeginEditing?(textView)
         }
 

@@ -388,9 +388,13 @@ struct SelectableNoteReadView: View {
 private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     let attributedContent: NSAttributedString
     let maxReadableContentWidth: CGFloat
+    let initialViewportOffset: CGPoint?
+    let initialViewportAnchorTarget: SelectableNoteReadView.ReadActivationTarget?
+    let initialViewportAnchorY: CGFloat?
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     let onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     let onViewportOffsetChange: ((CGPoint) -> Void)?
+    let onInitialViewportRestorationApplied: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let textView = SelectableNoteReadView.makePlatformTextView(
@@ -714,24 +718,6 @@ private final class SelectableNoteReadTextView: UITextView {
         let needsOffsetUpdate =
             abs(contentOffset.x - restoration.offset.x) > 0.5
                 || abs(contentOffset.y - restoration.offset.y) > 0.5
-        #if os(iOS)
-        let requestedOffset = "{x:\(String(format: "%.2f", restoration.requestedOffset.x)),"
-            + "y:\(String(format: "%.2f", restoration.requestedOffset.y))}"
-        let appliedOffset = "{x:\(String(format: "%.2f", restoration.offset.x)),"
-            + "y:\(String(format: "%.2f", restoration.offset.y))}"
-        if needsOffsetUpdate {
-            NotesIOSDebugTrace.log(
-                "SelectableNoteReadTextView.applyInitialViewportOffset",
-                textView: self,
-                extras: [
-                    "mode": restoration.mode,
-                    "requestedOffset": requestedOffset,
-                    "appliedOffset": appliedOffset,
-                    "viewportAnchorY": restoration.viewportAnchorY
-                ]
-            )
-        }
-        #endif
         if needsOffsetUpdate {
             super.setContentOffset(restoration.offset, animated: false)
             lastAppliedInitialViewportOffset = restoration.offset
@@ -769,6 +755,20 @@ private final class SelectableNoteReadTextView: UITextView {
     }
 
     private func resolvedInitialViewportRestoration() -> InitialViewportRestoration? {
+        if let pendingInitialViewportAnchorTarget,
+           let pendingInitialViewportAnchorY,
+           let requestedOffset = SelectableNoteReadView.contentOffset(
+                forViewportAnchorY: pendingInitialViewportAnchorY,
+                in: self,
+                target: pendingInitialViewportAnchorTarget
+           ) {
+            return InitialViewportRestoration(
+                mode: pendingInitialViewportOffset == nil ? "anchor" : "anchor-preferred",
+                offset: clampedContentOffset(for: requestedOffset),
+                requestedOffset: requestedOffset,
+                viewportAnchorY: String(format: "%.2f", pendingInitialViewportAnchorY)
+            )
+        }
         if lastAppliedInitialViewportOffset == nil,
            let pendingInitialViewportOffset {
             return InitialViewportRestoration(
@@ -778,20 +778,6 @@ private final class SelectableNoteReadTextView: UITextView {
                 viewportAnchorY: pendingInitialViewportAnchorY.map {
                     String(format: "%.2f", $0)
                 } ?? "nil"
-            )
-        }
-        if let pendingInitialViewportAnchorTarget,
-           let pendingInitialViewportAnchorY,
-           let requestedOffset = SelectableNoteReadView.contentOffset(
-                forViewportAnchorY: pendingInitialViewportAnchorY,
-                in: self,
-                target: pendingInitialViewportAnchorTarget
-           ) {
-            return InitialViewportRestoration(
-                mode: "anchor",
-                offset: clampedContentOffset(for: requestedOffset),
-                requestedOffset: requestedOffset,
-                viewportAnchorY: String(format: "%.2f", pendingInitialViewportAnchorY)
             )
         }
         if pendingInitialViewportAnchorTarget == nil || pendingInitialViewportAnchorY == nil,

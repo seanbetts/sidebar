@@ -146,18 +146,6 @@ struct AttributedNoteEditorContainer: View {
         if loadedNoteId != previousLoadedNoteId {
             pendingSelectionTarget = editorViewModel.consumePendingEditSelectionTarget()
             pendingSelectionViewportAnchorY = editorViewModel.consumePendingEditViewportAnchorY()
-            #if os(iOS)
-            NotesIOSDebugTrace.log(
-                "AttributedNoteEditorContainer.loadIfNeeded.newNote",
-                extras: [
-                    "loadedNoteId": loadedNoteId ?? "nil",
-                    "pendingSelectionTarget": String(describing: pendingSelectionTarget),
-                    "pendingSelectionViewportAnchorY": pendingSelectionViewportAnchorY.map {
-                        String(format: "%.2f", $0)
-                    } ?? "nil"
-                ]
-            )
-            #endif
         }
     }
 
@@ -197,13 +185,6 @@ struct AttributedNoteEditorContainer: View {
             onDidBeginEditing: { textView in
                 let viewportAnchorY = pendingSelectionViewportAnchorY
                 pendingSelectionViewportAnchorY = nil
-                NotesIOSDebugTrace.log(
-                    "AttributedNoteEditorContainer.onDidBeginEditing",
-                    textView: textView,
-                    extras: [
-                        "viewportAnchorY": viewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil"
-                    ]
-                )
                 guard let viewportAnchorY else {
                     textView.suppressAutofocusReveal = false
                     DispatchQueue.main.async {
@@ -211,35 +192,14 @@ struct AttributedNoteEditorContainer: View {
                     }
                     return
                 }
-                NotesIOSDebugTrace.log(
-                    "AttributedNoteEditorContainer.onDidBeginEditing.enqueueViewportCorrection",
-                    textView: textView,
-                    extras: [
-                        "viewportAnchorY": String(format: "%.2f", viewportAnchorY)
-                    ]
-                )
                 DispatchQueue.main.async { [weak textView] in
                     guard let textView else { return }
                     defer { textView.suppressAutofocusReveal = false }
-                    NotesIOSDebugTrace.log(
-                        "AttributedNoteEditorContainer.onDidBeginEditing.fireViewportCorrection.begin",
-                        textView: textView,
-                        extras: [
-                            "viewportAnchorY": String(format: "%.2f", viewportAnchorY)
-                        ]
-                    )
                     textView.layoutIfNeeded()
                     textView.positionCurrentSelection(
                         atViewportAnchorY: viewportAnchorY
                     )
                     onInitialPresentationReady?()
-                    NotesIOSDebugTrace.log(
-                        "AttributedNoteEditorContainer.onDidBeginEditing.fireViewportCorrection.end",
-                        textView: textView,
-                        extras: [
-                            "viewportAnchorY": String(format: "%.2f", viewportAnchorY)
-                        ]
-                    )
                 }
             },
             onViewportSnapshotChange: { offset, selectedUTF16Range, selectionViewportAnchorY in

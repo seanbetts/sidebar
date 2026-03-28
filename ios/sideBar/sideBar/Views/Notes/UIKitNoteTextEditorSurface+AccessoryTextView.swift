@@ -37,13 +37,6 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
     }
 
     func positionCurrentSelection(atViewportAnchorY viewportAnchorY: CGFloat) {
-        NotesIOSDebugTrace.log(
-            "AccessoryTextView.positionCurrentSelection.begin",
-            textView: self,
-            extras: [
-                "viewportAnchorY": String(format: "%.2f", viewportAnchorY)
-            ]
-        )
         guard selectedRange.location != NSNotFound else { return }
         guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else {
             scrollCurrentSelectionIntoView()
@@ -61,13 +54,6 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
         if isCurrentSelectionIntersectingViewport() == false {
             scrollSelectionRectIntoView(selectionRect)
         }
-        NotesIOSDebugTrace.log(
-            "AccessoryTextView.positionCurrentSelection.end",
-            textView: self,
-            extras: [
-                "viewportAnchorY": String(format: "%.2f", viewportAnchorY)
-            ]
-        )
     }
 
     func isCurrentSelectionVisible() -> Bool {

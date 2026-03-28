@@ -50,18 +50,6 @@ extension NotesEditorViewModel {
         viewportAnchorY: CGFloat? = nil
     ) {
         guard currentNoteId != nil, unsupportedContent == nil else { return }
-        #if os(iOS)
-        if #available(iOS 26.0, *) {
-            NotesIOSDebugTrace.log(
-                "NotesEditorViewModel.enterEditMode",
-                extras: [
-                    "target": "\(target)",
-                    "viewportAnchorY": viewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil",
-                    "currentNoteId": currentNoteId ?? "nil"
-                ]
-            )
-        }
-        #endif
         pendingEditSelectionTarget = target
         pendingEditViewportAnchorY = viewportAnchorY
         liveEditorViewportOffset = nil
@@ -128,11 +116,10 @@ extension NotesEditorViewModel {
     }
 
     @available(iOS 26.0, *)
-    public func captureLiveEditorViewportSnapshotFromAttachedTextView() {
+    @discardableResult
+    public func captureLiveEditorViewportSnapshotFromAttachedTextView() -> Bool {
         guard let textView = nativeEditorTextView as? UIKitNoteTextEditorSurface.AccessoryTextView,
-              let nativeEditorViewModel else {
-            return
-        }
+              let nativeEditorViewModel else { return false }
         let selectedUTF16Range = nativeEditorViewModel.utf16SelectedRange(
             in: nativeEditorViewModel.attributedContent
         )
@@ -141,6 +128,7 @@ extension NotesEditorViewModel {
             selectedUTF16Range: selectedUTF16Range,
             selectionViewportAnchorY: textView.viewportAnchorY(forSelectedRange: selectedUTF16Range)
         )
+        return true
     }
     #endif
 
@@ -149,11 +137,12 @@ extension NotesEditorViewModel {
         return pendingReadViewportRestoration
     }
 
-    public func exitEditModeToRead() {
+    public func exitEditModeToRead(captureAttachedTextViewSnapshot: Bool = true) {
         pendingEditSelectionTarget = nil
         pendingEditViewportAnchorY = nil
         #if os(iOS)
-        if #available(iOS 26.0, *),
+        if captureAttachedTextViewSnapshot,
+           #available(iOS 26.0, *),
            let textView = nativeEditorTextView as? UIKitNoteTextEditorSurface.AccessoryTextView,
            let nativeEditorViewModel {
             liveEditorViewportOffset = textView.contentOffset
@@ -173,8 +162,8 @@ extension NotesEditorViewModel {
         #endif
         let restoration = PendingReadViewportRestoration(
             offset: liveEditorViewportOffset,
-            target: nil,
-            viewportAnchorY: nil
+            target: liveEditorSelectionTarget,
+            viewportAnchorY: liveEditorSelectionViewportAnchorY
         )
         pendingReadViewportRestoration = restoration
         setPendingReadSurfaceViewportRestoration(
@@ -183,22 +172,6 @@ extension NotesEditorViewModel {
             viewportAnchorY: restoration.viewportAnchorY
         )
         debugLastExitReadViewportRestoration = restoration
-        #if os(iOS)
-        if #available(iOS 26.0, *) {
-            NotesIOSDebugTrace.log(
-                "NotesEditorViewModel.exitEditModeToRead",
-                extras: [
-                    "offset": liveEditorViewportOffset.map {
-                        "{x:\(String(format: "%.2f", $0.x)),y:\(String(format: "%.2f", $0.y))}"
-                    } ?? "nil",
-                    "target": liveEditorSelectionTarget.map { "\($0)" } ?? "nil",
-                    "viewportAnchorY": liveEditorSelectionViewportAnchorY.map {
-                        String(format: "%.2f", $0)
-                    } ?? "nil"
-                ]
-            )
-        }
-        #endif
         liveEditorViewportOffset = nil
         liveEditorSelectionTarget = nil
         liveEditorSelectionViewportAnchorY = nil

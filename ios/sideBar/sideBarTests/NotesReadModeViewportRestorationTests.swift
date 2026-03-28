@@ -7,9 +7,9 @@ import XCTest
 @available(iOS 26.0, *)
 final class NotesReadModeViewportRestorationTests: NotesDetailViewHostingTestCase {
     private struct ViewportExpectation {
-        let expectedReadContentOffsetY: CGFloat
         let expectedViewportAnchorY: CGFloat
         let editorTargetRect: CGRect
+        let targetOffset: Int
     }
 
     func testEditToReadTransitionFromMiddleKeepsTargetLineAtSameRelativePosition() async throws {
@@ -64,9 +64,12 @@ final class NotesReadModeViewportRestorationTests: NotesDetailViewHostingTestCas
         let readContentOffsetDuringExitHold = readTextViewDuringExitHold.contentOffset
 
         await waitUntil {
-            abs(
-                readTextViewDuringExitHold.contentOffset.y - expectation.expectedReadContentOffsetY
-            ) <= 2 &&
+            self.actualViewportAnchorY(
+                in: readTextViewDuringExitHold,
+                targetOffset: expectation.targetOffset
+            ).map {
+                abs($0 - expectation.expectedViewportAnchorY) <= 2
+            } == true &&
                 context.editorViewModel.pendingReadSurfaceViewportOffset == nil
         }
 
@@ -82,13 +85,16 @@ final class NotesReadModeViewportRestorationTests: NotesDetailViewHostingTestCas
         let pendingReadSurfaceViewportAnchorTarget =
             context.editorViewModel.pendingReadSurfaceViewportAnchorTarget
         let pendingReadSurfaceViewportAnchorY = context.editorViewModel.pendingReadSurfaceViewportAnchorY
+        let restoredReadViewportAnchorY = actualViewportAnchorY(
+            in: restoredReadTextView,
+            targetOffset: expectation.targetOffset
+        )
 
         XCTAssertEqual(
-            restoredReadTextView.contentOffset.y,
-            expectation.expectedReadContentOffsetY,
+            try XCTUnwrap(restoredReadViewportAnchorY),
+            expectation.expectedViewportAnchorY,
             accuracy: 2,
             failureMessage(
-                expectedReadContentOffsetY: expectation.expectedReadContentOffsetY,
                 editorTextView: editorTextView,
                 readContentOffsetDuringExitHold: readContentOffsetDuringExitHold,
                 readTextViewDuringExitHold: readTextViewDuringExitHold,
@@ -98,9 +104,72 @@ final class NotesReadModeViewportRestorationTests: NotesDetailViewHostingTestCas
                 pendingReadSurfaceViewportAnchorTarget: pendingReadSurfaceViewportAnchorTarget,
                 pendingReadSurfaceViewportAnchorY: pendingReadSurfaceViewportAnchorY,
                 editorTargetRect: expectation.editorTargetRect,
-                expectedViewportAnchorY: expectation.expectedViewportAnchorY
+                expectedViewportAnchorY: expectation.expectedViewportAnchorY,
+                restoredReadViewportAnchorY: restoredReadViewportAnchorY
             )
         )
+    }
+
+    func testSingleCloseShortcutReturnsMountedDetailFromEditToRead() async throws {
+        let plainText = (0..<80)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: plainText))
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+
+        context.editorViewModel.enterEditMode()
+        await waitUntil {
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            ) is UIKitNoteTextEditorSurface.AccessoryTextView
+        }
+
+        environment.shortcutActionEvent = ShortcutActionEvent(
+            action: .closeItem,
+            section: .notes,
+            pane: nil
+        )
+
+        await waitUntil(timeout: .seconds(2)) {
+            context.editorViewModel.presentationMode == .read
+                && findTextView(
+                    in: controller.view,
+                    accessibilityIdentifier: "notes-read-text-view"
+                ) != nil
+        }
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertNotNil(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-read-text-view"
+            )
+        )
+        await waitUntil(timeout: .seconds(2)) {
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            ) == nil
+        }
+        XCTAssertNil(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            )
+        )
+
+        environment.shortcutActionEvent = ShortcutActionEvent(
+            action: .closeItem,
+            section: .notes,
+            pane: nil
+        )
+
+        await waitUntil(timeout: .seconds(2)) {
+            context.notesViewModel.activeNote == nil
+        }
+        XCTAssertNil(context.notesViewModel.activeNote)
     }
 
     private func moveEditorViewportToTargetLine(
@@ -138,14 +207,20 @@ final class NotesReadModeViewportRestorationTests: NotesDetailViewHostingTestCas
         let editorTargetRect = editorTextView.caretRect(for: editorTargetPosition)
         let editorViewport = editorTextView.bounds.inset(by: editorTextView.adjustedContentInset)
         return ViewportExpectation(
-            expectedReadContentOffsetY: editorTextView.contentOffset.y,
             expectedViewportAnchorY: editorTargetRect.midY - editorViewport.minY,
-            editorTargetRect: editorTargetRect
+            editorTargetRect: editorTargetRect,
+            targetOffset: targetOffset
+        )
+    }
+
+    private func actualViewportAnchorY(in textView: UITextView, targetOffset: Int) -> CGFloat? {
+        SelectableNoteReadView.viewportAnchorYForEditingActivation(
+            in: textView,
+            target: .characterOffset(targetOffset)
         )
     }
 
     private func failureMessage(
-        expectedReadContentOffsetY: CGFloat,
         editorTextView: UIKitNoteTextEditorSurface.AccessoryTextView,
         readContentOffsetDuringExitHold: CGPoint,
         readTextViewDuringExitHold: UITextView,
@@ -155,13 +230,14 @@ final class NotesReadModeViewportRestorationTests: NotesDetailViewHostingTestCas
         pendingReadSurfaceViewportAnchorTarget: NotesEditorViewModel.PendingEditSelectionTarget?,
         pendingReadSurfaceViewportAnchorY: CGFloat?,
         editorTargetRect: CGRect,
-        expectedViewportAnchorY: CGFloat
+        expectedViewportAnchorY: CGFloat,
+        restoredReadViewportAnchorY: CGFloat?
     ) -> String {
-        "expectedReadContentOffsetY=\(expectedReadContentOffsetY) "
-            + "editorContentOffsetAtAssertion=\(editorTextView.contentOffset) "
+        "editorContentOffsetAtAssertion=\(editorTextView.contentOffset) "
             + "readContentOffsetDuringExitHold=\(readContentOffsetDuringExitHold) "
             + "sameReadTextViewAcrossExit=\(readTextViewDuringExitHold === restoredReadTextView) "
             + "restoredReadContentOffset=\(restoredReadTextView.contentOffset) "
+            + "restoredReadViewportAnchorY=\(String(describing: restoredReadViewportAnchorY)) "
             + "exitRestorationOffset=\(String(describing: restoration?.offset)) "
             + "exitRestorationTarget=\(String(describing: restoration?.target)) "
             + "exitRestorationAnchorY=\(String(describing: restoration?.viewportAnchorY)) "

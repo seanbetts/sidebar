@@ -236,6 +236,50 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(api.updateCallCount, 1)
     }
 
+    func testReadInitialViewportRestorationAppliedDefersPendingRestorationCleanup() async {
+        let context = await makeNotesDetailViewTestContext()
+        context.editorViewModel.setPendingReadSurfaceViewportRestoration(
+            offset: CGPoint(x: 0, y: 184),
+            target: nil,
+            viewportAnchorY: nil
+        )
+
+        context.makeView().handleReadInitialViewportRestorationApplied()
+
+        XCTAssertEqual(context.editorViewModel.pendingReadSurfaceViewportOffset, CGPoint(x: 0, y: 184))
+        await waitUntil(timeout: .milliseconds(150)) {
+            context.editorViewModel.pendingReadSurfaceViewportOffset == nil
+        }
+        XCTAssertEqual(context.editorViewModel.heldReadSurfaceViewportOffset, CGPoint(x: 0, y: 184))
+        XCTAssertNil(context.editorViewModel.pendingReadSurfaceViewportAnchorTarget)
+        XCTAssertNil(context.editorViewModel.pendingReadSurfaceViewportAnchorY)
+    }
+
+    #if os(iOS)
+    @available(iOS 26.0, *)
+    func testHandleCloseShortcutCapturesViewportBeforeResponderDismissalShiftsOffset() async throws {
+        let context = await makeNotesDetailViewTestContext()
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        let textView = ViewportShiftingAccessoryTextView()
+        textView.contentOffset = CGPoint(x: 0, y: 240)
+        textView.offsetAfterResign = CGPoint(x: 0, y: 420)
+        context.editorViewModel.attachNativeEditorTextView(textView)
+        context.editorViewModel.enterEditMode()
+
+        context.makeView().handleCloseShortcut()
+
+        await waitUntil(timeout: .milliseconds(250)) {
+            context.editorViewModel.presentationMode == .read
+        }
+
+        XCTAssertEqual(
+            context.editorViewModel.debugLastExitReadViewportRestoration?.offset,
+            CGPoint(x: 0, y: 240)
+        )
+    }
+    #endif
+
     func testHandleCloseShortcutPreservesUnsavedContentWithoutExplicitDocumentWhenSaveFails() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
@@ -394,6 +438,22 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
     }
 
 }
+
+#if os(iOS)
+@available(iOS 26.0, *)
+@MainActor
+private final class ViewportShiftingAccessoryTextView: UIKitNoteTextEditorSurface.AccessoryTextView {
+    var offsetAfterResign: CGPoint?
+
+    override func resignFirstResponder() -> Bool {
+        let didResign = super.resignFirstResponder()
+        if let offsetAfterResign {
+            contentOffset = offsetAfterResign
+        }
+        return didResign
+    }
+}
+#endif
 
 @available(iOS 26.0, macOS 26.0, *)
 private func assertInsertionPoint(

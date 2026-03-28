@@ -7,6 +7,7 @@ extension NotesDetailView {
                 || editorViewModel.isHoldingReadSurfaceDuringEditEntry
                 || isHoldingEditorSurfaceDuringReadExit {
                 configuredReadSurface()
+                    .zIndex(isHoldingEditorSurfaceDuringReadExit ? 1 : 0)
                     .allowsHitTesting(
                         isShowingReadSurface
                             && !editorViewModel.isHoldingReadSurfaceDuringEditEntry
@@ -16,7 +17,11 @@ extension NotesDetailView {
 
             if isShowingEditorSurface || isHoldingEditorSurfaceDuringReadExit {
                 configuredEditorSurface
-                    .opacity(editorViewModel.isHoldingReadSurfaceDuringEditEntry ? 0 : 1)
+                    .zIndex(isHoldingEditorSurfaceDuringReadExit ? 0 : 1)
+                    .opacity(
+                        editorViewModel.isHoldingReadSurfaceDuringEditEntry
+                            || isHoldingEditorSurfaceDuringReadExit ? 0 : 1
+                    )
                     .allowsHitTesting(
                         isShowingEditorSurface
                             && !editorViewModel.isHoldingReadSurfaceDuringEditEntry
@@ -24,6 +29,7 @@ extension NotesDetailView {
                     )
                     .accessibilityHidden(
                         editorViewModel.isHoldingReadSurfaceDuringEditEntry
+                            || isHoldingEditorSurfaceDuringReadExit
                     )
             }
         }

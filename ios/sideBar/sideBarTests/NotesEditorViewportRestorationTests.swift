@@ -35,8 +35,8 @@ final class NotesEditorViewportRestorationTests: XCTestCase {
             context.viewModel.consumePendingReadViewportRestoration(),
             NotesEditorViewModel.PendingReadViewportRestoration(
                 offset: CGPoint(x: 0, y: 312),
-                target: nil,
-                viewportAnchorY: nil
+                target: .characterOffset(2),
+                viewportAnchorY: 187
             )
         )
         XCTAssertNil(context.viewModel.consumePendingReadViewportRestoration())
