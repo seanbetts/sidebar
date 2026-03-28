@@ -312,7 +312,7 @@ struct AgentSettingsView: View {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.purpose))
             } header: {
                 sectionHeader(
-                    title: "Soul Purpose",
+                    title: Self.assistantSectionTitle("Purpose", assistantDisplayName: assistantDisplayName),
                     subtitle: "\(assistantPossessiveDisplayName) long-term mission and intent."
                 )
             }
@@ -320,7 +320,7 @@ struct AgentSettingsView: View {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.operatingPrinciples))
             } header: {
                 sectionHeader(
-                    title: "Soul Operating Principles",
+                    title: Self.assistantSectionTitle("Operating Principles", assistantDisplayName: assistantDisplayName),
                     subtitle: "Standing rules that guide \(assistantPossessiveDisplayName) day-to-day behavior."
                 )
             }
@@ -328,7 +328,7 @@ struct AgentSettingsView: View {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.adaptationPolicy))
             } header: {
                 sectionHeader(
-                    title: "Soul Adaptation Policy",
+                    title: Self.assistantSectionTitle("Adaptation Policy", assistantDisplayName: assistantDisplayName),
                     subtitle: "How \(assistantDisplayName) should adapt while staying aligned."
                 )
             }
@@ -336,7 +336,7 @@ struct AgentSettingsView: View {
                 readOnlySectionText(resolvedText(viewModel.settings?.assistantSoul?.successSignals))
             } header: {
                 sectionHeader(
-                    title: "Soul Success Signals",
+                    title: Self.assistantSectionTitle("Success Signals", assistantDisplayName: assistantDisplayName),
                     subtitle: "How \(assistantDisplayName) measures good outcomes and alignment."
                 )
             } footer: {

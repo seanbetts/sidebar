@@ -186,25 +186,25 @@ extension AgentSettingsView {
                 }
 
                 macReadOnlyCard(
-                    title: "Soul Purpose",
+                    title: Self.assistantSectionTitle("Purpose", assistantDisplayName: assistantDisplayName),
                     message: "\(assistantPossessiveDisplayName) long-term mission and intent."
                 ) {
                     Text(resolvedText(viewModel.settings?.assistantSoul?.purpose))
                 }
                 macReadOnlyCard(
-                    title: "Soul Operating Principles",
+                    title: Self.assistantSectionTitle("Operating Principles", assistantDisplayName: assistantDisplayName),
                     message: "Standing rules that guide \(assistantPossessiveDisplayName) day-to-day behavior."
                 ) {
                     Text(resolvedText(viewModel.settings?.assistantSoul?.operatingPrinciples))
                 }
                 macReadOnlyCard(
-                    title: "Soul Adaptation Policy",
+                    title: Self.assistantSectionTitle("Adaptation Policy", assistantDisplayName: assistantDisplayName),
                     message: "How \(assistantDisplayName) should adapt while staying aligned."
                 ) {
                     Text(resolvedText(viewModel.settings?.assistantSoul?.adaptationPolicy))
                 }
                 macReadOnlyCard(
-                    title: "Soul Success Signals",
+                    title: Self.assistantSectionTitle("Success Signals", assistantDisplayName: assistantDisplayName),
                     message: "How \(assistantDisplayName) measures good outcomes and alignment."
                 ) {
                     Text(resolvedText(viewModel.settings?.assistantSoul?.successSignals))

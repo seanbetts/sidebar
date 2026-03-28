@@ -919,6 +919,18 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
     }
 
+    func testAgentSettingsIOSSourceUsesAssistantTitlesForSoulSections() throws {
+        let normalized = try systemSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"Purpose\",assistantDisplayName:assistantDisplayName)"))
+        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"OperatingPrinciples\",assistantDisplayName:assistantDisplayName)"))
+        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"AdaptationPolicy\",assistantDisplayName:assistantDisplayName)"))
+        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"SuccessSignals\",assistantDisplayName:assistantDisplayName)"))
+        XCTAssertFalse(normalized.contains("title:\"SoulPurpose\""))
+        XCTAssertFalse(normalized.contains("title:\"SoulOperatingPrinciples\""))
+    }
+
     func testAgentSettingsMacSourceUsesInspectorCardsAndStatusBanners() throws {
         let normalized = try systemMacSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -927,6 +939,18 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
         XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
         XCTAssertTrue(normalized.contains("SettingsMacFieldRow("))
+    }
+
+    func testAgentSettingsMacSourceUsesAssistantTitlesForSoulSections() throws {
+        let normalized = try systemMacSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"Purpose\",assistantDisplayName:assistantDisplayName)"))
+        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"OperatingPrinciples\",assistantDisplayName:assistantDisplayName)"))
+        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"AdaptationPolicy\",assistantDisplayName:assistantDisplayName)"))
+        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"SuccessSignals\",assistantDisplayName:assistantDisplayName)"))
+        XCTAssertFalse(normalized.contains("title:\"SoulPurpose\""))
+        XCTAssertFalse(normalized.contains("title:\"SoulOperatingPrinciples\""))
     }
 
     func testUtilitiesSettingsMacSourceUsesInspectorCardsAndStatusBanners() throws {

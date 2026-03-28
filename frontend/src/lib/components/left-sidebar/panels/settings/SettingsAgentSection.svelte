@@ -14,6 +14,12 @@
 	export let assistantSoulSuccessSignals = '';
 	export let assistantSoulMeta: { updated_at?: string; version?: number; reason?: string | null } =
 		{};
+
+	$: assistantDisplayName = assistantIdentityName.trim() || 'Assistant';
+	$: purposeLabel = `${assistantDisplayName}'s Purpose`;
+	$: operatingPrinciplesLabel = `${assistantDisplayName}'s Operating Principles`;
+	$: adaptationPolicyLabel = `${assistantDisplayName}'s Adaptation Policy`;
+	$: successSignalsLabel = `${assistantDisplayName}'s Success Signals`;
 </script>
 
 <h3>Agent</h3>
@@ -62,7 +68,7 @@
 		</p>
 	{/if}
 	<label class="settings-label">
-		<span>Soul purpose</span>
+		<span>{purposeLabel}</span>
 		<textarea
 			class="settings-textarea"
 			value={assistantSoulPurpose}
@@ -72,7 +78,7 @@
 		></textarea>
 	</label>
 	<label class="settings-label">
-		<span>Soul operating principles</span>
+		<span>{operatingPrinciplesLabel}</span>
 		<textarea
 			class="settings-textarea"
 			value={assistantSoulOperatingPrinciples}
@@ -82,7 +88,7 @@
 		></textarea>
 	</label>
 	<label class="settings-label">
-		<span>Soul adaptation policy</span>
+		<span>{adaptationPolicyLabel}</span>
 		<textarea
 			class="settings-textarea"
 			value={assistantSoulAdaptationPolicy}
@@ -92,7 +98,7 @@
 		></textarea>
 	</label>
 	<label class="settings-label">
-		<span>Soul success signals</span>
+		<span>{successSignalsLabel}</span>
 		<textarea
 			class="settings-textarea"
 			value={assistantSoulSuccessSignals}
