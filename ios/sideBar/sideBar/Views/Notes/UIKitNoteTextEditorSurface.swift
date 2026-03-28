@@ -75,12 +75,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         override var contentOffset: CGPoint {
             didSet {
                 reportViewportSnapshotIfNeeded()
-                setNeedsDisplay()
             }
-        }
-
-        override var attributedText: NSAttributedString! {
-            didSet { setNeedsDisplay() }
         }
 
         override var keyCommands: [UIKeyCommand]? {
@@ -109,34 +104,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             updateTextContainerInsets()
             updateViewportInsets()
             reportViewportSnapshotIfNeeded()
-            setNeedsDisplay()
-        }
-
-        override func draw(_ rect: CGRect) {
-            drawCodeBlockBackgrounds(in: rect)
-            super.draw(rect)
-        }
-
-        private func drawCodeBlockBackgrounds(in rect: CGRect) {
-            guard let attributedText, attributedText.length > 0 else { return }
-            let backgroundRects = NoteTextCodeBlockBackgroundLayout.blockRects(
-                in: attributedText,
-                layoutManager: layoutManager,
-                textContainer: textContainer,
-                textContainerInset: CGSize(
-                    width: textContainerInset.left,
-                    height: textContainerInset.top
-                )
-            )
-            guard backgroundRects.isEmpty == false else { return }
-
-            NoteTextAppearance.codeBlockBackgroundColor.setFill()
-            for backgroundRect in backgroundRects where backgroundRect.intersects(rect) {
-                UIBezierPath(
-                    roundedRect: backgroundRect,
-                    cornerRadius: NoteTextAppearance.codeBlockCornerRadius
-                ).fill()
-            }
         }
 
         override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {

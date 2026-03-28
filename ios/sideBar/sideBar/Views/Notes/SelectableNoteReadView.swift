@@ -713,7 +713,6 @@ private final class SelectableNoteReadTextView: UITextView {
     override var contentOffset: CGPoint {
         didSet {
             reportViewportOffsetIfNeeded()
-            setNeedsDisplay()
         }
     }
 
@@ -727,7 +726,6 @@ private final class SelectableNoteReadTextView: UITextView {
             }
             applyInitialViewportOffsetIfNeeded()
             reportViewportOffsetIfNeeded()
-            setNeedsDisplay()
         }
     }
 
@@ -741,12 +739,6 @@ private final class SelectableNoteReadTextView: UITextView {
         updateTextContainerInsets()
         applyInitialViewportOffsetIfNeeded()
         reportViewportOffsetIfNeeded()
-        setNeedsDisplay()
-    }
-
-    override func draw(_ rect: CGRect) {
-        drawCodeBlockBackgrounds(in: rect)
-        super.draw(rect)
     }
 
     private func updateTextContainerInsets() {
@@ -759,28 +751,6 @@ private final class SelectableNoteReadTextView: UITextView {
         )
         guard textContainerInset != resolvedInsets else { return }
         textContainerInset = resolvedInsets
-    }
-
-    private func drawCodeBlockBackgrounds(in rect: CGRect) {
-        guard let attributedText, attributedText.length > 0 else { return }
-        let backgroundRects = NoteTextCodeBlockBackgroundLayout.blockRects(
-            in: attributedText,
-            layoutManager: layoutManager,
-            textContainer: textContainer,
-            textContainerInset: CGSize(
-                width: textContainerInset.left,
-                height: textContainerInset.top
-            )
-        )
-        guard backgroundRects.isEmpty == false else { return }
-
-        NoteTextAppearance.codeBlockBackgroundColor.setFill()
-        for backgroundRect in backgroundRects where backgroundRect.intersects(rect) {
-            UIBezierPath(
-                roundedRect: backgroundRect,
-                cornerRadius: NoteTextAppearance.codeBlockCornerRadius
-            ).fill()
-        }
     }
 
     private func reportViewportOffsetIfNeeded(force: Bool = false) {
