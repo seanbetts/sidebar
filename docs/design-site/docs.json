@@ -51,7 +51,8 @@
       {
         "group": "Patterns",
         "pages": [
-          "patterns/overview"
+          "patterns/overview",
+          "patterns/feedback-and-haptics"
         ]
       },
       {

@@ -1,0 +1,1 @@
+../../design/patterns/feedback-and-haptics.md

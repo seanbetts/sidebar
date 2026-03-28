@@ -19,7 +19,7 @@ description: Working brief for the internal sideBar design-system documentation 
 | 10 | Foundations: accessibility | [foundations/accessibility.md](./foundations/accessibility) | approved |
 | 11 | Components | [components/overview.md](./components/overview) | approved |
 | 12 | Patterns: navigation | patterns/navigation.md | not started |
-| 13 | Patterns: feedback and haptics | patterns/feedback-and-haptics.md | not started |
+| 13 | Patterns: feedback and haptics | [patterns/feedback-and-haptics.md](./patterns/feedback-and-haptics) | approved |
 | 14 | Patterns: wait UX | patterns/wait-ux.md | not started |
 | 15 | Patterns: onboarding | patterns/onboarding.md | not started |
 | 16 | Patterns: handoffs | patterns/handoffs.md | not started |
