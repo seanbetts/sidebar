@@ -29,7 +29,7 @@ sideBar on Mac always uses `WorkspaceLayout`:
 
 There is no compact/tablet fallback on macOS. The Mac is always regular layout.
 
-The left panel is user-resizable (min 200px, max 500px, snap points at 33/40/50% of available width). Width persisted via `@AppStorage`.
+The left panel is a fixed width (280px). It is not user-resizable. `SidebarSplitView.swift` contains a remnant `DragGesture`-based resize handle and `@AppStorage` width persistence that should be removed.
 
 The right sidebar is available in workspace mode (expand/collapse toggle). Width is user-resizable (min 280px, default 360px). Width persisted via `@AppStorage`.
 
@@ -51,7 +51,7 @@ The `SidebarRail` serves as the primary navigation on Mac. It is always visible.
 
 ### Keyboard shortcuts
 
-`KeyboardShortcuts/` folder exists in the codebase, suggesting a keyboard shortcut system is in place. The escape key is handled for search dock dismissal. Full shortcut documentation is needed (separate audit).
+Keyboard shortcuts are implemented across the app. Universal shortcuts and section-specific shortcuts are documented in the Mac menu bar section below. The `KeyboardShortcuts/` folder handles shortcut registration. Escape is handled for search dock dismissal.
 
 **Rule**: All common actions should have keyboard shortcuts on Mac. New Mac features must include shortcuts as a default, not an afterthought.
 
@@ -80,7 +80,7 @@ Implemented in `Views/AppCommands.swift` via `SidebarCommands: Commands`.
 
 **Escape** closes the open item or settings panel depending on state.
 
-**Universal shortcuts** (handled outside `AppCommands`, likely via `onKeyPress` or separate Commands):
+**Universal shortcuts** (handled outside `AppCommands` via `onKeyPress` and separate Commands):
 
 | Shortcut | Action |
 |---|---|
@@ -159,25 +159,15 @@ These are necessary and correct uses of AppKit where SwiftUI doesn't provide ade
 
 ---
 
-## macOS color palette
+## Color palette
 
-macOS uses the `MacOSPalette` from `Color+Platform.swift` instead of iOS system semantic colors. These are hand-coded sRGB `NSColor` values:
+**Direction**: sideBar should use a single unified color palette across all platforms. The current `MacOSPalette` in `Color+Platform.swift` — hand-coded sRGB `NSColor` values that differ from the iOS semantic color layer — should be consolidated into one shared palette. Platform-specific color branching should be removed.
 
-| Token | Light | Dark |
-|---|---|---|
-| background | #ffffff | #0a0a0a |
-| card | #ffffff | #171717 |
-| muted | #f5f5f5 | #262626 |
-| sidebar | #fafafa | #171717 |
-| sidebarAccent | #f5f5f5 | #262626 |
-| border | #e5e5e5 | white 10% |
-| input | #e5e5e5 | white 15% |
+The target palette is the near-neutral set currently used on macOS (near-white light mode, near-black dark mode). This palette should become the single source of truth for both iOS and macOS, replacing the current iOS UIKit semantic color wrappers where they diverge.
 
-`NSColor.separatorColor` is used directly in `SidebarRail` for the rail/panel border, which correctly inherits system separator color.
+**Direction**: Light and dark mode values should be consistent across platforms. There should be no platform-specific dark mode or light mode variants.
 
-**Implication**: The custom palette is deliberately near-neutral. In dark mode it uses very dark (near-black) surfaces rather than the default macOS dark window chrome. This is a deliberate design stance.
-
-**Implication**: If macOS default backgrounds change significantly (e.g. in a future macOS version), these values will not adapt automatically. They need manual review.
+**Current state** (to be migrated): `Color+Platform.swift` currently branches between iOS (UIKit semantic colors) and macOS (hand-coded NSColor values). This is the implementation that needs to change. Full definition of the target palette belongs in `foundations/colour.md`.
 
 ---
 
@@ -242,8 +232,7 @@ Source: `Views/Websites/SiteHeaderBar.swift`
 
 ## Open questions
 
-- Should a View menu be added to expose the sidebar toggle shortcut (Cmd+Shift+S)?
-- Should the Mac color palette attempt to use more NSColor semantic values?
+- Should a View menu be added to expose the sidebar toggle shortcut (Cmd+Shift+S)? (Captured — not implementing now.)
 - Should the sidebar rail width (56px) be tokenised in `DesignTokens.Size`?
 
 ---
