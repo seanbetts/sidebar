@@ -3,13 +3,12 @@ title: Agent Rules Overview
 description: Placeholder for implementation guidance that the coding agent should follow when building UI from the design system.
 ---
 
-- Status: not started
-- Owner: both
-- Inputs needed: completed design docs, implementation constraints, existing component patterns
-- Outputs: this doc and agent guidance docs
-- Dependencies: principles.md, system-inheritance.md, foundations/overview.md, components/overview.md
-- Codebase review required: yes
-- Human judgement required: yes
+| Field | Value |
+|---|---|
+| Status | not started |
+| Owner | both |
+| Outputs | this doc and agent guidance docs |
+| Dependencies | [principles](../principles), [system-inheritance](../system-inheritance), [foundations/overview](../foundations/overview), [components/overview](../components/overview) |
 
 ---
 

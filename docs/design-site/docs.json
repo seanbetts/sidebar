@@ -33,6 +33,7 @@
         "group": "Foundations",
         "pages": [
           "foundations/overview",
+          "foundations/colour",
           "foundations/materials-and-appearance"
         ]
       },

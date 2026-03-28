@@ -3,13 +3,12 @@ title: Materials and Appearance
 description: Draft guidance for surface styling, native materials, and appearance inheritance across Apple platforms.
 ---
 
-- Status: not started
-- Owner: both
-- Inputs needed: platform review, Liquid Glass adoption direction, palette decisions
-- Outputs: this doc
-- Dependencies: system-inheritance.md, platform-strategy/ios-conventions.md, platform-strategy/macos-conventions.md
-- Codebase review required: yes
-- Human judgement required: yes
+| Field | Value |
+|---|---|
+| Status | not started |
+| Owner | both |
+| Outputs | this doc |
+| Dependencies | [system-inheritance](../system-inheritance), [ios-conventions](../platform-strategy/ios-conventions), [macos-conventions](../platform-strategy/macos-conventions) |
 
 ---
 

@@ -3,13 +3,12 @@ title: Components Overview
 description: Placeholder for the shared UI component guidance in the sideBar design system.
 ---
 
-- Status: not started
-- Owner: AI coding agent
-- Inputs needed: component inventory, codebase inspection
-- Outputs: this doc and component docs
-- Dependencies: audits/component-inventory.md
-- Codebase review required: yes
-- Human judgement required: yes
+| Field | Value |
+|---|---|
+| Status | not started |
+| Owner | AI coding agent |
+| Outputs | this doc and component docs |
+| Dependencies | [component-inventory](../audits/component-inventory) |
 
 ---
 
