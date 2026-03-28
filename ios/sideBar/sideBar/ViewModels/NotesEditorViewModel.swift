@@ -64,6 +64,8 @@ public final class NotesEditorViewModel: ObservableObject {
     private var sharedNativeEditorViewModel: NativeNoteEditorViewModel?
     @available(iOS 26.0, macOS 26.0, *)
     private var nativeEditorObservation: AnyCancellable?
+    @available(iOS 26.0, macOS 26.0, *)
+    private var hasScheduledNativeEditorObjectWillChange = false
     var pendingEditSelectionTarget: PendingEditSelectionTarget?
     var pendingEditViewportAnchorY: CGFloat?
     private var syncRequestedWhileSaving = false
@@ -419,7 +421,7 @@ extension NotesEditorViewModel {
         nativeEditorViewModel = nativeViewModel
         sharedNativeEditorViewModel = nativeViewModel
         observeNativeEditor(nativeViewModel)
-        objectWillChange.send()
+        scheduleNativeEditorObjectWillChange()
     }
 
     @available(iOS 26.0, macOS 26.0, *)
@@ -427,7 +429,7 @@ extension NotesEditorViewModel {
         if nativeEditorViewModel === nativeViewModel {
             resetNativeEditorObservation()
             nativeEditorViewModel = nil
-            objectWillChange.send()
+            scheduleNativeEditorObjectWillChange()
         }
     }
 
@@ -440,13 +442,24 @@ extension NotesEditorViewModel {
                 let nativeViewModel,
                 self.nativeEditorViewModel === nativeViewModel
             else { return }
-            self.objectWillChange.send()
+            self.scheduleNativeEditorObjectWillChange()
         }
     }
 
     @available(iOS 26.0, macOS 26.0, *)
     private func resetNativeEditorObservation() {
         nativeEditorObservation?.cancel(); nativeEditorObservation = nil
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func scheduleNativeEditorObjectWillChange() {
+        guard !hasScheduledNativeEditorObjectWillChange else { return }
+        hasScheduledNativeEditorObjectWillChange = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.hasScheduledNativeEditorObjectWillChange = false
+            self.objectWillChange.send()
+        }
     }
     func applyEditorSnapshot(plainText: String, canonicalContent: String) { content = plainText; self.canonicalContent = canonicalContent }
     public func setDirty(_ dirty: Bool) { guard isDirty != dirty else { return }; isDirty = dirty }

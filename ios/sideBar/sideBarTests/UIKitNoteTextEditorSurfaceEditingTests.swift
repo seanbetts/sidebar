@@ -27,7 +27,7 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
         )
     }
 
-    func testUIKitTextChangesFlowBackIntoCanonicalContent() throws {
+    func testUIKitTextChangesFlowBackIntoCanonicalContentOnNextMainActorTurn() async throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
             canonicalContent: canonicalUIKitPlainTextPass("Hello"),
@@ -37,6 +37,12 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
         let previous = viewModel.attributedContent
         textView.text = "Hello updated"
         textView.delegate?.textViewDidChange?(textView)
+
+        XCTAssertEqual(String(viewModel.attributedContent.characters), String(previous.characters))
+        await waitUntil(timeout: .seconds(1)) {
+            String(viewModel.attributedContent.characters) == "Hello updated"
+        }
+
         XCTAssertEqual(String(viewModel.attributedContent.characters), "Hello updated")
         XCTAssertTrue(viewModel.hasUnsavedChanges)
         XCTAssertNotEqual(viewModel.attributedContent, previous)

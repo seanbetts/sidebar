@@ -198,16 +198,18 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                 return
             }
 
-            isApplyingProgrammaticText = true
-            viewModel.replaceAttributedContent(
-                textView.attributedString(),
-                selectedUTF16Range: textView.selectedRange()
-            )
-            isApplyingProgrammaticText = false
-            lastAppliedRenderSignature = RenderSignature(
-                renderGeneration: viewModel.renderGeneration,
-                baseFontSize: viewModel.baseFontSize
-            )
+            let attributedText = NSAttributedString(attributedString: textView.attributedString())
+            let selectedRange = textView.selectedRange()
+            DispatchQueue.main.async {
+                self.viewModel.replaceAttributedContent(
+                    attributedText,
+                    selectedUTF16Range: selectedRange
+                )
+                self.lastAppliedRenderSignature = RenderSignature(
+                    renderGeneration: self.viewModel.renderGeneration,
+                    baseFontSize: self.viewModel.baseFontSize
+                )
+            }
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {

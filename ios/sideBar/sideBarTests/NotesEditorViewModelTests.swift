@@ -1334,6 +1334,25 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(context.viewModel.currentPlainTextSnapshot(fallback: "fallback"), "Server body")
     }
 
+    func testAttachNativeEditorPublishesOnNextMainActorTurn() async throws {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+
+        var publicationCount = 0
+        let cancellable = context.viewModel.objectWillChange.sink {
+            publicationCount += 1
+        }
+
+        context.viewModel.attachNativeEditor(nativeViewModel)
+
+        XCTAssertEqual(publicationCount, 0)
+        try await waitUntil(timeoutSeconds: 1.0) { publicationCount == 1 }
+        XCTAssertEqual(publicationCount, 1)
+        _ = cancellable
+    }
+
     func testNativeEditorSelectionForwardingPublishesAfterSelectionStateUpdates() async throws {
         let context = makeNotesEditorViewModelTestContext(
             api: MockNotesAPI(updateResult: .failure(MockError.forced))
@@ -1365,6 +1384,7 @@ extension NotesEditorViewModelTests {
         let target = nativeViewModel.index(forCharacterOffset: 5, in: nativeViewModel.attributedContent)
         nativeViewModel.selection = AttributedTextSelection(range: target..<target)
 
+        XCTAssertTrue(observedSelectionOffsets.isEmpty)
         await fulfillment(of: [expectation], timeout: 1.0)
 
         XCTAssertEqual(observedSelectionOffsets, [5])

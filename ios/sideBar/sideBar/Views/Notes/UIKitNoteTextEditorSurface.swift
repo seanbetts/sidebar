@@ -313,16 +313,18 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingProgrammaticText else { return }
 
-            isApplyingProgrammaticText = true
-            viewModel.replaceAttributedContentFromLiveTextView(
-                textView.attributedText,
-                selectedUTF16Range: textView.selectedRange
-            )
-            isApplyingProgrammaticText = false
-            lastAppliedRenderSignature = UIKitNoteTextEditorRenderSignature(
-                renderGeneration: viewModel.renderGeneration,
-                baseFontSize: viewModel.baseFontSize
-            )
+            let attributedText = NSAttributedString(attributedString: textView.attributedText)
+            let selectedRange = textView.selectedRange
+            DispatchQueue.main.async {
+                self.viewModel.replaceAttributedContentFromLiveTextView(
+                    attributedText,
+                    selectedUTF16Range: selectedRange
+                )
+                self.lastAppliedRenderSignature = UIKitNoteTextEditorRenderSignature(
+                    renderGeneration: self.viewModel.renderGeneration,
+                    baseFontSize: self.viewModel.baseFontSize
+                )
+            }
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
