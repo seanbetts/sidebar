@@ -52,18 +52,6 @@ struct ChatMessageListView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             }
             .onChange(of: scrollChangeToken) { oldToken, newToken in
-                ChatStreamingDebugTrace.log(
-                    "chatList.scrollChange",
-                    details: [
-                        "selectedChanged=\(oldToken.selectedConversationId != newToken.selectedConversationId)",
-                        "messageCount=\(oldToken.messageCount)->\(newToken.messageCount)",
-                        "lastChanged=\(oldToken.lastMessageSignature != newToken.lastMessageSignature)",
-                        "activeToolChanged=\(oldToken.activeToolSignature != newToken.activeToolSignature)",
-                        "bottomInset=\(Int(oldToken.bottomInset.rounded()))->\(Int(newToken.bottomInset.rounded()))",
-                        "shouldScrollToBottom=\(shouldScrollToBottom)",
-                        "streaming=\(viewModel.isStreaming)"
-                    ].joined(separator: " ")
-                )
                 if oldToken.selectedConversationId != newToken.selectedConversationId {
                     visibleMessageCount = pageSize
                     isAutoLoadingMore = false
@@ -187,15 +175,6 @@ struct ChatMessageListView: View {
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
-        ChatStreamingDebugTrace.log(
-            "chatList.scrollToBottom",
-            details: [
-                "animated=\(animated)",
-                "streaming=\(viewModel.isStreaming)",
-                "messageCount=\(viewModel.messages.count)",
-                "streamMessage=\(ChatStreamingDebugTrace.shortID(viewModel.currentStreamMessageId))"
-            ].joined(separator: " ")
-        )
         if animated && !reduceMotion {
             withAnimation(Motion.quick(reduceMotion: reduceMotion)) {
                 proxy.scrollTo("bottom", anchor: .bottom)
@@ -218,10 +197,6 @@ struct ChatMessageListView: View {
 
     private func scheduleDeferredBottomScroll(proxy: ScrollViewProxy) {
         Task { @MainActor in
-            ChatStreamingDebugTrace.log(
-                "chatList.scheduleDeferredBottomScroll",
-                details: "messageCount=\(viewModel.messages.count)"
-            )
             await Task.yield()
             scrollToBottom(proxy: proxy, animated: false)
             try? await Task.sleep(nanoseconds: 200_000_000)
@@ -233,13 +208,6 @@ struct ChatMessageListView: View {
         guard streamingAutoScrollTask == nil else {
             return
         }
-        ChatStreamingDebugTrace.log(
-            "chatList.streamingAutoScroll.start",
-            details: [
-                "messageCount=\(viewModel.messages.count)",
-                "streamMessage=\(ChatStreamingDebugTrace.shortID(viewModel.currentStreamMessageId))"
-            ].joined(separator: " ")
-        )
         let pollIntervalNanoseconds = UInt64(ChatStreamingAutoScrollController().throttleSeconds * 1_000_000_000)
         streamingAutoScrollTask = Task { @MainActor in
             var lastSignature = ChatStreamingContentSignature(message: viewModel.messages.last)
@@ -255,14 +223,6 @@ struct ChatMessageListView: View {
                 guard nextSignature != lastSignature else {
                     continue
                 }
-                ChatStreamingDebugTrace.log(
-                    "chatList.streamingAutoScroll.tick",
-                    details: [
-                        "message=\(nextSignature.id)",
-                        "contentCount=\(lastSignature.contentCount)->\(nextSignature.contentCount)",
-                        "status=\(lastSignature.status.rawValue)->\(nextSignature.status.rawValue)"
-                    ].joined(separator: " ")
-                )
                 lastSignature = nextSignature
                 scrollToBottom(proxy: proxy, animated: false)
             }
@@ -271,9 +231,6 @@ struct ChatMessageListView: View {
     }
 
     private func stopStreamingAutoScrollLoop() {
-        if streamingAutoScrollTask != nil {
-            ChatStreamingDebugTrace.log("chatList.streamingAutoScroll.stop")
-        }
         streamingAutoScrollTask?.cancel()
         streamingAutoScrollTask = nil
     }

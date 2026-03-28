@@ -190,41 +190,6 @@ private struct ChatDetailView: View {
                 break
             }
         }
-        .onChange(of: inputMeasuredHeight) { oldValue, newValue in
-            ChatStreamingDebugTrace.log(
-                "chatView.inputMeasuredHeight",
-                details: [
-                    "old=\(Int(oldValue.rounded()))",
-                    "new=\(Int(newValue.rounded()))",
-                    "bottomInset=\(Int(messageListBottomInset.rounded()))",
-                    "streaming=\(viewModel.isStreaming)"
-                ].joined(separator: " ")
-            )
-        }
-        .onChange(of: attachmentsHeight) { oldValue, newValue in
-            ChatStreamingDebugTrace.log(
-                "chatView.attachmentsHeight",
-                details: [
-                    "old=\(Int(oldValue.rounded()))",
-                    "new=\(Int(newValue.rounded()))",
-                    "bottomInset=\(Int(messageListBottomInset.rounded()))",
-                    "streaming=\(viewModel.isStreaming)"
-                ].joined(separator: " ")
-            )
-        }
-        .onChange(of: viewModel.isStreaming) { oldValue, newValue in
-            ChatStreamingDebugTrace.log(
-                "chatView.isStreaming",
-                details: [
-                    "old=\(oldValue)",
-                    "new=\(newValue)",
-                    "messageCount=\(viewModel.messages.count)",
-                    "streamMessage=\(ChatStreamingDebugTrace.shortID(viewModel.currentStreamMessageId))",
-                    "inputMeasuredHeight=\(Int(inputMeasuredHeight.rounded()))",
-                    "bottomInset=\(Int(messageListBottomInset.rounded()))"
-                ].joined(separator: " ")
-            )
-        }
     }
 
     private var messageListBottomInset: CGFloat {
@@ -252,15 +217,6 @@ private struct ChatDetailView: View {
         guard !message.isEmpty else {
             return
         }
-        ChatStreamingDebugTrace.log(
-            "chatView.handleSend",
-            details: [
-                "messageChars=\(message.count)",
-                "inputMeasuredHeight=\(Int(inputMeasuredHeight.rounded()))",
-                "attachmentsHeight=\(Int(attachmentsHeight.rounded()))",
-                "bottomInset=\(Int(messageListBottomInset.rounded()))"
-            ].joined(separator: " ")
-        )
         draftMessage = ""
         inputMeasuredHeight = 0
         inputResetToken = UUID()
