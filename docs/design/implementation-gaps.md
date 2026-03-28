@@ -66,6 +66,7 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
+| `AppFontStyle` scale rationalisation: remove `size18Semibold` (duplicate of `titleLg`), `callout` (duplicate of `body`), `size16Semibold` (duplicate of `bodySemibold`); rename `size10Bold` → `badge`, `size24Semibold` → `displayMd`, `size32Regular` → `displayLg`, `size32Semibold` → `displayLgSemibold`; audit `headline` usage | `AppFontStyle.swift` + callers | [typography](./foundations/typography) |
 | `DesignTokens.Typography` is unused — parallel system to `AppFontStyle`, should be removed | `DesignTokens.swift` | [token-audit](./audits/token-audit) |
 | `PlatformTokens.panelHeaderBackground` is a single-value alias for `DesignTokens.Colors.sidebar` — remove and update callers | `PlatformTokens.swift` | [token-audit](./audits/token-audit) |
 | `SidebarSplitView.swift` contains remnant `DragGesture`-based resize handle code — remove | `SidebarSplitView.swift` | [macos-conventions](./platform-strategy/macos-conventions) |

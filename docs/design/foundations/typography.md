@@ -160,6 +160,44 @@ Creating these aliases means a future decision to change, say, the chat message 
 
 ---
 
+## Notes document typography
+
+The notes editor uses a separate typography system — `NoteTextStyleTypography` — that is intentionally independent from `AppFontStyle`. Rather than fixed point sizes, it uses scale factors relative to a base body size. This means the entire document hierarchy scales proportionally as the user changes text size, which is the correct approach for document content.
+
+The four block-level styles are defined in `NoteTextStyle`:
+
+<div style={{fontFamily:"-apple-system,BlinkMacSystemFont,sans-serif",border:"1px solid #e0e0e0",borderRadius:"10px",overflow:"hidden",marginBottom:"24px"}}>
+  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
+    <span style={{fontSize:"30px",fontWeight:"700"}}>Note Title</span>
+    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>title · 1.75× body · bold</span>
+  </div>
+  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
+    <span style={{fontSize:"24px",fontWeight:"700"}}>Heading</span>
+    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>heading · 1.40× body · bold</span>
+  </div>
+  <div style={{padding:"16px 20px",borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
+    <span style={{fontSize:"20px",fontWeight:"700"}}>Subheading</span>
+    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>subheading · 1.15× body · bold</span>
+  </div>
+  <div style={{padding:"16px 20px",display:"flex",alignItems:"baseline",justifyContent:"space-between"}}>
+    <span style={{fontSize:"17px",fontWeight:"400"}}>Body text at default system size</span>
+    <span style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",flexShrink:"0",marginLeft:"16px"}}>body · 1.00× · regular</span>
+  </div>
+</div>
+
+| Style | Scale | Weight | Approx. size at default body |
+|---|---|---|---|
+| `title` | 1.75× | Bold | ~30pt |
+| `heading` | 1.40× | Bold | ~24pt |
+| `subheading` | 1.15× | Bold | ~20pt |
+| `body` | 1.00× | Regular | ~17pt |
+
+The base body size is `MarkdownTypography.defaultBodyFontSize` — the system Dynamic Type body size multiplied by the current `AppTextSizeOption` scale. Both inputs affect all four styles equally, preserving the proportional hierarchy at any size.
+
+Source: `Utilities/NoteTextStyleTypography.swift`, `ViewModels/NoteTextStyle.swift`
+
+---
+
 ## Markdown and rich text
 
 Markdown rendering uses `MarkdownTypography`, which derives its base body size from the system Dynamic Type body size and applies the `AppTextSizeOption` multiplier:
@@ -199,14 +237,44 @@ Prose and markdown content uses `@tailwindcss/typography`. Rich text editing use
 
 ---
 
-## Gaps
+## Scale rationalisation
+
+The current `AppFontStyle` scale has 25 cases. Several are redundant or poorly named. The following rationalisation is recommended — tracked in [implementation-gaps](../implementation-gaps).
+
+### Remove
+
+| Style | Reason |
+|---|---|
+| `size18Semibold` | Identical to `titleLg` (18pt semibold, no Dynamic Type anchor). Remove; update callers to `titleLg`. |
+| `callout` | Same rendered size as `body` (16pt regular) at default text size. The `.callout` vs `.body` Dynamic Type anchor difference is too subtle to justify a distinct style. Remove; update callers to `body`. |
+| `size16Semibold` | Same rendered size as `bodySemibold` (16pt semibold) but lacks the `.body` Dynamic Type anchor. `bodySemibold` is strictly better. Remove; update callers to `bodySemibold`. |
+
+### Rename
+
+| Current name | Proposed name | Reason |
+|---|---|---|
+| `size10Bold` | `badge` | Describes intent — this style exists for badge and pip labels only |
+| `size24Semibold` | `displayMd` | Describes role — display/hero size, medium |
+| `size32Regular` | `displayLg` | Describes role — display/hero size, large, regular weight |
+| `size32Semibold` | `displayLgSemibold` | Describes role — display/hero size, large, semibold |
+
+### Consider
+
+`headline` (17pt regular) sits 1pt above `body` (16pt) and 3pt below `title3Semibold` (20pt). The gap is narrow and `headline` has no semibold partner. Audit its actual usage — if it only appears in one or two contexts, those could be covered by `subheadlineSemibold` (15pt semibold) or `title3Semibold` (20pt semibold) instead.
+
+### After rationalisation
+
+A cleaned-up scale of ~19 cases, all with semantic names, covering titles, body text, labels, captions, mono, and display sizes.
+
+---
+
+## Other gaps
 
 | Gap | Notes |
 |---|---|
-| Size-named `AppFontStyle` cases lack semantic names | Rename as the scale matures. `titleLg` and `size18Semibold` are duplicates — consolidate. |
-| `DesignTokens.Typography` should be removed | Tracked in [implementation-gaps](../implementation-gaps) |
-| `SidebarTypography` pattern not extended to other contexts | Chat, Settings rows are the highest-priority candidates |
-| Web type sizes not mapped to native scale | Out of scope for now |
+| `DesignTokens.Typography` should be removed | Dead parallel system. Tracked in [implementation-gaps](../implementation-gaps). |
+| `SidebarTypography` pattern not extended to other contexts | Chat and Settings rows are the highest-priority candidates. |
+| Web type sizes not mapped to native scale | Out of scope for now. |
 
 ---
 
