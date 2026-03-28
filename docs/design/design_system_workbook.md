@@ -13,7 +13,7 @@ description: Working brief for the internal sideBar design-system documentation 
 | 4 | Platform strategy | [overview](./platform-strategy/overview), [iOS](./platform-strategy/ios-conventions), [macOS](./platform-strategy/macos-conventions), [web](./platform-strategy/web-conventions) | approved |
 | 5 | Foundations: colour | [foundations/colour.md](./foundations/colour) | approved |
 | 6 | Foundations: token model | [foundations/token-model.md](./foundations/token-model) | approved |
-| 7 | Foundations: typography | [foundations/typography.md](./foundations/typography) | draft |
+| 7 | Foundations: typography | [foundations/typography.md](./foundations/typography) | approved |
 | 8 | Foundations: materials and appearance | [foundations/materials-and-appearance.md](./foundations/materials-and-appearance) | not started |
 | 9 | Foundations: iconography | foundations/iconography.md | not started |
 | 10 | Foundations: accessibility | foundations/accessibility.md | not started |
