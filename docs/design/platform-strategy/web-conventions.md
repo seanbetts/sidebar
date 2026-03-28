@@ -5,7 +5,7 @@ description: Web app conventions for layout, navigation, settings, and browser-s
 
 | Field | Value |
 |---|---|
-| Status | drafted |
+| Status | approved |
 | Owner | AI coding agent |
 | Outputs | this doc |
 | Dependencies | [overview](./overview) |
