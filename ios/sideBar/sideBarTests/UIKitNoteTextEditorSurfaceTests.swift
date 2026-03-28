@@ -360,6 +360,30 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         let textView = try mountTextView(viewModel: viewModel, autofocusEnabled: false)
         XCTAssertFalse(textView.isFirstResponder)
     }
+
+    func testEditableSurfaceCanDelayAutofocusUntilEnabledOnLaterUpdate() {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let autofocusState = AutofocusState(false)
+        let textView = ReloadTrackingAccessoryTextView()
+        let controller = mountAutofocusSurfaceHost(
+            viewModel: viewModel,
+            autofocusState: autofocusState,
+            textView: textView
+        )
+
+        XCTAssertFalse(textView.isFirstResponder)
+
+        autofocusState.isEnabled = true
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertTrue(textView.isFirstResponder)
+    }
 }
 
 #endif

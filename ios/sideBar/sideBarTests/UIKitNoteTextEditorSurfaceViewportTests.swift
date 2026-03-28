@@ -36,6 +36,22 @@ extension UIKitNoteTextEditorSurfaceTests {
         XCTAssertTrue(textView.superview is UIKitNoteTextEditorContainerView)
     }
 
+    func testMountedSurfaceClipsWithinKeyboardLayoutContainer() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarPresentation: .floatingTopTrailing,
+            height: 320
+        )
+        let container = try XCTUnwrap(textView.superview as? UIKitNoteTextEditorContainerView)
+
+        XCTAssertTrue(container.clipsToBounds)
+    }
+
     func testKeyboardNotificationDoesNotChangeViewportInsetsWhenLayoutOwnsKeyboardSpace() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(

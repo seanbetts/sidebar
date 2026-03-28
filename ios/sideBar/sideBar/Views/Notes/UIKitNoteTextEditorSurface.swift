@@ -20,6 +20,7 @@ final class UIKitNoteTextEditorContainerView: UIView {
         self.textView = textView
         super.init(frame: .zero)
         backgroundColor = .clear
+        clipsToBounds = true
         textView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(textView)
         NSLayoutConstraint.activate([

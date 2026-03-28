@@ -24,6 +24,7 @@ struct AttributedNoteEditorContainer: View {
     @State private var loadedNoteId: String?
     @State private var pendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
     @State private var pendingSelectionViewportAnchorY: CGFloat?
+    @State private var shouldSkipDidBeginEditingPresentationReady = false
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     #if os(iOS)
     @State private var isSoftwareKeyboardVisible = false
@@ -174,7 +175,9 @@ struct AttributedNoteEditorContainer: View {
             viewModel: nativeViewModel,
             maxContentWidth: maxContentWidth,
             isEditable: true,
-            shouldAutofocus: autofocusEnabled,
+            shouldAutofocus: autofocusEnabled
+                && pendingSelectionViewportAnchorY == nil
+                && editorViewModel.isHoldingReadSurfaceDuringEditEntry == false,
             formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
             formattingBarPresentation: resolvedFormattingBarPresentation,
             pendingSelectionTarget: pendingSelectionTarget,
@@ -183,6 +186,11 @@ struct AttributedNoteEditorContainer: View {
                 pendingSelectionTarget = nil
             },
             onDidBeginEditing: { textView in
+                if shouldSkipDidBeginEditingPresentationReady {
+                    shouldSkipDidBeginEditingPresentationReady = false
+                    textView.suppressAutofocusReveal = false
+                    return
+                }
                 let viewportAnchorY = pendingSelectionViewportAnchorY
                 pendingSelectionViewportAnchorY = nil
                 guard let viewportAnchorY else {
@@ -211,6 +219,25 @@ struct AttributedNoteEditorContainer: View {
             },
             onTextViewReady: { textView in
                 editorViewModel.attachNativeEditorTextView(textView)
+                guard autofocusEnabled,
+                      let viewportAnchorY = pendingSelectionViewportAnchorY,
+                      !textView.isFirstResponder,
+                      !textView.hasScheduledAutofocus else { return }
+                textView.suppressAutofocusReveal = true
+                textView.hasScheduledAutofocus = true
+                DispatchQueue.main.async { [weak textView] in
+                    guard let textView else { return }
+                    guard pendingSelectionViewportAnchorY == viewportAnchorY else {
+                        textView.hasScheduledAutofocus = false
+                        return
+                    }
+                    textView.layoutIfNeeded()
+                    textView.positionCurrentSelection(atViewportAnchorY: viewportAnchorY)
+                    textView.hasScheduledAutofocus = false
+                    shouldSkipDidBeginEditingPresentationReady = true
+                    onInitialPresentationReady?()
+                    pendingSelectionViewportAnchorY = nil
+                }
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)

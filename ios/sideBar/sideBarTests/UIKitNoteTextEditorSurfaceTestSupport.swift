@@ -243,6 +243,16 @@ final class ViewportTrackingAccessoryTextView: UIKitNoteTextEditorSurface.Access
 
 @MainActor
 @available(iOS 26.0, *)
+final class AutofocusState: ObservableObject {
+    @Published var isEnabled: Bool
+
+    init(_ isEnabled: Bool) {
+        self.isEnabled = isEnabled
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
 struct FormattingSurfaceHost: View {
     @ObservedObject var presentationState: FormattingPresentationState
     let viewModel: NativeNoteEditorViewModel
@@ -259,6 +269,57 @@ struct FormattingSurfaceHost: View {
             makeTextView: { textView }
         )
     }
+}
+
+@MainActor
+@available(iOS 26.0, *)
+struct AutofocusSurfaceHost: View {
+    @ObservedObject var autofocusState: AutofocusState
+    let viewModel: NativeNoteEditorViewModel
+    let textView: ReloadTrackingAccessoryTextView
+
+    var body: some View {
+        UIKitNoteTextEditorSurface(
+            viewModel: viewModel,
+            maxContentWidth: 360,
+            isEditable: true,
+            shouldAutofocus: autofocusState.isEnabled,
+            formattingBarConfiguration: .disabled,
+            formattingBarPresentation: .floatingTopTrailing,
+            makeTextView: { textView }
+        )
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
+func mountAutofocusSurfaceHost(
+    viewModel: NativeNoteEditorViewModel,
+    autofocusState: AutofocusState,
+    textView: ReloadTrackingAccessoryTextView,
+    width: CGFloat = 360,
+    height: CGFloat = 320
+) -> UIHostingController<AnyView> {
+    let controller = UIHostingController<AnyView>(
+        rootView: AnyView(
+            AutofocusSurfaceHost(
+                autofocusState: autofocusState,
+                viewModel: viewModel,
+                textView: textView
+            )
+        )
+    )
+    let frame = CGRect(x: 0, y: 0, width: width, height: height)
+    let window = makeUIKitNoteTextEditorSurfaceHostingWindow(frame: frame)
+    window.rootViewController = controller
+    window.makeKeyAndVisible()
+    controller.view.frame = frame
+    controller.view.setNeedsLayout()
+    controller.view.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    NotesDetailViewTestRetainer.hostingControllers.append(controller)
+    NotesDetailViewTestRetainer.hostingWindows.append(window)
+    return controller
 }
 
 @available(iOS 26.0, *)
