@@ -104,7 +104,7 @@ Future: keyboard shortcuts for common actions should be documented and implement
 
 ### Settings
 
-Currently uses `.sheet` presentation (same as iPhone). On iPad, the settings sheet could use `presentationSizing` or a popover. This is an open question for Sean.
+Uses `.sheet` presentation, same as iPhone. The sheet is correctly sized on iPad - no change needed.
 
 ### Multitasking
 
@@ -170,7 +170,6 @@ Not confirmed in this audit. If used in panel lists, it should be native SwiftUI
 
 ## Open questions
 
-- Should iPad settings use a different presentation style than iPhone (popover, split view panel, or sidebar entry)?
 - Should the right sidebar be accessible on large iPhones in landscape?
 - What are the iPad multitasking edge cases that need design attention?
 - Is there a pointer/hover spec for iPad when a mouse or trackpad is connected?
