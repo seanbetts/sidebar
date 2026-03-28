@@ -9,7 +9,6 @@ description: iPhone and iPad conventions for navigation, layout, input, and inte
 | Owner | AI coding agent |
 | Outputs | this doc |
 | Dependencies | [overview](./overview) |
-| Blocking approval | none |
 
 ## Purpose
 
