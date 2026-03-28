@@ -225,6 +225,18 @@ def tool_side_effect_events(
                 },
             }
         )
+    elif display_name == "Rename Conversation":
+        events.append(
+            {
+                "type": "conversation_title_updated",
+                "data": {
+                    "id": result_data.get("id"),
+                    "title": result_data.get("title"),
+                    "titleGenerated": result_data.get("titleGenerated"),
+                    "updatedAt": result_data.get("updatedAt"),
+                },
+            }
+        )
     elif display_name == "Memory Tool":
         command = result_data.get("command")
         if command == "create":

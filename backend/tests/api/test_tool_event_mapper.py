@@ -111,3 +111,30 @@ def test_tool_side_effect_events_maps_prompt_preview_workspace_actions() -> None
             },
         }
     ]
+
+
+def test_tool_side_effect_events_maps_conversation_title_updated() -> None:
+    events = tool_side_effect_events(
+        "Rename Conversation",
+        {
+            "success": True,
+            "data": {
+                "id": "conv-1",
+                "title": "Renamed",
+                "titleGenerated": False,
+                "updatedAt": "2026-03-28T12:00:00Z",
+            },
+        },
+    )
+
+    assert events == [
+        {
+            "type": "conversation_title_updated",
+            "data": {
+                "id": "conv-1",
+                "title": "Renamed",
+                "titleGenerated": False,
+                "updatedAt": "2026-03-28T12:00:00Z",
+            },
+        }
+    ]

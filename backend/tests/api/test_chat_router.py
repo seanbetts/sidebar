@@ -254,6 +254,44 @@ def test_stream_chat_forwards_workspace_patch_events(test_client, monkeypatch):
     assert "event: complete" in body
 
 
+def test_stream_chat_forwards_conversation_title_updated_events(
+    test_client, monkeypatch
+):
+    _patch_stream_gateway(
+        monkeypatch,
+        [
+            {
+                "type": "conversation_title_updated",
+                "data": {
+                    "id": "conv-1",
+                    "title": "Renamed",
+                    "titleGenerated": False,
+                    "updatedAt": "2026-03-28T12:00:00Z",
+                },
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 200
+
+    body = response.text
+    assert "event: conversation_title_updated" in body
+    assert '"title": "Renamed"' in body
+    assert '"titleGenerated": false' in body
+    assert '"updatedAt": "2026-03-28T12:00:00Z"' in body
+    assert "event: complete" in body
+
+
 def test_stream_chat_uses_settings_service_resolved_skills(test_client, monkeypatch):
     captured: dict[str, object] = {}
 

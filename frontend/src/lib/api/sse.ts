@@ -20,6 +20,12 @@ export interface SSECallbacks {
 	onWebsiteSaved?: (data: { id?: string; title?: string; url?: string }) => void;
 	onWebsitePinned?: (data: { id?: string; pinned?: boolean }) => void;
 	onWebsiteArchived?: (data: { id?: string; archived?: boolean }) => void;
+	onConversationTitleUpdated?: (data: {
+		id?: string;
+		title?: string;
+		titleGenerated?: boolean;
+		updatedAt?: string;
+	}) => void;
 	onNoteDeleted?: (data: { id?: string }) => void;
 	onWebsiteDeleted?: (data: { id?: string }) => void;
 	onIngestionUpdated?: (data: { file_id?: string }) => void;
@@ -231,6 +237,10 @@ export class SSEClient {
 
 			case 'website_archived':
 				callbacks.onWebsiteArchived?.(data);
+				break;
+
+			case 'conversation_title_updated':
+				callbacks.onConversationTitleUpdated?.(data);
 				break;
 
 			case 'note_deleted':

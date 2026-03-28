@@ -87,6 +87,7 @@ describe('conversationListStore', () => {
 	});
 
 	it('updates conversation title', () => {
+		const updatedAt = '2026-03-28T12:00:00Z';
 		conversationListStore.addConversation({
 			id: '4',
 			title: 'Old',
@@ -96,9 +97,11 @@ describe('conversationListStore', () => {
 			messageCount: 0
 		});
 
-		conversationListStore.updateConversationTitle('4', 'New', true);
+		conversationListStore.updateConversationTitle('4', 'New', false, updatedAt);
 
 		expect(get(conversationListStore).conversations[0].title).toBe('New');
+		expect(get(conversationListStore).conversations[0].titleGenerated).toBe(false);
+		expect(get(conversationListStore).conversations[0].updatedAt).toBe(updatedAt);
 	});
 
 	it('searches conversations with API', async () => {

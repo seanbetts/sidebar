@@ -7,6 +7,7 @@ import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 import { ingestionStore } from '$lib/stores/ingestion';
 import { scratchpadStore } from '$lib/stores/scratchpad';
 import { memoriesStore } from '$lib/stores/memories';
+import { conversationListStore } from '$lib/stores/conversations';
 import { weatherPreferencesStore } from '$lib/stores/weatherPreferences';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
@@ -165,6 +166,18 @@ export function useChatSSE() {
 						websitesStore.updateActiveLocal?.({ archived: data.archived });
 					}
 					dispatchCacheEvent('website.archived');
+				},
+
+				onConversationTitleUpdated: (data) => {
+					if (data?.id && data?.title) {
+						conversationListStore.updateConversationTitle(
+							data.id,
+							data.title,
+							data.titleGenerated ?? false,
+							data.updatedAt
+						);
+					}
+					dispatchCacheEvent('conversation.title_updated');
 				},
 
 				onNoteDeleted: async (data) => {
