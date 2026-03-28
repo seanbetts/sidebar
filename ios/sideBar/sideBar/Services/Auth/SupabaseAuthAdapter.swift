@@ -56,15 +56,15 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     @Published public private(set) var userId: String?
     @Published public private(set) var authState: AuthState = .signedOut
     @Published public private(set) var authError: AuthErrorEvent?
-    @Published public private(set) var pendingVerificationEmail: String?
+    @Published public internal(set) var pendingVerificationEmail: String?
 
     private let stateStore: AuthStateStore
-    private let authClient: SupabaseAuthClientProtocol
+    let authClient: SupabaseAuthClientProtocol
     private var authStateTask: Task<Void, Never>?
     private var refreshInFlightTask: Task<Void, Never>?
     private var signInTask: Task<Void, Error>?
     private let userDefaults: UserDefaults
-    private let logger = Logger(subsystem: "sideBar", category: "Auth")
+    let logger = Logger(subsystem: "sideBar", category: "Auth")
     private let sessionRefreshLeadTime: TimeInterval = 600  // 10 min before expiry
     private let refreshCooldown: TimeInterval = 60
     private let offlineAccessWindow: TimeInterval = 60 * 60 * 24
@@ -211,6 +211,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         defer { signInTask = nil }
         try await task.value
     }
+
     /// Refreshes session only if close to expiry (avoids unnecessary refreshes on foreground)
     public func refreshSessionIfStale() async {
         guard let expiry = lastSessionExpiryDate,
@@ -300,7 +301,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
             return false
         }
     }
-    private func applySession(_ session: SupabaseSessionInfo?) {
+    func applySession(_ session: SupabaseSessionInfo?) {
         guard let session else { return }
         let resolvedExpiry = Self.sessionExpiryDate(from: session)
         if resolvedExpiry <= Date() {
@@ -318,7 +319,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         authState = .active
     }
 
-    private func mapAuthError(_ error: Error) -> AuthAdapterError {
+    func mapAuthError(_ error: Error) -> AuthAdapterError {
         if let authError = error as? AuthAdapterError {
             return authError
         }

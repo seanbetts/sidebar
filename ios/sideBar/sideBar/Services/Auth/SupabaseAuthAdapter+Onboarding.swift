@@ -1,8 +1,9 @@
 import Foundation
+import os
 
 @MainActor
 extension SupabaseAuthAdapter {
-    private static var minimumPasswordLength: Int { 8 }
+    private static let minimumPasswordLength = 8
 
     public func signUp(email: String, password: String) async throws {
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
