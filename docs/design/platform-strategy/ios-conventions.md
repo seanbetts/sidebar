@@ -209,12 +209,6 @@ Confirmed. All panel lists use native SwiftUI `.refreshable`: Chat, Notes, Tasks
 
 ---
 
-## Open questions
-
-None.
-
----
-
 ## Related docs
 
 - `platform-strategy/overview.md`
