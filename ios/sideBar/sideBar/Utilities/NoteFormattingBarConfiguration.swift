@@ -19,6 +19,8 @@ struct NoteFormattingBarConfiguration {
     let isUnorderedListEnabled: Bool
     let isOrderedListActive: Bool
     let isOrderedListEnabled: Bool
+    let isChecklistActive: Bool
+    let isChecklistEnabled: Bool
     let isEnabled: Bool
     let onTextStyleSelection: @MainActor @Sendable (NoteTextStyle) -> Void
     let onBoldTap: @MainActor @Sendable () -> Void
@@ -29,6 +31,7 @@ struct NoteFormattingBarConfiguration {
     let onCodeBlockTap: @MainActor @Sendable () -> Void
     let onUnorderedListTap: @MainActor @Sendable () -> Void
     let onOrderedListTap: @MainActor @Sendable () -> Void
+    let onChecklistTap: @MainActor @Sendable () -> Void
     let onTitleShortcut: @MainActor @Sendable () -> Void
     let onHeadingShortcut: @MainActor @Sendable () -> Void
     let onSubheadingShortcut: @MainActor @Sendable () -> Void
@@ -52,6 +55,8 @@ struct NoteFormattingBarConfiguration {
         isUnorderedListEnabled: Bool = false,
         isOrderedListActive: Bool = false,
         isOrderedListEnabled: Bool = false,
+        isChecklistActive: Bool = false,
+        isChecklistEnabled: Bool = false,
         isEnabled: Bool,
         onTextStyleSelection: @escaping @MainActor @Sendable (NoteTextStyle) -> Void = { _ in },
         onBoldTap: @escaping @MainActor @Sendable () -> Void,
@@ -62,6 +67,7 @@ struct NoteFormattingBarConfiguration {
         onCodeBlockTap: @escaping @MainActor @Sendable () -> Void = {},
         onUnorderedListTap: @escaping @MainActor @Sendable () -> Void = {},
         onOrderedListTap: @escaping @MainActor @Sendable () -> Void = {},
+        onChecklistTap: @escaping @MainActor @Sendable () -> Void = {},
         onTitleShortcut: @escaping @MainActor @Sendable () -> Void = {},
         onHeadingShortcut: @escaping @MainActor @Sendable () -> Void = {},
         onSubheadingShortcut: @escaping @MainActor @Sendable () -> Void = {},
@@ -84,6 +90,8 @@ struct NoteFormattingBarConfiguration {
         self.isUnorderedListEnabled = isUnorderedListEnabled
         self.isOrderedListActive = isOrderedListActive
         self.isOrderedListEnabled = isOrderedListEnabled
+        self.isChecklistActive = isChecklistActive
+        self.isChecklistEnabled = isChecklistEnabled
         self.isEnabled = isEnabled
         self.onTextStyleSelection = onTextStyleSelection
         self.onBoldTap = onBoldTap
@@ -94,6 +102,7 @@ struct NoteFormattingBarConfiguration {
         self.onCodeBlockTap = onCodeBlockTap
         self.onUnorderedListTap = onUnorderedListTap
         self.onOrderedListTap = onOrderedListTap
+        self.onChecklistTap = onChecklistTap
         self.onTitleShortcut = onTitleShortcut
         self.onHeadingShortcut = onHeadingShortcut
         self.onSubheadingShortcut = onSubheadingShortcut

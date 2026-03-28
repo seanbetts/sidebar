@@ -9,6 +9,7 @@ import AppKit
 @available(iOS 26.0, macOS 26.0, *)
 struct SelectableNoteReadView: View {
     typealias ReadActivationTarget = NotesEditorViewModel.PendingEditSelectionTarget
+    typealias ChecklistToggleHandler = (Int, Int) -> Void
 
     let document: NotesSemanticDocument
     let maxContentWidth: CGFloat
@@ -17,6 +18,7 @@ struct SelectableNoteReadView: View {
     var initialViewportAnchorY: CGFloat?
     var onActivateEditing: ((ReadActivationTarget) -> Void)?
     var onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)?
+    var onToggleChecklistItem: ChecklistToggleHandler?
     var onViewportOffsetChange: ((CGPoint) -> Void)?
     var onInitialViewportRestorationApplied: (() -> Void)?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
@@ -29,6 +31,7 @@ struct SelectableNoteReadView: View {
         initialViewportAnchorY: CGFloat? = nil,
         onActivateEditing: ((ReadActivationTarget) -> Void)? = nil,
         onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)? = nil,
+        onToggleChecklistItem: ChecklistToggleHandler? = nil,
         onViewportOffsetChange: ((CGPoint) -> Void)? = nil,
         onInitialViewportRestorationApplied: (() -> Void)? = nil
     ) {
@@ -39,6 +42,7 @@ struct SelectableNoteReadView: View {
         self.initialViewportAnchorY = initialViewportAnchorY
         self.onActivateEditing = onActivateEditing
         self.onActivateEditingWithViewport = onActivateEditingWithViewport
+        self.onToggleChecklistItem = onToggleChecklistItem
         self.onViewportOffsetChange = onViewportOffsetChange
         self.onInitialViewportRestorationApplied = onInitialViewportRestorationApplied
     }
@@ -58,12 +62,14 @@ struct SelectableNoteReadView: View {
                 from: document,
                 baseFontSize: baseFontSize
             ),
+            document: document,
             maxReadableContentWidth: maxContentWidth,
             initialViewportOffset: initialViewportOffset,
             initialViewportAnchorTarget: initialViewportAnchorTarget,
             initialViewportAnchorY: initialViewportAnchorY,
             onActivateEditing: onActivateEditing,
             onActivateEditingWithViewport: onActivateEditingWithViewport,
+            onToggleChecklistItem: onToggleChecklistItem,
             onViewportOffsetChange: onViewportOffsetChange,
             onInitialViewportRestorationApplied: onInitialViewportRestorationApplied
         )
@@ -328,6 +334,19 @@ struct SelectableNoteReadView: View {
         attributedContent: NSAttributedString,
         onActivateEditing: ((ReadActivationTarget) -> Void)? = nil
     ) -> NSTextView {
+        makePlatformTextView(
+            attributedContent: attributedContent,
+            document: NotesSemanticDocument(version: NotesSemanticDocument.currentVersion, blocks: []),
+            onActivateEditing: onActivateEditing
+        )
+    }
+
+    static func makePlatformTextView(
+        attributedContent: NSAttributedString,
+        document: NotesSemanticDocument,
+        onActivateEditing: ((ReadActivationTarget) -> Void)? = nil,
+        onToggleChecklistItem: ChecklistToggleHandler? = nil
+    ) -> NSTextView {
         let textView = SelectableNoteReadTextView()
         textView.drawsBackground = false
         textView.isEditable = false
@@ -349,7 +368,9 @@ struct SelectableNoteReadView: View {
             .foregroundColor: NSColor.linkColor,
             .underlineStyle: NSUnderlineStyle.single.rawValue
         ]
+        textView.document = document
         textView.onActivateEditing = onActivateEditing
+        textView.onToggleChecklistItem = onToggleChecklistItem
         textView.installActivationClickRecognizerIfNeeded()
         textView.textStorage?.setAttributedString(attributedContent)
         return textView
@@ -383,25 +404,30 @@ struct SelectableNoteReadView: View {
         return min(max(insertionIndex, 0), plainText.length)
     }
     #endif
+
 }
 
 #if os(macOS)
 @available(iOS 26.0, macOS 26.0, *)
 private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     let attributedContent: NSAttributedString
+    let document: NotesSemanticDocument
     let maxReadableContentWidth: CGFloat
     let initialViewportOffset: CGPoint?
     let initialViewportAnchorTarget: SelectableNoteReadView.ReadActivationTarget?
     let initialViewportAnchorY: CGFloat?
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     let onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
+    let onToggleChecklistItem: SelectableNoteReadView.ChecklistToggleHandler?
     let onViewportOffsetChange: ((CGPoint) -> Void)?
     let onInitialViewportRestorationApplied: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let textView = SelectableNoteReadView.makePlatformTextView(
             attributedContent: attributedContent,
-            onActivateEditing: onActivateEditing
+            document: document,
+            onActivateEditing: onActivateEditing,
+            onToggleChecklistItem: onToggleChecklistItem
         )
         guard let readTextView = textView as? SelectableNoteReadTextView else {
             preconditionFailure("Expected SelectableNoteReadTextView for macOS read surface")
@@ -422,7 +448,9 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
             return
         }
         textView.maxReadableContentWidth = maxReadableContentWidth
+        textView.document = document
         textView.onActivateEditing = onActivateEditing
+        textView.onToggleChecklistItem = onToggleChecklistItem
         if textView.textStorage?.isEqual(to: attributedContent) == false {
             textView.textStorage?.setAttributedString(attributedContent)
         }
@@ -432,7 +460,9 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
         guard let textView = scrollView.documentView as? SelectableNoteReadTextView else {
             return
         }
+        textView.document = NotesSemanticDocument(version: NotesSemanticDocument.currentVersion, blocks: [])
         textView.onActivateEditing = nil
+        textView.onToggleChecklistItem = nil
         scrollView.documentView = nil
     }
 }
@@ -444,7 +474,9 @@ private final class SelectableNoteReadTextView: NSTextView {
         height: NoteTextLayout.verticalPadding
     )
 
+    var document = NotesSemanticDocument(version: NotesSemanticDocument.currentVersion, blocks: [])
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
+    var onToggleChecklistItem: SelectableNoteReadView.ChecklistToggleHandler?
     var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
         didSet { needsLayout = true }
     }
@@ -503,6 +535,14 @@ private final class SelectableNoteReadTextView: NSTextView {
     }
 
     private func activateEditingIfNeeded(at point: NSPoint) {
+        if let checklistToggleTarget = checklistToggleTarget(at: point),
+           let onToggleChecklistItem {
+            lastActivationTimestamp = ProcessInfo.processInfo.systemUptime
+            DispatchQueue.main.async {
+                onToggleChecklistItem(checklistToggleTarget.blockIndex, checklistToggleTarget.itemIndex)
+            }
+            return
+        }
         let target = activationTarget(at: point)
         let canTriggerActivationNow = canTriggerActivationNow
         guard let onActivateEditing, let target, canTriggerActivationNow else { return }
@@ -574,17 +614,49 @@ private final class SelectableNoteReadTextView: NSTextView {
               let characterOffset = SelectableNoteReadView.characterOffsetForEditingActivation(in: self, at: point) else { return nil }
         return .characterOffset(characterOffset)
     }
+
+    private func checklistToggleTarget(at point: NSPoint) -> SelectableNoteReadView.ChecklistToggleTarget? {
+        guard linkAttribute(at: point) == nil,
+              let characterOffset = SelectableNoteReadView.characterOffsetForEditingActivation(in: self, at: point),
+              let target = SelectableNoteReadView.checklistToggleTarget(
+                in: document,
+                characterOffset: characterOffset
+              ),
+              let checkboxRect = checkboxRect(for: target.checkboxRange)
+        else { return nil }
+        return checkboxRect.insetBy(dx: -1, dy: -1).contains(point) ? target : nil
+    }
+
+    private func checkboxRect(for characterRange: NSRange) -> NSRect? {
+        guard let layoutManager, let textContainer else { return nil }
+        textContainer.containerSize = NSSize(
+            width: bounds.width,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        layoutManager.ensureLayout(for: textContainer)
+        let glyphRange = layoutManager.glyphRange(
+            forCharacterRange: characterRange,
+            actualCharacterRange: nil
+        )
+        guard glyphRange.length > 0 else { return nil }
+        var rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+        rect.origin.x += textContainerInset.width
+        rect.origin.y += textContainerInset.height
+        return rect
+    }
 }
 #elseif os(iOS)
 @available(iOS 26.0, macOS 26.0, *)
 private struct PlatformSelectableNoteReadView: UIViewRepresentable {
     let attributedContent: NSAttributedString
+    let document: NotesSemanticDocument
     let maxReadableContentWidth: CGFloat
     let initialViewportOffset: CGPoint?
     let initialViewportAnchorTarget: SelectableNoteReadView.ReadActivationTarget?
     let initialViewportAnchorY: CGFloat?
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     let onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
+    let onToggleChecklistItem: SelectableNoteReadView.ChecklistToggleHandler?
     let onViewportOffsetChange: ((CGPoint) -> Void)?
     let onInitialViewportRestorationApplied: (() -> Void)?
 
@@ -600,6 +672,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
         textView.textFormattingConfiguration = nil
         textView.textColor = .label
         textView.textContainer.lineFragmentPadding = 0
+        textView.document = document
         textView.maxReadableContentWidth = maxReadableContentWidth
         textView.initialViewportOffset = initialViewportOffset
         textView.initialViewportAnchorTarget = initialViewportAnchorTarget
@@ -611,26 +684,31 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
         ]
         textView.onActivateEditing = onActivateEditing
         textView.onActivateEditingWithViewport = onActivateEditingWithViewport
+        textView.onToggleChecklistItem = onToggleChecklistItem
         textView.onViewportOffsetChange = onViewportOffsetChange
         textView.onInitialViewportRestorationApplied = onInitialViewportRestorationApplied
         textView.attributedText = attributedContent
         containerView.onActivateEditing = onActivateEditing
         containerView.onActivateEditingWithViewport = onActivateEditingWithViewport
+        containerView.onToggleChecklistItem = onToggleChecklistItem
         return containerView
     }
 
     func updateUIView(_ containerView: SelectableNoteReadContainerView, context: Context) {
         let readTextView = containerView.textView
+        readTextView.document = document
         readTextView.maxReadableContentWidth = maxReadableContentWidth
         readTextView.initialViewportOffset = initialViewportOffset
         readTextView.initialViewportAnchorTarget = initialViewportAnchorTarget
         readTextView.initialViewportAnchorY = initialViewportAnchorY
         readTextView.onActivateEditing = onActivateEditing
         readTextView.onActivateEditingWithViewport = onActivateEditingWithViewport
+        readTextView.onToggleChecklistItem = onToggleChecklistItem
         readTextView.onViewportOffsetChange = onViewportOffsetChange
         readTextView.onInitialViewportRestorationApplied = onInitialViewportRestorationApplied
         containerView.onActivateEditing = onActivateEditing
         containerView.onActivateEditingWithViewport = onActivateEditingWithViewport
+        containerView.onToggleChecklistItem = onToggleChecklistItem
         if readTextView.attributedText.isEqual(to: attributedContent) == false {
             readTextView.attributedText = attributedContent
         }
@@ -646,8 +724,10 @@ private final class SelectableNoteReadTextView: UITextView {
         right: NoteTextLayout.horizontalPadding
     )
 
+    var document = NotesSemanticDocument(version: NotesSemanticDocument.currentVersion, blocks: [])
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     var onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
+    var onToggleChecklistItem: SelectableNoteReadView.ChecklistToggleHandler?
     var onViewportOffsetChange: ((CGPoint) -> Void)?
     var onInitialViewportRestorationApplied: (() -> Void)?
     var initialViewportOffset: CGPoint? {
@@ -993,6 +1073,18 @@ private final class SelectableNoteReadTextView: UITextView {
         return .characterOffset(characterOffset)
     }
 
+    func checklistToggleTarget(at point: CGPoint) -> SelectableNoteReadView.ChecklistToggleTarget? {
+        guard linkAttribute(at: point) == nil,
+              let characterOffset = SelectableNoteReadView.characterOffsetForEditingActivation(in: self, at: point),
+              let target = SelectableNoteReadView.checklistToggleTarget(
+                in: document,
+                characterOffset: characterOffset
+              ),
+              let checkboxRect = checkboxRect(for: target.checkboxRange)
+        else { return nil }
+        return checkboxRect.insetBy(dx: -1, dy: -1).contains(point) ? target : nil
+    }
+
     func activationViewportAnchorY(
         at point: CGPoint,
         target: SelectableNoteReadView.ReadActivationTarget
@@ -1003,6 +1095,21 @@ private final class SelectableNoteReadTextView: UITextView {
             fallbackPoint: point
         )
     }
+
+    private func checkboxRect(for characterRange: NSRange) -> CGRect? {
+        var combinedRect: CGRect?
+        for characterIndex in characterRange.location..<(characterRange.location + characterRange.length) {
+            guard let start = position(from: beginningOfDocument, offset: characterIndex),
+                  let end = position(from: start, offset: 1),
+                  let textRange = textRange(from: start, to: end) else {
+                return nil
+            }
+            let characterRect = firstRect(for: textRange)
+            guard characterRect.isNull == false, characterRect.isEmpty == false else { return nil }
+            combinedRect = combinedRect?.union(characterRect) ?? characterRect
+        }
+        return combinedRect
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -1010,6 +1117,7 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
     let textView = SelectableNoteReadTextView()
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     var onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
+    var onToggleChecklistItem: SelectableNoteReadView.ChecklistToggleHandler?
 
     private lazy var activationTapRecognizer: UITapGestureRecognizer = {
         let recognizer = UITapGestureRecognizer(
@@ -1045,6 +1153,11 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
     private func handleActivationTapGesture(_ recognizer: UITapGestureRecognizer) {
         guard recognizer.state == .ended else { return }
         let point = recognizer.location(in: textView)
+        if let checklistToggleTarget = textView.checklistToggleTarget(at: point),
+           let onToggleChecklistItem {
+            onToggleChecklistItem(checklistToggleTarget.blockIndex, checklistToggleTarget.itemIndex)
+            return
+        }
         guard let target = textView.activationTarget(at: point) else { return }
         if let onActivateEditingWithViewport {
             onActivateEditingWithViewport(

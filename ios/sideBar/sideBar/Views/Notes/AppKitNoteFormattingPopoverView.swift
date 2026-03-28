@@ -198,6 +198,16 @@ private extension AppKitNoteFormattingPopoverView {
             orderedListAction = nil
         }
 
+        let checklistAction: (@MainActor @Sendable () -> Void)?
+        if currentConfiguration.isChecklistEnabled {
+            checklistAction = { [weak self] in
+                self?.currentConfiguration.onChecklistTap()
+                self?.onDismissRequested()
+            }
+        } else {
+            checklistAction = nil
+        }
+
         return [
             ("note-formatting-future-list-group", [
                 InlineActionItem(
@@ -210,7 +220,11 @@ private extension AppKitNoteFormattingPopoverView {
                     symbol: "list.number",
                     action: orderedListAction
                 ),
-                InlineActionItem(identifier: "note-formatting-checklist", symbol: "checklist", action: nil)
+                InlineActionItem(
+                    identifier: "note-formatting-checklist",
+                    symbol: "checklist",
+                    action: checklistAction
+                )
             ]),
             ("note-formatting-future-blockquote-group", [
                 InlineActionItem(identifier: "note-formatting-blockquote", symbol: "text.quote", action: nil)
@@ -452,6 +466,11 @@ private extension AppKitNoteFormattingPopoverView {
                 "note-formatting-ordered-list",
                 currentConfiguration.isOrderedListActive,
                 currentConfiguration.isOrderedListEnabled
+            ),
+            (
+                "note-formatting-checklist",
+                currentConfiguration.isChecklistActive,
+                currentConfiguration.isChecklistEnabled
             )
         ]
 

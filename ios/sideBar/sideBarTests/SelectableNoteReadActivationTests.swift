@@ -115,9 +115,8 @@ private func makeReadActivationTextView(
     frame: NSRect,
     onActivateEditing: @escaping (NotesEditorViewModel.PendingEditSelectionTarget) -> Void
 ) throws -> NSTextView {
-    let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
     let attributed = SelectableNoteReadView.makePlatformAttributedContent(
-        from: document,
+        from: NotesSemanticDocumentProjection.document(fromPlainText: plainText),
         baseFontSize: 16
     )
     let textView = SelectableNoteReadView.makePlatformTextView(
