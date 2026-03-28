@@ -148,24 +148,26 @@ On web, text is defined as `--foreground` (oklch near-black/near-white) and `--m
     <div style={{fontSize:"12px",fontWeight:"600",color:"#fff"}}>actionDestructive / error</div>
     <div style={{fontSize:"11px",color:"rgba(255,255,255,0.7)",fontFamily:"monospace",marginTop:"2px"}}>#FF3B30</div>
   </div>
-  <div style={{flex:1,background:"#f5f5f5",padding:"14px",textAlign:"center",borderLeft:"1px solid #e0e0e0"}}>
-    <div style={{fontSize:"12px",fontWeight:"600",color:"#333"}}>success / warning</div>
-    <div style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",marginTop:"2px"}}>neutral</div>
+  <div style={{flex:1,background:"#16a34a",padding:"14px",textAlign:"center",borderLeft:"1px solid rgba(255,255,255,0.2)"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#fff"}}>success</div>
+    <div style={{fontSize:"11px",color:"rgba(255,255,255,0.7)",fontFamily:"monospace",marginTop:"2px"}}>#16a34a</div>
+  </div>
+  <div style={{flex:1,background:"#d97706",padding:"14px",textAlign:"center",borderLeft:"1px solid rgba(255,255,255,0.2)"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#fff"}}>warning</div>
+    <div style={{fontSize:"11px",color:"rgba(255,255,255,0.7)",fontFamily:"monospace",marginTop:"2px"}}>#d97706</div>
   </div>
 </div>
 
-| Role | Semantic token | Current value | Notes |
+| Role | Semantic token | Value | Notes |
 |---|---|---|---|
 | Selection highlight | `selection` | `Color.accentColor.opacity(0.18)` | Active row, selected state |
-| Action / interactive | `actionPrimary` | `Color.blue` (system) | Links, primary buttons — approx `#007AFF` on iOS |
-| Destructive action | `actionDestructive` | `Color.red` (system) | Delete, danger actions — approx `#FF3B30` on iOS |
-| Error indicator | `error` | `Color.red` (system) | Error states, validation |
-| Success indicator | `success` | `textPrimary` (neutral) | No green badge — communicated via text and icons |
-| Warning indicator | `warning` | `textSecondary` (neutral) | No amber badge — communicated via text and icons |
+| Action / interactive | `actionPrimary` | `Color.blue` (system, ≈ `#007AFF`) | Links, primary buttons |
+| Destructive action | `actionDestructive` | `Color.red` (system, ≈ `#FF3B30`) | Delete, danger actions |
+| Error indicator | `error` | `Color.red` (system, ≈ `#FF3B30`) | Error states, validation |
+| Success indicator | `success` | `#16a34a` (light) / `#4ade80` (dark) | Confirmations, completed states |
+| Warning indicator | `warning` | `#d97706` (light) / `#fbbf24` (dark) | Caution states, non-critical alerts |
 
-**Note on success and warning**: sideBar does not use traffic-light color coding for status. Success and warning states are communicated through label text and icons, not color alone.
-
-**Note on actionPrimary**: `Color.blue` uses the system accent color, so it respects user and OS accent preferences. If sideBar adopts a custom accent in the future, this token is the right place to define it.
+**Note on actionPrimary**: `Color.blue` uses the system accent color, respecting user and OS accent preferences. If sideBar adopts a custom accent in the future, this token is the right place to define it.
 
 ---
 
@@ -209,7 +211,7 @@ UIKit semantic colors adapt per OS and accessibility settings. The migration rep
 | `--border` | `oklch(0.922 0 0)` | `oklch(0.922 0 0)` | `oklch(1 0 0 / 10%)` | `oklch(1 0 0 / 10%)` |
 | `--input` | `oklch(0.922 0 0)` | `oklch(0.922 0 0)` | `oklch(1 0 0 / 15%)` | `oklch(1 0 0 / 15%)` |
 
-**Key delta**: The dark mode background. Current web `--background` dark is `oklch(0.145 0 0)` (~`#1a1a1a`). The canonical dark background is `#0a0a0a` (~`oklch(0.065 0 0)`). All dark surface values are shifted by roughly the same offset. Light mode values are already correct.
+**Key delta**: The dark mode background. Current web `--background` dark is `oklch(0.145 0 0)` (≈ `#1a1a1a`). The canonical dark background is `#0a0a0a` (≈ `oklch(0.065 0 0)`). All dark surface values are shifted by roughly the same offset. Light mode values are already correct.
 
 **Priority**: Medium. Align dark mode values during the next web pass.
 
