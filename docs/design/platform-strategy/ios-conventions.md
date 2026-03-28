@@ -58,7 +58,9 @@ Settings presented as `.sheet`. Grab indicator visible (`.presentationDragIndica
 
 ### Scratchpad
 
-Scratchpad is accessible on iPhone via a button in the Chat view navigation bar (`ChatView.swift`). It presents as a `.sheet`. There is no global entry point for scratchpad on iPhone outside of Chat. The best UX for scratchpad on compact devices is an open question.
+Scratchpad on iPhone is currently only accessible from the navigation bar of `ChatView` — i.e., only when a conversation is open. It is not accessible from the Chat section list, from any other section, or from a persistent entry point. The button is hidden when no conversation is open.
+
+This is a significant discoverability gap. The best UX for scratchpad on iPhone is an open design question.
 
 ### Layout
 
@@ -203,7 +205,7 @@ Confirmed. All panel lists use native SwiftUI `.refreshable`: Chat, Notes, Tasks
 
 ## Open questions
 
-- Scratchpad UX: the best entry point for scratchpad on iPhone beyond the Chat nav bar button is undecided. Should scratchpad be accessible from other sections on iPhone, or is the Chat nav bar button sufficient?
+- Scratchpad UX: scratchpad is only accessible on iPhone when inside an open conversation (`ChatView` nav bar). There is no persistent entry point. Options include: a floating button visible across sections, a tab bar item, the floating action dock, or keeping it conversation-only. What is the intended iPhone UX for scratchpad?
 
 ---
 
