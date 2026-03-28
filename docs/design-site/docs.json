@@ -35,6 +35,7 @@
         "pages": [
           "foundations/overview",
           "foundations/colour",
+          "foundations/token-model",
           "foundations/materials-and-appearance"
         ]
       },

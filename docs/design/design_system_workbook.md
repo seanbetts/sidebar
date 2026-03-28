@@ -11,7 +11,7 @@ description: Working brief for the internal sideBar design-system documentation 
 | 2 | System inheritance | [system-inheritance.md](./system-inheritance) | approved |
 | 3 | Platform strategy | [overview](./platform-strategy/overview), [iOS](./platform-strategy/ios-conventions), [macOS](./platform-strategy/macos-conventions), [web](./platform-strategy/web-conventions) | approved |
 | 4 | Foundations: colour | [foundations/colour.md](./foundations/colour) | draft |
-| 5 | Token model | foundations/token-model.md | not started |
+| 5 | Token model | [foundations/token-model.md](./foundations/token-model) | draft |
 | 6 | Accessibility | foundations/accessibility.md | not started |
 | 7 | Voice, character, and content | [voice-and-content.md](./voice-and-content) | approved |
 | 8 | Component library | components/ | not started |
