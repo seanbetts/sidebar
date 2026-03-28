@@ -3,15 +3,15 @@ title: Current UI Audit
 description: Draft inventory of the main sideBar screens, navigation, flows, and current UI patterns.
 ---
 
-- Status: drafted
-- Owner: AI coding agent
-- Inputs needed: codebase inspection (complete), product docs (read), screenshots (not available)
-- Outputs: this doc
-- Dependencies: none
-- Codebase review required: yes (complete)
-- Human judgement required: yes - to confirm product intent behind patterns flagged as unclear
-
----
+| Field | Value |
+|---|---|
+| Status | drafted |
+| Owner | AI coding agent |
+| Inputs needed | codebase inspection (complete), product docs (read), screenshots (not available) |
+| Outputs | this doc |
+| Dependencies | none |
+| Codebase review required | yes (complete) |
+| Human judgement required | yes - to confirm product intent behind patterns flagged as unclear |
 
 ## Purpose
 

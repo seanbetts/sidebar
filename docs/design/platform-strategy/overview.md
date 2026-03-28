@@ -3,15 +3,15 @@ title: Platform Strategy Overview
 description: Draft cross-platform strategy for keeping sideBar coherent across iPhone, iPad, Mac, and web.
 ---
 
-- Status: drafted
-- Owner: AI coding agent
-- Inputs needed: codebase inspection (complete), Sean's platform priorities
-- Outputs: this doc + ios-conventions.md + macos-conventions.md + web-conventions.md
-- Dependencies: principles.md, system-inheritance.md
-- Codebase review required: yes (complete)
-- Human judgement required: yes - Sean to confirm platform differentiation intent
-
----
+| Field | Value |
+|---|---|
+| Status | drafted |
+| Owner | AI coding agent |
+| Inputs needed | codebase inspection (complete), Sean's platform priorities |
+| Outputs | this doc + ios-conventions.md + macos-conventions.md + web-conventions.md |
+| Dependencies | [principles](../principles), [system-inheritance](../system-inheritance) |
+| Codebase review required | yes (complete) |
+| Human judgement required | yes - Sean to confirm platform differentiation intent |
 
 ## Purpose
 

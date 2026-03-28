@@ -3,15 +3,15 @@ title: System Inheritance
 description: Draft policy for what sideBar inherits from Apple frameworks and where it intentionally departs from native defaults.
 ---
 
-- Status: drafted
-- Owner: AI coding agent
-- Inputs needed: codebase inspection (complete), Apple HIG reference, Sean's intent on customisation areas
-- Outputs: this doc
-- Dependencies: principles.md, system-framework-usage-audit.md
-- Codebase review required: yes (complete)
-- Human judgement required: yes - Sean to confirm customisation intent in flagged areas
-
----
+| Field | Value |
+|---|---|
+| Status | drafted |
+| Owner | AI coding agent |
+| Inputs needed | codebase inspection (complete), Apple HIG reference, Sean's intent on customisation areas |
+| Outputs | this doc |
+| Dependencies | [principles](./principles), [system-framework-usage-audit](./audits/system-framework-usage-audit) |
+| Codebase review required | yes (complete) |
+| Human judgement required | yes - Sean to confirm customisation intent in flagged areas |
 
 ## Purpose
 

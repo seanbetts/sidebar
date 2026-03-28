@@ -3,15 +3,15 @@ title: Web Conventions
 description: Placeholder for future browser-specific design conventions for sideBar.
 ---
 
-- Status: not started
-- Owner: both
-- Inputs needed: web frontend codebase inspection (not done), Sean's web design intent
-- Outputs: this doc (when complete)
-- Dependencies: platform-strategy/overview.md
-- Codebase review required: yes (not yet done)
-- Human judgement required: yes
-
----
+| Field | Value |
+|---|---|
+| Status | not started |
+| Owner | both |
+| Inputs needed | web frontend codebase inspection (not done), Sean's web design intent |
+| Outputs | this doc (when complete) |
+| Dependencies | [overview](./overview) |
+| Codebase review required | yes (not yet done) |
+| Human judgement required | yes |
 
 ## Purpose
 

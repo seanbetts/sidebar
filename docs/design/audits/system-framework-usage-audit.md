@@ -3,15 +3,15 @@ title: System Framework Usage Audit
 description: Draft audit of where sideBar uses native Apple frameworks well and where custom UI departs from them.
 ---
 
-- Status: drafted
-- Owner: AI coding agent
-- Inputs needed: codebase inspection (complete)
-- Outputs: this doc
-- Dependencies: current-ui-audit.md
-- Codebase review required: yes (complete)
-- Human judgement required: yes - to decide where to adopt more native components vs retain custom implementations
-
----
+| Field | Value |
+|---|---|
+| Status | drafted |
+| Owner | AI coding agent |
+| Inputs needed | codebase inspection (complete) |
+| Outputs | this doc |
+| Dependencies | [current-ui-audit](./current-ui-audit) |
+| Codebase review required | yes (complete) |
+| Human judgement required | yes - to decide where to adopt more native components vs retain custom implementations |
 
 ## Purpose
 

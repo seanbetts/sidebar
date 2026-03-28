@@ -3,15 +3,15 @@ title: Component Inventory
 description: Draft inventory of reusable iOS and macOS UI components in the sideBar codebase.
 ---
 
-- Status: drafted
-- Owner: AI coding agent
-- Inputs needed: codebase inspection (complete)
-- Outputs: this doc
-- Dependencies: current-ui-audit.md
-- Codebase review required: yes (complete)
-- Human judgement required: yes - to classify intent of each component and decide which should be fully documented next
-
----
+| Field | Value |
+|---|---|
+| Status | drafted |
+| Owner | AI coding agent |
+| Inputs needed | codebase inspection (complete) |
+| Outputs | this doc |
+| Dependencies | [current-ui-audit](./current-ui-audit) |
+| Codebase review required | yes (complete) |
+| Human judgement required | yes - to classify intent of each component and decide which should be fully documented next |
 
 ## Purpose
 

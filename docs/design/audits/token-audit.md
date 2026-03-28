@@ -3,15 +3,15 @@ title: Token Audit
 description: Draft audit of the current token model and token-like values in the sideBar codebase.
 ---
 
-- Status: drafted
-- Owner: AI coding agent
-- Inputs needed: codebase inspection (complete)
-- Outputs: this doc
-- Dependencies: current-ui-audit.md
-- Codebase review required: yes (complete)
-- Human judgement required: yes - to decide which hard-coded values become tokens and where the token system should be extended
-
----
+| Field | Value |
+|---|---|
+| Status | drafted |
+| Owner | AI coding agent |
+| Inputs needed | codebase inspection (complete) |
+| Outputs | this doc |
+| Dependencies | [current-ui-audit](./current-ui-audit) |
+| Codebase review required | yes (complete) |
+| Human judgement required | yes - to decide which hard-coded values become tokens and where the token system should be extended |
 
 ## Purpose
 

@@ -3,15 +3,15 @@ title: Design Principles
 description: Draft practical decision rules for what good product design looks like in sideBar.
 ---
 
-- Status: drafted
-- Owner: both (agent draft, Sean to review and approve)
-- Inputs needed: workbook, product docs, codebase inspection (all read), Sean's product intent
-- Outputs: this doc
-- Dependencies: current-ui-audit.md (complete)
-- Codebase review required: yes (complete)
-- Human judgement required: yes - Sean should confirm, extend, or revise the principles based on product intent
-
----
+| Field | Value |
+|---|---|
+| Status | drafted |
+| Owner | both (agent draft, Sean to review and approve) |
+| Inputs needed | workbook, product docs, codebase inspection (all read), Sean's product intent |
+| Outputs | this doc |
+| Dependencies | [current-ui-audit](./audits/current-ui-audit) (complete) |
+| Codebase review required | yes (complete) |
+| Human judgement required | yes - Sean should confirm, extend, or revise the principles based on product intent |
 
 ## Purpose
 

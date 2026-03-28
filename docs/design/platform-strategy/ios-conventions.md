@@ -3,15 +3,15 @@ title: iOS Conventions
 description: Draft iPhone and iPad conventions for navigation, layout, input, and interaction in sideBar.
 ---
 
-- Status: drafted
-- Owner: AI coding agent
-- Inputs needed: codebase inspection (complete), Sean's input on iPhone/iPad intent
-- Outputs: this doc
-- Dependencies: platform-strategy/overview.md
-- Codebase review required: yes (complete)
-- Human judgement required: yes - iPad-specific decisions and the future of Liquid Glass adoption
-
----
+| Field | Value |
+|---|---|
+| Status | drafted |
+| Owner | AI coding agent |
+| Inputs needed | codebase inspection (complete), Sean's input on iPhone/iPad intent |
+| Outputs | this doc |
+| Dependencies | [overview](./overview) |
+| Codebase review required | yes (complete) |
+| Human judgement required | yes - iPad-specific decisions and the future of Liquid Glass adoption |
 
 ## Purpose
 
