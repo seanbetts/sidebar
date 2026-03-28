@@ -11,8 +11,10 @@ skill_id: conversations
 
 The Conversations skill helps sideBar find past chats and rename them when
 you ask. It is designed for explicit conversation-management requests, so
-sideBar does not rename chats on its own. If more than one conversation
-matches what you asked for, sideBar asks a follow-up instead of guessing.
+sideBar does not rename chats on its own. It can rename the current chat or
+another saved chat if your request makes the target clear. If more than one
+conversation matches what you asked for, sideBar asks a follow-up instead of
+guessing.
 
 ## Actions
 
@@ -25,9 +27,9 @@ matches what you asked for, sideBar asks a follow-up instead of guessing.
 
 When your request is about finding or renaming a chat. Common triggers:
 
+- Asking sideBar to rename the current conversation
 - Looking for an older conversation by title
 - Looking for a conversation by what it was about
-- Renaming the current conversation
 - Renaming another saved conversation by title or context
 
 ## Requirements

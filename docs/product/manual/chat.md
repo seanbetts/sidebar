@@ -23,6 +23,11 @@ you can tell them apart at a glance. They're organised by date and you can tap
 any conversation to open it. Swipe right on any conversation to rename it, or
 swipe left to delete it.
 
+You can also ask sideBar to rename a conversation for you. For now, it only
+does this when you ask directly. That can be the current chat or another saved
+chat by title or context. If more than one chat seems to match, sideBar asks a
+follow-up before it renames anything.
+
 To start a fresh conversation, tap **New** and you're off!
 
 ## Sending Messages

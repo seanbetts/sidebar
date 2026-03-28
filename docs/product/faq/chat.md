@@ -50,6 +50,13 @@ right ones automatically based on what you're asking.
 Tap the compose button in the Chat view. Previous conversations are saved and
 you can swipe to delete ones you no longer need.
 
+## Can sideBar rename a conversation for me?
+
+Yes. Ask directly and sideBar can rename the current conversation or another
+saved conversation by title or context. For now, it only renames conversations
+when you ask. If your request could match more than one chat, sideBar asks a
+follow-up instead of guessing.
+
 ## Can I attach files to a chat message?
 
 Yes. Tap the attachment button in the chat input to attach a note, file,
