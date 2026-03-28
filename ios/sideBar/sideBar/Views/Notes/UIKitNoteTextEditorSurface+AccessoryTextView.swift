@@ -41,14 +41,6 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
     }
 
     func positionCurrentSelection(atViewportAnchorY viewportAnchorY: CGFloat) {
-        if NotesIOSParityDebugTrace.isEnabled {
-            NotesIOSParityDebugTrace.log(
-                "UIKitNoteTextEditorSurface.AccessoryTextView.positionCurrentSelection.begin",
-                details:
-                    "viewportAnchorY=\(String(format: "%.2f", viewportAnchorY)) "
-                    + NotesIOSParityDebugTrace.textViewSummary(self)
-            )
-        }
         guard selectedRange.location != NSNotFound else { return }
         guard let selectionRect = selectionRectInContentCoordinates(for: selectedRange) else {
             scrollCurrentSelectionIntoView()
@@ -65,14 +57,6 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
 
         if isCurrentSelectionIntersectingViewport() == false {
             scrollSelectionRectIntoView(selectionRect)
-        }
-        if NotesIOSParityDebugTrace.isEnabled {
-            NotesIOSParityDebugTrace.log(
-                "UIKitNoteTextEditorSurface.AccessoryTextView.positionCurrentSelection.end",
-                details:
-                    "viewportAnchorY=\(String(format: "%.2f", viewportAnchorY)) "
-                    + NotesIOSParityDebugTrace.textViewSummary(self)
-            )
         }
     }
 
