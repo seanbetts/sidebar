@@ -10,8 +10,6 @@ description: Placeholder for implementation guidance that the coding agent shoul
 | Outputs | this doc and agent guidance docs |
 | Dependencies | [principles](../principles), [system-inheritance](../system-inheritance), [foundations/overview](../foundations/overview), [components/overview](../components/overview) |
 
----
-
 ## Purpose
 
 Translate the design system into practical implementation rules that the coding agent can apply reliably.

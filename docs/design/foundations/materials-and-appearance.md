@@ -10,8 +10,6 @@ description: Draft guidance for surface styling, native materials, and appearanc
 | Outputs | this doc |
 | Dependencies | [system-inheritance](../system-inheritance), [ios-conventions](../platform-strategy/ios-conventions), [macos-conventions](../platform-strategy/macos-conventions) |
 
----
-
 ## Purpose
 
 Define how sideBar handles surface styling, native materials, and appearance layering.

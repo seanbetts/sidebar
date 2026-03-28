@@ -10,8 +10,6 @@ description: Placeholder for the core visual foundations of the sideBar design s
 | Outputs | this doc and child foundation docs |
 | Dependencies | [principles](../principles), [system-inheritance](../system-inheritance), [token-audit](../audits/token-audit) |
 
----
-
 ## Purpose
 
 Define the foundational design primitives that future components and patterns should use.
