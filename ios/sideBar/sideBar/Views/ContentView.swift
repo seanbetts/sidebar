@@ -47,6 +47,9 @@ public struct ContentView: View {
     #endif
     @State var hasCompletedInitialSetup = false
     @State var backgroundedAt: Date?
+    @State private var showOnboarding = false
+    @State private var suppressAutomaticOnboarding = false
+    @AppStorage(AppStorageKeys.onboardingStatus) private var onboardingStatusRaw = OnboardingStatus.notStarted.rawValue
 
     /// Grace period before requiring biometric re-authentication (5 minutes)
     let biometricGracePeriod: TimeInterval = 300
@@ -55,6 +58,21 @@ public struct ContentView: View {
     }
 
     public var body: some View {
+        onboardingPresentationContainer
+            .onAppear {
+                syncOnboardingPresentation()
+            }
+            .onChange(of: environment.authState) { _, _ in
+                syncOnboardingPresentation()
+            }
+            .onChange(of: onboardingStatusRaw) { _, _ in
+                syncOnboardingPresentation()
+            }
+            .appTextSize()
+    }
+
+    @ViewBuilder
+    private var rootContent: some View {
         Group {
             if let configError = environment.configError {
                 ConfigErrorView(error: configError)
@@ -67,7 +85,86 @@ public struct ContentView: View {
                     .onAppear { logStartup("SignedInContent appeared") }
             }
         }
-        .appTextSize()
     }
 
+    private var onboardingPresentationContainer: some View {
+        let content = AnyView(rootContent)
+#if os(macOS)
+        return AnyView(content.sheet(
+            isPresented: $showOnboarding,
+            onDismiss: handleOnboardingDismissed
+        ) {
+            onboardingSheet
+        })
+#else
+        switch onboardingPresentationStyle {
+        case .fullScreenCover:
+            return AnyView(content.fullScreenCover(
+                isPresented: $showOnboarding,
+                onDismiss: handleOnboardingDismissed
+            ) {
+                onboardingSheet
+            })
+        case .sheet:
+            return AnyView(content.sheet(
+                isPresented: $showOnboarding,
+                onDismiss: handleOnboardingDismissed
+            ) {
+                onboardingSheet
+            })
+        }
+#endif
+    }
+
+    private var onboardingSheet: some View {
+        OnboardingView(
+            authSession: environment.container.authSession,
+            onboardingAPI: environment.container.onboardingAPI,
+            settingsAPI: environment.container.settingsAPI,
+            onRouteToSignIn: {
+                suppressAutomaticOnboarding = true
+            }
+        )
+    }
+
+    private var onboardingStatus: OnboardingStatus {
+        OnboardingStatus(rawValue: onboardingStatusRaw) ?? .notStarted
+    }
+
+    private var isTestingOnboarding: Bool {
+        ProcessInfo.processInfo.arguments.contains("-resetOnboarding")
+    }
+
+    private var shouldAutoPresentOnboarding: Bool {
+        guard environment.configError == nil, !suppressAutomaticOnboarding else {
+            return false
+        }
+        return OnboardingPresentation.shouldPresent(
+            authState: environment.authState,
+            onboardingStatus: onboardingStatus,
+            isTestingOnboarding: isTestingOnboarding
+        )
+    }
+
+    private var onboardingPresentationStyle: OnboardingPresentation.Style {
+#if canImport(UIKit)
+        OnboardingPresentation.style(for: UIDevice.current.userInterfaceIdiom)
+#else
+        .sheet
+#endif
+    }
+
+    private func syncOnboardingPresentation() {
+        guard !showOnboarding else { return }
+        if shouldAutoPresentOnboarding {
+            showOnboarding = true
+        }
+    }
+
+    private func handleOnboardingDismissed() {
+        showOnboarding = false
+        if isTestingOnboarding {
+            suppressAutomaticOnboarding = true
+        }
+    }
 }

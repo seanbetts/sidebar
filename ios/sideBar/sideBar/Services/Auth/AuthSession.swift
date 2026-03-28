@@ -18,7 +18,10 @@ public protocol AuthSession {
     var authorizationToken: String? { get }
     var userId: String? { get }
     var authState: AuthState { get }
+    var pendingVerificationEmail: String? { get }
     func signIn(email: String, password: String) async throws
+    func signUp(email: String, password: String) async throws
+    func verifyOTP(email: String, code: String) async throws
     func refreshSession() async
     func refreshSessionIfStale() async
     func signOut() async
@@ -32,6 +35,10 @@ public final class PlaceholderAuthSession: AuthSession {
 
     public var authorizationToken: String? {
         authState == .active ? accessToken : nil
+    }
+
+    public var pendingVerificationEmail: String? {
+        nil
     }
 
     public init(
@@ -48,6 +55,16 @@ public final class PlaceholderAuthSession: AuthSession {
         _ = email
         _ = password
         authState = .active
+    }
+
+    public func signUp(email: String, password: String) async throws {
+        _ = email
+        _ = password
+    }
+
+    public func verifyOTP(email: String, code: String) async throws {
+        _ = email
+        _ = code
     }
 
     public func refreshSession() async {

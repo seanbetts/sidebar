@@ -78,6 +78,10 @@ private final class ActiveAuthRefreshMutableAuthSession: AuthSession {
         authState == .active ? accessToken : nil
     }
 
+    var pendingVerificationEmail: String? {
+        nil
+    }
+
     init(authState: AuthState) {
         self.authState = authState
     }
@@ -86,6 +90,16 @@ private final class ActiveAuthRefreshMutableAuthSession: AuthSession {
         _ = email
         _ = password
         authState = .active
+    }
+
+    func signUp(email: String, password: String) async throws {
+        _ = email
+        _ = password
+    }
+
+    func verifyOTP(email: String, code: String) async throws {
+        _ = email
+        _ = code
     }
 
     func refreshSession() async {}

@@ -20,6 +20,7 @@ public struct AuthErrorEvent: Equatable {
 public enum AuthAdapterError: LocalizedError, Equatable {
     case signInInProgress
     case invalidCredentials
+    case weakPassword
     case rateLimited
     case serviceUnavailable
     case networkUnavailable
@@ -32,6 +33,8 @@ public enum AuthAdapterError: LocalizedError, Equatable {
             return "A sign-in request is already in progress."
         case .invalidCredentials:
             return "Email or password is incorrect."
+        case .weakPassword:
+            return "Password must be at least 8 characters."
         case .rateLimited:
             return "Too many login attempts. Please wait a moment and try again."
         case .serviceUnavailable:
@@ -53,6 +56,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     @Published public private(set) var userId: String?
     @Published public private(set) var authState: AuthState = .signedOut
     @Published public private(set) var authError: AuthErrorEvent?
+    @Published public private(set) var pendingVerificationEmail: String?
 
     private let stateStore: AuthStateStore
     private let authClient: SupabaseAuthClientProtocol
@@ -67,7 +71,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
     private var lastSessionExpiryDate: Date?
     private var lastRefreshAttempt: Date?
-
     // Rate limiting for login attempts
     private var failedLoginAttempts: Int = 0
     private var lockoutEndTime: Date?
@@ -96,7 +99,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     public var authorizationToken: String? {
         authState == .active ? accessToken : nil
     }
-
     public init(
         config: EnvironmentConfig,
         stateStore: AuthStateStore,
@@ -209,7 +211,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         defer { signInTask = nil }
         try await task.value
     }
-
     /// Refreshes session only if close to expiry (avoids unnecessary refreshes on foreground)
     public func refreshSessionIfStale() async {
         guard let expiry = lastSessionExpiryDate,
@@ -254,7 +255,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         defer { refreshInFlightTask = nil }
         _ = await task.value
     }
-
     public func signOut() async {
         do {
             try await authClient.signOut()
@@ -300,7 +300,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
             return false
         }
     }
-
     private func applySession(_ session: SupabaseSessionInfo?) {
         guard let session else { return }
         let resolvedExpiry = Self.sessionExpiryDate(from: session)
@@ -331,6 +330,12 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         if description.contains("invalid") && description.contains("credentials") {
             return .invalidCredentials
         }
+        if description.contains("invalid") &&
+            (description.contains("otp") ||
+                description.contains("code") ||
+                description.contains("token")) {
+            return .invalidCredentials
+        }
         if description.contains("too many") && description.contains("request") {
             return .rateLimited
         }
@@ -342,7 +347,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         }
         return .unknown(error.localizedDescription)
     }
-
     static func sessionExpiryDate(from session: SupabaseSessionInfo) -> Date {
         if let jwtExpiry = jwtExpiryDate(from: session.accessToken) {
             return jwtExpiry
@@ -387,7 +391,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         }
         return Data(base64Encoded: base64)
     }
-
     private static func resolveExpiryDate(from expiresAt: TimeInterval) -> Date {
         let epochThreshold: TimeInterval = 1_000_000_000
         if expiresAt > epochThreshold {
@@ -406,7 +409,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         let lastAuthDate = Date(timeIntervalSince1970: lastAuthTimestamp)
         return Date().timeIntervalSince(lastAuthDate) <= offlineAccessWindow
     }
-
     /// Attempts to recover a session when the offline access window has expired.
     /// On success, applies the refreshed session. On failure, signs out.
     private func attemptSessionRecovery() async {
@@ -440,7 +442,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     public func clearAuthError() {
         authError = nil
     }
-
     private func transitionToStale() {
         if authState != .stale {
             logger.notice("Auth state transitioned to stale")
@@ -451,6 +452,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     private func transitionToSignedOut(clearPersistedState: Bool) async {
         accessToken = nil
         userId = nil
+        pendingVerificationEmail = nil
         lastSessionExpiryDate = nil
         refreshInFlightTask?.cancel()
         if clearPersistedState {
@@ -490,9 +492,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     private func isAuthInvalid(_ error: Error) -> Bool {
         SupabaseAuthRecovery.isAuthInvalid(error)
     }
-
     private func clearPersistedAuthState() throws {
         try SupabaseAuthRecovery.clearPersistedAuthState(stateStore: stateStore)
     }
-
 }

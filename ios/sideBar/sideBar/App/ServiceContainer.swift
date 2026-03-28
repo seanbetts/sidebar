@@ -28,6 +28,8 @@ public final class ServiceContainer {
     public let memoriesAPI: MemoriesAPI
     /// Settings API wrapper for user settings operations.
     public let settingsAPI: SettingsAPI
+    /// Onboarding API wrapper for onboarding state operations.
+    public let onboardingAPI: OnboardingAPI
     /// Skills API wrapper for assistant skill discovery and execution.
     public let skillsAPI: SkillsAPI
     /// Weather API wrapper for forecast and current conditions.
@@ -68,6 +70,7 @@ public final class ServiceContainer {
         self.websitesAPI = websitesAPI ?? WebsitesAPI(client: apiClient)
         self.memoriesAPI = MemoriesAPI(client: apiClient)
         self.settingsAPI = SettingsAPI(client: apiClient)
+        self.onboardingAPI = OnboardingAPI(client: apiClient)
         self.skillsAPI = SkillsAPI(client: apiClient)
         self.weatherAPI = WeatherAPI(client: apiClient)
         self.placesAPI = PlacesAPI(client: apiClient)

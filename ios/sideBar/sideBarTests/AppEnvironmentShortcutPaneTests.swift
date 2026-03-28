@@ -108,10 +108,24 @@ private final class ShortcutPaneAuthSession: AuthSession {
         authState == .active ? accessToken : nil
     }
 
+    var pendingVerificationEmail: String? {
+        nil
+    }
+
     func signIn(email: String, password: String) async throws {
         _ = email
         _ = password
         authState = .active
+    }
+
+    func signUp(email: String, password: String) async throws {
+        _ = email
+        _ = password
+    }
+
+    func verifyOTP(email: String, code: String) async throws {
+        _ = email
+        _ = code
     }
 
     func refreshSession() async {

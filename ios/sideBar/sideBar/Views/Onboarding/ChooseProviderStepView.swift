@@ -1,0 +1,133 @@
+import SwiftUI
+
+/// Step 5 of onboarding for primary provider selection.
+struct ChooseProviderStepView: View {
+    @ObservedObject var viewModel: OnboardingViewModel
+
+    private struct ProviderOption: Identifiable {
+        let provider: AIPrimaryProvider
+        let initial: String
+        let description: String
+
+        var id: AIPrimaryProvider { provider }
+    }
+
+    private let providers: [ProviderOption] = [
+        ProviderOption(provider: .anthropic, initial: "A", description: "Claude models"),
+        ProviderOption(provider: .openai, initial: "O", description: "GPT models"),
+        ProviderOption(provider: .google, initial: "G", description: "Gemini models")
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+                .frame(height: DesignTokens.Spacing.xxl)
+
+            Image(systemName: "cpu")
+                .font(.system(size: 48))
+                .foregroundStyle(.primary)
+                .padding(.bottom, DesignTokens.Spacing.md)
+
+            Text("Pick Your AI Brain")
+                .font(.system(size: 28, weight: .bold))
+                .tracking(-0.5)
+                .foregroundStyle(.primary)
+                .padding(.bottom, DesignTokens.Spacing.xs)
+
+            Text("Choose which AI powers me. You can switch anytime in Settings.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.bottom, DesignTokens.Spacing.xl)
+
+            VStack(spacing: DesignTokens.Spacing.sm) {
+                ForEach(providers) { option in
+                    providerCard(
+                        provider: option.provider,
+                        initial: option.initial,
+                        description: option.description
+                    )
+                }
+            }
+            .frame(maxWidth: 310)
+
+            Spacer()
+
+            VStack(spacing: DesignTokens.Spacing.md) {
+                Button(action: { viewModel.advance() }, label: {
+                    Text("Continue")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: 310)
+                        .padding(.vertical, DesignTokens.Spacing.md)
+                })
+                .buttonStyle(OnboardingPrimaryButtonStyle())
+                .disabled(viewModel.selectedProvider == nil)
+                .opacity(viewModel.selectedProvider == nil ? 0.4 : 1.0)
+
+                Button("Skip for now", action: {
+                    Task { await viewModel.skipProviderSetup() }
+                })
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, DesignTokens.Spacing.xxl)
+        }
+        .padding(.horizontal, DesignTokens.Spacing.xxl)
+    }
+
+    private func providerCard(
+        provider: AIPrimaryProvider,
+        initial: String,
+        description: String
+    ) -> some View {
+        let isSelected = viewModel.selectedProvider == provider
+        return Button(action: {
+            viewModel.selectedProvider = provider
+        }, label: {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                Text(initial)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 40, height: 40)
+                    .background(DesignTokens.Colors.muted)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(provider.displayName)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .stroke(isSelected ? Color.clear : DesignTokens.Colors.muted, lineWidth: 2)
+                        .frame(width: 24, height: 24)
+
+                    if isSelected {
+                        Circle()
+                            .fill(Color.primary)
+                            .frame(width: 24, height: 24)
+                            .overlay {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(DesignTokens.Colors.background)
+                            }
+                    }
+                }
+            }
+            .padding(DesignTokens.Spacing.md)
+            .background(DesignTokens.Colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous))
+            .overlay(alignment: .center) {
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                    .stroke(isSelected ? Color.primary : Color.clear, lineWidth: 2)
+            }
+        })
+        .buttonStyle(.plain)
+    }
+}
