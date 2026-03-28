@@ -1,17 +1,15 @@
 ---
 title: iOS Conventions
-description: Draft iPhone and iPad conventions for navigation, layout, input, and interaction in sideBar.
+description: iPhone and iPad conventions for navigation, layout, input, and interaction in sideBar.
 ---
 
 | Field | Value |
 |---|---|
 | Status | drafted |
 | Owner | AI coding agent |
-| Inputs needed | codebase inspection (complete), Sean's input on iPhone/iPad intent |
 | Outputs | this doc |
 | Dependencies | [overview](./overview) |
-| Codebase review required | yes (complete) |
-| Human judgement required | yes - iPad-specific decisions and the future of Liquid Glass adoption |
+| Blocking approval | hover state audit, haptics audit, scratchpad iPhone UX decision |
 
 ## Purpose
 
@@ -60,7 +58,7 @@ Settings presented as `.sheet`. Grab indicator visible (`.presentationDragIndica
 
 ### Scratchpad
 
-Scratchpad presented as `.sheet` with grab indicator.
+Scratchpad is accessible on iPhone via a button in the Chat view navigation bar (`ChatView.swift`). It presents as a `.sheet`. There is no global entry point for scratchpad on iPhone outside of Chat. The best UX for scratchpad on compact devices is an open question.
 
 ### Layout
 
@@ -138,7 +136,7 @@ On iOS 26, system materials (`.regularMaterial`, `.ultraThinMaterial`) are super
 
 ### Haptics
 
-Not inspected in this audit. Should be documented separately in `patterns/feedback-and-haptics.md`.
+Haptics are currently minimal. Only auth flows use haptic feedback (`LoginView`, `BiometricLockView`) via `UINotificationFeedbackGenerator`. No haptics found in panel lists, floating action dock, or chat. A full haptics audit is needed before approving this document. Full guidance belongs in `patterns/feedback-and-haptics.md`.
 
 ---
 
@@ -156,7 +154,7 @@ The `TabView` tint is set from a computed `tabBarTint` value. The value should b
 
 ### Pull to refresh
 
-Not confirmed in this audit. If used in panel lists, it should be native SwiftUI `.refreshable`.
+Confirmed. All panel lists use native SwiftUI `.refreshable`: Chat, Notes, Tasks, Websites, Files. Settings lists also use `.refreshable` where appropriate. This is correct — no custom pull-to-refresh implementation.
 
 ---
 
@@ -172,7 +170,9 @@ Not confirmed in this audit. If used in panel lists, it should be native SwiftUI
 
 ## Open questions
 
-- Hover state audit: which interactive elements in WorkspaceLayout currently lack `.onHover` on iPad?
+- Hover state audit: `.onHover` is currently only implemented in `SidebarRail`. All other interactive elements in WorkspaceLayout (list rows, header actions, resize handles) lack hover states on iPad. This needs to be resolved before approving this document.
+- Scratchpad UX: the best entry point for scratchpad on iPhone (beyond the Chat nav bar button) is undecided.
+- Haptics audit: a full review of where haptic feedback should be used is needed before approving this document.
 
 ---
 

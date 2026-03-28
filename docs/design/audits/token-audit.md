@@ -1,17 +1,14 @@
 ---
 title: Token Audit
-description: Draft audit of the current token model and token-like values in the sideBar codebase.
+description: Audit of the current token model and token-like values in the sideBar codebase.
 ---
 
 | Field | Value |
 |---|---|
-| Status | drafted |
+| Status | approved |
 | Owner | AI coding agent |
-| Inputs needed | codebase inspection (complete) |
 | Outputs | this doc |
 | Dependencies | [current-ui-audit](./current-ui-audit) |
-| Codebase review required | yes (complete) |
-| Human judgement required | yes - to decide which hard-coded values become tokens and where the token system should be extended |
 
 ## Purpose
 
@@ -326,12 +323,12 @@ Summary of gaps where new tokens are needed:
 
 ---
 
-## Open questions
+## Resolved questions
 
-- Should `actionPrimary` and `actionDestructive` map to system-provided interactive colors rather than raw named colors?
-- Should the macOS palette attempt to use more system-semantic NSColor values, or is manual control intentional?
-- Is `DesignTokens.Typography` still in active use anywhere, or is it safe to remove?
-- Should `Motion.slow` be added to the `Motion` enum to match `Animation.slow`?
+- **`actionPrimary` / `actionDestructive`**: to be reviewed as part of the unified colour palette work in `foundations/colour.md`.
+- **macOS palette**: resolved — the MacOS-specific palette is being removed in favour of a single unified cross-platform palette. See `platform-strategy/macos-conventions.md`.
+- **`DesignTokens.Typography` in active use**: confirmed not in use anywhere outside its own definition. Safe to remove. Tracked in Redundancies to remove above.
+- **`Motion.slow`**: should be added to the `Motion` enum to match `Animation.slow = 0.4`. Low-risk addition.
 
 ---
 

@@ -25,7 +25,7 @@ description: Working brief for the internal sideBar design-system documentation 
 | 16 | AI assistant UI | patterns/ai-assistant-ui.md | not started |
 | 17 | AI-agent implementation rules | agent-rules/ | not started |
 | 18 | Design-to-code parity | agent-rules/design-to-code-parity.md | not started |
-| 19 | Current UI audit | [current-ui-audit](./audits/current-ui-audit), [token-audit](./audits/token-audit), [component-inventory](./audits/component-inventory), [system-framework-usage](./audits/system-framework-usage-audit) | drafted |
+| 19 | Current UI audit | [current-ui-audit](./audits/current-ui-audit), [token-audit](./audits/token-audit), [component-inventory](./audits/component-inventory), [system-framework-usage](./audits/system-framework-usage-audit) | token-audit approved; others drafted |
 | 20 | Prioritisation | n/a | not started |
 
 ---
