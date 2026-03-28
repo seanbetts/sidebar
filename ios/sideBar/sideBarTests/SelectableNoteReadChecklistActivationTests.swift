@@ -258,6 +258,71 @@ final class ReadChecklistActivationIOSTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(capturedTarget, .characterOffset(12))
         XCTAssertFalse(didToggleChecklistItem)
     }
+
+    func testReadModeChecklistToggleDoesNotBlockSubsequentEditEntryOnMountedDetailView() async throws {
+        let note = checklistActivationNoteWithTrailingContent()
+        let notePlainText = NSString(string: note.plainText)
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(
+            checklistFindDescendantTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-read-text-view"
+            )
+        )
+        await context.editorViewModel.toggleChecklistItemInReadMode(
+            blockIndex: 1,
+            itemIndex: 0
+        )
+
+        await waitUntil {
+            context.editorViewModel.currentSemanticDocumentSnapshot()
+                .blocks[1]
+                .children?.first?.checked == true
+        }
+
+        let updatedReadTextView = try XCTUnwrap(
+            checklistFindDescendantTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-read-text-view"
+            )
+        )
+        let targetOffset = notePlainText.range(of: "Done item").location + 2
+        let readTargetPosition = try XCTUnwrap(
+            updatedReadTextView.position(from: updatedReadTextView.beginningOfDocument, offset: targetOffset)
+        )
+        let readTargetRect = updatedReadTextView.caretRect(for: readTargetPosition)
+        let readViewport = updatedReadTextView.bounds.inset(by: updatedReadTextView.adjustedContentInset)
+        let viewportAnchorY = readTargetRect.midY - readViewport.minY
+
+        context.editorViewModel.enterEditMode(
+            at: .characterOffset(targetOffset),
+            viewportAnchorY: viewportAnchorY
+        )
+
+        await waitUntil {
+            checklistFindDescendantEditorTextView(in: controller.view) != nil
+        }
+
+        let editorTextView = try XCTUnwrap(checklistFindDescendantEditorTextView(in: controller.view))
+        let initialEditorOffset = editorTextView.contentOffset.y
+        let targetEditorOffset = min(
+            initialEditorOffset + 120,
+            max(
+                editorTextView.contentSize.height
+                    + editorTextView.adjustedContentInset.bottom
+                    - editorTextView.bounds.height,
+                -editorTextView.adjustedContentInset.top
+            )
+        )
+
+        editorTextView.setContentOffset(CGPoint(x: 0, y: targetEditorOffset), animated: false)
+        drainNotesHostingRunLoop()
+
+        XCTAssertTrue(context.editorViewModel.isEditingNote)
+        XCTAssertEqual(editorTextView.contentOffset.y, targetEditorOffset, accuracy: 1)
+    }
 }
 
 @MainActor
@@ -287,13 +352,36 @@ private func checklistLocalTapPoint(
     )
 }
 
-private func checklistFindDescendantTextView(in view: UIView) -> UITextView? {
-    if let textView = view as? UITextView {
+private func checklistFindDescendantTextView(
+    in view: UIView,
+    accessibilityIdentifier: String? = nil
+) -> UITextView? {
+    if let textView = view as? UITextView,
+       accessibilityIdentifier == nil || textView.accessibilityIdentifier == accessibilityIdentifier {
         return textView
     }
 
     for subview in view.subviews {
-        if let match = checklistFindDescendantTextView(in: subview) {
+        if let match = checklistFindDescendantTextView(
+            in: subview,
+            accessibilityIdentifier: accessibilityIdentifier
+        ) {
+            return match
+        }
+    }
+
+    return nil
+}
+
+private func checklistFindDescendantEditorTextView(
+    in view: UIView
+) -> UIKitNoteTextEditorSurface.AccessoryTextView? {
+    if let textView = view as? UIKitNoteTextEditorSurface.AccessoryTextView {
+        return textView
+    }
+
+    for subview in view.subviews {
+        if let match = checklistFindDescendantEditorTextView(in: subview) {
             return match
         }
     }
@@ -327,5 +415,31 @@ private func checklistActivationDocument() -> NotesSemanticDocument {
                 ]
             )
         ]
+    )
+}
+
+private func checklistActivationNoteWithTrailingContent() -> NotePayload {
+    let document = NotesSemanticDocument(
+        version: NotesSemanticDocument.currentVersion,
+        blocks: [
+            .init(type: .title, content: [.init(text: "Title", marks: [])]),
+            .init(
+                type: .checklist,
+                children: [
+                    .init(type: .listItem, content: [.init(text: "Done item", marks: [])], checked: false)
+                ]
+            ),
+            .paragraph([.init(text: String(repeating: "Trailing paragraph text. ", count: 40), marks: [])])
+        ]
+    )
+
+    return NotePayload(
+        id: "checklist-mounted-detail-note",
+        name: "Title",
+        document: document,
+        plainText: NotesSemanticDocumentProjection.plainText(from: document),
+        path: "/checklist-mounted-detail-note.md",
+        modified: nil,
+        created: nil
     )
 }

@@ -178,11 +178,10 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
             y: shortLineRect.midY
         )
         let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
-        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
 
         assertColorsApproximatelyEqual(
-            sampledColor.resolvedColor(with: darkTraits),
-            NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: darkTraits),
+            sampledColor.resolvedColor(with: textView.traitCollection),
+            NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: textView.traitCollection),
             tolerance: 0.05
         )
     }
@@ -205,11 +204,59 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
             y: beforeRect.midY
         )
         let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
-        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
 
         assertColorsApproximatelyNotEqual(
-            sampledColor.resolvedColor(with: darkTraits),
-            NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: darkTraits),
+            sampledColor.resolvedColor(with: textView.traitCollection),
+            NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: textView.traitCollection),
+            tolerance: 0.05
+        )
+    }
+
+    func testMountedReadViewMovesCodeBlockBackgroundWithContentDuringScrollOnIOS() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .codeBlock, content: [.init(text: "abcdefghij\nab", marks: [])]),
+                .paragraph([.init(text: String(repeating: "Trailing paragraph text. ", count: 40), marks: [])])
+            ]
+        )
+        let textView = try makeReadTextView(
+            document: document,
+            frame: CGRect(x: 0, y: 0, width: 320, height: 180)
+        )
+        textView.setNeedsDisplay()
+        textView.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        let codeBlockRect = try XCTUnwrap(
+            NoteTextCodeBlockBackgroundLayout.detachedBlockRects(
+                in: textView.attributedText,
+                containerWidth: textView.bounds.width,
+                textContainerInset: CGSize(
+                    width: textView.textContainerInset.left,
+                    height: textView.textContainerInset.top
+                )
+            ).first
+        )
+        let samplePoint = CGPoint(
+            x: min(codeBlockRect.maxX - 10, textView.bounds.maxX - 10),
+            y: codeBlockRect.midY
+        )
+        let initialColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
+
+        textView.setContentOffset(CGPoint(x: 0, y: 160), animated: false)
+        textView.setNeedsLayout()
+        textView.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        let scrolledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
+
+        assertColorsApproximatelyEqual(
+            initialColor.resolvedColor(with: textView.traitCollection),
+            NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: textView.traitCollection),
+            tolerance: 0.05
+        )
+        assertColorsApproximatelyNotEqual(
+            scrolledColor.resolvedColor(with: textView.traitCollection),
+            NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: textView.traitCollection),
             tolerance: 0.05
         )
     }

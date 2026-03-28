@@ -114,6 +114,67 @@ final class NotesHeldReadSurfaceViewportTests: NotesDetailViewHostingTestCase {
                 + "expectedViewportAnchorY=\(expectedViewportAnchorY)"
         )
     }
+
+    func testReadToEditActivationFromCodeHeavyNoteLeavesEditorScrollable() async throws {
+        let note = makeComplexViewportParityNote()
+        let plainText = note.plainText
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(findTextView(in: controller.view))
+        let targetOffset = NSString(string: plainText).range(of: "console.log").location
+
+        let readTargetPosition = try XCTUnwrap(
+            readTextView.position(from: readTextView.beginningOfDocument, offset: targetOffset)
+        )
+        let initialReadTargetRect = readTextView.caretRect(for: readTargetPosition)
+        let readViewportHeight = readTextView.bounds.inset(by: readTextView.adjustedContentInset).height
+        let targetReadOffset = max(
+            initialReadTargetRect.midY - (readViewportHeight * 0.55),
+            -readTextView.adjustedContentInset.top
+        )
+        readTextView.setContentOffset(CGPoint(x: 0, y: targetReadOffset), animated: false)
+        drainNotesHostingRunLoop()
+        let readTargetRect = readTextView.caretRect(for: readTargetPosition)
+        let readViewport = readTextView.bounds.inset(by: readTextView.adjustedContentInset)
+        let expectedViewportAnchorY = readTargetRect.midY - readViewport.minY
+
+        context.editorViewModel.enterEditMode(
+            at: .characterOffset(targetOffset),
+            viewportAnchorY: expectedViewportAnchorY
+        )
+        await waitUntil {
+            context.editorViewModel.isHoldingReadSurfaceDuringEditEntry == false &&
+                findTextView(
+                    in: controller.view,
+                    accessibilityIdentifier: "notes-editor-text-view"
+                ) is UIKitNoteTextEditorSurface.AccessoryTextView
+        }
+
+        let editorTextView = try XCTUnwrap(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            ) as? UIKitNoteTextEditorSurface.AccessoryTextView
+        )
+        let initialEditorOffset = editorTextView.contentOffset.y
+        let targetEditorOffset = min(
+            initialEditorOffset + 120,
+            max(
+                editorTextView.contentSize.height
+                    + editorTextView.adjustedContentInset.bottom
+                    - editorTextView.bounds.height,
+                -editorTextView.adjustedContentInset.top
+            )
+        )
+
+        editorTextView.setContentOffset(CGPoint(x: 0, y: targetEditorOffset), animated: false)
+        drainNotesHostingRunLoop()
+
+        XCTAssertEqual(editorTextView.selectedRange.location, targetOffset)
+        XCTAssertEqual(editorTextView.contentOffset.y, targetEditorOffset, accuracy: 1)
+        XCTAssertGreaterThanOrEqual(editorTextView.contentOffset.y, initialEditorOffset)
+    }
 }
 
 @MainActor
