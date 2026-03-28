@@ -9,7 +9,7 @@ description: iPhone and iPad conventions for navigation, layout, input, and inte
 | Owner | AI coding agent |
 | Outputs | this doc |
 | Dependencies | [overview](./overview) |
-| Blocking approval | hover state audit, haptics audit, scratchpad iPhone UX decision |
+| Blocking approval | scratchpad iPhone UX decision |
 
 ## Purpose
 
@@ -112,9 +112,24 @@ sideBar runs its own three-column workspace structure. Designing specifically fo
 
 iPad is a first-class productivity platform for sideBar. Pointer and hover states must be supported when a mouse or trackpad is connected.
 
-`SidebarRail` already implements `.onHover` for macOS. The same hover behaviour should apply on iPad. All interactive elements in the workspace layout - rail buttons, list rows, header actions, resize handles - should have defined hover states.
+**Rule**: Any interactive element that has a hover state on macOS must have an equivalent iPad pointer hover state. Use `.onHover` without `#if os(macOS)` guards where the behaviour should apply to both platforms.
 
-**Rule**: Any element with a macOS hover state must have an equivalent iPad pointer hover state. Use `.onHover` without `#if os(macOS)` guards where the behaviour should apply to both platforms.
+**Current state — audit complete**:
+
+| Element | File | Has hover | Fix needed |
+|---|---|---|---|
+| SidebarRail section buttons | `SidebarRail.swift:117` | macOS only (`#if os(macOS)` guard) | Remove guard |
+| SidebarRail app logo button | `SidebarRail.swift:32` | No | Add `.onHover` |
+| SidebarRail profile avatar button | `SidebarRail.swift:54` | No | Add `.onHover` |
+| Right sidebar resize handle | `WorkspaceLayout.swift:143` | No | Add `.onHover` cursor change |
+| Sidebar resize handle | `SidebarSplitView.swift:46` | No | Add `.onHover` cursor change |
+| SelectableRow (list rows) | `SelectableRow.swift:40` | No | Add `.onHover` |
+| HeaderActionIcon / header buttons | `HeaderActionIcon.swift:14` | No | Add `.onHover` |
+| SiteHeaderBar buttons | `SiteHeaderBar.swift:159,183,201` | No | Add `.onHover` |
+| Chat header buttons | `ChatHeaderView.swift:31,42,94` | No | Add `.onHover` |
+| Files header buttons | `FilesHeaderActions.swift:79,153,196` | No | Add `.onHover` |
+
+The highest-priority fix is removing the `#if os(macOS)` guard on `SidebarRail` section buttons — the hover logic already exists and just needs to apply on iPad too.
 
 ---
 
@@ -136,7 +151,25 @@ On iOS 26, system materials (`.regularMaterial`, `.ultraThinMaterial`) are super
 
 ### Haptics
 
-Haptics are currently minimal. Only auth flows use haptic feedback (`LoginView`, `BiometricLockView`) via `UINotificationFeedbackGenerator`. No haptics found in panel lists, floating action dock, or chat. A full haptics audit is needed before approving this document. Full guidance belongs in `patterns/feedback-and-haptics.md`.
+**Current state — audit complete**. Haptic feedback is currently only in auth flows (`LoginView`, `BiometricLockView`) using `UINotificationFeedbackGenerator`.
+
+**High priority gaps** (users strongly expect these per iOS HIG):
+
+| Interaction | Location | Feedback type |
+|---|---|---|
+| Task completion checkbox | `TasksViewComponents.swift:87` | `.success` |
+| Destructive delete (swipe) | `SidebarSwipeActions.swift` | `.error` |
+| Floating action button tap | `PhoneFloatingActionDock.swift:25` | `.impact` (light) |
+| Toggle state changes (Settings) | `SettingsSections+Additional.swift:41` | `.selection` |
+| Archive actions | Context menu components | `.selection` |
+| Pin/unpin actions | Context menu components | `.selection` |
+| Drag reorder completion | Panel reorder files | `.success` |
+
+**Medium priority** (enhances polish): copy to clipboard, list item selection, sync/save completion.
+
+**Rule**: Use `UINotificationFeedbackGenerator` for success/error outcomes. Use `UISelectionFeedbackGenerator` for state toggles and selection changes. Use `UIImpactFeedbackGenerator` for physical interactions like button taps and drag drops. Consider a centralised haptic helper in `Design/` to standardise triggering.
+
+Full guidance belongs in `patterns/feedback-and-haptics.md`.
 
 ---
 
@@ -170,9 +203,7 @@ Confirmed. All panel lists use native SwiftUI `.refreshable`: Chat, Notes, Tasks
 
 ## Open questions
 
-- Hover state audit: `.onHover` is currently only implemented in `SidebarRail`. All other interactive elements in WorkspaceLayout (list rows, header actions, resize handles) lack hover states on iPad. This needs to be resolved before approving this document.
-- Scratchpad UX: the best entry point for scratchpad on iPhone (beyond the Chat nav bar button) is undecided.
-- Haptics audit: a full review of where haptic feedback should be used is needed before approving this document.
+- Scratchpad UX: the best entry point for scratchpad on iPhone beyond the Chat nav bar button is undecided. Should scratchpad be accessible from other sections on iPhone, or is the Chat nav bar button sufficient?
 
 ---
 
