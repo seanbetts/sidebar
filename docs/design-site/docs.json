@@ -52,7 +52,9 @@
         "group": "Patterns",
         "pages": [
           "patterns/overview",
-          "patterns/feedback-and-haptics"
+          "patterns/navigation",
+          "patterns/feedback-and-haptics",
+          "patterns/wait-ux"
         ]
       },
       {
