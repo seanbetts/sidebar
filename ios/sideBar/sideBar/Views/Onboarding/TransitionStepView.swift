@@ -6,53 +6,35 @@ struct TransitionStepView: View {
     let dismiss: DismissAction
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-                .frame(height: DesignTokens.Spacing.xxl * 2)
+        OnboardingStepScaffold {
+            VStack(spacing: 0) {
+                Spacer()
+                    .frame(height: DesignTokens.Spacing.xxl * 2)
 
-            ZStack {
-                Circle()
-                    .fill(DesignTokens.Colors.surface)
-                    .frame(width: 72, height: 72)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 32, weight: .semibold))
+                ZStack {
+                    Circle()
+                        .fill(DesignTokens.Colors.surface)
+                        .frame(width: 72, height: 72)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 32, weight: .semibold))
+                        .foregroundStyle(.primary)
+                }
+                .padding(.bottom, DesignTokens.Spacing.lg)
+
+                Text("You're All Set")
+                    .font(.system(size: 28, weight: .bold))
+                    .tracking(-0.5)
                     .foregroundStyle(.primary)
-            }
-            .padding(.bottom, DesignTokens.Spacing.lg)
+                    .padding(.bottom, DesignTokens.Spacing.xs)
 
-            Text("You're All Set")
-                .font(.system(size: 28, weight: .bold))
-                .tracking(-0.5)
-                .foregroundStyle(.primary)
-                .padding(.bottom, DesignTokens.Spacing.xs)
-
-            Text("I'm connected and ready to go.\nLet me show you around.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            Spacer()
-
-            OnboardingActionArea(reservesSecondarySpace: true) {
-                Button(action: {
-                    Task {
-                        await viewModel.completeOnboarding()
-                        dismiss()
-                    }
-                }, label: {
-                    Text("Meet sideBar")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: 310)
-                        .padding(.vertical, DesignTokens.Spacing.md)
-                })
-                .buttonStyle(OnboardingPrimaryButtonStyle())
-            } secondary: {
-                Text(" ")
+                Text("I'm connected and ready to go.\nLet me show you around.")
                     .font(.subheadline)
-                    .hidden()
-                    .accessibilityHidden(true)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+
+                Spacer()
             }
+            .padding(.horizontal, DesignTokens.Spacing.xxl)
         }
-        .padding(.horizontal, DesignTokens.Spacing.xxl)
     }
 }

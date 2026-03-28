@@ -38,6 +38,7 @@ public final class OnboardingViewModel: ObservableObject {
     private let userDefaults: UserDefaults
     private static let stepsWithBack: Set<OnboardingStep> = [
         .createAccount,
+        .verifyEmail,
         .profile,
         .chooseProvider,
         .addApiKey

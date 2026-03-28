@@ -19,59 +19,43 @@ struct ChooseProviderStepView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-                .frame(height: DesignTokens.Spacing.xxl)
+        OnboardingStepScaffold {
+            VStack(spacing: 0) {
+                Spacer()
+                    .frame(height: DesignTokens.Spacing.xxl)
 
-            Image(systemName: "cpu")
-                .font(.system(size: 48))
-                .foregroundStyle(.primary)
-                .padding(.bottom, DesignTokens.Spacing.md)
+                Image(systemName: "cpu")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, DesignTokens.Spacing.md)
 
-            Text("Pick Your AI Brain")
-                .font(.system(size: 28, weight: .bold))
-                .tracking(-0.5)
-                .foregroundStyle(.primary)
-                .padding(.bottom, DesignTokens.Spacing.xs)
+                Text("Pick Your AI Brain")
+                    .font(.system(size: 28, weight: .bold))
+                    .tracking(-0.5)
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, DesignTokens.Spacing.xs)
 
-            Text("Choose which AI powers me. You can switch anytime in Settings.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.bottom, DesignTokens.Spacing.xl)
+                Text("Choose which AI powers me. You can switch anytime in Settings.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, DesignTokens.Spacing.xl)
 
-            VStack(spacing: DesignTokens.Spacing.sm) {
-                ForEach(providers) { option in
-                    providerCard(
-                        provider: option.provider,
-                        initial: option.initial,
-                        description: option.description
-                    )
+                VStack(spacing: DesignTokens.Spacing.sm) {
+                    ForEach(providers) { option in
+                        providerCard(
+                            provider: option.provider,
+                            initial: option.initial,
+                            description: option.description
+                        )
+                    }
                 }
-            }
-            .frame(maxWidth: 310)
+                .frame(maxWidth: 310)
 
-            Spacer()
-
-            OnboardingActionArea {
-                Button(action: { viewModel.advance() }, label: {
-                    Text("Continue")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: 310)
-                        .padding(.vertical, DesignTokens.Spacing.md)
-                })
-                .buttonStyle(OnboardingPrimaryButtonStyle())
-                .disabled(viewModel.selectedProvider == nil)
-                .opacity(viewModel.selectedProvider == nil ? 0.4 : 1.0)
-            } secondary: {
-                Button("Skip for now", action: {
-                    Task { await viewModel.skipProviderSetup() }
-                })
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                Spacer()
             }
+            .padding(.horizontal, DesignTokens.Spacing.xxl)
         }
-        .padding(.horizontal, DesignTokens.Spacing.xxl)
     }
 
     private func providerCard(

@@ -8,84 +8,79 @@ struct VerifyEmailStepView: View {
     @State private var resendCooldown = 0
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-                .frame(height: DesignTokens.Spacing.xxl)
+        OnboardingStepScaffold {
+            VStack(spacing: 0) {
+                Spacer()
+                    .frame(height: DesignTokens.Spacing.xxl)
 
-            Image(systemName: "envelope.badge")
-                .font(.system(size: 48))
-                .foregroundStyle(.primary)
-                .padding(.bottom, DesignTokens.Spacing.md)
+                Image(systemName: "envelope.badge")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, DesignTokens.Spacing.md)
 
-            Text("Check Your Inbox")
-                .font(.system(size: 28, weight: .bold))
-                .tracking(-0.5)
-                .foregroundStyle(.primary)
-                .padding(.bottom, DesignTokens.Spacing.xs)
+                Text("Check Your Inbox")
+                    .font(.system(size: 28, weight: .bold))
+                    .tracking(-0.5)
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, DesignTokens.Spacing.xs)
 
-            Text("I sent a verification code to")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .padding(.bottom, DesignTokens.Spacing.xs)
+                Text("I sent a verification code to")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, DesignTokens.Spacing.xs)
 
-            Text(viewModel.email)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
+                Text(viewModel.email)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, DesignTokens.Spacing.xl)
+
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    ForEach(0..<6, id: \.self) { index in
+                        TextField("", text: $otpDigits[index])
+#if canImport(UIKit)
+                            .keyboardType(.numberPad)
+#endif
+                            .textContentType(.oneTimeCode)
+                            .multilineTextAlignment(.center)
+                            .font(.system(size: 24, weight: .semibold))
+                            .frame(width: 44, height: 52)
+                            .background(DesignTokens.Colors.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                                    .stroke(focusedIndex == index ? Color.primary : Color.clear, lineWidth: 2)
+                            )
+                            .focused($focusedIndex, equals: index)
+                            .onChange(of: otpDigits[index]) { _, newValue in
+                                handleDigitChange(at: index, value: newValue)
+                            }
+                    }
+                }
                 .padding(.bottom, DesignTokens.Spacing.xl)
 
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                ForEach(0..<6, id: \.self) { index in
-                    TextField("", text: $otpDigits[index])
-#if canImport(UIKit)
-                        .keyboardType(.numberPad)
-#endif
-                        .textContentType(.oneTimeCode)
-                        .multilineTextAlignment(.center)
-                        .font(.system(size: 24, weight: .semibold))
-                        .frame(width: 44, height: 52)
-                        .background(DesignTokens.Colors.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
-                                .stroke(focusedIndex == index ? Color.primary : Color.clear, lineWidth: 2)
-                        )
-                        .focused($focusedIndex, equals: index)
-                        .onChange(of: otpDigits[index]) { _, newValue in
-                            handleDigitChange(at: index, value: newValue)
-                        }
+                if viewModel.isLoading {
+                    ProgressView()
+                        .padding(.bottom, DesignTokens.Spacing.md)
                 }
-            }
-            .padding(.bottom, DesignTokens.Spacing.xl)
 
-            if viewModel.isLoading {
-                ProgressView()
-                    .padding(.bottom, DesignTokens.Spacing.md)
-            }
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(DesignTokens.Colors.error)
+                        .padding(.bottom, DesignTokens.Spacing.md)
+                }
 
-            if let error = viewModel.errorMessage {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(DesignTokens.Colors.error)
-                    .padding(.bottom, DesignTokens.Spacing.md)
-            }
+                Button(resendCooldown > 0 ? "Resend code (\(resendCooldown)s)" : "Resend code") {
+                    resendCode()
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .disabled(resendCooldown > 0)
 
-            Button(resendCooldown > 0 ? "Resend code (\(resendCooldown)s)" : "Resend code") {
-                resendCode()
+                Spacer()
             }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .disabled(resendCooldown > 0)
-            .padding(.bottom, DesignTokens.Spacing.sm)
-
-            Button("Wrong email? Go back") {
-                viewModel.currentStep = .createAccount
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-
-            Spacer()
+            .padding(.horizontal, DesignTokens.Spacing.xxl)
         }
-        .padding(.horizontal, DesignTokens.Spacing.xxl)
         .onAppear {
             focusedIndex = 0
         }

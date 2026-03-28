@@ -27,27 +27,17 @@ struct OnboardingView: View {
             DesignTokens.Colors.background
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                if showsBackButton {
-                    backButton
-                } else {
-                    Color.clear
-                        .frame(height: DesignTokens.Size.touchTarget)
-                        .padding(.horizontal, DesignTokens.Spacing.lg)
-                }
-
-                stepContent
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: viewModel.currentStep)
-                    .contentShape(Rectangle())
-                    .simultaneousGesture(backSwipeGesture)
-
-                OnboardingProgressDots(
-                    totalSteps: viewModel.totalSteps,
-                    currentStep: viewModel.currentStepIndex
-                )
-                .padding(.bottom, DesignTokens.Spacing.lg)
-            }
+            stepContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: viewModel.currentStep)
+                .contentShape(Rectangle())
+                .simultaneousGesture(backSwipeGesture)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            topChrome
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            bottomArea
         }
         .interactiveDismissDisabled()
         .onChange(of: viewModel.routeToSignIn) { _, shouldRouteToSignIn in
@@ -78,13 +68,192 @@ struct OnboardingView: View {
     }
 
     private var showsBackButton: Bool {
-        viewModel.currentStepHasBack && viewModel.currentStep != .createAccount
+        viewModel.currentStepHasBack
+    }
+
+    @ViewBuilder
+    private var topChrome: some View {
+        if showsBackButton {
+            backButton
+        } else {
+            Color.clear
+                .frame(height: DesignTokens.Size.touchTarget)
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+        }
+    }
+
+    @ViewBuilder
+    private var bottomArea: some View {
+        switch viewModel.currentStep {
+        case .welcome:
+            OnboardingBottomArea(
+                totalSteps: viewModel.totalSteps,
+                currentStep: viewModel.currentStepIndex
+            ) {
+                OnboardingActionArea {
+                    Button(action: { viewModel.advance() }, label: {
+                        Text("Get Started")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: 310)
+                            .padding(.vertical, DesignTokens.Spacing.md)
+                    })
+                    .buttonStyle(OnboardingPrimaryButtonStyle())
+                } secondary: {
+                    Button("Already have an account? Sign In", action: {
+                        viewModel.routeToSignIn = true
+                    })
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+            }
+        case .createAccount:
+            OnboardingBottomArea(
+                totalSteps: viewModel.totalSteps,
+                currentStep: viewModel.currentStepIndex
+            ) {
+                OnboardingActionArea(reservesSecondarySpace: true) {
+                    Button(action: {
+                        Task { await viewModel.createAccount() }
+                    }, label: {
+                        Group {
+                            if viewModel.isLoading {
+                                ProgressView()
+                                    .tint(DesignTokens.Colors.background)
+                            } else {
+                                Text("Continue")
+                                    .font(.body.weight(.semibold))
+                            }
+                        }
+                        .frame(maxWidth: 310)
+                        .padding(.vertical, DesignTokens.Spacing.md)
+                    })
+                    .buttonStyle(OnboardingPrimaryButtonStyle())
+                    .disabled(!viewModel.isCreateAccountValid || viewModel.isLoading)
+                    .opacity(viewModel.isCreateAccountValid ? 1.0 : 0.4)
+                } secondary: {
+                    Text(" ")
+                        .font(.subheadline)
+                        .hidden()
+                        .accessibilityHidden(true)
+                }
+            }
+        case .verifyEmail:
+            OnboardingBottomArea(
+                totalSteps: viewModel.totalSteps,
+                currentStep: viewModel.currentStepIndex
+            ) {
+                EmptyView()
+            }
+        case .profile:
+            OnboardingBottomArea(
+                totalSteps: viewModel.totalSteps,
+                currentStep: viewModel.currentStepIndex
+            ) {
+                OnboardingActionArea {
+                    Button(action: {
+                        Task { await viewModel.saveProfile() }
+                    }, label: {
+                        Text("Continue")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: 310)
+                            .padding(.vertical, DesignTokens.Spacing.md)
+                    })
+                    .buttonStyle(OnboardingPrimaryButtonStyle())
+                } secondary: {
+                    Button("Skip for now", action: {
+                        viewModel.skipProfile()
+                    })
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+            }
+        case .chooseProvider:
+            OnboardingBottomArea(
+                totalSteps: viewModel.totalSteps,
+                currentStep: viewModel.currentStepIndex
+            ) {
+                OnboardingActionArea {
+                    Button(action: { viewModel.advance() }, label: {
+                        Text("Continue")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: 310)
+                            .padding(.vertical, DesignTokens.Spacing.md)
+                    })
+                    .buttonStyle(OnboardingPrimaryButtonStyle())
+                    .disabled(viewModel.selectedProvider == nil)
+                    .opacity(viewModel.selectedProvider == nil ? 0.4 : 1.0)
+                } secondary: {
+                    Button("Skip for now", action: {
+                        Task { await viewModel.skipProviderSetup() }
+                    })
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+            }
+        case .addApiKey:
+            OnboardingBottomArea(
+                totalSteps: viewModel.totalSteps,
+                currentStep: viewModel.currentStepIndex
+            ) {
+                OnboardingActionArea {
+                    Button(action: {
+                        Task { await viewModel.validateAndSaveApiKey() }
+                    }, label: {
+                        Group {
+                            if viewModel.isLoading {
+                                ProgressView()
+                                    .tint(DesignTokens.Colors.background)
+                            } else {
+                                Text("Verify & Continue")
+                                    .font(.body.weight(.semibold))
+                            }
+                        }
+                        .frame(maxWidth: 310)
+                        .padding(.vertical, DesignTokens.Spacing.md)
+                    })
+                    .buttonStyle(OnboardingPrimaryButtonStyle())
+                    .disabled(viewModel.trimmedApiKey.isEmpty || viewModel.isLoading)
+                    .opacity(viewModel.trimmedApiKey.isEmpty ? 0.4 : 1.0)
+                } secondary: {
+                    Button("Skip for now", action: {
+                        Task { await viewModel.skipProviderSetup() }
+                    })
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+            }
+        case .transition:
+            OnboardingBottomArea(
+                totalSteps: viewModel.totalSteps,
+                currentStep: viewModel.currentStepIndex
+            ) {
+                OnboardingActionArea(reservesSecondarySpace: true) {
+                    Button(action: {
+                        Task {
+                            await viewModel.completeOnboarding()
+                            dismiss()
+                        }
+                    }, label: {
+                        Text("Meet sideBar")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: 310)
+                            .padding(.vertical, DesignTokens.Spacing.md)
+                    })
+                    .buttonStyle(OnboardingPrimaryButtonStyle())
+                } secondary: {
+                    Text(" ")
+                        .font(.subheadline)
+                        .hidden()
+                        .accessibilityHidden(true)
+                }
+            }
+        }
     }
 
     private var backSwipeGesture: some Gesture {
         DragGesture(minimumDistance: 24)
             .onEnded { value in
-                guard viewModel.currentStep == .createAccount,
+                guard viewModel.currentStepHasBack,
                       value.translation.width > 90,
                       abs(value.translation.height) < 60 else {
                     return

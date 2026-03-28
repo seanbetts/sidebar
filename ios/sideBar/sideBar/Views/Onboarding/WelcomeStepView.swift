@@ -6,46 +6,32 @@ struct WelcomeStepView: View {
     private let animationSize: CGFloat = LoadingIndicatorSize.hero * 0.7
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-                .frame(height: DesignTokens.Spacing.xxl)
+        OnboardingStepScaffold {
+            VStack(spacing: 0) {
+                Spacer()
+                    .frame(height: DesignTokens.Spacing.xxl)
 
-            LoadingIndicatorView(size: animationSize, variant: .hero)
-                .frame(width: animationSize, height: animationSize)
-                .padding(.bottom, DesignTokens.Spacing.xl)
+                LoadingIndicatorView(size: animationSize, variant: .hero)
+                    .frame(width: animationSize, height: animationSize)
+                    .padding(.bottom, DesignTokens.Spacing.xl)
 
-            Text("sideBar")
-                .font(.system(size: 34, weight: .bold))
-                .tracking(-0.5)
-                .foregroundStyle(.primary)
-                .padding(.bottom, DesignTokens.Spacing.sm)
+                Text("sideBar")
+                    .font(.system(size: 34, weight: .bold))
+                    .tracking(-0.5)
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, DesignTokens.Spacing.sm)
 
-            Text("The AI assistant that actually knows you. Everything you need in one place, endlessly extensible with skills.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-                .frame(maxWidth: 300)
+                Text("The AI assistant that actually knows you. Everything you need in one place, endlessly extensible with skills.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .frame(maxWidth: 300)
 
-            Spacer()
-
-            OnboardingActionArea {
-                Button(action: { viewModel.advance() }, label: {
-                    Text("Get Started")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: 310)
-                        .padding(.vertical, DesignTokens.Spacing.md)
-                })
-                .buttonStyle(OnboardingPrimaryButtonStyle())
-            } secondary: {
-                Button("Already have an account? Sign In", action: {
-                    viewModel.routeToSignIn = true
-                })
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                Spacer()
             }
+            .padding(.horizontal, DesignTokens.Spacing.xxl)
         }
-        .padding(.horizontal, DesignTokens.Spacing.xxl)
     }
 }
 
@@ -83,8 +69,6 @@ struct OnboardingActionArea<Primary: View, Secondary: View>: View {
             secondarySlot
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, DesignTokens.Spacing.xxl)
-        .padding(.bottom, DesignTokens.Spacing.xl)
     }
 
     @ViewBuilder
@@ -95,5 +79,34 @@ struct OnboardingActionArea<Primary: View, Secondary: View>: View {
         } else {
             secondary
         }
+    }
+}
+
+/// Shared onboarding bottom area matching the HTML mockup structure: actions first, progress below.
+struct OnboardingBottomArea<Content: View>: View {
+    let totalSteps: Int
+    let currentStep: Int
+    @ViewBuilder private let content: Content
+
+    init(
+        totalSteps: Int,
+        currentStep: Int,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.totalSteps = totalSteps
+        self.currentStep = currentStep
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            content
+
+            OnboardingProgressDots(totalSteps: totalSteps, currentStep: currentStep)
+                .padding(.top, DesignTokens.Spacing.lg)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, DesignTokens.Spacing.xxl)
+        .padding(.bottom, DesignTokens.Spacing.xl)
     }
 }
