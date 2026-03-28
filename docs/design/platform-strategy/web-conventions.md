@@ -99,35 +99,30 @@ Source: `frontend/src/lib/components/left-sidebar/Sidebar.svelte`
 
 ## Web settings
 
-Settings is presented as a **modal dialog** (`AlertDialog`), triggered from the profile avatar in the SidebarRail.
+Settings should be presented as a **dedicated `/settings` route**, not a modal dialog. The current implementation uses a modal `AlertDialog` which does not support browser back/forward navigation or deep-linking to specific settings sections.
 
-This differs from both native platforms:
-- iOS: sheet
-- Mac: dedicated window
-- Web: modal dialog
+The `/settings` route should:
+- Use the same full-screen workspace layout as the main app
+- Support deep-linking to specific sections (e.g. `/settings/account`, `/settings/skills`)
+- Be navigable via browser back/forward
+- Be accessible from the profile avatar in the SidebarRail
 
-The modal approach is reasonable for web — a dedicated route for settings would break the single-page layout model. The modal should:
-- Cover the workspace while open (correct current behaviour)
-- Be dismissible via Escape key
-- Not use browser back/forward for internal navigation
+**Current state**: Modal dialog (`AlertDialog`). This needs to be migrated to a dedicated route.
 
-**Open question**: Should Settings on web move to a dedicated `/settings` route rather than a modal, for better browser navigation behaviour and deep-linking?
+This differs from native platforms by design:
+- iOS: sheet (correct for mobile)
+- Mac: dedicated window (correct for desktop app)
+- Web: dedicated route (correct for browser)
 
 ---
 
 ## Web color palette
 
-The web app uses **OKLCH-based CSS custom properties** defined in `app.css`. These are near-neutral grays, closely aligned with the direction established for the unified native palette.
+**Direction**: The web color palette should be aligned with the unified iOS/macOS palette. A single consistent palette across all platforms is the goal. The current web palette (OKLCH CSS custom properties in `app.css`) uses near-neutral values that are broadly aligned with the native direction but not yet reconciled.
 
-| Token | Light | Dark |
-|---|---|---|
-| `--color-background` | oklch(1 0 0) | oklch(0.145 0 0) |
-| `--color-sidebar` | oklch(0.985 0 0) | oklch(0.205 0 0) |
-| `--color-foreground` | oklch(0.145 0 0) | oklch(0.985 0 0) |
-| `--color-border` | oklch(0.922 0 0) | white 10% |
-| `--color-destructive` | oklch(0.577 0.245 27.325) | oklch(0.704 0.191 22.216) |
+The reconciliation should happen when `foundations/colour.md` is drafted — that doc will define the canonical palette values, and the web CSS variables should be updated to match.
 
-The near-neutral palette and near-black dark mode values are in good alignment with the direction for the unified cross-platform palette being defined in `foundations/colour.md`. The exact values should be reconciled with the native palette when `foundations/colour.md` is drafted.
+**Current state**: OKLCH-based CSS custom properties, near-neutral near-black dark mode. Broadly correct in intent, exact values to be reconciled.
 
 **Dark mode**: Full support. Theme toggled via a mode switch in the site header. Preference persisted in localStorage with system preference fallback.
 
@@ -151,7 +146,7 @@ Lucide Svelte is used for all icons. SF Symbols are not available on web.
 
 **Rule**: Use the closest Lucide equivalent to the SF Symbol used in the native apps. Do not introduce decorative icons not present in the native apps. The icon vocabulary should be as consistent as possible across platforms even when the specific icon differs.
 
-An icon mapping audit (native SF Symbol → web Lucide equivalent) is needed. This belongs in `foundations/iconography.md`.
+A formal mapping of native SF Symbols to Lucide Svelte equivalents should be maintained in `foundations/iconography.md`. This mapping is the reference for web icon choices — when adding a new icon on web, look up the SF Symbol used in the native apps and find its Lucide equivalent, not the other way around.
 
 ---
 
@@ -193,7 +188,7 @@ Full shortcut documentation for web is incomplete. A web keyboard shortcut audit
 - Focus management: bits-ui handles focus trapping in modals and dialogs
 - Screen reader: accessible labels via bits-ui ARIA defaults
 - Contrast: OKLCH color palette provides good contrast ratios
-- Reduce motion: should be respected (not confirmed — needs audit)
+- Reduce motion: the `prefers-reduced-motion` CSS media query and `window.matchMedia('(prefers-reduced-motion: reduce)')` are supported in all modern browsers (Chrome 74+, Firefox 63+, Safari 10.1+, Edge 79+) and should be implemented. Not confirmed in the current codebase — needs implementation.
 
 ---
 
@@ -212,10 +207,8 @@ The following are known areas where the web app lags behind native. These are no
 
 ## Open questions
 
-- Should Settings on web move to a dedicated route for better browser navigation?
-- How should the web icon vocabulary be formally mapped to native SF Symbol choices? (→ `foundations/iconography.md`)
-- Should `foundations/colour.md` define the web CSS variable values alongside the native token values?
-- Is reduce motion respected in web animations?
+- Should `foundations/colour.md` define the web CSS variable values alongside the native token values, or should the web palette be a separate derived layer?
+- Web create actions: the pattern for creating items in each section has not been fully audited.
 
 ---
 

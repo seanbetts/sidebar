@@ -56,7 +56,7 @@ But the way they interact with it should match the platform:
 | Navigation | TabView | SidebarRail + WorkspaceLayout | SidebarRail + WorkspaceLayout + native menu bar | SidebarRail + WorkspaceLayout |
 | Layout | Compact, single column | Multi-column workspace | Multi-column workspace, single window | Multi-column workspace (resizable left panel) |
 | Right sidebar | Never | Available (workspace mode) | Available (workspace mode) | Not available |
-| Settings | Sheet | Sheet | Dedicated window | Modal dialog |
+| Settings | Sheet | Sheet | Dedicated window | Dedicated route (migration needed) |
 | Create actions | Floating action dock (Liquid Glass) | Toolbar buttons | Toolbar buttons + keyboard shortcuts | TBD - audit needed |
 | Search | Floating search dock | Inline panel search | Inline panel search | Inline panel search |
 | Rich text editor | UIKit surface | UIKit surface | AppKit surface | Tiptap (browser) |
