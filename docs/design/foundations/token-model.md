@@ -153,7 +153,7 @@ Semantic typography roles for sidebar list rows:
 | `SidebarTypography.primary` | `.appFont(.body)` |
 | `SidebarTypography.secondary` | `.appFont(.caption)` |
 | `SidebarTypography.tertiary` | `.appFont(.caption2)` |
-| `SidebarTypography.sectionHeader` | `.appFont(.labelMd)` |
+| `SidebarTypography.sectionHeader` | `.appFont(.label)` |
 
 This is a good pattern — it names the intent rather than the size. Similar aliasing could be useful for other repeated typography contexts (chat messages, settings rows). Tracked in `foundations/typography.md`.
 

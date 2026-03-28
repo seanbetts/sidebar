@@ -140,7 +140,7 @@ sideBar exposes its own text size control in Settings, independent of the system
 | `SidebarTypography.primary` | `.body` | Primary row label |
 | `SidebarTypography.secondary` | `.caption` | Secondary detail text |
 | `SidebarTypography.tertiary` | `.caption2` | Tertiary / de-emphasised text |
-| `SidebarTypography.sectionHeader` | `.labelMd` | Section group headers |
+| `SidebarTypography.sectionHeader` | `.label` | Section group headers |
 
 This pattern is correct and should be extended to other repeated contexts. Candidates:
 
@@ -187,10 +187,10 @@ The four block-level styles are defined in `NoteTextStyle`:
 
 | Style | Scale | Weight | Approx. size at default body |
 |---|---|---|---|
-| `title` | 1.75× | Bold | ~30pt |
-| `heading` | 1.40× | Bold | ~24pt |
-| `subheading` | 1.15× | Bold | ~20pt |
-| `body` | 1.00× | Regular | ~17pt |
+| `title` | 1.75× | Bold | approx. 30pt |
+| `heading` | 1.40× | Bold | approx. 24pt |
+| `subheading` | 1.15× | Bold | approx. 20pt |
+| `body` | 1.00× | Regular | approx. 17pt |
 
 The base body size is `MarkdownTypography.defaultBodyFontSize` — the system Dynamic Type body size multiplied by the current `AppTextSizeOption` scale. Both inputs affect all four styles equally, preserving the proportional hierarchy at any size.
 
@@ -239,55 +239,59 @@ Prose and markdown content uses `@tailwindcss/typography`. Rich text editing use
 
 ## Scale rationalisation
 
-The current `AppFontStyle` scale has 25 cases. The rationalisation has two goals: remove redundant size-named styles, and remove semibold weight variants. The scale should have one canonical weight per size — semibold is reserved for structural styles (headings, labels) where the weight defines the role, not as an emphasis option within a content size.
+The current `AppFontStyle` scale has 25 cases. The rationalisation has three goals: remove redundant size-named styles, remove semibold entirely (structural styles use bold; content styles use regular), and remove the redundant caption size. The result is a two-weight system — regular for content, bold for structure.
 
 ### Remove
 
 | Style | Reason |
 |---|---|
-| `title2Semibold` | Same size as `title2`. Weight variants of content sizes are being removed. |
+| `title2Semibold` | Semibold weight variant being removed; callers use `titleLg` (regular). |
 | `size18Semibold` | Identical to `titleLg` — exact duplicate. |
-| `size16Semibold` | Same size as `bodySemibold`. Both are being removed; callers move to `body`. |
-| `bodySemibold` | Weight variant of `body`. Use size or color for hierarchy instead. |
-| `headline` | 17pt regular — one point above `body` (16pt), no semibold partner, no distinct role. Narrow gap is covered by `body` and `titleSm`. |
-| `subheadlineSemibold` | Weight variant of `subheadline`. |
-| `callout` | Same rendered size as `body` (16pt regular). The Dynamic Type anchor difference is not meaningful enough to justify a separate style. |
-| `footnoteSemibold` | Weight variant of `footnote`. |
-| `captionSemibold` | Weight variant of `caption`. |
-| `caption2Semibold` | Weight variant of `caption2`. |
+| `size16Semibold` | Semibold weight variant; callers move to `body`. |
+| `bodySemibold` | Semibold weight variant; use size or color for hierarchy instead. |
+| `headline` | 17pt regular — absorbed by `subheading` (17pt bold), which takes this size slot with a proper structural role. |
+| `subheadline` | 15pt regular — too close to `body` (16pt) to justify. Replaced by `subheading` at 17pt bold. |
+| `subheadlineSemibold` | Semibold weight variant; also replaced by `subheading`. |
+| `callout` | Same rendered size as `body` (16pt regular). Dynamic Type anchor difference is not meaningful enough to justify a separate style. |
+| `footnoteSemibold` | Semibold weight variant; callers use `footnote`. |
+| `captionSemibold` | Semibold weight variant; callers use `caption`. |
+| `caption2` | 11pt vs 12pt is a negligible distinction; callers use `caption`. |
+| `caption2Semibold` | Semibold weight variant; removed with `caption2`. |
 
-### Rename
+### Rename and restructure
 
-| Current name | Proposed name | Reason |
+| Current name | New name | Change |
 |---|---|---|
-| `title3Semibold` | `titleMd` | Describes role not implementation |
-| `titleLg` | `titleSm` | Consistent naming within title group |
-| `labelMd` | `label` | Removes false implication of a size scale |
+| `title2` | `titleLg` | Semantic name consistent with title group |
+| `title3Semibold` | `titleMd` | Semantic name; semibold becomes bold |
+| `titleLg` | `titleSm` | Consistent naming within title group; semibold becomes bold |
+| `headline` + `subheadline` | `subheading` | Merged into one 17pt bold style sitting above `body` |
+| `labelMd` | `label` | Removes false implication of a size scale; semibold becomes bold |
 | `size10Bold` | `badge` | Describes intent |
-| `size24Semibold` | `displayMd` | Describes role |
-| `size32Regular` | `displayLg` | Describes role; `size32Semibold` collapses into this — use `.appScaledFont()` for the rare semibold 32pt case |
-| `size32Semibold` | Remove | Collapse into `displayLg`; semibold 32pt is a one-off |
+| `size24Semibold` | `displayMd` | Describes role; semibold becomes bold |
+| `size32Regular` | `displayLg` | Describes role; `size32Semibold` collapses into this |
+| `size32Semibold` | Remove | Collapses into `displayLg` |
+| `monoLabel` | `monoLabel` | Semibold becomes bold |
 
 ### Target scale
 
-The scale after rationalisation — 14 styles:
+13 styles, two weights:
 
 | Style | Size | Weight | DT anchor | Role |
 |---|---|---|---|---|
-| `title2` | 22pt | Regular | `.title2` | Large regular title |
-| `titleMd` | 20pt | Semibold | `.title3` | Section heading, prominent label |
-| `titleSm` | 18pt | Semibold | None | Sub-section heading |
-| `body` | 16pt | Regular | `.body` | Default prose and content text |
-| `subheadline` | 15pt | Regular | `.subheadline` | Secondary content text |
-| `label` | 14pt | Semibold | None | UI labels, list section headers |
+| `displayLg` | 32pt | Regular | None | Large display / hero |
+| `displayMd` | 24pt | Bold | None | Display / prominent headings |
+| `titleLg` | 22pt | Regular | `.title2` | Page/view title |
+| `titleMd` | 20pt | Bold | `.title3` | Section heading |
+| `titleSm` | 18pt | Bold | None | Sub-section heading |
+| `subheading` | 17pt | Bold | None | Content block subheading |
+| `body` | 16pt | Regular | `.body` | Default prose and content |
+| `label` | 14pt | Bold | None | UI labels, list section headers |
 | `footnote` | 13pt | Regular | `.footnote` | Supporting text, metadata |
 | `caption` | 12pt | Regular | `.caption` | Small secondary labels |
-| `caption2` | 11pt | Regular | `.caption2` | Smallest UI text |
 | `badge` | 10pt | Bold | None | Badge and pip labels only |
-| `displayMd` | 24pt | Semibold | None | Display / hero text |
-| `displayLg` | 32pt | Regular | None | Large display text |
 | `monoBody` | 16pt | Regular | `.body` | Code blocks, inline code |
-| `monoLabel` | 14pt | Semibold | None | Code labels, tokens |
+| `monoLabel` | 14pt | Bold | None | Code labels, tokens |
 
 ---
 
