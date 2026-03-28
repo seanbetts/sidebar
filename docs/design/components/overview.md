@@ -1,19 +1,252 @@
 ---
-title: Components Overview
-description: Placeholder for the shared UI component guidance in the sideBar design system.
+title: Components
+description: Shared UI component guidance for the sideBar design system — when to use each component, key rules, and known issues.
 ---
 
 | Field | Value |
 |---|---|
-| Status | not started |
-| Owner | AI coding agent |
-| Outputs | this doc and component docs |
-| Dependencies | [component-inventory](../audits/component-inventory) |
+| Status | approved |
+| Owner | both |
+| Outputs | this doc |
+| Dependencies | [component-inventory](../audits/component-inventory), [token-model](../foundations/token-model), [typography](../foundations/typography), [materials-and-appearance](../foundations/materials-and-appearance) |
 
 ## Purpose
 
-Collect the reusable component patterns that should become the standard building blocks of the product.
+Define the shared component library — what exists, when to use each component, and the rules that govern their use and extension. The component inventory (`audits/component-inventory`) is the source of classification and file locations. This doc is the usage guide.
+
+**Scope**: Design system components in `Design/Components/`, design styles in `Design/Styles/`, and the navigation structure components. Feature-specific views (`Views/Chat/`, `Views/Notes/`, etc.) are not covered here — they are implementation details, not shared components.
+
+---
+
+## Core list and panel primitives
+
+### SelectableRow
+
+The core building block for all list rows in panel sections. Provides selection highlight, touch target enforcement (44pt minimum), animation on selection change (respects reduce motion), and an optional trailing primary action button.
+
+**When to use**: Any tappable row in a `List` or standalone scroll context that needs selection state. This is the default row wrapper — do not build ad-hoc row highlight and selection logic inline.
+
+**Key rules**:
+- Always use `SelectableRow` for list rows that have a selected state. Do not implement selection highlight manually.
+- Pass `isSelected` correctly — the component handles the visual state.
+- The optional `primaryAction` trailing button is for the single most important secondary action on the row (e.g., complete task). Do not overload it.
+
+### PanelHeader
+
+Section title bar used at the top of every left-panel section. Accepts a title, optional subtitle, optional trailing content slot, and an optional offline banner. Background is platform-adaptive: `DesignTokens.Colors.sidebar` on iOS, `sidebar` in light mode and `surface` in dark mode on macOS.
+
+**When to use**: Every left-panel section header. No panel section should roll its own header — use `PanelHeader`.
+
+**Key rules**:
+- Do not add a custom background to `PanelHeader` — the platform-adaptive background is intentional.
+- The trailing content slot is for `HeaderActionRow` with `HeaderActionButton` instances. Do not place arbitrary views there.
+
+### EmptyStateView
+
+Centred title + optional subtitle for empty list states. Token-backed font and color.
+
+**When to use**: Any panel section or content area that can be empty. Do not use inline `Text` for empty states — use `EmptyStateView` for consistency.
+
+### SearchField
+
+Search input with leading icon and clear button. Two variants:
+- `.standard` — filled background with border. Used in panel search bars.
+- `.dock` — transparent, no border. Used in the iPhone compact search dock.
+
+**When to use**: All search inputs. Do not build a custom search field.
+
+**Key rules**: The variant must match the context — `.standard` inside a panel, `.dock` in the floating search chrome.
+
+---
+
+## Action components
+
+### HeaderActionButton / HeaderActionIcon / HeaderActionRow
+
+`HeaderActionButton` is the standard interactive icon button for panel headers and toolbars. It wraps `HeaderActionIcon` in a `Button` and requires an `accessibilityLabel`.
+
+`HeaderActionRow` is an `HStack` wrapper for grouping multiple `HeaderActionButton` instances with consistent spacing (default 20pt).
+
+`HeaderActionMenuButton` (iOS only) wraps `UIKitMenuButton` for buttons that present a `Menu`.
+
+**When to use**: All icon buttons in panel headers and toolbars. Do not build ad-hoc icon buttons inline in header views.
+
+**Key rules**:
+- `accessibilityLabel` is required — the API enforces it.
+- Use `HeaderActionRow` to group multiple actions. Do not build a custom `HStack` for header button groups.
+
+### SidebarMenuItem
+
+Factory type for context menu and swipe action items. Provides pre-configured factory methods for all common row actions with assigned SF Symbol names. See [iconography](../foundations/iconography) for the full action symbol table.
+
+**When to use**: All context menus and swipe action configurations on list rows.
+
+**Key rules**: Do not assign SF Symbol names to menu items inline in views. Use `SidebarMenuItem` factory methods. If a new action is needed, add a factory method to `SidebarMenuItem`.
+
+### SidebarSwipeActions
+
+Configures leading and trailing swipe actions on list rows using `SidebarMenuItem`. Provides consistent swipe action layout and haptic trigger points.
+
+**When to use**: Any list row that supports swipe actions.
+
+### PhoneFloatingActionDock
+
+iPhone-specific floating action capsule using Liquid Glass (`glassEffect`). Contains `PhoneFloatingActionButton` instances (44pt touch targets) and `PhoneFloatingActionDivider` separators. Positioned above the tab bar, trailing-aligned.
+
+**When to use**: Section-specific create actions on iPhone compact layout only. This component is iPhone-specific — do not render it on iPad or Mac.
+
+**Key rules**:
+- `accessibilityLabel` is required on each `PhoneFloatingActionButton`.
+- Do not use `PhoneFloatingActionDock` for non-create actions. It is the create action surface.
+
+### PlatformContextMenu
+
+Cross-platform context menu adapter. Handles the differences between iOS `.contextMenu` and macOS right-click menu presentation.
+
+**When to use**: Any view that needs a context menu on both platforms.
+
+---
+
+## Feedback and status
+
+### ToastCenter
+
+System-level toast notification manager. `ToastEntry` defines individual toast messages. Toasts are displayed above all content and dismiss automatically.
+
+**When to use**: Non-blocking feedback for completed actions (save, copy, delete). Do not use toasts for errors that require user action — use alerts.
+
+### LoadingIndicatorView / LoadingView
+
+Consistent loading state presentation. `LoadingIndicatorView` is the visual indicator; `LoadingView` is a full-surface loading wrapper.
+
+**When to use**: `LoadingView` for full-panel loading states. `LoadingIndicatorView` for inline loading within a populated view. Do not use bare `ProgressView()` without wrapping — use these components for consistent sizing and accessibility handling (the indicator is hidden from VoiceOver).
+
+### ListSkeletons
+
+Skeleton loading placeholder rows for list panels. Shown while data loads to prevent layout shift.
+
+**When to use**: Panel list sections during initial load. Prefer skeletons over a spinner when the list structure is known.
+
+### OfflineBanner
+
+Compact status banner shown inside `PanelHeader` on iPhone when the app is offline, writing, or syncing. Has accessibility label and hint.
+
+**When to use**: Already integrated into `PanelHeader` — do not render `OfflineBanner` directly. Pass the relevant state to `PanelHeader` and it handles the banner automatically.
+
+### DeleteConfirmationAlert
+
+Standard delete confirmation alert wrapping `.alert`. Consistent wording and destructive button role.
+
+**When to use**: Any destructive delete action. Do not write inline `.alert` confirmation dialogs for delete — use `DeleteConfirmationAlert`.
+
+### RenameItemSheet
+
+Standard rename sheet with a text field. Consistent presentation and validation.
+
+**When to use**: Any rename action across panel sections.
+
+---
+
+## Platform shells (macOS)
+
+### MacModalShell
+
+Wraps macOS modal and sheet content with appropriate background, sizing, and grouped form styling. iOS stub passes content through unchanged, so it is safe to use universally.
+
+**When to use**: Wrap all settings views and detail panels that are presented as modals on Mac. Do not add custom `NSVisualEffectView` or manual window sizing in modal views — `MacModalShell` handles this.
+
+### MacPopoverShell
+
+Wraps macOS popover content. Planned Liquid Glass migration. Currently provides consistent background and padding.
+
+**When to use**: All popover content on Mac.
+
+---
+
+## Styles and modifiers
+
+### `.cardStyle()`
+
+Applies `surface` background, `Radius.md` (14pt continuous) corner radius, and 1pt `border` stroke. No padding — add padding within the card content.
+
+**When to use**: Settings cards, content containers that need subtle elevation from the background.
+
+### `.pillStyle()`
+
+Applies `surface` background, capsule shape, and 1pt `border` stroke with standard horizontal/vertical padding.
+
+**When to use**: Tag-like UI elements and status indicators. Note: `PillModifier` is pre-Liquid Glass — `SettingsSaveStatusPill` and similar transient chrome will migrate to `glassEffect`. Do not use `.pillStyle()` for new transient chrome.
+
+### `StaggeredAppearance`
+
+Applies a staggered entrance animation to list items, with delay scaled by index. Respects reduce motion — animation is suppressed when the setting is enabled.
+
+**When to use**: List sections that load or refresh their content and benefit from a staggered reveal. Use sparingly — not every list needs this.
+
+---
+
+## Navigation structure
+
+### SidebarRail
+
+56px vertical icon navigation strip for iPad and Mac. Contains section navigation buttons, Skills Store button, and profile avatar (Settings). The app logo at top toggles the left panel.
+
+**Rules**:
+- Do not add new sections to `SidebarRail` without a corresponding tab bar entry on iPhone.
+- Section button order must match the tab bar order on iPhone.
+- Known gap: uses `.font(.system(size: 18, weight: .semibold))` — should be `.appFont(.label)`. Tracked in [implementation-gaps](../implementation-gaps).
+
+### WorkspaceLayout
+
+Full workspace layout container for iPad/Mac: rail + left panel + main content + optional right sidebar. Both resizable panels persist their widths via `@AppStorage`.
+
+**Rules**: This is the root layout — do not nest `WorkspaceLayout` or add layout logic outside it for the iPad/Mac workspace.
+
+### SidebarSplitView
+
+Resizable split view for contexts that don't use the full `WorkspaceLayout`. Contains a drag-to-resize handle with snap points.
+
+**Known gap**: Contains remnant `DragGesture`-based resize handle code that should be removed. Tracked in [implementation-gaps](../implementation-gaps).
+
+---
+
+## Native components used as-is
+
+These Apple components are used without wrapping. Apply them directly — do not create custom wrappers.
+
+| Component | Use |
+|---|---|
+| `TabView` | iPhone compact layout |
+| `List` | Panel section lists |
+| `Toggle` | Settings toggles |
+| `Picker` | Settings pickers |
+| `Form` | Settings form groups |
+| `.sheet` | iPhone modals, settings, scratchpad |
+| `.alert` | System confirmations (use `DeleteConfirmationAlert` for delete) |
+| `Menu` | Context menus and multi-option floating actions |
+| `NavigationStack` | iPhone per-section navigation |
+| `.toolbar` / `ToolbarItem` | iPhone navigation toolbar buttons |
+
+---
+
+## Rules summary
+
+1. **Use the component.** If a design system component exists for the pattern, use it. Do not build ad-hoc alternatives inline in feature views.
+2. **Do not override backgrounds on `PanelHeader`.** The platform-adaptive background is intentional.
+3. **`HeaderActionButton` is mandatory for header icon buttons.** It enforces the accessibility label requirement.
+4. **`SidebarMenuItem` for all action icon assignments.** No inline SF Symbol name assignments for menu or swipe actions.
+5. **`DeleteConfirmationAlert` for all delete confirmations.** Consistent wording is a UX requirement.
+6. **`.pillStyle()` is not for new transient chrome.** New floating surfaces use Liquid Glass.
+7. **`PhoneFloatingActionDock` is iPhone-only.** Do not render on iPad or Mac.
+
+---
 
 ## Related docs
 
 - [Component Inventory](../audits/component-inventory)
+- [Token Model](../foundations/token-model)
+- [Typography](../foundations/typography)
+- [Materials and Appearance](../foundations/materials-and-appearance)
+- [Iconography](../foundations/iconography)
+- [Accessibility](../foundations/accessibility)
+- [Implementation Gaps](../implementation-gaps)

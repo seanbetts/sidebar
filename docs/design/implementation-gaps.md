@@ -70,6 +70,8 @@ Single working list of every known divergence between the design system and the 
 | Gap | File(s) | Source |
 |---|---|---|
 | `AppFontStyle` scale rationalisation: reduce 25 styles to 13 by removing all semibold weight variants (structural styles become bold, content styles become regular), removing redundant size-named styles, and renaming remaining styles semantically. Highest-impact rename: `.labelMd` → `.label` has 32 call sites across the codebase. Full plan in [typography](./foundations/typography#scale-rationalisation). | `AppFontStyle.swift` + callers | [typography](./foundations/typography) |
+| `SearchField` uses `.appFont(.subheadline)` — `.subheadline` is removed in the rationalisation; correct replacement is `.body` (search input text is body-weight content, not a subheading) | `SearchField.swift` | [typography](./foundations/typography) |
+| `MacModalShell` inspector sheet `maxWidth: 1_120` is hardcoded — should be a `Size` token (`Size.inspectorMaxWidth`) | `MacModalShell.swift` | [components](./components/overview) |
 | `DesignTokens.Typography` is unused — parallel system to `AppFontStyle`, should be removed | `DesignTokens.swift` | [token-audit](./audits/token-audit) |
 | `PlatformTokens.panelHeaderBackground` is a single-value alias for `DesignTokens.Colors.sidebar` — remove and update callers | `PlatformTokens.swift` | [token-audit](./audits/token-audit) |
 | `SidebarSplitView.swift` contains remnant `DragGesture`-based resize handle code — remove | `SidebarSplitView.swift` | [macos-conventions](./platform-strategy/macos-conventions) |
@@ -106,4 +108,5 @@ Single working list of every known divergence between the design system and the 
 - [Web Conventions](./platform-strategy/web-conventions)
 - [Colour](./foundations/colour)
 - [Materials and Appearance](./foundations/materials-and-appearance)
+- [Components](./components/overview)
 - [Token Audit](./audits/token-audit)

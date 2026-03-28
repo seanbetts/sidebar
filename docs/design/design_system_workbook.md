@@ -17,7 +17,7 @@ description: Working brief for the internal sideBar design-system documentation 
 | 8 | Foundations: materials and appearance | [foundations/materials-and-appearance.md](./foundations/materials-and-appearance) | approved |
 | 9 | Foundations: iconography | [foundations/iconography.md](./foundations/iconography) | approved |
 | 10 | Foundations: accessibility | [foundations/accessibility.md](./foundations/accessibility) | approved |
-| 11 | Components | components/ | not started |
+| 11 | Components | [components/overview.md](./components/overview) | approved |
 | 12 | Patterns: navigation | patterns/navigation.md | not started |
 | 13 | Patterns: feedback and haptics | patterns/feedback-and-haptics.md | not started |
 | 14 | Patterns: wait UX | patterns/wait-ux.md | not started |
