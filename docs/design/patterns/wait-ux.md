@@ -119,7 +119,7 @@ When showing a spinner for a long wait, include a short descriptive message. Pre
 |---|---|
 | "Loading note..." | "Loading..." |
 | "Indexing your files" | "Please wait" |
-| "Connecting to sync" | "Working..." |
+| "Uploading file..." | "Working..." |
 
 ---
 
