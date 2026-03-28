@@ -73,7 +73,7 @@ Skeleton rows are static — no shimmer animation. Variable row widths create na
 
 | Panel | Rows | Subtitle |
 |---|---|---|
-| Conversations | 6 | Yes |
+| Conversations | 8 | Yes |
 | Websites | 8 | Yes |
 | Notes | 8 | No |
 | Files | 8 | No |
