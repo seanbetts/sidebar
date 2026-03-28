@@ -9,8 +9,6 @@ description: Web app conventions for layout, navigation, settings, and browser-s
 | Owner | AI coding agent |
 | Outputs | this doc |
 | Dependencies | [overview](./overview) |
-| Codebase review required | yes (complete — `frontend/src/`) |
-| Human judgement required | yes - feature drift priorities, icons strategy, settings presentation, mobile intent |
 
 ## Purpose
 
