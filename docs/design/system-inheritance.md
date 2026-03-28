@@ -1,17 +1,14 @@
 ---
 title: System Inheritance
-description: Draft policy for what sideBar inherits from Apple frameworks and where it intentionally departs from native defaults.
+description: Policy for what sideBar inherits from Apple frameworks and where it intentionally departs from native defaults.
 ---
 
 | Field | Value |
 |---|---|
-| Status | drafted |
+| Status | approved |
 | Owner | AI coding agent |
-| Inputs needed | codebase inspection (complete), Apple HIG reference, Sean's intent on customisation areas |
 | Outputs | this doc |
 | Dependencies | [principles](./principles), [system-framework-usage-audit](./audits/system-framework-usage-audit) |
-| Codebase review required | yes (complete) |
-| Human judgement required | yes - Sean to confirm customisation intent in flagged areas |
 
 ## Purpose
 
@@ -172,20 +169,18 @@ These are custom implementations where native alternatives were insufficient.
 **What it replaces**: `NavigationSplitView` / system split view
 **Why**: sideBar's workspace model requires:
 - A custom 56px icon-only rail (narrower than system sidebar)
-- Drag-to-resize left panel with snap points and persisted width
-- Optional right sidebar (second content column)
+- Fixed-width left panel (280px)
+- Optional user-resizable right sidebar (second content column)
 - Custom workspace expand/collapse toggle
 
-`NavigationSplitView` does not support this level of layout control. The custom implementation was the right call.
+`NavigationSplitView` does not support this level of layout control. The custom implementation is locked in.
 
 **Maintenance implication**: This layout does not automatically benefit from system navigation improvements. It needs explicit maintenance when layout behaviours need updating.
 
-### macOS color palette
+### macOS color palette (to be removed)
 
-**What it replaces**: `NSColor.windowBackgroundColor`, `NSColor.controlBackgroundColor` etc.
-**Why**: Precise control over the surface hierarchy without depending on macOS default window appearance.
-
-**Implication**: Values must be manually reviewed if macOS system defaults change significantly.
+**Current state**: A separate `MacOSPalette` of hand-coded `NSColor` sRGB values in `Color+Platform.swift` diverges from the iOS layer.
+**Direction**: Replace with a single unified cross-platform palette. The macOS-specific branching in `Color+Platform.swift` should be removed. See `platform-strategy/macos-conventions.md` and `foundations/colour.md` (to be created).
 
 ### App font scaling system
 
@@ -247,11 +242,9 @@ Do not build custom versions of these unless there is a documented, product-crit
 
 ---
 
-## Open questions
+## Future considerations
 
-- Should future layout work revisit `NavigationSplitView` for iPad-specific views, or is the custom implementation locked in?
-- Should the macOS color palette attempt to use more system-semantic NSColor values in a future pass?
-- Should the font scaling system be updated to better support live Dynamic Type updates?
+- The app font scaling system should be revisited to better align with native Dynamic Type behaviour. The current system computes sizes at view appearance time and does not update live with Dynamic Type changes during a session. A future pass should explore whether `@ScaledMetric` or `.dynamicTypeSize` environment value can be used to support live scaling. See `foundations/typography.md`.
 
 ---
 

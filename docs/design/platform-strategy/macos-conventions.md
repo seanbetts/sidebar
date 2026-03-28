@@ -1,17 +1,14 @@
 ---
 title: macOS Conventions
-description: Draft macOS conventions for layout, windowing, input, and navigation in sideBar.
+description: macOS conventions for layout, windowing, input, and navigation in sideBar.
 ---
 
 | Field | Value |
 |---|---|
-| Status | drafted |
+| Status | approved |
 | Owner | AI coding agent |
-| Inputs needed | codebase inspection (complete), Sean's Mac design priorities |
 | Outputs | this doc |
 | Dependencies | [overview](./overview) |
-| Codebase review required | yes (complete) |
-| Human judgement required | yes - menu bar structure, window management, keyboard shortcut scope |
 
 ## Purpose
 

@@ -8,8 +8,8 @@ description: Working brief for the internal sideBar design-system documentation 
 | # | Section | Output doc(s) | Status |
 |---|---|---|---|
 | 1 | Design principles | [principles.md](./principles) | approved |
-| 2 | System inheritance | [system-inheritance.md](./system-inheritance) | drafted |
-| 3 | Platform strategy | [overview](./platform-strategy/overview), [iOS](./platform-strategy/ios-conventions), [macOS](./platform-strategy/macos-conventions), [web](./platform-strategy/web-conventions) | drafted (web: placeholder) |
+| 2 | System inheritance | [system-inheritance.md](./system-inheritance) | approved |
+| 3 | Platform strategy | [overview](./platform-strategy/overview), [iOS](./platform-strategy/ios-conventions), [macOS](./platform-strategy/macos-conventions), [web](./platform-strategy/web-conventions) | macOS approved; iOS drafted (blocked on hover/haptics audits); web placeholder |
 | 4 | Foundations | foundations/ | not started |
 | 5 | Token model | foundations/token-model.md | not started |
 | 6 | Accessibility | foundations/accessibility.md | not started |
