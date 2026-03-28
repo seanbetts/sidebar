@@ -46,6 +46,13 @@ Heading, and Subhead, along with inline formatting such as bold, italic,
 underline, strikethrough, and inline code. See [Notes](/manual/notes) for the
 full breakdown.
 
+## How do I start a list while typing?
+
+Start a new paragraph, then type `- ` or `* ` for a bulleted list, or `1. ` for
+a numbered list. The trigger only works at the start of a paragraph. After the
+list starts, pressing Return creates the next item, and pressing Return on an
+empty trailing item exits back to Body text.
+
 ## What happens when I press Return in a formatted note?
 
 Pressing Return after a Title, Heading, or Subhead starts a new Body line.

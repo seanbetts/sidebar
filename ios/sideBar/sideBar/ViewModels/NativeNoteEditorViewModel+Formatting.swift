@@ -4,12 +4,6 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 extension NativeNoteEditorViewModel {
-    private struct ReturnKeyMutation {
-        let document: NotesSemanticDocument
-        let insertionOffset: Int
-        let typingBlockType: NotesSemanticDocument.BlockType
-    }
-
     struct InlineFormattingState: Equatable {
         var bold: Bool = false
         var italic: Bool = false

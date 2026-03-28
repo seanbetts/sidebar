@@ -2,6 +2,11 @@
 import AppKit
 import SwiftUI
 
+private struct AppKitNoteTextEditorUndoSnapshot {
+    let attributedText: NSAttributedString
+    let selectedRange: NSRange
+}
+
 @available(iOS 26.0, macOS 26.0, *)
 struct AppKitNoteTextEditorSurface: NSViewRepresentable {
     fileprivate struct RenderSignature: Equatable {
@@ -268,9 +273,17 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                 viewModel.handleSelectionChange()
             }
 
-            guard replacementText.contains("\n") else { return false }
+            guard viewModel.shouldHandleStructuralTextReplacement(replacementText) else { return false }
+            let undoSnapshot = literalUndoSnapshot(
+                in: textView,
+                selectedRange: selectedRange,
+                replacementText: replacementText
+            )
             guard viewModel.handleTextReplacement(replacementText) else { return false }
 
+            if let undoSnapshot {
+                registerUndoSnapshot(undoSnapshot, on: textView)
+            }
             applyCurrentEditorState(to: textView)
             return true
         }
@@ -300,6 +313,55 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                 baseFontSize: viewModel.baseFontSize
             )
             textView.typingAttributes = bridgedTypingSample.attributes(at: 0, effectiveRange: nil)
+        }
+
+        private func literalUndoSnapshot(
+            in textView: NSTextView,
+            selectedRange: NSRange,
+            replacementText: String
+        ) -> AppKitNoteTextEditorUndoSnapshot? {
+            guard replacementText == " " else { return nil }
+
+            let updatedText = NSMutableAttributedString(
+                attributedString: textView.attributedString()
+            )
+            let insertedText = NSAttributedString(
+                string: replacementText,
+                attributes: textView.typingAttributes
+            )
+            updatedText.replaceCharacters(in: selectedRange, with: insertedText)
+            return AppKitNoteTextEditorUndoSnapshot(
+                attributedText: updatedText,
+                selectedRange: NSRange(
+                    location: selectedRange.location + insertedText.length,
+                    length: 0
+                )
+            )
+        }
+
+        private func registerUndoSnapshot(
+            _ snapshot: AppKitNoteTextEditorUndoSnapshot,
+            on textView: NSTextView
+        ) {
+            textView.undoManager?.registerUndo(withTarget: self) { target in
+                target.restoreUndoSnapshot(snapshot, on: textView)
+            }
+        }
+
+        private func restoreUndoSnapshot(
+            _ snapshot: AppKitNoteTextEditorUndoSnapshot,
+            on textView: NSTextView
+        ) {
+            let redoSnapshot = AppKitNoteTextEditorUndoSnapshot(
+                attributedText: textView.attributedString(),
+                selectedRange: textView.selectedRange()
+            )
+            viewModel.replaceAttributedContent(
+                snapshot.attributedText,
+                selectedUTF16Range: snapshot.selectedRange
+            )
+            registerUndoSnapshot(redoSnapshot, on: textView)
+            applyCurrentEditorState(to: textView)
         }
     }
 }

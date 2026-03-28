@@ -13,6 +13,11 @@ private struct UIKitNoteTextEditorViewportSnapshot: Equatable {
     let selectionViewportAnchorY: CGFloat?
 }
 
+private struct UIKitNoteTextEditorUndoSnapshot {
+    let attributedText: NSAttributedString
+    let selectedRange: NSRange
+}
+
 final class UIKitNoteTextEditorContainerView: UIView {
     let textView: UIKitNoteTextEditorSurface.AccessoryTextView
 
@@ -344,16 +349,23 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
-            guard viewModel.shouldHandleStructuralTextReplacement(text) else { return true }
-
             let selection = viewModel.selection(fromUTF16Range: range, in: viewModel.attributedContent)
             if selection != viewModel.selection {
                 viewModel.selection = selection
                 viewModel.handleSelectionChange()
             }
 
+            guard viewModel.shouldHandleStructuralTextReplacement(text) else { return true }
+            let undoSnapshot = literalUndoSnapshot(
+                in: textView,
+                selectedRange: range,
+                replacementText: text
+            )
             guard viewModel.handleTextReplacement(text) else { return true }
 
+            if let undoSnapshot {
+                registerUndoSnapshot(undoSnapshot, on: textView)
+            }
             applyCurrentEditorState(to: textView)
             return false
         }
@@ -383,6 +395,53 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 baseFontSize: viewModel.baseFontSize
             )
             textView.typingAttributes = bridgedTypingSample.attributes(at: 0, effectiveRange: nil)
+        }
+
+        private func literalUndoSnapshot(
+            in textView: UITextView,
+            selectedRange: NSRange,
+            replacementText: String
+        ) -> UIKitNoteTextEditorUndoSnapshot? {
+            guard replacementText == " " else { return nil }
+
+            let updatedText = NSMutableAttributedString(attributedString: textView.attributedText)
+            let insertedText = NSAttributedString(
+                string: replacementText,
+                attributes: textView.typingAttributes
+            )
+            updatedText.replaceCharacters(in: selectedRange, with: insertedText)
+            return UIKitNoteTextEditorUndoSnapshot(
+                attributedText: updatedText,
+                selectedRange: NSRange(
+                    location: selectedRange.location + insertedText.length,
+                    length: 0
+                )
+            )
+        }
+
+        private func registerUndoSnapshot(
+            _ snapshot: UIKitNoteTextEditorUndoSnapshot,
+            on textView: UITextView
+        ) {
+            textView.undoManager?.registerUndo(withTarget: self) { target in
+                target.restoreUndoSnapshot(snapshot, on: textView)
+            }
+        }
+
+        private func restoreUndoSnapshot(
+            _ snapshot: UIKitNoteTextEditorUndoSnapshot,
+            on textView: UITextView
+        ) {
+            let redoSnapshot = UIKitNoteTextEditorUndoSnapshot(
+                attributedText: NSAttributedString(attributedString: textView.attributedText),
+                selectedRange: textView.selectedRange
+            )
+            viewModel.replaceAttributedContent(
+                snapshot.attributedText,
+                selectedUTF16Range: snapshot.selectedRange
+            )
+            registerUndoSnapshot(redoSnapshot, on: textView)
+            applyCurrentEditorState(to: textView)
         }
     }
 }

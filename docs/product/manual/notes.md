@@ -47,6 +47,7 @@ Available formatting includes:
 
 - **Text styles**: Body, Title, Heading, Subhead
 - **Inline formatting**: Bold, Italic, Underline, Strikethrough, Inline Code
+- **Lists**: type `- ` or `* ` to start a bulleted list, or `1. ` to start a numbered list
 
 The text-style row is visual rather than text-only, so each style is shown with
 its own note typography instead of a plain menu label.
@@ -54,10 +55,20 @@ its own note typography instead of a plain menu label.
 On macOS, the same note formatting actions are also available as top-level
 items in the **Format** menu instead of nested submenus.
 
+To start a list while typing, begin a new paragraph and type one of the list
+triggers followed by a space:
+
+- `- ` or `* ` for a bulleted list
+- `1. ` for a numbered list
+
+These triggers only work at the start of a paragraph.
+
 Pressing Return after a **Title**, **Heading**, or **Subhead** starts a new
 **Body** line. **Body** lines continue as body text when you press Return. Code
 blocks stay multiline, and pressing Return twice on an empty trailing code
-block line exits back to **Body** text.
+block line exits back to **Body** text. In lists, Return creates the next list
+item, and pressing Return on an empty trailing list item exits back to **Body**
+text.
 
 ## Note Actions
 

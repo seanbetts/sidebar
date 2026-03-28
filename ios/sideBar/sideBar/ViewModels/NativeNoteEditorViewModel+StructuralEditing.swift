@@ -11,14 +11,27 @@ extension NativeNoteEditorViewModel {
         let coverageRange: Range<Int>
     }
 
-    private struct ReturnKeyMutation {
+    struct StructuralReplacementMutation {
         let document: NotesSemanticDocument
         let insertionOffset: Int
         let typingBlockType: NotesSemanticDocument.BlockType
     }
 
     func shouldHandleStructuralTextReplacement(_ replacementText: String) -> Bool {
-        !isReadOnly && replacementText.contains("\n")
+        guard !isReadOnly else { return false }
+        if replacementText.contains("\n") {
+            return true
+        }
+
+        guard let selectionRange = primarySelectionCharacterRange(in: attributedContent) else {
+            return false
+        }
+        let document = currentPersistenceSnapshot().document
+        return listTypingTriggerMutation(
+            in: document,
+            selectionRange: selectionRange,
+            replacementText: replacementText
+        ) != nil
     }
 
     @discardableResult
@@ -26,11 +39,25 @@ extension NativeNoteEditorViewModel {
         guard shouldHandleStructuralTextReplacement(replacementText) else { return false }
 
         guard let selectionRange = primarySelectionCharacterRange(in: attributedContent) else { return false }
+        let document = currentPersistenceSnapshot().document
+
+        if let mutation = listTypingTriggerMutation(
+            in: document,
+            selectionRange: selectionRange,
+            replacementText: replacementText
+        ) {
+            applyDocumentMutation(
+                mutation.document,
+                insertionCharacterOffset: mutation.insertionOffset,
+                typingBlockType: mutation.typingBlockType
+            )
+            return true
+        }
+
         if selectionRange.isEmpty, replacementText == "\n" {
             return handleReturnKey()
         }
 
-        let document = currentPersistenceSnapshot().document
         guard let mutation = replacementMutation(
             in: document,
             selectionRange: selectionRange,
@@ -62,7 +89,7 @@ extension NativeNoteEditorViewModel {
             )
         )
 
-        let mutation: ReturnKeyMutation?
+        let mutation: StructuralReplacementMutation?
         switch blockInfo.block.type {
         case .title, .heading, .subheading, .paragraph:
             mutation = splitTextStyleBlock(
@@ -167,16 +194,6 @@ extension NativeNoteEditorViewModel {
         return infos.filter { touchedIndexes.contains($0.index) }
     }
 
-    func primarySelectionCharacterRange(in text: AttributedString) -> Range<Int>? {
-        let selectionRanges = selectionCharacterRanges(in: text)
-        guard selectionRanges.count == 1 else { return nil }
-        return selectionRanges.first
-    }
-
-    func rangesOverlap(_ lhs: Range<Int>, _ rhs: Range<Int>) -> Bool {
-        lhs.lowerBound < rhs.upperBound && rhs.lowerBound < lhs.upperBound
-    }
-
     func applyDocumentMutation(
         _ document: NotesSemanticDocument,
         insertionCharacterOffset: Int,
@@ -203,7 +220,7 @@ extension NativeNoteEditorViewModel {
         in document: NotesSemanticDocument,
         selectionRange: Range<Int>,
         replacementText: String
-    ) -> ReturnKeyMutation? {
+    ) -> StructuralReplacementMutation? {
         guard let startBlockInfo = blockInfoContainingCharacterOffset(
             selectionRange.lowerBound,
             in: document
@@ -244,7 +261,7 @@ extension NativeNoteEditorViewModel {
         in document: NotesSemanticDocument,
         blockInfo: DocumentBlockInfo,
         selectionOffset: Int
-    ) -> ReturnKeyMutation {
+    ) -> StructuralReplacementMutation {
         let split = splitInlineSegments(blockInfo.block.content, at: selectionOffset)
         var updatedBlocks = document.blocks
         updatedBlocks[blockInfo.index] = .init(
@@ -257,7 +274,7 @@ extension NativeNoteEditorViewModel {
             at: blockInfo.index + 1
         )
         let insertionOffset = blockInfo.range.lowerBound + inlineTextLength(split.leading) + 1
-        return ReturnKeyMutation(
+        return StructuralReplacementMutation(
             document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
             insertionOffset: insertionOffset,
             typingBlockType: .paragraph
@@ -269,7 +286,7 @@ extension NativeNoteEditorViewModel {
         blockInfo: DocumentBlockInfo,
         selectionOffset: Int,
         blockText: String
-    ) -> ReturnKeyMutation {
+    ) -> StructuralReplacementMutation {
         var updatedBlocks = document.blocks
         if selectionOffset == blockText.count, blockText.hasSuffix("\n") {
             updatedBlocks.insert(
@@ -277,7 +294,7 @@ extension NativeNoteEditorViewModel {
                 at: blockInfo.index + 1
             )
             let insertionOffset = blockInfo.range.lowerBound + blockText.count + 1
-            return ReturnKeyMutation(
+            return StructuralReplacementMutation(
                 document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
                 insertionOffset: insertionOffset,
                 typingBlockType: .paragraph
@@ -291,7 +308,7 @@ extension NativeNoteEditorViewModel {
             content: [.init(text: updatedText, marks: [])],
             checked: blockInfo.block.checked
         )
-        return ReturnKeyMutation(
+        return StructuralReplacementMutation(
             document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
             insertionOffset: blockInfo.range.lowerBound + selectionOffset + 1,
             typingBlockType: .codeBlock
@@ -303,7 +320,7 @@ extension NativeNoteEditorViewModel {
         blockInfo: DocumentBlockInfo,
         selectionOffset: Int,
         blockText: String
-    ) -> ReturnKeyMutation? {
+    ) -> StructuralReplacementMutation? {
         guard selectionOffset == blockText.count else { return nil }
         guard blockInfo.block.type == .unorderedList || blockInfo.block.type == .orderedList else {
             return nil
@@ -322,7 +339,7 @@ extension NativeNoteEditorViewModel {
             updatedBlocks.insert(.paragraph([.init(text: "", marks: [])]), at: blockInfo.index + 1)
 
             let updatedListTextLength = blockPlainText(updatedListBlock).count
-            return ReturnKeyMutation(
+            return StructuralReplacementMutation(
                 document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
                 insertionOffset: blockInfo.range.lowerBound + updatedListTextLength + 1,
                 typingBlockType: .paragraph
@@ -339,7 +356,7 @@ extension NativeNoteEditorViewModel {
         updatedBlocks[blockInfo.index] = updatedBlock
 
         let updatedBlockTextLength = blockPlainText(updatedBlock).count
-        return ReturnKeyMutation(
+        return StructuralReplacementMutation(
             document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
             insertionOffset: blockInfo.range.lowerBound + updatedBlockTextLength,
             typingBlockType: blockInfo.block.type
@@ -357,7 +374,7 @@ extension NativeNoteEditorViewModel {
         endBlockInfo: DocumentBlockInfo,
         selectionRange: Range<Int>,
         replacementText: String
-    ) -> ReturnKeyMutation {
+    ) -> StructuralReplacementMutation {
         let startOffset = max(
             0,
             min(selectionRange.lowerBound - startBlockInfo.range.lowerBound, blockPlainText(startBlockInfo.block).count)
@@ -421,7 +438,7 @@ extension NativeNoteEditorViewModel {
             updatedBlocks.append(contentsOf: document.blocks[(endBlockInfo.index + 1)...])
         }
 
-        return ReturnKeyMutation(
+        return StructuralReplacementMutation(
             document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
             insertionOffset: selectionRange.lowerBound + replacementText.count,
             typingBlockType: lines.count > 1 ? .paragraph : firstType
@@ -433,7 +450,7 @@ extension NativeNoteEditorViewModel {
         blockInfo: DocumentBlockInfo,
         selectionRange: Range<Int>,
         replacementText: String
-    ) -> ReturnKeyMutation {
+    ) -> StructuralReplacementMutation {
         let blockText = blockPlainText(blockInfo.block)
         let startOffset = max(
             0,
@@ -454,7 +471,7 @@ extension NativeNoteEditorViewModel {
             checked: blockInfo.block.checked
         )
 
-        return ReturnKeyMutation(
+        return StructuralReplacementMutation(
             document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
             insertionOffset: selectionRange.lowerBound + replacementText.count,
             typingBlockType: .codeBlock
