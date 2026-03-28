@@ -14,12 +14,60 @@ enum NoteTextCodeBlockBackgroundLayout {
         textContainer: NSTextContainer,
         textContainerInset: CGSize
     ) -> [CGRect] {
+        blockRects(
+            in: attributedText,
+            layoutManager: layoutManager,
+            textContainer: textContainer,
+            textContainerInset: textContainerInset,
+            shouldEnsureLayout: true
+        )
+    }
+
+    #if canImport(UIKit)
+    static func detachedBlockRects(
+        in attributedText: NSAttributedString,
+        containerWidth: CGFloat,
+        textContainerInset: CGSize
+    ) -> [CGRect] {
+        let availableWidth = max(containerWidth - (textContainerInset.width * 2), 0)
+        guard availableWidth > 0, attributedText.length > 0 else { return [] }
+
+        let textStorage = NSTextStorage(attributedString: attributedText)
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer(
+            size: CGSize(width: availableWidth, height: .greatestFiniteMagnitude)
+        )
+        textContainer.lineFragmentPadding = 0
+        textContainer.widthTracksTextView = false
+        textContainer.heightTracksTextView = false
+        textStorage.addLayoutManager(layoutManager)
+        layoutManager.addTextContainer(textContainer)
+
+        return blockRects(
+            in: attributedText,
+            layoutManager: layoutManager,
+            textContainer: textContainer,
+            textContainerInset: textContainerInset,
+            shouldEnsureLayout: true
+        )
+    }
+    #endif
+
+    private static func blockRects(
+        in attributedText: NSAttributedString,
+        layoutManager: NSLayoutManager,
+        textContainer: NSTextContainer,
+        textContainerInset: CGSize,
+        shouldEnsureLayout: Bool
+    ) -> [CGRect] {
         let blockKey = NSAttributedString.Key(NoteTextBlockAttribute.name)
         let boundaryKey = NSAttributedString.Key(NoteTextStructuralBoundaryAttribute.name)
         let fullRange = NSRange(location: 0, length: attributedText.length)
         guard fullRange.length > 0 else { return [] }
 
-        layoutManager.ensureLayout(for: textContainer)
+        if shouldEnsureLayout {
+            layoutManager.ensureLayout(for: textContainer)
+        }
 
         var rects: [CGRect] = []
         let codeContentRanges = contiguousCodeContentRanges(

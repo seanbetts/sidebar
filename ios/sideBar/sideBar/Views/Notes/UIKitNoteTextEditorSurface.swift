@@ -2,7 +2,7 @@
 import SwiftUI
 import UIKit
 
-private struct UIKitNoteTextEditorRenderSignature: Equatable {
+struct UIKitNoteTextEditorRenderSignature: Equatable {
     let renderGeneration: UInt64
     let baseFontSize: CGFloat
 }
@@ -63,6 +63,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var hasScheduledAutofocus = false
         var suppressAutofocusReveal = false
         private var lastReportedViewportSnapshot: UIKitNoteTextEditorViewportSnapshot?
+        private var cachedCodeBlockBackgroundRects: [CGRect] = []
+        private var isCodeBlockBackgroundLayoutDirty = true
+        private var lastCodeBlockBackgroundLayoutBoundsWidth: CGFloat = 0
+        private var lastCodeBlockBackgroundLayoutInset: UIEdgeInsets = .zero
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { setNeedsLayout() }
         }
@@ -75,6 +79,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         override var contentOffset: CGPoint {
             didSet {
                 reportViewportSnapshotIfNeeded()
+                setNeedsDisplay()
             }
         }
 
@@ -103,7 +108,13 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             super.layoutSubviews()
             updateTextContainerInsets()
             updateViewportInsets()
+            updateCodeBlockBackgroundLayoutState()
             reportViewportSnapshotIfNeeded()
+        }
+
+        override func draw(_ rect: CGRect) {
+            drawCodeBlockBackgrounds(in: rect)
+            super.draw(rect)
         }
 
         override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
@@ -134,6 +145,51 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 snapshot.selectedRange,
                 snapshot.selectionViewportAnchorY
             )
+        }
+
+        func invalidateCodeBlockBackgroundLayout() {
+            isCodeBlockBackgroundLayoutDirty = true
+            cachedCodeBlockBackgroundRects = []
+            setNeedsDisplay()
+        }
+
+        private func updateCodeBlockBackgroundLayoutState() {
+            let widthChanged = abs(lastCodeBlockBackgroundLayoutBoundsWidth - bounds.width) > 0.5
+            let insetChanged = lastCodeBlockBackgroundLayoutInset != textContainerInset
+            guard widthChanged || insetChanged else { return }
+            lastCodeBlockBackgroundLayoutBoundsWidth = bounds.width
+            lastCodeBlockBackgroundLayoutInset = textContainerInset
+            invalidateCodeBlockBackgroundLayout()
+        }
+
+        private func drawCodeBlockBackgrounds(in rect: CGRect) {
+            guard textStorage.length > 0 else { return }
+            let backgroundRects = resolvedCodeBlockBackgroundRects()
+            guard backgroundRects.isEmpty == false else { return }
+
+            NoteTextAppearance.codeBlockBackgroundColor.setFill()
+            for backgroundRect in backgroundRects where backgroundRect.intersects(rect) {
+                UIBezierPath(
+                    roundedRect: backgroundRect,
+                    cornerRadius: NoteTextAppearance.codeBlockCornerRadius
+                ).fill()
+            }
+        }
+
+        private func resolvedCodeBlockBackgroundRects() -> [CGRect] {
+            guard isCodeBlockBackgroundLayoutDirty == false else {
+                cachedCodeBlockBackgroundRects = NoteTextCodeBlockBackgroundLayout.detachedBlockRects(
+                    in: textStorage,
+                    containerWidth: bounds.width,
+                    textContainerInset: CGSize(
+                        width: textContainerInset.left,
+                        height: textContainerInset.top
+                    )
+                )
+                isCodeBlockBackgroundLayoutDirty = false
+                return cachedCodeBlockBackgroundRects
+            }
+            return cachedCodeBlockBackgroundRects
         }
 
     }
@@ -266,44 +322,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
     }
 
-    private func applyRenderedTextIfNeeded(
-        to textView: AccessoryTextView,
-        coordinator: Coordinator,
-        renderSignature: UIKitNoteTextEditorRenderSignature,
-        isProgrammaticRenderUpdate: Bool
-    ) {
-        guard isProgrammaticRenderUpdate else { return }
-        let preservedContentOffset = viewModel.consumeViewportPreservationOnNextProgrammaticRender() ?
-            textView.contentOffset : nil
-        let attributedText = bridgedAttributedText(from: viewModel.attributedContent)
-        coordinator.isApplyingProgrammaticText = true
-        textView.textStorage.setAttributedString(attributedText)
-        coordinator.isApplyingProgrammaticText = false
-        if let preservedContentOffset {
-            textView.layoutIfNeeded()
-            textView.setContentOffset(
-                Self.clampedContentOffset(preservedContentOffset, for: textView),
-                animated: false
-            )
-        }
-        coordinator.lastAppliedRenderSignature = renderSignature
-    }
-
-    private func applySelectionIfNeeded(
-        to textView: AccessoryTextView,
-        coordinator: Coordinator,
-        selectedRange: NSRange
-    ) {
-        guard textView.selectedRange != selectedRange else { return }
-        coordinator.isApplyingProgrammaticSelection = true
-        textView.selectedRange = selectedRange
-        coordinator.isApplyingProgrammaticSelection = false
-    }
-
     final class Coordinator: NSObject, UITextViewDelegate {
         let viewModel: NativeNoteEditorViewModel
         var isApplyingProgrammaticText = false, isApplyingProgrammaticSelection = false
-        fileprivate var lastAppliedRenderSignature: UIKitNoteTextEditorRenderSignature?
+        var lastAppliedRenderSignature: UIKitNoteTextEditorRenderSignature?
         var acknowledgedPendingSelectionTarget: NotesEditorViewModel.PendingEditSelectionTarget?
         var onDidBeginEditing: ((AccessoryTextView) -> Void)?
 
@@ -313,6 +335,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingProgrammaticText else { return }
+            (textView as? AccessoryTextView)?.invalidateCodeBlockBackgroundLayout()
 
             let attributedText = NSAttributedString(attributedString: textView.attributedText)
             let selectedRange = textView.selectedRange
@@ -381,6 +404,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             isApplyingProgrammaticText = true
             textView.textStorage.setAttributedString(bridgedText)
             isApplyingProgrammaticText = false
+            (textView as? AccessoryTextView)?.invalidateCodeBlockBackgroundLayout()
             lastAppliedRenderSignature = UIKitNoteTextEditorRenderSignature(
                 renderGeneration: viewModel.renderGeneration,
                 baseFontSize: viewModel.baseFontSize

@@ -688,6 +688,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
         textView.onViewportOffsetChange = onViewportOffsetChange
         textView.onInitialViewportRestorationApplied = onInitialViewportRestorationApplied
         textView.attributedText = attributedContent
+        textView.invalidateCodeBlockBackgroundLayout()
         containerView.onActivateEditing = onActivateEditing
         containerView.onActivateEditingWithViewport = onActivateEditingWithViewport
         containerView.onToggleChecklistItem = onToggleChecklistItem
@@ -711,6 +712,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
         containerView.onToggleChecklistItem = onToggleChecklistItem
         if readTextView.attributedText.isEqual(to: attributedContent) == false {
             readTextView.attributedText = attributedContent
+            readTextView.invalidateCodeBlockBackgroundLayout()
         }
     }
 }
@@ -789,10 +791,15 @@ private final class SelectableNoteReadTextView: UITextView {
     private var pendingInitialViewportAnchorY: CGFloat?
     private var pendingInitialViewportStabilitySignature: InitialViewportStabilitySignature?
     private var pendingPostRestorationStabilitySignature: PostRestorationStabilitySignature?
+    private var cachedCodeBlockBackgroundRects: [CGRect] = []
+    private var isCodeBlockBackgroundLayoutDirty = true
+    private var lastCodeBlockBackgroundLayoutBoundsWidth: CGFloat = 0
+    private var lastCodeBlockBackgroundLayoutInset: UIEdgeInsets = .zero
 
     override var contentOffset: CGPoint {
         didSet {
             reportViewportOffsetIfNeeded()
+            setNeedsDisplay()
         }
     }
 
@@ -817,8 +824,14 @@ private final class SelectableNoteReadTextView: UITextView {
     override func layoutSubviews() {
         super.layoutSubviews()
         updateTextContainerInsets()
+        updateCodeBlockBackgroundLayoutState()
         applyInitialViewportOffsetIfNeeded()
         reportViewportOffsetIfNeeded()
+    }
+
+    override func draw(_ rect: CGRect) {
+        drawCodeBlockBackgrounds(in: rect)
+        super.draw(rect)
     }
 
     private func updateTextContainerInsets() {
@@ -831,6 +844,49 @@ private final class SelectableNoteReadTextView: UITextView {
         )
         guard textContainerInset != resolvedInsets else { return }
         textContainerInset = resolvedInsets
+    }
+
+    func invalidateCodeBlockBackgroundLayout() {
+        isCodeBlockBackgroundLayoutDirty = true
+        cachedCodeBlockBackgroundRects = []
+        setNeedsDisplay()
+    }
+
+    private func updateCodeBlockBackgroundLayoutState() {
+        let widthChanged = abs(lastCodeBlockBackgroundLayoutBoundsWidth - bounds.width) > 0.5
+        let insetChanged = lastCodeBlockBackgroundLayoutInset != textContainerInset
+        guard widthChanged || insetChanged else { return }
+        lastCodeBlockBackgroundLayoutBoundsWidth = bounds.width
+        lastCodeBlockBackgroundLayoutInset = textContainerInset
+        invalidateCodeBlockBackgroundLayout()
+    }
+
+    private func drawCodeBlockBackgrounds(in rect: CGRect) {
+        guard attributedText.length > 0 else { return }
+        let backgroundRects = resolvedCodeBlockBackgroundRects()
+        guard backgroundRects.isEmpty == false else { return }
+
+        NoteTextAppearance.codeBlockBackgroundColor.setFill()
+        for backgroundRect in backgroundRects where backgroundRect.intersects(rect) {
+            UIBezierPath(
+                roundedRect: backgroundRect,
+                cornerRadius: NoteTextAppearance.codeBlockCornerRadius
+            ).fill()
+        }
+    }
+
+    private func resolvedCodeBlockBackgroundRects() -> [CGRect] {
+        guard isCodeBlockBackgroundLayoutDirty else { return cachedCodeBlockBackgroundRects }
+        cachedCodeBlockBackgroundRects = NoteTextCodeBlockBackgroundLayout.detachedBlockRects(
+            in: attributedText,
+            containerWidth: bounds.width,
+            textContainerInset: CGSize(
+                width: textContainerInset.left,
+                height: textContainerInset.top
+            )
+        )
+        isCodeBlockBackgroundLayoutDirty = false
+        return cachedCodeBlockBackgroundRects
     }
 
     private func reportViewportOffsetIfNeeded(force: Bool = false) {
