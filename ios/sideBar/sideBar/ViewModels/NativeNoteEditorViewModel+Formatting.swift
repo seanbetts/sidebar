@@ -105,9 +105,7 @@ extension NativeNoteEditorViewModel {
 
     func canApplyList(_ listType: NotesSemanticDocument.BlockType) -> Bool {
         guard !isReadOnly else { return false }
-        guard listType == .unorderedList
-                || listType == .orderedList
-                || listType == .checklist else { return false }
+        guard listType == .unorderedList || listType == .orderedList else { return false }
         let document = currentPersistenceSnapshot().document
         let touchedBlocks = touchedBlockInfos(in: document)
         guard !touchedBlocks.isEmpty else { return false }
@@ -115,9 +113,7 @@ extension NativeNoteEditorViewModel {
     }
 
     func isListActive(_ listType: NotesSemanticDocument.BlockType) -> Bool {
-        guard listType == .unorderedList
-                || listType == .orderedList
-                || listType == .checklist else { return false }
+        guard listType == .unorderedList || listType == .orderedList else { return false }
         let document = currentPersistenceSnapshot().document
         let touchedBlocks = touchedBlockInfos(in: document)
         guard !touchedBlocks.isEmpty else { return false }
@@ -237,7 +233,7 @@ extension NativeNoteEditorViewModel {
                 }
             }
         } else {
-            let listItems = listItemsForListToggle(from: touchedBlocks, targetListType: listType)
+            let listItems = listItemsForListToggle(from: touchedBlocks)
             replacementBlocks = [.init(type: listType, children: listItems)]
         }
 
@@ -349,7 +345,7 @@ extension NativeNoteEditorViewModel {
     private func canConvertBlockForListToggle(for blockInfo: DocumentBlockInfo) -> Bool {
         guard blockInfo.index != 0 else { return false }
         switch blockInfo.block.type {
-        case .paragraph, .orderedList, .unorderedList, .checklist:
+        case .paragraph, .orderedList, .unorderedList:
             return true
         default:
             return false
@@ -357,25 +353,17 @@ extension NativeNoteEditorViewModel {
     }
 
     private func listItemsForListToggle(
-        from touchedBlocks: [DocumentBlockInfo],
-        targetListType: NotesSemanticDocument.BlockType
+        from touchedBlocks: [DocumentBlockInfo]
     ) -> [NotesSemanticDocument.Block] {
         touchedBlocks.flatMap { blockInfo in
             switch blockInfo.block.type {
-            case .orderedList, .unorderedList, .checklist:
-                return (blockInfo.block.children ?? []).map { child in
-                    NotesSemanticDocument.Block(
-                        type: child.type,
-                        content: child.content,
-                        checked: targetListType == .checklist ? (child.checked ?? false) : child.checked
-                    )
-                }
+            case .orderedList, .unorderedList:
+                return blockInfo.block.children ?? []
             case .paragraph:
                 return [
                     NotesSemanticDocument.Block(
                         type: .listItem,
-                        content: blockInfo.block.content,
-                        checked: false
+                        content: blockInfo.block.content
                     )
                 ]
             default:

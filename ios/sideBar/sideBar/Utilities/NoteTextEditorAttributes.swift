@@ -40,29 +40,12 @@ public enum NoteTextStructuralBoundaryAttribute: CodableAttributedStringKey, Obj
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-public enum NoteTextChecklistCompletionAttribute: CodableAttributedStringKey, ObjectiveCConvertibleAttributedStringKey {
-    public typealias Value = Bool
-    public typealias ObjectiveCValue = NSNumber
-
-    public static let name = "ai.sidebar.notes.checklist-completion"
-
-    public static func objectiveCValue(for value: Bool) throws -> NSNumber {
-        NSNumber(value: value)
-    }
-
-    public static func value(for object: NSNumber) throws -> Bool {
-        object.boolValue
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
 public extension AttributeScopes {
     struct NoteTextEditorAttributes: AttributeScope {
         public let foundation: AttributeScopes.FoundationAttributes
         public let swiftUI: AttributeScopes.SwiftUIAttributes
         public let noteBlock: NoteTextBlockAttribute
         public let noteStructuralBoundary: NoteTextStructuralBoundaryAttribute
-        public let noteChecklistCompletion: NoteTextChecklistCompletionAttribute
         #if os(iOS)
         public let uiKit: AttributeScopes.UIKitAttributes
         #elseif os(macOS)

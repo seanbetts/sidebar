@@ -13,23 +13,4 @@ extension NativeNoteEditorViewModel {
     func rangesOverlap(_ lhs: Range<Int>, _ rhs: Range<Int>) -> Bool {
         lhs.lowerBound < rhs.upperBound && rhs.lowerBound < lhs.upperBound
     }
-
-    func blockInfoContainingCharacterOffset(
-        _ offset: Int,
-        in document: NotesSemanticDocument
-    ) -> DocumentBlockInfo? {
-        let infos = documentBlockInfos(in: document)
-        guard let lastInfo = infos.last else { return nil }
-
-        if offset >= lastInfo.coverageRange.upperBound {
-            return lastInfo
-        }
-
-        return infos.first { info in
-            if info.coverageRange.isEmpty {
-                return offset == info.coverageRange.lowerBound
-            }
-            return info.coverageRange.contains(offset)
-        }
-    }
 }

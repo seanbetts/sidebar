@@ -38,7 +38,6 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
                     traits: inlineTraits(from: run, blockType: resolvedBlockType),
                     underline: run.underlineStyle != nil,
                     strikethrough: run.strikethroughStyle != nil,
-                    checklistCompletion: run.noteChecklistCompletion == true,
                     link: run.link,
                     presentationIntent: run.attributes[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self],
                     blockType: resolvedBlockType,
@@ -62,7 +61,6 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
                 traits: snapshot.traits,
                 underline: snapshot.underline,
                 strikethrough: snapshot.strikethrough,
-                checklistCompletion: snapshot.checklistCompletion,
                 link: snapshot.link,
                 presentationIntent: snapshot.presentationIntent,
                 blockType: snapshot.blockType,
@@ -79,7 +77,6 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         traits: NoteInlineFormattingTraits,
         underline: Bool,
         strikethrough: Bool,
-        checklistCompletion: Bool,
         link: URL?,
         presentationIntent: PresentationIntent?,
         blockType: NotesSemanticDocument.BlockType,
@@ -116,7 +113,7 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         )
         #endif
         normalized[range].underlineStyle = underline ? .single : nil
-        normalized[range].strikethroughStyle = (strikethrough || checklistCompletion) ? .single : nil
+        normalized[range].strikethroughStyle = strikethrough ? .single : nil
         normalized[range].link = link
         #if os(iOS)
         normalized[range][AttributeScopes.UIKitAttributes.BackgroundColorAttribute.self] =
@@ -128,7 +125,6 @@ struct NoteTextFormattingDefinition: AttributedTextFormattingDefinition {
         normalized[range].paragraphStyle = paragraphStyle
         normalized[range].noteBlock = noteBlock
         normalized[range].noteStructuralBoundary = structuralBoundary ? true : nil
-        normalized[range].noteChecklistCompletion = checklistCompletion ? true : nil
         if let presentationIntent {
             normalized[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = presentationIntent
         }
@@ -190,7 +186,6 @@ private extension NoteTextFormattingDefinition {
         let traits: NoteInlineFormattingTraits
         let underline: Bool
         let strikethrough: Bool
-        let checklistCompletion: Bool
         let link: URL?
         let presentationIntent: PresentationIntent?
         let blockType: NotesSemanticDocument.BlockType

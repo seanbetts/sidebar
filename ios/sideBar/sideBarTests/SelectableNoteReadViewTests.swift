@@ -275,30 +275,6 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(strikethroughValue, NSUnderlineStyle.single.rawValue)
     }
 
-    func testMakePlatformAttributedContentAppliesDerivedStrikethroughForCheckedChecklistItems() throws {
-        let document = NotesSemanticDocument(
-            version: NotesSemanticDocument.currentVersion,
-            blocks: [
-                .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                .init(
-                    type: .checklist,
-                    children: [
-                        .init(type: .listItem, content: [.init(text: "Done", marks: [])], checked: true)
-                    ]
-                )
-            ]
-        )
-
-        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
-            from: document,
-            baseFontSize: 17
-        )
-
-        let strikethroughValue = attributed.attribute(.strikethroughStyle, at: 12, effectiveRange: nil) as? Int
-        XCTAssertEqual(strikethroughValue, NSUnderlineStyle.single.rawValue)
-        XCTAssertEqual(document.blocks[1].children?.first?.content.first?.marks, [])
-    }
-
     func testBridgedPlatformFontTraitsDoNotAddFormattingWithoutSwiftUIFont() throws {
         var attributed = AttributedString("Bold Italic Underline")
 

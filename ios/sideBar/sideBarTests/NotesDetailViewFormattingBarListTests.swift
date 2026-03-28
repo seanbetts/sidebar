@@ -189,48 +189,4 @@ final class NotesDetailViewFormattingBarListTests: NotesDetailViewHostingTestCas
         XCTAssertEqual(document.blocks.map(\.type), [.title, .paragraph, .paragraph])
         XCTAssertFalse(context.makeView().noteFormattingBarConfiguration.isOrderedListActive)
     }
-
-    func testFormattingBarConfigurationChecklistTapConvertsParagraphsIntoChecklist() async throws {
-        guard #available(iOS 26.0, macOS 26.0, *) else {
-            throw XCTSkip("Requires iOS 26 or macOS 26")
-        }
-
-        let note = NotePayload(
-            id: "n1",
-            name: "Title",
-            document: NotesSemanticDocument(
-                blocks: [
-                    .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                    .paragraph([.init(text: "First", marks: [])]),
-                    .paragraph([.init(text: "Second", marks: [])])
-                ]
-            ),
-            plainText: "Title\nFirst\nSecond",
-            path: "/note.md",
-            modified: nil,
-            created: nil
-        )
-        let context = await makeNotesDetailViewTestContext(note: note)
-        _ = await waitUntil(timeout: .seconds(2)) {
-            context.editorViewModel.currentNoteId == "n1"
-        }
-        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
-        context.editorViewModel.attachNativeEditor(nativeViewModel)
-        context.editorViewModel.enterEditMode()
-
-        let selectionStart = nativeViewModel.index(forCharacterOffset: 6, in: nativeViewModel.attributedContent)
-        let selectionEnd = nativeViewModel.attributedContent.endIndex
-        nativeViewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
-        nativeViewModel.handleSelectionChange()
-
-        let configuration = context.makeView().noteFormattingBarConfiguration
-        XCTAssertTrue(configuration.isChecklistEnabled)
-        XCTAssertFalse(configuration.isChecklistActive)
-
-        configuration.onChecklistTap()
-
-        let document = context.editorViewModel.currentSemanticDocumentSnapshot()
-        XCTAssertEqual(document.blocks.map(\.type), [.title, .checklist])
-        XCTAssertTrue(context.makeView().noteFormattingBarConfiguration.isChecklistActive)
-    }
 }

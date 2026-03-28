@@ -62,7 +62,6 @@ extension NotesDetailView {
             initialViewportAnchorY: resolvedInitialViewportAnchorY,
             onActivateEditing: activateReadSurfaceEditing,
             onActivateEditingWithViewport: activateReadSurfaceEditing,
-            onToggleChecklistItem: handleReadSurfaceChecklistToggle,
             onViewportOffsetChange: viewportOffsetHandler,
             onInitialViewportRestorationApplied: handleReadInitialViewportRestorationApplied
         )

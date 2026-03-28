@@ -195,7 +195,7 @@ private func codeBlockContentLineFragmentUnion(
 ) throws -> CGRect {
     let blockKey = NSAttributedString.Key(NoteTextBlockAttribute.name)
     let boundaryKey = NSAttributedString.Key(NoteTextStructuralBoundaryAttribute.name)
-    let attributedText = try XCTUnwrap(textView.attributedText)
+    let attributedText = textView.attributedText
     let fullRange = NSRange(location: 0, length: attributedText.length)
 
     let layoutManager = textView.layoutManager
@@ -340,47 +340,5 @@ private func assertColorsApproximatelyEqual(
     XCTAssertEqual(actualGreen, expectedGreen, accuracy: tolerance, file: file, line: line)
     XCTAssertEqual(actualBlue, expectedBlue, accuracy: tolerance, file: file, line: line)
     XCTAssertEqual(actualAlpha, expectedAlpha, accuracy: tolerance, file: file, line: line)
-}
-
-@MainActor
-private func assertColorsApproximatelyNotEqual(
-    _ actual: UIColor,
-    _ expected: UIColor,
-    tolerance: CGFloat,
-    file: StaticString = #filePath,
-    line: UInt = #line
-) {
-    var actualRed: CGFloat = 0
-    var actualGreen: CGFloat = 0
-    var actualBlue: CGFloat = 0
-    var actualAlpha: CGFloat = 0
-    var expectedRed: CGFloat = 0
-    var expectedGreen: CGFloat = 0
-    var expectedBlue: CGFloat = 0
-    var expectedAlpha: CGFloat = 0
-
-    XCTAssertTrue(
-        actual.getRed(&actualRed, green: &actualGreen, blue: &actualBlue, alpha: &actualAlpha),
-        file: file,
-        line: line
-    )
-    XCTAssertTrue(
-        expected.getRed(&expectedRed, green: &expectedGreen, blue: &expectedBlue, alpha: &expectedAlpha),
-        file: file,
-        line: line
-    )
-
-    let differences = [
-        abs(actualRed - expectedRed),
-        abs(actualGreen - expectedGreen),
-        abs(actualBlue - expectedBlue),
-        abs(actualAlpha - expectedAlpha)
-    ]
-    XCTAssertTrue(
-        differences.contains(where: { $0 > tolerance }),
-        "Expected colors to differ by more than \(tolerance), got \(differences)",
-        file: file,
-        line: line
-    )
 }
 #endif

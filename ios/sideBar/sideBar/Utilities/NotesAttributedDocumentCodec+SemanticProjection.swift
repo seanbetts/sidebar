@@ -318,7 +318,6 @@ extension NotesAttributedDocumentCodec {
                     blockType: block.type,
                     baseFontSize: baseFontSize,
                     visiblePrefix: prefix,
-                    checklistItemChecked: block.type == .checklist && child.checked == true,
                     presentationIntent: paragraphIntent
                 )
             )
