@@ -199,6 +199,39 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         XCTAssertEqual(bodyStyle.lineSpacing, 0, accuracy: 0.001)
     }
 
+    func testReadSurfacePreservesBoundaryParagraphStyleParityForMixedListAndSubheadingBlocksOnIOS() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([.init(text: "Intro", marks: [])]),
+                .unorderedList([.init(text: "Fifth Item", marks: [])]),
+                .subheading([.init(text: "Subheading", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+        let baseFontSize = NoteTextTypography.defaultBodyFontSize
+
+        let readAttributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: baseFontSize
+        )
+        let editDocument = try constrainedEditorDocument(
+            document: document,
+            baseFontSize: baseFontSize
+        )
+        let bridgedEditDocument = (try? NSAttributedString(editDocument, including: \.noteTextEditor))
+            ?? NSAttributedString(editDocument)
+
+        XCTAssertEqual(readAttributed.string, bridgedEditDocument.string)
+
+        let boundaryLocation = try location(of: "\nSubheading", in: readAttributed)
+        try assertParagraphStyle(
+            readAttributed,
+            matches: try paragraphStyleAttribute(in: bridgedEditDocument, at: boundaryLocation),
+            at: boundaryLocation
+        )
+    }
+
     func testIOSCanMoveToUIKitEditorSurfaceWithoutChangingCanonicalParityContracts() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
@@ -396,6 +429,28 @@ private func assertParagraphStyle(
         line: line
     )
     XCTAssertEqual(actual.tailIndent, expected.tailIndent, accuracy: 0.001, file: file, line: line)
+}
+
+private func paragraphStyleAttribute(
+    in attributedText: NSAttributedString,
+    at location: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> NSParagraphStyle {
+    guard attributedText.length > location else {
+        XCTFail(
+            "Expected attributed text length > \(location), got \(attributedText.length)",
+            file: file,
+            line: line
+        )
+        throw NotesEditorSurfaceParityTestError.missingAttribute
+    }
+
+    return try XCTUnwrap(
+        attributedText.attribute(.paragraphStyle, at: location, effectiveRange: nil) as? NSParagraphStyle,
+        file: file,
+        line: line
+    )
 }
 
 private enum NotesEditorSurfaceParityTestError: Error {

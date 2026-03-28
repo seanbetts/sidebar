@@ -8,7 +8,11 @@ extension UIKitNoteTextEditorSurface.AccessoryTextView {
     private static let maximumViewportAnchorPasses = 3
 
     func updateViewportInsets() {
-        let bottomInset = Self.baseTextContainerInsets.bottom
+        let keyboardOverlap = max(
+            safeAreaLayoutGuide.layoutFrame.maxY - keyboardLayoutGuide.layoutFrame.minY,
+            0
+        )
+        let bottomInset = Self.baseTextContainerInsets.bottom + keyboardOverlap
         contentInset.bottom = bottomInset
         var indicatorInsets = verticalScrollIndicatorInsets
         indicatorInsets.bottom = bottomInset

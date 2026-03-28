@@ -77,10 +77,12 @@ struct SelectableNoteReadView: View {
         from document: NotesSemanticDocument,
         baseFontSize: CGFloat = NoteTextTypography.defaultBodyFontSize
     ) -> AttributedString {
-        NotesAttributedDocumentCodec.readAttributedString(
+        var attributed = NotesAttributedDocumentCodec.readAttributedString(
             from: document,
             baseFontSize: baseFontSize
         )
+        NoteTextFormattingDefinition(baseFontSize: baseFontSize).constrainDocument(&attributed)
+        return attributed
     }
 
     static func readBaseFontSize(for option: AppTextSizeOption) -> CGFloat { NoteTextTypography.defaultBodyFontSize(for: option) }
@@ -626,6 +628,9 @@ private final class SelectableNoteReadTextView: UITextView {
             guard let initialViewportOffset else { return }
             pendingInitialViewportOffset = initialViewportOffset
             pendingInitialViewportStabilitySignature = nil
+            pendingPostRestorationStabilitySignature = nil
+            isAwaitingPostRestorationStability = false
+            isAwaitingPostRestorationQuietPeriod = false
             hasAppliedInitialViewportOffset = false
             lastAppliedInitialViewportOffset = nil
             lastRequestedInitialViewportOffset = nil
@@ -638,6 +643,9 @@ private final class SelectableNoteReadTextView: UITextView {
             guard let initialViewportAnchorTarget else { return }
             pendingInitialViewportAnchorTarget = initialViewportAnchorTarget
             pendingInitialViewportStabilitySignature = nil
+            pendingPostRestorationStabilitySignature = nil
+            isAwaitingPostRestorationStability = false
+            isAwaitingPostRestorationQuietPeriod = false
             hasAppliedInitialViewportOffset = false
             lastAppliedInitialViewportOffset = nil
             lastRequestedInitialViewportOffset = nil
@@ -650,6 +658,9 @@ private final class SelectableNoteReadTextView: UITextView {
             guard let initialViewportAnchorY else { return }
             pendingInitialViewportAnchorY = initialViewportAnchorY
             pendingInitialViewportStabilitySignature = nil
+            pendingPostRestorationStabilitySignature = nil
+            isAwaitingPostRestorationStability = false
+            isAwaitingPostRestorationQuietPeriod = false
             hasAppliedInitialViewportOffset = false
             lastAppliedInitialViewportOffset = nil
             lastRequestedInitialViewportOffset = nil
@@ -661,12 +672,15 @@ private final class SelectableNoteReadTextView: UITextView {
     }
     private var lastReportedViewportOffset: CGPoint?
     private var hasAppliedInitialViewportOffset = true
+    private var isAwaitingPostRestorationStability = false
+    private var isAwaitingPostRestorationQuietPeriod = false
     private var lastAppliedInitialViewportOffset: CGPoint?
     private var lastRequestedInitialViewportOffset: CGPoint?
     private var pendingInitialViewportOffset: CGPoint?
     private var pendingInitialViewportAnchorTarget: SelectableNoteReadView.ReadActivationTarget?
     private var pendingInitialViewportAnchorY: CGFloat?
     private var pendingInitialViewportStabilitySignature: InitialViewportStabilitySignature?
+    private var pendingPostRestorationStabilitySignature: PostRestorationStabilitySignature?
     private var lastDebugLayoutSummary: String?
     private var debugTrackedActivationTarget: SelectableNoteReadView.ReadActivationTarget?
 
@@ -680,6 +694,10 @@ private final class SelectableNoteReadTextView: UITextView {
         didSet {
             guard contentSize != oldValue else { return }
             pendingInitialViewportStabilitySignature = nil
+            if isAwaitingPostRestorationStability {
+                pendingPostRestorationStabilitySignature = nil
+                isAwaitingPostRestorationQuietPeriod = false
+            }
             applyInitialViewportOffsetIfNeeded()
             reportViewportOffsetIfNeeded()
         }
@@ -750,6 +768,9 @@ private final class SelectableNoteReadTextView: UITextView {
         if needsOffsetUpdate {
             super.setContentOffset(restoration.offset, animated: false)
             pendingInitialViewportStabilitySignature = nil
+            pendingPostRestorationStabilitySignature = nil
+            isAwaitingPostRestorationStability = false
+            isAwaitingPostRestorationQuietPeriod = false
             lastAppliedInitialViewportOffset = restoration.offset
             lastRequestedInitialViewportOffset = restoration.requestedOffset
             hasAppliedInitialViewportOffset = false
@@ -781,7 +802,7 @@ private final class SelectableNoteReadTextView: UITextView {
         pendingInitialViewportAnchorTarget = nil
         pendingInitialViewportAnchorY = nil
         reportViewportOffsetIfNeeded(force: true)
-        onInitialViewportRestorationApplied?()
+        scheduleInitialViewportRestorationAppliedIfStable()
     }
 
     private struct InitialViewportRestoration {
@@ -797,10 +818,62 @@ private final class SelectableNoteReadTextView: UITextView {
         let boundsSize: CGSize
     }
 
+    private struct PostRestorationStabilitySignature: Equatable {
+        let offset: CGPoint
+        let contentSize: CGSize
+        let boundsSize: CGSize
+    }
+
     private var hasPendingInitialViewportRestoration: Bool {
         pendingInitialViewportOffset != nil
             || pendingInitialViewportAnchorTarget != nil
             || pendingInitialViewportAnchorY != nil
+    }
+
+    private func scheduleInitialViewportRestorationAppliedIfStable() {
+        let stabilitySignature = PostRestorationStabilitySignature(
+            offset: contentOffset,
+            contentSize: contentSize,
+            boundsSize: bounds.size
+        )
+        if isAwaitingPostRestorationStability == false {
+            isAwaitingPostRestorationStability = true
+            pendingPostRestorationStabilitySignature = stabilitySignature
+            isAwaitingPostRestorationQuietPeriod = false
+            DispatchQueue.main.async { [weak self] in
+                self?.scheduleInitialViewportRestorationAppliedIfStable()
+            }
+            return
+        }
+        if pendingPostRestorationStabilitySignature != stabilitySignature {
+            pendingPostRestorationStabilitySignature = stabilitySignature
+            isAwaitingPostRestorationQuietPeriod = false
+            DispatchQueue.main.async { [weak self] in
+                self?.scheduleInitialViewportRestorationAppliedIfStable()
+            }
+            return
+        }
+        guard isAwaitingPostRestorationQuietPeriod == false else { return }
+        isAwaitingPostRestorationQuietPeriod = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self else { return }
+            let currentSignature = PostRestorationStabilitySignature(
+                offset: self.contentOffset,
+                contentSize: self.contentSize,
+                boundsSize: self.bounds.size
+            )
+            guard self.isAwaitingPostRestorationStability,
+                  self.isAwaitingPostRestorationQuietPeriod,
+                  self.pendingPostRestorationStabilitySignature == stabilitySignature,
+                  currentSignature == stabilitySignature
+            else {
+                return
+            }
+            self.isAwaitingPostRestorationStability = false
+            self.isAwaitingPostRestorationQuietPeriod = false
+            self.pendingPostRestorationStabilitySignature = nil
+            self.onInitialViewportRestorationApplied?()
+        }
     }
 
     private func resolvedInitialViewportRestoration() -> InitialViewportRestoration? {
