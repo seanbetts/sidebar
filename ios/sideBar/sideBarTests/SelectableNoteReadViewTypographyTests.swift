@@ -10,6 +10,15 @@ import UIKit
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class SelectableNoteReadViewTypographyTests: XCTestCase {
+    func testCodeBlockInlineCodeDoesNotUseInlineBackground() {
+        XCTAssertNil(
+            NoteTextAppearance.backgroundColor(
+                for: .codeBlock,
+                inlineCode: true
+            )
+        )
+    }
+
     func testSharedTextStyleTypographyUsesApprovedScalesAndWeights() throws {
         let baseFontSize: CGFloat = 16
 
@@ -172,6 +181,33 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
 
         assertColorsApproximatelyEqual(
+            sampledColor.resolvedColor(with: darkTraits),
+            NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: darkTraits),
+            tolerance: 0.05
+        )
+    }
+
+    func testMountedReadViewDoesNotDrawCodeBlockBackgroundAbovePrecedingParagraphOnIOS() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .paragraph([.init(text: "Before it:", marks: [])]),
+                .init(type: .codeBlock, content: [.init(text: "let name: String\nprint(name)", marks: [])]),
+                .paragraph([.init(text: "After it", marks: [])])
+            ]
+        )
+        let textView = try makeReadTextView(
+            document: document,
+            frame: CGRect(x: 0, y: 0, width: 420, height: 240)
+        )
+        let beforeRect = try characterRect(in: textView, characterIndex: 0)
+        let samplePoint = CGPoint(
+            x: min(beforeRect.maxX + 80, textView.bounds.maxX - 10),
+            y: beforeRect.midY
+        )
+        let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+
+        assertColorsApproximatelyNotEqual(
             sampledColor.resolvedColor(with: darkTraits),
             NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: darkTraits),
             tolerance: 0.05

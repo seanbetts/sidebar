@@ -12,12 +12,13 @@ enum NoteTextAppearance {
     static var inlineCodeBackgroundColor: UIColor { .secondarySystemFill }
     static var codeBlockBackgroundColor: UIColor { .secondarySystemBackground }
     static var codeBlockCornerRadius: CGFloat { 10 }
+    static var codeBlockVerticalPadding: CGFloat { 8 }
 
     static func backgroundColor(
         for blockType: NotesSemanticDocument.BlockType,
         inlineCode: Bool
     ) -> UIColor? {
-        _ = blockType
+        if blockType == .codeBlock { return nil }
         return inlineCode ? inlineCodeBackgroundColor : nil
     }
     #elseif canImport(AppKit)
@@ -33,12 +34,13 @@ enum NoteTextAppearance {
         }
     }
     static var codeBlockCornerRadius: CGFloat { 10 }
+    static var codeBlockVerticalPadding: CGFloat { 8 }
 
     static func backgroundColor(
         for blockType: NotesSemanticDocument.BlockType,
         inlineCode: Bool
     ) -> NSColor? {
-        _ = blockType
+        if blockType == .codeBlock { return nil }
         return inlineCode ? inlineCodeBackgroundColor : nil
     }
     #endif
