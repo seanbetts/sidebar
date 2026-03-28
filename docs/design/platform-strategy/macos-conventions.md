@@ -30,6 +30,8 @@ The left panel is a fixed width (280px). It is not user-resizable. `SidebarSplit
 
 The right sidebar is available in workspace mode (expand/collapse toggle). Width is user-resizable (min 280px, default 360px). Width persisted via `@AppStorage`.
 
+The rail width (56px) should be tokenised as `DesignTokens.Size.railWidth = 56`. It is currently hardcoded in `SidebarRail.swift`, `WorkspaceLayout.swift`, and `SidebarSplitView.swift`. This token should be added as part of the foundations/token-model work.
+
 ---
 
 ## Mac navigation
@@ -98,8 +100,8 @@ Implemented in `Views/AppCommands.swift` via `SidebarCommands: Commands`.
 - The product docs and `AppCommands.swift` are in sync — everything documented is implemented.
 - Files is deliberately sparse. Files are passive content and the menu reflects that.
 
-**One gap:**
-Several universal shortcuts (Cmd+Shift+S, Cmd+Shift+O, Cmd+N, Cmd+F, Cmd+R) are not represented in the menu bar. There is no View menu, so sidebar toggle and scratchpad are undiscoverable via the menus. A minimal View menu with "Toggle Sidebar" and "Open Scratchpad" would follow Mac convention and make these findable without requiring users to already know the shortcut.
+**Gap — View menu needed:**
+Several universal shortcuts (Cmd+Shift+S, Cmd+Shift+O, Cmd+N, Cmd+F, Cmd+R) are not represented in the menu bar. A View menu should be added with at minimum "Toggle Sidebar" (Cmd+Shift+S) and "Open Scratchpad" (Cmd+Shift+O) to make these discoverable without requiring users to already know the shortcuts. This follows standard Mac convention.
 
 ---
 
@@ -227,12 +229,6 @@ Source: `Views/Websites/SiteHeaderBar.swift`
 
 ---
 
-## Open questions
-
-- Should a View menu be added to expose the sidebar toggle shortcut (Cmd+Shift+S)? (Captured — not implementing now.)
-- Should the sidebar rail width (56px) be tokenised in `DesignTokens.Size`?
-
----
 
 ## Related docs
 
