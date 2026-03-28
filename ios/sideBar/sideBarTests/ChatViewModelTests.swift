@@ -134,6 +134,48 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(toolCall?.skillId, "notes")
         XCTAssertEqual(toolCall?.iconKey, "notes")
     }
+
+    func testHandleToolEndMarksNeedsNewlineAfterSuccessfulToolCompletion() async {
+        let cache = TestCacheClient()
+        let conversation = ConversationWithMessages(
+            id: "conv-1",
+            title: "Chat",
+            titleGenerated: false,
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-02T00:00:00Z",
+            messageCount: 1,
+            firstMessage: nil,
+            isArchived: nil,
+            messages: [Message(
+                id: "assistant-1",
+                role: .assistant,
+                content: "Found this",
+                status: .streaming,
+                toolCalls: [
+                    ToolCall(id: "tool-1", name: "Search", parameters: [:], status: .pending)
+                ],
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:00Z",
+                error: nil
+            )]
+        )
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(
+            listResult: .success([]),
+            getResult: .success(conversation)
+        )
+        let viewModel = makeViewModel(api: api, cache: cache)
+
+        await viewModel.selectConversation(id: "conv-1")
+        viewModel.handle(event: ChatStreamEvent(
+            type: .toolEnd,
+            data: AnyCodable([
+                "name": "Search",
+                "status": "success"
+            ])
+        ))
+
+        XCTAssertEqual(viewModel.messages.first?.needsNewline, true)
+    }
     func testNoteUpdateClearsCache() async {
         let cache = TestCacheClient()
         let note = NotePayload(id: "note-1", name: "Test.md", content: "Hello", path: "note-1", modified: nil, created: nil)

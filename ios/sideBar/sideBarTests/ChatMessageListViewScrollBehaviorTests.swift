@@ -83,6 +83,43 @@ final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
         XCTAssertTrue(shouldAnimate)
     }
 
+    func testCompletedToolMetadataChangeDoesNotScrollBottom() {
+        let oldMessage = makeMessage(
+            content: "Answer",
+            status: .complete,
+            toolCalls: [
+                ToolCall(id: "tool-1", name: "Search", parameters: [:], status: .success)
+            ]
+        )
+        let newMessage = makeMessage(
+            content: "Answer",
+            status: .complete,
+            toolCalls: [
+                ToolCall(
+                    id: "tool-1",
+                    name: "Search",
+                    parameters: [:],
+                    status: .success,
+                    skillId: "web-search",
+                    iconKey: "web-search"
+                )
+            ]
+        )
+
+        let shouldScroll = ChatMessageListScrollBehavior.shouldScrollForLastMessageChange(
+            from: ChatMessageScrollSignature(message: oldMessage),
+            to: ChatMessageScrollSignature(message: newMessage),
+            isStreaming: false,
+            shouldScrollToBottom: false
+        )
+
+        XCTAssertFalse(shouldScroll)
+    }
+
+    func testActiveToolChangesDoNotScrollChatList() {
+        XCTAssertFalse(ChatMessageListScrollBehavior.shouldScrollForActiveToolChange())
+    }
+
     func testMessageScrollSignatureChangesWhenStatusChanges() {
         let message = makeMessage()
         let changedStatusMessage = Message(

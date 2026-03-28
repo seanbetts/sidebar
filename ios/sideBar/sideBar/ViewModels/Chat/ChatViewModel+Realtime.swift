@@ -251,9 +251,7 @@ extension ChatViewModel {
         let statusRaw = stringValue(from: event.data, key: "status")
         let status = statusRaw == ToolActivityStatus.error.rawValue ? ToolActivityStatus.error : ToolActivityStatus.success
         activeTool = ChatActiveTool(name: name, status: status, startedAt: activeTool?.startedAt ?? self.clock())
-        if status == .error {
-            markNeedsNewline()
-        }
+        markNeedsNewline()
         clearActiveToolTask?.cancel()
         clearActiveToolTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 4_500_000_000)

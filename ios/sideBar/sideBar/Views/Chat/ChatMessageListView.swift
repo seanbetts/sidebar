@@ -106,6 +106,14 @@ struct ChatMessageListView: View {
                         }
                         return
                     }
+                    guard ChatMessageListScrollBehavior.shouldScrollForLastMessageChange(
+                        from: oldToken.lastMessageSignature,
+                        to: newToken.lastMessageSignature,
+                        isStreaming: viewModel.isStreaming,
+                        shouldScrollToBottom: shouldScrollToBottom
+                    ) else {
+                        return
+                    }
                     scrollToBottom(
                         proxy: proxy,
                         animated: ChatMessageListScrollBehavior.shouldAnimateLastMessageChange(
@@ -119,6 +127,9 @@ struct ChatMessageListView: View {
                 }
 
                 if oldToken.activeToolSignature != newToken.activeToolSignature {
+                    guard ChatMessageListScrollBehavior.shouldScrollForActiveToolChange() else {
+                        return
+                    }
                     scrollToBottom(proxy: proxy, animated: false)
                     return
                 }
@@ -247,6 +258,26 @@ private struct ScrollChangeToken: Equatable {
 }
 
 enum ChatMessageListScrollBehavior {
+    static func shouldScrollForLastMessageChange(
+        from oldSignature: ChatMessageScrollSignature,
+        to newSignature: ChatMessageScrollSignature,
+        isStreaming: Bool,
+        shouldScrollToBottom: Bool
+    ) -> Bool {
+        guard !isStreaming else {
+            return true
+        }
+        guard !shouldScrollToBottom else {
+            return true
+        }
+        let changedVisibleContent = oldSignature.id != newSignature.id
+            || oldSignature.content != newSignature.content
+            || oldSignature.status != newSignature.status
+            || oldSignature.needsNewline != newSignature.needsNewline
+            || oldSignature.error != newSignature.error
+        return changedVisibleContent
+    }
+
     static func shouldAnimateLastMessageChange(
         from oldSignature: ChatMessageScrollSignature,
         to newSignature: ChatMessageScrollSignature,
@@ -261,6 +292,10 @@ enum ChatMessageListScrollBehavior {
             && oldSignature.status == .streaming
             && newSignature.status != .streaming
         return !isTerminalStreamTransition
+    }
+
+    static func shouldScrollForActiveToolChange() -> Bool {
+        false
     }
 }
 
