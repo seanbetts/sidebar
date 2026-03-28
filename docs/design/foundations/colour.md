@@ -98,22 +98,22 @@ On web, text is defined as `--foreground` (oklch near-black/near-white) and `--m
 
 ## State and action colors
 
-<div style={{display:"flex",gap:"16px",flexWrap:"wrap",margin:"24px 0",fontFamily:"-apple-system,sans-serif"}}>
-  <div style={{textAlign:"center"}}>
-    <div style={{width:"56px",height:"56px",borderRadius:"12px",background:"rgba(0,122,255,0.18)",border:"1px solid rgba(0,122,255,0.25)",margin:"0 auto"}}></div>
-    <div style={{fontSize:"11px",color:"#666",marginTop:"6px"}}>selection</div>
+<div style={{display:"flex",gap:"0",marginBottom:"24px",fontFamily:"-apple-system,sans-serif",borderRadius:"10px",overflow:"hidden",border:"1px solid #e0e0e0"}}>
+  <div style={{flex:1,background:"rgba(0,122,255,0.18)",padding:"14px",textAlign:"center"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#333"}}>selection</div>
+    <div style={{fontSize:"11px",color:"#888",fontFamily:"monospace",marginTop:"2px"}}>accentColor 18%</div>
   </div>
-  <div style={{textAlign:"center"}}>
-    <div style={{width:"56px",height:"56px",borderRadius:"12px",background:"#007AFF",margin:"0 auto"}}></div>
-    <div style={{fontSize:"11px",color:"#666",marginTop:"6px"}}>actionPrimary</div>
+  <div style={{flex:1,background:"#007AFF",padding:"14px",textAlign:"center",borderLeft:"1px solid rgba(255,255,255,0.2)"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#fff"}}>actionPrimary</div>
+    <div style={{fontSize:"11px",color:"rgba(255,255,255,0.7)",fontFamily:"monospace",marginTop:"2px"}}>#007AFF</div>
   </div>
-  <div style={{textAlign:"center"}}>
-    <div style={{width:"56px",height:"56px",borderRadius:"12px",background:"#FF3B30",margin:"0 auto"}}></div>
-    <div style={{fontSize:"11px",color:"#666",marginTop:"6px"}}>actionDestructive / error</div>
+  <div style={{flex:1,background:"#FF3B30",padding:"14px",textAlign:"center",borderLeft:"1px solid rgba(255,255,255,0.2)"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#fff"}}>actionDestructive / error</div>
+    <div style={{fontSize:"11px",color:"rgba(255,255,255,0.7)",fontFamily:"monospace",marginTop:"2px"}}>#FF3B30</div>
   </div>
-  <div style={{textAlign:"center"}}>
-    <div style={{width:"56px",height:"56px",borderRadius:"12px",background:"#f5f5f5",border:"1px solid #e0e0e0",margin:"0 auto"}}></div>
-    <div style={{fontSize:"11px",color:"#666",marginTop:"6px"}}>success / warning</div>
+  <div style={{flex:1,background:"#f5f5f5",padding:"14px",textAlign:"center",borderLeft:"1px solid #e0e0e0"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#333"}}>success / warning</div>
+    <div style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",marginTop:"2px"}}>neutral</div>
   </div>
 </div>
 
