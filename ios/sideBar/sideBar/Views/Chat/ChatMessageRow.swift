@@ -135,8 +135,8 @@ struct ChatMessageRow: View {
         .onAppear {
             syncThinkingPlaceholder()
         }
-        .onChange(of: message.content) { oldContent, newContent in
-            handleMessageContentChange(from: oldContent, to: newContent)
+        .onChange(of: messageContentIsEffectivelyEmpty) { wasEmpty, isEmpty in
+            handleMessageContentEmptinessChange(from: wasEmpty, to: isEmpty)
         }
         .onChange(of: message.status) { _, newStatus in
             if newStatus != .streaming {
@@ -199,6 +199,10 @@ struct ChatMessageRow: View {
         ChatMessagePresentation.showsThinkingPlaceholder(for: message)
     }
 
+    private var messageContentIsEffectivelyEmpty: Bool {
+        ChatMessagePresentation.isContentEffectivelyEmpty(message.content)
+    }
+
     private var showsThinkingBody: Bool {
         showsThinkingPlaceholder || isAnimatingThinkingDismissal
     }
@@ -254,23 +258,17 @@ struct ChatMessageRow: View {
         )
     }
 
-    private func handleMessageContentChange(from oldContent: String, to newContent: String) {
-        if ChatMessagePresentation.shouldAnimateThinkingDismissal(
-            for: message,
-            previousContent: oldContent,
-            newContent: newContent
-        ) {
+    private func handleMessageContentEmptinessChange(from wasEmpty: Bool, to isEmpty: Bool) {
+        if message.role == .assistant,
+           message.status == .streaming,
+           wasEmpty,
+           !isEmpty {
             startThinkingDismissalAnimationIfNeeded()
             return
         }
 
-        if ChatMessagePresentation.isContentEffectivelyEmpty(newContent) {
+        if isEmpty {
             syncThinkingPlaceholder()
-            return
-        }
-
-        if message.status != .streaming {
-            stopThinkingDismissalAnimation(resetText: true)
         }
     }
 

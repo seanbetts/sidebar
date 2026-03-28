@@ -1,26 +1,5 @@
 import SwiftUI
 
-struct ChatStreamingAutoScrollController {
-    private(set) var lastAutoScrollAt: Date = .distantPast
-    let throttleSeconds: TimeInterval
-
-    init(throttleSeconds: TimeInterval = 0.08) {
-        self.throttleSeconds = throttleSeconds
-    }
-
-    mutating func reset() {
-        lastAutoScrollAt = .distantPast
-    }
-
-    mutating func shouldScroll(now: Date) -> Bool {
-        guard now.timeIntervalSince(lastAutoScrollAt) >= throttleSeconds else {
-            return false
-        }
-        lastAutoScrollAt = now
-        return true
-    }
-}
-
 struct ChatMessageListView: View {
     @ObservedObject var viewModel: ChatViewModel
     let bottomInset: CGFloat
@@ -28,7 +7,7 @@ struct ChatMessageListView: View {
     @State private var shouldScrollToBottom = false
     @State private var visibleMessageCount: Int = 40
     @State private var isAutoLoadingMore = false
-    @State private var streamingAutoScrollController = ChatStreamingAutoScrollController()
+    @State private var streamingAutoScrollTask: Task<Void, Never>?
     private let pageSize: Int = 40
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -76,7 +55,6 @@ struct ChatMessageListView: View {
                 if oldToken.selectedConversationId != newToken.selectedConversationId {
                     visibleMessageCount = pageSize
                     isAutoLoadingMore = false
-                    streamingAutoScrollController.reset()
                     shouldScrollToBottom = true
                     scrollToBottom(proxy: proxy, animated: false)
                     scheduleDeferredBottomScroll(proxy: proxy)
@@ -85,7 +63,6 @@ struct ChatMessageListView: View {
                 }
 
                 if oldToken.messageCount != newToken.messageCount {
-                    streamingAutoScrollController.reset()
                     let oldValue = oldToken.messageCount
                     let newValue = newToken.messageCount
                     if oldValue == 0 {
@@ -119,12 +96,6 @@ struct ChatMessageListView: View {
                 }
 
                 if oldToken.lastMessageSignature != newToken.lastMessageSignature {
-                    if viewModel.isStreaming {
-                        if streamingAutoScrollController.shouldScroll(now: Date()) {
-                            scrollToBottom(proxy: proxy, animated: false)
-                        }
-                        return
-                    }
                     guard ChatMessageListScrollBehavior.shouldScrollForLastMessageChange(
                         from: oldToken.lastMessageSignature,
                         to: newToken.lastMessageSignature,
@@ -158,8 +129,19 @@ struct ChatMessageListView: View {
                 }
             }
             .onAppear {
+                startStreamingAutoScrollLoopIfNeeded(proxy: proxy)
                 scrollToBottom(proxy: proxy, animated: false)
                 scheduleDeferredBottomScroll(proxy: proxy)
+            }
+            .onDisappear {
+                stopStreamingAutoScrollLoop()
+            }
+            .onChange(of: viewModel.currentStreamMessageId) { _, newValue in
+                stopStreamingAutoScrollLoop()
+                guard newValue != nil else {
+                    return
+                }
+                startStreamingAutoScrollLoopIfNeeded(proxy: proxy)
             }
             .refreshable {
                 await viewModel.refreshConversations()
@@ -220,6 +202,37 @@ struct ChatMessageListView: View {
             try? await Task.sleep(nanoseconds: 200_000_000)
             scrollToBottom(proxy: proxy, animated: false)
         }
+    }
+
+    private func startStreamingAutoScrollLoopIfNeeded(proxy: ScrollViewProxy) {
+        guard streamingAutoScrollTask == nil else {
+            return
+        }
+        let pollIntervalNanoseconds = UInt64(ChatStreamingAutoScrollController().throttleSeconds * 1_000_000_000)
+        streamingAutoScrollTask = Task { @MainActor in
+            var lastSignature = ChatStreamingContentSignature(message: viewModel.messages.last)
+            while !Task.isCancelled {
+                guard viewModel.isStreaming else {
+                    break
+                }
+                try? await Task.sleep(nanoseconds: pollIntervalNanoseconds)
+                if Task.isCancelled {
+                    return
+                }
+                let nextSignature = ChatStreamingContentSignature(message: viewModel.messages.last)
+                guard nextSignature != lastSignature else {
+                    continue
+                }
+                lastSignature = nextSignature
+                scrollToBottom(proxy: proxy, animated: false)
+            }
+            streamingAutoScrollTask = nil
+        }
+    }
+
+    private func stopStreamingAutoScrollLoop() {
+        streamingAutoScrollTask?.cancel()
+        streamingAutoScrollTask = nil
     }
 
     private func loadMoreMessages(proxy: ScrollViewProxy) {
@@ -291,167 +304,5 @@ struct ChatMessageListView: View {
         Task {
             await viewModel.retryLatestFailedTurn()
         }
-    }
-}
-
-private struct ScrollChangeToken: Equatable {
-    let selectedConversationId: String?
-    let messageCount: Int
-    let penultimateMessageSignature: ChatMessageScrollSignature
-    let lastMessageSignature: ChatMessageScrollSignature
-    let activeToolSignature: String
-    let bottomInset: CGFloat
-}
-
-enum ChatMessageListScrollMode: Equatable {
-    case noScroll
-    case pinBottomWithAnimation
-    case pinBottomWithoutAnimation
-}
-
-enum ChatMessageListScrollBehavior {
-    static func scrollMode(
-        previousMessageCount: Int,
-        messageCount: Int,
-        previousLastMessage: ChatMessageScrollSignature,
-        newPenultimateMessage: ChatMessageScrollSignature,
-        newLastMessage: ChatMessageScrollSignature,
-        activeToolChanged: Bool
-    ) -> ChatMessageListScrollMode {
-        guard !activeToolChanged else {
-            return .noScroll
-        }
-        guard messageCount != previousMessageCount else {
-            return .noScroll
-        }
-        guard messageCount > 0 else {
-            return .noScroll
-        }
-        if isRetryAppend(
-            previousMessageCount: previousMessageCount,
-            messageCount: messageCount,
-            previousLastMessage: previousLastMessage,
-            newPenultimateMessage: newPenultimateMessage,
-            newLastMessage: newLastMessage
-        ) {
-            return .pinBottomWithoutAnimation
-        }
-        return .pinBottomWithAnimation
-    }
-
-    static func scrollMode(
-        previousMessages: [Message],
-        messages: [Message],
-        activeToolChanged: Bool
-    ) -> ChatMessageListScrollMode {
-        scrollMode(
-            previousMessageCount: previousMessages.count,
-            messageCount: messages.count,
-            previousLastMessage: ChatMessageScrollSignature(message: previousMessages.last),
-            newPenultimateMessage: ChatMessageScrollSignature(message: messages.dropLast().last),
-            newLastMessage: ChatMessageScrollSignature(message: messages.last),
-            activeToolChanged: activeToolChanged
-        )
-    }
-
-    static func shouldScrollForLastMessageChange(
-        from oldSignature: ChatMessageScrollSignature,
-        to newSignature: ChatMessageScrollSignature,
-        isStreaming: Bool,
-        shouldScrollToBottom: Bool
-    ) -> Bool {
-        guard !isStreaming else {
-            return true
-        }
-        guard !shouldScrollToBottom else {
-            return true
-        }
-        let changedVisibleContent = oldSignature.id != newSignature.id
-            || oldSignature.content != newSignature.content
-            || oldSignature.status != newSignature.status
-            || oldSignature.needsNewline != newSignature.needsNewline
-            || oldSignature.error != newSignature.error
-        return changedVisibleContent
-    }
-
-    static func shouldAnimateLastMessageChange(
-        from oldSignature: ChatMessageScrollSignature,
-        to newSignature: ChatMessageScrollSignature,
-        isStreaming: Bool,
-        shouldScrollToBottom: Bool
-    ) -> Bool {
-        guard !isStreaming, !shouldScrollToBottom else {
-            return false
-        }
-        let isTerminalStreamTransition = oldSignature.id == newSignature.id
-            && !oldSignature.id.isEmpty
-            && oldSignature.status == .streaming
-            && newSignature.status != .streaming
-        return !isTerminalStreamTransition
-    }
-
-    static func shouldScrollForActiveToolChange() -> Bool {
-        false
-    }
-
-    private static func isRetryAppend(
-        previousMessageCount: Int,
-        messageCount: Int,
-        previousLastMessage: ChatMessageScrollSignature,
-        newPenultimateMessage: ChatMessageScrollSignature,
-        newLastMessage: ChatMessageScrollSignature
-    ) -> Bool {
-        guard messageCount == previousMessageCount + 1,
-              !previousLastMessage.id.isEmpty,
-              previousLastMessage == newPenultimateMessage else {
-            return false
-        }
-
-        guard previousLastMessage.role == .assistant,
-              previousLastMessage.status == .error,
-              newLastMessage.role == .assistant,
-              newLastMessage.status == .streaming else {
-            return false
-        }
-
-        return ErrorMapping.chatStreamPresentation(
-            from: previousLastMessage.errorDetails,
-            fallbackUserMessage: previousLastMessage.error
-        ).isRetryable
-    }
-}
-
-struct ChatMessageScrollSignature: Equatable {
-    let id: String
-    let role: MessageRole
-    let content: String
-    let status: MessageStatus
-    let toolCallsSignature: String
-    let needsNewline: Bool
-    let error: String
-    let errorDetails: String
-
-    init(message: Message?) {
-        guard let message else {
-            id = ""
-            role = .assistant
-            content = ""
-            status = .complete
-            toolCallsSignature = ""
-            needsNewline = false
-            error = ""
-            errorDetails = ""
-            return
-        }
-        id = message.id
-        role = message.role
-        content = message.content
-        status = message.status
-        toolCallsSignature = (message.toolCalls ?? []).map {
-            "\($0.id):\($0.name):\($0.status.rawValue):\($0.skillId ?? ""):\($0.iconKey ?? "")"
-        }.joined(separator: "|")
-        needsNewline = message.needsNewline ?? false
-        error = message.error ?? ""
-        errorDetails = message.errorDetails ?? ""
     }
 }

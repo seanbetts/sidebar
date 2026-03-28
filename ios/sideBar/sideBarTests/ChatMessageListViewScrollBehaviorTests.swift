@@ -179,6 +179,16 @@ final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
         )
     }
 
+    func testMessageScrollSignatureIgnoresStreamingContentChanges() {
+        let oldMessage = makeMessage(content: "A", status: .streaming)
+        let newMessage = makeMessage(content: "AB", status: .streaming)
+
+        XCTAssertEqual(
+            ChatMessageScrollSignature(message: oldMessage),
+            ChatMessageScrollSignature(message: newMessage)
+        )
+    }
+
     func testMessageScrollSignatureChangesWhenNeedsNewlineChanges() {
         let message = makeMessage(needsNewline: false)
         let changedNeedsNewline = Message(
