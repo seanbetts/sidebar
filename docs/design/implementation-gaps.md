@@ -57,10 +57,13 @@ Single working list of every known divergence between the design system and the 
 | Icon size drift: 28px should be `Icon.xl` (32) | `TasksDetailView.swift` | [token-audit](./audits/token-audit) |
 | Icon size drift: 30px should be `Icon.xl` (32) | `StoreSkillCredentialsView.swift` | [token-audit](./audits/token-audit) |
 | Icon size literals should reference tokens | `SettingsSections+Additional.swift`, `SidebarRail.swift`, `SettingsSections+Utilities.swift` | [token-audit](./audits/token-audit) |
-| SidebarRail font: `.font(.system(size: 18, weight: .semibold))` should be `.appFont(.labelMd)` or equivalent | `SidebarRail.swift` | [macos-conventions](./platform-strategy/macos-conventions) |
+| SidebarRail font: `.font(.system(size: 18, weight: .semibold))` should be `.appFont(.label)` or equivalent | `SidebarRail.swift` | [macos-conventions](./platform-strategy/macos-conventions) |
 | `Motion.slow` missing from `Motion` enum despite `Animation.slow = 0.4` existing | `Motion.swift` | [token-audit](./audits/token-audit) |
 | Missing size tokens: `railWidth = 56`, `dividerWidth = 8`, `rightSidebarDefaultWidth = 360` | `DesignTokens.swift` | [token-audit](./audits/token-audit) |
 | Spacing and radius literals in several views should reference existing tokens | `PanelHeader.swift`, `SidebarRail.swift`, `WorkspaceLayout.swift`, `PhoneFloatingActionMetrics` | [token-audit](./audits/token-audit) |
+| `SettingsSaveStatusPill` uses `.ultraThinMaterial` — should migrate to Liquid Glass | `SettingsSaveStatusPill.swift` | [materials-and-appearance](./foundations/materials-and-appearance) |
+| `NoteFormattingBar` uses `.thinMaterial` — should migrate to Liquid Glass | `NoteFormattingBar.swift` | [materials-and-appearance](./foundations/materials-and-appearance) |
+| Liquid Glass adoption plan: `MacPopoverShell`, `MacModalShell`, `SettingsMacStyles`, `SidebarRail`, `SiteHeaderBar`, `HeaderActionIcon`, `PanelHeader`, `SearchField` dock chrome, `LoginView` not yet using `glassEffect` | Multiple files | [materials-and-appearance](./foundations/materials-and-appearance) |
 
 ### Low priority
 
@@ -102,4 +105,5 @@ Single working list of every known divergence between the design system and the 
 - [macOS Conventions](./platform-strategy/macos-conventions)
 - [Web Conventions](./platform-strategy/web-conventions)
 - [Colour](./foundations/colour)
+- [Materials and Appearance](./foundations/materials-and-appearance)
 - [Token Audit](./audits/token-audit)

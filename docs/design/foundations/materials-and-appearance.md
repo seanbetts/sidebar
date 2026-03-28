@@ -1,40 +1,183 @@
 ---
 title: Materials and Appearance
-description: Draft guidance for surface styling, native materials, and appearance inheritance across Apple platforms.
+description: Surface styling, native materials, Liquid Glass usage, and appearance mode handling across iOS and macOS.
 ---
 
 | Field | Value |
 |---|---|
-| Status | not started |
+| Status | approved |
 | Owner | both |
 | Outputs | this doc |
-| Dependencies | [system-inheritance](../system-inheritance), [ios-conventions](../platform-strategy/ios-conventions), [macos-conventions](../platform-strategy/macos-conventions) |
+| Dependencies | [system-inheritance](../system-inheritance), [ios-conventions](../platform-strategy/ios-conventions), [macos-conventions](../platform-strategy/macos-conventions), [colour](./colour) |
 
 ## Purpose
 
-Define how sideBar handles surface styling, native materials, and appearance layering.
+Define how sideBar handles surface styling, Liquid Glass, and appearance layering. The goal is a coherent visual stack where every surface has a deliberate, documented reason for its fill.
 
-## Why this matters
+---
 
-Materials are one of the most visible places where the product either feels native and intentional or visually fragmented.
+## The two-surface model
 
-## Scope
+sideBar uses two distinct surface systems depending on the surface's role:
 
-This document will cover:
+| System | Used for | Implementation |
+|---|---|---|
+| **Solid fills** | Persistent surfaces — backgrounds, panels, sidebars | `DesignTokens.Colors.*` |
+| **Liquid Glass** | Transient chrome — pills, action bars, floating docks, popovers, headers | `glassEffect` (iOS/macOS 26+) |
 
-- System materials vs custom fills
-- Liquid Glass usage
-- Surface hierarchy
-- Background treatment on iOS and macOS
+The dividing line is persistence. A panel background is always visible and provides the reading surface for content — it must be solid and predictable. A floating action dock or save status pill is transient chrome that sits above content — it benefits from Liquid Glass depth and adaptability.
 
-## Open questions
+System materials (`.regularMaterial`, `.ultraThinMaterial`, etc.) were the pre-iOS 26 tool for transient chrome. On iOS 26 and macOS 26 they are superseded by Liquid Glass for interactive chrome. System materials may still be appropriate for non-interactive blurred backgrounds in specific contexts.
 
-- Which surfaces should adopt Liquid Glass first?
-- Where should custom fills remain on macOS?
-- How much visual depth should sideBar use by default?
+---
+
+## Surface hierarchy
+
+From base to top, the visual stack:
+
+| Layer | Surface | Fill |
+|---|---|---|
+| 1 | Window / app background | `DesignTokens.Colors.background` (solid) |
+| 2 | Sidebar rail | `DesignTokens.Colors.sidebar` (solid, planned: Liquid Glass) |
+| 3 | Panel / content area | `DesignTokens.Colors.surface` (solid) |
+| 4 | Panel header | `panelHeaderBackground()` — `.sidebar` on macOS light, `.surface` on macOS dark |
+| 5 | List rows | Transparent over panel; `DesignTokens.Colors.muted` for hover and selected states |
+| 6 | Floating chrome | Liquid Glass — floating docks, action pills, formatting bars |
+| 7 | Popovers and menus | Liquid Glass via `MacPopoverShell` / `MacModalShell` (planned) |
+| 8 | Sheets and modals | System modal presentation (automatic via SwiftUI `.sheet`) |
+
+**Rule**: Each layer should only use the fill defined for its role. Do not apply solid custom fills to transient chrome surfaces, and do not apply Liquid Glass to persistent content surfaces.
+
+---
+
+## Liquid Glass
+
+Liquid Glass (`glassEffect`) is the primary surface primitive for transient chrome on iOS 26 and macOS 26. It provides depth, contextual colour sampling from content beneath, and automatic light/dark adaptation.
+
+### Current usage
+
+| Component | Platform |
+|---|---|
+| `PhoneFloatingActionDock` | iOS |
+
+### Planned adoption
+
+The following surfaces are in the adoption plan. Rollout order matters: primitives and shells first, then individual surfaces.
+
+| Component | Platform | Notes |
+|---|---|---|
+| `MacPopoverShell` | macOS | Replaces custom popover background |
+| `MacModalShell` | macOS | Replaces custom modal background |
+| `SettingsMacStyles` | macOS | Settings surface chrome |
+| `SettingsSaveStatusPill` | iOS + macOS | Currently uses `.ultraThinMaterial` on iOS |
+| `SidebarRail` | iOS + macOS | Persistent surface — adopt carefully, validate against content legibility |
+| `SiteHeaderBar` | iOS + macOS | Site section header chrome |
+| `HeaderActionIcon` | iOS + macOS | Icon button chrome |
+| `NoteFormattingBar` | iOS | Currently uses `.thinMaterial` |
+| `SearchField` dock chrome | iOS | Floating search chrome |
+| `PanelHeader` | iOS + macOS | Section panel header |
+| `LoginView` | iOS + macOS | Onboarding/auth chrome |
+
+**Rule for agent**: New transient surface chrome should use Liquid Glass. Do not introduce new `.regularMaterial` or `.ultraThinMaterial` usage for interactive chrome — these are migration targets, not the pattern to continue.
+
+---
+
+## Solid fills
+
+Persistent surfaces use solid adaptive colors from `DesignTokens.Colors`. Full palette documentation is in [colour](./colour). The four tokens relevant to surface fills:
+
+### Light mode
+
+<div style={{display:"flex",gap:"0",marginBottom:"24px",fontFamily:"-apple-system,sans-serif",borderRadius:"10px",overflow:"hidden",border:"1px solid #e0e0e0"}}>
+  <div style={{flex:1,background:"#fafafa",padding:"14px",textAlign:"center"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#333"}}>sidebar</div>
+    <div style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",marginTop:"2px"}}>#fafafa</div>
+  </div>
+  <div style={{flex:1,background:"#ffffff",padding:"14px",textAlign:"center",borderLeft:"1px solid #e8e8e8"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#333"}}>background</div>
+    <div style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",marginTop:"2px"}}>#ffffff</div>
+  </div>
+  <div style={{flex:1,background:"#ffffff",padding:"14px",textAlign:"center",borderLeft:"1px solid #e8e8e8"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#333"}}>surface</div>
+    <div style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",marginTop:"2px"}}>#ffffff</div>
+  </div>
+  <div style={{flex:1,background:"#f5f5f5",padding:"14px",textAlign:"center",borderLeft:"1px solid #e8e8e8"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#333"}}>muted</div>
+    <div style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",marginTop:"2px"}}>#f5f5f5</div>
+  </div>
+</div>
+
+### Dark mode
+
+<div style={{display:"flex",gap:"0",marginBottom:"24px",fontFamily:"-apple-system,sans-serif",borderRadius:"10px",overflow:"hidden",border:"1px solid #2a2a2a"}}>
+  <div style={{flex:1,background:"#171717",padding:"14px",textAlign:"center"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#ccc"}}>sidebar</div>
+    <div style={{fontSize:"11px",color:"#555",fontFamily:"monospace",marginTop:"2px"}}>#171717</div>
+  </div>
+  <div style={{flex:1,background:"#0a0a0a",padding:"14px",textAlign:"center",borderLeft:"1px solid #222"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#ccc"}}>background</div>
+    <div style={{fontSize:"11px",color:"#555",fontFamily:"monospace",marginTop:"2px"}}>#0a0a0a</div>
+  </div>
+  <div style={{flex:1,background:"#171717",padding:"14px",textAlign:"center",borderLeft:"1px solid #222"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#ccc"}}>surface</div>
+    <div style={{fontSize:"11px",color:"#555",fontFamily:"monospace",marginTop:"2px"}}>#171717</div>
+  </div>
+  <div style={{flex:1,background:"#262626",padding:"14px",textAlign:"center",borderLeft:"1px solid #222"}}>
+    <div style={{fontSize:"12px",fontWeight:"600",color:"#ccc"}}>muted</div>
+    <div style={{fontSize:"11px",color:"#555",fontFamily:"monospace",marginTop:"2px"}}>#262626</div>
+  </div>
+</div>
+
+| Token | Light | Dark | Role |
+|---|---|---|---|
+| `DesignTokens.Colors.sidebar` | `#fafafa` | `#171717` | Sidebar rail and panel headers |
+| `DesignTokens.Colors.background` | `#ffffff` | `#0a0a0a` | Root app/window background |
+| `DesignTokens.Colors.surface` | `#ffffff` | `#171717` | Primary content panels |
+| `DesignTokens.Colors.muted` | `#f5f5f5` | `#262626` | Row hover states, subtle differentiation within a panel |
+
+These tokens resolve to platform-appropriate hex values and handle light/dark automatically. Do not use raw `Color` literals or `Color.primary` / `Color.secondary` for surface fills.
+
+---
+
+## Appearance mode
+
+sideBar follows system appearance. There is no manual light/dark toggle in the app — the system setting controls it.
+
+**Rule**: Never override appearance mode in individual views. Do not use `.preferredColorScheme()` on view hierarchies. Surface colors via `DesignTokens.Colors` adapt automatically.
+
+The one exception is the design docs site, which has its own appearance handling independent of the app.
+
+---
+
+## Corner radius on surfaces
+
+Surfaces take their corner radius from `DesignTokens.Radius.*`. Key values:
+
+| Surface type | Token | Value |
+|---|---|---|
+| Sheets, large modals | `Radius.lg` | 18pt |
+| Cards, input fields | `Radius.sm` | 10pt |
+| Floating docks, capsules | `Radius.xl` | 24pt |
+| Buttons, row highlights | `Radius.xsPlus` | 8pt |
+
+Liquid Glass surfaces use continuous corner radius (`.continuous` style). Full radius reference is in [token-model](./token-model).
+
+---
+
+## Rules summary
+
+1. **Persistent surfaces use solid fills.** Backgrounds, panels, and sidebars use `DesignTokens.Colors.*`. Never apply Liquid Glass or materials to content reading surfaces.
+2. **Transient chrome uses Liquid Glass.** Floating docks, pills, action bars, popovers, and formatting surfaces on iOS 26+ use `glassEffect`. Do not introduce new system material usage for these.
+3. **System materials are migration targets.** `.ultraThinMaterial` and `.thinMaterial` remain in `SettingsSaveStatusPill` and `NoteFormattingBar` pending Liquid Glass migration. Do not replicate this pattern.
+4. **Never override appearance mode.** The app follows the system setting. `DesignTokens.Colors` handles light/dark automatically.
+5. **Sheets are system.** SwiftUI `.sheet` presentation uses the system modal surface automatically. Do not apply custom backgrounds to sheet root views.
+
+---
 
 ## Related docs
 
-- [System Inheritance](../system-inheritance)
+- [Colour](./colour)
+- [Token Model](./token-model)
 - [iOS Conventions](../platform-strategy/ios-conventions)
 - [macOS Conventions](../platform-strategy/macos-conventions)
+- [System Inheritance](../system-inheritance)
