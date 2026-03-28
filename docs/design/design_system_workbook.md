@@ -13,7 +13,7 @@ description: Working brief for the internal sideBar design-system documentation 
 | 4 | Foundations | foundations/ | not started |
 | 5 | Token model | foundations/token-model.md | not started |
 | 6 | Accessibility | foundations/accessibility.md | not started |
-| 7 | Voice, character, and content | [voice-and-content.md](./voice-and-content) | not started |
+| 7 | Voice, character, and content | [voice-and-content.md](./voice-and-content) | approved |
 | 8 | Component library | components/ | not started |
 | 9 | Iconography | foundations/iconography.md | not started |
 | 10 | Interaction patterns | patterns/ | not started |
