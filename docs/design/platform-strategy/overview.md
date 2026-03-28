@@ -159,12 +159,6 @@ No custom numeric breakpoints are used. The two-state compact/regular model is t
 
 ---
 
-## Open questions
-
-None.
-
----
-
 ## Related docs
 
 - `platform-strategy/ios-conventions.md`

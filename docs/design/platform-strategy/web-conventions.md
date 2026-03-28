@@ -221,12 +221,6 @@ The following are known areas where the web app lags behind native. These are no
 
 ---
 
-## Open questions
-
-None.
-
----
-
 ## Related docs
 
 - `platform-strategy/overview.md`
