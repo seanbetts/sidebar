@@ -6,6 +6,14 @@ import UniformTypeIdentifiers
 // MARK: - ChatViewModel+Streaming
 extension ChatViewModel {
     public func handle(event: ChatStreamEvent) {
+        ChatStreamingDebugTrace.log(
+            "viewModel.event",
+            details: [
+                "type=\(event.type.rawValue)",
+                "assistantMessage=\(ChatStreamingDebugTrace.shortID(activeStreamingMessageId))",
+                "streaming=\(isStreaming)"
+            ].joined(separator: " ")
+        )
         if let handler = streamEventHandlers[event.type] {
             handler(event)
         }
@@ -329,6 +337,15 @@ extension ChatViewModel {
         guard let conversationId else {
             return
         }
+        ChatStreamingDebugTrace.log(
+            "store.sync.request",
+            details: [
+                "conversation=\(ChatStreamingDebugTrace.shortID(conversationId))",
+                "persist=\(persist)",
+                "messageCount=\(messages.count)",
+                ChatStreamingDebugTrace.summarizeMessage(messages.last)
+            ].joined(separator: " ")
+        )
         chatStore.updateConversationMessages(
             id: conversationId,
             messages: messages,
@@ -390,7 +407,21 @@ extension ChatViewModel {
         }
 
         let existingTarget = typingRevealTargetsByMessageId[messageId] ?? currentMessage.content
-        typingRevealTargetsByMessageId[messageId] = existingTarget + appendedText
+        let updatedTarget = existingTarget + appendedText
+        ChatStreamingDebugTrace.log(
+            "token.append",
+            details: [
+                "assistantMessage=\(ChatStreamingDebugTrace.shortID(messageId))",
+                "tokenChars=\(token.count)",
+                "prefixChars=\(prefix.count)",
+                "displayed=\(currentMessage.content.count)",
+                "targetBefore=\(existingTarget.count)",
+                "targetAfter=\(updatedTarget.count)",
+                "backlogAfter=\(updatedTarget.count - currentMessage.content.count)",
+                "needsNewline=\(currentMessage.needsNewline?.description ?? "nil")"
+            ].joined(separator: " ")
+        )
+        typingRevealTargetsByMessageId[messageId] = updatedTarget
         if currentMessage.needsNewline == true {
             updateMessage(id: messageId, persist: false) { message in
                 Message(

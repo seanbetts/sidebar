@@ -215,7 +215,20 @@ private final class ChatViewModelTeardownBag {
                 let incoming = self.normalizeMessages(
                     self.reconcileMessages(detail.messages, for: id)
                 )
-                if !self.isSameMessageSnapshot(current: self.messages, incoming: incoming) {
+                let isSameSnapshot = self.isSameMessageSnapshot(current: self.messages, incoming: incoming)
+                ChatStreamingDebugTrace.log(
+                    "store.publisher.conversationDetails",
+                    details: [
+                        "conversation=\(ChatStreamingDebugTrace.shortID(id))",
+                        "detailMessages=\(detail.messages.count)",
+                        "currentMessages=\(self.messages.count)",
+                        "incomingMessages=\(incoming.count)",
+                        "sameSnapshot=\(isSameSnapshot)",
+                        "currentLast={\(ChatStreamingDebugTrace.summarizeMessage(self.messages.last))}",
+                        "incomingLast={\(ChatStreamingDebugTrace.summarizeMessage(incoming.last))}"
+                    ].joined(separator: " ")
+                )
+                if !isSameSnapshot {
                     self.messages = incoming
                 }
             }

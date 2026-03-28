@@ -10,6 +10,16 @@ extension ChatViewModel {
         guard typingRevealTask == nil else {
             return
         }
+        ChatStreamingDebugTrace.log(
+            "typing.loop.start",
+            details: [
+                "assistantMessage=\(ChatStreamingDebugTrace.shortID(activeStreamingMessageId))",
+                "targets=\(typingRevealTargetsByMessageId.count)",
+                "frameNs=\(typingRevealFrameIntervalNanoseconds)",
+                "minStep=\(typingRevealMinimumStep)",
+                "maxStep=\(typingRevealMaximumStep)"
+            ].joined(separator: " ")
+        )
         typingRevealTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else {
@@ -17,6 +27,7 @@ extension ChatViewModel {
                 }
                 let advanced = self.advanceTypingRevealFrame()
                 if !advanced, self.typingRevealTargetsByMessageId.isEmpty {
+                    ChatStreamingDebugTrace.log("typing.loop.finish", details: "reason=noTargets")
                     return
                 }
                 if self.typingRevealFrameIntervalNanoseconds > 0 {
@@ -50,6 +61,19 @@ extension ChatViewModel {
         }
 
         let nextContent = nextDisplayedContent(current: displayedContent, target: targetContent)
+        let backlogBefore = targetContent.count - displayedContent.count
+        let backlogAfter = targetContent.count - nextContent.count
+        ChatStreamingDebugTrace.log(
+            "typing.frame",
+            details: [
+                "assistantMessage=\(ChatStreamingDebugTrace.shortID(messageId))",
+                "displayed=\(displayedContent.count)",
+                "target=\(targetContent.count)",
+                "revealed=\(max(nextContent.count - displayedContent.count, 0))",
+                "backlogBefore=\(backlogBefore)",
+                "backlogAfter=\(backlogAfter)"
+            ].joined(separator: " ")
+        )
         updateMessage(id: messageId, persist: false) { currentMessage in
             Message(
                 id: currentMessage.id,
@@ -88,6 +112,16 @@ extension ChatViewModel {
               let targetContent = typingRevealTargetsByMessageId[messageId] else {
             return
         }
+        let displayedContentCount = messages.first(where: { $0.id == messageId })?.content.count ?? 0
+        ChatStreamingDebugTrace.log(
+            "typing.flush",
+            details: [
+                "assistantMessage=\(ChatStreamingDebugTrace.shortID(messageId))",
+                "displayed=\(displayedContentCount)",
+                "target=\(targetContent.count)",
+                "remaining=\(max(targetContent.count - displayedContentCount, 0))"
+            ].joined(separator: " ")
+        )
         updateMessage(id: messageId, persist: false) { message in
             Message(
                 id: message.id,
@@ -104,6 +138,14 @@ extension ChatViewModel {
     }
 
     func clearTypingRevealState(flushDisplayedContent: Bool) {
+        ChatStreamingDebugTrace.log(
+            "typing.clear",
+            details: [
+                "flush=\(flushDisplayedContent)",
+                "assistantMessage=\(ChatStreamingDebugTrace.shortID(activeStreamingMessageId))",
+                "targets=\(typingRevealTargetsByMessageId.count)"
+            ].joined(separator: " ")
+        )
         if flushDisplayedContent, let messageId = activeStreamingMessageId {
             flushTypingRevealContent(for: messageId)
         }

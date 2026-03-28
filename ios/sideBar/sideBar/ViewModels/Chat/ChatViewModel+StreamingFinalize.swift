@@ -8,6 +8,7 @@ extension ChatViewModel {
         streamError: String? = nil,
         errorDetails: String? = nil
     ) {
+        logFinalizeStart(status: status, streamError: streamError, errorDetails: errorDetails)
         var finalizedStatus = status
         var finalizedStreamError = streamError
         var finalizedErrorDetails = errorDetails
@@ -70,6 +71,7 @@ extension ChatViewModel {
             streamError: finalizedStreamError,
             errorDetails: finalizedErrorDetails
         )
+        logFinalizeEnd(messageId: messageId, status: finalizedStatus)
         syncMessagesToStore(
             conversationId: streamingConversationId ?? selectedConversationId,
             persist: true
@@ -202,5 +204,34 @@ extension ChatViewModel {
         }
 
         latestRetryableAssistantMessageID = messageId
+    }
+
+    private func logFinalizeStart(
+        status: MessageStatus,
+        streamError: String?,
+        errorDetails: String?
+    ) {
+        ChatStreamingDebugTrace.log(
+            "stream.finalize.begin",
+            details: [
+                "requestedStatus=\(status.rawValue)",
+                "conversation=\(ChatStreamingDebugTrace.shortID(streamingConversationId ?? selectedConversationId))",
+                "assistantMessage=\(ChatStreamingDebugTrace.shortID(activeStreamingMessageId))",
+                "hadStreamError=\((streamError?.trimmedOrNil) != nil)",
+                "hadErrorDetails=\((errorDetails?.trimmedOrNil) != nil)"
+            ].joined(separator: " ")
+        )
+    }
+
+    private func logFinalizeEnd(messageId: String, status: MessageStatus) {
+        ChatStreamingDebugTrace.log(
+            "stream.finalize.end",
+            details: [
+                "finalStatus=\(status.rawValue)",
+                "conversation=\(ChatStreamingDebugTrace.shortID(streamingConversationId ?? selectedConversationId))",
+                ChatStreamingDebugTrace.summarizeMessage(messages.first(where: { $0.id == messageId })),
+                "retryable=\(latestRetryableAssistantMessageID == messageId)"
+            ].joined(separator: " ")
+        )
     }
 }
