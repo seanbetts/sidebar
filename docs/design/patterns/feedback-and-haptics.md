@@ -7,7 +7,7 @@ description: Haptic feedback patterns, the proposed Haptics helper, and toast no
 |---|---|
 | Status | approved |
 | Owner | both |
-| Outputs | this doc, `Design/Haptics.swift` (to be created) |
+| Outputs | this doc, `Design/Haptics.swift` |
 | Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [accessibility](../foundations/accessibility), [components](../components/overview) |
 
 ## Purpose

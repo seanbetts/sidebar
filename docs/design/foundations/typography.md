@@ -311,4 +311,4 @@ The current `AppFontStyle` scale has 25 cases. The rationalisation has three goa
 - [Token Audit](../audits/token-audit)
 - [System Inheritance](../system-inheritance)
 - [Implementation Gaps](../implementation-gaps)
-- `foundations/iconography.md` (to be created)
+- [Iconography](./iconography)

@@ -278,6 +278,6 @@ These platform capabilities are already available via native components and shou
 
 - `audits/current-ui-audit.md`
 - `audits/component-inventory.md`
-- `system-inheritance.md` (to be created)
-- `platform-strategy/ios-conventions.md` (to be created)
-- `platform-strategy/macos-conventions.md` (to be created)
+- [System Inheritance](../system-inheritance)
+- [iOS Conventions](../platform-strategy/ios-conventions)
+- [macOS Conventions](../platform-strategy/macos-conventions)

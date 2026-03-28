@@ -1,20 +1,32 @@
 ---
 title: Patterns Overview
-description: Placeholder for the multi-component UX patterns that recur across the sideBar product.
+description: Index of multi-component UX patterns that recur across sideBar.
 ---
 
 | Field | Value |
 |---|---|
-| Status | not started |
+| Status | in progress |
 | Owner | both |
 | Outputs | this doc and pattern docs |
 | Dependencies | [current-ui-audit](../audits/current-ui-audit), [platform-strategy/overview](../platform-strategy/overview) |
 
 ## Purpose
 
-Document the repeated interaction patterns that sit above individual components, such as navigation, settings, editing, search, and waiting states.
+Document the repeated interaction patterns that sit above individual components — navigation, feedback, waiting states, onboarding, and AI assistant interactions.
+
+## Pattern docs
+
+| Pattern | Status |
+|---|---|
+| [Navigation](./navigation) | approved |
+| [Feedback and Haptics](./feedback-and-haptics) | approved |
+| [Wait UX](./wait-ux) | draft |
+| Onboarding | not started |
+| Handoffs | not started |
+| AI Assistant UI | not started |
 
 ## Related docs
 
 - [Current UI Audit](../audits/current-ui-audit)
+- [Patterns Audit](../audits/patterns-audit)
 - [Platform Strategy Overview](../platform-strategy/overview)

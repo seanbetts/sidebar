@@ -158,25 +158,9 @@ On iOS 26, system materials (`.regularMaterial`, `.ultraThinMaterial`) are super
 
 ### Haptics
 
-**Current state — audit complete**. Haptic feedback is currently only in auth flows (`LoginView`, `BiometricLockView`) using `UINotificationFeedbackGenerator`.
+All haptic feedback is implemented via `Haptics.*` (`Design/Haptics.swift`). Never call `UINotificationFeedbackGenerator`, `UIImpactFeedbackGenerator`, or `UISelectionFeedbackGenerator` directly in views.
 
-**High priority gaps** (users strongly expect these per iOS HIG):
-
-| Interaction | Location | Feedback type |
-|---|---|---|
-| Task completion checkbox | `TasksViewComponents.swift:87` | `.success` |
-| Destructive delete (swipe) | `SidebarSwipeActions.swift` | `.error` |
-| Floating action button tap | `PhoneFloatingActionDock.swift:25` | `.impact` (light) |
-| Toggle state changes (Settings) | `SettingsSections+Additional.swift:41` | `.selection` |
-| Archive actions | Context menu components | `.selection` |
-| Pin/unpin actions | Context menu components | `.selection` |
-| Drag reorder completion | Panel reorder files | `.success` |
-
-**Medium priority** (enhances polish): copy to clipboard, list item selection, sync/save completion.
-
-**Rule**: Use `UINotificationFeedbackGenerator` for success/error outcomes. Use `UISelectionFeedbackGenerator` for state toggles and selection changes. Use `UIImpactFeedbackGenerator` for physical interactions like button taps and drag drops. Consider a centralised haptic helper in `Design/` to standardise triggering.
-
-Full guidance belongs in `patterns/feedback-and-haptics.md`.
+For the full interaction map and feedback taxonomy, see [feedback-and-haptics](../patterns/feedback-and-haptics).
 
 ---
 

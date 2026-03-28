@@ -365,4 +365,4 @@ Based on usage frequency and product importance:
 - `audits/current-ui-audit.md`
 - `audits/token-audit.md`
 - `audits/system-framework-usage-audit.md`
-- `components/overview.md` (to be created)
+- [Components Overview](../components/overview)

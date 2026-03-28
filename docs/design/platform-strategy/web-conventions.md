@@ -224,5 +224,5 @@ The following are known areas where the web app lags behind native. These are no
 - `platform-strategy/overview.md`
 - `platform-strategy/ios-conventions.md`
 - `platform-strategy/macos-conventions.md`
-- `foundations/colour.md` (to be created)
-- `foundations/iconography.md` (to be created)
+- [Colour](../foundations/colour)
+- [Iconography](../foundations/iconography)

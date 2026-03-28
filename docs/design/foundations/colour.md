@@ -249,5 +249,5 @@ The values are the same regardless of trigger mechanism. There are no platform-s
 - [macOS Conventions](../platform-strategy/macos-conventions)
 - [iOS Conventions](../platform-strategy/ios-conventions)
 - [Web Conventions](../platform-strategy/web-conventions)
-- `foundations/token-model.md` (to be created)
-- `foundations/typography.md` (to be created)
+- [Token Model](./token-model)
+- [Typography](./typography)

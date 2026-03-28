@@ -85,18 +85,11 @@ Structural layout dimensions. Not spacing or radius — these are fixed widths, 
 | `Size.sidebarWidth` | 280 | Left panel width |
 | `Size.panelMinWidth` | 320 | Minimum panel width before layout collapses |
 | `Size.contentMaxWidth` | 520 | Maximum content column width |
+| `Size.railWidth` | 56 | Sidebar rail width |
+| `Size.dividerWidth` | 8 | Split view divider width |
+| `Size.rightSidebarDefaultWidth` | 360 | Right sidebar default width |
 
-**Tokens to add** (currently hardcoded in multiple files):
-
-| Proposed token | Value | Currently in |
-|---|---|---|
-| `Size.railWidth` | 56 | `SidebarRail.swift`, `WorkspaceLayout.swift`, `SidebarSplitView.swift` |
-| `Size.dividerWidth` | 8 | `WorkspaceLayout.swift`, `SidebarSplitView.swift` |
-| `Size.rightSidebarDefaultWidth` | 360 | `WorkspaceLayout.swift` |
-
-`railWidth = 56` is the highest-priority addition — it is hardcoded in three separate files and is the most structural constant in the app's layout.
-
-**Note on the 56px profile avatar**: The settings profile avatar uses `.frame(width: 56, height: 56)` which matches `railWidth` by coincidence. These should remain independent values — rail width and avatar size happen to be the same number today but are unrelated concerns.
+**Note on the 56px profile avatar**: The settings profile avatar uses `.frame(width: 56, height: 56)` which matches `railWidth` by coincidence. These should remain independent values — rail width and avatar size happen to be the same number but are unrelated concerns.
 
 ---
 
@@ -114,8 +107,6 @@ Icon frame sizes in `CGFloat`. These define the hit area or visual frame of icon
 
 **Exception — app logo**: `SidebarRail.swift` uses 26px for the app logo image frame. This is intentional — the logo is sized to sit comfortably in the 56px rail without being as large as a section icon. It should be a component-local constant (`SidebarRail.logoSize = 26`), not a global token.
 
-**Drift to fix**: Several icon sizes in feature views use non-token values (20, 22, 28, 30px). These should be resolved to the nearest token. See [implementation-gaps](../implementation-gaps) for specific files and the correct target values.
-
 ---
 
 ## Animation
@@ -130,7 +121,7 @@ Duration values in `Double` (seconds). Not used directly — always accessed thr
 
 **Rule**: Never use `DesignTokens.Animation.*` values directly in views. Always use `Motion.quick(reduceMotion:)`, `Motion.standard(reduceMotion:)`, or `Motion.slow(reduceMotion:)`. The `Motion` enum is the correct interface — it handles reduce-motion accessibility automatically.
 
-**Gap**: `Motion.slow` is missing from `Motion.swift` despite `Animation.slow = 0.4` existing in `DesignTokens`. This is a low-risk addition. See [implementation-gaps](../implementation-gaps).
+**Rule**: Never use `DesignTokens.Animation.*` values directly in views. Always access durations via `Motion.*`.
 
 ---
 
@@ -185,4 +176,4 @@ Both are tracked in [implementation-gaps](../implementation-gaps).
 - [Token Audit](../audits/token-audit)
 - [Colour](./colour)
 - [Implementation Gaps](../implementation-gaps)
-- `foundations/typography.md` (to be created)
+- [Typography](./typography)

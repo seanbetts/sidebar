@@ -334,8 +334,8 @@ Summary of gaps where new tokens are needed:
 
 ## Related docs
 
-- `audits/current-ui-audit.md`
-- `audits/component-inventory.md`
-- `foundations/token-model.md` (to be created)
-- `foundations/colour.md` (to be created)
-- `foundations/typography.md` (to be created)
+- [Current UI Audit](./current-ui-audit)
+- [Component Inventory](./component-inventory)
+- [Token Model](../foundations/token-model)
+- [Colour](../foundations/colour)
+- [Typography](../foundations/typography)

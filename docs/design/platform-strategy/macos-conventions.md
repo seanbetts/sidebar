@@ -30,7 +30,7 @@ The left panel is a fixed width (280px). It is not user-resizable. `SidebarSplit
 
 The right sidebar is available in workspace mode (expand/collapse toggle). Width is user-resizable (min 280px, default 360px). Width persisted via `@AppStorage`.
 
-The rail width (56px) should be tokenised as `DesignTokens.Size.railWidth = 56`. It is currently hardcoded in `SidebarRail.swift`, `WorkspaceLayout.swift`, and `SidebarSplitView.swift`. This token should be added as part of the foundations/token-model work.
+The rail width is `DesignTokens.Size.railWidth` (56pt).
 
 ---
 
@@ -162,11 +162,7 @@ These are necessary and correct uses of AppKit where SwiftUI doesn't provide ade
 
 **Direction**: sideBar should use a single unified color palette across all platforms. The current `MacOSPalette` in `Color+Platform.swift` — hand-coded sRGB `NSColor` values that differ from the iOS semantic color layer — should be consolidated into one shared palette. Platform-specific color branching should be removed.
 
-The target palette is the near-neutral set currently used on macOS (near-white light mode, near-black dark mode). This palette should become the single source of truth for both iOS and macOS, replacing the current iOS UIKit semantic color wrappers where they diverge.
-
-**Direction**: Light and dark mode values should be consistent across platforms. There should be no platform-specific dark mode or light mode variants.
-
-**Current state** (to be migrated): `Color+Platform.swift` currently branches between iOS (UIKit semantic colors) and macOS (hand-coded NSColor values). This is the implementation that needs to change. Full definition of the target palette belongs in `foundations/colour.md`.
+sideBar uses a single unified color palette across all platforms. The target palette is defined in [colour](../foundations/colour). Light and dark mode values are consistent across platforms — there are no platform-specific variants.
 
 ---
 

@@ -180,7 +180,7 @@ These are custom implementations where native alternatives were insufficient.
 ### macOS color palette (to be removed)
 
 **Current state**: A separate `MacOSPalette` of hand-coded `NSColor` sRGB values in `Color+Platform.swift` diverges from the iOS layer.
-**Direction**: Replace with a single unified cross-platform palette. The macOS-specific branching in `Color+Platform.swift` should be removed. See `platform-strategy/macos-conventions.md` and `foundations/colour.md` (to be created).
+**Direction**: Replace with a single unified cross-platform palette. The macOS-specific branching in `Color+Platform.swift` should be removed. See [platform-strategy/macos-conventions](./platform-strategy/macos-conventions) and [foundations/colour](./foundations/colour).
 
 ### App font scaling system
 
@@ -254,4 +254,4 @@ Do not build custom versions of these unless there is a documented, product-crit
 - [Platform Strategy Overview](./platform-strategy/overview)
 - [System Framework Usage Audit](./audits/system-framework-usage-audit)
 - [Materials and Appearance](./foundations/materials-and-appearance)
-- `foundations/colour.md` (to be created)
+- [Colour](./foundations/colour)
