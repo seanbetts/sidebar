@@ -264,3 +264,41 @@ def test_archive_conversation_excluded_from_list(db_session):
 
     results = ConversationService.list_conversations(db_session, "user-1")
     assert all(item.id != conversation.id for item in results)
+
+
+def test_rename_conversation_updates_title_and_marks_manual(db_session):
+    conversation = ConversationService.create_conversation(
+        db_session,
+        "user-1",
+        "Old Title",
+    )
+    conversation.title_generated = True
+    db_session.commit()
+    previous_updated_at = conversation.updated_at
+
+    renamed = ConversationService.rename_conversation(
+        db_session,
+        "user-1",
+        conversation.id,
+        "  New Title  ",
+    )
+
+    assert renamed.title == "New Title"
+    assert renamed.title_generated is False
+    assert renamed.updated_at >= previous_updated_at
+
+
+def test_rename_conversation_rejects_blank_title(db_session):
+    conversation = ConversationService.create_conversation(
+        db_session,
+        "user-1",
+        "Old Title",
+    )
+
+    with pytest.raises(ValueError, match="Title cannot be empty"):
+        ConversationService.rename_conversation(
+            db_session,
+            "user-1",
+            conversation.id,
+            "   ",
+        )

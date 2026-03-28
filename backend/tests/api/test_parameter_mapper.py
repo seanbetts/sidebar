@@ -208,6 +208,30 @@ def test_build_website_rename_args():
     ]
 
 
+def test_build_conversations_search_args():
+    args = parameter_mapper.build_conversations_search_args(
+        {"query": "Lisbon", "limit": 5, "user_id": "user-1"}
+    )
+    assert args == ["Lisbon", "--user-id", "user-1", "--limit", "5"]
+
+
+def test_build_conversations_rename_args():
+    args = parameter_mapper.build_conversations_rename_args(
+        {
+            "conversation_id": "conv-1",
+            "new_name": "Renamed Conversation",
+            "user_id": "user-1",
+        }
+    )
+    assert args == [
+        "conv-1",
+        "--user-id",
+        "user-1",
+        "--new-name",
+        "Renamed Conversation",
+    ]
+
+
 def test_build_website_download_args():
     args = parameter_mapper.build_website_download_args(
         {"website_id": "web-1", "user_id": "user-1"}

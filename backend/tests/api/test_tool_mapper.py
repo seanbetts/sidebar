@@ -179,6 +179,15 @@ def test_get_claude_tools_does_not_treat_fs_as_files():
     assert claude_tools == []
 
 
+def test_get_claude_tools_exposes_conversation_tools_for_allowed_skill():
+    mapper = ToolMapper()
+    claude_tools = mapper.get_claude_tools(allowed_skills=["conversations"])
+    names = {tool["name"] for tool in claude_tools}
+
+    assert mapper.tool_name_reverse["Search Conversations"] in names
+    assert mapper.tool_name_reverse["Rename Conversation"] in names
+
+
 @pytest.mark.asyncio
 async def test_execute_tool_requires_user_id():
     tools = {

@@ -231,6 +231,41 @@ class ConversationService:
         return conversation
 
     @staticmethod
+    def rename_conversation(
+        db: Session,
+        user_id: str,
+        conversation_id: UUID,
+        title: str,
+    ) -> Conversation:
+        """Rename a conversation and mark the title as manual.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            conversation_id: Conversation UUID.
+            title: New manual title.
+
+        Returns:
+            Updated conversation record.
+
+        Raises:
+            ValueError: If the provided title is empty after trimming.
+        """
+        normalized_title = title.strip()
+        if not normalized_title:
+            raise ValueError("Title cannot be empty")
+
+        conversation = ConversationService.get_conversation(
+            db, user_id, conversation_id
+        )
+        conversation.title = normalized_title
+        conversation.title_generated = False
+        conversation.updated_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(conversation)
+        return conversation
+
+    @staticmethod
     def set_title(
         db: Session,
         user_id: str,

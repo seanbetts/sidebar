@@ -22,6 +22,7 @@ from api.services.user_ai_provider_key_service import UserAIProviderKeyService
 from api.services.user_settings_service import UserSettingsService
 
 SKILLS_REQUIRING_USER_ID = {
+    "conversations",
     "assistant-identity",
     "assistant-soul",
     "product-feedback",

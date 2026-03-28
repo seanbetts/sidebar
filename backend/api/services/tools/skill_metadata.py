@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-CATALOG_VERSION = 9
+CATALOG_VERSION = 10
 
 SkillTier = Literal["required", "standard", "store"]
 
@@ -13,6 +13,10 @@ SKILL_ID_ALIASES: dict[str, str] = {}
 LEGACY_SKILL_IDS: dict[str, list[str]] = {}
 
 SKILL_DISPLAY = {
+    "conversations": {
+        "name": "Conversations",
+        "description": "Search and rename saved conversations",
+    },
     "files": {
         "name": "Files",
         "description": "Search, read, write, rename, pin and delete files",
@@ -99,6 +103,7 @@ REQUIRED_SKILLS = {
 }
 
 STANDARD_SKILLS = {
+    "conversations",
     "files",
     "notes",
     "tasks",
@@ -160,6 +165,7 @@ SKILL_CREDENTIAL_REQUIREMENTS: dict[str, list[dict[str, Any]]] = {
 }
 
 SKILL_REQUIRED_TOOLSETS: dict[str, tuple[str, ...]] = {
+    "conversations": ("conversations",),
     "files": ("files",),
     "notes": ("notes",),
     "tasks": ("tasks",),
@@ -181,6 +187,7 @@ SKILL_REQUIRED_TOOLSETS: dict[str, tuple[str, ...]] = {
 }
 
 SKILL_TAGS: dict[str, tuple[str, ...]] = {
+    "conversations": ("chat", "conversation", "history"),
     "files": ("documents", "workspace"),
     "notes": ("notes", "knowledge"),
     "tasks": ("tasks", "planning"),
@@ -195,6 +202,7 @@ SKILL_TAGS: dict[str, tuple[str, ...]] = {
 }
 
 SKILL_TRIGGERS: dict[str, tuple[str, ...]] = {
+    "conversations": ("conversation", "chat", "rename chat"),
     "files": ("file", "folder", "workspace"),
     "notes": ("note", "notes"),
     "tasks": ("task", "todo", "project"),
@@ -217,6 +225,7 @@ SKILL_TRIGGERS: dict[str, tuple[str, ...]] = {
 }
 
 SKILL_TOKEN_ESTIMATES: dict[str, int] = {
+    "conversations": 260,
     "files": 450,
     "notes": 450,
     "tasks": 400,

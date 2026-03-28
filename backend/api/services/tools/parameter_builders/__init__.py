@@ -1,6 +1,9 @@
 """Parameter builder classes for tool execution."""
 
 from api.services.tools.parameter_builders.base import BaseParameterBuilder
+from api.services.tools.parameter_builders.conversations_builder import (
+    ConversationsParameterBuilder,
+)
 from api.services.tools.parameter_builders.fs_builder import FsParameterBuilder
 from api.services.tools.parameter_builders.notes_builder import NotesParameterBuilder
 from api.services.tools.parameter_builders.skills_builder import SkillsParameterBuilder
@@ -15,6 +18,7 @@ from api.services.tools.parameter_builders.website_builder import (
 
 __all__ = [
     "BaseParameterBuilder",
+    "ConversationsParameterBuilder",
     "FsParameterBuilder",
     "NotesParameterBuilder",
     "SkillsParameterBuilder",

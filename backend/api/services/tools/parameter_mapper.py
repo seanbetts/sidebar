@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from api.services.tools.parameter_builders import (
+    ConversationsParameterBuilder,
     FsParameterBuilder,
     NotesParameterBuilder,
     SkillsParameterBuilder,
@@ -51,6 +52,16 @@ def build_fs_pin_args(params: dict) -> list:
 def build_fs_search_args(params: dict) -> list:
     """Build CLI arguments for the fs search tool."""
     return FsParameterBuilder.build_search_args(params)
+
+
+def build_conversations_search_args(params: dict) -> list:
+    """Build CLI arguments for conversation search."""
+    return ConversationsParameterBuilder.build_search_args(params)
+
+
+def build_conversations_rename_args(params: dict) -> list:
+    """Build CLI arguments for conversation rename."""
+    return ConversationsParameterBuilder.build_rename_args(params)
 
 
 def build_notes_create_args(params: dict) -> list:

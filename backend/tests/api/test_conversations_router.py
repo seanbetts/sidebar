@@ -71,6 +71,39 @@ def test_conversation_update_and_search(test_client, test_db):
     assert any(item["id"] == str(conversation_id) for item in search_response.json())
 
 
+def test_conversation_update_manual_title_clears_title_generated(test_client, test_db):
+    conversation_id = uuid.uuid4()
+    conversation = Conversation(
+        id=conversation_id,
+        user_id=TEST_USER_ID,
+        title="Generated Title",
+        title_generated=True,
+        messages=[{"role": "user", "content": "hello"}],
+        message_count=1,
+        first_message="hello",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(conversation)
+    test_db.commit()
+
+    update_response = test_client.put(
+        f"/api/conversations/{conversation_id}",
+        json={"title": "Manual Rename"},
+        headers=_auth_headers(),
+    )
+
+    assert update_response.status_code == 200
+    payload = update_response.json()
+    assert payload["title"] == "Manual Rename"
+    assert payload["titleGenerated"] is False
+
+    refreshed = test_db.get(Conversation, conversation_id)
+    assert refreshed is not None
+    assert refreshed.title == "Manual Rename"
+    assert refreshed.title_generated is False
+
+
 def test_conversation_search_rate_limit_is_user_scoped(test_client, monkeypatch):
     monkeypatch.setitem(
         rate_limit_module.RATE_LIMIT_POLICIES,

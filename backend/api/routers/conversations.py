@@ -175,14 +175,29 @@ def update_conversation(
     db: Session = Depends(get_db),
 ):
     """Update conversation metadata."""
-    conversation = ConversationService.update_conversation(
-        db,
-        user_id,
-        conversation_id,
-        title=updates.title,
-        title_generated=updates.titleGenerated,
-        is_archived=updates.isArchived,
-    )
+    if updates.title is not None and updates.titleGenerated is None:
+        conversation = ConversationService.rename_conversation(
+            db,
+            user_id,
+            conversation_id,
+            updates.title,
+        )
+        if updates.isArchived is not None:
+            conversation = ConversationService.update_conversation(
+                db,
+                user_id,
+                conversation_id,
+                is_archived=updates.isArchived,
+            )
+    else:
+        conversation = ConversationService.update_conversation(
+            db,
+            user_id,
+            conversation_id,
+            title=updates.title,
+            title_generated=updates.titleGenerated,
+            is_archived=updates.isArchived,
+        )
 
     return _conversation_response(conversation)
 

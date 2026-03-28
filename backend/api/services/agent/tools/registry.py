@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from api.services.tools.definitions_conversations import get_conversations_definitions
 from api.services.tools.definitions_fs import get_fs_definitions
 from api.services.tools.definitions_misc import get_misc_definitions
 from api.services.tools.definitions_notes import get_notes_definitions
@@ -18,6 +19,7 @@ def get_tool_definitions() -> dict:
         Dictionary of tool definitions keyed by tool name.
     """
     return {
+        **get_conversations_definitions(),
         **get_fs_definitions(),
         **get_skills_definitions(),
         **get_web_definitions(),
