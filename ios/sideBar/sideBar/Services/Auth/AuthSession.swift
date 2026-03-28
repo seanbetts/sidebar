@@ -12,7 +12,7 @@ public enum AuthState: String, Equatable, Sendable {
 }
 
 /// Defines the requirements for AuthSession.
-public protocol AuthSession {
+public protocol AuthSession: AnyObject {
     var accessToken: String? { get }
     /// Token to use for Authorization headers (nil when auth is stale/signed out).
     var authorizationToken: String? { get }

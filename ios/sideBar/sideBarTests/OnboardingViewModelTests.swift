@@ -4,6 +4,8 @@ import sideBarShared
 
 @MainActor
 final class OnboardingViewModelTests: XCTestCase {
+    private static var retainedViewModels: [OnboardingViewModel] = []
+
     func testInitialStepIsWelcome() {
         let viewModel = makeViewModel()
 
@@ -118,25 +120,25 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     func testResetOnboardingFlagDetected() {
-        let viewModel = OnboardingViewModel(
-            authSession: PlaceholderAuthSession(),
+        let viewModel = retain(OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
             onboardingAPI: MockOnboardingAPI(),
             settingsAPI: OnboardingMockSettingsAPI(),
             isTestingOnboarding: true,
             userDefaults: makeUserDefaults()
-        )
+        ))
 
         XCTAssertTrue(viewModel.isTestingOnboarding)
     }
 
     func testCreateAccountAdvancesToVerifyEmail() async {
         let mockAuth = MockAuthSessionForOnboarding()
-        let viewModel = OnboardingViewModel(
+        let viewModel = retain(OnboardingViewModel(
             authSession: mockAuth,
             onboardingAPI: MockOnboardingAPI(),
             settingsAPI: OnboardingMockSettingsAPI(),
             userDefaults: makeUserDefaults()
-        )
+        ))
         viewModel.email = "test@example.com"
         viewModel.password = "StrongPass1!"
         viewModel.currentStep = .createAccount
@@ -150,12 +152,12 @@ final class OnboardingViewModelTests: XCTestCase {
     func testCreateAccountShowsErrorOnFailure() async {
         let mockAuth = MockAuthSessionForOnboarding()
         mockAuth.signUpError = AuthAdapterError.unknown("Email taken")
-        let viewModel = OnboardingViewModel(
+        let viewModel = retain(OnboardingViewModel(
             authSession: mockAuth,
             onboardingAPI: MockOnboardingAPI(),
             settingsAPI: OnboardingMockSettingsAPI(),
             userDefaults: makeUserDefaults()
-        )
+        ))
         viewModel.email = "test@example.com"
         viewModel.password = "StrongPass1!"
         viewModel.currentStep = .createAccount
@@ -168,12 +170,12 @@ final class OnboardingViewModelTests: XCTestCase {
 
     func testVerifyOTPAdvancesToProfile() async {
         let mockAuth = MockAuthSessionForOnboarding()
-        let viewModel = OnboardingViewModel(
+        let viewModel = retain(OnboardingViewModel(
             authSession: mockAuth,
             onboardingAPI: MockOnboardingAPI(),
             settingsAPI: OnboardingMockSettingsAPI(),
             userDefaults: makeUserDefaults()
-        )
+        ))
         viewModel.currentStep = .verifyEmail
 
         await viewModel.verifyOTP(code: "123456")
@@ -182,13 +184,13 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     func testValidateApiKeyAdvancesToTransition() async {
-        let viewModel = OnboardingViewModel(
-            authSession: PlaceholderAuthSession(),
+        let viewModel = retain(OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
             onboardingAPI: MockOnboardingAPI(),
             settingsAPI: OnboardingMockSettingsAPI(),
             isTestingOnboarding: true,
             userDefaults: makeUserDefaults()
-        )
+        ))
         viewModel.selectedProvider = .anthropic
         viewModel.apiKey = "sk-ant-valid-key"
         viewModel.currentStep = .addApiKey
@@ -199,12 +201,12 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     func testValidateApiKeyShowsErrorOnEmpty() async {
-        let viewModel = OnboardingViewModel(
-            authSession: PlaceholderAuthSession(),
+        let viewModel = retain(OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
             onboardingAPI: MockOnboardingAPI(),
             settingsAPI: OnboardingMockSettingsAPI(),
             userDefaults: makeUserDefaults()
-        )
+        ))
         viewModel.selectedProvider = .anthropic
         viewModel.apiKey = ""
         viewModel.currentStep = .addApiKey
@@ -216,13 +218,13 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     func testTestingModeSkipsRealAuth() async {
-        let viewModel = OnboardingViewModel(
-            authSession: PlaceholderAuthSession(),
+        let viewModel = retain(OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
             onboardingAPI: MockOnboardingAPI(),
             settingsAPI: OnboardingMockSettingsAPI(),
             isTestingOnboarding: true,
             userDefaults: makeUserDefaults()
-        )
+        ))
         viewModel.currentStep = .createAccount
 
         await viewModel.createAccount()
@@ -231,13 +233,13 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     func testTestingModeAcceptsAnyApiKey() async {
-        let viewModel = OnboardingViewModel(
-            authSession: PlaceholderAuthSession(),
+        let viewModel = retain(OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
             onboardingAPI: MockOnboardingAPI(),
             settingsAPI: OnboardingMockSettingsAPI(),
             isTestingOnboarding: true,
             userDefaults: makeUserDefaults()
-        )
+        ))
         viewModel.selectedProvider = .anthropic
         viewModel.apiKey = "literally-anything"
         viewModel.currentStep = .addApiKey
@@ -249,13 +251,13 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     func testTestingModeSkipsRealVerification() async {
-        let viewModel = OnboardingViewModel(
-            authSession: PlaceholderAuthSession(),
+        let viewModel = retain(OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
             onboardingAPI: MockOnboardingAPI(),
             settingsAPI: OnboardingMockSettingsAPI(),
             isTestingOnboarding: true,
             userDefaults: makeUserDefaults()
-        )
+        ))
         viewModel.currentStep = .verifyEmail
 
         await viewModel.verifyOTP(code: "000000")
@@ -264,12 +266,12 @@ final class OnboardingViewModelTests: XCTestCase {
     }
 
     private func makeViewModel() -> OnboardingViewModel {
-        OnboardingViewModel(
-            authSession: PlaceholderAuthSession(),
+        retain(OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
             onboardingAPI: MockOnboardingAPI(),
             settingsAPI: OnboardingMockSettingsAPI(),
             userDefaults: makeUserDefaults()
-        )
+        ))
     }
 
     private func makeUserDefaults() -> UserDefaults {
@@ -277,6 +279,11 @@ final class OnboardingViewModelTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suiteName) ?? .standard
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
+    }
+
+    private func retain(_ viewModel: OnboardingViewModel) -> OnboardingViewModel {
+        Self.retainedViewModels.append(viewModel)
+        return viewModel
     }
 }
 

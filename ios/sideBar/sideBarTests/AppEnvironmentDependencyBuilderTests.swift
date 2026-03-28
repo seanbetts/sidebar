@@ -253,10 +253,20 @@ final class AppEnvironmentDependencyBuilderTests: XCTestCase {
     }
 }
 
-private struct FakeAuthSession: AuthSession {
+private final class FakeAuthSession: AuthSession {
     let accessToken: String?
     let userId: String?
     let authState: AuthState
+
+    init(
+        accessToken: String? = nil,
+        userId: String? = nil,
+        authState: AuthState
+    ) {
+        self.accessToken = accessToken
+        self.userId = userId
+        self.authState = authState
+    }
 
     var authorizationToken: String? {
         authState == .active ? accessToken : nil
