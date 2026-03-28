@@ -26,11 +26,9 @@ The proposed `Haptics` helper handles this automatically — callers do not need
 
 ## The `Haptics` helper
 
-Currently, haptics are implemented ad-hoc in `LoginView` and `BiometricLockView` using inline `UINotificationFeedbackGenerator` instances. This is the wrong pattern — it duplicates boilerplate, has no platform guard, and is inconsistent.
+A thin enum in `Design/` that wraps the platform API and handles the platform guard centrally. This mirrors the `Motion` pattern.
 
-The correct approach mirrors `Motion`: a thin enum in `Design/` that wraps the platform API and handles the platform guard centrally.
-
-**Proposed `Design/Haptics.swift`**:
+**`Design/Haptics.swift`**:
 
 ```swift
 import UIKit
@@ -62,8 +60,6 @@ enum Haptics {
 }
 ```
 
-Once created, `LoginView` and `BiometricLockView` should be migrated to use `Haptics.notification(...)` and their inline generator code removed.
-
 ---
 
 ## Feedback taxonomy
@@ -84,21 +80,20 @@ Three feedback types, each with a distinct physical character:
 
 ## Interaction map
 
-The canonical mapping of interactions to feedback. This is the implementation target.
+The canonical mapping of interactions to feedback.
 
-| Interaction | Feedback | Status | File |
-|---|---|---|---|
-| Task completion checkbox | `notification(.success)` | missing | `TasksViewComponents.swift:87` |
-| Destructive delete (swipe) | `notification(.error)` | missing | `SidebarSwipeActions.swift` |
-| Floating action button tap | `impact(.light)` | missing | `PhoneFloatingActionDock.swift:25` |
-| Settings toggle state change | `selection()` | missing | `SettingsSections+Additional.swift:41` |
-| Archive / unarchive action | `selection()` | missing | Context menu components |
-| Pin / unpin action | `selection()` | missing | Context menu components |
-| Drag reorder completion | `notification(.success)` | missing | Panel reorder files |
-| Auth success (login, biometric) | `notification(.success)` | implemented | `LoginView`, `BiometricLockView` |
-| Auth failure | `notification(.error)` | implemented | `LoginView`, `BiometricLockView` |
-
-All missing items are tracked as high-priority gaps in [implementation-gaps](../implementation-gaps).
+| Interaction | Feedback |
+|---|---|
+| Task completion checkbox | `notification(.success)` |
+| Destructive delete (swipe) | `notification(.error)` |
+| Floating action button tap | `impact(.light)` |
+| Settings toggle state change | `selection()` |
+| Archive / unarchive action | `selection()` |
+| Pin / unpin action | `selection()` |
+| Drag reorder completion | `notification(.success)` |
+| Auth success (login, biometric) | `notification(.success)` |
+| Auth failure | `notification(.error)` |
+| Settings save completion | `selection()` |
 
 ---
 

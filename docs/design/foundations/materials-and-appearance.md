@@ -54,31 +54,24 @@ From base to top, the visual stack:
 
 Liquid Glass (`glassEffect`) is the primary surface primitive for transient chrome on iOS 26 and macOS 26. It provides depth, contextual colour sampling from content beneath, and automatic light/dark adaptation.
 
-### Current usage
-
-| Component | Platform |
-|---|---|
-| `PhoneFloatingActionDock` | iOS |
-
-### Planned adoption
-
-The following surfaces are in the adoption plan. Rollout order matters: primitives and shells first, then individual surfaces.
+The following surfaces use Liquid Glass. Rollout order matters: primitives and shells first, then individual surfaces.
 
 | Component | Platform | Notes |
 |---|---|---|
-| `MacPopoverShell` | macOS | Replaces custom popover background |
-| `MacModalShell` | macOS | Replaces custom modal background |
+| `PhoneFloatingActionDock` | iOS | Floating action capsule |
+| `MacPopoverShell` | macOS | Popover background |
+| `MacModalShell` | macOS | Modal background |
 | `SettingsMacStyles` | macOS | Settings surface chrome |
-| `SettingsSaveStatusPill` | iOS + macOS | Currently uses `.ultraThinMaterial` on iOS |
-| `SidebarRail` | iOS + macOS | Persistent surface — adopt carefully, validate against content legibility |
+| `SettingsSaveStatusPill` | iOS + macOS | Save status pill |
+| `SidebarRail` | iOS + macOS | Validate against content legibility before adopting |
 | `SiteHeaderBar` | iOS + macOS | Site section header chrome |
 | `HeaderActionIcon` | iOS + macOS | Icon button chrome |
-| `NoteFormattingBar` | iOS | Currently uses `.thinMaterial` |
+| `NoteFormattingBar` | iOS | Note formatting bar |
 | `SearchField` dock chrome | iOS | Floating search chrome |
 | `PanelHeader` | iOS + macOS | Section panel header |
 | `LoginView` | iOS + macOS | Onboarding/auth chrome |
 
-**Rule for agent**: New transient surface chrome should use Liquid Glass. Do not introduce new `.regularMaterial` or `.ultraThinMaterial` usage for interactive chrome — these are migration targets, not the pattern to continue.
+**Rule**: New transient surface chrome must use Liquid Glass. Do not introduce new `.regularMaterial` or `.ultraThinMaterial` usage for interactive chrome.
 
 ---
 
@@ -168,7 +161,7 @@ Liquid Glass surfaces use continuous corner radius (`.continuous` style). Full r
 
 1. **Persistent surfaces use solid fills.** Backgrounds, panels, and sidebars use `DesignTokens.Colors.*`. Never apply Liquid Glass or materials to content reading surfaces.
 2. **Transient chrome uses Liquid Glass.** Floating docks, pills, action bars, popovers, and formatting surfaces on iOS 26+ use `glassEffect`. Do not introduce new system material usage for these.
-3. **System materials are migration targets.** `.ultraThinMaterial` and `.thinMaterial` remain in `SettingsSaveStatusPill` and `NoteFormattingBar` pending Liquid Glass migration. Do not replicate this pattern.
+3. **System materials are not for interactive chrome.** Do not use `.ultraThinMaterial`, `.thinMaterial`, or `.regularMaterial` for floating docks, pills, action bars, or formatting surfaces. Use Liquid Glass.
 4. **Never override appearance mode.** The app follows the system setting. `DesignTokens.Colors` handles light/dark automatically.
 5. **Sheets are system.** SwiftUI `.sheet` presentation uses the system modal surface automatically. Do not apply custom backgrounds to sheet root views.
 

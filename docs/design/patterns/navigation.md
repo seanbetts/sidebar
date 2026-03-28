@@ -193,26 +193,16 @@ Same `.sheet` trigger and same `SettingsTabsView` structure, but the sheet is wr
 
 The tab structure, NavigationStack depth, and nested `.sheet` rules are identical to iOS.
 
-### Web (current state)
+### Web
 
-Settings is currently presented as an `AlertDialog` modal (`SettingsDialog.svelte`). The layout is a two-column grid: a 240px left navigation sidebar and a scrollable content area. Section switching is state-driven via `activeSettingsSection` — there is no URL change and no browser navigation support.
-
-Sections in the web modal differ in name from native:
+Settings is a dedicated `/settings` route. Section selection updates the URL (e.g. `/settings/agent`) so the browser back button works and direct links to setting sections are bookmarkable. Web sections align with the native tab structure where possible:
 
 | Web section | Native equivalent |
 |---|---|
 | Account | Profile |
 | User | User |
 | Agent | Agent |
-| Storage | (no direct native equivalent) |
-| Shortcuts | (no direct native equivalent) |
-| Memory | Part of Agent tab |
-| Store | (no direct native equivalent) |
 | Skills | Skills |
-
-### Web (target state)
-
-Settings should be a dedicated `/settings` route with full browser navigation support. Section selection should update the URL (e.g. `/settings/agent`) so the browser back button works and direct links to setting sections are possible. This is tracked as a high-priority gap in [implementation-gaps](../implementation-gaps).
 
 ---
 
@@ -222,9 +212,7 @@ Settings should be a dedicated `/settings` route with full browser navigation su
 
 ## Scratchpad
 
-The scratchpad is presented as a `.sheet` on all layouts. The trigger button should appear in the navigation bar or header of any section that shows the profile/settings avatar, positioned immediately to its left.
-
-**Current gap**: The scratchpad button exists only inside an open `ChatView` conversation. It should be removed from there and added to the standard section header pattern. Tracked as high priority in [implementation-gaps](../implementation-gaps).
+The scratchpad is presented as a `.sheet` on all layouts. The trigger button appears in the navigation bar or header of every section that shows the profile/settings avatar, positioned immediately to its left.
 
 ---
 

@@ -208,11 +208,9 @@ During streaming, the message status is `.streaming`. The UI:
 - Removes the thinking indicator once the first token lands and typing reveal begins
 - Shows retry/error UI if the stream ends in an error
 
-### Web: streaming dot
+### Web: streaming indicator
 
-The web shows an animated dot alongside "Working..." text for the duration of the stream. This is less sophisticated than the native typing reveal — the full response appears at once when the stream completes rather than being progressively revealed. Tool execution states are shown inline per message: "Using {name}" (running), "Used {name}" (success), "Failed to use {name}" (error).
-
-This is a known divergence. The target is to bring the web closer to the native typing reveal behaviour.
+During streaming the web shows an animated indicator for the duration of the stream. Tool execution states are shown inline per message: "Using {name}" (running), "Used {name}" (success), "Failed to use {name}" (error). The target is progressive character reveal matching the native typing reveal pattern.
 
 ### Framing AI generation correctly
 
@@ -224,36 +222,26 @@ AI generation is not fetching. Do not use the same visual language for a streame
 
 ## Long-running operations
 
-### Current state
+### File processing progress
 
-File upload and processing progress is tracked in `IngestionCenterView` (native) and `IngestionQueue` / `IngestionStatusCenter` (web). Both surface upload progress (determinate) and processing progress (indeterminate) per file, with pause/resume/cancel/retry actions.
-
-The pattern works but the dedicated in-app tracking surface is heavy for what is typically a background task. Users should not need to stay inside a dedicated ingestion view to understand whether their files are processing.
-
-### File processing progress (current)
-
-When a file is uploading or processing:
+When a file is uploading or processing, surface progress per file:
 
 | Phase | Feedback |
 |---|---|
-| Uploading | Spinner + progress bar + percentage |
+| Uploading | Spinner + determinate progress bar + percentage |
 | Processing | Spinner only (indeterminate) |
-| Failed | Error message + Retry / Dismiss |
+| Failed | Error message + Retry + Dismiss |
 
-Use a determinate progress bar whenever numeric progress is available. Prefer indeterminate spinners only when progress cannot be measured.
+Use a determinate progress bar whenever numeric progress is available. Use an indeterminate spinner only when progress cannot be measured.
 
-### Target: Live Activities (iOS)
+### Live Activities (iOS)
 
-The target for long-running file operations on iOS is Live Activities. This would:
+Long-running file operations on iOS use Live Activities to surface progress outside the app:
 
-- Show upload and processing progress in the Dynamic Island and on the lock screen
-- Remove the need for users to stay in the app during file processing
-- Replace the dedicated IngestionCenter panel for routine status tracking with a simpler in-app summary surface
-- Fire a `Haptics.notification(.success)` and local notification when processing completes
-
-The IngestionCenter can be simplified to a lightweight list of recent ingestion history once Live Activities handles active progress tracking.
-
-This is not yet implemented. Until Live Activities is in place, the current IngestionCenter pattern remains.
+- Upload and processing progress appears in the Dynamic Island and on the lock screen
+- Users do not need to stay in the app during file processing
+- The in-app surface is a lightweight summary of recent ingestion history, not an active tracking panel
+- `Haptics.notification(.success)` fires and a local notification is sent when processing completes
 
 ---
 

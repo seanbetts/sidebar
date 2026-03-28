@@ -67,6 +67,7 @@
         "group": "Audits",
         "pages": [
           "audits/current-ui-audit",
+          "audits/patterns-audit",
           "audits/component-inventory",
           "audits/token-audit",
           "audits/system-framework-usage-audit"
