@@ -11,7 +11,7 @@ skill_id: [settings-profile-user, ui-theme, settings-other-preferences]
 
 The Settings skill lets sideBar read and update your profile and app
 preferences directly from Chat. You can ask sideBar to update your name,
-job title, or location, change how it communicates with you, swap the
+job title, or home location, change how it communicates with you, swap the
 app theme, or adjust other preferences like temperature units, all without
 leaving the conversation.
 
@@ -20,7 +20,7 @@ leaving the conversation.
 | Action | Description |
 | --- | --- |
 | Get profile and user settings | Reads your current profile details and user preferences |
-| Update profile and user settings | Updates profile fields (name, job title, employer, location, pronouns) and user preferences (communication style, working relationship) |
+| Update profile and user settings | Updates profile fields (name, job title, employer, home location, pronouns) and user preferences (communication style, working relationship) |
 | Upload profile image | Sets your profile image from a file |
 | Remove profile image | Removes your current profile image |
 | Set UI theme | Switches the app between light and dark mode |

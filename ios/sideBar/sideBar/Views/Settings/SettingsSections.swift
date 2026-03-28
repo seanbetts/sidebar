@@ -214,7 +214,7 @@ struct ProfileSettingsView: View {
             }
             genderField
             pronounsField
-            SettingsMacFieldRow("Location") {
+            SettingsMacFieldRow("Home location") {
                 TextField(text: $location, prompt: Text("Not set")) {
                 }
                     .textFieldStyle(.roundedBorder)
@@ -289,26 +289,38 @@ struct ProfileSettingsView: View {
 
     private var iosProfileDetailsSection: some View {
         Section("Profile") {
-            LabeledContent("Name") {
+            LabeledContent {
                 TextField("Not set", text: $name)
                     .multilineTextAlignment(.trailing)
                     #if os(iOS)
                     .textInputAutocapitalization(.words)
                     #endif
+            } label: {
+                Text("Name")
+                    .appFont(.body)
             }
-            LabeledContent("Job Title") {
+            LabeledContent {
                 TextField("Not set", text: $jobTitle)
                     .multilineTextAlignment(.trailing)
+            } label: {
+                Text("Job Title")
+                    .appFont(.body)
             }
-            LabeledContent("Employer") {
+            LabeledContent {
                 TextField("Not set", text: $employer)
                     .multilineTextAlignment(.trailing)
+            } label: {
+                Text("Employer")
+                    .appFont(.body)
             }
             genderField
             pronounsField
-            LabeledContent("Location") {
+            LabeledContent {
                 TextField("Not set", text: $location)
                     .multilineTextAlignment(.trailing)
+            } label: {
+                Text("Home location")
+                    .appFont(.body)
             }
             ProfileDateOfBirthField(
                 dateOfBirthEnabled: $dateOfBirthEnabled,

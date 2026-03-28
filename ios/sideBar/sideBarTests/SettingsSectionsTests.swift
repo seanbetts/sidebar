@@ -668,6 +668,24 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("TextField(text:$location,prompt:Text(\"Notset\"))"))
     }
 
+    func testProfileSettingsSourceUsesHomeLocationLabel() throws {
+        let normalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsMacFieldRow(\"Homelocation\")"))
+        XCTAssertTrue(normalized.contains("Text(\"Homelocation\").appFont(.body)"))
+    }
+
+    func testProfileSettingsIOSSourceUsesExplicitBodyFontLabelsForTextRows() throws {
+        let normalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("}label:{Text(\"Name\").appFont(.body)}"))
+        XCTAssertTrue(normalized.contains("}label:{Text(\"JobTitle\").appFont(.body)}"))
+        XCTAssertTrue(normalized.contains("}label:{Text(\"Employer\").appFont(.body)}"))
+        XCTAssertTrue(normalized.contains("}label:{Text(\"Homelocation\").appFont(.body)}"))
+    }
+
     func testGeneralSettingsMacSourceUsesInspectorSectionIntrosAndCalmerWeatherControl() throws {
         let normalized = try generalSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -698,12 +716,29 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(normalized.contains("SettingsMacSectionIntro(title:\"SkillType\""))
     }
 
-    func testProfileStringSelectorSourceUsesPickerInsteadOfMenu() throws {
+    func testProfileStringSelectorSourceUsesMenuInsteadOfPicker() throws {
         let normalized = try profileStringSelectorSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("Picker(selectionLabel,selection:$selection)"))
-        XCTAssertFalse(normalized.contains("Menu{"))
+        XCTAssertTrue(normalized.contains("Menu{"))
+        XCTAssertTrue(normalized.contains("Button(\"Notset\")"))
+        XCTAssertTrue(normalized.contains("Image(systemName:\"chevron.up.chevron.down\")"))
+        XCTAssertFalse(normalized.contains("Picker(selectionLabel,selection:$selection)"))
+    }
+
+    func testProfileSettingsIOSSourceUsesStandardizedProfileRows() throws {
+        let settingsNormalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let dateOfBirthNormalized = try profileDateOfBirthFieldSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Name\")"))
+        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"JobTitle\")"))
+        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Employer\")"))
+        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Homelocation\")"))
+        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Gender\")"))
+        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Pronouns\")"))
+        XCTAssertTrue(dateOfBirthNormalized.contains("ProfileIOSFieldRow(\"DateofBirth\")"))
     }
 
     func testSettingsSaveStatusPillChromeUsesMaterialOnIOS() {
@@ -969,6 +1004,13 @@ private func profileStringSelectorSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("ProfileStringSelectorMenu.swift", file: file, line: line)
+}
+
+private func profileDateOfBirthFieldSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("ProfileDateOfBirthField.swift", file: file, line: line)
 }
 
 private func generalSettingsSource(

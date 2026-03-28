@@ -25,7 +25,7 @@ roll or photo library.
 
 You can edit the following fields:
 
-- **Name**, **Job title**, **Employer**, **Location** are free-text fields
+- **Name**, **Job title**, **Employer**, **Home location** are free-text fields
 - **Gender** and **Pronouns** can be selected from a menu
 - **Date of birth** is optional
 

@@ -38,7 +38,7 @@ in ways a generic chatbot cannot.
 
 Four things will get you the most out of sideBar quickly:
 
-1. **Fill out your profile** in Settings. Your name, job, and location help
+1. **Fill out your profile** in Settings. Your name, job, and home location help
    sideBar tailor its responses from the start.
 2. **Start a conversation** in Chat. Ask sideBar anything to see how it works.
 3. **Save a website or upload a file**, then ask sideBar about it. This is where

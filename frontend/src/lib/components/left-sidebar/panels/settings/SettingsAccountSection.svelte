@@ -99,7 +99,7 @@
 		</select>
 	</label>
 	<label class="settings-label">
-		<span>Home</span>
+		<span>Home location</span>
 		<div class="settings-autocomplete">
 			<input
 				class="settings-input"
