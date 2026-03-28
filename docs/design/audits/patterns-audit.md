@@ -66,7 +66,7 @@ Both share the same six sizes: inline (16), control (20), panel (24), page (32),
 - **Native**: `SidebarListSkeleton` — static placeholder rows, no animation, `textTertiary` at 35% opacity, variable widths per row
 - **Web**: `SidebarLoading` — CSS shimmer animation (`loading-shimmer`, 1.6s infinite), three width variants (45%, 70%, 85%)
 
-The native skeleton is static; the web skeleton has a shimmer animation. This is a visual divergence. Neither is wrong given the different rendering contexts, but they are not identical.
+The web shimmer animation is being removed to align with native. Target is static placeholder rows on both platforms.
 
 ### Chat streaming
 

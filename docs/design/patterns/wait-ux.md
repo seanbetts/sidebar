@@ -68,7 +68,7 @@ Content that arrives from local cache or local state requires no wait feedback. 
 
 Use skeleton loading for all sidebar list panels loading initial data from the network.
 
-**Native**: `SidebarListSkeleton` renders static placeholder rows using `textTertiary` at 35% opacity with variable widths (no animation). Row counts per panel:
+Skeleton rows are static — no shimmer animation. Variable row widths create natural variation without motion. Row counts per panel:
 
 | Panel | Rows | Subtitle |
 |---|---|---|
@@ -78,9 +78,11 @@ Use skeleton loading for all sidebar list panels loading initial data from the n
 | Files | 8 | No |
 | Memories | 8 | No |
 
-**Web**: `SidebarLoading` renders placeholder rows with a CSS shimmer animation (`loading-shimmer`, 1.6s infinite). Three row widths (45%, 70%, 85%) create natural variation.
+**Native**: `SidebarListSkeleton` — `textTertiary` at 35% opacity, variable widths, no animation.
 
-The native skeleton is static; the web skeleton has shimmer. This divergence is intentional given the different visual contexts, but both serve the same purpose: fill the layout immediately and prevent blank screens.
+**Web**: `SidebarLoading` — same static approach. No shimmer animation.
+
+Static skeletons are less distracting, need no reduced-motion exception, and are consistent across platforms.
 
 **Rule**: Use skeleton loading for all list panels on initial load. Do not replace a list with a centred spinner — it causes layout shift and is less informative.
 

@@ -96,6 +96,7 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
+| `SidebarLoading` has CSS shimmer animation (`loading-shimmer`) — remove and replace with static placeholder rows matching native `SidebarListSkeleton` | `frontend/src/lib/components/left-sidebar/SidebarLoading.svelte` | [wait-ux](./patterns/wait-ux) |
 | Chat pre-first-token state shows "Working..." animated dot — should be replaced with an inline thinking indicator in the message row, matching native | `frontend/src/lib/components/chat/Message.svelte` | [wait-ux](./patterns/wait-ux) |
 | Native chat missing inline tool execution states — web shows "Using {name}" / "Used {name}" / "Failed to use {name}" per message; native has no equivalent | `ChatToolBanners.swift` / chat message components | [wait-ux](./patterns/wait-ux) |
 | `prefers-reduced-motion` not confirmed implemented — should be respected in all animations | `frontend/src/` | [web-conventions](./platform-strategy/web-conventions) |
