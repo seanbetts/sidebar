@@ -48,6 +48,7 @@ Available formatting includes:
 - **Text styles**: Body, Title, Heading, Subhead
 - **Inline formatting**: Bold, Italic, Underline, Strikethrough, Inline Code
 - **Lists**: type `- ` or `* ` to start a bulleted list, or `1. ` to start a numbered list
+- **Checklists**: type `- [ ] ` to start a checklist item
 
 The text-style row is visual rather than text-only, so each style is shown with
 its own note typography instead of a plain menu label.
@@ -60,15 +61,20 @@ triggers followed by a space:
 
 - `- ` or `* ` for a bulleted list
 - `1. ` for a numbered list
+- `- [ ] ` for a checklist item
 
 These triggers only work at the start of a paragraph.
+
+Checklist items can be toggled directly in read mode by tapping or clicking the
+checkbox. Checked items stay in place and automatically gain strikethrough
+styling until you uncheck them.
 
 Pressing Return after a **Title**, **Heading**, or **Subhead** starts a new
 **Body** line. **Body** lines continue as body text when you press Return. Code
 blocks stay multiline, and pressing Return twice on an empty trailing code
-block line exits back to **Body** text. In lists, Return creates the next list
-item, and pressing Return on an empty trailing list item exits back to **Body**
-text.
+block line exits back to **Body** text. In lists and checklists, Return creates
+the next item, and pressing Return on an empty trailing item exits back to
+**Body** text.
 
 ## Note Actions
 
