@@ -50,7 +50,7 @@ struct ProfileStepView: View {
 
             Spacer()
 
-            VStack(spacing: DesignTokens.Spacing.md) {
+            OnboardingActionArea {
                 Button(action: {
                     Task { await viewModel.saveProfile() }
                 }, label: {
@@ -60,14 +60,13 @@ struct ProfileStepView: View {
                         .padding(.vertical, DesignTokens.Spacing.md)
                 })
                 .buttonStyle(OnboardingPrimaryButtonStyle())
-
+            } secondary: {
                 Button("Skip for now", action: {
                     viewModel.skipProfile()
                 })
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
         }
         .padding(.horizontal, DesignTokens.Spacing.xxl)
         .onAppear {

@@ -28,7 +28,7 @@ struct OnboardingView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                if viewModel.currentStepHasBack {
+                if showsBackButton {
                     backButton
                 } else {
                     Color.clear
@@ -37,9 +37,10 @@ struct OnboardingView: View {
                 }
 
                 stepContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: viewModel.currentStep)
-
-                Spacer()
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(backSwipeGesture)
 
                 OnboardingProgressDots(
                     totalSteps: viewModel.totalSteps,
@@ -74,6 +75,22 @@ struct OnboardingView: View {
         case .transition:
             TransitionStepView(viewModel: viewModel, dismiss: dismiss)
         }
+    }
+
+    private var showsBackButton: Bool {
+        viewModel.currentStepHasBack && viewModel.currentStep != .createAccount
+    }
+
+    private var backSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onEnded { value in
+                guard viewModel.currentStep == .createAccount,
+                      value.translation.width > 90,
+                      abs(value.translation.height) < 60 else {
+                    return
+                }
+                viewModel.goBack()
+            }
     }
 
     private var backButton: some View {

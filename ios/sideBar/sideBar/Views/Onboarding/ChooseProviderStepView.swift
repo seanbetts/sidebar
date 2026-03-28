@@ -53,7 +53,7 @@ struct ChooseProviderStepView: View {
 
             Spacer()
 
-            VStack(spacing: DesignTokens.Spacing.md) {
+            OnboardingActionArea {
                 Button(action: { viewModel.advance() }, label: {
                     Text("Continue")
                         .font(.body.weight(.semibold))
@@ -63,14 +63,13 @@ struct ChooseProviderStepView: View {
                 .buttonStyle(OnboardingPrimaryButtonStyle())
                 .disabled(viewModel.selectedProvider == nil)
                 .opacity(viewModel.selectedProvider == nil ? 0.4 : 1.0)
-
+            } secondary: {
                 Button("Skip for now", action: {
                     Task { await viewModel.skipProviderSetup() }
                 })
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
         }
         .padding(.horizontal, DesignTokens.Spacing.xxl)
     }

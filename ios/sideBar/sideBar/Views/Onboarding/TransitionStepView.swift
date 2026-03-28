@@ -33,19 +33,25 @@ struct TransitionStepView: View {
 
             Spacer()
 
-            Button(action: {
-                Task {
-                    await viewModel.completeOnboarding()
-                    dismiss()
-                }
-            }, label: {
-                Text("Meet sideBar")
-                    .font(.body.weight(.semibold))
-                    .frame(maxWidth: 310)
-                    .padding(.vertical, DesignTokens.Spacing.md)
-            })
-            .buttonStyle(OnboardingPrimaryButtonStyle())
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
+            OnboardingActionArea(reservesSecondarySpace: true) {
+                Button(action: {
+                    Task {
+                        await viewModel.completeOnboarding()
+                        dismiss()
+                    }
+                }, label: {
+                    Text("Meet sideBar")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: 310)
+                        .padding(.vertical, DesignTokens.Spacing.md)
+                })
+                .buttonStyle(OnboardingPrimaryButtonStyle())
+            } secondary: {
+                Text(" ")
+                    .font(.subheadline)
+                    .hidden()
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.horizontal, DesignTokens.Spacing.xxl)
     }

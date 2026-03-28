@@ -38,7 +38,7 @@ struct CreateAccountStepView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .tracking(0.5)
-                    TextField("you@example.com", text: $viewModel.email)
+                    TextField("Enter your email", text: $viewModel.email)
                         .textContentType(.emailAddress)
 #if canImport(UIKit)
                         .keyboardType(.emailAddress)
@@ -84,25 +84,31 @@ struct CreateAccountStepView: View {
 
             Spacer()
 
-            Button(action: {
-                Task { await viewModel.createAccount() }
-            }, label: {
-                Group {
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .tint(DesignTokens.Colors.background)
-                    } else {
-                        Text("Continue")
-                            .font(.body.weight(.semibold))
+            OnboardingActionArea(reservesSecondarySpace: true) {
+                Button(action: {
+                    Task { await viewModel.createAccount() }
+                }, label: {
+                    Group {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .tint(DesignTokens.Colors.background)
+                        } else {
+                            Text("Continue")
+                                .font(.body.weight(.semibold))
+                        }
                     }
-                }
-                .frame(maxWidth: 310)
-                .padding(.vertical, DesignTokens.Spacing.md)
-            })
-            .buttonStyle(OnboardingPrimaryButtonStyle())
-            .disabled(!viewModel.isCreateAccountValid || viewModel.isLoading)
-            .opacity(viewModel.isCreateAccountValid ? 1.0 : 0.4)
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
+                    .frame(maxWidth: 310)
+                    .padding(.vertical, DesignTokens.Spacing.md)
+                })
+                .buttonStyle(OnboardingPrimaryButtonStyle())
+                .disabled(!viewModel.isCreateAccountValid || viewModel.isLoading)
+                .opacity(viewModel.isCreateAccountValid ? 1.0 : 0.4)
+            } secondary: {
+                Text(" ")
+                    .font(.subheadline)
+                    .hidden()
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.horizontal, DesignTokens.Spacing.xxl)
         .onAppear {

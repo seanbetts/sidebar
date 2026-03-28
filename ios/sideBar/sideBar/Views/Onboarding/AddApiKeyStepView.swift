@@ -79,7 +79,7 @@ struct AddApiKeyStepView: View {
 
             Spacer()
 
-            VStack(spacing: DesignTokens.Spacing.md) {
+            OnboardingActionArea {
                 Button(action: {
                     Task { await viewModel.validateAndSaveApiKey() }
                 }, label: {
@@ -98,14 +98,13 @@ struct AddApiKeyStepView: View {
                 .buttonStyle(OnboardingPrimaryButtonStyle())
                 .disabled(viewModel.trimmedApiKey.isEmpty || viewModel.isLoading)
                 .opacity(viewModel.trimmedApiKey.isEmpty ? 0.4 : 1.0)
-
+            } secondary: {
                 Button("Skip for now", action: {
                     Task { await viewModel.skipProviderSetup() }
                 })
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
         }
         .padding(.horizontal, DesignTokens.Spacing.xxl)
         .onAppear {
