@@ -58,6 +58,7 @@
       {
         "group": "Standard Skills",
         "pages": [
+          "skills/conversations",
           "skills/files",
           "skills/memory",
           "skills/notes",

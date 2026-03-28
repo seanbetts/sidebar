@@ -88,6 +88,17 @@ describe('api services', () => {
 		);
 	});
 
+	it('conversationsAPI.search posts the query and limit', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson([]));
+
+		await conversationsAPI.search('lisbon', 5);
+
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/v1/conversations/search?query=lisbon&limit=5',
+			expect.objectContaining({ method: 'POST' })
+		);
+	});
+
 	it('conversationsAPI.delete throws on failure', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(failJson());
 
