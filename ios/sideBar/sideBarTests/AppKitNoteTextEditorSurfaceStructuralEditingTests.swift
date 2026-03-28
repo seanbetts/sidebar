@@ -26,7 +26,7 @@ extension AppKitNoteTextEditorSurfaceTests {
         ) ?? true
 
         XCTAssertFalse(handled)
-        let snapshot = try XCTUnwrap(mountedEditorSnapshot(from: textView))
+        let snapshot = try XCTUnwrap(mountedStructuralEditorSnapshot(from: textView))
         XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .unorderedList])
         XCTAssertEqual(snapshot.plainText, "Title\n- ")
     }
@@ -53,14 +53,14 @@ extension AppKitNoteTextEditorSurfaceTests {
 
         XCTAssertFalse(handled)
         XCTAssertEqual(
-            mountedEditorSnapshot(from: textView)?.document.blocks.map(\.type),
+            mountedStructuralEditorSnapshot(from: textView)?.document.blocks.map(\.type),
             [.title, .unorderedList]
         )
 
         try XCTUnwrap(textView.undoManager).undo()
         drainNotesHostingRunLoop()
 
-        let snapshot = try XCTUnwrap(mountedEditorSnapshot(from: textView))
+        let snapshot = try XCTUnwrap(mountedStructuralEditorSnapshot(from: textView))
         XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .paragraph])
         XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "- ", marks: [])])
         XCTAssertEqual(snapshot.plainText, "Title\n- ")
