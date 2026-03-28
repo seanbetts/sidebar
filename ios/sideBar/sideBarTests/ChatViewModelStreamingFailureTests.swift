@@ -48,6 +48,51 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         XCTAssertNil(viewModel.streamingConversationId)
     }
 
+    func testStartStreamUnexpectedEOFFinalizesStreamingMessageAsError() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: IncompleteChatStreamClient()
+        )
+
+        viewModel.selectedConversationId = "conv-1"
+        viewModel.messages = [
+            Message(
+                id: "assistant-1",
+                role: .assistant,
+                content: "partial response",
+                status: .streaming,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:00Z",
+                error: nil
+            )
+        ]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        await viewModel.startStream(
+            request: ChatStreamRequest(
+                message: "Hello",
+                conversationId: "conv-1"
+            )
+        )
+
+        XCTAssertEqual(viewModel.messages.first?.status, .error)
+        XCTAssertEqual(
+            viewModel.messages.first?.error,
+            "The response stream ended unexpectedly. Please try again."
+        )
+        XCTAssertEqual(
+            viewModel.errorMessage,
+            "The response stream ended unexpectedly. Please try again."
+        )
+        XCTAssertFalse(viewModel.isStreaming)
+        XCTAssertNil(viewModel.currentStreamMessageId)
+        XCTAssertNil(viewModel.streamingConversationId)
+    }
+
     func testErrorEventWithEmptyAssistantMessageDoesNotPersistPlaceholder() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
@@ -301,6 +346,24 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         XCTAssertEqual(viewModel.messages.first?.status, .error)
     }
 
+    func testTypingRevealUsesLargerStepsForLargeBacklog() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeViewModelWithDefaultRevealConfig(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: SuccessfulChatStreamClient()
+        )
+
+        let current = ""
+        let target = String(repeating: "x", count: 600)
+
+        let nextContent = viewModel.nextDisplayedContent(current: current, target: target)
+
+        XCTAssertGreaterThan(nextContent.count, 20)
+        XCTAssertLessThan(nextContent.count, target.count)
+    }
+
     private func seedStreamingMessage(on viewModel: ChatViewModel) -> Message {
         let initialMessage = Message(
             id: "assistant-1",
@@ -391,6 +454,40 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
             )
         )
     }
+
+    private func makeViewModelWithDefaultRevealConfig(
+        api: StubConversationsAPI,
+        cache: CacheClient,
+        streamClient: ChatStreamClient
+    ) -> ChatViewModel {
+        let resolvedChatAPI = ChatAPI(client: Self.sharedAPIClient)
+        let themeDefaults = UserDefaults(suiteName: "ChatViewModelStreamingFailureTheme.DefaultReveal") ?? .standard
+        themeDefaults.removePersistentDomain(forName: "ChatViewModelStreamingFailureTheme.DefaultReveal")
+        let themeManager = ThemeManager(userDefaults: themeDefaults)
+        let uiDefaults = UserDefaults(suiteName: "ChatViewModelStreamingFailure.DefaultReveal") ?? .standard
+        uiDefaults.removePersistentDomain(forName: "ChatViewModelStreamingFailure.DefaultReveal")
+        let chatStore = ChatStore(conversationsAPI: api, cache: cache)
+        let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
+
+        return ChatViewModel(
+            network: ChatNetworkCoordinator(
+                chatAPI: resolvedChatAPI,
+                conversationsAPI: api,
+                ingestionAPI: ingestionAPI,
+                streamClient: streamClient,
+                networkStatus: AlwaysOnlineNetworkStatus()
+            ),
+            storage: ChatStorageCoordinator(
+                cache: cache,
+                chatStore: chatStore
+            ),
+            ui: ChatUICoordinator(
+                themeManager: themeManager,
+                userDefaults: uiDefaults,
+                clock: { Date(timeIntervalSince1970: 0) }
+            )
+        )
+    }
 }
 
 private struct AlwaysOnlineNetworkStatus: NetworkStatusProviding {
@@ -415,6 +512,17 @@ private final class FailingChatStreamClient: ChatStreamClient {
 }
 
 private final class SuccessfulChatStreamClient: ChatStreamClient {
+    weak var handler: ChatStreamEventHandler?
+
+    func connect(request: ChatStreamRequest) async throws {
+        _ = request
+    }
+
+    func disconnect() {
+    }
+}
+
+private final class IncompleteChatStreamClient: ChatStreamClient {
     weak var handler: ChatStreamEventHandler?
 
     func connect(request: ChatStreamRequest) async throws {

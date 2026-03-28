@@ -6,6 +6,7 @@ extension ChatViewModel {
     func finalizeStreaming(status: MessageStatus, streamError: String? = nil) {
         guard let messageId = activeStreamingMessageId else {
             clearTypingRevealState(flushDisplayedContent: false)
+            didReceiveTerminalStreamEvent = false
             isStreaming = false
             return
         }
@@ -37,6 +38,7 @@ extension ChatViewModel {
                 conversationId: streamingConversationId ?? selectedConversationId,
                 persist: true
             )
+            didReceiveTerminalStreamEvent = false
             isStreaming = false
             streamingConversationId = nil
             currentStreamMessageId = nil
@@ -56,6 +58,7 @@ extension ChatViewModel {
                 await self?.refreshActiveConversation(silent: true)
             }
         }
+        didReceiveTerminalStreamEvent = false
         isStreaming = false
         streamingConversationId = nil
         currentStreamMessageId = nil

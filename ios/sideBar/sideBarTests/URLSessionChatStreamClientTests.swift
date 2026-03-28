@@ -54,6 +54,37 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         XCTAssertEqual(handler.events.first?.type, .token)
     }
 
+    func testConnectDeliversBufferedEventsBeforeReturning() async throws {
+        let expectation = expectation(description: "events")
+        expectation.expectedFulfillmentCount = 2
+        let handler = RecordingHandler(expectation: expectation)
+        let session = makeSession()
+        let client = URLSessionChatStreamClient(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { "token" },
+            session: session,
+            parser: ChatStreamParser(),
+            handler: handler
+        )
+        URLProtocolStreamingMock.dataChunks = [
+            Data("event: token\ndata: {\"content\":\"Hello\"}\n\n".utf8),
+            Data("event: complete\ndata: {}\n\n".utf8)
+        ]
+        URLProtocolStreamingMock.requestHandler = { request in
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+        }
+
+        try await client.connect(request: ChatStreamRequest(message: "Hello"))
+
+        XCTAssertEqual(handler.events.map(\.type), [.token, .complete])
+        await fulfillment(of: [expectation], timeout: 1.0)
+    }
+
     func testConnectThrowsOnNon200() async {
         let session = makeSession()
         let client = URLSessionChatStreamClient(

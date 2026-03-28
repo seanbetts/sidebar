@@ -28,6 +28,26 @@ final class ChatStreamParserTests: XCTestCase {
         XCTAssertEqual(second.first?.type, .token)
     }
 
+    func testIngestBuffersSplitUTF8AcrossChunks() {
+        var parser = ChatStreamParser()
+        let chunk = "event: token\ndata: {\"content\":\"🙂\"}\n\n"
+        let fullData = Data(chunk.utf8)
+        let emojiRange = fullData.range(of: Data("🙂".utf8))
+        XCTAssertNotNil(emojiRange)
+        let splitIndex = (emojiRange?.lowerBound ?? 0) + 2
+        let part1 = fullData.prefix(splitIndex)
+        let part2 = fullData.suffix(from: splitIndex)
+
+        let first = parser.ingest(Data(part1))
+        XCTAssertTrue(first.isEmpty)
+
+        let second = parser.ingest(Data(part2))
+        XCTAssertEqual(second.count, 1)
+        XCTAssertEqual(second.first?.type, .token)
+        let payload = second.first?.data?.value as? [String: Any]
+        XCTAssertEqual(payload?["content"] as? String, "🙂")
+    }
+
     func testIngestIgnoresUnknownEventType() {
         var parser = ChatStreamParser()
         let chunk = "event: unknown\ndata: {\"text\":\"hi\"}\n\n"
@@ -91,7 +111,7 @@ final class ChatStreamParserTests: XCTestCase {
 
         XCTAssertTrue(events.isEmpty)
         let mirroredBuffer = Mirror(reflecting: parser).children
-            .first(where: { $0.label == "buffer" })?.value as? String
+            .first(where: { $0.label == "buffer" })?.value as? Data
         XCTAssertEqual(mirroredBuffer?.count, 65_536)
     }
 }

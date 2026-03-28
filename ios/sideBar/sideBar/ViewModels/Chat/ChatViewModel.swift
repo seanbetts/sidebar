@@ -145,6 +145,7 @@ private final class ChatViewModelTeardownBag {
 
     var currentStreamMessageId: String?
     var streamingConversationId: String?
+    var didReceiveTerminalStreamEvent = false
     var clearActiveToolTask: Task<Void, Never>? {
         didSet {
             teardownBag.setClearActiveToolTask(clearActiveToolTask)

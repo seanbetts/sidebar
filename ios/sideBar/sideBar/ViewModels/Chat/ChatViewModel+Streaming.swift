@@ -9,27 +9,29 @@ extension ChatViewModel {
         errorMessage = nil
         isStreaming = true
         streamingConversationId = request.conversationId ?? selectedConversationId
+        didReceiveTerminalStreamEvent = false
         do {
             try await streamClient.connect(request: request)
+            handleUnexpectedStreamEndIfNeeded()
         } catch is CancellationError {
             // Stream cancellation is user-initiated; avoid surfacing as an error.
         } catch {
             let mappedError = ErrorMapping.message(for: error)
+            logStreamRequestFailure(mappedError)
             errorMessage = mappedError
             toastCenter?.show(message: mappedError)
             finalizeStreaming(status: .error)
         }
         isStreaming = false
     }
-
     public func stopStream() {
         streamClient.disconnect()
         clearTypingRevealState(flushDisplayedContent: false)
+        didReceiveTerminalStreamEvent = false
         isStreaming = false
         streamingConversationId = nil
         currentStreamMessageId = nil
     }
-
     public func beginStreamingMessage(assistantMessageId: String) {
         currentStreamMessageId = assistantMessageId
         guard typingRevealEnabled else {
@@ -38,13 +40,11 @@ extension ChatViewModel {
         let startingContent = messages.first(where: { $0.id == assistantMessageId })?.content ?? ""
         typingRevealTargetsByMessageId = [assistantMessageId: startingContent]
     }
-
     public func handle(event: ChatStreamEvent) {
         if let handler = streamEventHandlers[event.type] {
             handler(event)
         }
     }
-
     func makeStreamEventHandlers() -> [ChatStreamEventType: (ChatStreamEvent) -> Void] {
         #if DEBUG
         streamEventHandlersBuildCountForTesting += 1
@@ -60,11 +60,13 @@ extension ChatViewModel {
                 self?.handleToolResult(event)
             },
             .complete: { [weak self] (_: ChatStreamEvent) in
+                self?.didReceiveTerminalStreamEvent = true
                 self?.finalizeStreaming(status: .complete)
             },
             .error: { [weak self] (event: ChatStreamEvent) in
                 let streamError = self?.stringValue(from: event.data, key: "error")?.trimmedOrNil
                     ?? "Chat stream error"
+                self?.didReceiveTerminalStreamEvent = true
                 self?.errorMessage = streamError
                 self?.toastCenter?.show(message: streamError)
                 self?.finalizeStreaming(status: .error, streamError: streamError)
@@ -102,28 +104,18 @@ extension ChatViewModel {
             .themeSet: { [weak self] (event: ChatStreamEvent) in
                 self?.handleThemeSet(event)
             },
-            .scratchpadUpdated: { [weak self] (_: ChatStreamEvent) in
-                self?.refreshScratchpad()
-            },
-            .scratchpadCleared: { [weak self] (_: ChatStreamEvent) in
-                self?.refreshScratchpad()
-            },
-            .promptPreview: { [weak self] (event: ChatStreamEvent) in
-                self?.handlePromptPreview(event)
-            },
-            .toolStart: { [weak self] (event: ChatStreamEvent) in
-                self?.handleToolStart(event)
-            },
-            .toolEnd: { [weak self] (event: ChatStreamEvent) in
-                self?.handleToolEnd(event)
-            },
-            .memoryCreated: { [weak self] (_: ChatStreamEvent) in self?.refreshMemories() },
-            .memoryUpdated: { [weak self] (_: ChatStreamEvent) in self?.refreshMemories() },
-            .memoryDeleted: { [weak self] (_: ChatStreamEvent) in self?.refreshMemories() },
-            .assistantIdentityUpdated: { [weak self] (event: ChatStreamEvent) in self?.handleAssistantIdentityUpdated(event) },
-            .assistantSoulUpdated: { [weak self] (event: ChatStreamEvent) in self?.handleAssistantSoulUpdated(event) },
-            .otherPreferencesUpdated: { [weak self] (event: ChatStreamEvent) in self?.handleOtherPreferencesUpdated(event) },
-            .workspacePatch: { [weak self] (event: ChatStreamEvent) in self?.handleWorkspacePatch(event) }
+            .scratchpadUpdated: makeVoidEventHandler(ChatViewModel.refreshScratchpad),
+            .scratchpadCleared: makeVoidEventHandler(ChatViewModel.refreshScratchpad),
+            .promptPreview: makeEventHandler(ChatViewModel.handlePromptPreview),
+            .toolStart: makeEventHandler(ChatViewModel.handleToolStart),
+            .toolEnd: makeEventHandler(ChatViewModel.handleToolEnd),
+            .memoryCreated: makeVoidEventHandler(ChatViewModel.refreshMemories),
+            .memoryUpdated: makeVoidEventHandler(ChatViewModel.refreshMemories),
+            .memoryDeleted: makeVoidEventHandler(ChatViewModel.refreshMemories),
+            .assistantIdentityUpdated: makeEventHandler(ChatViewModel.handleAssistantIdentityUpdated),
+            .assistantSoulUpdated: makeEventHandler(ChatViewModel.handleAssistantSoulUpdated),
+            .otherPreferencesUpdated: makeEventHandler(ChatViewModel.handleOtherPreferencesUpdated),
+            .workspacePatch: makeEventHandler(ChatViewModel.handleWorkspacePatch)
         ]
         return handlers
     }
@@ -495,5 +487,4 @@ extension ChatViewModel {
             )
         }
     }
-
 }

@@ -85,13 +85,13 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
                 let reachedEventBoundary = previousByte == 0x0A && byte == 0x0A
                 let reachedFlushSize = buffer.count >= 512
                 if reachedEventBoundary || reachedFlushSize {
-                    emitEvents(from: buffer)
+                    await emitEvents(from: buffer)
                     buffer.removeAll(keepingCapacity: true)
                 }
                 previousByte = byte
             }
             if !buffer.isEmpty {
-                emitEvents(from: buffer)
+                await emitEvents(from: buffer)
             }
         }
         replaceStreamTask(with: StreamTaskState(id: streamTaskId, task: streamTask))?.task.cancel()
@@ -105,10 +105,10 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         replaceStreamTask(with: nil)?.task.cancel()
     }
 
-    private func emitEvents(from data: Data) {
+    private func emitEvents(from data: Data) async {
         let events = parser.ingest(data)
         guard !events.isEmpty else { return }
-        Task { @MainActor [handler = self.handler] in
+        await MainActor.run { [handler = self.handler] in
             for event in events {
                 handler?.handle(event: event)
             }

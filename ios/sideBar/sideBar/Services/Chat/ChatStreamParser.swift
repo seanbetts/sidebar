@@ -9,27 +9,30 @@ public struct ParsedSSEEvent {
 
 /// Parses server-sent events into chat stream events.
 public struct ChatStreamParser {
-    private var buffer = ""
+    private var buffer = Data()
     private let maxBufferSize: Int
+    private static let eventDelimiter = Data("\n\n".utf8)
 
     public init(maxBufferSize: Int = 65_536) {
         self.maxBufferSize = maxBufferSize
     }
 
     public mutating func ingest(_ data: Data) -> [ChatStreamEvent] {
-        guard let chunk = String(data: data, encoding: .utf8) else {
+        guard !data.isEmpty else {
             return []
         }
-        buffer.append(chunk)
+        buffer.append(data)
         if buffer.count > maxBufferSize {
-            buffer = String(buffer.suffix(maxBufferSize))
+            buffer = Data(buffer.suffix(maxBufferSize))
         }
         var output: [ChatStreamEvent] = []
 
-        let events = buffer.components(separatedBy: "\n\n")
-        buffer = events.last ?? ""
-
-        for eventText in events.dropLast() {
+        while let range = buffer.range(of: Self.eventDelimiter) {
+            let eventData = Data(buffer[..<range.lowerBound])
+            buffer.removeSubrange(..<range.upperBound)
+            guard let eventText = String(data: eventData, encoding: .utf8) else {
+                continue
+            }
             let parsed = parseEvent(eventText)
             for sseEvent in parsed {
                 if let mapped = mapEvent(sseEvent) {
@@ -43,7 +46,8 @@ public struct ChatStreamParser {
     private func parseEvent(_ text: String) -> [ParsedSSEEvent] {
         var eventType = "message"
         var dataLines: [String] = []
-        for line in text.split(separator: "\n") {
+        for rawLine in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
             if line.hasPrefix("event:") {
                 eventType = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
             } else if line.hasPrefix("data:") {

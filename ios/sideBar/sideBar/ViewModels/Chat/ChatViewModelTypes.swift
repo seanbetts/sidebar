@@ -168,7 +168,7 @@ struct ChatUICoordinator {
         typingRevealEnabled: Bool = true,
         typingRevealFrameIntervalNanoseconds: UInt64 = 33_000_000,
         typingRevealMinimumStep: Int = 1,
-        typingRevealMaximumStep: Int = 20
+        typingRevealMaximumStep: Int = 120
     ) {
         self.themeManager = themeManager
         self.toastCenter = toastCenter
