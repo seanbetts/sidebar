@@ -7,7 +7,7 @@ description: Central tracker for all known divergences between the design system
 |---|---|
 | Status | live |
 | Owner | both |
-| Updated | 2026-03-28 |
+| Updated | 2026-03-29 |
 | Dependencies | all approved design docs |
 
 ## Purpose
@@ -27,6 +27,7 @@ Single working list of every known divergence between the design system and the 
 | Gap | File(s) | Source |
 |---|---|---|
 | Scratchpad button accessible only inside open ChatView conversation — should appear wherever the profile/settings avatar appears, to its left, presented as `.sheet` | `ChatView.swift` | [ios-conventions](./platform-strategy/ios-conventions) |
+| `Design/Haptics.swift` not yet created — all haptic call sites are blocked on this; `LoginView` and `BiometricLockView` still use inline `UINotificationFeedbackGenerator` and must migrate once the helper exists | `Design/Haptics.swift` (to create), `LoginView.swift`, `BiometricLockView.swift` | [feedback-and-haptics](./patterns/feedback-and-haptics) |
 | Haptic: task completion checkbox missing `.success` feedback | `TasksViewComponents.swift:87` | [ios-conventions](./platform-strategy/ios-conventions) |
 | Haptic: destructive delete (swipe) missing `.error` feedback | `SidebarSwipeActions.swift` | [ios-conventions](./platform-strategy/ios-conventions) |
 | Haptic: floating action button tap missing `.impact` (light) feedback | `PhoneFloatingActionDock.swift:25` | [ios-conventions](./platform-strategy/ios-conventions) |
@@ -40,6 +41,8 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
+| Haptic: settings save missing `Haptics.selection()` on explicit save completion — `SettingsSaveStatusPill` shows visual saved state but no haptic fires | `SettingsSaveStatusPill.swift` | [wait-ux](./patterns/wait-ux) |
+| Pull-to-refresh not confirmed implemented on iOS list panels — all sidebar list panels should use the `refreshable` modifier | Sidebar panel views | [wait-ux](./patterns/wait-ux) |
 | SidebarRail section button hover gated by `#if os(macOS)` — remove guard so iPad pointer gets hover state too | `SidebarRail.swift:117` | [ios-conventions](./platform-strategy/ios-conventions) |
 | SidebarRail app logo button missing `.onHover` | `SidebarRail.swift:32` | [ios-conventions](./platform-strategy/ios-conventions) |
 | SidebarRail profile avatar button missing `.onHover` | `SidebarRail.swift:54` | [ios-conventions](./platform-strategy/ios-conventions) |
@@ -93,6 +96,7 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
+| Chat streaming shows animated "Working..." dot — target is typing reveal behaviour matching native (progressive character reveal during stream) | `frontend/src/lib/components/chat/Message.svelte` | [wait-ux](./patterns/wait-ux) |
 | `prefers-reduced-motion` not confirmed implemented — should be respected in all animations | `frontend/src/` | [web-conventions](./platform-strategy/web-conventions) |
 | Web dark mode surface values lighter than native — `--background` dark is `oklch(0.145 0 0)` (≈ `#1a1a1a`), should be `oklch(0.065 0 0)` (≈ `#0a0a0a`) | `frontend/src/app.css` | [colour](./foundations/colour) |
 
