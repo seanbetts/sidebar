@@ -37,7 +37,8 @@
           "foundations/colour",
           "foundations/token-model",
           "foundations/typography",
-          "foundations/materials-and-appearance"
+          "foundations/materials-and-appearance",
+          "foundations/iconography"
         ]
       },
       {
