@@ -1,6 +1,6 @@
 ---
 title: Websites
-summary: Save, read, and manage your saved web pages through Chat.
+summary: Save, read, summarize, and manage your saved web pages through Chat.
 tags: [skills, websites]
 audience: user
 surfaces: [app, website, internal-knowledge]

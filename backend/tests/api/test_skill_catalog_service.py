@@ -120,7 +120,10 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
         str(by_id["tasks"]["description"])
         == "Search, read, create, complete, defer, organize and delete tasks"
     )
-    assert str(by_id["web-save"]["description"]) == "Save webpages as clean markdown"
+    assert (
+        str(by_id["web-save"]["description"])
+        == "Save, read, summarize, and manage saved website content"
+    )
     assert (
         str(by_id["web-search"]["description"])
         == "Search the live web for up-to-date information"

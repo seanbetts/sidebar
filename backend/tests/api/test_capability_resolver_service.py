@@ -147,6 +147,33 @@ def test_resolver_prefers_open_context_fast_path_for_note_requests():
     assert result["executable_skill_ids"] == ["notes"]
 
 
+def test_resolver_prefers_open_context_fast_path_for_website_requests():
+    result = _resolver_service().resolve_for_turn(
+        user_message="Summarize this",
+        enabled_skill_ids=["web-save", "files"],
+        open_context={"website": {"id": "web-1", "title": "Spec"}},
+        runtime_capabilities=[
+            _runtime_capability(
+                "web-save",
+                name="Archive",
+                description="",
+                tags=[],
+                triggers=[],
+            ),
+            _runtime_capability(
+                "files",
+                name="Workspace",
+                description="",
+                tags=[],
+                triggers=[],
+            ),
+        ],
+    )
+
+    assert result["selected_skill_ids"] == ["web-save"]
+    assert result["executable_skill_ids"] == ["web-save"]
+
+
 def test_resolver_falls_back_to_search_when_fast_paths_are_weak():
     result = _resolver_service().resolve_for_turn(
         user_message="Find the config file in my project",

@@ -1,6 +1,6 @@
 ---
 name: web-save
-description: Database-backed website operations - add, read, list, rename, pin, archive, delete, and export websites.
+description: Database-backed website operations for saving, reading, summarizing, and managing saved websites.
 metadata:
   capabilities:
     reads: true

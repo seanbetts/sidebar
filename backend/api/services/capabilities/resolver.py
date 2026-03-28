@@ -12,6 +12,25 @@ class CapabilityResolverService:
 
     _NOTE_KEYWORDS = {"note", "notes", "summarize", "summary"}
     _FILE_KEYWORDS = {"file", "files", "folder", "project", "workspace", "config"}
+    _WEBSITE_KEYWORDS = {
+        "website",
+        "websites",
+        "webpage",
+        "webpages",
+        "page",
+        "pages",
+        "site",
+        "sites",
+        "article",
+        "articles",
+        "url",
+        "link",
+        "read",
+        "summarize",
+        "summary",
+        "explain",
+        "analyze",
+    }
 
     @staticmethod
     def _catalog_capabilities(
@@ -59,6 +78,14 @@ class CapabilityResolverService:
             and message_tokens & cls._FILE_KEYWORDS
         ):
             selected.append("files")
+
+        if (
+            isinstance(open_context, dict)
+            and open_context.get("website") is not None
+            and "web-save" in visible_skill_ids
+            and message_tokens & cls._WEBSITE_KEYWORDS
+        ):
+            selected.append("web-save")
 
         return selected
 
