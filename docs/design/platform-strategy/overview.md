@@ -1,17 +1,14 @@
 ---
 title: Platform Strategy Overview
-description: Draft cross-platform strategy for keeping sideBar coherent across iPhone, iPad, Mac, and web.
+description: Cross-platform strategy for keeping sideBar coherent across iPhone, iPad, Mac, and web.
 ---
 
 | Field | Value |
 |---|---|
-| Status | drafted |
+| Status | approved |
 | Owner | AI coding agent |
-| Inputs needed | codebase inspection (complete), Sean's platform priorities |
 | Outputs | this doc + ios-conventions.md + macos-conventions.md + web-conventions.md |
 | Dependencies | [principles](../principles), [system-inheritance](../system-inheritance) |
-| Codebase review required | yes (complete) |
-| Human judgement required | yes - Sean to confirm platform differentiation intent |
 
 ## Purpose
 
@@ -56,9 +53,10 @@ But the way they interact with it should match the platform:
 
 | Element | iPhone | iPad | Mac | Web |
 |---|---|---|---|---|
-| Navigation | TabView | SidebarRail + WorkspaceLayout | SidebarRail + WorkspaceLayout + native menu bar | TBD |
-| Layout | Compact, single column | Multi-column workspace | Multi-column workspace, multiple windows | TBD |
-| Settings | Sheet | Sheet or sidebar panel | Dedicated window | TBD |
+| Navigation | TabView | SidebarRail + WorkspaceLayout | SidebarRail + WorkspaceLayout + native menu bar | SidebarRail + layout (TBD - audit needed) |
+| Layout | Compact, single column | Multi-column workspace | Multi-column workspace, single window | TBD - audit needed |
+| Right sidebar | Never | Available (workspace mode) | Available (workspace mode) | TBD |
+| Settings | Sheet | Sheet | Dedicated window | TBD |
 | Create actions | Floating action dock (Liquid Glass) | Toolbar buttons | Toolbar buttons + keyboard shortcuts | TBD |
 | Search | Floating search dock | Inline panel search | Inline panel search | TBD |
 | Rich text editor | UIKit surface | UIKit surface | AppKit surface | TBD |
@@ -67,31 +65,27 @@ But the way they interact with it should match the platform:
 
 ---
 
-## Platform tiers
+## Platform priority
 
-### Tier 1: iPhone
+### Primary platforms: iPhone, iPad, Mac
 
-The most constrained context. One panel at a time. Thumb-friendly. Quick task completion. Compact navigation.
+These are the first-class platforms for sideBar. All features should be available on all three. The native app experience is the reference point for quality, consistency, and design decisions.
 
-sideBar on iPhone should feel direct and fast. The tab bar is the primary navigation. The floating action dock and search dock are distinctive iPhone-native patterns. The workspace model is collapsed to a single active section.
+### Secondary platform: Web
 
-### Tier 2: iPad
+The web app exists and has the same section structure (Chat, Notes, Tasks, Websites, Files, Scratchpad, Settings), but has feature drift from the native apps as the iOS and macOS apps have been the primary focus of development. The web app is a second citizen: it should preserve the same mental model and feature parity where practical, but it is not the reference platform.
 
-The workspace model shines on iPad. Two panels side by side, resizable. Keyboard supported. External display supported. The sidebar rail is always visible. Multitasking contexts (Slide Over, Split View) need to be considered.
+**Web audit needed**: The web frontend (`frontend/src/`) has not been fully audited. The platform differences table below shows "TBD" for web where the current state is unknown. A separate web audit is needed to complete `web-conventions.md`.
 
-iPad should feel like a real working environment, not a scaled-up iPhone.
+### Platform character
 
-### Tier 3: Mac
+**iPhone**: The most constrained context. One panel at a time. Thumb-friendly. Quick task completion. Compact navigation. Should feel direct and fast.
 
-The Mac is sideBar's most capable platform. Keyboard shortcuts, native menus, window management, multiple windows, pointer precision, and the dock and menu bar are all available. The workspace model maps well to the Mac paradigm.
+**iPad**: Shares the same WorkspaceLayout as Mac. Keyboard and pointer supported. Should feel like a real working environment, not a scaled-up iPhone.
 
-Mac should feel like a real Mac app: keyboard-first, menu-driven, and window-aware.
+**Mac**: The most capable platform. Keyboard shortcuts, native menus, window management, pointer precision. Should feel like a real Mac app: keyboard-first, menu-driven, window-aware.
 
-### Tier 4: Web
-
-The web app should preserve the same mental model as the native apps. It should not pretend to be a native Apple app. It should use browser-native patterns for navigation, input, and accessibility. The same sections and capabilities should be accessible.
-
-**Note**: The web app was not inspected in this audit. Web conventions are to be defined based on separate inspection of the frontend codebase.
+**Web**: Should preserve the same mental model without pretending to be a native Apple app. Browser-native patterns for navigation, input, and accessibility.
 
 ---
 
@@ -118,8 +112,8 @@ ContentView (compact)
 ContentView (regular/macOS)
   WorkspaceLayout
     SidebarRail (56px, left edge)
-    Left panel (variable width, section list)
-    Divider (8px, drag-to-resize)
+    Left panel (280px fixed, section list)
+    Divider (8px)
     Main content (detail view, current selection)
     [Right sidebar] (optional, second content column, workspace mode)
 ```
@@ -165,9 +159,7 @@ No custom numeric breakpoints are used. The two-state compact/regular model is t
 
 ## Open questions
 
-- Should iPad have a distinct navigation model from Mac, or should they always share WorkspaceLayout?
-- Should the right sidebar be available on iPhone in some contexts (e.g. large iPhone in landscape)?
-- What is the Web platform's current state and what conventions should it follow?
+- What is the Web platform's current state? A full audit of `frontend/src/` is needed before `web-conventions.md` can be drafted and the platform differences table completed.
 
 ---
 
