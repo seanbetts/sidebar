@@ -20,18 +20,13 @@ This document covers the structural and numeric tokens (spacing, radius, size, i
 
 ## Architecture
 
-The native token system is layered:
+The native token system is layered. Components and views should only reference layer 2 — never the raw layer directly.
 
-```
-Raw values          DesignTokens.swift — named constants (Spacing, Radius, Size, Icon, Animation, Colors)
-                    Color+Platform.swift — platform color bridge
-                    AppFontStyle / .appFont() — typography interface
-
-Semantic layer      DesignTokens.Colors — semantic aliases over Color+Platform
-                    SidebarTypography — role aliases for sidebar list rows
-
-Usage               Components and views reference tokens, never raw values
-```
+| Layer | Role | Key files |
+|---|---|---|
+| **1. Raw values** | Named numeric and color constants with no semantic meaning | `DesignTokens.swift`, `Color+Platform.swift` |
+| **2. Semantic aliases** | Intent-named wrappers over raw values — the interface views use | `DesignTokens.Colors`, `SidebarTypography`, `AppFontStyle / .appFont()` |
+| **3. Usage** | Components and views — reference layer 2 only, never layer 1 directly | Views, `Design/` components |
 
 **Rule**: Components and views must reference tokens, not raw literals. A value like `padding: 16` in a view is always wrong if `DesignTokens.Spacing.md` exists. This makes future design changes a single-line edit in `DesignTokens.swift` rather than a grep-and-replace.
 

@@ -85,7 +85,7 @@ Single working list of every known divergence between the design system and the 
 | Gap | File(s) | Source |
 |---|---|---|
 | `prefers-reduced-motion` not confirmed implemented — should be respected in all animations | `frontend/src/` | [web-conventions](./platform-strategy/web-conventions) |
-| Web dark mode surface values lighter than native — `--background` dark is `oklch(0.145 0 0)` (~`#1a1a1a`), should be `oklch(0.065 0 0)` (~`#0a0a0a`) | `frontend/src/app.css` | [colour](./foundations/colour) |
+| Web dark mode surface values lighter than native — `--background` dark is `oklch(0.145 0 0)` (≈ `#1a1a1a`), should be `oklch(0.065 0 0)` (≈ `#0a0a0a`) | `frontend/src/app.css` | [colour](./foundations/colour) |
 
 ### Low priority
 
