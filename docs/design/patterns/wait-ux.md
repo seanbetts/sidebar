@@ -196,27 +196,43 @@ When a button triggers an async operation, the button should:
 
 ## AI generation states
 
-Chat streaming is different from ordinary loading. The content is arriving incrementally — it is not a wait before a result, it is the result arriving in real time. The visual treatment must reflect this.
+Chat streaming is different from ordinary loading. The content is arriving incrementally — it is not a wait before a result, it is the result arriving in real time. The visual treatment must reflect this across all platforms.
 
-### Native: typing reveal
+### Cross-platform goal: progressive reveal
 
-The assistant's response is revealed character by character using a configurable typing reveal animation (`ChatViewModel+TypingReveal.swift`). This communicates that the model is generating, not that data is loading from a server. The reveal rate is adjustable per user preference.
+The shared goal is that the assistant's response should appear to be composed in real time — content arrives and becomes visible progressively, never all at once. This applies on all platforms. An animated spinner that then dumps the full response is the wrong pattern.
+
+Before the first token arrives, every platform shows an inline thinking indicator in the message row. Once content starts arriving, the thinking indicator is replaced by the progressively revealed response.
+
+### Native: character-by-character reveal with pacing
+
+On iOS and macOS, content is revealed character by character using a configurable typing reveal animation (`ChatViewModel+TypingReveal.swift`). The reveal rate is intentionally paced — it can run slower than the stream to produce a natural reading tempo. The rate is adjustable per user preference.
 
 During streaming, the message status is `.streaming`. The UI:
 
-- Shows a `LoadingIndicatorView` (inline, 14px) as a thinking indicator in the message row before the first token arrives
-- Removes the thinking indicator once the first token lands and typing reveal begins
+- Shows a `LoadingIndicatorView` (inline, 14px) as the thinking indicator before the first token arrives
+- Removes the thinking indicator once the first token lands and reveal begins
 - Shows retry/error UI if the stream ends in an error
 
-### Web: streaming indicator
+### Web: chunk-by-chunk reveal
 
-During streaming the web shows an animated indicator for the duration of the stream. Tool execution states are shown inline per message: "Using {name}" (running), "Used {name}" (success), "Failed to use {name}" (error). The target is progressive character reveal matching the native typing reveal pattern.
+On web, content is revealed as SSE chunks arrive — no artificial pacing. This is the appropriate approach for web because:
+
+- Markdown is rendered progressively. Character-by-character reveal of raw markdown would expose broken syntax mid-stream.
+- SSE chunk delivery already produces a natural composing feel without artificial rate-limiting.
+- DOM update costs make character-level animation expensive without careful batching.
+
+The pre-first-token thinking indicator must match native: an inline indicator in the message row, not a separate spinner above the input.
+
+Tool execution states are shown inline per message for both platforms: "Using {name}" (running), "Used {name}" (success), "Failed to use {name}" (error).
 
 ### Framing AI generation correctly
 
 AI generation is not fetching. Do not use the same visual language for a streamed LLM response as for a network request. The experience should feel like the assistant is composing a reply in real time.
 
-**Rule**: Never show a centred spinner while waiting for the first AI token. Use the inline thinking indicator inside the message row.
+**Rule**: Never show a centred spinner while waiting for the first AI token. Use the inline thinking indicator inside the message row on all platforms.
+
+**Rule**: Content must never appear all at once at stream end. Progressive reveal — whether character-paced on native or chunk-driven on web — is required.
 
 ---
 
@@ -283,7 +299,7 @@ Show a skeleton first. Transition to the empty state only when the load complete
 4. **Save status is location-driven.** Toolbar icon for detail views, floating pill for sheets, ambient dot for background writes.
 5. **Auto-saves are silent on iOS. Explicit saves fire `Haptics.selection()`.** Long-operation completion fires `.notification(.success)` and a toast.
 6. **Async buttons disable in place.** Change the label text. Show a spinner inside the button for retry.
-7. **AI generation is not fetching.** Use the inline thinking indicator. Never a centred spinner.
+7. **AI generation is not fetching.** Inline thinking indicator before first token. Progressive reveal once content arrives — character-paced on native, chunk-driven on web. Content must never appear all at once at stream end.
 8. **Background operations never block.** Ambient indicators only.
 9. **Optimistic updates need ambient confirmation, not blocking states.**
 10. **Empty state appears after loading, not during.**

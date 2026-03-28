@@ -71,9 +71,9 @@ The native skeleton is static; the web skeleton has a shimmer animation. This is
 ### Chat streaming
 
 - **Native**: Typing reveal (`ChatViewModel+TypingReveal.swift`) — characters are revealed progressively at a configurable rate. A 14px inline spinner appears in the message row before the first token arrives, then disappears as reveal begins. The message status is `.streaming` during the stream.
-- **Web**: Animated dot alongside "Working..." text for the full duration of the stream. The full response appears at once when the stream completes. Tool execution states shown inline per message: "Using {name}" (running), "Used {name}" (success), "Failed to use {name}" (error).
+- **Web**: Animated dot alongside "Working..." text while waiting for the first token. Once tokens arrive, content appears as SSE chunks land. Full response does not wait until stream end. Tool execution states shown inline per message: "Using {name}" (running), "Used {name}" (success), "Failed to use {name}" (error).
 
-The web streaming experience is significantly less sophisticated than native. Progressive reveal has not been implemented on the web.
+The web does not have character-paced reveal — this is intentional given markdown rendering constraints. The gap is the pre-first-token experience: the "Working..." dot should be replaced with an inline thinking indicator matching native.
 
 ### File ingestion and processing
 
