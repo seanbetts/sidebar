@@ -1,6 +1,25 @@
 import XCTest
+@testable import sideBar
 
 final class AppCommandsTests: XCTestCase {
+    func testMacSectionCommandContextPrefersFocusedSectionAndFiltersUnsupportedSections() {
+        XCTAssertEqual(
+            SidebarCommands.macSectionCommandContext(focusedSection: .notes, activeSection: .tasks),
+            .notes
+        )
+        XCTAssertEqual(
+            SidebarCommands.macSectionCommandContext(focusedSection: nil, activeSection: .files),
+            .files
+        )
+        XCTAssertEqual(
+            SidebarCommands.macSectionCommandContext(focusedSection: .settings, activeSection: .tasks),
+            .tasks
+        )
+        XCTAssertNil(
+            SidebarCommands.macSectionCommandContext(focusedSection: .settings, activeSection: .skillsStore)
+        )
+    }
+
     func testMacFormatMenuFlattensNotesFormattingCommands() throws {
         let normalized = try normalizedAppCommandsSource()
 
@@ -103,6 +122,21 @@ final class AppCommandsTests: XCTestCase {
         XCTAssertTrue(
             normalized.contains(
                 "WindowGroup{rootContentView}.commands{SidebarCommands(environment:environment)}"
+            )
+        )
+    }
+
+    func testMacSectionCommandsUseDynamicContextualMenu() throws {
+        let normalized = try normalizedAppCommandsSource()
+
+        XCTAssertTrue(
+            normalized.contains(
+                "ifletsectionCommandContext=Self.macSectionCommandContext(focusedSection:environment.focusedSection,activeSection:environment.activeSection)"
+            )
+        )
+        XCTAssertFalse(
+            normalized.contains(
+                "CommandMenu(\"Tasks\"){Button(\"CompleteTask\"){environment.emitShortcutAction(.completeTask)}"
             )
         )
     }

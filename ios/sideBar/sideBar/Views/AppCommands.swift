@@ -49,42 +49,190 @@ struct SidebarCommands: Commands {
                 .keyboardShortcut(.escape, modifiers: [])
             }
 
-            CommandMenu("Tasks") {
-                Button("Complete Task") {
-                    environment.emitShortcutAction(.completeTask)
-                }
-                .keyboardShortcut(.return, modifiers: [.command])
-
-                Button("Edit Notes") {
-                    environment.emitShortcutAction(.editTaskNotes)
-                }
-                .keyboardShortcut("n", modifiers: [.command, .shift])
-
-                Button("Move Task") {
-                    environment.emitShortcutAction(.moveTask)
-                }
-                .keyboardShortcut("m", modifiers: [.command, .shift])
-
-                Button("Set Due Date") {
-                    environment.emitShortcutAction(.setTaskDueDate)
-                }
-                .keyboardShortcut("d", modifiers: [.command])
-
-                Button("Edit Repeat") {
-                    environment.emitShortcutAction(.setTaskRepeat)
-                }
-                .keyboardShortcut("r", modifiers: [.command, .shift])
-
-                Divider()
-
-                Button("Delete Task") {
-                    environment.emitShortcutAction(.deleteItem)
-                }
-                .keyboardShortcut(.delete, modifiers: [.command, .shift])
+            if let sectionCommandContext = Self.macSectionCommandContext(
+                focusedSection: environment.focusedSection,
+                activeSection: environment.activeSection
+            ) {
+                sectionCommandMenu(for: sectionCommandContext)
             }
-
         }
         #endif
+    }
+
+    static func macSectionCommandContext(
+        focusedSection: AppSection?,
+        activeSection: AppSection?
+    ) -> AppSection? {
+        if let focusedSection, isSupportedMacSectionCommandContext(focusedSection) {
+            return focusedSection
+        }
+        if let activeSection, isSupportedMacSectionCommandContext(activeSection) {
+            return activeSection
+        }
+        return nil
+    }
+
+    private static func isSupportedMacSectionCommandContext(_ section: AppSection) -> Bool {
+        switch section {
+        case .chat, .notes, .websites, .files, .tasks:
+            return true
+        case .skillsStore, .settings:
+            return false
+        }
+    }
+
+    @CommandsBuilder
+    private func sectionCommandMenu(for section: AppSection) -> some Commands {
+        switch section {
+        case .chat:
+            chatCommandMenu
+        case .notes:
+            notesCommandMenu
+        case .websites:
+            websitesCommandMenu
+        case .files:
+            filesCommandMenu
+        case .tasks:
+            tasksCommandMenu
+        case .skillsStore, .settings:
+            CommandMenu(section.title) {
+            }
+        }
+    }
+
+    @CommandsBuilder
+    private var chatCommandMenu: some Commands {
+        CommandMenu(AppSection.chat.title) {
+            Button("Send Message") {
+                environment.emitShortcutAction(.sendMessage)
+            }
+            .keyboardShortcut(.return, modifiers: [.command])
+
+            Button("Attach File") {
+                environment.emitShortcutAction(.attachFile)
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
+
+            Button("Rename Conversation") {
+                environment.emitShortcutAction(.renameItem)
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Delete Conversation") {
+                environment.emitShortcutAction(.deleteItem)
+            }
+            .keyboardShortcut(.delete, modifiers: [.command])
+        }
+    }
+
+    @CommandsBuilder
+    private var notesCommandMenu: some Commands {
+        CommandMenu(AppSection.notes.title) {
+            Button("New Folder") {
+                environment.emitShortcutAction(.createFolder)
+            }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
+
+            Button("Pin Note") {
+                environment.emitShortcutAction(.pinItem)
+            }
+            .keyboardShortcut("p", modifiers: [.command, .shift])
+
+            Button("Archive Note") {
+                environment.emitShortcutAction(.archiveItem)
+            }
+            .keyboardShortcut("a", modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Delete Note") {
+                environment.emitShortcutAction(.deleteItem)
+            }
+            .keyboardShortcut(.delete, modifiers: [.command, .shift])
+        }
+    }
+
+    @CommandsBuilder
+    private var websitesCommandMenu: some Commands {
+        CommandMenu(AppSection.websites.title) {
+            Button("Pin Website") {
+                environment.emitShortcutAction(.pinItem)
+            }
+            .keyboardShortcut("p", modifiers: [.command, .option])
+
+            Button("Archive Website") {
+                environment.emitShortcutAction(.archiveItem)
+            }
+            .keyboardShortcut("a", modifiers: [.command, .option])
+
+            Button("Open in Browser") {
+                environment.emitShortcutAction(.openInBrowser)
+            }
+            .keyboardShortcut(.return, modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Delete Website") {
+                environment.emitShortcutAction(.deleteItem)
+            }
+            .keyboardShortcut(.delete, modifiers: [.command, .option])
+        }
+    }
+
+    @CommandsBuilder
+    private var filesCommandMenu: some Commands {
+        CommandMenu(AppSection.files.title) {
+            Button("Quick Look") {
+                environment.emitShortcutAction(.quickLook)
+            }
+            .keyboardShortcut(" ", modifiers: [])
+
+            Divider()
+
+            Button("Delete File") {
+                environment.emitShortcutAction(.deleteItem)
+            }
+            .keyboardShortcut(.delete, modifiers: [.command, .option, .shift])
+        }
+    }
+
+    @CommandsBuilder
+    private var tasksCommandMenu: some Commands {
+        CommandMenu(AppSection.tasks.title) {
+            Button("Complete Task") {
+                environment.emitShortcutAction(.completeTask)
+            }
+            .keyboardShortcut(.return, modifiers: [.command])
+
+            Button("Edit Notes") {
+                environment.emitShortcutAction(.editTaskNotes)
+            }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
+
+            Button("Move Task") {
+                environment.emitShortcutAction(.moveTask)
+            }
+            .keyboardShortcut("m", modifiers: [.command, .shift])
+
+            Button("Set Due Date") {
+                environment.emitShortcutAction(.setTaskDueDate)
+            }
+            .keyboardShortcut("d", modifiers: [.command])
+
+            Button("Edit Repeat") {
+                environment.emitShortcutAction(.setTaskRepeat)
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Delete Task") {
+                environment.emitShortcutAction(.deleteItem)
+            }
+            .keyboardShortcut(.delete, modifiers: [.command, .shift])
+        }
     }
 
     @CommandsBuilder
