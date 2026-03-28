@@ -1,35 +1,32 @@
 ---
 title: Foundations Overview
-description: Placeholder for the core visual foundations of the sideBar design system.
+description: Index of the core visual and interaction foundations of the sideBar design system.
 ---
 
 | Field | Value |
 |---|---|
-| Status | not started |
+| Status | in progress |
 | Owner | both |
 | Outputs | this doc and child foundation docs |
 | Dependencies | [principles](../principles), [system-inheritance](../system-inheritance), [token-audit](../audits/token-audit) |
 
 ## Purpose
 
-Define the foundational design primitives that future components and patterns should use.
+Define the foundational design primitives — tokens, colour, type, materials, icons, and accessibility — that all components and patterns are built from.
 
-## Planned sections
+## Foundation docs
 
-- Materials and appearance
-- Color
-- Typography
-- Spacing
-- Sizing
-- Radius
-- Borders
-- Elevation
-- Layout
-- Motion
-- Iconography
-- Accessibility
+| Foundation | Status |
+|---|---|
+| [Colour](./colour) | approved |
+| [Token Model](./token-model) | approved |
+| [Typography](./typography) | approved |
+| [Materials and Appearance](./materials-and-appearance) | approved |
+| [Iconography](./iconography) | approved |
+| [Accessibility](./accessibility) | approved |
 
 ## Related docs
 
 - [Token Audit](../audits/token-audit)
-- [Materials and Appearance](./materials-and-appearance)
+- [System Inheritance](../system-inheritance)
+- [Principles](../principles)

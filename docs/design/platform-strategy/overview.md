@@ -56,7 +56,7 @@ But the way they interact with it should match the platform:
 | Navigation | TabView | SidebarRail + WorkspaceLayout | SidebarRail + WorkspaceLayout + native menu bar | SidebarRail + WorkspaceLayout |
 | Layout | Compact, single column | Multi-column workspace | Multi-column workspace, single window | Multi-column workspace (resizable left panel) |
 | Right sidebar | Never | Available (workspace mode) | Available (workspace mode) | Not available |
-| Settings | Sheet | Sheet | Dedicated window | Dedicated route (migration needed) |
+| Settings | Sheet | Sheet | Sheet (`MacModalShell`) | Dedicated `/settings` route |
 | Create actions | Floating action dock (Liquid Glass) | Toolbar buttons | Toolbar buttons + keyboard shortcuts | Section header buttons |
 | Search | Floating search dock | Inline panel search | Inline panel search | Inline panel search |
 | Rich text editor | UIKit surface | UIKit surface | AppKit surface | Tiptap (browser) |
@@ -76,8 +76,6 @@ These are the first-class platforms for sideBar. All features should be availabl
 ### Secondary platform: Web
 
 The web app exists and has the same section structure (Chat, Notes, Tasks, Websites, Files, Scratchpad, Settings), but has feature drift from the native apps as the iOS and macOS apps have been the primary focus of development. The web app is a second citizen: it should preserve the same mental model and feature parity where practical, but it is not the reference platform.
-
-**Web audit needed**: The web frontend (`frontend/src/`) has not been fully audited. The platform differences table below shows "TBD" for web where the current state is unknown. A separate web audit is needed to complete `web-conventions.md`.
 
 ### Platform character
 
@@ -161,8 +159,8 @@ No custom numeric breakpoints are used. The two-state compact/regular model is t
 
 ## Related docs
 
-- `platform-strategy/ios-conventions.md`
-- `platform-strategy/macos-conventions.md`
-- `platform-strategy/web-conventions.md`
-- `principles.md`
-- `system-inheritance.md`
+- [iOS Conventions](./ios-conventions)
+- [macOS Conventions](./macos-conventions)
+- [Web Conventions](./web-conventions)
+- [Principles](../principles)
+- [System Inheritance](../system-inheritance)
