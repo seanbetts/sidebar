@@ -23,6 +23,7 @@ extension NotesAttributedDocumentCodec {
             case .underline:
                 return run.underlineStyle != nil ? .underline : nil
             case .strikethrough:
+                guard run.noteChecklistCompletion != true else { return nil }
                 return run.strikethroughStyle != nil ? .strikethrough : nil
             case .inlineCode:
                 guard formattingTraits.monospaced, blockType != .some(.codeBlock) else {

@@ -399,7 +399,7 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
 }
 
 @MainActor
-private func mountedEditorSnapshot(
+func mountedEditorSnapshot(
     from textView: NSTextView
 ) -> NativeNoteEditorViewModel.PersistenceSnapshot? {
     (textView.delegate as? AppKitNoteTextEditorSurface.Coordinator)?.viewModel.currentPersistenceSnapshot()

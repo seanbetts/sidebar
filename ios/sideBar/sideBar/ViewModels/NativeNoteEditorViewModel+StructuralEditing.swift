@@ -104,7 +104,7 @@ extension NativeNoteEditorViewModel {
                 selectionOffset: selectionOffset,
                 blockText: blockText
             )
-        case .unorderedList, .orderedList:
+        case .unorderedList, .orderedList, .checklist:
             mutation = mutateListReturn(
                 in: document,
                 blockInfo: blockInfo,
@@ -322,7 +322,9 @@ extension NativeNoteEditorViewModel {
         blockText: String
     ) -> StructuralReplacementMutation? {
         guard selectionOffset == blockText.count else { return nil }
-        guard blockInfo.block.type == .unorderedList || blockInfo.block.type == .orderedList else {
+        guard blockInfo.block.type == .unorderedList
+                || blockInfo.block.type == .orderedList
+                || blockInfo.block.type == .checklist else {
             return nil
         }
 
@@ -346,7 +348,13 @@ extension NativeNoteEditorViewModel {
             )
         }
 
-        children.append(.init(type: .listItem, content: [.init(text: "", marks: [])]))
+        children.append(
+            .init(
+                type: .listItem,
+                content: [.init(text: "", marks: [])],
+                checked: blockInfo.block.type == .checklist ? false : nil
+            )
+        )
 
         let updatedBlock = NotesSemanticDocument.Block(
             type: blockInfo.block.type,
@@ -476,25 +484,6 @@ extension NativeNoteEditorViewModel {
             insertionOffset: selectionRange.lowerBound + replacementText.count,
             typingBlockType: .codeBlock
         )
-    }
-
-    func blockInfoContainingCharacterOffset(
-        _ offset: Int,
-        in document: NotesSemanticDocument
-    ) -> DocumentBlockInfo? {
-        let infos = documentBlockInfos(in: document)
-        guard let lastInfo = infos.last else { return nil }
-
-        if offset >= lastInfo.coverageRange.upperBound {
-            return lastInfo
-        }
-
-        return infos.first { info in
-            if info.coverageRange.isEmpty {
-                return offset == info.coverageRange.lowerBound
-            }
-            return info.coverageRange.contains(offset)
-        }
     }
 
 }

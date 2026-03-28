@@ -83,6 +83,15 @@ extension NotesDetailView {
         editorViewModel.enterEditMode(at: target, viewportAnchorY: viewportAnchorY)
     }
 
+    func handleReadSurfaceChecklistToggle(blockIndex: Int, itemIndex: Int) {
+        Task {
+            await editorViewModel.toggleChecklistItemInReadMode(
+                blockIndex: blockIndex,
+                itemIndex: itemIndex
+            )
+        }
+    }
+
     func handleReadViewportOffsetChange(_ offset: CGPoint) {
         #if os(iOS)
         if editorViewModel.isHoldingReadSurfaceDuringEditEntry {

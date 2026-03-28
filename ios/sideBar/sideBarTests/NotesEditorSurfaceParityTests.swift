@@ -204,8 +204,13 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
             version: NotesSemanticDocument.currentVersion,
             blocks: [
                 .paragraph([.init(text: "Intro", marks: [])]),
-                .unorderedList([.init(text: "Fifth Item", marks: [])]),
-                .subheading([.init(text: "Subheading", marks: [])]),
+                .init(
+                    type: .unorderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Fifth Item", marks: [])])
+                    ]
+                ),
+                .init(type: .subheading, content: [.init(text: "Subheading", marks: [])]),
                 .paragraph([.init(text: "Body", marks: [])])
             ]
         )

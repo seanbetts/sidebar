@@ -125,7 +125,8 @@ extension NotesAttributedDocumentCodec {
         baseFontSize: CGFloat,
         additionalSpacingBefore: CGFloat = 0,
         additionalSpacingAfter: CGFloat = 0,
-        visiblePrefix: String? = nil
+        visiblePrefix: String? = nil,
+        checklistItemChecked: Bool = false
     ) -> AttributedString {
         var paragraph = AttributedString()
         let paragraphStyle = paragraphStyle(
@@ -152,7 +153,8 @@ extension NotesAttributedDocumentCodec {
                     segment,
                     blockType: blockType,
                     baseFontSize: baseFontSize,
-                    paragraphStyle: paragraphStyle
+                    paragraphStyle: paragraphStyle,
+                    checklistItemChecked: checklistItemChecked
                 )
             )
         }
@@ -165,13 +167,15 @@ extension NotesAttributedDocumentCodec {
         blockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat,
         visiblePrefix: String? = nil,
+        checklistItemChecked: Bool = false,
         presentationIntent: PresentationIntent
     ) -> AttributedString {
         var paragraph = attributedParagraph(
             from: segments,
             blockType: blockType,
             baseFontSize: baseFontSize,
-            visiblePrefix: visiblePrefix
+            visiblePrefix: visiblePrefix,
+            checklistItemChecked: checklistItemChecked
         )
         guard !paragraph.characters.isEmpty else { return paragraph }
         let range = paragraph.startIndex..<paragraph.endIndex
@@ -298,7 +302,8 @@ extension NotesAttributedDocumentCodec {
         _ segment: NotesSemanticDocument.InlineSegment,
         blockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat,
-        paragraphStyle: NSParagraphStyle
+        paragraphStyle: NSParagraphStyle,
+        checklistItemChecked: Bool = false
     ) -> AttributedString {
         var piece = AttributedString(segment.text)
         guard !piece.characters.isEmpty else { return piece }
@@ -346,6 +351,7 @@ extension NotesAttributedDocumentCodec {
         piece[range].strikethroughStyle = marks.contains(.strikethrough) ? .single : nil
         piece[range].link = segment.link.flatMap { URL(string: $0.url) }
         piece[range].paragraphStyle = paragraphStyle
+        piece[range].noteChecklistCompletion = checklistItemChecked ? true : nil
         if let blockMarker = blockMarker(for: blockType) {
             piece[range].noteBlock = blockMarker
         }

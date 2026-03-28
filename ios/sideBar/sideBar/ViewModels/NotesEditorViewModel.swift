@@ -456,6 +456,11 @@ extension NotesEditorViewModel {
         (content: NotesSemanticDocumentCodec.encode(note.document) ?? "", plainText: note.plainText)
     }
 
+    func applyLocalReadModeSnapshot(_ document: NotesSemanticDocument) {
+        guard let noteId = currentNoteId else { return }
+        notesViewModel.applyLocalNoteSnapshot(id: noteId, document: document)
+    }
+
     func saveDocumentSnapshotIfNeeded(_ document: NotesSemanticDocument, force: Bool = false) async {
         guard !isSaving, let noteId = currentNoteId else { return }
         let plainText = NotesSemanticDocumentProjection.plainText(from: document)

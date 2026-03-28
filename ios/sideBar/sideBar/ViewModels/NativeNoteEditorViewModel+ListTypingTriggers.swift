@@ -6,13 +6,51 @@ import SwiftUI
 extension NativeNoteEditorViewModel {
     private struct ListTypingTrigger {
         let text: String
-        let listType: NotesSemanticDocument.BlockType
+        let replacementBlock: NotesSemanticDocument.Block
+        let typingBlockType: NotesSemanticDocument.BlockType
     }
 
     private static let listTypingTriggers: [ListTypingTrigger] = [
-        .init(text: "- ", listType: .unorderedList),
-        .init(text: "* ", listType: .unorderedList),
-        .init(text: "1. ", listType: .orderedList)
+        .init(
+            text: "- ",
+            replacementBlock: .init(
+                type: .unorderedList,
+                children: [
+                    .init(type: .listItem, content: [.init(text: "", marks: [])])
+                ]
+            ),
+            typingBlockType: .unorderedList
+        ),
+        .init(
+            text: "* ",
+            replacementBlock: .init(
+                type: .unorderedList,
+                children: [
+                    .init(type: .listItem, content: [.init(text: "", marks: [])])
+                ]
+            ),
+            typingBlockType: .unorderedList
+        ),
+        .init(
+            text: "1. ",
+            replacementBlock: .init(
+                type: .orderedList,
+                children: [
+                    .init(type: .listItem, content: [.init(text: "", marks: [])])
+                ]
+            ),
+            typingBlockType: .orderedList
+        ),
+        .init(
+            text: "- [ ] ",
+            replacementBlock: .init(
+                type: .checklist,
+                children: [
+                    .init(type: .listItem, content: [.init(text: "", marks: [])], checked: false)
+                ]
+            ),
+            typingBlockType: .checklist
+        )
     ]
 
     func listTypingTriggerMutation(
@@ -38,19 +76,13 @@ extension NativeNoteEditorViewModel {
             return nil
         }
 
-        let updatedBlock = NotesSemanticDocument.Block(
-            type: trigger.listType,
-            children: [
-                .init(type: .listItem, content: [.init(text: "", marks: [])])
-            ]
-        )
         var updatedBlocks = document.blocks
-        updatedBlocks[blockInfo.index] = updatedBlock
+        updatedBlocks[blockInfo.index] = trigger.replacementBlock
 
         return StructuralReplacementMutation(
             document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
-            insertionOffset: blockInfo.range.lowerBound + blockPlainText(updatedBlock).count,
-            typingBlockType: trigger.listType
+            insertionOffset: blockInfo.range.lowerBound + blockPlainText(trigger.replacementBlock).count,
+            typingBlockType: trigger.typingBlockType
         )
     }
 }
