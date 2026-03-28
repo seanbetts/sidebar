@@ -5,41 +5,6 @@ import UniformTypeIdentifiers
 
 // MARK: - ChatViewModel+Streaming
 extension ChatViewModel {
-    public func startStream(request: ChatStreamRequest) async {
-        errorMessage = nil
-        isStreaming = true
-        streamingConversationId = request.conversationId ?? selectedConversationId
-        didReceiveTerminalStreamEvent = false
-        do {
-            try await streamClient.connect(request: request)
-            handleUnexpectedStreamEndIfNeeded()
-        } catch is CancellationError {
-            // Stream cancellation is user-initiated; avoid surfacing as an error.
-        } catch {
-            let mappedError = ErrorMapping.message(for: error)
-            logStreamRequestFailure(mappedError)
-            errorMessage = mappedError
-            toastCenter?.show(message: mappedError)
-            finalizeStreaming(status: .error)
-        }
-        isStreaming = false
-    }
-    public func stopStream() {
-        streamClient.disconnect()
-        clearTypingRevealState(flushDisplayedContent: false)
-        didReceiveTerminalStreamEvent = false
-        isStreaming = false
-        streamingConversationId = nil
-        currentStreamMessageId = nil
-    }
-    public func beginStreamingMessage(assistantMessageId: String) {
-        currentStreamMessageId = assistantMessageId
-        guard typingRevealEnabled else {
-            return
-        }
-        let startingContent = messages.first(where: { $0.id == assistantMessageId })?.content ?? ""
-        typingRevealTargetsByMessageId = [assistantMessageId: startingContent]
-    }
     public func handle(event: ChatStreamEvent) {
         if let handler = streamEventHandlers[event.type] {
             handler(event)
@@ -64,12 +29,19 @@ extension ChatViewModel {
                 self?.finalizeStreaming(status: .complete)
             },
             .error: { [weak self] (event: ChatStreamEvent) in
-                let streamError = self?.stringValue(from: event.data, key: "error")?.trimmedOrNil
-                    ?? "Chat stream error"
+                let rawStreamError = self?.stringValue(from: event.data, key: "error")?.trimmedOrNil
+                let presentation = ErrorMapping.chatStreamPresentation(
+                    from: rawStreamError,
+                    fallbackUserMessage: "The response hit an error. Please try again."
+                )
                 self?.didReceiveTerminalStreamEvent = true
-                self?.errorMessage = streamError
-                self?.toastCenter?.show(message: streamError)
-                self?.finalizeStreaming(status: .error, streamError: streamError)
+                self?.errorMessage = presentation.userMessage
+                self?.toastCenter?.show(message: presentation.userMessage)
+                self?.finalizeStreaming(
+                    status: .error,
+                    streamError: presentation.userMessage,
+                    errorDetails: presentation.details
+                )
             },
             .noteCreated: { [weak self] (event: ChatStreamEvent) in
                 self?.handleNoteCreate(event)
@@ -409,7 +381,8 @@ extension ChatViewModel {
                     toolCalls: message.toolCalls,
                     needsNewline: needsNewline,
                     timestamp: message.timestamp,
-                    error: message.error
+                    error: message.error,
+                    errorDetails: message.errorDetails
                 )
             }
             return
@@ -427,7 +400,8 @@ extension ChatViewModel {
                     toolCalls: message.toolCalls,
                     needsNewline: false,
                     timestamp: message.timestamp,
-                    error: message.error
+                    error: message.error,
+                    errorDetails: message.errorDetails
                 )
             }
         }
@@ -451,7 +425,8 @@ extension ChatViewModel {
                 toolCalls: updatedCalls,
                 needsNewline: message.needsNewline,
                 timestamp: message.timestamp,
-                error: message.error
+                error: message.error,
+                errorDetails: message.errorDetails
             )
         }
     }
@@ -483,7 +458,8 @@ extension ChatViewModel {
                 toolCalls: updatedCalls,
                 needsNewline: message.needsNewline,
                 timestamp: message.timestamp,
-                error: message.error
+                error: message.error,
+                errorDetails: message.errorDetails
             )
         }
     }

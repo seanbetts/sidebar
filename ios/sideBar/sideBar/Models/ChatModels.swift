@@ -135,6 +135,30 @@ public struct Message: Codable, Identifiable {
     public let timestamp: String
     /// The error value.
     public let error: String?
+    /// Raw diagnostic details for assistant-only context and on-demand UI display.
+    public let errorDetails: String?
+
+    public init(
+        id: String,
+        role: MessageRole,
+        content: String,
+        status: MessageStatus,
+        toolCalls: [ToolCall]?,
+        needsNewline: Bool?,
+        timestamp: String,
+        error: String?,
+        errorDetails: String? = nil
+    ) {
+        self.id = id
+        self.role = role
+        self.content = content
+        self.status = status
+        self.toolCalls = toolCalls
+        self.needsNewline = needsNewline
+        self.timestamp = timestamp
+        self.error = error
+        self.errorDetails = errorDetails
+    }
 
     public init(
         id: String,
@@ -146,14 +170,17 @@ public struct Message: Codable, Identifiable {
         timestamp: String,
         error: String?
     ) {
-        self.id = id
-        self.role = role
-        self.content = content
-        self.status = status
-        self.toolCalls = toolCalls
-        self.needsNewline = needsNewline
-        self.timestamp = timestamp
-        self.error = error
+        self.init(
+            id: id,
+            role: role,
+            content: content,
+            status: status,
+            toolCalls: toolCalls,
+            needsNewline: needsNewline,
+            timestamp: timestamp,
+            error: error,
+            errorDetails: nil
+        )
     }
 
     enum CodingKeys: String, CodingKey {
@@ -165,6 +192,8 @@ public struct Message: Codable, Identifiable {
         case needsNewline
         case timestamp
         case error
+        case errorDetails
+        case legacyErrorDetails = "error_details"
     }
 
     public init(from decoder: Decoder) throws {
@@ -177,6 +206,21 @@ public struct Message: Codable, Identifiable {
         needsNewline = try? container.decodeIfPresent(Bool.self, forKey: .needsNewline)
         timestamp = (try? container.decode(String.self, forKey: .timestamp)) ?? ""
         error = try? container.decodeIfPresent(String.self, forKey: .error)
+        errorDetails = try? container.decodeIfPresent(String.self, forKey: .errorDetails)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyErrorDetails)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(role, forKey: .role)
+        try container.encode(content, forKey: .content)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(toolCalls, forKey: .toolCalls)
+        try container.encodeIfPresent(needsNewline, forKey: .needsNewline)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encodeIfPresent(error, forKey: .error)
+        try container.encodeIfPresent(errorDetails, forKey: .errorDetails)
     }
 }
 

@@ -3,6 +3,34 @@ import sideBarShared
 @testable import sideBar
 
 final class ErrorMappingTests: XCTestCase {
+    func testMapsOverloadedChatStreamErrorToFriendlyPresentation() {
+        let rawError = "{'type': 'error', 'error': {'details': None, 'type': " +
+            "'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_123'}"
+
+        let presentation = ErrorMapping.chatStreamPresentation(from: rawError)
+
+        XCTAssertEqual(presentation.title, "Provider busy")
+        XCTAssertEqual(presentation.pillText, "Provider busy")
+        XCTAssertEqual(
+            presentation.userMessage,
+            "The AI provider is busy right now. Please try again in a moment."
+        )
+        XCTAssertEqual(presentation.requestID, "req_123")
+        XCTAssertEqual(presentation.details, rawError)
+    }
+
+    func testMapsEmptyProviderResponseChatStreamErrorToFriendlyPresentation() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: "Google response contained no text and no tool calls"
+        )
+
+        XCTAssertEqual(presentation.title, "Empty response")
+        XCTAssertEqual(
+            presentation.userMessage,
+            "The AI provider returned an empty response. Please try again."
+        )
+    }
+
     func testMapsApiErrorMessage() {
         let message = ErrorMapping.message(for: APIClientError.apiError("Bad request"))
         XCTAssertEqual(message, "Bad request")

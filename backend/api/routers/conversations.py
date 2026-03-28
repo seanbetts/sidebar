@@ -27,6 +27,7 @@ class MessageCreate(BaseModel):
     timestamp: str
     toolCalls: list | None = None
     error: str | None = None
+    errorDetails: str | None = None
 
 
 class ConversationCreate(BaseModel):

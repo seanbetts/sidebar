@@ -210,6 +210,43 @@ def test_get_conversation_hides_hidden_bootstrap_messages(test_client, test_db):
     ]
 
 
+def test_get_conversation_preserves_visible_error_details(test_client, test_db):
+    conversation_id = uuid.uuid4()
+    error_details = "{'type': 'error', 'request_id': 'req_123'}"
+    conversation = Conversation(
+        id=conversation_id,
+        user_id=TEST_USER_ID,
+        title="Chat",
+        messages=[
+            {
+                "id": "msg-1",
+                "role": "assistant",
+                "content": "Partial answer",
+                "status": "error",
+                "timestamp": datetime.now(UTC).isoformat(),
+                "toolCalls": None,
+                "error": "The AI provider is busy right now. Please try again in a moment.",
+                "errorDetails": error_details,
+            },
+        ],
+        message_count=1,
+        first_message="Partial answer",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(conversation)
+    test_db.commit()
+
+    response = test_client.get(
+        f"/api/conversations/{conversation_id}",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["messages"][0]["errorDetails"] == error_details
+
+
 def test_search_conversations_ignores_hidden_bootstrap_messages(test_client, test_db):
     hidden_conversation_id = uuid.uuid4()
     visible_conversation_id = uuid.uuid4()

@@ -3,7 +3,11 @@ import Foundation
 
 // MARK: - ChatViewModel+StreamingFinalize
 extension ChatViewModel {
-    func finalizeStreaming(status: MessageStatus, streamError: String? = nil) {
+    func finalizeStreaming(
+        status: MessageStatus,
+        streamError: String? = nil,
+        errorDetails: String? = nil
+    ) {
         guard let messageId = activeStreamingMessageId else {
             clearTypingRevealState(flushDisplayedContent: false)
             didReceiveTerminalStreamEvent = false
@@ -20,7 +24,8 @@ extension ChatViewModel {
                 toolCalls: message.toolCalls,
                 needsNewline: message.needsNewline,
                 timestamp: message.timestamp,
-                error: streamError?.trimmedOrNil ?? message.error
+                error: streamError?.trimmedOrNil ?? message.error,
+                errorDetails: errorDetails?.trimmedOrNil ?? message.errorDetails
             )
         }
         typingRevealTargetsByMessageId[messageId] = nil

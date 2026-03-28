@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 import SwiftUI
 
 struct ChatMessageCopyFeedbackState {
@@ -65,6 +66,9 @@ struct ChatMessageRow: View {
                     if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
                         ToolCallListView(toolCalls: toolCalls, role: message.role)
                     }
+                    if let errorPresentation {
+                        ChatErrorPillView(presentation: errorPresentation)
+                    }
                     Button {
                         copyMessage()
                         showCopyFeedback()
@@ -98,12 +102,6 @@ struct ChatMessageRow: View {
 
             if !workspaceSurfaceTargets.isEmpty {
                 WorkspaceSurfaceInlineActionsBar(targets: workspaceSurfaceTargets)
-            }
-
-            if message.status == .error, let error = message.error {
-                Text(error)
-                    .appFont(.caption)
-                    .foregroundStyle(DesignTokens.Colors.error)
             }
 
             HStack {
@@ -211,6 +209,19 @@ struct ChatMessageRow: View {
             return []
         }
         return ToolResultWorkspaceSurfaceParser.parse(toolCalls: toolCalls)
+    }
+
+    private var errorPresentation: ChatStreamErrorPresentation? {
+        guard message.status == .error else {
+            return nil
+        }
+        guard message.error?.trimmedOrNil != nil || message.errorDetails?.trimmedOrNil != nil else {
+            return nil
+        }
+        return ErrorMapping.chatStreamPresentation(
+            from: message.errorDetails,
+            fallbackUserMessage: message.error
+        )
     }
 
     private func handleMessageContentChange(from oldContent: String, to newContent: String) {

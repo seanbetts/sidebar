@@ -59,7 +59,8 @@ extension ChatViewModel {
                 toolCalls: currentMessage.toolCalls,
                 needsNewline: currentMessage.needsNewline,
                 timestamp: currentMessage.timestamp,
-                error: currentMessage.error
+                error: currentMessage.error,
+                errorDetails: currentMessage.errorDetails
             )
         }
         return true
@@ -96,7 +97,8 @@ extension ChatViewModel {
                 toolCalls: message.toolCalls,
                 needsNewline: message.needsNewline,
                 timestamp: message.timestamp,
-                error: message.error
+                error: message.error,
+                errorDetails: message.errorDetails
             )
         }
     }

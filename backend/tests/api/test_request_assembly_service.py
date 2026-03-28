@@ -77,6 +77,31 @@ def test_normalize_conversation_history_excludes_compacted_source_messages():
     ]
 
 
+def test_normalize_conversation_history_includes_hidden_error_details_for_assistant():
+    history = RequestAssemblyService.normalize_conversation_history(
+        [
+            {
+                "id": "assistant-1",
+                "role": "assistant",
+                "content": "Partial answer",
+                "error": "The AI provider is busy right now. Please try again in a moment.",
+                "errorDetails": (
+                    "{'type': 'error', 'error': {'type': 'overloaded_error', "
+                    "'message': 'Overloaded'}, 'request_id': 'req_123'}"
+                ),
+            }
+        ],
+        user_message_id=None,
+    )
+
+    assert len(history) == 1
+    assert history[0]["role"] == "assistant"
+    assert "Partial answer" in history[0]["content"]
+    assert "Internal diagnostic note for the assistant only" in history[0]["content"]
+    assert "The AI provider is busy right now. Please try again in a moment." in history[0]["content"]
+    assert "req_123" in history[0]["content"]
+
+
 def test_build_assembled_inputs_uses_conversation_messages_over_request_history():
     class FakePromptContextService:
         @staticmethod

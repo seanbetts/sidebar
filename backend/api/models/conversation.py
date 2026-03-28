@@ -38,7 +38,8 @@ class Conversation(Base):
 
     # Messages stored as JSONB array
     # Each message: {"id": "uuid", "role": "user|assistant", "content": "...",
-    # "status": "...", "timestamp": "...", "toolCalls": [...], "error": "..."}
+    # "status": "...", "timestamp": "...", "toolCalls": [...], "error": "...",
+    # "errorDetails": "..."}
     messages: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB, nullable=False, default=list
     )

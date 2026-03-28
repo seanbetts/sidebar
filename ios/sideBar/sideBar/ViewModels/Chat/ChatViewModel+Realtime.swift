@@ -274,7 +274,8 @@ extension ChatViewModel {
                 toolCalls: message.toolCalls,
                 needsNewline: true,
                 timestamp: message.timestamp,
-                error: message.error
+                error: message.error,
+                errorDetails: message.errorDetails
             )
         }
     }
@@ -407,12 +408,13 @@ extension ChatViewModel {
                     id: message.id,
                     role: message.role.rawValue,
                     content: message.content,
-                    status: message.status.rawValue,
-                    timestamp: message.timestamp,
-                    toolCalls: message.toolCalls?.map { AnyCodable($0) },
-                    error: message.error
-                )
+                status: message.status.rawValue,
+                timestamp: message.timestamp,
+                toolCalls: message.toolCalls?.map { AnyCodable($0) },
+                error: message.error,
+                errorDetails: message.errorDetails
             )
+        )
             chatStore.upsertConversation(updated)
         } catch {
             errorMessage = ErrorMapping.message(for: error)

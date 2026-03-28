@@ -6,4 +6,8 @@ final class ToolCallPopoverTests: XCTestCase {
     func testToolCallPopoverUsesCompactPopoverPanelType() {
         XCTAssertEqual(toolCallPopoverPanelType(), .compactPopover)
     }
+
+    func testChatErrorPopoverUsesCompactPopoverPanelType() {
+        XCTAssertEqual(chatErrorPopoverPanelType(), .compactPopover)
+    }
 }

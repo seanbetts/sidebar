@@ -14,7 +14,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
     func testStartStreamFailureFinalizesStreamingMessageAsError() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: FailingChatStreamClient()
@@ -51,7 +51,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
     func testStartStreamUnexpectedEOFFinalizesStreamingMessageAsError() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: IncompleteChatStreamClient()
@@ -96,13 +96,13 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
     func testErrorEventWithEmptyAssistantMessageDoesNotPersistPlaceholder() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: FailingChatStreamClient()
         )
 
-        let initialMessage = seedStreamingMessage(on: viewModel)
+        let initialMessage = seedStreamingFailureMessage(on: viewModel)
         viewModel.messages = [initialMessage]
         viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
 
@@ -114,20 +114,23 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         )
 
         XCTAssertFalse(viewModel.messages.contains(where: { $0.id == "assistant-1" }))
-        XCTAssertEqual(viewModel.errorMessage, "Google response contained no text and no tool calls")
+        XCTAssertEqual(
+            viewModel.errorMessage,
+            "The AI provider returned an empty response. Please try again."
+        )
         XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
     }
 
     func testCompleteEventWithEmptyAssistantMessageIsTreatedAsError() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: FailingChatStreamClient()
         )
 
-        let initialMessage = seedStreamingMessage(on: viewModel)
+        let initialMessage = seedStreamingFailureMessage(on: viewModel)
         viewModel.messages = [initialMessage]
         viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
 
@@ -141,7 +144,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
     func testTokenUpdatesDoNotPersistUntilFinalize() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: FailingChatStreamClient()
@@ -182,7 +185,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
             )
         )
 
-        let converged = await waitForCondition {
+        let converged = await waitForStreamingFailureCondition {
             viewModel.messages.first?.content == "Hello"
         }
         XCTAssertTrue(converged)
@@ -193,13 +196,13 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
     func testTypingRevealConvergesToTargetContent() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: FailingChatStreamClient()
         )
 
-        let initialMessage = seedStreamingMessage(on: viewModel)
+        let initialMessage = seedStreamingFailureMessage(on: viewModel)
         viewModel.messages = [initialMessage]
         viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
 
@@ -210,7 +213,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
             )
         )
 
-        let converged = await waitForCondition {
+        let converged = await waitForStreamingFailureCondition {
             viewModel.messages.first?.content == "Typing reveal works"
         }
         XCTAssertTrue(converged)
@@ -219,13 +222,13 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
     func testFinalizeStreamingFlushesRemainingRevealContent() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: FailingChatStreamClient()
         )
 
-        let initialMessage = seedStreamingMessage(on: viewModel)
+        let initialMessage = seedStreamingFailureMessage(on: viewModel)
         viewModel.messages = [initialMessage]
         viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
 
@@ -247,7 +250,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
     func testSendMessageDoesNotPersistUserMessageDuringStreaming() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: SuccessfulChatStreamClient()
@@ -255,20 +258,20 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
 
         await viewModel.sendMessage(text: "Show me the prompt preview")
 
-        await settleAsyncWork()
+        await settleStreamingFailureAsyncWork()
         XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
     }
 
     func testFinalizeStreamingDoesNotPersistAssistantMessageDuringStreaming() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: SuccessfulChatStreamClient()
         )
 
-        let initialMessage = seedStreamingMessage(on: viewModel)
+        let initialMessage = seedStreamingFailureMessage(on: viewModel)
         viewModel.messages = [
             Message(
                 id: initialMessage.id,
@@ -285,20 +288,20 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
 
         viewModel.finalizeStreaming(status: .complete)
 
-        await settleAsyncWork()
+        await settleStreamingFailureAsyncWork()
         XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
     }
 
     func testStopStreamClearsTypingRevealState() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: FailingChatStreamClient()
         )
 
-        let initialMessage = seedStreamingMessage(on: viewModel)
+        let initialMessage = seedStreamingFailureMessage(on: viewModel)
         viewModel.messages = [initialMessage]
         viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
 
@@ -309,7 +312,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
             )
         )
 
-        let taskStarted = await waitForCondition {
+        let taskStarted = await waitForStreamingFailureCondition {
             viewModel.typingRevealTask != nil
         }
         XCTAssertTrue(taskStarted)
@@ -323,13 +326,13 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
     func testFinalizeStreamingErrorClearsTypingRevealState() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModel(
+        let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
             streamClient: FailingChatStreamClient()
         )
 
-        let initialMessage = seedStreamingMessage(on: viewModel)
+        let initialMessage = seedStreamingFailureMessage(on: viewModel)
         viewModel.messages = [initialMessage]
         viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
 
@@ -349,7 +352,7 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
     func testTypingRevealUsesLargerStepsForLargeBacklog() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeViewModelWithDefaultRevealConfig(
+        let viewModel = makeStreamingFailureViewModelWithDefaultRevealConfig(
             api: conversationsAPI,
             cache: cache,
             streamClient: SuccessfulChatStreamClient()
@@ -362,237 +365,5 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
 
         XCTAssertGreaterThan(nextContent.count, 20)
         XCTAssertLessThan(nextContent.count, target.count)
-    }
-
-    private func seedStreamingMessage(on viewModel: ChatViewModel) -> Message {
-        let initialMessage = Message(
-            id: "assistant-1",
-            role: .assistant,
-            content: "",
-            status: .streaming,
-            toolCalls: nil,
-            needsNewline: nil,
-            timestamp: "2026-01-02T00:00:00Z",
-            error: nil
-        )
-        viewModel.chatStore.upsertConversationDetail(
-            ConversationWithMessages(
-                id: "conv-1",
-                title: "Chat",
-                titleGenerated: false,
-                createdAt: "2026-01-02T00:00:00Z",
-                updatedAt: "2026-01-02T00:00:00Z",
-                messageCount: 1,
-                firstMessage: nil,
-                isArchived: nil,
-                messages: [initialMessage]
-            )
-        )
-        viewModel.selectedConversationId = "conv-1"
-        viewModel.streamingConversationId = "conv-1"
-        return initialMessage
-    }
-
-    private func waitForCondition(
-        timeoutNanoseconds: UInt64 = 250_000_000,
-        pollNanoseconds: UInt64 = 0,
-        condition: @escaping () -> Bool
-    ) async -> Bool {
-        let start = DispatchTime.now().uptimeNanoseconds
-        while DispatchTime.now().uptimeNanoseconds - start < timeoutNanoseconds {
-            if condition() {
-                return true
-            }
-            if pollNanoseconds == 0 {
-                await Task.yield()
-            } else {
-                try? await Task.sleep(nanoseconds: pollNanoseconds)
-            }
-        }
-        return condition()
-    }
-
-    private func settleAsyncWork(iterations: Int = 10) async {
-        for _ in 0..<iterations {
-            await Task.yield()
-        }
-    }
-
-    private func makeViewModel(
-        api: StubConversationsAPI,
-        cache: CacheClient,
-        streamClient: ChatStreamClient
-    ) -> ChatViewModel {
-        let resolvedChatAPI = ChatAPI(client: Self.sharedAPIClient)
-        let themeDefaults = UserDefaults(suiteName: "ChatViewModelStreamingFailureTheme") ?? .standard
-        themeDefaults.removePersistentDomain(forName: "ChatViewModelStreamingFailureTheme")
-        let themeManager = ThemeManager(userDefaults: themeDefaults)
-        let uiDefaults = UserDefaults(suiteName: "ChatViewModelStreamingFailure") ?? .standard
-        uiDefaults.removePersistentDomain(forName: "ChatViewModelStreamingFailure")
-        let chatStore = ChatStore(conversationsAPI: api, cache: cache)
-        let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
-
-        return ChatViewModel(
-            network: ChatNetworkCoordinator(
-                chatAPI: resolvedChatAPI,
-                conversationsAPI: api,
-                ingestionAPI: ingestionAPI,
-                streamClient: streamClient,
-                networkStatus: AlwaysOnlineNetworkStatus()
-            ),
-            storage: ChatStorageCoordinator(
-                cache: cache,
-                chatStore: chatStore
-            ),
-            ui: ChatUICoordinator(
-                themeManager: themeManager,
-                userDefaults: uiDefaults,
-                clock: { Date(timeIntervalSince1970: 0) },
-                typingRevealFrameIntervalNanoseconds: 0,
-                typingRevealMinimumStep: 1_024,
-                typingRevealMaximumStep: 1_024
-            )
-        )
-    }
-
-    private func makeViewModelWithDefaultRevealConfig(
-        api: StubConversationsAPI,
-        cache: CacheClient,
-        streamClient: ChatStreamClient
-    ) -> ChatViewModel {
-        let resolvedChatAPI = ChatAPI(client: Self.sharedAPIClient)
-        let themeDefaults = UserDefaults(suiteName: "ChatViewModelStreamingFailureTheme.DefaultReveal") ?? .standard
-        themeDefaults.removePersistentDomain(forName: "ChatViewModelStreamingFailureTheme.DefaultReveal")
-        let themeManager = ThemeManager(userDefaults: themeDefaults)
-        let uiDefaults = UserDefaults(suiteName: "ChatViewModelStreamingFailure.DefaultReveal") ?? .standard
-        uiDefaults.removePersistentDomain(forName: "ChatViewModelStreamingFailure.DefaultReveal")
-        let chatStore = ChatStore(conversationsAPI: api, cache: cache)
-        let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
-
-        return ChatViewModel(
-            network: ChatNetworkCoordinator(
-                chatAPI: resolvedChatAPI,
-                conversationsAPI: api,
-                ingestionAPI: ingestionAPI,
-                streamClient: streamClient,
-                networkStatus: AlwaysOnlineNetworkStatus()
-            ),
-            storage: ChatStorageCoordinator(
-                cache: cache,
-                chatStore: chatStore
-            ),
-            ui: ChatUICoordinator(
-                themeManager: themeManager,
-                userDefaults: uiDefaults,
-                clock: { Date(timeIntervalSince1970: 0) }
-            )
-        )
-    }
-}
-
-private struct AlwaysOnlineNetworkStatus: NetworkStatusProviding {
-    let isNetworkAvailable: Bool = true
-    let isOffline: Bool = false
-}
-
-private enum StreamFailureError: Error {
-    case forced
-}
-
-private final class FailingChatStreamClient: ChatStreamClient {
-    weak var handler: ChatStreamEventHandler?
-
-    func connect(request: ChatStreamRequest) async throws {
-        _ = request
-        throw StreamFailureError.forced
-    }
-
-    func disconnect() {
-    }
-}
-
-private final class SuccessfulChatStreamClient: ChatStreamClient {
-    weak var handler: ChatStreamEventHandler?
-
-    func connect(request: ChatStreamRequest) async throws {
-        _ = request
-    }
-
-    func disconnect() {
-    }
-}
-
-private final class IncompleteChatStreamClient: ChatStreamClient {
-    weak var handler: ChatStreamEventHandler?
-
-    func connect(request: ChatStreamRequest) async throws {
-        _ = request
-    }
-
-    func disconnect() {
-    }
-}
-
-private final class StubConversationsAPI: ConversationsAPIProviding, ConversationsProviding {
-    private(set) var addMessageCalls: [ConversationMessageCreate] = []
-
-    func list() async throws -> [Conversation] {
-        []
-    }
-
-    func get(id: String) async throws -> ConversationWithMessages {
-        _ = id
-        return ConversationWithMessages(
-            id: "conv-1",
-            title: "Chat",
-            titleGenerated: false,
-            createdAt: "2026-01-02T00:00:00Z",
-            updatedAt: "2026-01-02T00:00:00Z",
-            messageCount: 0,
-            firstMessage: nil,
-            isArchived: nil,
-            messages: []
-        )
-    }
-
-    func search(query: String, limit: Int) async throws -> [Conversation] {
-        _ = query
-        _ = limit
-        return []
-    }
-
-    func delete(conversationId: String) async throws -> Conversation {
-        _ = conversationId
-        return deletedConversation
-    }
-
-    func create(title: String) async throws -> Conversation {
-        _ = title
-        return deletedConversation
-    }
-
-    func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
-        _ = conversationId
-        addMessageCalls.append(message)
-        return deletedConversation
-    }
-
-    func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
-        _ = conversationId
-        _ = updates
-        return deletedConversation
-    }
-
-    private var deletedConversation: Conversation {
-        Conversation(
-            id: "conv-1",
-            title: "Chat",
-            titleGenerated: false,
-            createdAt: "2026-01-02T00:00:00Z",
-            updatedAt: "2026-01-02T00:00:00Z",
-            messageCount: 0,
-            firstMessage: nil,
-            isArchived: nil
-        )
     }
 }

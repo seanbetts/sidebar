@@ -92,6 +92,14 @@ enum URLRequestErrorClassifier {
     }
 }
 
+public struct ChatStreamErrorPresentation: Equatable {
+    public let title: String
+    public let pillText: String
+    public let userMessage: String
+    public let details: String?
+    public let requestID: String?
+}
+
 public enum ErrorMapping {
     public static func message(for error: Error) -> String {
         if let apiError = error as? APIClientError {
@@ -200,5 +208,113 @@ public enum ErrorMapping {
             "message context is too large"
         ]
         return signals.contains(where: lowered.contains)
+    }
+
+    public static func chatStreamPresentation(
+        from rawError: String?,
+        fallbackUserMessage: String? = nil
+    ) -> ChatStreamErrorPresentation {
+        let trimmedRaw = rawError?.trimmedOrNil
+        let details = trimmedRaw
+        let sourceText = (trimmedRaw ?? fallbackUserMessage ?? "").lowercased()
+        let requestID = extractRequestID(from: trimmedRaw)
+
+        if sourceText.contains("overloaded_error") || sourceText.contains("overloaded") {
+            return ChatStreamErrorPresentation(
+                title: "Provider busy",
+                pillText: "Provider busy",
+                userMessage: "The AI provider is busy right now. Please try again in a moment.",
+                details: details,
+                requestID: requestID
+            )
+        }
+
+        if sourceText.contains("rate_limit")
+            || sourceText.contains("rate limited")
+            || sourceText.contains("too many requests") {
+            return ChatStreamErrorPresentation(
+                title: "Rate limited",
+                pillText: "Rate limited",
+                userMessage: "The AI provider is rate limited right now. Please wait a moment and try again.",
+                details: details,
+                requestID: requestID
+            )
+        }
+
+        if sourceText.contains("no text and no tool calls")
+            || sourceText.contains("empty response") {
+            return ChatStreamErrorPresentation(
+                title: "Empty response",
+                pillText: "Empty response",
+                userMessage: "The AI provider returned an empty response. Please try again.",
+                details: details,
+                requestID: requestID
+            )
+        }
+
+        if sourceText.contains("maximum tool rounds reached") {
+            return ChatStreamErrorPresentation(
+                title: "Too many tool steps",
+                pillText: "Too many tool steps",
+                userMessage: "I couldn't finish this response because it needed too many tool steps. Try a narrower follow-up.",
+                details: details,
+                requestID: requestID
+            )
+        }
+
+        if let fallbackUserMessage = fallbackUserMessage?.trimmedOrNil {
+            return ChatStreamErrorPresentation(
+                title: fallbackTitle(for: fallbackUserMessage),
+                pillText: fallbackTitle(for: fallbackUserMessage),
+                userMessage: fallbackUserMessage,
+                details: details,
+                requestID: requestID
+            )
+        }
+
+        let genericMessage = "The response hit an error. Please try again."
+        return ChatStreamErrorPresentation(
+            title: "Response error",
+            pillText: "Response error",
+            userMessage: genericMessage,
+            details: details,
+            requestID: requestID
+        )
+    }
+
+    private static func extractRequestID(from rawError: String?) -> String? {
+        guard let rawError = rawError?.trimmedOrNil else {
+            return nil
+        }
+        let patterns = [
+            "request_id['\\\"]?\\s*[:=]\\s*['\\\"]([^'\\\"]+)['\\\"]",
+            "requestId['\\\"]?\\s*[:=]\\s*['\\\"]([^'\\\"]+)['\\\"]"
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else {
+                continue
+            }
+            let range = NSRange(rawError.startIndex..<rawError.endIndex, in: rawError)
+            guard let match = regex.firstMatch(in: rawError, range: range),
+                  let captureRange = Range(match.range(at: 1), in: rawError) else {
+                continue
+            }
+            let requestID = String(rawError[captureRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !requestID.isEmpty {
+                return requestID
+            }
+        }
+        return nil
+    }
+
+    private static func fallbackTitle(for message: String) -> String {
+        let lowered = message.lowercased()
+        if lowered.contains("unexpectedly") || lowered.contains("interrupted") {
+            return "Response interrupted"
+        }
+        if lowered.contains("empty response") {
+            return "Empty response"
+        }
+        return "Response error"
     }
 }

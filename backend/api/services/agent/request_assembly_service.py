@@ -134,9 +134,48 @@ class RequestAssemblyService:
             if user_message_id and message.get("id") == user_message_id:
                 continue
 
-            history.append({"role": role, "content": content})
+            history.append(
+                {
+                    "role": role,
+                    "content": RequestAssemblyService._content_with_error_context(
+                        role=role,
+                        content=content,
+                        message=message,
+                    ),
+                }
+            )
 
         return history
+
+    @staticmethod
+    def _content_with_error_context(
+        *,
+        role: str,
+        content: Any,
+        message: dict[str, Any],
+    ) -> str:
+        """Append assistant-only diagnostic context for persisted error details."""
+        base_content = str(content)
+        if role != "assistant":
+            return base_content
+
+        error_details = message.get("errorDetails") or message.get("error_details")
+        if not error_details:
+            return base_content
+
+        summary = str(message.get("error") or "").strip()
+        diagnostics = str(error_details).strip()
+        if not diagnostics:
+            return base_content
+
+        context_parts = ["Internal diagnostic note for the assistant only."]
+        if summary:
+            context_parts.append(f"User-facing summary: {summary}")
+        context_parts.append(f"Raw diagnostic details: {diagnostics}")
+        diagnostic_note = " ".join(context_parts)
+        if not base_content.strip():
+            return f"[{diagnostic_note}]"
+        return f"{base_content}\n\n[{diagnostic_note}]"
 
     @classmethod
     def build_assembled_inputs(

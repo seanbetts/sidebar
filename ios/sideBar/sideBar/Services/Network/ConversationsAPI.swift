@@ -88,6 +88,7 @@ public struct ConversationMessageCreate: Codable {
     public let timestamp: String
     public let toolCalls: [AnyCodable]?
     public let error: String?
+    public let errorDetails: String?
 
     public init(
         id: String,
@@ -96,7 +97,8 @@ public struct ConversationMessageCreate: Codable {
         status: String? = nil,
         timestamp: String,
         toolCalls: [AnyCodable]? = nil,
-        error: String? = nil
+        error: String? = nil,
+        errorDetails: String? = nil
     ) {
         self.id = id
         self.role = role
@@ -105,5 +107,6 @@ public struct ConversationMessageCreate: Codable {
         self.timestamp = timestamp
         self.toolCalls = toolCalls
         self.error = error
+        self.errorDetails = errorDetails
     }
 }
