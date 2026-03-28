@@ -176,6 +176,80 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.activeNote?.id, "note-id")
     }
 
+    func testStoreTreeMirrorsOnNextMainActorTurn() async throws {
+        let api = NotesAPISpy()
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let tree = FileTree(children: [
+            FileNode(
+                name: "Deferred.md",
+                path: "deferred",
+                type: .file,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+
+        store.applyData(tree, persist: false)
+
+        XCTAssertNil(viewModel.tree)
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.tree?.children.first?.path == "deferred"
+        }
+        XCTAssertEqual(viewModel.tree?.children.first?.path, "deferred")
+    }
+
+    func testStoreArchivedTreeMirrorsOnNextMainActorTurn() async throws {
+        let api = NotesAPISpy()
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let archivedTree = FileTree(children: [
+            FileNode(
+                name: "Archived.md",
+                path: "archived",
+                type: .file,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: true,
+                folderMarker: nil
+            )
+        ])
+
+        store.applyArchivedTreeUpdate(archivedTree, persist: false)
+
+        XCTAssertNil(viewModel.archivedTree)
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.archivedTree?.children.first?.path == "archived"
+        }
+        XCTAssertEqual(viewModel.archivedTree?.children.first?.path, "archived")
+    }
+
     func testCreateBlankNoteSendsNoExplicitTitleOrPathAndSelectsIt() async throws {
         let api = NotesAPISpy()
         api.createNoteResult = .success(

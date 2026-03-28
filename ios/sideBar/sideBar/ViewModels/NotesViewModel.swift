@@ -50,6 +50,7 @@ public final class NotesViewModel: ObservableObject {
     private let networkStatus: any NetworkStatusProviding
     private let searchTask = ManagedTask()
     private var cancellables = Set<AnyCancellable>()
+    var treeMirrorTask: Task<Void, Never>?, archivedTreeMirrorTask: Task<Void, Never>?
     var activeNoteMirrorTask: Task<Void, Never>?
     private var pendingNoteId: String?
     var searchDebounceDelay: TimeInterval = 0.3
@@ -67,13 +68,13 @@ public final class NotesViewModel: ObservableObject {
 
         store.$tree
             .sink { [weak self] tree in
-                self?.tree = tree
+                self?.scheduleTreeMirror(tree)
             }
             .store(in: &cancellables)
 
         store.$archivedTree
             .sink { [weak self] tree in
-                self?.archivedTree = tree
+                self?.scheduleArchivedTreeMirror(tree)
             }
             .store(in: &cancellables)
 
@@ -85,12 +86,12 @@ public final class NotesViewModel: ObservableObject {
     }
 
     deinit {
-        activeNoteMirrorTask?.cancel()
+        treeMirrorTask?.cancel(); archivedTreeMirrorTask?.cancel(); activeNoteMirrorTask?.cancel()
     }
 
-    func setMirroredActiveNote(_ note: NotePayload?) {
-        activeNote = note
-    }
+    func setMirroredTree(_ tree: FileTree?) { self.tree = tree }
+    func setMirroredArchivedTree(_ tree: FileTree?) { archivedTree = tree }
+    func setMirroredActiveNote(_ note: NotePayload?) { activeNote = note }
 
     public func loadTree() async {
         errorMessage = nil
@@ -141,9 +142,7 @@ public final class NotesViewModel: ObservableObject {
         }
     }
 
-    public func selectNote(id: String) async {
-        await loadNote(id: id)
-    }
+    public func selectNote(id: String) async { await loadNote(id: id) }
 
     public func clearSelection() {
         selectedNoteId = nil
