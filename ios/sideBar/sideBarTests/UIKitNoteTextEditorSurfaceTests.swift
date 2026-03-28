@@ -8,6 +8,15 @@ import XCTest
 @MainActor
 @available(iOS 26.0, *)
 final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
+    @MainActor
+    final class AutofocusState: ObservableObject {
+        @Published var isEnabled: Bool
+
+        init(_ isEnabled: Bool) {
+            self.isEnabled = isEnabled
+        }
+    }
+
     func testAttributedNoteEditorContainerPrefersUIKitSurfaceOnIOS() {
         XCTAssertEqual(AttributedNoteEditorContainer.preferredEditorSurfaceKind, .uiKit)
     }
@@ -383,6 +392,55 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
 
         XCTAssertTrue(textView.isFirstResponder)
+    }
+
+    private func mountAutofocusSurfaceHost(
+        viewModel: NativeNoteEditorViewModel,
+        autofocusState: AutofocusState,
+        textView: ReloadTrackingAccessoryTextView,
+        width: CGFloat = 360,
+        height: CGFloat = 320
+    ) -> UIHostingController<AnyView> {
+        let controller = UIHostingController(
+            rootView: AnyView(
+                AutofocusSurfaceHost(
+                    autofocusState: autofocusState,
+                    viewModel: viewModel,
+                    textView: textView
+                )
+            )
+        )
+        let frame = CGRect(x: 0, y: 0, width: width, height: height)
+        let window = makeUIKitNoteTextEditorSurfaceHostingWindow(frame: frame)
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        controller.view.frame = frame
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        NotesDetailViewTestRetainer.hostingControllers.append(controller)
+        NotesDetailViewTestRetainer.hostingWindows.append(window)
+        return controller
+    }
+}
+
+@MainActor
+@available(iOS 26.0, *)
+private struct AutofocusSurfaceHost: View {
+    @ObservedObject var autofocusState: UIKitNoteTextEditorSurfaceTests.AutofocusState
+    let viewModel: NativeNoteEditorViewModel
+    let textView: ReloadTrackingAccessoryTextView
+
+    var body: some View {
+        UIKitNoteTextEditorSurface(
+            viewModel: viewModel,
+            maxContentWidth: 360,
+            isEditable: true,
+            shouldAutofocus: autofocusState.isEnabled,
+            formattingBarConfiguration: .disabled,
+            formattingBarPresentation: .floatingTopTrailing,
+            makeTextView: { textView }
+        )
     }
 }
 
