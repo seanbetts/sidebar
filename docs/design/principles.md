@@ -83,19 +83,19 @@ sideBar's AI assistant is not a chatbot window sitting inside an otherwise norma
 - Assistant UI should feel integrated, not bolted on. Chat messages, tool banners, and skill components are part of the product's native visual language.
 - Settings for sideBar's identity and soul should be presented with the same quality as any other product settings surface.
 - Skill execution should feel like part of the product's natural response, not a loading screen for an external API.
-- The assistant's voice should feel consistent whether it appears in chat, empty states, error messages, or onboarding.
 
 ---
 
 ### 4. Calm and focused
 
-sideBar is a productivity tool. Its UI should support focus, not compete with it. The visual language should be restrained and purposeful. Animation, colour, and motion should add clarity and character, not distract.
+sideBar is a productivity tool. Its UI should support focus, not compete with it. The visual language is deliberately minimal and monochrome: near-neutral backgrounds, no decorative colour, no visual noise. Animation, colour, and motion should add clarity and character, not distract.
 
-**Why it matters**: The product category (assistant + notes + tasks + files + websites) could easily become overwhelming. Visual restraint is what keeps it feeling like a calm working environment rather than a busy dashboard.
+**Why it matters**: The product category (assistant + notes + tasks + files + websites) could easily become overwhelming. Visual restraint and a monochrome palette are what keep it feeling like a calm working environment rather than a busy dashboard. Colour should carry meaning when it appears, not decoration.
 
 **What it means in practice**:
+- Keep backgrounds near-neutral. The palette is intentionally monochrome. Colour appears only for status (error, selection, accent actions) and should be used sparingly.
 - Limit the number of visual elements competing for attention at once.
-- Prefer neutral backgrounds and semantic color over decorative color.
+- Do not add colour, gradients, or illustration to surfaces that do not need them.
 - Use animation to communicate meaning (selection state, transitions, loading) not to add visual flair.
 - Respect `reduceMotion` not just by removing animation but by ensuring the UI is clear without it.
 - Error states should explain clearly without alarming. Success states should be quiet unless the action was significant.
@@ -133,16 +133,21 @@ The design system exists to make new UI faster and more consistent. When buildin
 
 ### 7. sideBar's character is part of the design
 
-sideBar has a voice, a set of values, and an identity that it manages itself. This shapes not just what it says in conversations but how the whole product feels. Empty states, error messages, onboarding, placeholder copy, and waiting states are all opportunities for the product's character to come through.
+The product has two distinct voice registers that apply to different surfaces. The scaffolding sections (Notes, Tasks, Websites, Files) should fade into the background: calm, capable, and unopinionated. Chat and Skills are where sideBar's character and personality should be most present: grounded, human, and acknowledged.
 
-**Why it matters**: Copy is part of the experience. A well-written empty state makes the product feel alive. A clumsy error message erodes trust. A consistent voice across the app, docs, support, and marketing builds recognition.
+**Why it matters**: Copy is part of the experience. The scaffolding sections exist to support the assistant, not to express personality of their own. Chat and Skills are where the relationship between the user and sideBar is built, so that is where warmth and character belong.
 
 **What it means in practice**:
-- Empty states should be useful, not just informational. They should tell the user what to do next.
-- Error messages should be honest and direct. They should not be alarming or vague.
-- Loading states and waiting moments should feel considered, not abandoned.
+- Notes, Tasks, Websites, Files: expert without being technical, functional without being cold. Gives the user confidence without drawing attention to itself. Never chatty.
+  > *"Your note is saved." "Ready when you are." "Can't connect right now."*
+- Chat and Skills: slightly more personal, acknowledges the user's context. Has personality without being casual or performative.
+  > *"You haven't added anything yet." "That didn't work. Let's try again." "All caught up."*
+- Empty states in scaffolding sections: useful and direct. Tell the user what to do next, nothing more.
+- Empty states and error states in Chat/Skills: can be warmer and more human.
+- Error messages across the whole product: honest and direct. Never alarming, never vague.
+- Loading and waiting states: considered, not abandoned.
 - When writing UI copy, refer to the voice and content guide (to be created).
-- sideBar's product voice is distinct from the assistant's self-authored identity. The product voice is the developer-authored layer. The assistant's voice emerges from its identity and soul.
+- The product voice is distinct from the assistant's self-authored identity. The product voice is the developer-authored layer. The assistant's voice emerges from its own identity and soul.
 
 ---
 
@@ -150,9 +155,10 @@ sideBar has a voice, a set of values, and an identity that it manages itself. Th
 
 These are observations from the current codebase and product docs about what already makes sideBar feel distinctive. They should be preserved and extended, not overwritten.
 
-- **The workspace model**: The two-pane workspace with resizable panels and a persistent sidebar rail is distinctive and functional. It lets users hold two things open at once. This is worth preserving and evolving.
+- **The workspace model**: The two-pane workspace with resizable panels and a persistent sidebar rail is distinctive and fixed. New sections and content types must fit into this structure. The workspace is not a container to be reinvented for each new feature.
 - **The search dock**: On iPhone, the floating search dock above the tab bar is unusual and product-specific. It keeps search accessible without occupying permanent screen space.
 - **Integrated intelligence**: Skills run inside the chat thread. Tool execution is visible inline. The assistant's identity is a genuine product surface, not a feature flag.
+- **Chat and Skills are where character lives**: The rest of the product - Notes, Tasks, Websites, Files - is foundational scaffolding for what the assistant can do. It should be clean and get out of the way. Chat and Skills are where sideBar's character, delight, and personality should be most present.
 - **Liquid Glass**: The adoption plan positions Liquid Glass as a first-class design primitive. The floating action dock is already there. The planned adoption across chrome surfaces will define a distinctive visual character for iOS 26.
 
 ---
@@ -183,9 +189,9 @@ This is a summary of the native-first policy. For full detail see `system-inheri
 
 sideBar's product voice and the assistant's self-authored identity are separate things. This is documented in the product docs and should not be collapsed.
 
-- **Product voice** (developer-authored): The tone used in UI copy, docs, support, and marketing. This is what the design system can specify.
-- **Assistant identity** (self-managed): The name, tone, values, and boundaries sideBar defines for itself in Settings. This evolves over time.
-- **User-controlled settings**: Communication style and working relationship. Controlled by the user.
+- **Product voice** (developer-authored): The tone used in UI copy, docs, support, and marketing. This is what the design system specifies. Two registers apply: calm and capable for scaffolding sections; grounded and human for Chat and Skills.
+- **Assistant identity** (self-managed): The name, tone, values, and boundaries sideBar defines for itself in Settings. This evolves over time and is not specified by the design system.
+- **User-controlled settings**: Communication style and working relationship. Controlled by the user, layered on top of the assistant's identity.
 
 For design system purposes, the product voice is in scope. The assistant's own identity is not developer-specified beyond the product model it runs on. This distinction must be maintained.
 
@@ -196,9 +202,6 @@ Full definition of the product voice belongs in `voice-and-content.md`.
 ## Open questions
 
 - Should "calm and focused" be more explicit about visual density? (Is sideBar aiming for sparse or dense layouts?)
-- How should the workspace model evolve for new sections or content types?
-- Are there specific moments in the product where more delight or character should appear, and where should it stay restrained?
-- What does the product voice sound like in a few words? (Sean's input needed.)
 
 ---
 
