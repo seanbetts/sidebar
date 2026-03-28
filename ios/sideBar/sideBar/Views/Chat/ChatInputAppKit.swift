@@ -186,6 +186,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         private var text: Binding<String>
         private var measuredHeight: Binding<CGFloat>
         private var resetToken: UUID
+        private var deferredHeightState = ChatInputDeferredHeightState()
         private let minHeight: CGFloat
         private let maxHeight: CGFloat
         private let controlBarHeight: CGFloat
@@ -274,15 +275,30 @@ struct ChatInputAppKitView: NSViewRepresentable {
                 minHeight: minHeight,
                 maxHeight: maxHeight
             )
-            if measuredHeight.wrappedValue != sizing.measuredHeight {
+            let stateMeasuredHeight = ChatInputSizing.stateMeasuredHeight(
+                for: sizing.measuredHeight,
+                minHeight: minHeight
+            )
+            if measuredHeight.wrappedValue != stateMeasuredHeight {
                 if deferStateMutation {
+                    guard deferredHeightState.shouldSchedule(
+                        currentMeasuredHeight: measuredHeight.wrappedValue,
+                        targetMeasuredHeight: stateMeasuredHeight
+                    ) else {
+                        return
+                    }
                     DispatchQueue.main.async { [weak self] in
                         guard let self else { return }
-                        guard self.measuredHeight.wrappedValue != sizing.measuredHeight else { return }
-                        self.measuredHeight.wrappedValue = sizing.measuredHeight
+                        if self.measuredHeight.wrappedValue == stateMeasuredHeight {
+                            self.deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
+                            return
+                        }
+                        self.measuredHeight.wrappedValue = stateMeasuredHeight
+                        self.deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
                     }
                 } else {
-                    measuredHeight.wrappedValue = sizing.measuredHeight
+                    measuredHeight.wrappedValue = stateMeasuredHeight
+                    deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
                 }
             }
             if let scrollView = textView.enclosingScrollView ?? textScrollView,

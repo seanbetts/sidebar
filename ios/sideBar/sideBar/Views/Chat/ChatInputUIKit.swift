@@ -26,6 +26,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
     let onAttach: () -> Void
 
     func makeUIView(context: Context) -> UIView {
+        logLifecycle("chatInputUIKit.makeUIView", coordinator: context.coordinator)
         let containerView = UIView()
         containerView.backgroundColor = .clear
         let resolvedFont = textFont()
@@ -115,6 +116,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
+        logLifecycle("chatInputUIKit.updateUIView", coordinator: context.coordinator)
         guard let textView = context.coordinator.textView,
               let button = context.coordinator.sendButton,
               let attachButton = context.coordinator.attachButton,
@@ -129,7 +131,22 @@ struct ChatInputUIKitView: UIViewRepresentable {
         if textView.text != text {
             textView.text = text
         }
-        textView.isEditable = isEnabled
+        let shouldAllowEditing = ChatInputInteractivity.textViewIsEditable(
+            isEnabled: isEnabled,
+            isFirstResponder: textView.isFirstResponder
+        )
+        if textView.isEditable != shouldAllowEditing {
+            ChatStreamingDebugTrace.log(
+                "chatInputUIKit.editable",
+                details: [
+                    "coordinator=\(context.coordinator.debugID)",
+                    "isEnabled=\(isEnabled)",
+                    "isFirstResponder=\(textView.isFirstResponder)",
+                    "editable=\(textView.isEditable)->\(shouldAllowEditing)"
+                ].joined(separator: " ")
+            )
+            textView.isEditable = shouldAllowEditing
+        }
         let canSend = isSendEnabled && !text.trimmed.isEmpty
         button.isEnabled = canSend
         button.alpha = canSend ? 1.0 : 0.45
@@ -144,8 +161,15 @@ struct ChatInputUIKitView: UIViewRepresentable {
         context.coordinator.applySizing(for: textView, deferStateMutation: true)
     }
 
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        ChatStreamingDebugTrace.log(
+            "chatInputUIKit.dismantleUIView",
+            details: "coordinator=\(coordinator.debugID)"
+        )
+    }
+
     func makeCoordinator() -> Coordinator {
-        Coordinator(
+        let coordinator = Coordinator(
             text: $text,
             measuredHeight: $measuredHeight,
             initialResetToken: resetToken,
@@ -154,12 +178,37 @@ struct ChatInputUIKitView: UIViewRepresentable {
             onSend: onSend,
             onAttach: onAttach
         )
+        ChatStreamingDebugTrace.log(
+            "chatInputUIKit.makeCoordinator",
+            details: [
+                "coordinator=\(coordinator.debugID)",
+                "resetToken=\(ChatStreamingDebugTrace.shortID(resetToken.uuidString))"
+            ].joined(separator: " ")
+        )
+        return coordinator
+    }
+
+    private func logLifecycle(_ event: String, coordinator: Coordinator) {
+        ChatStreamingDebugTrace.log(
+            event,
+            details: [
+                "coordinator=\(coordinator.debugID)",
+                "resetToken=\(ChatStreamingDebugTrace.shortID(resetToken.uuidString))",
+                "isEnabled=\(isEnabled)",
+                "isSendEnabled=\(isSendEnabled)",
+                "textChars=\(text.count)",
+                "measuredHeight=\(Int(measuredHeight.rounded()))",
+                "isFirstResponder=\(coordinator.textView?.isFirstResponder ?? false)"
+            ].joined(separator: " ")
+        )
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
+        let debugID = ChatStreamingDebugTrace.shortID(UUID().uuidString)
         private var text: Binding<String>
         private var measuredHeight: Binding<CGFloat>
         private var resetToken: UUID
+        private var deferredHeightState = ChatInputDeferredHeightState()
         private let minHeight: CGFloat
         private let maxHeight: CGFloat
         private let onSend: () -> Void
@@ -185,10 +234,33 @@ struct ChatInputUIKitView: UIViewRepresentable {
             self.maxHeight = maxHeight
             self.onSend = onSend
             self.onAttach = onAttach
+            ChatStreamingDebugTrace.log(
+                "chatInputUIKit.coordinator.init",
+                details: [
+                    "coordinator=\(debugID)",
+                    "resetToken=\(ChatStreamingDebugTrace.shortID(initialResetToken.uuidString))"
+                ].joined(separator: " ")
+            )
+        }
+
+        deinit {
+            ChatStreamingDebugTrace.log(
+                "chatInputUIKit.coordinator.deinit",
+                details: "coordinator=\(debugID)"
+            )
         }
 
         func applyResetIfNeeded(token: UUID, textView: UITextView) {
             guard resetToken != token else { return }
+            ChatStreamingDebugTrace.log(
+                "chatInputUIKit.applyReset",
+                details: [
+                    "coordinator=\(debugID)",
+                    "resetToken=\(ChatStreamingDebugTrace.shortID(resetToken.uuidString))"
+                        + "->\(ChatStreamingDebugTrace.shortID(token.uuidString))",
+                    "textChars=\(textView.text.count)"
+                ].joined(separator: " ")
+            )
             resetToken = token
             textView.isScrollEnabled = false
             textView.setContentOffset(.zero, animated: false)
@@ -239,15 +311,41 @@ struct ChatInputUIKitView: UIViewRepresentable {
                 minHeight: minHeight,
                 maxHeight: maxHeight
             )
-            if measuredHeight.wrappedValue != sizing.measuredHeight {
+            let stateMeasuredHeight = ChatInputSizing.stateMeasuredHeight(
+                for: sizing.measuredHeight,
+                minHeight: minHeight
+            )
+            if measuredHeight.wrappedValue != stateMeasuredHeight {
+                ChatStreamingDebugTrace.log(
+                    "chatInput.applySizing",
+                    details: [
+                        "defer=\(deferStateMutation)",
+                        "textChars=\(textView.text.count)",
+                        "width=\(Int(fittingWidth.rounded()))",
+                        "contentHeight=\(Int(size.height.rounded()))",
+                        "measuredHeight=\(Int(measuredHeight.wrappedValue.rounded()))->\(Int(stateMeasuredHeight.rounded()))",
+                        "overflow=\(sizing.isOverflowing)"
+                    ].joined(separator: " ")
+                )
                 if deferStateMutation {
+                    guard deferredHeightState.shouldSchedule(
+                        currentMeasuredHeight: measuredHeight.wrappedValue,
+                        targetMeasuredHeight: stateMeasuredHeight
+                    ) else {
+                        return
+                    }
                     DispatchQueue.main.async { [weak self] in
                         guard let self else { return }
-                        guard self.measuredHeight.wrappedValue != sizing.measuredHeight else { return }
-                        self.measuredHeight.wrappedValue = sizing.measuredHeight
+                        if self.measuredHeight.wrappedValue == stateMeasuredHeight {
+                            self.deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
+                            return
+                        }
+                        self.measuredHeight.wrappedValue = stateMeasuredHeight
+                        self.deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
                     }
                 } else {
-                    measuredHeight.wrappedValue = sizing.measuredHeight
+                    measuredHeight.wrappedValue = stateMeasuredHeight
+                    deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
                 }
             }
             if textView.isScrollEnabled != sizing.isOverflowing {
