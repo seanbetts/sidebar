@@ -42,7 +42,7 @@ extension NativeNoteEditorViewModel {
             typingBlockType: .orderedList
         ),
         .init(
-            text: "- [ ] ",
+            text: "[] ",
             replacementBlock: .init(
                 type: .checklist,
                 children: [

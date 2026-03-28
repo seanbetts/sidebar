@@ -6,7 +6,7 @@ import XCTest
 @available(iOS 26.0, macOS 26.0, *)
 final class NativeNoteEditorViewModelChecklistLogicTests: XCTestCase {
     func testTypingSpaceAfterChecklistTriggerAtParagraphStartConvertsToChecklist() async throws {
-        let viewModel = try makeViewModelForBodyParagraph("- [ ]")
+        let viewModel = try makeViewModelForBodyParagraph("[]")
 
         XCTAssertTrue(viewModel.handleTextReplacement(" "))
 
@@ -29,7 +29,7 @@ final class NativeNoteEditorViewModelChecklistLogicTests: XCTestCase {
     }
 
     func testTypingSpaceDoesNotTriggerChecklistConversionForRangeSelection() async throws {
-        let viewModel = try makeViewModelForBodyParagraph("- [ ]")
+        let viewModel = try makeViewModelForBodyParagraph("[]")
         let lower = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
         let upper = viewModel.index(forCharacterOffset: 11, in: viewModel.attributedContent)
         viewModel.selection = AttributedTextSelection(range: lower..<upper)
@@ -38,14 +38,24 @@ final class NativeNoteEditorViewModelChecklistLogicTests: XCTestCase {
 
         let snapshot = viewModel.currentPersistenceSnapshot()
         XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .paragraph])
-        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "- [ ]", marks: [])])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "[]", marks: [])])
     }
 
     func testTypingSpaceDoesNotTriggerChecklistConversionForNonSpaceReplacement() async throws {
-        let viewModel = try makeViewModelForBodyParagraph("- [ ]")
+        let viewModel = try makeViewModelForBodyParagraph("[]")
 
         XCTAssertFalse(viewModel.handleTextReplacement("  "))
-        XCTAssertFalse(viewModel.handleTextReplacement("- [ ] "))
+        XCTAssertFalse(viewModel.handleTextReplacement("[] "))
+    }
+
+    func testTypingSpaceAfterLegacyChecklistTriggerDoesNotConvertToChecklist() async throws {
+        let viewModel = try makeViewModelForBodyParagraph("- [ ]")
+
+        XCTAssertFalse(viewModel.handleTextReplacement(" "))
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .paragraph])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "- [ ]", marks: [])])
     }
 
     func testToggleChecklistConvertsSelectedParagraphsIntoSingleChecklistContainer() async throws {

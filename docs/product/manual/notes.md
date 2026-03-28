@@ -48,7 +48,7 @@ Available formatting includes:
 - **Text styles**: Body, Title, Heading, Subhead
 - **Inline formatting**: Bold, Italic, Underline, Strikethrough, Inline Code
 - **Lists**: type `- ` or `* ` to start a bulleted list, or `1. ` to start a numbered list
-- **Checklists**: type `- [ ] ` to start a checklist item
+- **Checklists**: type `[] ` to start a checklist item
 
 The text-style row is visual rather than text-only, so each style is shown with
 its own note typography instead of a plain menu label.
@@ -61,7 +61,7 @@ triggers followed by a space:
 
 - `- ` or `* ` for a bulleted list
 - `1. ` for a numbered list
-- `- [ ] ` for a checklist item
+- `[] ` for a checklist item
 
 These triggers only work at the start of a paragraph.
 

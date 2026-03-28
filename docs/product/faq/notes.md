@@ -55,7 +55,7 @@ empty trailing item exits back to Body text.
 
 ## How do I create a checklist?
 
-Start a new paragraph and type `- [ ] `. That converts the paragraph into a
+Start a new paragraph and type `[] `. That converts the paragraph into a
 checklist item. Press Return to create the next checklist item, and press
 Return on an empty trailing checklist item to exit back to Body text.
 
