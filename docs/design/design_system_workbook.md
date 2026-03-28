@@ -9,7 +9,7 @@ description: Working brief for the internal sideBar design-system documentation 
 |---|---|---|---|
 | 1 | Design principles | [principles.md](./principles) | approved |
 | 2 | System inheritance | [system-inheritance.md](./system-inheritance) | approved |
-| 3 | Platform strategy | [overview](./platform-strategy/overview), [iOS](./platform-strategy/ios-conventions), [macOS](./platform-strategy/macos-conventions), [web](./platform-strategy/web-conventions) | overview + macOS + web approved; iOS drafted (blocked on hover/haptics audits) |
+| 3 | Platform strategy | [overview](./platform-strategy/overview), [iOS](./platform-strategy/ios-conventions), [macOS](./platform-strategy/macos-conventions), [web](./platform-strategy/web-conventions) | approved |
 | 4 | Foundations | foundations/ | not started |
 | 5 | Token model | foundations/token-model.md | not started |
 | 6 | Accessibility | foundations/accessibility.md | not started |

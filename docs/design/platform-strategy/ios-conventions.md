@@ -5,7 +5,7 @@ description: iPhone and iPad conventions for navigation, layout, input, and inte
 
 | Field | Value |
 |---|---|
-| Status | drafted |
+| Status | approved |
 | Owner | AI coding agent |
 | Outputs | this doc |
 | Dependencies | [overview](./overview) |
