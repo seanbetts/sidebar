@@ -643,6 +643,10 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertEqual(settingsMacRowLabelWidth(), 160)
     }
 
+    func testProfileIOSRowMinHeightUsesCompactProfileRows() {
+        XCTAssertEqual(profileIOSRowMinHeight(), 28)
+    }
+
     func testMacSettingsSectionIntroSpacingUsesInspectorRhythm() {
         XCTAssertEqual(settingsMacSectionIntroSpacing(), 6)
     }
@@ -673,17 +677,19 @@ final class SettingsSectionsTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("SettingsMacFieldRow(\"Homelocation\")"))
-        XCTAssertTrue(normalized.contains("Text(\"Homelocation\").appFont(.body)"))
+        XCTAssertTrue(normalized.contains("ProfileIOSFieldRow(\"Homelocation\")"))
     }
 
     func testProfileSettingsIOSSourceUsesExplicitBodyFontLabelsForTextRows() throws {
-        let normalized = try profileSettingsSource()
+        let normalized = try profileIOSFieldRowSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("}label:{Text(\"Name\").appFont(.body)}"))
-        XCTAssertTrue(normalized.contains("}label:{Text(\"JobTitle\").appFont(.body)}"))
-        XCTAssertTrue(normalized.contains("}label:{Text(\"Employer\").appFont(.body)}"))
-        XCTAssertTrue(normalized.contains("}label:{Text(\"Homelocation\").appFont(.body)}"))
+        XCTAssertTrue(normalized.contains("Text(label).appFont(.body)"))
+        XCTAssertTrue(
+            normalized.contains(
+                "content.frame(maxWidth:.infinity,minHeight:profileIOSRowMinHeight(),alignment:.trailing)"
+            )
+        )
     }
 
     func testGeneralSettingsMacSourceUsesInspectorSectionIntrosAndCalmerWeatherControl() throws {
@@ -729,6 +735,8 @@ final class SettingsSectionsTests: XCTestCase {
     func testProfileSettingsIOSSourceUsesStandardizedProfileRows() throws {
         let settingsNormalized = try profileSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let profileSupportNormalized = try profileSupportSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let dateOfBirthNormalized = try profileDateOfBirthFieldSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
@@ -736,8 +744,8 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"JobTitle\")"))
         XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Employer\")"))
         XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Homelocation\")"))
-        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Gender\")"))
-        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Pronouns\")"))
+        XCTAssertTrue(profileSupportNormalized.contains("ProfileIOSFieldRow(\"Gender\")"))
+        XCTAssertTrue(profileSupportNormalized.contains("ProfileIOSFieldRow(\"Pronouns\")"))
         XCTAssertTrue(dateOfBirthNormalized.contains("ProfileIOSFieldRow(\"DateofBirth\")"))
     }
 
@@ -1011,6 +1019,20 @@ private func profileDateOfBirthFieldSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("ProfileDateOfBirthField.swift", file: file, line: line)
+}
+
+private func profileIOSFieldRowSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("ProfileIOSFieldRow.swift", file: file, line: line)
+}
+
+private func profileSupportSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsSections+ProfileSupport.swift", file: file, line: line)
 }
 
 private func generalSettingsSource(

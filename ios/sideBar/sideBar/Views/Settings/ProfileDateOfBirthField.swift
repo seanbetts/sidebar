@@ -52,11 +52,8 @@ struct ProfileDateOfBirthField: View {
 
     #if os(iOS)
     private var iosBody: some View {
-        LabeledContent {
+        ProfileIOSFieldRow("Date of Birth") {
             iosContent
-        } label: {
-            Text("Date of Birth")
-                .appFont(.body)
         }
         .sheet(isPresented: $isDatePickerPresented) {
             NavigationStack {

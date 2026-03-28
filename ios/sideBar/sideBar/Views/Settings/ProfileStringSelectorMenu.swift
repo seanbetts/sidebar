@@ -6,13 +6,30 @@ struct ProfileStringSelectorMenu: View {
     let selectionLabel: String
 
     var body: some View {
-        Picker(selectionLabel, selection: $selection) {
-            Text("Not set").tag("")
+        Menu {
+            Button("Not set") {
+                selection = ""
+            }
             ForEach(options, id: \.self) { option in
-                Text(option).tag(option)
+                Button(option) {
+                    selection = option
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(selection.isEmpty ? "Not set" : selection)
+                    .appFont(.body)
+                    .foregroundStyle(
+                        selection.isEmpty
+                            ? DesignTokens.Colors.textSecondary
+                            : DesignTokens.Colors.textPrimary
+                    )
+                Image(systemName: "chevron.up.chevron.down")
+                    .appFont(.caption2)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
             }
         }
-        .labelsHidden()
-        .appFont(.body)
+        .buttonStyle(.plain)
+        .accessibilityLabel(selectionLabel)
     }
 }

@@ -289,38 +289,26 @@ struct ProfileSettingsView: View {
 
     private var iosProfileDetailsSection: some View {
         Section("Profile") {
-            LabeledContent {
+            ProfileIOSFieldRow("Name") {
                 TextField("Not set", text: $name)
                     .multilineTextAlignment(.trailing)
                     #if os(iOS)
                     .textInputAutocapitalization(.words)
                     #endif
-            } label: {
-                Text("Name")
-                    .appFont(.body)
             }
-            LabeledContent {
+            ProfileIOSFieldRow("Job Title") {
                 TextField("Not set", text: $jobTitle)
                     .multilineTextAlignment(.trailing)
-            } label: {
-                Text("Job Title")
-                    .appFont(.body)
             }
-            LabeledContent {
+            ProfileIOSFieldRow("Employer") {
                 TextField("Not set", text: $employer)
                     .multilineTextAlignment(.trailing)
-            } label: {
-                Text("Employer")
-                    .appFont(.body)
             }
             genderField
             pronounsField
-            LabeledContent {
+            ProfileIOSFieldRow("Home location") {
                 TextField("Not set", text: $location)
                     .multilineTextAlignment(.trailing)
-            } label: {
-                Text("Home location")
-                    .appFont(.body)
             }
             ProfileDateOfBirthField(
                 dateOfBirthEnabled: $dateOfBirthEnabled,
