@@ -152,11 +152,7 @@ Mac UI should handle hover states for all interactive elements:
 
 ## Window management
 
-macOS supports multiple windows. sideBar's window model is not fully documented in this audit.
-
-Known: Settings opens as a separate window via AppKit window management.
-
-**Open question**: Does sideBar support multiple workspace windows? Can users open Chat in one window and Notes in another?
+sideBar is a single-window Mac app. There is one workspace window. Settings opens as a separate window via AppKit window management, but only one workspace window exists at a time.
 
 ---
 
@@ -203,8 +199,7 @@ Source: `Views/Websites/SiteHeaderBar.swift`
 
 ## Open questions
 
-- What is the current state of the Mac menu bar (commands, structure)?
-- Does sideBar support multiple Mac windows?
+- What is the current state of the Mac menu bar (commands, structure)? (In discussion.)
 - What keyboard shortcuts are currently implemented?
 - Should the Mac color palette attempt to use more NSColor semantic values?
 - Should the sidebar rail width (56px) be tokenised in `DesignTokens.Size`?

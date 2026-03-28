@@ -108,13 +108,15 @@ Uses `.sheet` presentation, same as iPhone. The sheet is correctly sized on iPad
 
 ### Multitasking
 
-iPad supports Slide Over, Split View, and Stage Manager. The `WorkspaceLayout` should adapt gracefully. The compact/regular size class split handles basic Slide Over cases.
-
-**Note**: Not inspected in detail. Multitasking behaviour should be verified on device.
+sideBar runs its own three-column workspace structure. Designing specifically for Slide Over, Split View, and Stage Manager adds complexity on top of that without sufficient return. The compact/regular size class split handles Slide Over gracefully as a side effect. No further multitasking-specific design work is planned.
 
 ### Pointer and hover
 
-iPad supports pointer and hover states when a pointer device is connected. `SidebarRail` implements `.onHover` for macOS - this may need equivalent iPad pointer support.
+iPad is a first-class productivity platform for sideBar. Pointer and hover states must be supported when a mouse or trackpad is connected.
+
+`SidebarRail` already implements `.onHover` for macOS. The same hover behaviour should apply on iPad. All interactive elements in the workspace layout - rail buttons, list rows, header actions, resize handles - should have defined hover states.
+
+**Rule**: Any element with a macOS hover state must have an equivalent iPad pointer hover state. Use `.onHover` without `#if os(macOS)` guards where the behaviour should apply to both platforms.
 
 ---
 
@@ -170,9 +172,7 @@ Not confirmed in this audit. If used in panel lists, it should be native SwiftUI
 
 ## Open questions
 
-- Should the right sidebar be accessible on large iPhones in landscape?
-- What are the iPad multitasking edge cases that need design attention?
-- Is there a pointer/hover spec for iPad when a mouse or trackpad is connected?
+- Hover state audit: which interactive elements in WorkspaceLayout currently lack `.onHover` on iPad?
 
 ---
 
