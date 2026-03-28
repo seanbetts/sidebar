@@ -27,6 +27,8 @@ struct ChatMessageCopyFeedbackState {
 struct ChatMessageRow: View {
     let message: Message
     let assistantDisplayName: String
+    let retryHeaderSlotState: ChatRetryHeaderSlotState
+    let onRetry: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var copyFeedback = ChatMessageCopyFeedbackState()
@@ -68,6 +70,9 @@ struct ChatMessageRow: View {
                     }
                     if let errorPresentation {
                         ChatErrorPillView(presentation: errorPresentation)
+                        if let errorHeaderState, errorHeaderState.occupiesRetryActionSlot {
+                            ChatErrorRetryActionView(state: errorHeaderState, onRetry: onRetry)
+                        }
                     }
                     Button {
                         copyMessage()
@@ -221,6 +226,31 @@ struct ChatMessageRow: View {
         return ErrorMapping.chatStreamPresentation(
             from: message.errorDetails,
             fallbackUserMessage: message.error
+        )
+    }
+
+    private var errorHeaderState: ChatErrorHeaderState? {
+        Self.retryHeaderState(
+            message: message,
+            retryHeaderSlotState: retryHeaderSlotState
+        )
+    }
+
+    static func retryHeaderState(
+        message: Message,
+        retryHeaderSlotState: ChatRetryHeaderSlotState
+    ) -> ChatErrorHeaderState? {
+        guard message.status == .error,
+              message.error?.trimmedOrNil != nil || message.errorDetails?.trimmedOrNil != nil else {
+            return nil
+        }
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: message.errorDetails,
+            fallbackUserMessage: message.error
+        )
+        return ChatErrorHeaderState(
+            presentation: presentation,
+            slotState: retryHeaderSlotState
         )
     }
 

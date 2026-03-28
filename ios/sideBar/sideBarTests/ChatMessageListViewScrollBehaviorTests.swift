@@ -120,6 +120,20 @@ final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
         XCTAssertFalse(ChatMessageListScrollBehavior.shouldScrollForActiveToolChange())
     }
 
+    func testRetryAppendKeepsBottomPinnedWithoutJudder() {
+        let current = [failedAssistantMessage]
+        let incoming = [failedAssistantMessage, retryStreamingAssistantMessage]
+
+        XCTAssertEqual(
+            ChatMessageListScrollBehavior.scrollMode(
+                previousMessages: current,
+                messages: incoming,
+                activeToolChanged: false
+            ),
+            .pinBottomWithoutAnimation
+        )
+    }
+
     func testMessageScrollSignatureChangesWhenStatusChanges() {
         let message = makeMessage()
         let changedStatusMessage = Message(
@@ -208,6 +222,33 @@ final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
             toolCalls: toolCalls,
             needsNewline: needsNewline,
             timestamp: "2026-02-18T19:10:00Z",
+            error: nil
+        )
+    }
+
+    private var failedAssistantMessage: Message {
+        Message(
+            id: "assistant-failed",
+            role: .assistant,
+            content: "",
+            status: .error,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-02-18T19:10:00Z",
+            error: "The AI provider is busy right now. Please try again in a moment.",
+            errorDetails: "{'error': {'type': 'overloaded_error'}}"
+        )
+    }
+
+    private var retryStreamingAssistantMessage: Message {
+        Message(
+            id: "assistant-retry",
+            role: .assistant,
+            content: "",
+            status: .streaming,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-02-18T19:10:01Z",
             error: nil
         )
     }

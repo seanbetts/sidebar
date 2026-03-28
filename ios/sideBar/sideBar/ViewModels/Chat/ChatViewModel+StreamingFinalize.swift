@@ -8,6 +8,9 @@ extension ChatViewModel {
         streamError: String? = nil,
         errorDetails: String? = nil
     ) {
+        var finalizedStatus = status
+        var finalizedStreamError = streamError
+        var finalizedErrorDetails = errorDetails
         guard let messageId = activeStreamingMessageId else {
             clearTypingRevealState(flushDisplayedContent: false)
             didReceiveTerminalStreamEvent = false
@@ -33,30 +36,47 @@ extension ChatViewModel {
             typingRevealTask?.cancel()
             typingRevealTask = nil
         }
-        if let assistantMessage = messages.first(where: { $0.id == messageId }),
-           !shouldPersistAssistantMessage(assistantMessage) {
-            if status == .complete {
-                errorMessage = "Assistant returned an empty response. Please try again."
+        if let emptyResponseResolution = resolveEmptyAssistantResponseIfNeeded(
+            messageId: messageId,
+            status: finalizedStatus,
+            streamError: finalizedStreamError,
+            errorDetails: finalizedErrorDetails
+        ) {
+            switch emptyResponseResolution {
+            case .preserve(let presentation):
+                finalizedStatus = .error
+                finalizedStreamError = presentation.userMessage
+                finalizedErrorDetails = presentation.details
+                errorMessage = presentation.userMessage
+                updateFinalizedMessage(
+                    id: messageId,
+                    status: finalizedStatus,
+                    streamError: finalizedStreamError,
+                    errorDetails: finalizedErrorDetails
+                )
+            case .discard:
+                clearRetryState()
+                if status == .complete {
+                    errorMessage = "Assistant returned an empty response. Please try again."
+                }
+                discardAssistantMessage(id: messageId)
+                return
             }
-            messages.removeAll { $0.id == messageId }
-            syncMessagesToStore(
-                conversationId: streamingConversationId ?? selectedConversationId,
-                persist: true
-            )
-            didReceiveTerminalStreamEvent = false
-            isStreaming = false
-            streamingConversationId = nil
-            currentStreamMessageId = nil
-            return
         }
 
+        updateRetryStateAfterFinalize(
+            messageId: messageId,
+            status: finalizedStatus,
+            streamError: finalizedStreamError,
+            errorDetails: finalizedErrorDetails
+        )
         syncMessagesToStore(
             conversationId: streamingConversationId ?? selectedConversationId,
             persist: true
         )
         if let conversationId = streamingConversationId ?? selectedConversationId {
             Task { [weak self] in
-                if status == .complete {
+                if finalizedStatus == .complete {
                     await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
                 }
                 await self?.refreshConversations(silent: true)
@@ -69,10 +89,118 @@ extension ChatViewModel {
         currentStreamMessageId = nil
     }
 
+    private func updateFinalizedMessage(
+        id: String,
+        status: MessageStatus,
+        streamError: String?,
+        errorDetails: String?
+    ) {
+        updateMessage(id: id, persist: false) { message in
+            Message(
+                id: message.id,
+                role: message.role,
+                content: message.content,
+                status: status,
+                toolCalls: message.toolCalls,
+                needsNewline: message.needsNewline,
+                timestamp: message.timestamp,
+                error: streamError?.trimmedOrNil ?? message.error,
+                errorDetails: errorDetails?.trimmedOrNil ?? message.errorDetails
+            )
+        }
+    }
+
     private func shouldPersistAssistantMessage(_ message: Message) -> Bool {
         if message.content.trimmedOrNil != nil {
             return true
         }
         return !(message.toolCalls?.isEmpty ?? true)
+    }
+
+    private enum EmptyAssistantResponseResolution {
+        case preserve(ChatStreamErrorPresentation)
+        case discard
+    }
+
+    private func resolveEmptyAssistantResponseIfNeeded(
+        messageId: String,
+        status: MessageStatus,
+        streamError: String?,
+        errorDetails: String?
+    ) -> EmptyAssistantResponseResolution? {
+        guard let assistantMessage = messages.first(where: { $0.id == messageId }),
+              !shouldPersistAssistantMessage(assistantMessage) else {
+            return nil
+        }
+        guard let presentation = retryableEmptyResponsePresentation(
+            for: status,
+            streamError: streamError,
+            errorDetails: errorDetails
+        ) else {
+            return .discard
+        }
+        return .preserve(presentation)
+    }
+
+    private func discardAssistantMessage(id: String) {
+        messages.removeAll { $0.id == id }
+        syncMessagesToStore(
+            conversationId: streamingConversationId ?? selectedConversationId,
+            persist: true
+        )
+        didReceiveTerminalStreamEvent = false
+        isStreaming = false
+        streamingConversationId = nil
+        currentStreamMessageId = nil
+    }
+
+    private func retryableEmptyResponsePresentation(
+        for status: MessageStatus,
+        streamError: String?,
+        errorDetails: String?
+    ) -> ChatStreamErrorPresentation? {
+        if status == .complete {
+            return ErrorMapping.chatStreamPresentation(
+                from: "Assistant response ended before any text was received."
+            )
+        }
+
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: errorDetails ?? streamError,
+            fallbackUserMessage: streamError
+        )
+        guard presentation.category == .emptyResponse, presentation.isRetryable else {
+            return nil
+        }
+        return presentation
+    }
+
+    private func updateRetryStateAfterFinalize(
+        messageId: String,
+        status: MessageStatus,
+        streamError: String?,
+        errorDetails: String?
+    ) {
+        defer {
+            retryInFlightAssistantMessageID = nil
+            retryStateBeforeReplay = nil
+        }
+
+        guard status == .error else {
+            clearRetryState()
+            return
+        }
+
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: errorDetails ?? streamError,
+            fallbackUserMessage: streamError
+        )
+        guard presentation.isRetryable,
+              latestRetrySource?.assistantMessageID == messageId else {
+            clearRetryState()
+            return
+        }
+
+        latestRetryableAssistantMessageID = messageId
     }
 }

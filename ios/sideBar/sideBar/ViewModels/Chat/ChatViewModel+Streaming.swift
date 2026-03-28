@@ -181,6 +181,7 @@ extension ChatViewModel {
         messages = []
         promptPreview = nil
         activeTool = nil
+        clearRetryState()
         clearActiveToolTask?.cancel()
         userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
         clearAttachments()

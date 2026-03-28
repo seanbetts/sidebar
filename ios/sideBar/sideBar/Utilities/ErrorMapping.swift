@@ -93,6 +93,8 @@ enum URLRequestErrorClassifier {
 }
 
 public struct ChatStreamErrorPresentation: Equatable {
+    public let category: ChatStreamErrorCategory
+    public let isRetryable: Bool
     public let title: String
     public let pillText: String
     public let userMessage: String
@@ -100,7 +102,27 @@ public struct ChatStreamErrorPresentation: Equatable {
     public let requestID: String?
 }
 
+public enum ChatStreamErrorCategory: Equatable {
+    case providerOverloaded
+    case providerRateLimited
+    case requestTimeout
+    case transportFailure
+    case emptyResponse
+    case userCancelled
+    case authOrPermission
+    case contextTooLarge
+    case toolExhaustion
+    case unknown
+}
+
 public enum ErrorMapping {
+    private struct ChatStreamPresentationRule {
+        let matches: Bool
+        let category: ChatStreamErrorCategory
+        let title: String
+        let userMessage: String
+    }
+
     public static func message(for error: Error) -> String {
         if let apiError = error as? APIClientError {
             return mapAPIError(apiError)
@@ -216,70 +238,203 @@ public enum ErrorMapping {
     ) -> ChatStreamErrorPresentation {
         let trimmedRaw = rawError?.trimmedOrNil
         let details = trimmedRaw
-        let sourceText = (trimmedRaw ?? fallbackUserMessage ?? "").lowercased()
+        let sourceText = [trimmedRaw, fallbackUserMessage?.trimmedOrNil]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: "\n")
         let requestID = extractRequestID(from: trimmedRaw)
 
-        if sourceText.contains("overloaded_error") || sourceText.contains("overloaded") {
-            return ChatStreamErrorPresentation(
+        if let matchedPresentation = matchedChatStreamPresentation(
+            sourceText: sourceText,
+            details: details,
+            requestID: requestID,
+            fallbackUserMessage: fallbackUserMessage?.trimmedOrNil
+        ) {
+            return matchedPresentation
+        }
+
+        return fallbackChatStreamPresentation(
+            details: details,
+            requestID: requestID,
+            fallbackUserMessage: fallbackUserMessage?.trimmedOrNil
+        )
+    }
+
+    private static func matchedChatStreamPresentation(
+        sourceText: String,
+        details: String?,
+        requestID: String?,
+        fallbackUserMessage: String?
+    ) -> ChatStreamErrorPresentation? {
+        let matchedRule = retryableChatStreamRules(
+            sourceText: sourceText,
+            fallbackUserMessage: fallbackUserMessage
+        ).first(where: \.matches)
+            ?? nonRetryableChatStreamRules(
+                sourceText: sourceText,
+                fallbackUserMessage: fallbackUserMessage
+            ).first(where: \.matches)
+
+        guard let matchedRule else {
+            return nil
+        }
+
+        return makeChatStreamPresentation(
+            category: matchedRule.category,
+            title: matchedRule.title,
+            userMessage: matchedRule.userMessage,
+            details: details,
+            requestID: requestID
+        )
+    }
+
+    private static func retryableChatStreamRules(
+        sourceText: String,
+        fallbackUserMessage: String?
+    ) -> [ChatStreamPresentationRule] {
+        [
+            ChatStreamPresentationRule(
+                matches: sourceText.contains("overloaded_error") || sourceText.contains("overloaded"),
+                category: .providerOverloaded,
                 title: "Provider busy",
-                pillText: "Provider busy",
-                userMessage: "The AI provider is busy right now. Please try again in a moment.",
-                details: details,
-                requestID: requestID
-            )
-        }
-
-        if sourceText.contains("rate_limit")
-            || sourceText.contains("rate limited")
-            || sourceText.contains("too many requests") {
-            return ChatStreamErrorPresentation(
+                userMessage: "The AI provider is busy right now. Please try again in a moment."
+            ),
+            ChatStreamPresentationRule(
+                matches: sourceText.contains("rate_limit")
+                    || sourceText.contains("rate limited")
+                    || sourceText.contains("too many requests"),
+                category: .providerRateLimited,
                 title: "Rate limited",
-                pillText: "Rate limited",
-                userMessage: "The AI provider is rate limited right now. Please wait a moment and try again.",
-                details: details,
-                requestID: requestID
-            )
-        }
-
-        if sourceText.contains("no text and no tool calls")
-            || sourceText.contains("empty response") {
-            return ChatStreamErrorPresentation(
+                userMessage: "The AI provider is rate limited right now. Please wait a moment and try again."
+            ),
+            ChatStreamPresentationRule(
+                matches: sourceText.contains("no text and no tool calls")
+                    || sourceText.contains("empty response")
+                    || sourceText.contains("ended before any text was received"),
+                category: .emptyResponse,
                 title: "Empty response",
-                pillText: "Empty response",
-                userMessage: "The AI provider returned an empty response. Please try again.",
-                details: details,
-                requestID: requestID
+                userMessage: "The AI provider returned an empty response. Please try again."
+            ),
+            ChatStreamPresentationRule(
+                matches: sourceText.contains("timed out")
+                    || sourceText.contains("timeout")
+                    || sourceText.contains("408")
+                    || sourceText.contains("504")
+                    || sourceText.contains("took too long to respond"),
+                category: .requestTimeout,
+                title: "Request timed out",
+                userMessage: fallbackUserMessage ?? "The request timed out. Please try again."
+            ),
+            ChatStreamPresentationRule(
+                matches: sourceText.contains("offline")
+                    || sourceText.contains("not connected to internet")
+                    || sourceText.contains("network connection")
+                    || sourceText.contains("could not reach the server")
+                    || sourceText.contains("cannot connect to host")
+                    || sourceText.contains("cannot find host")
+                    || sourceText.contains("connection lost")
+                    || sourceText.contains("stream ended unexpectedly")
+                    || sourceText.contains("secure connection")
+                    || sourceText.contains("tls")
+                    || sourceText.contains("ssl"),
+                category: .transportFailure,
+                title: "Network error",
+                userMessage: fallbackUserMessage ?? "The network connection was interrupted. Please try again."
             )
-        }
+        ]
+    }
 
-        if sourceText.contains("maximum tool rounds reached") {
-            return ChatStreamErrorPresentation(
+    private static func nonRetryableChatStreamRules(
+        sourceText: String,
+        fallbackUserMessage: String?
+    ) -> [ChatStreamPresentationRule] {
+        [
+            ChatStreamPresentationRule(
+                matches: sourceText.contains("maximum tool rounds reached"),
+                category: .toolExhaustion,
                 title: "Too many tool steps",
-                pillText: "Too many tool steps",
-                userMessage: "I couldn't finish this response because it needed too many tool steps. Try a narrower follow-up.",
-                details: details,
-                requestID: requestID
+                userMessage: "I couldn't finish this response because it needed too many tool steps. Try a narrower follow-up."
+            ),
+            ChatStreamPresentationRule(
+                matches: sourceText.contains("authentication_error")
+                    || sourceText.contains("unauthorized")
+                    || sourceText.contains("forbidden")
+                    || sourceText.contains("not authenticated")
+                    || sourceText.contains("invalid token")
+                    || sourceText.contains("permission"),
+                category: .authOrPermission,
+                title: "Authentication required",
+                userMessage: fallbackUserMessage ?? "Authentication failed. Please sign in again."
+            ),
+            ChatStreamPresentationRule(
+                matches: sourceText.contains("context length exceeded")
+                    || sourceText.contains("maximum allowed tokens")
+                    || sourceText.contains("message context is too large")
+                    || sourceText.contains("prompt too large"),
+                category: .contextTooLarge,
+                title: "Context too large",
+                userMessage: fallbackUserMessage ?? "This request is too large to retry without reducing context."
+            ),
+            ChatStreamPresentationRule(
+                matches: sourceText.contains("cancellationerror")
+                    || sourceText.contains("cancelled by user")
+                    || sourceText.contains("canceled by user")
+                    || sourceText.contains("request was interrupted"),
+                category: .userCancelled,
+                title: "Request cancelled",
+                userMessage: fallbackUserMessage ?? "The request was cancelled before it completed."
             )
-        }
+        ]
+    }
 
-        if let fallbackUserMessage = fallbackUserMessage?.trimmedOrNil {
-            return ChatStreamErrorPresentation(
+    private static func fallbackChatStreamPresentation(
+        details: String?,
+        requestID: String?,
+        fallbackUserMessage: String?
+    ) -> ChatStreamErrorPresentation {
+        if let fallbackUserMessage {
+            return makeChatStreamPresentation(
+                category: .unknown,
                 title: fallbackTitle(for: fallbackUserMessage),
-                pillText: fallbackTitle(for: fallbackUserMessage),
                 userMessage: fallbackUserMessage,
                 details: details,
                 requestID: requestID
             )
         }
 
-        let genericMessage = "The response hit an error. Please try again."
-        return ChatStreamErrorPresentation(
+        return makeChatStreamPresentation(
+            category: .unknown,
             title: "Response error",
-            pillText: "Response error",
-            userMessage: genericMessage,
+            userMessage: "The response hit an error. Please try again.",
             details: details,
             requestID: requestID
         )
+    }
+
+    private static func makeChatStreamPresentation(
+        category: ChatStreamErrorCategory,
+        title: String,
+        userMessage: String,
+        details: String?,
+        requestID: String?
+    ) -> ChatStreamErrorPresentation {
+        ChatStreamErrorPresentation(
+            category: category,
+            isRetryable: isRetryable(category),
+            title: title,
+            pillText: title,
+            userMessage: userMessage,
+            details: details,
+            requestID: requestID
+        )
+    }
+
+    private static func isRetryable(_ category: ChatStreamErrorCategory) -> Bool {
+        switch category {
+        case .providerOverloaded, .providerRateLimited, .requestTimeout, .transportFailure, .emptyResponse:
+            return true
+        case .userCancelled, .authOrPermission, .contextTooLarge, .toolExhaustion, .unknown:
+            return false
+        }
     }
 
     private static func extractRequestID(from rawError: String?) -> String? {

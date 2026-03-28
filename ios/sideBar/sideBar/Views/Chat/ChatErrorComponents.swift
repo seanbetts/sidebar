@@ -1,5 +1,46 @@
 import SwiftUI
 
+struct ChatRetryHeaderSlotState: Equatable {
+    let isLatestRetryableFailure: Bool
+    let isRetryingFailure: Bool
+
+    static func resolve(
+        messageID: String,
+        latestRetryableAssistantMessageID: String?,
+        retryInFlightAssistantMessageID: String?
+    ) -> ChatRetryHeaderSlotState {
+        ChatRetryHeaderSlotState(
+            isLatestRetryableFailure: latestRetryableAssistantMessageID == messageID,
+            isRetryingFailure: retryInFlightAssistantMessageID == messageID
+        )
+    }
+}
+
+struct ChatErrorHeaderState: Equatable {
+    let presentation: ChatStreamErrorPresentation
+    let slotState: ChatRetryHeaderSlotState
+
+    var showsRetryButton: Bool {
+        occupiesRetryActionSlot
+    }
+
+    var occupiesRetryActionSlot: Bool {
+        presentation.isRetryable && (slotState.isLatestRetryableFailure || slotState.isRetryingFailure)
+    }
+
+    var showsRetryLoadingIndicator: Bool {
+        occupiesRetryActionSlot && slotState.isRetryingFailure
+    }
+
+    var isRetryButtonEnabled: Bool {
+        occupiesRetryActionSlot && !slotState.isRetryingFailure
+    }
+
+    var accessibilityLabel: String {
+        "Try again"
+    }
+}
+
 struct ChatErrorPillView: View {
     let presentation: ChatStreamErrorPresentation
     @State private var showPopover = false
@@ -41,6 +82,46 @@ struct ChatErrorPillView: View {
             }
             .presentationCompactAdaptation(.sheet)
         }
+    }
+}
+
+struct ChatErrorRetryActionView: View {
+    let state: ChatErrorHeaderState
+    let onRetry: () -> Void
+    private let headerPillMinHeight: CGFloat = 22
+
+    var body: some View {
+        Button(action: performRetryAction) {
+            Group {
+                if state.showsRetryLoadingIndicator {
+                    ProgressView()
+                        .controlSize(.mini)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .appFont(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: headerPillMinHeight, height: headerPillMinHeight)
+            .background(
+                Circle()
+                    .fill(DesignTokens.Colors.surface)
+            )
+            .overlay(
+                Circle()
+                    .stroke(DesignTokens.Colors.border.opacity(0.5), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!state.isRetryButtonEnabled)
+        .accessibilityLabel(state.accessibilityLabel)
+    }
+
+    func performRetryAction() {
+        guard state.isRetryButtonEnabled else {
+            return
+        }
+        onRetry()
     }
 }
 

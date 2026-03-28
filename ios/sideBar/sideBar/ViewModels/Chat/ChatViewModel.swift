@@ -146,6 +146,10 @@ private final class ChatViewModelTeardownBag {
     var currentStreamMessageId: String?
     var streamingConversationId: String?
     var didReceiveTerminalStreamEvent = false
+    var latestRetrySource: ChatRetrySource?
+    var latestRetryableAssistantMessageID: String?
+    var retryInFlightAssistantMessageID: String?
+    var retryStateBeforeReplay: ChatRetryStateSnapshot?
     var clearActiveToolTask: Task<Void, Never>? {
         didSet {
             teardownBag.setClearActiveToolTask(clearActiveToolTask)
@@ -303,10 +307,31 @@ private final class ChatViewModelTeardownBag {
         promptPreview = nil
         generatingTitleIds.removeAll()
         conversationUpdatedAtDates = [:]
+        latestRetrySource = nil
+        latestRetryableAssistantMessageID = nil
+        retryInFlightAssistantMessageID = nil
+        retryStateBeforeReplay = nil
         clearActiveToolTask?.cancel()
         clearActiveToolTask = nil
         userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
         clearAttachments()
+    }
+
+    func canRetryMessage(id: String) -> Bool {
+        guard retryInFlightAssistantMessageID == nil,
+              latestRetryableAssistantMessageID == id,
+              latestRetrySource?.assistantMessageID == id,
+              latestFailedAssistantMessageID == id,
+              let message = messages.first(where: { $0.id == id }),
+              message.role == .assistant,
+              message.status == .error else {
+            return false
+        }
+        return true
+    }
+
+    var latestFailedAssistantMessageID: String? {
+        messages.last(where: { $0.role == .assistant && $0.status == .error })?.id
     }
 
     func sortedConversationsByUpdatedAt(_ conversations: [Conversation]) -> [Conversation] {

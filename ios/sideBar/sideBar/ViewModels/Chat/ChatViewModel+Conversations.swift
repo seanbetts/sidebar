@@ -64,6 +64,7 @@ extension ChatViewModel {
         guard !hasPendingAttachments else {
             return
         }
+        clearRetryState()
         let userMessageId = UUID().uuidString
         let assistantMessageId = UUID().uuidString
         let timestamp = Self.isoTimestamp(from: self.clock())
@@ -134,19 +135,21 @@ extension ChatViewModel {
         syncMessagesToStore(conversationId: conversationId, persist: true)
 
         let requestContext = requestContextProvider?()
+        let request = ChatStreamRequest(
+            message: trimmed,
+            conversationId: conversationId,
+            userMessageId: userMessageId,
+            assistantMessageId: assistantMessageId,
+            openContext: requestContext?.openContext,
+            attachments: attachmentsForMessage.isEmpty ? nil : attachmentsForMessage,
+            currentLocation: requestContext?.currentLocation,
+            currentLocationLevels: requestContext?.currentLocationLevels,
+            currentWeather: requestContext?.currentWeather,
+            currentTimezone: requestContext?.currentTimezone
+        )
+        latestRetrySource = ChatRetrySource(request: request)
         await startStream(
-            request: ChatStreamRequest(
-                message: trimmed,
-                conversationId: conversationId,
-                userMessageId: userMessageId,
-                assistantMessageId: assistantMessageId,
-                openContext: requestContext?.openContext,
-                attachments: attachmentsForMessage.isEmpty ? nil : attachmentsForMessage,
-                currentLocation: requestContext?.currentLocation,
-                currentLocationLevels: requestContext?.currentLocationLevels,
-                currentWeather: requestContext?.currentWeather,
-                currentTimezone: requestContext?.currentTimezone
-            )
+            request: request
         )
         clearAttachments()
     }
@@ -165,6 +168,7 @@ extension ChatViewModel {
         userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
         messages = []
         setDraftConversationActive(true)
+        clearRetryState()
         clearAttachments()
     }
 
@@ -185,6 +189,7 @@ extension ChatViewModel {
             setDraftConversationActive(false)
             userDefaults.set(conversation.id, forKey: AppStorageKeys.lastConversationId)
             messages = []
+            clearRetryState()
             chatStore.upsertConversation(conversation)
             chatStore.upsertConversationDetail(
                 ConversationWithMessages(
@@ -325,6 +330,7 @@ extension ChatViewModel {
         let previousMessages = messages
         let previousPromptPreview = promptPreview
         let previousActiveTool = activeTool
+        let previousRetryState = currentRetryStateSnapshot()
         chatStore.removeConversation(id: id)
         if wasSelected {
             clearConversationSelection()
@@ -343,6 +349,7 @@ extension ChatViewModel {
                 messages = existingDetail?.messages ?? previousMessages
                 promptPreview = previousPromptPreview
                 activeTool = previousActiveTool
+                restoreRetryState(previousRetryState)
             }
             errorMessage = ErrorMapping.message(for: error)
             toastCenter?.show(message: "Failed to delete conversation")

@@ -28,9 +28,20 @@ A temporary server error. Wait a moment and try again.
 The request timed out. This can happen with very large attachments. Try again,
 or reduce the amount of content attached to your message.
 
+**Failed response with a retry icon**
+The error was temporary. Tap the retry icon beside the error pill to append a
+fresh assistant attempt while keeping the failed bubble visible.
+
 **"Attachment and context are too large for one message."**
 You have too many items open or attached. Close any open notes, websites, or
 files you are not using, or remove some attachments, and try again.
+
+**Failed response without a retry icon**
+If the failed bubble is not the latest eligible one, retry is no longer shown
+there. If the latest failed bubble also has no retry icon, the request needs a
+change in input or settings rather than another identical retry. Reduce
+attachments, shorten the request, fix provider credentials, or switch settings
+before sending again.
 
 **Responses feel slow or cut off**
 This can happen when your conversation is very long. Start a new conversation

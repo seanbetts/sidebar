@@ -102,3 +102,10 @@ unclear, its response may be off. If a skill wasn't enabled, a piece of content
 wasn't open, or your profile is incomplete, that can affect the quality of the
 response. It's also worth checking which AI provider you're using, as
 capability varies.
+
+## Can I retry a failed assistant response?
+
+Yes. For temporary issues like provider overload or timeouts, the latest
+eligible failed assistant bubble shows a retry icon next to the error pill.
+Retry replays your latest message and keeps the failed attempt visible in the
+conversation.

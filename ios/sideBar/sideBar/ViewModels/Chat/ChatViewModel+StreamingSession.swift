@@ -11,7 +11,7 @@ extension ChatViewModel {
             try await streamClient.connect(request: request)
             handleUnexpectedStreamEndIfNeeded()
         } catch is CancellationError {
-            // Stream cancellation is user-initiated; avoid surfacing as an error.
+            restoreRetryStateAfterInterruptedReplayIfNeeded()
         } catch {
             let mappedError = ErrorMapping.message(for: error)
             let presentation = ErrorMapping.chatStreamPresentation(
@@ -32,6 +32,7 @@ extension ChatViewModel {
 
     public func stopStream() {
         streamClient.disconnect()
+        restoreRetryStateAfterInterruptedReplayIfNeeded()
         clearTypingRevealState(flushDisplayedContent: false)
         didReceiveTerminalStreamEvent = false
         isStreaming = false

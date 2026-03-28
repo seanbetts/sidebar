@@ -2,6 +2,7 @@ import XCTest
 import sideBarShared
 @testable import sideBar
 
+@MainActor
 let streamingFailureSharedAPIClient = APIClient(
     config: APIClientConfig(
         baseUrl: URL(string: "https://example.com")!,
@@ -9,10 +10,12 @@ let streamingFailureSharedAPIClient = APIClient(
     )
 )
 
+@MainActor
 func makeStreamingFailureViewModel(
     api: StubConversationsAPI,
     cache: CacheClient,
-    streamClient: ChatStreamClient
+    streamClient: ChatStreamClient,
+    requestContextProvider: (() -> ChatRequestContext?)? = nil
 ) -> ChatViewModel {
     let resolvedChatAPI = ChatAPI(client: streamingFailureSharedAPIClient)
     let themeDefaults = UserDefaults(suiteName: "ChatViewModelStreamingFailureTheme") ?? .standard
@@ -39,6 +42,7 @@ func makeStreamingFailureViewModel(
             themeManager: themeManager,
             userDefaults: uiDefaults,
             clock: { Date(timeIntervalSince1970: 0) },
+            requestContextProvider: requestContextProvider,
             typingRevealFrameIntervalNanoseconds: 0,
             typingRevealMinimumStep: 1_024,
             typingRevealMaximumStep: 1_024
@@ -46,6 +50,7 @@ func makeStreamingFailureViewModel(
     )
 }
 
+@MainActor
 func makeStreamingFailureViewModelWithDefaultRevealConfig(
     api: StubConversationsAPI,
     cache: CacheClient,
@@ -80,6 +85,7 @@ func makeStreamingFailureViewModelWithDefaultRevealConfig(
     )
 }
 
+@MainActor
 func seedStreamingFailureMessage(on viewModel: ChatViewModel) -> Message {
     let initialMessage = Message(
         id: "assistant-1",
@@ -145,10 +151,15 @@ enum StreamFailureError: Error {
 
 final class FailingChatStreamClient: ChatStreamClient {
     weak var handler: ChatStreamEventHandler?
+    private let error: Error
+
+    init(error: Error = StreamFailureError.forced) {
+        self.error = error
+    }
 
     func connect(request: ChatStreamRequest) async throws {
         _ = request
-        throw StreamFailureError.forced
+        throw error
     }
 
     func disconnect() {
@@ -177,8 +188,169 @@ final class IncompleteChatStreamClient: ChatStreamClient {
     }
 }
 
+final class RecordingChatStreamClient: ChatStreamClient {
+    weak var handler: ChatStreamEventHandler?
+    private(set) var lastRequest: ChatStreamRequest?
+    private(set) var connectCallCount = 0
+
+    func connect(request: ChatStreamRequest) async throws {
+        connectCallCount += 1
+        lastRequest = request
+    }
+
+    func disconnect() {
+    }
+}
+
+final class CompletingChatStreamClient: ChatStreamClient {
+    weak var handler: ChatStreamEventHandler?
+    private(set) var lastRequest: ChatStreamRequest?
+    private let responseText: String?
+
+    init(responseText: String? = nil) {
+        self.responseText = responseText
+    }
+
+    func connect(request: ChatStreamRequest) async throws {
+        lastRequest = request
+        await MainActor.run {
+            if let responseText {
+                handler?.handle(
+                    event: ChatStreamEvent(type: .token, data: AnyCodable(["content": responseText]))
+                )
+            }
+            handler?.handle(event: ChatStreamEvent(type: .complete, data: AnyCodable([:])))
+        }
+    }
+
+    func disconnect() {
+    }
+}
+
+final class BlockingChatStreamClient: ChatStreamClient {
+    weak var handler: ChatStreamEventHandler?
+    private(set) var lastRequest: ChatStreamRequest?
+    private(set) var connectCallCount = 0
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func connect(request: ChatStreamRequest) async throws {
+        connectCallCount += 1
+        lastRequest = request
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func disconnect() {
+        release()
+    }
+
+    func release() {
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
+final class SleepingChatStreamClient: ChatStreamClient {
+    weak var handler: ChatStreamEventHandler?
+    private(set) var connectCallCount = 0
+    private let sleepNanoseconds: UInt64
+
+    init(sleepNanoseconds: UInt64 = 60_000_000_000) {
+        self.sleepNanoseconds = sleepNanoseconds
+    }
+
+    func connect(request: ChatStreamRequest) async throws {
+        _ = request
+        connectCallCount += 1
+        try await Task.sleep(nanoseconds: sleepNanoseconds)
+    }
+
+    func disconnect() {
+    }
+}
+
+@MainActor
+func seedRetryableFailure(
+    on viewModel: ChatViewModel,
+    requestText: String = "Original question",
+    attachments: [ChatAttachment]? = nil,
+    openContext: [String: AnyCodable]? = nil,
+    location: String? = nil,
+    locationLevels: [String: String]? = nil,
+    weather: [String: AnyCodable]? = nil,
+    timezone: String? = nil
+) {
+    let userMessage = Message(
+        id: "user-1",
+        role: .user,
+        content: requestText,
+        status: .complete,
+        toolCalls: nil,
+        needsNewline: nil,
+        timestamp: "2026-01-02T00:00:00Z",
+        error: nil
+    )
+    let failedAssistantMessage = Message(
+        id: "assistant-failed",
+        role: .assistant,
+        content: "",
+        status: .error,
+        toolCalls: nil,
+        needsNewline: nil,
+        timestamp: "2026-01-02T00:00:01Z",
+        error: "The AI provider is busy right now. Please try again in a moment.",
+        errorDetails: "{'error': {'type': 'overloaded_error'}}"
+    )
+    let messages = [userMessage, failedAssistantMessage]
+    viewModel.chatStore.upsertConversationDetail(
+        ConversationWithMessages(
+            id: "conv-1",
+            title: "Chat",
+            titleGenerated: false,
+            createdAt: "2026-01-02T00:00:00Z",
+            updatedAt: "2026-01-02T00:00:01Z",
+            messageCount: messages.count,
+            firstMessage: userMessage.content,
+            isArchived: nil,
+            messages: messages
+        )
+    )
+    viewModel.selectedConversationId = "conv-1"
+    viewModel.messages = messages
+    viewModel.latestRetrySource = ChatRetrySource(
+        conversationID: "conv-1",
+        userMessageID: userMessage.id,
+        userMessageText: requestText,
+        assistantMessageID: failedAssistantMessage.id,
+        attachments: attachments,
+        openContext: openContext,
+        currentLocation: location,
+        currentLocationLevels: locationLevels,
+        currentWeather: weather,
+        currentTimezone: timezone
+    )
+    viewModel.latestRetryableAssistantMessageID = failedAssistantMessage.id
+}
+
+@MainActor
+func invalidateRetrySourceForTesting(on viewModel: ChatViewModel) {
+    viewModel.latestRetrySource = nil
+}
+
+extension ChatAttachment {
+    static func fixture(id: String, filename: String = "Attachment.txt") -> ChatAttachment {
+        ChatAttachment(fileId: id, filename: filename)
+    }
+}
+
 final class StubConversationsAPI: ConversationsAPIProviding, ConversationsProviding {
     private(set) var addMessageCalls: [ConversationMessageCreate] = []
+    private let deleteResult: Result<Conversation, Error>
+
+    init(deleteResult: Result<Conversation, Error> = .success(StubConversationsAPI.defaultConversation)) {
+        self.deleteResult = deleteResult
+    }
 
     func list() async throws -> [Conversation] {
         []
@@ -207,27 +379,27 @@ final class StubConversationsAPI: ConversationsAPIProviding, ConversationsProvid
 
     func delete(conversationId: String) async throws -> Conversation {
         _ = conversationId
-        return deletedConversation
+        return try deleteResult.get()
     }
 
     func create(title: String) async throws -> Conversation {
         _ = title
-        return deletedConversation
+        return Self.defaultConversation
     }
 
     func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
         _ = conversationId
         addMessageCalls.append(message)
-        return deletedConversation
+        return Self.defaultConversation
     }
 
     func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
         _ = conversationId
         _ = updates
-        return deletedConversation
+        return Self.defaultConversation
     }
 
-    private var deletedConversation: Conversation {
+    private static var defaultConversation: Conversation {
         Conversation(
             id: "conv-1",
             title: "Chat",

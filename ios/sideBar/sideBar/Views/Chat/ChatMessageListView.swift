@@ -58,7 +58,12 @@ struct ChatMessageListView: View {
                         }
                     }
                     ForEach(visibleMessages) { message in
-                        ChatMessageRow(message: message, assistantDisplayName: assistantDisplayName)
+                        ChatMessageRow(
+                            message: message,
+                            assistantDisplayName: assistantDisplayName,
+                            retryHeaderSlotState: retryHeaderSlotState(for: message),
+                            onRetry: retryLatestFailedTurn
+                        )
                             .id(message.id)
                     }
                     chatBottomAnchor
@@ -91,7 +96,21 @@ struct ChatMessageListView: View {
                         visibleMessageCount = newValue
                     }
                     let shouldJump = shouldScrollToBottom
-                    scrollToBottom(proxy: proxy, animated: !shouldJump)
+                    if !shouldJump {
+                        scrollToBottom(
+                            proxy: proxy,
+                            mode: ChatMessageListScrollBehavior.scrollMode(
+                                previousMessageCount: oldToken.messageCount,
+                                messageCount: newToken.messageCount,
+                                previousLastMessage: oldToken.lastMessageSignature,
+                                newPenultimateMessage: newToken.penultimateMessageSignature,
+                                newLastMessage: newToken.lastMessageSignature,
+                                activeToolChanged: false
+                            )
+                        )
+                    } else {
+                        scrollToBottom(proxy: proxy, animated: false)
+                    }
                     if shouldJump {
                         scheduleDeferredBottomScroll(proxy: proxy)
                     }
@@ -166,6 +185,7 @@ struct ChatMessageListView: View {
         return ScrollChangeToken(
             selectedConversationId: viewModel.selectedConversationId,
             messageCount: viewModel.messages.count,
+            penultimateMessageSignature: ChatMessageScrollSignature(message: viewModel.messages.dropLast().last),
             lastMessageSignature: ChatMessageScrollSignature(message: lastMessage),
             activeToolSignature: viewModel.activeTool.map { "\($0.name):\($0.status.rawValue)" } ?? "",
             bottomInset: bottomInset
@@ -180,6 +200,17 @@ struct ChatMessageListView: View {
             return
         }
         proxy.scrollTo("bottom", anchor: .bottom)
+    }
+
+    private func scrollToBottom(proxy: ScrollViewProxy, mode: ChatMessageListScrollMode) {
+        switch mode {
+        case .noScroll:
+            return
+        case .pinBottomWithAnimation:
+            scrollToBottom(proxy: proxy, animated: true)
+        case .pinBottomWithoutAnimation:
+            scrollToBottom(proxy: proxy, animated: false)
+        }
     }
 
     private func scheduleDeferredBottomScroll(proxy: ScrollViewProxy) {
@@ -247,17 +278,82 @@ struct ChatMessageListView: View {
     private var shouldExposeBottomAnchorForUITests: Bool {
         ProcessInfo.processInfo.environment["SIDEBAR_UI_TEST_EXPOSE_CHAT_SCROLL_ANCHOR"] == "1"
     }
+
+    private func retryHeaderSlotState(for message: Message) -> ChatRetryHeaderSlotState {
+        ChatRetryHeaderSlotState.resolve(
+            messageID: message.id,
+            latestRetryableAssistantMessageID: viewModel.latestRetryableAssistantMessageID,
+            retryInFlightAssistantMessageID: viewModel.retryInFlightAssistantMessageID
+        )
+    }
+
+    private func retryLatestFailedTurn() {
+        Task {
+            await viewModel.retryLatestFailedTurn()
+        }
+    }
 }
 
 private struct ScrollChangeToken: Equatable {
     let selectedConversationId: String?
     let messageCount: Int
+    let penultimateMessageSignature: ChatMessageScrollSignature
     let lastMessageSignature: ChatMessageScrollSignature
     let activeToolSignature: String
     let bottomInset: CGFloat
 }
 
+enum ChatMessageListScrollMode: Equatable {
+    case noScroll
+    case pinBottomWithAnimation
+    case pinBottomWithoutAnimation
+}
+
 enum ChatMessageListScrollBehavior {
+    static func scrollMode(
+        previousMessageCount: Int,
+        messageCount: Int,
+        previousLastMessage: ChatMessageScrollSignature,
+        newPenultimateMessage: ChatMessageScrollSignature,
+        newLastMessage: ChatMessageScrollSignature,
+        activeToolChanged: Bool
+    ) -> ChatMessageListScrollMode {
+        guard !activeToolChanged else {
+            return .noScroll
+        }
+        guard messageCount != previousMessageCount else {
+            return .noScroll
+        }
+        guard messageCount > 0 else {
+            return .noScroll
+        }
+        if isRetryAppend(
+            previousMessageCount: previousMessageCount,
+            messageCount: messageCount,
+            previousLastMessage: previousLastMessage,
+            newPenultimateMessage: newPenultimateMessage,
+            newLastMessage: newLastMessage
+        ) {
+            return .pinBottomWithoutAnimation
+        }
+        return .pinBottomWithAnimation
+    }
+
+    static func scrollMode(
+        previousMessages: [Message],
+        messages: [Message],
+        activeToolChanged: Bool
+    ) -> ChatMessageListScrollMode {
+        scrollMode(
+            previousMessageCount: previousMessages.count,
+            messageCount: messages.count,
+            previousLastMessage: ChatMessageScrollSignature(message: previousMessages.last),
+            newPenultimateMessage: ChatMessageScrollSignature(message: messages.dropLast().last),
+            newLastMessage: ChatMessageScrollSignature(message: messages.last),
+            activeToolChanged: activeToolChanged
+        )
+    }
+
     static func shouldScrollForLastMessageChange(
         from oldSignature: ChatMessageScrollSignature,
         to newSignature: ChatMessageScrollSignature,
@@ -297,27 +393,58 @@ enum ChatMessageListScrollBehavior {
     static func shouldScrollForActiveToolChange() -> Bool {
         false
     }
+
+    private static func isRetryAppend(
+        previousMessageCount: Int,
+        messageCount: Int,
+        previousLastMessage: ChatMessageScrollSignature,
+        newPenultimateMessage: ChatMessageScrollSignature,
+        newLastMessage: ChatMessageScrollSignature
+    ) -> Bool {
+        guard messageCount == previousMessageCount + 1,
+              !previousLastMessage.id.isEmpty,
+              previousLastMessage == newPenultimateMessage else {
+            return false
+        }
+
+        guard previousLastMessage.role == .assistant,
+              previousLastMessage.status == .error,
+              newLastMessage.role == .assistant,
+              newLastMessage.status == .streaming else {
+            return false
+        }
+
+        return ErrorMapping.chatStreamPresentation(
+            from: previousLastMessage.errorDetails,
+            fallbackUserMessage: previousLastMessage.error
+        ).isRetryable
+    }
 }
 
 struct ChatMessageScrollSignature: Equatable {
     let id: String
+    let role: MessageRole
     let content: String
     let status: MessageStatus
     let toolCallsSignature: String
     let needsNewline: Bool
     let error: String
+    let errorDetails: String
 
     init(message: Message?) {
         guard let message else {
             id = ""
+            role = .assistant
             content = ""
             status = .complete
             toolCallsSignature = ""
             needsNewline = false
             error = ""
+            errorDetails = ""
             return
         }
         id = message.id
+        role = message.role
         content = message.content
         status = message.status
         toolCallsSignature = (message.toolCalls ?? []).map {
@@ -325,5 +452,6 @@ struct ChatMessageScrollSignature: Equatable {
         }.joined(separator: "|")
         needsNewline = message.needsNewline ?? false
         error = message.error ?? ""
+        errorDetails = message.errorDetails ?? ""
     }
 }

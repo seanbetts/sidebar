@@ -3,6 +3,96 @@ import sideBarShared
 @testable import sideBar
 
 final class ErrorMappingTests: XCTestCase {
+    func testMapsOverloadedChatStreamErrorAsRetryable() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: "{'error': {'type': 'overloaded_error'}}"
+        )
+
+        XCTAssertTrue(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .providerOverloaded)
+    }
+
+    func testMapsMaximumToolRoundsAsNonRetryable() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: "maximum tool rounds reached"
+        )
+
+        XCTAssertFalse(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .toolExhaustion)
+    }
+
+    func testMapsRateLimitedChatStreamErrorAsRetryable() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: "{'error': {'type': 'rate_limit_error'}}"
+        )
+
+        XCTAssertTrue(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .providerRateLimited)
+    }
+
+    func testMapsTimedOutChatStreamErrorAsRetryable() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: URLError(.timedOut).localizedDescription
+        )
+
+        XCTAssertTrue(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .requestTimeout)
+    }
+
+    func testMapsConnectivityFailureAsRetryable() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: URLError(.notConnectedToInternet).localizedDescription
+        )
+
+        XCTAssertTrue(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .transportFailure)
+    }
+
+    func testMapsEmptyResponseAsRetryable() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: "Assistant response ended before any text was received."
+        )
+
+        XCTAssertTrue(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .emptyResponse)
+    }
+
+    func testMapsUserCancellationAsNonRetryable() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: CancellationError().localizedDescription
+        )
+
+        XCTAssertFalse(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .userCancelled)
+    }
+
+    func testMapsAuthFailureAsNonRetryable() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: "{'error': {'type': 'authentication_error'}}"
+        )
+
+        XCTAssertFalse(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .authOrPermission)
+    }
+
+    func testMapsContextTooLargeAsNonRetryable() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: "context length exceeded maximum allowed tokens"
+        )
+
+        XCTAssertFalse(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .contextTooLarge)
+    }
+
+    func testMapsUnknownFailureAsNonRetryable() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: "provider emitted an unexpected fatal condition"
+        )
+
+        XCTAssertFalse(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .unknown)
+    }
+
     func testMapsOverloadedChatStreamErrorToFriendlyPresentation() {
         let rawError = "{'type': 'error', 'error': {'details': None, 'type': " +
             "'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_123'}"
