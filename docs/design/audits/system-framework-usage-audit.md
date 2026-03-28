@@ -1,4 +1,7 @@
-# System Framework Usage Audit
+---
+title: System Framework Usage Audit
+description: Draft audit of where sideBar uses native Apple frameworks well and where custom UI departs from them.
+---
 
 - Status: drafted
 - Owner: AI coding agent

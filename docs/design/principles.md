@@ -1,4 +1,7 @@
-# Design Principles
+---
+title: Design Principles
+description: Draft practical decision rules for what good product design looks like in sideBar.
+---
 
 - Status: drafted
 - Owner: both (agent draft, Sean to review and approve)
@@ -201,7 +204,7 @@ Full definition of the product voice belongs in `voice-and-content.md`.
 
 ## Related docs
 
-- `system-inheritance.md`
-- `platform-strategy/overview.md`
-- `voice-and-content.md`
-- `audits/current-ui-audit.md`
+- [System Inheritance](./system-inheritance)
+- [Platform Strategy Overview](./platform-strategy/overview)
+- [Voice and Content](./voice-and-content)
+- [Current UI Audit](./audits/current-ui-audit)

@@ -1,4 +1,7 @@
-# Current UI Audit
+---
+title: Current UI Audit
+description: Draft inventory of the main sideBar screens, navigation, flows, and current UI patterns.
+---
 
 - Status: drafted
 - Owner: AI coding agent

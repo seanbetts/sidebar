@@ -6,7 +6,7 @@
 #
 # Common commands:
 #   ./dev.sh start
-#     Start backend, frontend, ingestion worker, docs, website, and Caddy proxy,
+#     Start backend, frontend, ingestion worker, product docs, internal design docs, website, and Caddy proxy,
 #     restart the local GitHub Actions runner, and ensure local test Postgres availability.
 #     Proxy URLs (requires: brew install caddy):
 #       - Website: http://trysidebar.localhost:8080
@@ -17,6 +17,7 @@
 #       - Backend:  http://localhost:8001
 #       - Frontend: http://localhost:3000
 #       - Docs:     http://localhost:3001
+#       - Design docs: http://localhost:3002
 #       - Website:  http://localhost:5173
 #   ./dev.sh stop
 #     Stop all services managed by this script, including the local GitHub Actions runner.
@@ -24,7 +25,7 @@
 #     Restart all services, including the local GitHub Actions runner.
 #   ./dev.sh status
 #     Show running status, including the local GitHub Actions runner, URLs, and log file locations.
-#   ./dev.sh logs [backend|frontend|ingestion|docs|website|caddy]
+#   ./dev.sh logs [backend|frontend|ingestion|docs|design-docs|website|caddy]
 #     Tail logs for one service or all services.
 #
 # Notes:
@@ -38,11 +39,13 @@ BACKEND_LOG="/tmp/sidebar-backend.log"
 FRONTEND_LOG="/tmp/sidebar-frontend.log"
 INGESTION_LOG="/tmp/sidebar-ingestion-worker.log"
 DOCS_LOG="/tmp/sidebar-docs.log"
+DESIGN_DOCS_LOG="/tmp/sidebar-design-docs.log"
 WEBSITE_LOG="/tmp/sidebar-website.log"
 BACKEND_PID="/tmp/sidebar-backend.pid"
 FRONTEND_PID="/tmp/sidebar-frontend.pid"
 INGESTION_PID="/tmp/sidebar-ingestion-worker.pid"
 DOCS_PID="/tmp/sidebar-docs.pid"
+DESIGN_DOCS_PID="/tmp/sidebar-design-docs.pid"
 WEBSITE_PID="/tmp/sidebar-website.pid"
 CADDY_LOG="/tmp/sidebar-caddy.log"
 CADDY_PID="/tmp/sidebar-caddy.pid"
@@ -514,7 +517,12 @@ is_ingestion_process() {
 
 is_docs_process() {
   local command="$1"
-  [[ "${command}" == *"mintlify"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]
+  [[ "${command}" == *"mintlify"* ]] && [[ "${command}" == *"${REPO_ROOT}/docs/product"* ]]
+}
+
+is_design_docs_process() {
+  local command="$1"
+  [[ "${command}" == *"mintlify"* ]] && [[ "${command}" == *"${REPO_ROOT}/docs/design-site"* ]]
 }
 
 is_website_process() {
@@ -546,6 +554,9 @@ role_matches_command() {
       ;;
     docs)
       is_docs_process "${command}"
+      ;;
+    design-docs)
+      is_design_docs_process "${command}"
       ;;
     website)
       is_website_process "${command}"
@@ -799,6 +810,25 @@ start_docs() {
   fi
 }
 
+start_design_docs() {
+  if [[ "${command}" == "start" ]]; then
+    local existing_pid
+    existing_pid=$(resolve_pid_for_port 3002 design-docs || true)
+    if [[ -n "${existing_pid}" ]]; then
+      echo "Design docs already running (PID ${existing_pid})."
+      echo "${existing_pid}" >"${DESIGN_DOCS_PID}"
+      return
+    fi
+  fi
+  ensure_port_available 3002 design-docs
+  echo "Starting design docs..."
+  (cd "${REPO_ROOT}/docs/design-site" && mintlify dev --port 3002) >"${DESIGN_DOCS_LOG}" 2>&1 </dev/null &
+  echo $! >"${DESIGN_DOCS_PID}"
+  if ! wait_for_role_port 3002 design-docs "${DESIGN_DOCS_PID}"; then
+    echo "Design docs failed to bind to port 3002. Check logs: ${DESIGN_DOCS_LOG}"
+  fi
+}
+
 start_website() {
   if [[ "${command}" == "start" ]]; then
     local existing_pid
@@ -991,6 +1021,14 @@ cleanup_services() {
     fi
   done
 
+  for pid in $(lsof -t -iTCP:3002 -sTCP:LISTEN 2>/dev/null || true); do
+    command=$(pid_command "${pid}")
+    if is_design_docs_process "${command}"; then
+      echo "Cleaning design docs process (PID ${pid})..."
+      stop_pid "${pid}"
+    fi
+  done
+
   for pid in $(lsof -t -iTCP:5173 -sTCP:LISTEN 2>/dev/null || true); do
     command=$(pid_command "${pid}")
     if is_website_process "${command}"; then
@@ -1047,6 +1085,8 @@ status_service() {
       pid=$(resolve_ingestion_pid || true)
     elif [[ "${role}" == "docs" ]]; then
       pid=$(resolve_pid_for_port 3001 docs || true)
+    elif [[ "${role}" == "design-docs" ]]; then
+      pid=$(resolve_pid_for_port 3002 design-docs || true)
     elif [[ "${role}" == "website" ]]; then
       pid=$(resolve_pid_for_port 5173 website || true)
     elif [[ "${role}" == "caddy" ]]; then
@@ -1100,6 +1140,9 @@ show_logs() {
     docs)
       tail -n 200 "${DOCS_LOG}" || true
       ;;
+    design-docs)
+      tail -n 200 "${DESIGN_DOCS_LOG}" || true
+      ;;
     website)
       tail -n 200 "${WEBSITE_LOG}" || true
       ;;
@@ -1115,6 +1158,8 @@ show_logs() {
       tail -n 200 "${INGESTION_LOG}" || true
       echo "--- Docs logs (${DOCS_LOG}) ---"
       tail -n 200 "${DOCS_LOG}" || true
+      echo "--- Design docs logs (${DESIGN_DOCS_LOG}) ---"
+      tail -n 200 "${DESIGN_DOCS_LOG}" || true
       echo "--- Website logs (${WEBSITE_LOG}) ---"
       tail -n 200 "${WEBSITE_LOG}" || true
       echo "--- Caddy proxy logs (${CADDY_LOG}) ---"
@@ -1138,6 +1183,7 @@ case "${command}" in
     start_frontend
     start_ingestion_worker
     start_docs
+    start_design_docs
     start_website
     start_caddy
     ;;
@@ -1147,6 +1193,7 @@ case "${command}" in
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
     stop_service "${DOCS_PID}" "docs" "docs" "3001"
+    stop_service "${DESIGN_DOCS_PID}" "design docs" "design-docs" "3002"
     stop_service "${WEBSITE_PID}" "website" "website" "5173"
     stop_service "${CADDY_PID}" "Caddy proxy" "caddy" "8080"
     ;;
@@ -1157,6 +1204,7 @@ case "${command}" in
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
     stop_service "${DOCS_PID}" "docs" "docs" "3001"
+    stop_service "${DESIGN_DOCS_PID}" "design docs" "design-docs" "3002"
     stop_service "${WEBSITE_PID}" "website" "website" "5173"
     stop_service "${CADDY_PID}" "Caddy proxy" "caddy" "8080"
     for_each_runner restart_runner
@@ -1165,6 +1213,7 @@ case "${command}" in
     start_frontend
     start_ingestion_worker
     start_docs
+    start_design_docs
     start_website
     start_caddy
     ;;
@@ -1177,6 +1226,7 @@ case "${command}" in
     status_service "${FRONTEND_PID}" "Frontend" "http://app.trysidebar.localhost:3000" "${FRONTEND_LOG}" "frontend"
     status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}" "ingestion"
     status_service "${DOCS_PID}" "Docs" "http://localhost:3001" "${DOCS_LOG}" "docs"
+    status_service "${DESIGN_DOCS_PID}" "Design docs" "http://localhost:3002" "${DESIGN_DOCS_LOG}" "design-docs"
     status_service "${WEBSITE_PID}" "Website" "http://localhost:5173" "${WEBSITE_LOG}" "website"
     status_service "${CADDY_PID}" "Caddy proxy" "http://*.trysidebar.localhost:8080" "${CADDY_LOG}" "caddy"
     status_test_db
@@ -1185,7 +1235,7 @@ case "${command}" in
     show_logs "${2:-}"
     ;;
   *)
-    echo "Usage: ./dev.sh [start|stop|restart|cleanup|status|logs [backend|frontend|ingestion|docs|website|caddy]]"
+    echo "Usage: ./dev.sh [start|stop|restart|cleanup|status|logs [backend|frontend|ingestion|docs|design-docs|website|caddy]]"
     exit 1
     ;;
 esac

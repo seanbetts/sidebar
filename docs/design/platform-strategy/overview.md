@@ -1,4 +1,7 @@
-# Platform Strategy: Overview
+---
+title: Platform Strategy Overview
+description: Draft cross-platform strategy for keeping sideBar coherent across iPhone, iPad, Mac, and web.
+---
 
 - Status: drafted
 - Owner: AI coding agent

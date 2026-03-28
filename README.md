@@ -112,6 +112,8 @@ Access the application:
 - **Frontend**: http://localhost:3000
 - **API**: http://localhost:8001
 - **API Docs**: http://localhost:8001/docs
+- **Product Docs**: http://localhost:3001
+- **Design Docs**: http://localhost:3002
 
 ## Local Development (Native)
 
@@ -127,6 +129,10 @@ ALLOW_PROD_MIGRATIONS=true ./scripts/migrate.sh upgrade
 ```
 
 See [docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md) for the full guide and safety notes when using production Supabase/R2.
+
+`./dev.sh start` now launches both Mintlify previews:
+- product docs at `http://localhost:3001`
+- internal design docs at `http://localhost:3002`
 
 ## iOS App
 

@@ -1,4 +1,7 @@
-# Component Inventory
+---
+title: Component Inventory
+description: Draft inventory of reusable iOS and macOS UI components in the sideBar codebase.
+---
 
 - Status: drafted
 - Owner: AI coding agent

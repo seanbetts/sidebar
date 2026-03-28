@@ -1,4 +1,7 @@
-# Platform Strategy: iOS Conventions
+---
+title: iOS Conventions
+description: Draft iPhone and iPad conventions for navigation, layout, input, and interaction in sideBar.
+---
 
 - Status: drafted
 - Owner: AI coding agent

@@ -1,4 +1,7 @@
-# Platform Strategy: Web Conventions
+---
+title: Web Conventions
+description: Placeholder for future browser-specific design conventions for sideBar.
+---
 
 - Status: not started
 - Owner: both

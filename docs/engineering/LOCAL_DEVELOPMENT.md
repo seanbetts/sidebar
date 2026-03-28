@@ -37,18 +37,30 @@ cd frontend && npm install && cd ..
 
 ## Docs (Mintlify)
 
-Install the CLI once, then run the local preview from `docs/`:
+`./dev.sh start` launches both local Mintlify previews:
+
+- Product docs: `http://localhost:3001`
+- Internal design docs: `http://localhost:3002`
+
+If you want to run them manually, install the CLI once, then start either docs root directly:
 
 ```bash
 npm i -g mint
-cd docs
+cd docs/product
 mint dev
 ```
 
 If you prefer not to install globally:
 
 ```bash
-cd docs
+cd docs/design-site
+npx mint dev --port 3002
+```
+
+Or for product docs:
+
+```bash
+cd docs/product
 npx mint dev
 ```
 
@@ -68,6 +80,8 @@ git checkout dev
 ./dev.sh logs              # Both
 ./dev.sh logs backend      # Backend only
 ./dev.sh logs frontend     # Frontend only
+./dev.sh logs docs         # Product docs
+./dev.sh logs design-docs  # Internal design docs
 
 # Cleanup stale processes (if ports are stuck)
 ./dev.sh cleanup

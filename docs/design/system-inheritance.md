@@ -1,4 +1,7 @@
-# System Inheritance
+---
+title: System Inheritance
+description: Draft policy for what sideBar inherits from Apple frameworks and where it intentionally departs from native defaults.
+---
 
 - Status: drafted
 - Owner: AI coding agent
@@ -254,8 +257,8 @@ Do not build custom versions of these unless there is a documented, product-crit
 
 ## Related docs
 
-- `principles.md`
-- `platform-strategy/overview.md`
-- `audits/system-framework-usage-audit.md`
-- `foundations/materials-and-appearance.md` (to be created)
+- [Design Principles](./principles)
+- [Platform Strategy Overview](./platform-strategy/overview)
+- [System Framework Usage Audit](./audits/system-framework-usage-audit)
+- [Materials and Appearance](./foundations/materials-and-appearance)
 - `foundations/colour.md` (to be created)

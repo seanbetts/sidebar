@@ -1,4 +1,7 @@
-# Platform Strategy: macOS Conventions
+---
+title: macOS Conventions
+description: Draft macOS conventions for layout, windowing, input, and navigation in sideBar.
+---
 
 - Status: drafted
 - Owner: AI coding agent

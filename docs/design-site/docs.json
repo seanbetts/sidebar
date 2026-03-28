@@ -1,0 +1,68 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "sideBar Design System",
+  "url": "http://localhost:3002",
+  "colors": {
+    "primary": "#111111",
+    "light": "#eeeeee",
+    "dark": "#111111"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Overview",
+        "pages": [
+          "index",
+          "workbook",
+          "principles",
+          "system-inheritance",
+          "voice-and-content"
+        ]
+      },
+      {
+        "group": "Platform Strategy",
+        "pages": [
+          "platform-strategy/overview",
+          "platform-strategy/ios-conventions",
+          "platform-strategy/macos-conventions",
+          "platform-strategy/web-conventions"
+        ]
+      },
+      {
+        "group": "Foundations",
+        "pages": [
+          "foundations/overview",
+          "foundations/materials-and-appearance"
+        ]
+      },
+      {
+        "group": "Components",
+        "pages": [
+          "components/overview"
+        ]
+      },
+      {
+        "group": "Patterns",
+        "pages": [
+          "patterns/overview"
+        ]
+      },
+      {
+        "group": "Agent Rules",
+        "pages": [
+          "agent-rules/overview"
+        ]
+      },
+      {
+        "group": "Audits",
+        "pages": [
+          "audits/current-ui-audit",
+          "audits/component-inventory",
+          "audits/token-audit",
+          "audits/system-framework-usage-audit"
+        ]
+      }
+    ]
+  }
+}

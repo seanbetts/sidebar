@@ -1,4 +1,7 @@
-# Token Audit
+---
+title: Token Audit
+description: Draft audit of the current token model and token-like values in the sideBar codebase.
+---
 
 - Status: drafted
 - Owner: AI coding agent
