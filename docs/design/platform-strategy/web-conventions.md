@@ -118,11 +118,9 @@ This differs from native platforms by design:
 
 ## Web color palette
 
-**Direction**: The web color palette should be aligned with the unified iOS/macOS palette. A single consistent palette across all platforms is the goal. The current web palette (OKLCH CSS custom properties in `app.css`) uses near-neutral values that are broadly aligned with the native direction but not yet reconciled.
+**Direction**: The web color palette should be aligned with the unified iOS/macOS palette. A single consistent palette across all platforms is the goal. The web CSS custom properties (`app.css`) should be defined alongside the native token values in `foundations/colour.md` — that doc is the single source of truth for all platform palette values.
 
-The reconciliation should happen when `foundations/colour.md` is drafted — that doc will define the canonical palette values, and the web CSS variables should be updated to match.
-
-**Current state**: OKLCH-based CSS custom properties, near-neutral near-black dark mode. Broadly correct in intent, exact values to be reconciled.
+**Current state**: OKLCH-based CSS custom properties, near-neutral near-black dark mode. Broadly correct in intent, exact values to be reconciled when `foundations/colour.md` is drafted.
 
 **Dark mode**: Full support. Theme toggled via a mode switch in the site header. Preference persisted in localStorage with system preference fallback.
 
@@ -147,6 +145,24 @@ Lucide Svelte is used for all icons. SF Symbols are not available on web.
 **Rule**: Use the closest Lucide equivalent to the SF Symbol used in the native apps. Do not introduce decorative icons not present in the native apps. The icon vocabulary should be as consistent as possible across platforms even when the specific icon differs.
 
 A formal mapping of native SF Symbols to Lucide Svelte equivalents should be maintained in `foundations/iconography.md`. This mapping is the reference for web icon choices — when adding a new icon on web, look up the SF Symbol used in the native apps and find its Lucide equivalent, not the other way around.
+
+---
+
+## Create actions
+
+All create actions on web are triggered from section header buttons in the left panel. There is no floating action dock equivalent.
+
+| Section | Create actions | Pattern |
+|---|---|---|
+| Chat | New chat | Header icon button — direct call, no modal |
+| Notes | New note, New folder | Header icon buttons — modal dialogs |
+| Tasks | New task, New group, New project | Header dropdown menu — inline draft form (task) or modal dialogs (group, project) |
+| Websites | Save website | Header icon button — modal dialog with URL input and validation |
+| Files | Upload file, Add YouTube video | Header icon buttons — file input (upload) or modal dialog (YouTube URL) |
+
+**Rule**: Create actions belong in the section header, not in a floating dock. The header button pattern is the correct web equivalent of the native floating action dock.
+
+Source: `frontend/src/lib/components/left-sidebar/Sidebar.svelte`
 
 ---
 
@@ -207,8 +223,7 @@ The following are known areas where the web app lags behind native. These are no
 
 ## Open questions
 
-- Should `foundations/colour.md` define the web CSS variable values alongside the native token values, or should the web palette be a separate derived layer?
-- Web create actions: the pattern for creating items in each section has not been fully audited.
+None.
 
 ---
 

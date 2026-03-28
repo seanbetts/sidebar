@@ -57,7 +57,7 @@ But the way they interact with it should match the platform:
 | Layout | Compact, single column | Multi-column workspace | Multi-column workspace, single window | Multi-column workspace (resizable left panel) |
 | Right sidebar | Never | Available (workspace mode) | Available (workspace mode) | Not available |
 | Settings | Sheet | Sheet | Dedicated window | Dedicated route (migration needed) |
-| Create actions | Floating action dock (Liquid Glass) | Toolbar buttons | Toolbar buttons + keyboard shortcuts | TBD - audit needed |
+| Create actions | Floating action dock (Liquid Glass) | Toolbar buttons | Toolbar buttons + keyboard shortcuts | Section header buttons |
 | Search | Floating search dock | Inline panel search | Inline panel search | Inline panel search |
 | Rich text editor | UIKit surface | UIKit surface | AppKit surface | Tiptap (browser) |
 | Icons | SF Symbols | SF Symbols | SF Symbols | Lucide Svelte |
@@ -161,7 +161,7 @@ No custom numeric breakpoints are used. The two-state compact/regular model is t
 
 ## Open questions
 
-- Web create actions: the pattern for creating items in each section on web has not been fully audited. To be resolved in `web-conventions.md`.
+None.
 
 ---
 
