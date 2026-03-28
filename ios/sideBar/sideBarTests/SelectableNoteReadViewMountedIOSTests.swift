@@ -173,6 +173,90 @@ final class SelectableNoteReadViewMountedIOSTests: XCTestCase {
         )
     }
 
+    func testMountedReadSurfaceKeepsSemanticListTargetAnchoredAcrossLateLayoutPasses() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Test Note", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Introduction", marks: [])]),
+                .paragraph([.init(
+                    text: String(repeating: "This is a test note demo paragraph that forces wrapping. ", count: 12),
+                    marks: []
+                )]),
+                .init(type: .heading, content: [.init(text: "Checklist", marks: [])]),
+                .init(
+                    type: .unorderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "First Item", marks: [])]),
+                        .init(type: .listItem, content: [.init(text: "Second Item", marks: [])]),
+                        .init(type: .listItem, content: [.init(text: "Third Item", marks: [])]),
+                        .init(type: .listItem, content: [.init(text: "Fourth Item", marks: [])]),
+                        .init(type: .listItem, content: [.init(text: "Fifth Item", marks: [])])
+                    ]
+                ),
+                .paragraph([.init(
+                    text: String(repeating: "Trailing paragraph text keeps the document tall enough for restoration. ", count: 18),
+                    marks: []
+                )])
+            ]
+        )
+        let frame = CGRect(x: 0, y: 0, width: 672, height: 867)
+        let referenceTextView = try makeReadTextView(
+            document: document,
+            frame: frame,
+            maxContentWidth: frame.width
+        )
+        let targetOffset = NSString(string: referenceTextView.attributedText.string)
+            .range(of: "Fifth Item").location
+        let targetPosition = try XCTUnwrap(
+            referenceTextView.position(from: referenceTextView.beginningOfDocument, offset: targetOffset)
+        )
+        let initialTargetRect = referenceTextView.caretRect(for: targetPosition)
+        let viewportHeight = referenceTextView.bounds.inset(by: referenceTextView.adjustedContentInset).height
+        let targetReadOffset = max(
+            initialTargetRect.midY - (viewportHeight * 0.55),
+            -referenceTextView.adjustedContentInset.top
+        )
+        referenceTextView.setContentOffset(CGPoint(x: 0, y: targetReadOffset), animated: false)
+        referenceTextView.setNeedsLayout()
+        referenceTextView.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        let referenceTargetRect = referenceTextView.caretRect(for: targetPosition)
+        let expectedViewportAnchorY =
+            referenceTargetRect.midY - referenceTextView.bounds.inset(by: referenceTextView.adjustedContentInset).minY
+
+        let textView = try makeReadTextView(
+            document: document,
+            frame: frame,
+            maxContentWidth: frame.width,
+            initialViewportOffset: CGPoint(x: 0, y: targetReadOffset),
+            initialViewportAnchorTarget: .characterOffset(targetOffset),
+            initialViewportAnchorY: expectedViewportAnchorY
+        )
+
+        for _ in 0..<6 {
+            textView.setNeedsLayout()
+            textView.layoutIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+
+        let mountedTargetPosition = try XCTUnwrap(
+            textView.position(from: textView.beginningOfDocument, offset: targetOffset)
+        )
+        let mountedTargetRect = textView.caretRect(for: mountedTargetPosition)
+        let actualViewportAnchorY =
+            mountedTargetRect.midY - textView.bounds.inset(by: textView.adjustedContentInset).minY
+
+        XCTAssertEqual(
+            actualViewportAnchorY,
+            expectedViewportAnchorY,
+            accuracy: 6,
+            "contentOffset=\(textView.contentOffset) contentSize=\(textView.contentSize) "
+                + "mountedTargetRect=\(mountedTargetRect) expectedViewportAnchorY=\(expectedViewportAnchorY)"
+        )
+    }
+
 }
 
 @MainActor

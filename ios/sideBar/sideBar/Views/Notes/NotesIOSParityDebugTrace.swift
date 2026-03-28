@@ -21,6 +21,10 @@ enum NotesIOSParityDebugTrace {
         }
     }
 
+    static func objectIdentity(_ object: AnyObject) -> String {
+        String(describing: Unmanaged.passUnretained(object).toOpaque())
+    }
+
     static func documentSummary(_ document: NotesSemanticDocument, maxBlocks: Int = 4) -> String {
         let blocks = document.blocks.prefix(maxBlocks).map { block -> String in
             let preview = NotesSemanticDocumentProjection.plainText(
@@ -53,6 +57,29 @@ enum NotesIOSParityDebugTrace {
             "selection=\(selectionSummary)",
             "samples=[\(sampleSummary)]",
             "paragraphs=[\(paragraphSummary)]"
+        ].joined(separator: " ")
+    }
+
+    static func activationTargetSummary(
+        in textView: UITextView,
+        target: NotesEditorViewModel.PendingEditSelectionTarget?
+    ) -> String {
+        guard let target else { return "trackedTarget=nil" }
+        let anchorY = SelectableNoteReadView.viewportAnchorYForEditingActivation(
+            in: textView,
+            target: target
+        )
+        let paragraph: String?
+        switch target {
+        case .start:
+            paragraph = nil
+        case .characterOffset(let offset):
+            paragraph = paragraphSummary(in: textView, containingOffset: offset)
+        }
+        return [
+            "trackedTarget=\(String(describing: target))",
+            "trackedAnchorY=\(anchorY.map { String(format: "%.2f", $0) } ?? "nil")",
+            "trackedParagraph=\(paragraph ?? "nil")"
         ].joined(separator: " ")
     }
 

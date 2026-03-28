@@ -567,6 +567,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
         textView.isScrollEnabled = true
         textView.alwaysBounceVertical = true
         textView.adjustsFontForContentSizeCategory = false
+        textView.textFormattingConfiguration = nil
         textView.textColor = .label
         textView.textContainer.lineFragmentPadding = 0
         textView.maxReadableContentWidth = maxReadableContentWidth
@@ -624,6 +625,7 @@ private final class SelectableNoteReadTextView: UITextView {
             guard initialViewportOffset != oldValue else { return }
             guard let initialViewportOffset else { return }
             pendingInitialViewportOffset = initialViewportOffset
+            pendingInitialViewportStabilitySignature = nil
             hasAppliedInitialViewportOffset = false
             lastAppliedInitialViewportOffset = nil
             lastRequestedInitialViewportOffset = nil
@@ -635,6 +637,7 @@ private final class SelectableNoteReadTextView: UITextView {
             guard initialViewportAnchorTarget != oldValue else { return }
             guard let initialViewportAnchorTarget else { return }
             pendingInitialViewportAnchorTarget = initialViewportAnchorTarget
+            pendingInitialViewportStabilitySignature = nil
             hasAppliedInitialViewportOffset = false
             lastAppliedInitialViewportOffset = nil
             lastRequestedInitialViewportOffset = nil
@@ -646,6 +649,7 @@ private final class SelectableNoteReadTextView: UITextView {
             guard initialViewportAnchorY != oldValue else { return }
             guard let initialViewportAnchorY else { return }
             pendingInitialViewportAnchorY = initialViewportAnchorY
+            pendingInitialViewportStabilitySignature = nil
             hasAppliedInitialViewportOffset = false
             lastAppliedInitialViewportOffset = nil
             lastRequestedInitialViewportOffset = nil
@@ -662,7 +666,9 @@ private final class SelectableNoteReadTextView: UITextView {
     private var pendingInitialViewportOffset: CGPoint?
     private var pendingInitialViewportAnchorTarget: SelectableNoteReadView.ReadActivationTarget?
     private var pendingInitialViewportAnchorY: CGFloat?
+    private var pendingInitialViewportStabilitySignature: InitialViewportStabilitySignature?
     private var lastDebugLayoutSummary: String?
+    private var debugTrackedActivationTarget: SelectableNoteReadView.ReadActivationTarget?
 
     override var contentOffset: CGPoint {
         didSet {
@@ -673,6 +679,7 @@ private final class SelectableNoteReadTextView: UITextView {
     override var contentSize: CGSize {
         didSet {
             guard contentSize != oldValue else { return }
+            pendingInitialViewportStabilitySignature = nil
             applyInitialViewportOffsetIfNeeded()
             reportViewportOffsetIfNeeded()
         }
@@ -689,7 +696,20 @@ private final class SelectableNoteReadTextView: UITextView {
         applyInitialViewportOffsetIfNeeded()
         reportViewportOffsetIfNeeded()
         guard NotesIOSParityDebugTrace.isEnabled else { return }
-        let summary = NotesIOSParityDebugTrace.textViewSummary(self)
+        let summary = [
+            "instance=\(NotesIOSParityDebugTrace.objectIdentity(self))",
+            "restoration={pendingOffset:\(String(describing: pendingInitialViewportOffset)),"
+                + "pendingTarget:\(String(describing: pendingInitialViewportAnchorTarget)),"
+                + "pendingAnchorY:\(pendingInitialViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil"),"
+                + "applied:\(hasAppliedInitialViewportOffset),"
+                + "lastApplied:\(String(describing: lastAppliedInitialViewportOffset)),"
+                + "lastRequested:\(String(describing: lastRequestedInitialViewportOffset))}",
+            NotesIOSParityDebugTrace.activationTargetSummary(
+                in: self,
+                target: debugTrackedActivationTarget
+            ),
+            NotesIOSParityDebugTrace.textViewSummary(self)
+        ].joined(separator: " ")
         guard summary != lastDebugLayoutSummary else { return }
         lastDebugLayoutSummary = summary
         NotesIOSParityDebugTrace.log(
@@ -729,6 +749,7 @@ private final class SelectableNoteReadTextView: UITextView {
                 || abs(contentOffset.y - restoration.offset.y) > 0.5
         if needsOffsetUpdate {
             super.setContentOffset(restoration.offset, animated: false)
+            pendingInitialViewportStabilitySignature = nil
             lastAppliedInitialViewportOffset = restoration.offset
             lastRequestedInitialViewportOffset = restoration.requestedOffset
             hasAppliedInitialViewportOffset = false
@@ -740,7 +761,20 @@ private final class SelectableNoteReadTextView: UITextView {
         if lastRequestedInitialViewportOffset != restoration.requestedOffset {
             lastRequestedInitialViewportOffset = restoration.requestedOffset
         }
+        let stabilitySignature = InitialViewportStabilitySignature(
+            offset: restoration.offset,
+            contentSize: contentSize,
+            boundsSize: bounds.size
+        )
+        if pendingInitialViewportStabilitySignature != stabilitySignature {
+            pendingInitialViewportStabilitySignature = stabilitySignature
+            DispatchQueue.main.async { [weak self] in
+                self?.applyInitialViewportOffsetIfNeeded()
+            }
+            return
+        }
         guard hasAppliedInitialViewportOffset == false else { return }
+        pendingInitialViewportStabilitySignature = nil
         hasAppliedInitialViewportOffset = true
         lastRequestedInitialViewportOffset = nil
         pendingInitialViewportOffset = nil
@@ -757,6 +791,12 @@ private final class SelectableNoteReadTextView: UITextView {
         let viewportAnchorY: String
     }
 
+    private struct InitialViewportStabilitySignature: Equatable {
+        let offset: CGPoint
+        let contentSize: CGSize
+        let boundsSize: CGSize
+    }
+
     private var hasPendingInitialViewportRestoration: Bool {
         pendingInitialViewportOffset != nil
             || pendingInitialViewportAnchorTarget != nil
@@ -771,6 +811,7 @@ private final class SelectableNoteReadTextView: UITextView {
                 in: self,
                 target: pendingInitialViewportAnchorTarget
            ) {
+            debugTrackedActivationTarget = pendingInitialViewportAnchorTarget
             return InitialViewportRestoration(
                 mode: pendingInitialViewportOffset == nil ? "anchor" : "anchor-preferred",
                 offset: clampedContentOffset(for: requestedOffset),

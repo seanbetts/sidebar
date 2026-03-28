@@ -53,6 +53,15 @@ extension SelectableNoteReadViewTests {
         XCTAssertEqual(textView.textContainerInset.right, NoteTextLayout.horizontalPadding, accuracy: 0.001)
     }
 
+    func testReadSurfaceDisablesUIKitTextFormattingConfigurationOnIOS() throws {
+        let textView = try makeReadTextView(
+            plainText: "One\nTwo",
+            frame: CGRect(x: 0, y: 0, width: 320, height: 120)
+        )
+
+        XCTAssertNil(textView.textFormattingConfiguration)
+    }
+
     func testMakePlatformAttributedContentUsesDynamicLabelColorOnIOS() throws {
         let document = NotesSemanticDocumentProjection.document(fromPlainText: "Hello")
         let attributed = SelectableNoteReadView.makePlatformAttributedContent(

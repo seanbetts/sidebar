@@ -29,7 +29,7 @@ func mountTextView(
     maxContentWidth: CGFloat? = nil,
     width: CGFloat = 360,
     height: CGFloat = 320
-) throws -> UITextView {
+) throws -> UIKitNoteTextEditorSurface.AccessoryTextView {
     let controller = UIHostingController<AnyView>(
         rootView: AnyView(
             UIKitNoteTextEditorSurface(
@@ -71,7 +71,9 @@ func mountTextView(
         controller.view.layoutIfNeeded()
     }
     RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-    return try XCTUnwrap(findTextView(in: controller.view))
+    return try XCTUnwrap(
+        findTextView(in: controller.view) as? UIKitNoteTextEditorSurface.AccessoryTextView
+    )
 }
 
 @MainActor
@@ -90,7 +92,7 @@ func mountTextView(
     maxContentWidth: CGFloat? = nil,
     width: CGFloat = 360,
     height: CGFloat = 320
-) throws -> UITextView {
+) throws -> UIKitNoteTextEditorSurface.AccessoryTextView {
     try mountTextView(
         viewModel: viewModel,
         isEditable: isEditable,
