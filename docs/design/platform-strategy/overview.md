@@ -53,15 +53,17 @@ But the way they interact with it should match the platform:
 
 | Element | iPhone | iPad | Mac | Web |
 |---|---|---|---|---|
-| Navigation | TabView | SidebarRail + WorkspaceLayout | SidebarRail + WorkspaceLayout + native menu bar | SidebarRail + layout (TBD - audit needed) |
-| Layout | Compact, single column | Multi-column workspace | Multi-column workspace, single window | TBD - audit needed |
-| Right sidebar | Never | Available (workspace mode) | Available (workspace mode) | TBD |
-| Settings | Sheet | Sheet | Dedicated window | TBD |
-| Create actions | Floating action dock (Liquid Glass) | Toolbar buttons | Toolbar buttons + keyboard shortcuts | TBD |
-| Search | Floating search dock | Inline panel search | Inline panel search | TBD |
-| Rich text editor | UIKit surface | UIKit surface | AppKit surface | TBD |
-| Context menus | Long press (touch) | Long press + right click | Right click + keyboard | TBD |
-| Keyboard shortcuts | Limited | Extended | Full | TBD |
+| Navigation | TabView | SidebarRail + WorkspaceLayout | SidebarRail + WorkspaceLayout + native menu bar | SidebarRail + WorkspaceLayout |
+| Layout | Compact, single column | Multi-column workspace | Multi-column workspace, single window | Multi-column workspace (resizable left panel) |
+| Right sidebar | Never | Available (workspace mode) | Available (workspace mode) | Not available |
+| Settings | Sheet | Sheet | Dedicated window | Modal dialog |
+| Create actions | Floating action dock (Liquid Glass) | Toolbar buttons | Toolbar buttons + keyboard shortcuts | TBD - audit needed |
+| Search | Floating search dock | Inline panel search | Inline panel search | Inline panel search |
+| Rich text editor | UIKit surface | UIKit surface | AppKit surface | Tiptap (browser) |
+| Icons | SF Symbols | SF Symbols | SF Symbols | Lucide Svelte |
+| Context menus | Long press (touch) | Long press + right click | Right click + keyboard | Right click / dropdown |
+| Keyboard shortcuts | Limited | Extended | Full | Cmd/Ctrl + 1–5 (partial) |
+| Dark mode | System adaptive | System adaptive | System adaptive | CSS class toggle, localStorage |
 
 ---
 
@@ -159,7 +161,7 @@ No custom numeric breakpoints are used. The two-state compact/regular model is t
 
 ## Open questions
 
-- What is the Web platform's current state? A full audit of `frontend/src/` is needed before `web-conventions.md` can be drafted and the platform differences table completed.
+- Web create actions: the pattern for creating items in each section on web has not been fully audited. To be resolved in `web-conventions.md`.
 
 ---
 
