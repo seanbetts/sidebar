@@ -53,18 +53,6 @@ a numbered list. The trigger only works at the start of a paragraph. After the
 list starts, pressing Return creates the next item, and pressing Return on an
 empty trailing item exits back to Body text.
 
-## How do I create a checklist?
-
-Start a new paragraph and type `- [ ] `. That converts the paragraph into a
-checklist item. Press Return to create the next checklist item, and press
-Return on an empty trailing checklist item to exit back to Body text.
-
-## Can I tick off checklist items without entering edit mode?
-
-Yes. In read mode, tap or click the checkbox to toggle completion immediately.
-Checked items stay in place and automatically gain strikethrough styling until
-you uncheck them.
-
 ## What happens when I press Return in a formatted note?
 
 Pressing Return after a Title, Heading, or Subhead starts a new Body line.
