@@ -84,7 +84,44 @@ Accent and system colors (action states, error, success) are documented separate
 
 ## Text palette
 
-Text colors are resolved from system primitives and adapt correctly to accessibility settings (high contrast, etc.).
+Text colors are resolved from system primitives and adapt correctly to accessibility settings (high contrast, etc.). The approximate values below are illustrative — the actual rendered color depends on the platform and accessibility settings.
+
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px",marginBottom:"24px",fontFamily:"-apple-system,sans-serif"}}>
+  <div>
+    <div style={{fontSize:"11px",fontWeight:"600",textTransform:"uppercase",letterSpacing:"0.07em",color:"#888",marginBottom:"10px"}}>Light mode</div>
+    <div style={{borderRadius:"10px",overflow:"hidden",border:"1px solid #e0e0e0"}}>
+      <div style={{background:"#ffffff",padding:"14px",borderBottom:"1px solid #f0f0f0"}}>
+        <div style={{fontSize:"15px",fontWeight:"500",color:"#000000"}}>Primary text</div>
+        <div style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",marginTop:"2px"}}>textPrimary ~ #000000</div>
+      </div>
+      <div style={{background:"#ffffff",padding:"14px",borderBottom:"1px solid #f0f0f0"}}>
+        <div style={{fontSize:"15px",fontWeight:"500",color:"#6b6b6b"}}>Secondary text</div>
+        <div style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",marginTop:"2px"}}>textSecondary ~ #6b6b6b</div>
+      </div>
+      <div style={{background:"#ffffff",padding:"14px"}}>
+        <div style={{fontSize:"15px",fontWeight:"500",color:"#aaaaaa"}}>Tertiary text</div>
+        <div style={{fontSize:"11px",color:"#aaa",fontFamily:"monospace",marginTop:"2px"}}>textTertiary ~ #aaaaaa</div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div style={{fontSize:"11px",fontWeight:"600",textTransform:"uppercase",letterSpacing:"0.07em",color:"#888",marginBottom:"10px"}}>Dark mode</div>
+    <div style={{borderRadius:"10px",overflow:"hidden",border:"1px solid #2a2a2a"}}>
+      <div style={{background:"#0a0a0a",padding:"14px",borderBottom:"1px solid #1c1c1c"}}>
+        <div style={{fontSize:"15px",fontWeight:"500",color:"#ffffff"}}>Primary text</div>
+        <div style={{fontSize:"11px",color:"#555",fontFamily:"monospace",marginTop:"2px"}}>textPrimary ~ #ffffff</div>
+      </div>
+      <div style={{background:"#0a0a0a",padding:"14px",borderBottom:"1px solid #1c1c1c"}}>
+        <div style={{fontSize:"15px",fontWeight:"500",color:"#9b9b9b"}}>Secondary text</div>
+        <div style={{fontSize:"11px",color:"#555",fontFamily:"monospace",marginTop:"2px"}}>textSecondary ~ #9b9b9b</div>
+      </div>
+      <div style={{background:"#0a0a0a",padding:"14px"}}>
+        <div style={{fontSize:"15px",fontWeight:"500",color:"#636363"}}>Tertiary text</div>
+        <div style={{fontSize:"11px",color:"#555",fontFamily:"monospace",marginTop:"2px"}}>textTertiary ~ #636363</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 | Role | Semantic token | Native source | Notes |
 |---|---|---|---|
