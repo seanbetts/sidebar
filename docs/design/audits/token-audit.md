@@ -132,22 +132,35 @@ enum Icon {
 }
 ```
 
-**Coverage**: Partial. The values 20, 28, and 30 appear in views but have no token.
+**Coverage**: Good. All observed sizes resolve to existing tokens. One intentional outlier documented below.
 
-**Gaps / drift**:
+**Audit results**:
 
-| Observed size | Token | Files using it |
-|---|---|---|
-| 14 | `Icon.sm` | - |
-| 18 | `Icon.md` | `SettingsSections+Additional.swift` (as literal) |
-| 20 | none | `TasksViewComponents.swift` (multiple) |
-| 24 | `Icon.lg` | `TasksViewComponents.swift` (literal) |
-| 28 | none | `TasksDetailView.swift` |
-| 30 | none | `StoreSkillCredentialsView.swift` |
-| 32 | `Icon.xl` | `SidebarRail.swift` (literal), `SettingsSections+Utilities.swift` (literal) |
-| 40 | `Icon.xxl` | - |
+| Observed size | Token | Verdict | Files |
+|---|---|---|---|
+| 14 | `Icon.sm` | correct | - |
+| 18 | `Icon.md` | correct | `SettingsSections+Additional.swift` (as literal — fix to token) |
+| 20 | should be `Icon.md` (18) | drift — fix down to 18 | `TasksViewComponents.swift` (multiple) |
+| 22 | should be `Icon.md` (18) | drift — fix down to 18 | `WebsitesDetailView+MenuActions.swift` |
+| 24 | `Icon.lg` | correct | `TasksViewComponents.swift` (as literal — fix to token) |
+| 26 | intentional (app logo) | keep — document only | `SidebarRail.swift` app logo frame |
+| 28 | should be `Icon.xl` (32) | drift — fix up to 32 | `TasksDetailView.swift` |
+| 30 | should be `Icon.xl` (32) | drift — fix up to 32 | `StoreSkillCredentialsView.swift` |
+| 32 | `Icon.xl` | correct | `SidebarRail.swift`, `SettingsSections+Utilities.swift` (as literals — fix to token) |
+| 40 | `Icon.xxl` | correct | - |
 
-**Verdict**: Add `Icon.mdPlus = 20` or audit whether 20px usage should be 18 or 24. The 28 and 30 values look like one-off sizing that should be resolved to the nearest token.
+**No new tokens needed.** All drift resolves to existing values.
+
+**App logo exception**: `SidebarRail.swift` uses 26px for the app logo image frame. This is intentional — sized to sit comfortably in the 56px rail without being as large as a section icon. It should be extracted to a named constant (`SidebarRail.logoSize`) rather than a global token, since it is specific to that component.
+
+**Code fixes required** (separate from the design system docs):
+- `TasksViewComponents.swift`: 20px → `DesignTokens.Icon.md`
+- `WebsitesDetailView+MenuActions.swift`: 22px → `DesignTokens.Icon.md`
+- `TasksDetailView.swift`: 28px → `DesignTokens.Icon.xl`
+- `StoreSkillCredentialsView.swift`: 30px → `DesignTokens.Icon.xl`
+- `SettingsSections+Additional.swift`: 18px literal → `DesignTokens.Icon.md`
+- `SidebarRail.swift`: 32px literal → `DesignTokens.Icon.xl`
+- `SettingsSections+Utilities.swift`: 32px literals → `DesignTokens.Icon.xl`
 
 ---
 
