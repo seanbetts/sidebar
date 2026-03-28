@@ -23,9 +23,10 @@ This doc defines how sideBar should behave during short delays, long waits, and 
 | Concern | iOS | macOS | Web |
 |---|---|---|---|
 | Spinner (`LoadingIndicatorView` / `LoadingGlyph`) | Yes | Yes | Yes |
-| Skeleton loading | Yes | Yes | Yes (with shimmer) |
+| Skeleton loading (static, no shimmer) | Yes | Yes | Yes |
 | Haptics on wait completion | Yes | No | No |
-| Typing reveal | Yes | Yes | No (animated dot instead) |
+| Progressive reveal (character-paced) | Yes | Yes | No |
+| Progressive reveal (chunk-driven) | No | No | Yes |
 | Live Activities | Target | No | No |
 | Pull-to-refresh | Yes | No | No |
 
