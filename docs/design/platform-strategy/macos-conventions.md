@@ -57,9 +57,52 @@ The `SidebarRail` serves as the primary navigation on Mac. It is always visible.
 
 ### Mac menu bar
 
-Not inspected in detail in this audit. macOS apps are expected to have a complete menu bar with standard menu categories (File, Edit, View, Window, Help). The current state of the menu bar is unknown.
+Implemented in `Views/AppCommands.swift` via `SidebarCommands: Commands`.
 
-**To do**: Audit the menu bar structure separately.
+**Menu structure:**
+
+| Menu | Contents |
+|---|---|
+| App | Settings… (Cmd+,) — replaces system default |
+| Navigate | Cmd+1–N for each primary section |
+| Format | Text styles (Title, Heading, Subheading, Body) + Bold, Italic, Underline, Strikethrough, Inline Code — Notes only, macOS 26+, disabled when not editing |
+| [Section] | Context-aware: shows one menu for whichever section is focused (Chat, Notes, Websites, Files, or Tasks) |
+
+**Section menu commands:**
+
+| Section | Commands |
+|---|---|
+| Chat | Send Message (Cmd+Return), Attach File (Cmd+Shift+F), Rename (Cmd+Shift+R), Delete (Cmd+Delete) |
+| Notes | New Folder (Cmd+Shift+N), Pin (Cmd+Shift+P), Archive (Cmd+Shift+A), Delete (Cmd+Shift+Delete) |
+| Websites | Pin (Cmd+Opt+P), Archive (Cmd+Opt+A), Open in Browser (Cmd+Shift+Return), Delete (Cmd+Opt+Delete) |
+| Files | Quick Look (Space), Delete (Cmd+Opt+Shift+Delete) |
+| Tasks | Complete (Cmd+Return), Edit Notes (Cmd+Shift+N), Move (Cmd+Shift+M), Set Due Date (Cmd+D), Edit Repeat (Cmd+Shift+R), Delete (Cmd+Shift+Delete) |
+
+**Escape** closes the open item or settings panel depending on state.
+
+**Universal shortcuts** (handled outside `AppCommands`, likely via `onKeyPress` or separate Commands):
+
+| Shortcut | Action |
+|---|---|
+| Cmd+1–6 | Navigate to each section |
+| Cmd+N | New item |
+| Cmd+F | Search |
+| Cmd+, | Open Settings |
+| Cmd+W | Close |
+| Cmd+R | Refresh |
+| Cmd+Shift+O | Open Scratchpad |
+| Cmd+Shift+S | Toggle sidebar |
+| Cmd+Shift+/ | Show all shortcuts |
+
+**What is working well:**
+- Context-aware section menus are the right pattern. One relevant menu, not all sections at once.
+- The Format menu for Notes behaves like a proper document-app menu. Toggle state for Bold/Italic is correctly reflected.
+- Cmd+Return serves two purposes (Send Message in Chat, Complete Task in Tasks). This is intentional and correct given the context-aware model.
+- The product docs and `AppCommands.swift` are in sync — everything documented is implemented.
+- Files is deliberately sparse. Files are passive content and the menu reflects that.
+
+**One gap:**
+Several universal shortcuts (Cmd+Shift+S, Cmd+Shift+O, Cmd+N, Cmd+F, Cmd+R) are not represented in the menu bar. There is no View menu, so sidebar toggle and scratchpad are undiscoverable via the menus. A minimal View menu with "Toggle Sidebar" and "Open Scratchpad" would follow Mac convention and make these findable without requiring users to already know the shortcut.
 
 ---
 
@@ -199,8 +242,7 @@ Source: `Views/Websites/SiteHeaderBar.swift`
 
 ## Open questions
 
-- What is the current state of the Mac menu bar (commands, structure)? (In discussion.)
-- What keyboard shortcuts are currently implemented?
+- Should a View menu be added to expose the sidebar toggle shortcut (Cmd+Shift+S)?
 - Should the Mac color palette attempt to use more NSColor semantic values?
 - Should the sidebar rail width (56px) be tokenised in `DesignTokens.Size`?
 
