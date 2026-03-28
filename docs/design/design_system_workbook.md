@@ -20,18 +20,35 @@ description: Working brief for the internal sideBar design-system documentation 
 | 11 | Components | [components/overview.md](./components/overview) | approved |
 | 12 | Patterns: navigation | [patterns/navigation.md](./patterns/navigation) | approved |
 | 13 | Patterns: feedback and haptics | [patterns/feedback-and-haptics.md](./patterns/feedback-and-haptics) | approved |
-| 14 | Patterns: wait UX | patterns/wait-ux.md | not started |
+| 14 | Patterns: wait UX | [patterns/wait-ux.md](./patterns/wait-ux) | draft |
 | 15 | Patterns: onboarding | patterns/onboarding.md | not started |
 | 16 | Patterns: handoffs | patterns/handoffs.md | not started |
 | 17 | Patterns: AI assistant UI | patterns/ai-assistant-ui.md | not started |
 | 18 | Agent rules | agent-rules/ | not started |
-| 19 | Audits | [token-audit](./audits/token-audit) (approved), [current-ui-audit](./audits/current-ui-audit), [component-inventory](./audits/component-inventory), [system-framework-usage](./audits/system-framework-usage-audit) (drafted) | partial |
+| 19 | Audits | [token-audit](./audits/token-audit) (approved), [current-ui-audit](./audits/current-ui-audit), [patterns-audit](./audits/patterns-audit), [component-inventory](./audits/component-inventory), [system-framework-usage](./audits/system-framework-usage-audit) (drafted) | partial |
 
 ## Supporting documents
 
 | Document | Purpose |
 |---|---|
 | [implementation-gaps.md](./implementation-gaps) | Central tracker of all known divergences between design system and codebase |
+| [audits/patterns-audit.md](./audits/patterns-audit) | Current-state snapshot of behavioral patterns — haptics, wait states, navigation, material usage |
+
+---
+
+## Document structure convention
+
+The design system uses a strict three-tier structure. Every contributor and agent must follow this separation:
+
+| Tier | Location | Contains | Written as |
+|---|---|---|---|
+| **Spec docs** | `docs/design/` (foundations, components, patterns) | Target state — how things should work when correctly implemented | Authoritative rules. No hedging, no "currently X but should be Y". |
+| **Audit docs** | `docs/design/audits/` | Current state — how things actually work in the codebase today | Descriptive snapshots. Updated as gaps are closed. |
+| **Implementation gaps** | `implementation-gaps.md` | The delta — specific divergences between current and target, each as a one-liner with a source link | Actionable. When a gap is resolved, remove it. |
+
+**The key rule**: Spec docs must never contain current-state observations. If you find yourself writing "currently X" or "not yet implemented" in a spec doc, that content belongs in an audit doc or the implementation gaps list instead. Spec docs are written as if the system is already correctly built.
+
+When adding a new gap discovered while writing a spec, add it to `implementation-gaps.md` — do not leave a note in the spec.
 
 ---
 
@@ -126,6 +143,8 @@ This should be treated as a working process, not a one-off exercise. Some sectio
 ## Standard template for final design docs
 
 Each final document in `docs/design/` should follow a consistent structure so it is easy for both humans and the AI coding agent to read, compare, and extend.
+
+**All spec docs describe target state only.** Do not mix current-state observations into spec docs — see the document structure convention above.
 
 Not every doc needs every subsection, but this should be the default starting shape.
 
