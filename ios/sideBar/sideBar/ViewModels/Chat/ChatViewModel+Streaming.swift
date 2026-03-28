@@ -100,63 +100,6 @@ extension ChatViewModel {
         return handlers
     }
 
-    func applySelectionIfNeeded(using items: [Conversation]) {
-        guard !items.isEmpty else {
-            return
-        }
-        if let selectedId = selectedConversationId,
-           items.contains(where: { $0.id == selectedId }) {
-            return
-        }
-        selectedConversationId = nil
-        clearTypingRevealState(flushDisplayedContent: false)
-        messages = []
-        promptPreview = nil
-        activeTool = nil
-    }
-
-    func reconcileMessages(_ incoming: [Message], for conversationId: String) -> [Message] {
-        guard conversationId == streamingConversationId,
-              let currentStreamMessageId,
-              let streamingMessage = messages.first(where: { $0.id == currentStreamMessageId }) else {
-            return incoming
-        }
-
-        var reconciled = incoming
-        if let serverIndex = reconciled.firstIndex(where: { $0.id == currentStreamMessageId }) {
-            let serverMessage = reconciled[serverIndex]
-            if serverMessage.status != .streaming {
-                clearTypingRevealState(flushDisplayedContent: false)
-                self.currentStreamMessageId = nil
-                self.streamingConversationId = nil
-                return reconciled
-            }
-            let localTargetContent = typingRevealTargetsByMessageId[currentStreamMessageId] ?? streamingMessage.content
-            if localTargetContent.count > serverMessage.content.count {
-                reconciled[serverIndex] = streamingMessage
-            }
-            return reconciled
-        }
-
-        if reconciled.contains(where: { $0.role == .assistant && $0.status == .streaming }) {
-            return reconciled
-        }
-
-        return reconciled + [streamingMessage]
-    }
-
-    func isSameMessageSnapshot(current: [Message], incoming: [Message]) -> Bool {
-        guard current.count == incoming.count else {
-            return false
-        }
-        guard let currentLast = current.last, let incomingLast = incoming.last else {
-            return current.isEmpty && incoming.isEmpty
-        }
-        return currentLast.id == incomingLast.id
-            && currentLast.content == incomingLast.content
-            && currentLast.status == incomingLast.status
-    }
-
     func cleanupEmptyConversationIfNeeded() async {
         guard let conversationId = selectedConversationId else {
             return
@@ -334,7 +277,7 @@ extension ChatViewModel {
     }
 
     func syncMessagesToStore(conversationId: String?, persist: Bool = true) {
-        guard let conversationId else {
+        guard persist, let conversationId else {
             return
         }
         ChatStreamingDebugTrace.log(

@@ -98,9 +98,14 @@ extension ChatViewModel {
         guard remaining > 0 else {
             return target
         }
+        let tailFlushThreshold = max(24, typingRevealMinimumStep)
+        if remaining <= tailFlushThreshold {
+            return target
+        }
+
         let adaptiveStep = max(
             typingRevealMinimumStep,
-            min(typingRevealMaximumStep, max(remaining / 8, typingRevealMinimumStep))
+            min(typingRevealMaximumStep, max(remaining / 3, typingRevealMinimumStep))
         )
         let revealCount = min(target.count, current.count + adaptiveStep)
         let endIndex = target.index(target.startIndex, offsetBy: revealCount)

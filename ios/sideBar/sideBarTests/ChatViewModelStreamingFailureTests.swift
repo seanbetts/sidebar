@@ -366,4 +366,54 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         XCTAssertGreaterThan(nextContent.count, 20)
         XCTAssertLessThan(nextContent.count, target.count)
     }
+
+    func testNonPersistentMessageUpdatesDoNotRepublishConversationDetail() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeStreamingFailureViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: SuccessfulChatStreamClient()
+        )
+
+        let initialMessage = seedStreamingFailureMessage(on: viewModel)
+        viewModel.messages = [initialMessage]
+
+        viewModel.updateMessage(id: "assistant-1", persist: false) { message in
+            Message(
+                id: message.id,
+                role: message.role,
+                content: "Local only",
+                status: message.status,
+                toolCalls: message.toolCalls,
+                needsNewline: message.needsNewline,
+                timestamp: message.timestamp,
+                error: message.error,
+                errorDetails: message.errorDetails
+            )
+        }
+
+        XCTAssertEqual(viewModel.messages.first?.content, "Local only")
+        XCTAssertEqual(
+            viewModel.chatStore.conversationDetails["conv-1"]?.messages.first?.content,
+            ""
+        )
+    }
+
+    func testTypingRevealFinishesSmallBacklogWithoutOneCharacterCrawl() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeStreamingFailureViewModelWithDefaultRevealConfig(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: SuccessfulChatStreamClient()
+        )
+
+        let current = String(repeating: "x", count: 10)
+        let target = String(repeating: "x", count: 25)
+
+        let nextContent = viewModel.nextDisplayedContent(current: current, target: target)
+
+        XCTAssertEqual(nextContent, target)
+    }
 }

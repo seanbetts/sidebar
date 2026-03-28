@@ -168,6 +168,92 @@ extension ChatViewModelTests {
         XCTAssertEqual(reconciled.first?.id, "assistant-server")
     }
 
+    func testReconcileMessagesPreservesLocalUserMessageWhenIncomingSnapshotIsStale() async {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+        let userMessage = Message(
+            id: "user-1",
+            role: .user,
+            content: "Where did my message go?",
+            status: .complete,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-01-02T00:00:00Z",
+            error: nil
+        )
+        let localStreaming = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "Let me check",
+            status: .streaming,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-01-02T00:00:01Z",
+            error: nil
+        )
+        viewModel.streamingConversationId = "conv-1"
+        viewModel.currentStreamMessageId = localStreaming.id
+        viewModel.messages = [userMessage, localStreaming]
+
+        let reconciled = viewModel.reconcileMessages([], for: "conv-1")
+
+        XCTAssertEqual(reconciled.map(\.id), ["user-1", "assistant-1"])
+        XCTAssertEqual(reconciled.first?.content, userMessage.content)
+        XCTAssertEqual(reconciled.last?.content, localStreaming.content)
+    }
+
+    func testReconcileMessagesPreservesMissingLocalUserWhenServerOnlyReturnsStreamingAssistant() async {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+        let userMessage = Message(
+            id: "user-1",
+            role: .user,
+            content: "Keep me visible",
+            status: .complete,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-01-02T00:00:00Z",
+            error: nil
+        )
+        let localStreaming = Message(
+            id: "assistant-1",
+            role: .assistant,
+            content: "longer local content",
+            status: .streaming,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-01-02T00:00:01Z",
+            error: nil
+        )
+        viewModel.streamingConversationId = "conv-1"
+        viewModel.currentStreamMessageId = localStreaming.id
+        viewModel.messages = [userMessage, localStreaming]
+
+        let incoming = [
+            Message(
+                id: "assistant-1",
+                role: .assistant,
+                content: "short",
+                status: .streaming,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:01Z",
+                error: nil
+            )
+        ]
+
+        let reconciled = viewModel.reconcileMessages(incoming, for: "conv-1")
+
+        XCTAssertEqual(reconciled.map(\.id), ["user-1", "assistant-1"])
+        XCTAssertEqual(reconciled.last?.content, localStreaming.content)
+    }
+
     func testStartAttachmentPollingMarksAttachmentFailedWhenStatusRequestFails() async {
         let cache = TestCacheClient()
         let conversationsAPI = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))
