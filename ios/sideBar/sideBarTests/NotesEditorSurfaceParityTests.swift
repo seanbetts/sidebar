@@ -17,6 +17,53 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         XCTAssertEqual(textView.adjustsFontForContentSizeCategory, false)
     }
 
+    func testMountedReadAndEditorSurfacesLayOutKeyBlocksWithMatchingInsetsAndCharacterRectsOnIOS() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .init(type: .subheading, content: [.init(text: "Subheading", marks: [])]),
+                .paragraph([.init(text: "Body line", marks: [])])
+            ]
+        )
+        let baseFontSize = NoteTextTypography.defaultBodyFontSize
+        let frame = CGRect(x: 0, y: 0, width: 672, height: 420)
+        let canonicalContent = try XCTUnwrap(NotesSemanticDocumentCodec.encode(document))
+        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
+
+        let readTextView = try makeReadTextView(
+            document: document,
+            frame: frame,
+            baseFontSize: baseFontSize,
+            maxContentWidth: frame.width
+        )
+        let editorViewModel = NativeNoteEditorViewModel()
+        editorViewModel.setBaseFontSize(baseFontSize)
+        editorViewModel.loadDocument(
+            canonicalContent: canonicalContent,
+            plainText: plainText
+        )
+        let editorTextView = try mountTextView(
+            viewModel: editorViewModel,
+            formattingBarPresentation: .hidden,
+            maxContentWidth: frame.width,
+            width: frame.width,
+            height: frame.height
+        )
+
+        XCTAssertEqual(readTextView.textContainerInset, editorTextView.textContainerInset)
+
+        for characterIndex in [0, 6, 14, 25] {
+            let readRect = try characterRect(in: readTextView, characterIndex: characterIndex)
+            let editorRect = try characterRect(in: editorTextView, characterIndex: characterIndex)
+
+            XCTAssertEqual(readRect.minX, editorRect.minX, accuracy: 1.0, "characterIndex=\(characterIndex)")
+            XCTAssertEqual(readRect.minY, editorRect.minY, accuracy: 1.0, "characterIndex=\(characterIndex)")
+            XCTAssertEqual(readRect.height, editorRect.height, accuracy: 1.0, "characterIndex=\(characterIndex)")
+        }
+    }
+
     func testConstrainedEditorDocumentAppliesBodyParagraphStyleAcrossBlankFormattedParagraphsOnIOS() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,

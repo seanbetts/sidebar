@@ -662,6 +662,7 @@ private final class SelectableNoteReadTextView: UITextView {
     private var pendingInitialViewportOffset: CGPoint?
     private var pendingInitialViewportAnchorTarget: SelectableNoteReadView.ReadActivationTarget?
     private var pendingInitialViewportAnchorY: CGFloat?
+    private var lastDebugLayoutSummary: String?
 
     override var contentOffset: CGPoint {
         didSet {
@@ -687,6 +688,14 @@ private final class SelectableNoteReadTextView: UITextView {
         updateTextContainerInsets()
         applyInitialViewportOffsetIfNeeded()
         reportViewportOffsetIfNeeded()
+        guard NotesIOSParityDebugTrace.isEnabled else { return }
+        let summary = NotesIOSParityDebugTrace.textViewSummary(self)
+        guard summary != lastDebugLayoutSummary else { return }
+        lastDebugLayoutSummary = summary
+        NotesIOSParityDebugTrace.log(
+            "SelectableNoteReadView.SelectableNoteReadTextView.layoutSubviews",
+            details: summary
+        )
     }
 
     private func updateTextContainerInsets() {

@@ -63,6 +63,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var hasScheduledAutofocus = false
         var suppressAutofocusReveal = false
         private var lastReportedViewportSnapshot: UIKitNoteTextEditorViewportSnapshot?
+        private var lastDebugLayoutSummary: String?
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { setNeedsLayout() }
         }
@@ -103,6 +104,14 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             updateTextContainerInsets()
             updateViewportInsets()
             reportViewportSnapshotIfNeeded()
+            guard NotesIOSParityDebugTrace.isEnabled else { return }
+            let summary = NotesIOSParityDebugTrace.textViewSummary(self)
+            guard summary != lastDebugLayoutSummary else { return }
+            lastDebugLayoutSummary = summary
+            NotesIOSParityDebugTrace.log(
+                "UIKitNoteTextEditorSurface.AccessoryTextView.layoutSubviews",
+                details: summary
+            )
         }
 
         override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {

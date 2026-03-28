@@ -73,6 +73,17 @@ extension NotesDetailView {
     ) {
         guard currentUnsupportedContent == nil else { return }
         #if os(iOS)
+        if NotesIOSParityDebugTrace.isEnabled {
+            NotesIOSParityDebugTrace.log(
+                "NotesDetailView.activateReadSurfaceEditing",
+                details:
+                    "target=\(String(describing: target)) "
+                    + "viewportAnchorY=\(viewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
+                    + NotesIOSParityDebugTrace.documentSummary(currentReadDocument)
+            )
+        }
+        #endif
+        #if os(iOS)
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),
             to: nil,

@@ -56,6 +56,19 @@ struct AttributedNoteEditorContainer: View {
             applyAutosaveDelay(isOffline: environment.isOffline)
             nativeViewModel.isReadOnly = false
             #if os(iOS)
+            if NotesIOSParityDebugTrace.isEnabled {
+                NotesIOSParityDebugTrace.log(
+                    "AttributedNoteEditorContainer.onAppear",
+                    details:
+                        "noteId=\(editorViewModel.currentNoteId ?? "nil") "
+                        + "baseFontSize=\(String(format: "%.2f", editorBaseFontSize)) "
+                        + NotesIOSParityDebugTrace.documentSummary(
+                            nativeViewModel.currentPersistenceSnapshot().document
+                        )
+                )
+            }
+            #endif
+            #if os(iOS)
             onFormattingBarPresentationChange?(resolvedFormattingBarPresentation)
             #endif
         }
@@ -147,6 +160,20 @@ struct AttributedNoteEditorContainer: View {
         if loadedNoteId != previousLoadedNoteId {
             pendingSelectionTarget = editorViewModel.consumePendingEditSelectionTarget()
             pendingSelectionViewportAnchorY = editorViewModel.consumePendingEditViewportAnchorY()
+            #if os(iOS)
+            if NotesIOSParityDebugTrace.isEnabled {
+                NotesIOSParityDebugTrace.log(
+                    "AttributedNoteEditorContainer.loadIfNeeded",
+                    details:
+                        "loadedNoteId=\(loadedNoteId ?? "nil") "
+                        + "pendingSelectionTarget=\(String(describing: pendingSelectionTarget)) "
+                        + "pendingSelectionViewportAnchorY=\(pendingSelectionViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
+                        + NotesIOSParityDebugTrace.documentSummary(
+                            nativeViewModel.currentPersistenceSnapshot().document
+                        )
+                )
+            }
+            #endif
         }
     }
 
@@ -186,6 +213,14 @@ struct AttributedNoteEditorContainer: View {
                 pendingSelectionTarget = nil
             },
             onDidBeginEditing: { textView in
+                if NotesIOSParityDebugTrace.isEnabled {
+                    NotesIOSParityDebugTrace.log(
+                        "AttributedNoteEditorContainer.onDidBeginEditing",
+                        details:
+                            "viewportAnchorY=\(pendingSelectionViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
+                            + NotesIOSParityDebugTrace.textViewSummary(textView)
+                    )
+                }
                 if shouldSkipDidBeginEditingPresentationReady {
                     shouldSkipDidBeginEditingPresentationReady = false
                     textView.suppressAutofocusReveal = false

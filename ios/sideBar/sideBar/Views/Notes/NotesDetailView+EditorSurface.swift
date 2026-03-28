@@ -52,6 +52,19 @@ extension NotesDetailView {
         let resolvedInitialViewportOffset =
             initialViewportOffset ?? editorViewModel.pendingReadSurfaceViewportOffset
         let viewportOffsetHandler = reportsViewportOffsetChanges ? handleReadViewportOffsetChange : nil
+        #if os(iOS)
+        if NotesIOSParityDebugTrace.isEnabled {
+            NotesIOSParityDebugTrace.log(
+                "NotesDetailView.configuredReadSurface",
+                details:
+                    "presentationMode=\(String(describing: editorViewModel.presentationMode)) "
+                    + "initialViewportOffset=\(String(describing: resolvedInitialViewportOffset)) "
+                    + "initialViewportAnchorTarget=\(String(describing: resolvedInitialViewportAnchorTarget)) "
+                    + "initialViewportAnchorY=\(resolvedInitialViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
+                    + NotesIOSParityDebugTrace.documentSummary(currentReadDocument)
+            )
+        }
+        #endif
         return SelectableNoteReadView(
             document: currentReadDocument,
             maxContentWidth: contentMaxWidth,
