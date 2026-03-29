@@ -142,19 +142,6 @@ The iOS client reads derived fields from the API response; it does not recompute
 
 ---
 
-## Development and testing
-
-### Launch argument: `-resetOnboarding`
-
-Forces onboarding to appear regardless of server-side state. Enables mock auth mode: sign-up and OTP verification auto-succeed, any string is accepted as a valid API key.
-
-Additional flags:
-- `-mockAuth`: skip real Supabase calls
-- `-skipVerification`: skip the OTP step
-- `-prefillProfile`: pre-fill name and location with test data
-
----
-
 ## Rules summary
 
 1. **Backend is the source of truth.** All onboarding state is persisted on the backend. iOS renders it; it does not maintain a parallel state machine.
