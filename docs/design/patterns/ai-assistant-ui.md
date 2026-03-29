@@ -47,6 +47,7 @@ Each message is rendered as a bubble. Bubbles share a consistent internal layout
 | Tool pill | Appears in header row when one or more skills were used; tappable to reveal detail |
 | Error pill | Appears in header row when the message has an error status |
 | Retry button | Circular arrow button in header row; only shown on the latest retryable failure |
+| Copy button | Icon button (`doc.on.doc`) in the header row, trailing-aligned. Transitions to `checkmark.circle.fill` with inverted fill for 1.5s on tap, then resets. Disabled and dimmed while the thinking placeholder is visible. Clipboard auto-clears after 30 seconds |
 | Workspace actions | Inline action buttons below content body when the message produced workspace surface targets |
 | Timestamp | Short time string, trailing-aligned below content |
 
