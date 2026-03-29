@@ -19,6 +19,29 @@ enum MacWindowConfiguration {
     static let mainWindowTitle = "sideBar"
 }
 
+#if os(macOS)
+private enum MacStateRestorationGuard {
+    static func purgeSavedApplicationState() {
+        guard let bundleIdentifier = Bundle.main.bundleIdentifier else { return }
+        let fileManager = FileManager.default
+        let libraryDirectory = fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first
+
+        let savedStateDirectories = [
+            libraryDirectory?
+                .appendingPathComponent("Saved Application State", isDirectory: true)
+                .appendingPathComponent("\(bundleIdentifier)~iosmac.savedState", isDirectory: true),
+            libraryDirectory?
+                .appendingPathComponent("Saved Application State", isDirectory: true)
+                .appendingPathComponent("\(bundleIdentifier).savedState", isDirectory: true)
+        ].compactMap { $0 }
+
+        for directory in savedStateDirectories where fileManager.fileExists(atPath: directory.path) {
+            try? fileManager.removeItem(at: directory)
+        }
+    }
+}
+#endif
+
 @main
 struct SideBarApp: App {
     #if os(iOS)
@@ -29,6 +52,9 @@ struct SideBarApp: App {
     @StateObject private var environment: AppEnvironment
 
     init() {
+#if os(macOS)
+        MacStateRestorationGuard.purgeSavedApplicationState()
+#endif
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
         let processEnvironment = ProcessInfo.processInfo.environment
         let forceInMemoryAuthStore = processEnvironment[
@@ -116,6 +142,7 @@ struct SideBarApp: App {
             rootContentView
         }
         .defaultSize(width: 1200, height: 820)
+        .restorationBehavior(.disabled)
         .commands {
             SidebarCommands(environment: environment)
             CommandGroup(replacing: .newItem) {}

@@ -89,12 +89,12 @@ extension LocationPermissionRequester: CLLocationManagerDelegate {
 public final class NotificationPermissionRequester: NotificationPermissionRequesting {
     private let center: UNUserNotificationCenter
     private let requestOptions: UNAuthorizationOptions
-    private let registerForRemoteNotifications: () -> Void
+    private let registerForRemoteNotifications: @MainActor @Sendable () -> Void
 
     public init(
         center: UNUserNotificationCenter = .current(),
         requestOptions: UNAuthorizationOptions = [.badge],
-        registerForRemoteNotifications: @escaping () -> Void = {
+        registerForRemoteNotifications: @escaping @MainActor @Sendable () -> Void = {
 #if os(iOS)
 #if targetEnvironment(simulator)
             return

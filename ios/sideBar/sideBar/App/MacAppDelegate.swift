@@ -13,7 +13,17 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         if let config = try? EnvironmentConfig.load() {
             SentryBootstrap.startIfConfigured(config: config)
         }
-        NSApplication.shared.registerForRemoteNotifications()
+        scheduleRemoteNotificationRegistration()
+    }
+
+    func applicationShouldRestoreApplicationState(_ application: NSApplication) -> Bool {
+        _ = application
+        return false
+    }
+
+    func applicationShouldSaveApplicationState(_ application: NSApplication) -> Bool {
+        _ = application
+        return false
     }
 
     func application(
@@ -64,6 +74,13 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         }
         Self.flushQueuedDeepLinks(using: environment)
         environment.handleDeepLink(url)
+    }
+
+    private func scheduleRemoteNotificationRegistration() {
+        Task { @MainActor in
+            await Task.yield()
+            NSApplication.shared.registerForRemoteNotifications()
+        }
     }
 }
 #endif

@@ -10,6 +10,8 @@ final class MacWindowSceneCoverageTests: XCTestCase {
                 "Window(MacWindowConfiguration.mainWindowTitle,id:MacWindowConfiguration.mainWindowID){rootContentView}"
             )
         )
+        XCTAssertTrue(normalized.contains("MacStateRestorationGuard.purgeSavedApplicationState()"))
+        XCTAssertTrue(normalized.contains(".restorationBehavior(.disabled)"))
         XCTAssertTrue(normalized.contains("CommandGroup(replacing:.newItem){}"))
         XCTAssertFalse(normalized.contains("Settings{"))
     }
@@ -59,6 +61,43 @@ final class MacWindowSceneCoverageTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("NSWindow.allowsAutomaticWindowTabbing=false"))
+    }
+
+    func testMacAppDelegateDefersRemoteNotificationRegistrationUntilAfterLaunch() throws {
+        let normalized = try macAppDelegateSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("scheduleRemoteNotificationRegistration()"))
+        XCTAssertTrue(
+            normalized.contains(
+                "privatefuncscheduleRemoteNotificationRegistration()" +
+                    "{Task{@MainActorinawaitTask.yield()" +
+                    "NSApplication.shared.registerForRemoteNotifications()}}"
+            )
+        )
+    }
+
+    func testMacAppDelegateExplicitlyDisablesStateRestoration() throws {
+        let normalized = try macAppDelegateSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "funcapplicationShouldRestoreApplicationState(_application:NSApplication)->Bool{_=applicationreturnfalse}"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "funcapplicationShouldSaveApplicationState(_application:NSApplication)->Bool{_=applicationreturnfalse}"
+            )
+        )
+    }
+
+    func testMacSubscriptionSetupDoesNotRegisterRemoteNotificationsDuringEnvironmentInit() throws {
+        let normalized = try appEnvironmentSetupSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("#elseifos(macOS)registerForRemoteNotificationsIfNeeded()"))
     }
 }
 
@@ -120,6 +159,27 @@ private func signedInContentSource(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read ContentView+SignedIn.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func appEnvironmentSetupSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("App")
+        .appendingPathComponent("AppEnvironment+Setup.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read AppEnvironment+Setup.swift: \(error)", file: file, line: line)
         throw error
     }
 }
