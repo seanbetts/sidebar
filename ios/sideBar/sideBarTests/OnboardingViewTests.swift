@@ -259,6 +259,34 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
+    func testPermissionActionStateShowsContinueOnlyForGrantedResolvedPermission() {
+        XCTAssertEqual(
+            OnboardingPermissionActionState.resolve(
+                isResolved: true,
+                permissionState: .granted
+            ),
+            OnboardingPermissionActionState(
+                primaryTitle: "Continue",
+                hidesSecondaryAction: true
+            )
+        )
+    }
+
+    @MainActor
+    func testPermissionActionStateKeepsEnableForSkippedResolvedPermission() {
+        XCTAssertEqual(
+            OnboardingPermissionActionState.resolve(
+                isResolved: true,
+                permissionState: .notAsked
+            ),
+            OnboardingPermissionActionState(
+                primaryTitle: "Enable",
+                hidesSecondaryAction: false
+            )
+        )
+    }
+
+    @MainActor
     func testOnboardingViewCanRenderLocationStep() {
         XCTAssertEqual(
             OnboardingView.contentKind(for: .locationPermission),

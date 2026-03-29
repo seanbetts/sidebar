@@ -1,5 +1,27 @@
 import SwiftUI
 
+struct OnboardingPermissionActionState: Equatable {
+    let primaryTitle: String
+    let hidesSecondaryAction: Bool
+
+    static func resolve(
+        isResolved: Bool,
+        permissionState: OnboardingPermissionState
+    ) -> OnboardingPermissionActionState {
+        if isResolved && permissionState == .granted {
+            return OnboardingPermissionActionState(
+                primaryTitle: "Continue",
+                hidesSecondaryAction: true
+            )
+        }
+
+        return OnboardingPermissionActionState(
+            primaryTitle: "Enable",
+            hidesSecondaryAction: false
+        )
+    }
+}
+
 struct OnboardingBottomAreaView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let layoutMode: OnboardingLayoutMode
@@ -73,13 +95,19 @@ struct OnboardingBottomAreaView: View {
             }
         case .locationPermission:
             permissionArea(
-                isResolved: viewModel.isLocationPermissionResolved,
+                actionState: OnboardingPermissionActionState.resolve(
+                    isResolved: viewModel.isLocationPermissionResolved,
+                    permissionState: viewModel.locationPermissionState
+                ),
                 primaryAction: continueOrEnableLocation,
                 secondaryAction: skipLocationPermission
             )
         case .notificationsPermission:
             permissionArea(
-                isResolved: viewModel.isNotificationsPermissionResolved,
+                actionState: OnboardingPermissionActionState.resolve(
+                    isResolved: viewModel.isNotificationsPermissionResolved,
+                    permissionState: viewModel.notificationsPermissionState
+                ),
                 primaryAction: continueOrEnableNotifications,
                 secondaryAction: skipNotificationsPermission
             )
@@ -108,22 +136,22 @@ struct OnboardingBottomAreaView: View {
 
     @ViewBuilder
     private func permissionArea(
-        isResolved: Bool,
+        actionState: OnboardingPermissionActionState,
         primaryAction: @escaping () -> Void,
         secondaryAction: @escaping () -> Void
     ) -> some View {
         progressContainer {
             OnboardingActionArea(
                 layoutMode: layoutMode,
-                reservesSecondarySpace: isResolved
+                reservesSecondarySpace: actionState.hidesSecondaryAction
             ) {
                 Button(action: primaryAction, label: {
-                    primaryLabel(isResolved ? "Continue" : "Enable", showsProgress: viewModel.isLoading)
+                    primaryLabel(actionState.primaryTitle, showsProgress: viewModel.isLoading)
                 })
                 .buttonStyle(OnboardingPrimaryButtonStyle())
                 .disabled(viewModel.isLoading)
             } secondary: {
-                if isResolved {
+                if actionState.hidesSecondaryAction {
                     hiddenSecondaryLabel
                 } else {
                     Button("Not now", action: secondaryAction)
@@ -194,7 +222,7 @@ struct OnboardingBottomAreaView: View {
     }
 
     private func continueOrEnableLocation() {
-        if viewModel.isLocationPermissionResolved {
+        if viewModel.isLocationPermissionResolved && viewModel.locationPermissionState == .granted {
             viewModel.advance(from: .locationPermission)
         } else {
             Task { await viewModel.enableLocationPermission() }
@@ -206,7 +234,7 @@ struct OnboardingBottomAreaView: View {
     }
 
     private func continueOrEnableNotifications() {
-        if viewModel.isNotificationsPermissionResolved {
+        if viewModel.isNotificationsPermissionResolved && viewModel.notificationsPermissionState == .granted {
             viewModel.advance(from: .notificationsPermission)
         } else {
             Task { await viewModel.enableNotificationsPermission() }

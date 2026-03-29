@@ -282,7 +282,7 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     public func enableLocationPermission() async {
-        guard !isLocationPermissionResolved else {
+        guard !(isLocationPermissionResolved && locationPermissionState == .granted) else {
             advance()
             return
         }
@@ -296,7 +296,7 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     public func enableNotificationsPermission() async {
-        guard !isNotificationsPermissionResolved else {
+        guard !(isNotificationsPermissionResolved && notificationsPermissionState == .granted) else {
             advance()
             return
         }

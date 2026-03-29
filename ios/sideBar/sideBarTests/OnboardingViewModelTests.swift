@@ -480,6 +480,54 @@ final class OnboardingViewModelTests: XCTestCase {
         )
     }
 
+    func testSkippedLocationPermissionCanBeRequestedWhenRevisited() async {
+        let onboardingAPI = MockOnboardingAPI()
+        let locationRequester = MockLocationPermissionRequester()
+        locationRequester.requestResult = .granted
+        let viewModel = makeViewModel(
+            onboardingAPI: onboardingAPI,
+            locationPermissionRequester: locationRequester,
+            notificationsPermissionRequester: MockNotificationPermissionRequester()
+        )
+        viewModel.currentStep = .locationPermission
+
+        await viewModel.skipLocationPermission()
+        viewModel.goBack()
+        await viewModel.enableLocationPermission()
+
+        XCTAssertEqual(locationRequester.requestCount, 1)
+        XCTAssertEqual(viewModel.locationPermissionState, .granted)
+        XCTAssertEqual(viewModel.currentStep, .notificationsPermission)
+        XCTAssertEqual(
+            onboardingAPI.updates.compactMap(\.locationPermission),
+            [.notAsked, .granted]
+        )
+    }
+
+    func testSkippedNotificationsPermissionCanBeRequestedWhenRevisited() async {
+        let onboardingAPI = MockOnboardingAPI()
+        let notificationsRequester = MockNotificationPermissionRequester()
+        notificationsRequester.requestResult = .granted
+        let viewModel = makeViewModel(
+            onboardingAPI: onboardingAPI,
+            locationPermissionRequester: MockLocationPermissionRequester(),
+            notificationsPermissionRequester: notificationsRequester
+        )
+        viewModel.currentStep = .notificationsPermission
+
+        await viewModel.skipNotificationsPermission()
+        viewModel.goBack()
+        await viewModel.enableNotificationsPermission()
+
+        XCTAssertEqual(notificationsRequester.requestCount, 1)
+        XCTAssertEqual(viewModel.notificationsPermissionState, .granted)
+        XCTAssertEqual(viewModel.currentStep, .finalStep)
+        XCTAssertEqual(
+            onboardingAPI.updates.compactMap(\.notificationsPermission),
+            [.notAsked, .granted]
+        )
+    }
+
     func testTestingModeSkipsRealAuth() async {
         let viewModel = retain(OnboardingViewModel(
             authSession: MockAuthSessionForOnboarding(),
