@@ -20,11 +20,11 @@ Define how sideBar handles incoming context from outside the main app process â€
 
 | Type | Entry point | Trigger | Auth required |
 |---|---|---|---|
-| Extension save | `ExtensionEventStore` / `PendingShareStore` | Share or Safari extension records a save | Active |
-| Widget intent | `WidgetDataManager` | Widget button tap (add task, add note, complete task) | Active |
+| Extension save | `ExtensionEventStore` / `PendingShareStore` | Share or Safari extension records a save | Active (deferred until auth resolves) |
+| Widget intent | `WidgetDataManager` | Widget button tap (add task, add note, complete task) | Active (deferred until auth resolves) |
 | Deep link | `onOpenURL` / `scene(_:openURLContexts:)` | URL scheme link from any source | Active (deferred until auth resolves) |
 | Spotlight | `scene(_:continue:)` with `NSUserActivity` | User taps a Spotlight search result | Active (deferred until auth resolves) |
-| Push notification | `didReceiveRemoteNotification` | Server-sent remote notification | Active |
+| Push notification | `didReceiveRemoteNotification` | Server-sent remote notification | Active (deferred until auth resolves) |
 
 ---
 
