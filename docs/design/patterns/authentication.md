@@ -45,7 +45,7 @@ On launch, the app determines initial auth state before showing any content:
 
 **Rule**: `signedOut` always shows the login screen — no exceptions, no partial access. Any transition to `signedOut`, whether from sign-out, token expiry, or failed session restore, must result in the login screen being shown and all user data cleared.
 
-The app must not show a blank main UI while auth state is being determined. Show a loading state or the login screen until the initial state is resolved.
+While auth state is being determined on launch, show a neutral loading state — not the login screen. The login screen only appears once auth state has resolved to `signedOut`. Showing login prematurely would interrupt users who are simply returning to an active or stale session.
 
 ### Token refresh
 
@@ -158,15 +158,29 @@ The sign-out wipe is intentionally thorough — no data from the previous sessio
 
 ---
 
-## Deep link handling
+## Deferred actions
 
-Deep links that arrive while the app is not in `.active` state must be deferred, not silently dropped:
+Some user-initiated operations arrive while auth state is not fully resolved. These must be deferred until auth completes, not silently dropped.
+
+### Deep links
+
+Deep links that arrive while the app is not in `.active` state:
 
 - If the app is loading (auth state not yet determined): queue the deep link and process after auth resolves
 - If `signedOut`: complete sign-in, then process the queued deep link
 - If biometric lock is showing: complete biometric auth, then process the deep link
 
 **Rule**: Deep links must never route to feature content before auth is complete. Silent failure (routing to a blank/loading screen) is not acceptable.
+
+### Website saves (share extension and Safari extension)
+
+A save triggered from the share sheet or Safari extension may arrive when the app is `signedOut`, locked, or loading. The save must be queued and completed once auth resolves — it must not be silently discarded.
+
+- If `signedOut`: queue the save, complete sign-in, then process it
+- If biometric lock is showing: queue the save, complete biometric auth, then process it
+- If `.stale`: process immediately using the cached session; sync when connectivity returns
+
+Unlike deep links, website saves do not require navigation after completion. The user should receive a confirmation (toast or notification) once the save completes, but is not routed into the app unless they tap the confirmation.
 
 ---
 
@@ -209,7 +223,7 @@ The web app has no biometric lock (no API equivalent in browsers), no offline ac
 3. **Always provide a manual retry for `.stale` state.** Do not rely solely on background/foreground transitions to recover.
 4. **Rate limiting must be persisted.** In-memory lockout provides no meaningful protection against brute force.
 5. **Offline window must be backed by Keychain.** Do not rely on UserDefaults for security-relevant timestamps.
-6. **Deep links are deferred, never silently dropped.** Auth must complete before feature content is shown.
+6. **Deferred actions are queued, never silently dropped.** Deep links and website saves must be held until auth completes, then processed.
 7. **Biometric lock always has an exit path.** Passcode fallback and sign-out must always be available.
 8. **Sign-out is complete.** All user data is cleared. No partial sign-out.
 9. **Auth errors clear automatically on recovery.** Do not leave stale error toasts after the session is restored.
