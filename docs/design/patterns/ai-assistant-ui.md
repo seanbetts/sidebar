@@ -5,7 +5,7 @@ description: Visual and interaction patterns for assistant-driven and AI-support
 
 | Field | Value |
 |---|---|
-| Status | draft |
+| Status | approved |
 | Owner | both |
 | Outputs | this doc |
 | Dependencies | [navigation](./navigation), [handoffs](./handoffs), [wait-ux](./wait-ux), [feedback-and-haptics](./feedback-and-haptics) |

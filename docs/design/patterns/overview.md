@@ -24,7 +24,7 @@ Document the repeated interaction patterns that sit above individual components 
 | [Wait UX](./wait-ux) | approved |
 | [Onboarding](./onboarding) | partial |
 | [Handoffs](./handoffs) | approved |
-| [AI Assistant UI](./ai-assistant-ui) | draft |
+| [AI Assistant UI](./ai-assistant-ui) | approved |
 
 ## Related docs
 
