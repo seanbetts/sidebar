@@ -40,7 +40,6 @@ public struct LoginView: View {
         ZStack {
             VStack(spacing: 24) {
                 headerView
-
                 GroupBox {
                     VStack(alignment: .leading, spacing: 16) {
                         VStack(alignment: .leading, spacing: 12) {
@@ -49,10 +48,10 @@ public struct LoginView: View {
                         }
                         errorView
                         signInButton
-                        onboardingEntryView
                     }
                 }
                 .groupBoxStyle(LoginGroupBoxStyle())
+                onboardingEntryView
             }
             .frame(maxWidth: 420)
             .padding(DesignTokens.Spacing.xl)
@@ -111,7 +110,7 @@ public struct LoginView: View {
                 Text("Everything you need in one place, endlessly extensible with skills.")
             }
             .appFont(.subheadline)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.primary)
             .multilineTextAlignment(.center)
             .padding(.horizontal, DesignTokens.Spacing.sm)
         }

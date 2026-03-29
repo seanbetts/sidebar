@@ -31,7 +31,7 @@ struct LoginManualSignUpPrompt: View {
         Button("Don't have an account yet? Sign Up", action: action)
             .buttonStyle(.plain)
             .font(.subheadline)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.primary)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 2)
     }

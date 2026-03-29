@@ -14,17 +14,11 @@ struct AddApiKeyStepView: View {
                     .frame(height: layoutMode.topSpacing)
 
                 if let provider = viewModel.selectedProvider {
-                    Image(provider.onboardingLogoAssetName)
-                        .resizable()
-                        .renderingMode(.original)
-                        .scaledToFit()
-                        .frame(width: 40, height: 40)
-                        .frame(width: 64, height: 64)
-                        .background(DesignTokens.Colors.muted)
-                        .clipShape(RoundedRectangle(
-                            cornerRadius: DesignTokens.Radius.md,
-                            style: .continuous
-                        ))
+                    OnboardingProviderLogoBadge(
+                        provider: provider,
+                        logoSize: 40,
+                        containerSize: 64
+                    )
                         .padding(.bottom, layoutMode.iconBottomSpacing)
                 } else {
                     Image(systemName: "key.horizontal")

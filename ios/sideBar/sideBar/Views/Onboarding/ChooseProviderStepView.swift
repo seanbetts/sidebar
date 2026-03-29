@@ -67,14 +67,11 @@ struct ChooseProviderStepView: View {
             viewModel.selectedProvider = provider
         }, label: {
             HStack(spacing: DesignTokens.Spacing.md) {
-                Image(provider.onboardingLogoAssetName)
-                    .resizable()
-                    .renderingMode(.original)
-                    .scaledToFit()
-                    .frame(width: 26, height: 26)
-                    .frame(width: 40, height: 40)
-                    .background(DesignTokens.Colors.muted)
-                    .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous))
+                OnboardingProviderLogoBadge(
+                    provider: provider,
+                    logoSize: 26,
+                    containerSize: 40
+                )
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(provider.displayName)
