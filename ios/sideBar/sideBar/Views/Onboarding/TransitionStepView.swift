@@ -4,12 +4,13 @@ import SwiftUI
 struct TransitionStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let dismiss: DismissAction
+    let layoutMode: OnboardingLayoutMode
 
     var body: some View {
-        OnboardingStepScaffold {
+        OnboardingStepScaffold(layoutMode: layoutMode) {
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: DesignTokens.Spacing.xxl * 2)
+                    .frame(height: layoutMode.topSpacing * 1.5)
 
                 ZStack {
                     Circle()
@@ -19,13 +20,13 @@ struct TransitionStepView: View {
                         .font(.system(size: 32, weight: .semibold))
                         .foregroundStyle(.primary)
                 }
-                .padding(.bottom, DesignTokens.Spacing.lg)
+                .padding(.bottom, layoutMode.linkSpacing)
 
                 Text("You're All Set")
                     .font(.system(size: 28, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.xs)
+                    .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text("I'm connected and ready to go.\nLet me show you around.")
                     .font(.subheadline)
@@ -34,7 +35,7 @@ struct TransitionStepView: View {
 
                 Spacer()
             }
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
+            .padding(.horizontal, layoutMode.horizontalPadding)
         }
     }
 }

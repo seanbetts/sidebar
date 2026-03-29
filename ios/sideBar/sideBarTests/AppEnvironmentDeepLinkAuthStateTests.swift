@@ -43,6 +43,71 @@ extension AppEnvironmentDeepLinkTests {
         assertStorageStateCleared(environment)
     }
 
+#if os(iOS)
+    func testEnableNotificationsRequestsAuthorizationWhenStatusIsNotDetermined() async {
+        let environment = requireEnvironment()
+        var requestCount = 0
+        var registerCount = 0
+
+        let isEnabled = await environment.enableNotificationsIfNeeded(
+            notificationSettings: { completion in completion(.notDetermined) },
+            requestAuthorization: { completion in
+                requestCount += 1
+                completion(true)
+            },
+            registerForRemoteNotifications: {
+                registerCount += 1
+            }
+        )
+
+        XCTAssertTrue(isEnabled)
+        XCTAssertEqual(requestCount, 1)
+        XCTAssertEqual(registerCount, 1)
+    }
+
+    func testEnableNotificationsRegistersImmediatelyWhenAlreadyAuthorized() async {
+        let environment = requireEnvironment()
+        var requestCount = 0
+        var registerCount = 0
+
+        let isEnabled = await environment.enableNotificationsIfNeeded(
+            notificationSettings: { completion in completion(.authorized) },
+            requestAuthorization: { completion in
+                requestCount += 1
+                completion(true)
+            },
+            registerForRemoteNotifications: {
+                registerCount += 1
+            }
+        )
+
+        XCTAssertTrue(isEnabled)
+        XCTAssertEqual(requestCount, 0)
+        XCTAssertEqual(registerCount, 1)
+    }
+
+    func testEnableNotificationsDoesNothingWhenDenied() async {
+        let environment = requireEnvironment()
+        var requestCount = 0
+        var registerCount = 0
+
+        let isEnabled = await environment.enableNotificationsIfNeeded(
+            notificationSettings: { completion in completion(.denied) },
+            requestAuthorization: { completion in
+                requestCount += 1
+                completion(true)
+            },
+            registerForRemoteNotifications: {
+                registerCount += 1
+            }
+        )
+
+        XCTAssertFalse(isEnabled)
+        XCTAssertEqual(requestCount, 0)
+        XCTAssertEqual(registerCount, 0)
+    }
+#endif
+
     private func primeEnvironmentForSignOutReset(_ environment: AppEnvironment) {
         environment.authState = .active
         environment.commandSelection = .tasks

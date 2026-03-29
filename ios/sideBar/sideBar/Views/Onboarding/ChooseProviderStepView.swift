@@ -3,6 +3,7 @@ import SwiftUI
 /// Step 5 of onboarding for primary provider selection.
 struct ChooseProviderStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
+    let layoutMode: OnboardingLayoutMode
 
     private struct ProviderOption: Identifiable {
         let provider: AIPrimaryProvider
@@ -19,29 +20,29 @@ struct ChooseProviderStepView: View {
     ]
 
     var body: some View {
-        OnboardingStepScaffold {
+        OnboardingStepScaffold(layoutMode: layoutMode) {
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: DesignTokens.Spacing.xxl)
+                    .frame(height: layoutMode.topSpacing)
 
                 Image(systemName: "cpu")
                     .font(.system(size: 48))
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.md)
+                    .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 Text("Pick Your AI Brain")
                     .font(.system(size: 28, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.xs)
+                    .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text("Choose which AI powers me. You can switch anytime in Settings.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.bottom, DesignTokens.Spacing.xl)
+                    .padding(.bottom, layoutMode.subtitleBottomSpacing)
 
-                VStack(spacing: DesignTokens.Spacing.sm) {
+                VStack(spacing: layoutMode.sectionSpacing) {
                     ForEach(providers) { option in
                         providerCard(
                             provider: option.provider,
@@ -54,7 +55,7 @@ struct ChooseProviderStepView: View {
 
                 Spacer()
             }
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
+            .padding(.horizontal, layoutMode.horizontalPadding)
         }
     }
 

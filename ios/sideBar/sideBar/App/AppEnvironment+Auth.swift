@@ -46,7 +46,7 @@ extension AppEnvironment {
             reconcileCacheScopeForAuthenticatedUser()
             biometricMonitor.startMonitoring()
             if authState == .active {
-                currentLocationViewModel.startTracking()
+                currentLocationViewModel.startTrackingIfAuthorized()
             }
             #if os(iOS) || os(macOS)
             if authState == .active {

@@ -201,8 +201,6 @@ extension AppEnvironment {
 
     private func setupTaskBadgeUpdates() {
 #if os(iOS)
-        requestBadgeAuthorizationIfNeeded()
-        registerForRemoteNotificationsIfNeeded()
         Publishers.CombineLatest($authState, tasksStore.$counts)
             .receive(on: DispatchQueue.main)
             .sink { authState, counts in
@@ -222,12 +220,4 @@ extension AppEnvironment {
         ingestionStore.resetBackgroundRefreshBackoff()
     }
 
-#if os(iOS)
-    private func requestBadgeAuthorizationIfNeeded() {
-        let key = "sideBar.didRequestBadgePermission"
-        guard !storage.userDefaults.bool(forKey: key) else { return }
-        storage.userDefaults.set(true, forKey: key)
-        UNUserNotificationCenter.current().requestAuthorization(options: [.badge]) { _, _ in }
-    }
-#endif
 }

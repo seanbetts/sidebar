@@ -3,30 +3,31 @@ import SwiftUI
 /// Step 6 of onboarding for BYOK setup.
 struct AddApiKeyStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
+    let layoutMode: OnboardingLayoutMode
     @FocusState private var keyFieldFocused: Bool
 
     var body: some View {
-        OnboardingStepScaffold {
+        OnboardingStepScaffold(layoutMode: layoutMode) {
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: DesignTokens.Spacing.xxl)
+                    .frame(height: layoutMode.topSpacing)
 
                 Image(systemName: "key.horizontal")
                     .font(.system(size: 48))
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.md)
+                    .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 Text("Connect Me")
                     .font(.system(size: 28, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.xs)
+                    .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text(viewModel.addApiKeySubtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.bottom, DesignTokens.Spacing.lg)
+                    .padding(.bottom, layoutMode.linkSpacing)
 
                 if let url = viewModel.providerHelpURL {
                     Link(destination: url, label: {
@@ -39,7 +40,7 @@ struct AddApiKeyStepView: View {
                         .foregroundStyle(.secondary)
                         .underline()
                     })
-                    .padding(.bottom, DesignTokens.Spacing.lg)
+                    .padding(.bottom, layoutMode.linkSpacing)
                 }
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
@@ -52,12 +53,16 @@ struct AddApiKeyStepView: View {
 #if canImport(UIKit)
                         .textInputAutocapitalization(.never)
 #endif
-                .frame(maxWidth: 310)
                         .autocorrectionDisabled()
                         .padding(DesignTokens.Spacing.sm)
                         .background(DesignTokens.Colors.surface)
                         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
                         .focused($keyFieldFocused)
+                        .submitLabel(.continue)
+                        .onSubmit {
+                            guard !viewModel.trimmedApiKey.isEmpty && !viewModel.isLoading else { return }
+                            Task { await viewModel.validateAndSaveApiKey() }
+                        }
                 }
                 .frame(maxWidth: 310)
 
@@ -65,7 +70,7 @@ struct AddApiKeyStepView: View {
                     Text(error)
                         .font(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
-                        .padding(.top, DesignTokens.Spacing.sm)
+                        .padding(.top, layoutMode.sectionSpacing)
                 }
 
                 let providerName = viewModel.selectedProvider?.displayName ?? "your provider"
@@ -77,11 +82,11 @@ struct AddApiKeyStepView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 310)
-                    .padding(.top, DesignTokens.Spacing.sm)
+                    .padding(.top, layoutMode.sectionSpacing)
 
                 Spacer()
             }
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
+            .padding(.horizontal, layoutMode.horizontalPadding)
         }
         .onAppear {
             keyFieldFocused = true

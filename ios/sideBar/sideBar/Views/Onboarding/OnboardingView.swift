@@ -1,9 +1,13 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Container for the Phase 1 onboarding wizard.
 struct OnboardingView: View {
     @StateObject private var viewModel: OnboardingViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var isSoftwareKeyboardVisible = false
     let onRouteToSignIn: () -> Void
 
     init(
@@ -33,8 +37,11 @@ struct OnboardingView: View {
                 .contentShape(Rectangle())
                 .simultaneousGesture(backSwipeGesture)
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            topChrome
+        .overlay(alignment: .topLeading) {
+            if showsBackButton {
+                backButton
+                    .padding(.top, DesignTokens.Spacing.xs)
+            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             bottomArea
@@ -45,26 +52,41 @@ struct OnboardingView: View {
             onRouteToSignIn()
             dismiss()
         }
+#if canImport(UIKit)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isSoftwareKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isSoftwareKeyboardVisible = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
+            isSoftwareKeyboardVisible = false
+        }
+#endif
     }
 
     @ViewBuilder
     private var stepContent: some View {
         switch viewModel.currentStep {
         case .welcome:
-            WelcomeStepView(viewModel: viewModel)
+            WelcomeStepView(viewModel: viewModel, layoutMode: layoutMode)
         case .createAccount:
-            CreateAccountStepView(viewModel: viewModel)
+            CreateAccountStepView(viewModel: viewModel, layoutMode: layoutMode)
         case .verifyEmail:
-            VerifyEmailStepView(viewModel: viewModel)
+            VerifyEmailStepView(viewModel: viewModel, layoutMode: layoutMode)
         case .profile:
-            ProfileStepView(viewModel: viewModel)
+            ProfileStepView(viewModel: viewModel, layoutMode: layoutMode)
         case .chooseProvider:
-            ChooseProviderStepView(viewModel: viewModel)
+            ChooseProviderStepView(viewModel: viewModel, layoutMode: layoutMode)
         case .addApiKey:
-            AddApiKeyStepView(viewModel: viewModel)
+            AddApiKeyStepView(viewModel: viewModel, layoutMode: layoutMode)
         case .transition:
-            TransitionStepView(viewModel: viewModel, dismiss: dismiss)
+            TransitionStepView(viewModel: viewModel, dismiss: dismiss, layoutMode: layoutMode)
         }
+    }
+
+    private var layoutMode: OnboardingLayoutMode {
+        isSoftwareKeyboardVisible ? .compact : .regular
     }
 
     private var showsBackButton: Bool {
@@ -72,30 +94,20 @@ struct OnboardingView: View {
     }
 
     @ViewBuilder
-    private var topChrome: some View {
-        if showsBackButton {
-            backButton
-        } else {
-            Color.clear
-                .frame(height: DesignTokens.Size.touchTarget)
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-        }
-    }
-
-    @ViewBuilder
     private var bottomArea: some View {
         switch viewModel.currentStep {
         case .welcome:
             OnboardingBottomArea(
+                layoutMode: layoutMode,
                 totalSteps: viewModel.totalSteps,
                 currentStep: viewModel.currentStepIndex
             ) {
-                OnboardingActionArea {
+                OnboardingActionArea(layoutMode: layoutMode) {
                     Button(action: { viewModel.advance() }, label: {
                         Text("Get Started")
                             .font(.body.weight(.semibold))
                             .frame(maxWidth: 310)
-                            .padding(.vertical, DesignTokens.Spacing.md)
+                            .padding(.vertical, layoutMode.buttonVerticalPadding)
                     })
                     .buttonStyle(OnboardingPrimaryButtonStyle())
                 } secondary: {
@@ -108,10 +120,11 @@ struct OnboardingView: View {
             }
         case .createAccount:
             OnboardingBottomArea(
+                layoutMode: layoutMode,
                 totalSteps: viewModel.totalSteps,
                 currentStep: viewModel.currentStepIndex
             ) {
-                OnboardingActionArea(reservesSecondarySpace: true) {
+                OnboardingActionArea(layoutMode: layoutMode, reservesSecondarySpace: true) {
                     Button(action: {
                         Task { await viewModel.createAccount() }
                     }, label: {
@@ -125,7 +138,7 @@ struct OnboardingView: View {
                             }
                         }
                         .frame(maxWidth: 310)
-                        .padding(.vertical, DesignTokens.Spacing.md)
+                        .padding(.vertical, layoutMode.buttonVerticalPadding)
                     })
                     .buttonStyle(OnboardingPrimaryButtonStyle())
                     .disabled(!viewModel.isCreateAccountValid || viewModel.isLoading)
@@ -139,6 +152,7 @@ struct OnboardingView: View {
             }
         case .verifyEmail:
             OnboardingBottomArea(
+                layoutMode: layoutMode,
                 totalSteps: viewModel.totalSteps,
                 currentStep: viewModel.currentStepIndex
             ) {
@@ -146,17 +160,18 @@ struct OnboardingView: View {
             }
         case .profile:
             OnboardingBottomArea(
+                layoutMode: layoutMode,
                 totalSteps: viewModel.totalSteps,
                 currentStep: viewModel.currentStepIndex
             ) {
-                OnboardingActionArea {
+                OnboardingActionArea(layoutMode: layoutMode) {
                     Button(action: {
                         Task { await viewModel.saveProfile() }
                     }, label: {
                         Text("Continue")
                             .font(.body.weight(.semibold))
                             .frame(maxWidth: 310)
-                            .padding(.vertical, DesignTokens.Spacing.md)
+                            .padding(.vertical, layoutMode.buttonVerticalPadding)
                     })
                     .buttonStyle(OnboardingPrimaryButtonStyle())
                 } secondary: {
@@ -169,15 +184,16 @@ struct OnboardingView: View {
             }
         case .chooseProvider:
             OnboardingBottomArea(
+                layoutMode: layoutMode,
                 totalSteps: viewModel.totalSteps,
                 currentStep: viewModel.currentStepIndex
             ) {
-                OnboardingActionArea {
+                OnboardingActionArea(layoutMode: layoutMode) {
                     Button(action: { viewModel.advance() }, label: {
                         Text("Continue")
                             .font(.body.weight(.semibold))
                             .frame(maxWidth: 310)
-                            .padding(.vertical, DesignTokens.Spacing.md)
+                            .padding(.vertical, layoutMode.buttonVerticalPadding)
                     })
                     .buttonStyle(OnboardingPrimaryButtonStyle())
                     .disabled(viewModel.selectedProvider == nil)
@@ -192,10 +208,11 @@ struct OnboardingView: View {
             }
         case .addApiKey:
             OnboardingBottomArea(
+                layoutMode: layoutMode,
                 totalSteps: viewModel.totalSteps,
                 currentStep: viewModel.currentStepIndex
             ) {
-                OnboardingActionArea {
+                OnboardingActionArea(layoutMode: layoutMode) {
                     Button(action: {
                         Task { await viewModel.validateAndSaveApiKey() }
                     }, label: {
@@ -209,7 +226,7 @@ struct OnboardingView: View {
                             }
                         }
                         .frame(maxWidth: 310)
-                        .padding(.vertical, DesignTokens.Spacing.md)
+                        .padding(.vertical, layoutMode.buttonVerticalPadding)
                     })
                     .buttonStyle(OnboardingPrimaryButtonStyle())
                     .disabled(viewModel.trimmedApiKey.isEmpty || viewModel.isLoading)
@@ -224,10 +241,11 @@ struct OnboardingView: View {
             }
         case .transition:
             OnboardingBottomArea(
+                layoutMode: layoutMode,
                 totalSteps: viewModel.totalSteps,
                 currentStep: viewModel.currentStepIndex
             ) {
-                OnboardingActionArea(reservesSecondarySpace: true) {
+                OnboardingActionArea(layoutMode: layoutMode, reservesSecondarySpace: true) {
                     Button(action: {
                         Task {
                             await viewModel.completeOnboarding()
@@ -237,7 +255,7 @@ struct OnboardingView: View {
                         Text("Meet sideBar")
                             .font(.body.weight(.semibold))
                             .frame(maxWidth: 310)
-                            .padding(.vertical, DesignTokens.Spacing.md)
+                            .padding(.vertical, layoutMode.buttonVerticalPadding)
                     })
                     .buttonStyle(OnboardingPrimaryButtonStyle())
                 } secondary: {
@@ -263,20 +281,16 @@ struct OnboardingView: View {
     }
 
     private var backButton: some View {
-        HStack {
-            Button(action: { viewModel.goBack() }, label: {
-                HStack(spacing: DesignTokens.Spacing.xxs) {
-                    Image(systemName: "chevron.left")
-                        .font(.body.weight(.semibold))
-                    Text("Back")
-                        .font(.body)
-                }
-                .foregroundStyle(.primary)
-            })
-            .frame(height: DesignTokens.Size.touchTarget)
-            .padding(.horizontal, DesignTokens.Spacing.lg)
-
-            Spacer()
-        }
+        Button(action: { viewModel.goBack() }, label: {
+            HStack(spacing: DesignTokens.Spacing.xxs) {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.semibold))
+                Text("Back")
+                    .font(.body)
+            }
+            .foregroundStyle(.primary)
+        })
+        .frame(height: DesignTokens.Size.touchTarget)
+        .padding(.horizontal, DesignTokens.Spacing.lg)
     }
 }

@@ -5,6 +5,18 @@ import XCTest
 
 @MainActor
 final class CurrentLocationViewModelTests: XCTestCase {
+    func testInitializationDoesNotRequestAuthorizationFromInitialStatusEmission() async {
+        let provider = MockCurrentLocationProvider(status: .notDetermined)
+        _ = CurrentLocationViewModel(
+            provider: provider,
+            labelResolver: MockCurrentLocationLabelResolver(label: "Tignes, France")
+        )
+
+        await waitForAsyncUpdates()
+
+        XCTAssertEqual(provider.requestWhenInUseAuthorizationCallCount, 0)
+    }
+
     func testStartTrackingRequestsAuthorizationWhenNotDetermined() {
         let provider = MockCurrentLocationProvider(status: .notDetermined)
         let viewModel = CurrentLocationViewModel(
@@ -29,6 +41,33 @@ final class CurrentLocationViewModelTests: XCTestCase {
 
         XCTAssertEqual(provider.startUpdatingLocationCallCount, 1)
         XCTAssertEqual(provider.requestWhenInUseAuthorizationCallCount, 0)
+    }
+
+    func testStartTrackingIfAuthorizedDoesNotRequestAuthorizationWhenNotDetermined() {
+        let provider = MockCurrentLocationProvider(status: .notDetermined)
+        let viewModel = CurrentLocationViewModel(
+            provider: provider,
+            labelResolver: MockCurrentLocationLabelResolver(label: "Tignes, France")
+        )
+
+        viewModel.startTrackingIfAuthorized()
+
+        XCTAssertEqual(provider.requestWhenInUseAuthorizationCallCount, 0)
+        XCTAssertEqual(provider.startUpdatingLocationCallCount, 0)
+        XCTAssertEqual(provider.stopUpdatingLocationCallCount, 1)
+    }
+
+    func testStartTrackingIfAuthorizedBeginsUpdatesWhenAuthorized() {
+        let provider = MockCurrentLocationProvider(status: authorizedLocationStatus)
+        let viewModel = CurrentLocationViewModel(
+            provider: provider,
+            labelResolver: MockCurrentLocationLabelResolver(label: "Tignes, France")
+        )
+
+        viewModel.startTrackingIfAuthorized()
+
+        XCTAssertEqual(provider.requestWhenInUseAuthorizationCallCount, 0)
+        XCTAssertEqual(provider.startUpdatingLocationCallCount, 1)
     }
 
     func testDeniedAuthorizationClearsCurrentLocation() async {
@@ -114,7 +153,7 @@ final class CurrentLocationViewModelTests: XCTestCase {
 private final class MockCurrentLocationProvider: CurrentLocationProviding {
     var authorizationStatus: CLAuthorizationStatus
 
-    private let authorizationSubject = PassthroughSubject<CLAuthorizationStatus, Never>()
+    private let authorizationSubject: CurrentValueSubject<CLAuthorizationStatus, Never>
     private let locationSubject = PassthroughSubject<CLLocation, Never>()
 
     var authorizationStatusPublisher: AnyPublisher<CLAuthorizationStatus, Never> {
@@ -131,6 +170,7 @@ private final class MockCurrentLocationProvider: CurrentLocationProviding {
 
     init(status: CLAuthorizationStatus) {
         self.authorizationStatus = status
+        self.authorizationSubject = CurrentValueSubject(status)
     }
 
     func requestWhenInUseAuthorization() {

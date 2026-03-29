@@ -3,36 +3,37 @@ import SwiftUI
 /// Step 3 of onboarding for OTP verification.
 struct VerifyEmailStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
+    let layoutMode: OnboardingLayoutMode
     @State private var otpDigits = Array(repeating: "", count: 6)
     @FocusState private var focusedIndex: Int?
     @State private var resendCooldown = 0
 
     var body: some View {
-        OnboardingStepScaffold {
+        OnboardingStepScaffold(layoutMode: layoutMode) {
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: DesignTokens.Spacing.xxl)
+                    .frame(height: layoutMode.topSpacing)
 
                 Image(systemName: "envelope.badge")
                     .font(.system(size: 48))
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.md)
+                    .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 Text("Check Your Inbox")
                     .font(.system(size: 28, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.xs)
+                    .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text("I sent a verification code to")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .padding(.bottom, DesignTokens.Spacing.xs)
+                    .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text(viewModel.email)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.xl)
+                    .padding(.bottom, layoutMode.subtitleBottomSpacing)
 
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     ForEach(0..<6, id: \.self) { index in
@@ -56,18 +57,18 @@ struct VerifyEmailStepView: View {
                             }
                     }
                 }
-                .padding(.bottom, DesignTokens.Spacing.xl)
+                .padding(.bottom, layoutMode.subtitleBottomSpacing)
 
                 if viewModel.isLoading {
                     ProgressView()
-                        .padding(.bottom, DesignTokens.Spacing.md)
+                        .padding(.bottom, layoutMode.sectionSpacing)
                 }
 
                 if let error = viewModel.errorMessage {
                     Text(error)
                         .font(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
-                        .padding(.bottom, DesignTokens.Spacing.md)
+                        .padding(.bottom, layoutMode.sectionSpacing)
                 }
 
                 Button(resendCooldown > 0 ? "Resend code (\(resendCooldown)s)" : "Resend code") {
@@ -79,7 +80,7 @@ struct VerifyEmailStepView: View {
 
                 Spacer()
             }
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
+            .padding(.horizontal, layoutMode.horizontalPadding)
         }
         .onAppear {
             focusedIndex = 0

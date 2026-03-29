@@ -20,6 +20,7 @@ public final class CurrentLocationViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var lastAcceptedLocation: CLLocation?
     private var resolveLabelTask: Task<Void, Never>?
+    private var shouldPromptForAuthorization = false
 
     public init(
         provider: any CurrentLocationProviding,
@@ -39,7 +40,20 @@ public final class CurrentLocationViewModel: ObservableObject {
 
     /// Starts location tracking flow.
     public func startTracking() {
-        applyAuthorizationStatus(provider.authorizationStatus)
+        shouldPromptForAuthorization = true
+        applyAuthorizationStatus(
+            provider.authorizationStatus,
+            requestingAuthorizationIfNeeded: true
+        )
+    }
+
+    /// Starts location tracking only when authorization already exists.
+    public func startTrackingIfAuthorized() {
+        shouldPromptForAuthorization = false
+        applyAuthorizationStatus(
+            provider.authorizationStatus,
+            requestingAuthorizationIfNeeded: false
+        )
     }
 
     /// Stops location tracking and clears active geocoding work.
@@ -64,7 +78,11 @@ public final class CurrentLocationViewModel: ObservableObject {
         provider.authorizationStatusPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] status in
-                self?.applyAuthorizationStatus(status)
+                guard let self else { return }
+                self.applyAuthorizationStatus(
+                    status,
+                    requestingAuthorizationIfNeeded: self.shouldPromptForAuthorization
+                )
             }
             .store(in: &cancellables)
 
@@ -76,17 +94,27 @@ public final class CurrentLocationViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func applyAuthorizationStatus(_ status: CLAuthorizationStatus) {
+    private func applyAuthorizationStatus(
+        _ status: CLAuthorizationStatus,
+        requestingAuthorizationIfNeeded: Bool = false
+    ) {
         authorizationStatus = status
         switch status {
         case .notDetermined:
+            provider.stopUpdatingLocation()
+            clearCurrentLocation()
+            guard requestingAuthorizationIfNeeded else { return }
+            shouldPromptForAuthorization = false
             provider.requestWhenInUseAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
+            shouldPromptForAuthorization = false
             provider.startUpdatingLocation()
         case .denied, .restricted:
+            shouldPromptForAuthorization = false
             provider.stopUpdatingLocation()
             clearCurrentLocation()
         @unknown default:
+            shouldPromptForAuthorization = false
             provider.stopUpdatingLocation()
         }
     }

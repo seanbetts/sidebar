@@ -3,23 +3,24 @@ import SwiftUI
 /// Step 1 of onboarding with logo, product framing, and auth routing.
 struct WelcomeStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
+    let layoutMode: OnboardingLayoutMode
     private let animationSize: CGFloat = LoadingIndicatorSize.hero * 0.7
 
     var body: some View {
-        OnboardingStepScaffold {
+        OnboardingStepScaffold(layoutMode: layoutMode) {
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: DesignTokens.Spacing.xxl)
+                    .frame(height: layoutMode.topSpacing)
 
                 LoadingIndicatorView(size: animationSize, variant: .hero)
                     .frame(width: animationSize, height: animationSize)
-                    .padding(.bottom, DesignTokens.Spacing.xl)
+                    .padding(.bottom, layoutMode.subtitleBottomSpacing)
 
                 Text("sideBar")
                     .font(.system(size: 34, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.sm)
+                    .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 Text("The AI assistant that actually knows you. Everything you need in one place, endlessly extensible with skills.")
                     .font(.subheadline)
@@ -30,7 +31,7 @@ struct WelcomeStepView: View {
 
                 Spacer()
             }
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
+            .padding(.horizontal, layoutMode.horizontalPadding)
         }
     }
 }
@@ -48,22 +49,25 @@ struct OnboardingPrimaryButtonStyle: ButtonStyle {
 
 /// Shared onboarding footer that keeps primary CTAs aligned across steps.
 struct OnboardingActionArea<Primary: View, Secondary: View>: View {
+    let layoutMode: OnboardingLayoutMode
     private let reservesSecondarySpace: Bool
     @ViewBuilder private let primary: Primary
     @ViewBuilder private let secondary: Secondary
 
     init(
+        layoutMode: OnboardingLayoutMode,
         reservesSecondarySpace: Bool = false,
         @ViewBuilder primary: () -> Primary,
         @ViewBuilder secondary: () -> Secondary
     ) {
+        self.layoutMode = layoutMode
         self.reservesSecondarySpace = reservesSecondarySpace
         self.primary = primary()
         self.secondary = secondary()
     }
 
     var body: some View {
-        VStack(spacing: DesignTokens.Spacing.md) {
+        VStack(spacing: layoutMode.footerSpacing) {
             primary
 
             secondarySlot
@@ -84,15 +88,18 @@ struct OnboardingActionArea<Primary: View, Secondary: View>: View {
 
 /// Shared onboarding bottom area matching the HTML mockup structure: actions first, progress below.
 struct OnboardingBottomArea<Content: View>: View {
+    let layoutMode: OnboardingLayoutMode
     let totalSteps: Int
     let currentStep: Int
     @ViewBuilder private let content: Content
 
     init(
+        layoutMode: OnboardingLayoutMode,
         totalSteps: Int,
         currentStep: Int,
         @ViewBuilder content: () -> Content
     ) {
+        self.layoutMode = layoutMode
         self.totalSteps = totalSteps
         self.currentStep = currentStep
         self.content = content()
@@ -103,10 +110,10 @@ struct OnboardingBottomArea<Content: View>: View {
             content
 
             OnboardingProgressDots(totalSteps: totalSteps, currentStep: currentStep)
-                .padding(.top, DesignTokens.Spacing.lg)
+                .padding(.top, layoutMode.progressTopPadding)
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, DesignTokens.Spacing.xxl)
-        .padding(.bottom, DesignTokens.Spacing.xl)
+        .padding(.horizontal, layoutMode.horizontalPadding)
+        .padding(.bottom, layoutMode.bottomPadding)
     }
 }

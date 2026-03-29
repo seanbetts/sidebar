@@ -3,6 +3,7 @@ import SwiftUI
 /// Step 2 of onboarding for account creation.
 struct CreateAccountStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
+    let layoutMode: OnboardingLayoutMode
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -11,29 +12,29 @@ struct CreateAccountStepView: View {
     }
 
     var body: some View {
-        OnboardingStepScaffold {
+        OnboardingStepScaffold(layoutMode: layoutMode) {
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: DesignTokens.Spacing.xxl)
+                    .frame(height: layoutMode.topSpacing)
 
                 Image(systemName: "person.crop.circle")
                     .font(.system(size: 48))
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.md)
+                    .padding(.bottom, layoutMode.iconBottomSpacing)
 
                 Text("Let's Set You Up")
                     .font(.system(size: 28, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
-                    .padding(.bottom, DesignTokens.Spacing.xs)
+                    .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text("Enter your email and choose a password to create your account.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.bottom, DesignTokens.Spacing.xl)
+                    .padding(.bottom, layoutMode.subtitleBottomSpacing)
 
-                VStack(spacing: DesignTokens.Spacing.md) {
+                VStack(spacing: layoutMode.sectionSpacing) {
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                         Text("EMAIL")
                             .font(.caption.weight(.semibold))
@@ -55,6 +56,10 @@ struct CreateAccountStepView: View {
                                 .fill(DesignTokens.Colors.surface)
                             }
                             .focused($focusedField, equals: .email)
+                            .submitLabel(.next)
+                            .onSubmit {
+                                focusedField = .password
+                            }
                     }
 
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
@@ -73,6 +78,11 @@ struct CreateAccountStepView: View {
                                 .fill(DesignTokens.Colors.surface)
                             }
                             .focused($focusedField, equals: .password)
+                            .submitLabel(.continue)
+                            .onSubmit {
+                                guard viewModel.isCreateAccountValid && !viewModel.isLoading else { return }
+                                Task { await viewModel.createAccount() }
+                            }
 
                         HStack(spacing: 4) {
                             ForEach(0..<4, id: \.self) { index in
@@ -90,12 +100,12 @@ struct CreateAccountStepView: View {
                     Text(error)
                         .font(.caption)
                         .foregroundStyle(DesignTokens.Colors.error)
-                        .padding(.top, DesignTokens.Spacing.sm)
+                        .padding(.top, layoutMode.sectionSpacing)
                 }
 
                 Spacer()
             }
-            .padding(.horizontal, DesignTokens.Spacing.xxl)
+            .padding(.horizontal, layoutMode.horizontalPadding)
         }
         .onAppear {
             focusedField = .email

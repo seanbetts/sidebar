@@ -314,7 +314,7 @@ extension ContentView {
                     didLoadSettings = true
                     Task {
                         guard environment.authState == .active else { return }
-                        environment.currentLocationViewModel.startTracking()
+                        environment.currentLocationViewModel.startTrackingIfAuthorized()
                         await environment.settingsViewModel.load(force: true)
                         await environment.settingsViewModel.loadProfileImage()
                         await refreshWeatherIfPossible()
@@ -365,7 +365,7 @@ extension ContentView {
                 didLoadSettings = true
                 isBiometricUnlocked = !biometricUnlockEnabled
                 Task {
-                    environment.currentLocationViewModel.startTracking()
+                    environment.currentLocationViewModel.startTrackingIfAuthorized()
                     await environment.settingsViewModel.load(force: true)
                     await environment.settingsViewModel.loadProfileImage()
                     await refreshWeatherIfPossible()
