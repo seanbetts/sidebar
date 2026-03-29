@@ -229,26 +229,6 @@ Favicons are fetched fresh on every timeline generation. There is no disk cache.
 
 ---
 
-## Future directions
-
-### Chat and Scratchpad widget
-
-`OpenScratchpadIntent` and `StartChatIntent` already exist as App Intents but have no widget surface. Chat is the primary section of sideBar — a quick-launch widget that opens directly into a new chat is the most natural addition to the catalogue. Scratchpad is a secondary candidate.
-
-The widget would be a launcher, not a content widget — it shows no data, just a clear call to action. A small size is sufficient.
-
-### StandBy mode
-
-iOS 17 introduced StandBy, which displays widgets full-screen when iPhone is charging in landscape. `systemMedium` widgets appear in StandBy without modification, but a StandBy-optimised layout would:
-
-- Use larger typography and bolder visuals suited to a distance of ~1 metre
-- Show fewer, higher-contrast items
-- Prioritise the most time-sensitive content (overdue tasks, most recently modified note)
-
-StandBy is a high-visibility surface that warrants intentional design rather than relying on the standard home screen layout.
-
----
-
 ## Design principles
 
 **Glanceable first.** The user is not in the app. Every element must earn its place at a glance. If it requires reading, it is probably too much.
