@@ -159,6 +159,59 @@ The delay in step 5 catches extension saves that may have been written to App Gr
 
 ---
 
+## Outgoing handoffs
+
+Outgoing handoffs are user-initiated actions that send content out of sideBar — to the system share sheet, the clipboard, the Files app, or an external browser. All outgoing handoffs require explicit user action; nothing is shared automatically.
+
+### Share sheet
+
+`SystemSharePresenter` wraps `UIActivityViewController` on iOS and `NSSharingServicePicker` on macOS, providing a single share implementation across platforms.
+
+| Content | What is shared | Available from |
+|---|---|---|
+| Website URL | Original source URL | Website detail, list, sidebar context menu |
+| Website text | Markdown rendered to plain text (frontmatter stripped) | Website detail, list, sidebar context menu |
+| Note text | Plain text snapshot of note content | Note detail, list, sidebar context menu |
+| Agent surface | Markdown payload or summary text | Agent workspace surfaces |
+
+Files do not have a share sheet action — they use the download path instead.
+
+### Copy to clipboard
+
+All clipboard operations auto-clear after 30 seconds. This applies on both iOS (`UIPasteboard`) and macOS (`NSPasteboard`).
+
+| Content | Format | Available from |
+|---|---|---|
+| Website content | Markdown (frontmatter stripped) | Website detail, list, sidebar |
+| Website URL | URL string | Website detail, list, sidebar |
+| Website title | Plain text | Website detail, list, sidebar |
+| Note text | Plain text | Note detail, list, sidebar |
+| File content | Plain text | Files sidebar |
+| Chat message | Plain text | Chat message row |
+| Agent surface | Markdown | Agent workspace surfaces |
+
+### Download (export to Files)
+
+Content can be exported to the Files app via SwiftUI's `fileExporter` modifier. The exported format matches what is most useful outside the app.
+
+| Content | Format | Filename |
+|---|---|---|
+| Website | `.md` (frontmatter stripped) | Website title |
+| Note | Plain text | Note filename |
+| File | Original binary | Original filename |
+| Agent surface | `.md` | Surface title |
+
+### Open in browser
+
+Website URLs can be opened in two ways:
+
+- **In-app browser** (`SafariView`): tapping a website's title opens the source URL in an embedded Safari view, keeping the user in the app
+- **External browser**: "Open in Browser" action hands the URL off to the system default browser via the environment's `openURL`
+
+The in-app browser is the default for title taps. The external browser is an explicit action.
+
+---
+
 ## Rules summary
 
 1. **Never silently drop a handoff.** All incoming data — extension saves, widget intents, deep links — must be queued if the app is not ready, and drained when it is.
@@ -169,6 +222,9 @@ The delay in step 5 catches extension saves that may have been written to App Gr
 6. **Retry on transient errors, fail fast on permanent ones.** Network and server errors use exponential backoff. 4xx client errors mark items as permanently failed without retrying.
 7. **Sign-out clears all queued handoff data.** No content from a previous session should be processed by a subsequent user on the same device.
 8. **Spotlight indexes are cleared on sign-out.** Indexed content must not be discoverable after the owning user signs out.
+9. **All outgoing handoffs require explicit user action.** Nothing is shared, copied, or exported automatically.
+10. **Clipboard content auto-clears after 30 seconds.** Applies to all copy operations on both iOS and macOS.
+11. **Use `SystemSharePresenter` for all share sheet actions.** Never invoke `UIActivityViewController` or `NSSharingServicePicker` directly — use the shared wrapper for consistent cross-platform behaviour.
 
 ---
 
