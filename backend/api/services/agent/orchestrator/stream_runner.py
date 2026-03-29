@@ -376,7 +376,7 @@ async def stream_with_tools(
                                                 "folder": result_data.get("folder"),
                                             },
                                         }
-                                    elif display_name == "Update Note":
+                                    elif display_name == "Edit Note":
                                         yield {
                                             "type": "note_updated",
                                             "data": {

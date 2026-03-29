@@ -20,9 +20,9 @@ have saved.
 | Action | Description |
 | --- | --- |
 | Create note | Creates a new note, optionally in a specified folder |
+| Edit note | Safely edits an existing note using the latest saved version |
 | Get note | Reads the contents of a note into the conversation |
 | List notes | Lists notes, optionally filtered by folder |
-| Rename note | Renames a note |
 | Move note | Moves a note to a different folder |
 | Pin note | Pins a note to the top of your notes list |
 | Archive note | Archives a note, removing it from the main view |
@@ -47,11 +47,10 @@ When your request involves creating, finding, or working with notes. Common trig
 
 ## Current limitations
 
-The Notes skill does not currently support safe in-place editing of an existing
-note through Chat. If you want to revise a note with sideBar, the best current
-pattern is to read the note into the conversation, ask for a rewrite or draft,
-then save the revised version as a new note or update it manually in the Notes
-editor.
+Note edits through Chat are block-based and use the latest saved note version.
+That makes them safer, but it also means sideBar is not doing freeform cursor
+editing inside the note editor. For broad rewrites, it may still be simpler to
+draft a new version in Chat and review it before replacing larger sections.
 
 ## Requirements
 

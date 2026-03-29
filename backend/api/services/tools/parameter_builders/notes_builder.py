@@ -49,6 +49,21 @@ class NotesParameterBuilder(BaseParameterBuilder):
         return args
 
     @staticmethod
+    def build_edit_args(params: dict) -> list:
+        """Build CLI arguments for structured note edits."""
+        args = [
+            "--note-id",
+            params["note_id"],
+            "--expected-updated-at",
+            params["expected_updated_at"],
+            "--operations",
+            json.dumps(params["operations"]),
+            "--database",
+        ]
+        NotesParameterBuilder.append_user_id(args, params)
+        return args
+
+    @staticmethod
     def build_delete_args(params: dict) -> list:
         """Build CLI arguments for notes delete."""
         return [params["note_id"], "--database", "--user-id", params["user_id"]]

@@ -96,7 +96,7 @@ def tool_side_effect_events(
                 },
             }
         )
-    elif display_name == "Update Note":
+    elif display_name == "Edit Note":
         events.append(
             {
                 "type": "note_updated",

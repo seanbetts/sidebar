@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from api.services.agent.tools.registry import get_tool_definitions
+from api.services.tools.definitions_conversations import get_conversations_definitions
 from api.services.tools.definitions_fs import get_fs_definitions
 from api.services.tools.definitions_misc import get_misc_definitions
 from api.services.tools.definitions_notes import get_notes_definitions
@@ -32,6 +33,7 @@ def _assert_definition_contract(definitions: dict):
 
 def test_individual_definitions_follow_contract():
     for definitions in [
+        get_conversations_definitions(),
         get_fs_definitions(),
         get_skills_definitions(),
         get_web_definitions(),
@@ -47,6 +49,7 @@ def test_individual_definitions_follow_contract():
 
 def test_tool_definitions_have_no_duplicate_names():
     groups = [
+        get_conversations_definitions(),
         get_fs_definitions(),
         get_skills_definitions(),
         get_web_definitions(),
@@ -114,10 +117,33 @@ def test_notes_definitions_include_context_menu_parity_tools():
     definitions = get_notes_definitions()
     assert "Archive Note" in definitions
     assert "Download Note" in definitions
+    assert "Edit Note" in definitions
     assert "Create Note Folder" in definitions
     assert "Rename Note Folder" in definitions
     assert "Move Note Folder" in definitions
     assert "Delete Note Folder" in definitions
+
+
+def test_edit_note_definition_uses_block_operation_contract():
+    definitions = get_notes_definitions()
+
+    edit_note = definitions["Edit Note"]
+
+    assert edit_note["script"] == "edit_note.py"
+    assert edit_note["skill"] == "notes"
+    assert edit_note["input_schema"]["required"] == [
+        "note_id",
+        "expected_updated_at",
+        "operations",
+    ]
+
+    properties = edit_note["input_schema"]["properties"]
+    assert properties["note_id"]["type"] == "string"
+    assert properties["expected_updated_at"]["type"] == "string"
+    assert properties["operations"]["type"] == "array"
+
+    item_properties = properties["operations"]["items"]["properties"]
+    assert item_properties["type"]["type"] == "string"
 
 
 def test_web_definitions_include_context_menu_parity_tools():

@@ -44,6 +44,64 @@ def get_notes_definitions() -> dict:
             "script": "delete_note.py",
             "build_args": pm.build_notes_delete_args,
         },
+        "Edit Note": {
+            "description": (
+                "Apply structured block-level edits to an existing note. "
+                "Requires the exact updated_at value from a prior Get Note call."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "string", "description": "Note UUID"},
+                    "expected_updated_at": {
+                        "type": "string",
+                        "description": "Exact server updated_at value from Get Note",
+                    },
+                    "operations": {
+                        "type": "array",
+                        "description": "Ordered block-level edit operations",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "description": (
+                                        "Operation type: rename_note_title, "
+                                        "replace_block, insert_blocks_after, "
+                                        "or delete_block"
+                                    ),
+                                },
+                                "text": {
+                                    "type": "string",
+                                    "description": (
+                                        "Single-line title text for "
+                                        "rename_note_title"
+                                    ),
+                                },
+                                "index": {
+                                    "type": "integer",
+                                    "description": "Zero-based block index target",
+                                },
+                                "block": {
+                                    "type": "object",
+                                    "description": "Replacement body block payload",
+                                },
+                                "blocks": {
+                                    "type": "array",
+                                    "description": "Inserted body block payloads",
+                                    "items": {"type": "object"},
+                                },
+                            },
+                            "required": ["type"],
+                        },
+                    },
+                },
+                "required": ["note_id", "expected_updated_at", "operations"],
+            },
+            "skill": "notes",
+            "script": "edit_note.py",
+            "build_args": pm.build_notes_edit_args,
+        },
         "Pin Note": {
             "description": "Pin or unpin a note in the database.",
             "input_schema": {

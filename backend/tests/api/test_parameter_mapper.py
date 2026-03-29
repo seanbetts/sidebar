@@ -123,6 +123,43 @@ def test_build_notes_update_args_use_document():
     ]
 
 
+def test_build_notes_edit_args_use_expected_updated_at_and_operations():
+    build_args = getattr(parameter_mapper, "build_notes_edit_args", None)
+    assert callable(build_args)
+
+    operations = [
+        {
+            "type": "rename_note_title",
+            "text": "Renamed title",
+        },
+        {
+            "type": "delete_block",
+            "index": 2,
+        },
+    ]
+
+    args = build_args(
+        {
+            "note_id": "note-1",
+            "expected_updated_at": "2026-03-29T10:30:00+00:00",
+            "operations": operations,
+            "user_id": "user-1",
+        }
+    )
+
+    assert args == [
+        "--note-id",
+        "note-1",
+        "--expected-updated-at",
+        "2026-03-29T10:30:00+00:00",
+        "--operations",
+        json.dumps(operations),
+        "--database",
+        "--user-id",
+        "user-1",
+    ]
+
+
 def test_build_notes_list_args_includes_false_values():
     args = parameter_mapper.build_notes_list_args(
         {"user_id": "user-1", "pinned": False, "archived": False}
@@ -136,6 +173,7 @@ def test_build_notes_list_args_includes_false_values():
         "--archived",
         "False",
     ]
+
 
 def test_build_notes_archive_args_false():
     args = parameter_mapper.build_notes_archive_args(

@@ -74,6 +74,11 @@ def build_notes_update_args(params: dict) -> list:
     return NotesParameterBuilder.build_update_args(params)
 
 
+def build_notes_edit_args(params: dict) -> list:
+    """Build CLI arguments for structured note edits."""
+    return NotesParameterBuilder.build_edit_args(params)
+
+
 def build_notes_delete_args(params: dict) -> list:
     """Build CLI arguments for notes delete."""
     return NotesParameterBuilder.build_delete_args(params)
