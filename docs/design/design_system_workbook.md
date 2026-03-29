@@ -25,7 +25,7 @@ description: Working brief for the internal sideBar design-system documentation 
 | 15 | Patterns: onboarding | [patterns/onboarding.md](./patterns/onboarding) | partial |
 | 16 | Patterns: handoffs | [patterns/handoffs.md](./patterns/handoffs) | approved |
 | 17 | Patterns: AI assistant UI | [patterns/ai-assistant-ui.md](./patterns/ai-assistant-ui) | approved |
-| 18 | Agent rules | agent-rules/ | not started |
+| 18 | Agent rules | [agent-rules/overview.md](./agent-rules/overview) | in progress |
 | 19 | Audits | [token-audit](./audits/token-audit) (approved), [current-ui-audit](./audits/current-ui-audit), [patterns-audit](./audits/patterns-audit), [component-inventory](./audits/component-inventory), [system-framework-usage](./audits/system-framework-usage-audit) (drafted) | partial |
 
 ## Supporting documents

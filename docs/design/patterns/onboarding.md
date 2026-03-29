@@ -8,7 +8,7 @@ description: How sideBar introduces new users to the product — account creatio
 | Status | partial |
 | Owner | both |
 | Outputs | this doc |
-| Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [authentication](./authentication), [wait-ux](./wait-ux) |
+| Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [authentication](./authentication), [wait-ux](./wait-ux), [agent-rules](../agent-rules/overview) |
 
 ## Purpose
 
@@ -117,11 +117,19 @@ A modal wizard with no navigation chrome. Progress shown via dots at the bottom 
 
 After permission setup, the AI assistant drives feature discovery from chat. The backend detects incomplete onboarding and injects onboarding context into the system prompt. The wizard is gone — the user is in the main app.
 
-- The AI greets the user by name (if provided in Step 4) and begins the tour
-- For each feature, a `FeatureIntroCard` appears inline in the chat view
-- The AI waits for acknowledgment before advancing
-- Users can say "skip", "next", or "show me everything" to control pacing
-- A persistent "Skip Tour" option is always visible
+### Soul calibration
+
+Before the feature tour begins, the assistant checks whether `assistant_soul` has been initialised. If it has not, the assistant runs a brief calibration before anything else.
+
+- The assistant asks up to three concise conversational questions to understand the user's context, goals, and working style
+- Questions are plain and natural — not a form
+- After the user answers, the assistant initialises both `assistant_soul` and `assistant_identity` from the answers and confirms briefly what it has set
+- The feature tour then begins immediately after calibration completes
+- If the user skips or declines to answer, the assistant initialises from defaults and proceeds
+
+Calibration must complete before the feature tour. The assistant does not proceed to the tour with an uninitialised soul.
+
+The AI greets the user by name (if provided in Step 4) and begins the tour. For each feature, a `FeatureIntroCard` appears inline in the chat view. The AI waits for acknowledgment before advancing. Users can say "skip", "next", or "show me everything" to control pacing. A persistent "Skip Tour" option is always visible.
 
 ### Tour sequence
 
@@ -218,6 +226,7 @@ The iOS client reads derived fields from the API response; it does not recompute
 5. **Provider-dismissed users get a recovery path.** An add-key banner and static feature carousel are shown until a key is added. Chat must explain why AI features are unavailable.
 6. **Feature discovery has a static fallback.** If the AI is unavailable, a `StaticFeatureCarousel` covers the same content.
 7. **Presentation wrapper only.** Content is identical across iPhone, iPad, and Mac. Only the container (`.fullScreenCover` vs `.sheet`) differs.
+8. **Soul calibration precedes the feature tour.** If `assistant_soul` is uninitialised, the assistant runs calibration before the tour begins. The tour does not start with a blank soul.
 
 ---
 
@@ -227,4 +236,5 @@ The iOS client reads derived fields from the API response; it does not recompute
 - [iOS Conventions](../platform-strategy/ios-conventions)
 - [Wait UX](./wait-ux)
 - [Feedback and Haptics](./feedback-and-haptics)
+- [Agent Rules](../agent-rules/overview)
 - [Implementation Gaps](../implementation-gaps)
