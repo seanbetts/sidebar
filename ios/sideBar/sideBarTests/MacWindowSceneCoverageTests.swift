@@ -99,6 +99,41 @@ final class MacWindowSceneCoverageTests: XCTestCase {
 
         XCTAssertFalse(normalized.contains("#elseifos(macOS)registerForRemoteNotificationsIfNeeded()"))
     }
+
+    func testMacContentViewWrapsOnboardingSheetInFixedCanvas() throws {
+        let normalized = try contentViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("#ifos(macOS)returnAnyView(content.sheet("))
+        XCTAssertTrue(normalized.contains("OnboardingSheetCanvas{onboardingSheet}"))
+    }
+
+    func testOnboardingSheetCanvasCentersFixedIPadSizedCanvasInsideSheet() throws {
+        let normalized = try onboardingSheetCanvasSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("OnboardingSheetCanvasLayout.canvasSize"))
+        XCTAssertTrue(
+            normalized.contains(
+                ".frame(width:OnboardingSheetCanvasLayout.canvasSize.width,height:OnboardingSheetCanvasLayout.canvasSize.height)"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                ".frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.center)"
+            )
+        )
+    }
+
+    func testMacAppDelegatePurgesGeneratedSwiftUIWindowFramesAndRestoresMainAutosaveName() throws {
+        let normalized = try macAppDelegateSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("purgeGeneratedSwiftUIWindowFrames()"))
+        XCTAssertTrue(normalized.contains("restoreMainWindowFrameIfNeeded()"))
+        XCTAssertTrue(normalized.contains("setFrameAutosaveName(MacWindowConfiguration.mainWindowID)"))
+        XCTAssertTrue(normalized.contains("setFrameUsingName(MacWindowConfiguration.mainWindowID)"))
+    }
 }
 
 private func sideBarAppSource(
@@ -244,6 +279,49 @@ private func appCommandsSource(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read AppCommands.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func contentViewSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("ContentView.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read ContentView.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func onboardingSheetCanvasSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("Onboarding")
+        .appendingPathComponent("OnboardingSheetCanvas.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read OnboardingSheetCanvas.swift: \(error)", file: file, line: line)
         throw error
     }
 }

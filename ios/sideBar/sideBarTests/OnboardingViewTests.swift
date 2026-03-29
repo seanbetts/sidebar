@@ -61,6 +61,27 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
+    func testLayoutModeStaysRegularWhenKeyboardIsHidden() {
+        XCTAssertEqual(
+            OnboardingChromeLayoutPolicy.layoutMode(isSoftwareKeyboardVisible: false),
+            .regular
+        )
+    }
+
+    @MainActor
+    func testOnboardingSheetCanvasUsesFixedIPadDesignSize() {
+        XCTAssertEqual(
+            OnboardingSheetCanvasLayout.canvasSize,
+            CGSize(width: 420, height: 680)
+        )
+    }
+
+    @MainActor
+    func testOnboardingSheetCanvasUsesStableOuterPadding() {
+        XCTAssertEqual(OnboardingSheetCanvasLayout.outerPadding, 24)
+    }
+
+    @MainActor
     func testRegularLayoutAddsMoreTopSpacing() {
         XCTAssertEqual(OnboardingLayoutMode.regular.topSpacing, 40)
     }
@@ -311,6 +332,23 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
+    func testOnboardingViewSourceDoesNotContainMacSpecificStepLayoutBranch() throws {
+        let normalized = try onboardingViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("#ifos(macOS)"))
+    }
+
+    @MainActor
+    func testOnboardingChromeLayoutSourceDoesNotContainMacSpecificLayoutBranch() throws {
+        let normalized = try onboardingChromeLayoutSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("#ifos(macOS)"))
+        XCTAssertTrue(normalized.contains("return.regular"))
+    }
+
+    @MainActor
     func testCreateAccountPasswordFieldUsesPasswordContentTypeAndLabelColorInDarkMode() throws {
         let viewModel = OnboardingViewModel(
             authSession: MockAuthSessionForOnboarding(),
@@ -423,6 +461,50 @@ final class OnboardingViewTests: XCTestCase {
             labels.append(contentsOf: findLabels(in: subview))
         }
         return labels
+    }
+
+    private func onboardingViewSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("Onboarding")
+            .appendingPathComponent("OnboardingView.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read OnboardingView.swift: \(error)", file: file, line: line)
+            throw error
+        }
+    }
+
+    private func onboardingChromeLayoutSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("Onboarding")
+            .appendingPathComponent("OnboardingChromeLayout.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read OnboardingChromeLayout.swift: \(error)", file: file, line: line)
+            throw error
+        }
     }
 
     private func rgbaComponents(for color: UIColor) -> [CGFloat] {

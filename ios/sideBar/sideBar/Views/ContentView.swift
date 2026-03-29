@@ -108,7 +108,9 @@ public struct ContentView: View {
             isPresented: $showOnboarding,
             onDismiss: handleOnboardingDismissed
         ) {
-            onboardingSheet
+            OnboardingSheetCanvas {
+                onboardingSheet
+            }
         })
 #else
         switch onboardingPresentationStyle {

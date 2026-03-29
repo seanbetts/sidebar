@@ -13,6 +13,8 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         if let config = try? EnvironmentConfig.load() {
             SentryBootstrap.startIfConfigured(config: config)
         }
+        purgeGeneratedSwiftUIWindowFrames()
+        restoreMainWindowFrameIfNeeded()
         scheduleRemoteNotificationRegistration()
     }
 
@@ -81,6 +83,45 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
             await Task.yield()
             NSApplication.shared.registerForRemoteNotifications()
         }
+    }
+
+    private func purgeGeneratedSwiftUIWindowFrames() {
+        MacWindowFramePersistence.purgeGeneratedSwiftUIWindowFrames()
+    }
+
+    private func restoreMainWindowFrameIfNeeded() {
+        Task { @MainActor in
+            for _ in 0..<40 {
+                if let window = mainApplicationWindow() {
+                    restoreMainWindowFrameIfNeeded(for: window)
+                    return
+                }
+                await Task.yield()
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+        }
+    }
+
+    @MainActor
+    private func mainApplicationWindow() -> NSWindow? {
+        if let mainWindow = NSApplication.shared.mainWindow, mainWindow.sheetParent == nil {
+            return mainWindow
+        }
+
+        return NSApplication.shared.windows.first { window in
+            window.sheetParent == nil && !(window is NSPanel)
+        }
+    }
+
+    @MainActor
+    private func restoreMainWindowFrameIfNeeded(for window: NSWindow) {
+        window.setFrameAutosaveName(MacWindowConfiguration.mainWindowID)
+        let restoredFrame = window.setFrameUsingName(MacWindowConfiguration.mainWindowID)
+        if !restoredFrame {
+            window.center()
+        }
+        window.makeKeyAndOrderFront(nil)
+        NSApplication.shared.activate(ignoringOtherApps: true)
     }
 }
 #endif
