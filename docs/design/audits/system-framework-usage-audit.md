@@ -5,13 +5,11 @@ description: Draft audit of where sideBar uses native Apple frameworks well and 
 
 | Field | Value |
 |---|---|
-| Status | drafted |
-| Owner | AI coding agent |
-| Inputs needed | codebase inspection (complete) |
+| Status | live |
+| Owner | both |
+| Updated | 2026-03-29 |
 | Outputs | this doc |
 | Dependencies | [current-ui-audit](./current-ui-audit) |
-| Codebase review required | yes (complete) |
-| Human judgement required | yes - to decide where to adopt more native components vs retain custom implementations |
 
 ## Purpose
 
@@ -265,12 +263,12 @@ These platform capabilities are already available via native components and shou
 
 ---
 
-## Open questions
+## Resolved questions
 
-- Does `NavigationSplitView` provide enough flexibility for the workspace layout model, or is the custom implementation necessary?
-- Should the font system use `@ScaledMetric` for a future version that better supports live Dynamic Type updates?
-- Is the macOS custom color palette the current approved design direction, or should it track system colors more closely?
-- Are there accessibility gaps in list rows and chat message accessibility labels?
+- **`NavigationSplitView` vs custom layout**: the custom implementation is intentional. `NavigationSplitView` does not support drag-to-resize, custom snap behaviour, or the three-column workspace model with independent right sidebar. The custom approach is the right call for the product.
+- **`@ScaledMetric` for Dynamic Type**: the custom `AppTextSizeOption` layer is a deliberate product choice to add a second scale dimension. Migrating to `@ScaledMetric` would remove the user-controlled text size preference. Not a target change.
+- **macOS colour palette direction**: the hand-coded `MacOSPalette` values are the current approved design direction for precise surface control. Documented in [colour](../foundations/colour).
+- **Accessibility gaps in list rows**: confirmed as a known gap. Chat message row, notes list row, and task row accessibility label coverage is incomplete. Tracked in the accessibility doc and should be added to implementation-gaps if not already present.
 
 ---
 

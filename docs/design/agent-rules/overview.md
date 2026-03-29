@@ -5,7 +5,7 @@ description: Behavioral rules for the sideBar AI assistant — skill tiers, acti
 
 | Field | Value |
 |---|---|
-| Status | in progress |
+| Status | approved |
 | Owner | both |
 | Outputs | this doc |
 | Dependencies | [ai-assistant-ui](../patterns/ai-assistant-ui), [handoffs](../patterns/handoffs) |

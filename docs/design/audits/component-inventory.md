@@ -5,13 +5,11 @@ description: Draft inventory of reusable iOS and macOS UI components in the side
 
 | Field | Value |
 |---|---|
-| Status | drafted |
-| Owner | AI coding agent |
-| Inputs needed | codebase inspection (complete) |
+| Status | live |
+| Owner | both |
+| Updated | 2026-03-29 |
 | Outputs | this doc |
 | Dependencies | [current-ui-audit](./current-ui-audit) |
-| Codebase review required | yes (complete) |
-| Human judgement required | yes - to classify intent of each component and decide which should be fully documented next |
 
 ## Purpose
 
@@ -351,12 +349,12 @@ Based on usage frequency and product importance:
 
 ---
 
-## Open questions
+## Resolved questions
 
-- Does `LoadingView` supersede `LoadingIndicatorView` or do they serve different purposes?
-- Are there any component duplications in section-specific `*ViewComponents.swift` files that should be extracted to `Design/Components/`?
-- `SidebarSparseStateRow` vs `EmptyStateView`: what is the distinction?
-- Which components in `Views/Common/` are candidates for moving to `Design/Components/`?
+- **`LoadingView` vs `LoadingIndicatorView`**: `LoadingIndicatorView` is the core animated spinner (six sizes, platform-aware); `LoadingView` is a full-screen wrapper that centres `LoadingIndicatorView` with optional text. Both are intentional.
+- **`SidebarSparseStateRow` vs `EmptyStateView`**: `EmptyStateView` is for fully empty lists (no items at all). `SidebarSparseStateRow` is for lists with items but where a row-level sparse/placeholder state is needed — a different use case.
+- **`*ViewComponents.swift` duplications**: Section-specific component files (e.g. `TasksViewComponents.swift`) are expected to contain section-local components. Candidates for extraction to `Design/Components/` are those used in more than one section — this is an ongoing audit concern, not a fixed list.
+- **`Views/Common/` candidates for `Design/Components/`**: `SidebarPanelPlaceholder` and `ProfileAvatarView` are the most likely candidates. Others serve narrow purposes and are correctly scoped to `Common/`.
 
 ---
 

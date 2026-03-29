@@ -5,13 +5,11 @@ description: Draft inventory of the main sideBar screens, navigation, flows, and
 
 | Field | Value |
 |---|---|
-| Status | drafted |
-| Owner | AI coding agent |
-| Inputs needed | codebase inspection (complete), product docs (read), screenshots (not available) |
+| Status | live |
+| Owner | both |
+| Updated | 2026-03-29 |
 | Outputs | this doc |
 | Dependencies | none |
-| Codebase review required | yes (complete) |
-| Human judgement required | yes - to confirm product intent behind patterns flagged as unclear |
 
 ## Purpose
 
@@ -302,12 +300,12 @@ Areas where values are not using `DesignTokens`:
 
 ---
 
-## What is unclear
+## Resolved questions
 
-- Web app: not inspected in this audit. Web conventions, tokens, and component state are unknown.
-- Whether `DesignTokens.Typography` is intentionally maintained alongside `AppFontStyle` or is legacy.
-- The intent behind the 20px and 30px icon frame sizes (are they intentional or drift?).
-- Whether the macOS custom colour palette values are the current approved values or have drifted.
+- **Web app**: covered in [web-conventions](../platform-strategy/web-conventions) and the web sections of [implementation-gaps](../implementation-gaps).
+- **`DesignTokens.Typography`**: legacy, unused. Removal is tracked in implementation-gaps.
+- **20px and 30px icon frames**: drift — no matching token exists at these sizes. Tracked in implementation-gaps.
+- **macOS custom colour palette**: the hand-coded values in `MacOSPalette` are the current design direction. Documented in [colour](../foundations/colour).
 
 ---
 
