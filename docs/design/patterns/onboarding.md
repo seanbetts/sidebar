@@ -99,6 +99,84 @@ A modal wizard with no navigation chrome. Progress shown via dots at the bottom 
 
 ---
 
+## Permission setup
+
+After the wizard dismisses and the user is in the main app with Chat focused, permission cards are presented inline in the chat view. These are the only trigger for Apple system permission prompts — they must never fire at launch or sign-in.
+
+Cards appear sequentially. The feature tour begins after both are resolved (granted, denied, or dismissed).
+
+### Location
+
+- Explains product value: location enables weather, local recommendations, and time-aware responses
+- "Enable" triggers the system location prompt
+- "Not now" dismisses without prompting
+- If previously denied, shows a recovery CTA linking to system Settings
+- Outcome written to backend: `permissions.location`
+
+### Notifications
+
+- Explains product value: task reminders, file completion, and assistant attention
+- "Enable" / "Not now" behavior mirrors location
+- If previously denied, shows a recovery CTA linking to system Settings
+- Outcome written to backend: `permissions.notifications`
+
+Cards use the same monochrome inline card style as feature discovery cards.
+
+---
+
+## Feature discovery
+
+After permission setup, the AI assistant drives feature discovery from chat. The backend detects incomplete onboarding and injects onboarding context into the system prompt. The wizard is gone — the user is in the main app.
+
+- The AI greets the user by name (if provided in Step 4) and begins the tour
+- For each feature, a `FeatureIntroCard` appears inline in the chat view
+- The AI waits for acknowledgment before advancing
+- Users can say "skip", "next", or "show me everything" to control pacing
+- A persistent "Skip Tour" option is always visible
+
+### Tour sequence
+
+| Feature | Card content |
+|---|---|
+| Chat | Home base for asking questions, taking actions, web search, and skills |
+| Notes + Scratchpad | Capture and organise; Scratchpad always one tap away |
+| Tasks | Projects, due dates, recurring tasks; AI creates tasks from conversation |
+| Websites | Save articles and links; AI can summarize and answer questions |
+| Files | Upload PDFs, documents, images; AI can search and reference after processing |
+| Skills Store | Extend capabilities; three tiers (Required, Standard, Store) |
+| Memory | AI learns the user over time; user always in control |
+| Widgets + Extensions (optional) | Home screen widgets and Share Extension / Safari Extension |
+
+The closing message marks onboarding complete via the backend API. `first_outcome_completed` is set when the user completes one real action during or after the tour.
+
+### FeatureIntroCard design
+
+- Monochrome card with SF Symbol icon, title, one-line description
+- Dismiss (X) in top-right corner; optional "Try it" CTA button
+- Appears inline between chat messages
+- Slide-in / fade-out using `DesignTokens.Animation.standard` (0.25s)
+- SF Symbols use `.primary` / `.secondary` label colors
+
+### Fallback: AI unavailable
+
+If the AI fails during feature discovery (bad key, rate limit, network failure):
+
+- Show a `StaticFeatureCarousel`: a horizontally-scrollable set of `FeatureIntroCard` views covering the same 8 features
+- Shown once, dismissable
+- User can retry AI setup from Settings
+
+### Fallback: no API key
+
+If the user skipped provider setup entirely:
+
+- A persistent add-key banner is shown in the app ("Add an API key to start using the assistant")
+- Banner links to Settings for provider key entry
+- Notes, tasks, websites, and files remain fully functional
+- Chat shows an explanation that a key is needed for AI features
+- When a key is later added from Settings, `provider_connected` is set and the feature tour triggers on the next chat open
+
+---
+
 ## Backend state model
 
 The backend owns all persistent onboarding state, exposed via `GET` and `PATCH /api/v1/onboarding`.
@@ -146,9 +224,11 @@ The iOS client reads derived fields from the API response; it does not recompute
 
 1. **Backend is the source of truth.** All onboarding state is persisted on the backend. iOS renders it; it does not maintain a parallel state machine.
 2. **Onboarding is assistant-first.** Provider setup is offered before any AI interaction. Chat generation is not available until a key is connected.
-3. **Permission prompts require explicit user action.** No location or notification prompts at launch or sign-in.
-4. **Skipping is always available.** Provider selection and API key entry each have a "Skip for now" exit. Users who skip retain full access to non-AI features.
-5. **Presentation wrapper only.** Content is identical across iPhone, iPad, and Mac. Only the container (`.fullScreenCover` vs `.sheet`) differs.
+3. **Permission prompts require explicit user action.** No location or notification prompts at launch or sign-in. All system prompts are triggered only by the inline permission cards.
+4. **Skipping is always available.** Provider selection, API key entry, and permission cards each have a "Skip for now" or "Not now" exit. Skipping never blocks access to non-AI features.
+5. **Provider-dismissed users get a recovery path.** An add-key banner and static feature carousel are shown until a key is added. Chat must explain why AI features are unavailable.
+6. **Feature discovery has a static fallback.** If the AI is unavailable, a `StaticFeatureCarousel` covers the same content.
+7. **Presentation wrapper only.** Content is identical across iPhone, iPad, and Mac. Only the container (`.fullScreenCover` vs `.sheet`) differs.
 
 ---
 
