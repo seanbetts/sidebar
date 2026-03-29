@@ -172,9 +172,9 @@ Outgoing handoffs are user-initiated actions that send content out of sideBar â€
 | Website URL | Original source URL | Website detail, list, sidebar context menu |
 | Website text | Markdown rendered to plain text (frontmatter stripped) | Website detail, list, sidebar context menu |
 | Note text | Plain text snapshot of note content | Note detail, list, sidebar context menu |
+| File | Binary file (PDF, image, document, etc.) | File detail, sidebar context menu |
 | Agent surface | Markdown payload or summary text | Agent workspace surfaces |
-
-Files do not have a share sheet action â€” they use the download path instead.
+| Chat conversation | Full conversation as plain text | Chat conversation view |
 
 ### Copy to clipboard
 

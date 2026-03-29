@@ -101,6 +101,8 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
+| Files have no share sheet action — files can only be exported to the Files app via `fileExporter`; sharing a binary file directly via `UIActivityViewController` (to Mail, Messages, AirDrop, etc.) is not supported | `FilesHeaderActions.swift`, `FilesPanel+ContextMenu.swift` | [handoffs](./patterns/handoffs) |
+| Chat conversations cannot be exported or shared — individual messages can be copied but there is no action to share or export a full conversation as text | `ChatView.swift`, `ChatMessageRow.swift` | [handoffs](./patterns/handoffs) |
 | `QuickSaveIntent` is dead code — not surfaced in any widget view, only registered as a Siri shortcut phrase; remove intent, Shortcuts registration, and `WidgetDataManager.recordQuickSaveIntent()` | `WebsiteIntents.swift`, `TaskIntents.swift` (shortcuts provider), `WidgetDataManager.swift` | [widgets](./platform-strategy/widgets) |
 | No widget gallery preview images configured — widget picker shows generic previews | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
 | Empty states are inconsistent across widget types — tasks has a purpose-built "All done!" state; behaviour for empty pinned notes, files, and websites needs auditing and alignment | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
