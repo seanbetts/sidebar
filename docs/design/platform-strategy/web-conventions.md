@@ -202,20 +202,7 @@ Full shortcut documentation for web is incomplete. A web keyboard shortcut audit
 - Focus management: bits-ui handles focus trapping in modals and dialogs
 - Screen reader: accessible labels via bits-ui ARIA defaults
 - Contrast: OKLCH color palette provides good contrast ratios
-- Reduce motion: the `prefers-reduced-motion` CSS media query and `window.matchMedia('(prefers-reduced-motion: reduce)')` are supported in all modern browsers (Chrome 74+, Firefox 63+, Safari 10.1+, Edge 79+) and should be implemented. Not confirmed in the current codebase — needs implementation.
-
----
-
-## Feature drift to address
-
-The following are known areas where the web app lags behind native. These are not blocking for the design system but should be tracked:
-
-| Area | Current state | Native equivalent |
-|---|---|---|
-| Tasks detail view | Modal form only | Dedicated detail panel |
-| Skills Store | Within Settings modal | Standalone section |
-| Keyboard shortcuts | Partial | Full shortcut system |
-| Mobile web | Basic responsive | n/a (native app preferred) |
+- Reduce motion: respect `prefers-reduced-motion` in all animations via the CSS media query and `window.matchMedia('(prefers-reduced-motion: reduce)')`
 
 ---
 

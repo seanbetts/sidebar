@@ -137,6 +137,8 @@ Single working list of every known divergence between the design system and the 
 | Gap | File(s) | Source |
 |---|---|---|
 | Web keyboard shortcuts incomplete — full shortcut audit needed | `frontend/src/` | [web-conventions](./platform-strategy/web-conventions) |
+| Web tasks detail view is a modal form only — native has a dedicated detail panel; web should have an equivalent | `frontend/src/` | [web-conventions](./platform-strategy/web-conventions) |
+| Skills Store is nested inside the Settings modal on web — should be a standalone section matching native | `frontend/src/` | [web-conventions](./platform-strategy/web-conventions) |
 
 ---
 
