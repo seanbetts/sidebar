@@ -10,7 +10,7 @@ struct OnboardingBottomAreaView: View {
         case .welcome:
             progressContainer {
                 OnboardingActionArea(layoutMode: layoutMode) {
-                    primaryButton("Get Started", action: viewModel.advance)
+                    primaryButton("Get Started", action: startOnboarding)
                 } secondary: {
                     Button("Already have an account? Sign In", action: routeToSignIn)
                         .font(.subheadline)
@@ -47,7 +47,7 @@ struct OnboardingBottomAreaView: View {
         case .chooseProvider:
             progressContainer {
                 OnboardingActionArea(layoutMode: layoutMode) {
-                    primaryButton("Continue", action: viewModel.advance)
+                    primaryButton("Continue", action: continueFromChooseProvider)
                         .disabled(viewModel.selectedProvider == nil)
                         .opacity(viewModel.selectedProvider == nil ? 0.4 : 1.0)
                 } secondary: {
@@ -169,12 +169,20 @@ struct OnboardingBottomAreaView: View {
         viewModel.routeToSignIn = true
     }
 
+    private func startOnboarding() {
+        viewModel.advance(from: .welcome)
+    }
+
     private func createAccount() {
         Task { await viewModel.createAccount() }
     }
 
     private func saveProfile() {
         Task { await viewModel.saveProfile() }
+    }
+
+    private func continueFromChooseProvider() {
+        viewModel.advance(from: .chooseProvider)
     }
 
     private func skipProviderSetup() {
@@ -187,7 +195,7 @@ struct OnboardingBottomAreaView: View {
 
     private func continueOrEnableLocation() {
         if viewModel.isLocationPermissionResolved {
-            viewModel.advance()
+            viewModel.advance(from: .locationPermission)
         } else {
             Task { await viewModel.enableLocationPermission() }
         }
@@ -199,7 +207,7 @@ struct OnboardingBottomAreaView: View {
 
     private func continueOrEnableNotifications() {
         if viewModel.isNotificationsPermissionResolved {
-            viewModel.advance()
+            viewModel.advance(from: .notificationsPermission)
         } else {
             Task { await viewModel.enableNotificationsPermission() }
         }

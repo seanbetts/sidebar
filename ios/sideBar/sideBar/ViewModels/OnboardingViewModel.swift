@@ -198,17 +198,21 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     public func advance() {
+        guard canAdvance(from: currentStep) else { return }
         guard let next = OnboardingStep(rawValue: currentStep.rawValue + 1) else { return }
-        navigationDirection = .forward
-        currentStep = next
+        navigate(to: next, direction: .forward)
+    }
+
+    public func advance(from expectedStep: OnboardingStep) {
+        guard currentStep == expectedStep else { return }
+        advance()
     }
 
     public func goBack() {
         guard currentStepHasBack else { return }
 
         guard let previous = OnboardingStep(rawValue: currentStep.rawValue - 1) else { return }
-        navigationDirection = .backward
-        currentStep = previous
+        navigate(to: previous, direction: .backward)
     }
 
     public func createAccount() async {
@@ -218,12 +222,12 @@ public final class OnboardingViewModel: ObservableObject {
 
         do {
             if isTestingOnboarding {
-                advance()
+                advance(from: .createAccount)
                 return
             }
 
             try await authSession.signUp(email: email, password: password)
-            advance()
+            advance(from: .createAccount)
         } catch {
             errorMessage = ErrorMapping.message(for: error)
         }
@@ -237,7 +241,7 @@ public final class OnboardingViewModel: ObservableObject {
         do {
             if isTestingOnboarding {
                 persistOnboardingStatus(.inProgress)
-                advance()
+                advance(from: .verifyEmail)
                 return
             }
 
@@ -250,7 +254,7 @@ public final class OnboardingViewModel: ObservableObject {
             } else {
                 persistOnboardingStatus(.inProgress)
             }
-            advance()
+            advance(from: .verifyEmail)
         } catch {
             errorMessage = "Invalid verification code. Please try again."
         }
@@ -275,11 +279,11 @@ public final class OnboardingViewModel: ObservableObject {
             )
         }
 
-        advance()
+        advance(from: .profile)
     }
 
     public func skipProfile() {
-        advance()
+        advance(from: .profile)
     }
 
     public func skipLocationPermission() async {
@@ -329,7 +333,7 @@ public final class OnboardingViewModel: ObservableObject {
         do {
             if isTestingOnboarding {
                 persistOnboardingStatus(.inProgress)
-                advance()
+                advance(from: .addApiKey)
                 return
             }
 
@@ -350,7 +354,7 @@ public final class OnboardingViewModel: ObservableObject {
             } else {
                 persistOnboardingStatus(.inProgress)
             }
-            advance()
+            advance(from: .addApiKey)
         } catch {
             errorMessage = "Could not validate your API key. Please check it and try again."
         }
@@ -361,8 +365,7 @@ public final class OnboardingViewModel: ObservableObject {
 
         if isTestingOnboarding {
             persistOnboardingStatus(.inProgress)
-            navigationDirection = .forward
-            currentStep = .locationPermission
+            navigate(to: .locationPermission, direction: .forward)
             return
         }
 
@@ -372,8 +375,7 @@ public final class OnboardingViewModel: ObservableObject {
         } else {
             persistOnboardingStatus(.inProgress)
         }
-        navigationDirection = .forward
-        currentStep = .locationPermission
+        navigate(to: .locationPermission, direction: .forward)
     }
 
     public func completeOnboarding() async {
@@ -406,7 +408,7 @@ public final class OnboardingViewModel: ObservableObject {
             )
         }
 
-        advance()
+        advance(from: .locationPermission)
     }
 
     private func resolveNotificationsPermission(_ state: OnboardingPermissionState) async {
@@ -421,7 +423,30 @@ public final class OnboardingViewModel: ObservableObject {
             )
         }
 
-        advance()
+        advance(from: .notificationsPermission)
+    }
+
+    private func navigate(
+        to step: OnboardingStep,
+        direction: OnboardingNavigationDirection
+    ) {
+        navigationDirection = direction
+        withAnimation(OnboardingMotion.animation(for: direction)) {
+            currentStep = step
+        }
+    }
+
+    private func canAdvance(from step: OnboardingStep) -> Bool {
+        switch step {
+        case .chooseProvider:
+            return selectedProvider != nil
+        case .locationPermission:
+            return isLocationPermissionResolved
+        case .notificationsPermission:
+            return isNotificationsPermissionResolved
+        default:
+            return true
+        }
     }
 }
 

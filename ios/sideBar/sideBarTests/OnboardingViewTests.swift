@@ -199,6 +199,24 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
+    func testTransitionContainerUsesSlideOnlyRecipeWhenReduceMotionIsOff() {
+        XCTAssertEqual(
+            OnboardingStepTransitionContainer<EmptyView>.transitionRecipe(
+                reduceMotion: false,
+                direction: .forward
+            ),
+            .slideForward
+        )
+        XCTAssertEqual(
+            OnboardingStepTransitionContainer<EmptyView>.transitionRecipe(
+                reduceMotion: false,
+                direction: .backward
+            ),
+            .slideBackward
+        )
+    }
+
+    @MainActor
     func testTransitionContainerUsesReducedMotionFallback() {
         XCTAssertEqual(
             OnboardingStepTransitionContainer<EmptyView>.transitionStyle(
@@ -207,6 +225,11 @@ final class OnboardingViewTests: XCTestCase {
             ),
             .reducedMotion
         )
+    }
+
+    @MainActor
+    func testTransitionContainerClipsAnimatedContentToViewport() {
+        XCTAssertTrue(OnboardingStepTransitionViewportPolicy.clipsAnimatedContent)
     }
 
     @MainActor

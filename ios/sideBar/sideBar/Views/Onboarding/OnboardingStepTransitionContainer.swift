@@ -6,6 +6,16 @@ enum OnboardingStepTransitionStyle: Equatable {
     case reducedMotion
 }
 
+enum OnboardingStepTransitionRecipe: Equatable {
+    case slideForward
+    case slideBackward
+    case reducedMotion
+}
+
+enum OnboardingStepTransitionViewportPolicy {
+    static let clipsAnimatedContent = true
+}
+
 /// Content-only transition wrapper for onboarding step changes.
 struct OnboardingStepTransitionContainer<Content: View>: View {
     let step: OnboardingStep
@@ -36,8 +46,21 @@ struct OnboardingStepTransitionContainer<Content: View>: View {
         }
     }
 
+    static func transitionRecipe(
+        reduceMotion: Bool,
+        direction: OnboardingNavigationDirection
+    ) -> OnboardingStepTransitionRecipe {
+        guard !reduceMotion else { return .reducedMotion }
+        switch direction {
+        case .forward:
+            return .slideForward
+        case .backward:
+            return .slideBackward
+        }
+    }
+
     var body: some View {
-        let style = Self.transitionStyle(
+        let recipe = Self.transitionRecipe(
             reduceMotion: accessibilityReduceMotion,
             direction: direction
         )
@@ -45,34 +68,36 @@ struct OnboardingStepTransitionContainer<Content: View>: View {
         return ZStack {
             content()
                 .id(step)
-                .transition(Self.transition(for: style))
+                .transition(Self.transition(for: recipe))
         }
-        .animation(Self.animation(for: style), value: step)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .modifier(OnboardingStepClipModifier())
     }
 
-    private static func animation(for style: OnboardingStepTransitionStyle) -> Animation {
-        switch style {
-        case .reducedMotion:
-            return .easeOut(duration: 0.12)
-        case .movingForward, .movingBackward:
-            return .smooth(duration: 0.24)
-        }
-    }
-
-    private static func transition(for style: OnboardingStepTransitionStyle) -> AnyTransition {
-        switch style {
-        case .movingForward:
+    private static func transition(for recipe: OnboardingStepTransitionRecipe) -> AnyTransition {
+        switch recipe {
+        case .slideForward:
             return .asymmetric(
-                insertion: .move(edge: .trailing).combined(with: .opacity),
-                removal: .move(edge: .leading).combined(with: .opacity)
+                insertion: .move(edge: .trailing),
+                removal: .move(edge: .leading)
             )
-        case .movingBackward:
+        case .slideBackward:
             return .asymmetric(
-                insertion: .move(edge: .leading).combined(with: .opacity),
-                removal: .move(edge: .trailing).combined(with: .opacity)
+                insertion: .move(edge: .leading),
+                removal: .move(edge: .trailing)
             )
         case .reducedMotion:
             return .opacity
+        }
+    }
+}
+
+private struct OnboardingStepClipModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if OnboardingStepTransitionViewportPolicy.clipsAnimatedContent {
+            content.clipped()
+        } else {
+            content
         }
     }
 }

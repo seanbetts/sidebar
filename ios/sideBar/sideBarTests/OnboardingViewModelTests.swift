@@ -61,22 +61,22 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentStep, .locationPermission)
     }
 
-    func testAdvanceFromLocationPermissionGoesToNotificationsPermission() {
+    func testAdvanceFromLocationPermissionRequiresResolution() {
         let viewModel = makeViewModel()
         viewModel.currentStep = .locationPermission
 
         viewModel.advance()
 
-        XCTAssertEqual(viewModel.currentStep, .notificationsPermission)
+        XCTAssertEqual(viewModel.currentStep, .locationPermission)
     }
 
-    func testAdvanceFromNotificationsPermissionGoesToFinalStep() {
+    func testAdvanceFromNotificationsPermissionRequiresResolution() {
         let viewModel = makeViewModel()
         viewModel.currentStep = .notificationsPermission
 
         viewModel.advance()
 
-        XCTAssertEqual(viewModel.currentStep, .finalStep)
+        XCTAssertEqual(viewModel.currentStep, .notificationsPermission)
     }
 
     func testAdvanceSetsNavigationDirectionForward() {
@@ -179,6 +179,15 @@ final class OnboardingViewModelTests: XCTestCase {
         viewModel.selectedProvider = .anthropic
 
         XCTAssertEqual(viewModel.selectedProvider, .anthropic)
+    }
+
+    func testAdvanceFromChooseProviderRequiresSelection() {
+        let viewModel = makeViewModel()
+        viewModel.currentStep = .chooseProvider
+
+        viewModel.advance()
+
+        XCTAssertEqual(viewModel.currentStep, .chooseProvider)
     }
 
     func testApiKeyTrimmed() {
@@ -378,6 +387,16 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isNotificationsPermissionResolved)
         XCTAssertEqual(viewModel.currentStep, .finalStep)
         XCTAssertEqual(onboardingAPI.updates.last?.notificationsPermission, .granted)
+    }
+
+    func testSaveProfileOnlyAdvancesOnceWhenTriggeredTwice() async {
+        let viewModel = makeViewModel()
+        viewModel.currentStep = .profile
+
+        await viewModel.saveProfile()
+        await viewModel.saveProfile()
+
+        XCTAssertEqual(viewModel.currentStep, .chooseProvider)
     }
 
     func testResolvedLocationPermissionDoesNotRequestAgainWhenRevisited() async {
