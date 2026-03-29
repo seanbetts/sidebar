@@ -41,13 +41,13 @@ The extension writes the URL to `PendingShareStore` in App Group UserDefaults, t
 | App state | Current behaviour | Target behaviour |
 |---|---|---|
 | Active, foreground | Inter-process notification fires; items drained immediately | Process immediately |
-| Active, backgrounded | Notification received; items remain queued; drained on next foreground entry | Queue; drain on foreground |
+| Active, backgrounded | Notification received; items remain queued; drained on next foreground entry | Process immediately via background URLSession |
 | Active, biometric locked | Auth state is `.active` so items are processed immediately, without waiting for unlock | Queue; drain after biometric auth completes |
 | Stale auth | `consumePendingShares` is gated on `.active`; items queue until session recovers | Queue; drain when auth recovers |
 | Signed out | Items written to App Group storage after sign-out clear; retained until sign-in | Queue; drain after sign-in |
 | App not running | Items written to App Group storage by the extension; drained on next launch | Queue; drain on launch |
 
-The biometric locked case is the only divergence from target behaviour — `isBiometricUnlocked` is a view-layer `@State` variable in `ContentView+SignedIn` and is not accessible from `AppEnvironment`, so `consumePendingShares` cannot check it. See [Implementation Gaps](../implementation-gaps).
+Two states currently diverge from target behaviour: backgrounded processing requires a background `URLSession` (not yet implemented), and biometric lock state is not accessible from `AppEnvironment`. See [Implementation Gaps](../implementation-gaps).
 
 ### URL deduplication
 
