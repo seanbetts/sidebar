@@ -81,7 +81,7 @@ Task completion is handled as its own handoff path. The widget records the compl
 
 ### Deferred execution
 
-If the relevant section is not currently focused when an intent fires, the app sets a deferred flag (`pendingNewTaskDeepLink`, `pendingNewNoteDeepLink`) and executes the action when the section is next brought into focus.
+Widget action intents that require navigation convert to a `sidebar://` deep link and route through the standard deep link handler. The deep link system owns deferred execution — if the target section is not yet in focus, the link is queued and flushed when the environment is ready.
 
 ### Auth gating
 
@@ -125,7 +125,7 @@ Deep links do not require authentication for the routing decision itself, but li
 
 ## Spotlight
 
-Spotlight search results are indexed for notes, files, and websites. When a user taps a result, the system delivers an `NSUserActivity` to the app via `scene(_:continue:)`. The app extracts the item identifier, converts it to a `sidebar://` deep link, and routes it through the standard deep link handler.
+Spotlight search results are indexed for tasks, notes, files, and websites. When a user taps a result, the system delivers an `NSUserActivity` to the app via `scene(_:continue:)`. The app extracts the item identifier, converts it to a `sidebar://` deep link, and routes it through the standard deep link handler.
 
 Spotlight indexes are cleared on sign-out so no content is discoverable by a subsequent user on the same device.
 
@@ -133,13 +133,51 @@ Spotlight indexes are cleared on sign-out so no content is discoverable by a sub
 
 ## Push notifications
 
-Remote notifications serve as a lightweight refresh trigger, not a primary navigation mechanism. On receipt the app:
+Push notifications in sideBar follow a unified category model built around a central rule: not every event deserves a notification. Delivery is minimal and high-signal by default.
 
-- Refreshes task counts
-- Refreshes the currently selected task if one is open
-- Refreshes widget data in parallel (for badge sync)
+### Notification categories
 
-Device tokens are registered with the backend when auth transitions to `.active` and disabled on sign-out. Tokens are only re-registered if the token or user ID has changed.
+| Category | Purpose | Default |
+|---|---|---|
+| Task reminders | Functional, urgency-biased alerts for overdue and due-today tasks | Enabled |
+| Morning digest | Scheduled, editorial summary of the day's context | Disabled |
+| Assistant replies | Direct assistant responses delivered while the user is away | Disabled |
+| Assistant proactive nudges | Assistant-initiated check-ins and suggestions | Disabled |
+| Progress surfaces | Persistent status for long-running operations (file upload, transcription, ingestion) | Not user-toggleable |
+
+Task reminders are the only category enabled by default. Morning digest, assistant replies, and proactive nudges require explicit user opt-in. Progress surfaces are part of feature UX, not user-configurable notification toggles.
+
+### Delivery philosophy
+
+Every delivered notification must have an explicit semantic category and a deep link target. Notifications are aggressively deduped and collapsed. Assistant-originated categories have stricter suppression rules than task reminders.
+
+User-facing notifications are only delivered when the user is meaningfully away from the app. At minimum, "away" means the app is not in the foreground on the receiving device. The architecture supports richer future presence checks.
+
+### User controls
+
+sideBar controls whether a category is enabled, product-specific schedules such as morning digest time, and suppression logic. Apple system settings remain the source of truth for Focus, Do Not Disturb, lock screen and banner presentation, and notification summaries. sideBar does not duplicate these controls in-app.
+
+### Routing
+
+Every notification category routes through the standard deep link handler on tap.
+
+| Category | Deep link destination |
+|---|---|
+| Task reminders | `tasks/today` or specific task |
+| Morning digest | Dedicated morning digest destination |
+| Assistant replies | `chat/{conversationId}` |
+| Assistant proactive nudges | `chat/{conversationId}` or future assistant inbox |
+| Progress surfaces | Relevant ingestion or task detail |
+
+Silent badge updates continue to fire alongside visible categories to keep task counts and widget badges in sync.
+
+### Device registration
+
+Device tokens are registered with the backend when auth transitions to `.active` and disabled on sign-out. Tokens are only re-registered if the token or user ID has changed. Token registration includes device platform, environment, and capability markers (for example, Live Activity support on iOS) so the backend can make appropriate delivery decisions. The app also sends lightweight presence hints on scene-phase transitions so the backend can apply the away-state rule correctly.
+
+### Progress surfaces
+
+Progress surfaces communicate status for long-running operations with a clear start, in-progress, and completion lifecycle. On iOS, Live Activities are used when persistent system-level progress visibility benefits the user. On macOS, the same product rules apply using platform-appropriate presentation. Not every background task needs a progress surface; it is reserved for operations where visibility genuinely improves trust and perceived responsiveness.
 
 ---
 
@@ -148,12 +186,13 @@ Device tokens are registered with the backend when auth transitions to `.active`
 Every foreground transition triggers a coordinated drain of all pending handoff data. The sequence on `handleSignedInActivation()` is:
 
 1. Auth refresh (stale session recovery or staleness check)
-2. Consume extension events (with pending share replay)
-3. Consume widget task completions
-4. Consume widget add-task/note intents
-5. *(iOS only, after 1s delay)* Consume extension events again (catch items that arrived during step 1–4), force-reload websites, reconcile queue
+2. Send foreground presence update to backend (for notification away-state rule)
+3. Consume extension events (with pending share replay)
+4. Consume widget task completions
+5. Flush deep link queue (processes widget action intents and any other queued navigation)
+6. *(iOS only, after 1s delay)* Consume extension events again (catch items that arrived during steps 1–5), force-reload websites, reconcile queue
 
-The delay in step 5 catches extension saves that may have been written to App Group storage between app launch and the first drain.
+The delay in step 6 catches extension saves that may have been written to App Group storage between app launch and the first drain.
 
 ---
 

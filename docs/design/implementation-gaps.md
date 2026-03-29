@@ -97,11 +97,22 @@ Single working list of every known divergence between the design system and the 
 | `NoteFormattingBar` uses `.thinMaterial` — should migrate to Liquid Glass | `NoteFormattingBar.swift` | [materials-and-appearance](./foundations/materials-and-appearance) |
 | Liquid Glass adoption plan: `MacPopoverShell`, `MacModalShell`, `SettingsMacStyles`, `SidebarRail`, `SiteHeaderBar`, `HeaderActionIcon`, `PanelHeader`, `SearchField` dock chrome, `LoginView` not yet using `glassEffect` | Multiple files | [materials-and-appearance](./foundations/materials-and-appearance) |
 
+### Push notification gaps
+
+| Gap | File(s) | Source |
+|---|---|---|
+| No user-facing notification categories implemented — only silent badge updates exist; the full category model (task reminders, morning digest, assistant replies, assistant proactive nudges) is not implemented; all require a backend notification policy and delivery layer before any category can ship | `push_notification_service.py`, `AppEnvironment+Push.swift` | [handoffs](./patterns/handoffs) |
+| No user notification preferences in settings model — `task_reminders_enabled`, `morning_digest_enabled`, `assistant_reply_notifications_enabled`, `assistant_proactive_notifications_enabled`, and `morning_digest_time` fields do not exist in user settings; defaults cannot be applied or persisted | `backend/api/models/user_settings.py`, `SettingsModels.swift`, `SettingsViewModel.swift` | [handoffs](./patterns/handoffs) |
+| Device token registration carries no capability or presence metadata — tokens are registered without platform capability markers (e.g. Live Activity support) or foreground/away-state hints; the backend cannot apply the away-state rule or make capability-aware delivery decisions | `backend/api/models/device_token.py`, `AppEnvironment+Push.swift` | [handoffs](./patterns/handoffs) |
+| No iOS Live Activities for ingestion progress — file upload, video transcription, and other long-running ingestion operations have no persistent progress surface; `ActivityKit` attributes, coordinator, and ingestion view model integration do not exist | `IngestionViewModel.swift`, `IngestionViewModel+ListPolling.swift` | [handoffs](./patterns/handoffs) |
+
 ### Widget gaps
 
 | Gap | File(s) | Source |
 |---|---|---|
 | `ExtensionEventStore.recordWebsiteSaved(website:)` and the `applySavedWebsiteEvent` branch in `consumeExtensionEvents()` are dead code — the extension never calls the full-metadata path; only the URL-queue path via `PendingShareStore` is used | `ExtensionEventStore.swift`, `AppEnvironment+Auth.swift` | [handoffs](./patterns/handoffs) |
+| Tasks are not indexed for Spotlight — only notes, files, and websites are currently indexed; tasks should be indexed so users can navigate directly to a task from system search | `SpotlightIndexer.swift` (or equivalent) | [handoffs](./patterns/handoffs) |
+| Widget action intents use bespoke deferred flags (`pendingNewTaskDeepLink`, `pendingNewNoteDeepLink`) rather than routing through the deep link system — target state is to convert all widget action intents to `sidebar://` deep links and let the deep link handler own deferred execution | `AppEnvironment+Widgets.swift`, `TasksViewModel.swift`, `NotesViewModel.swift` | [handoffs](./patterns/handoffs) |
 | Files have no share sheet action — files can only be exported to the Files app via `fileExporter`; sharing a binary file directly via `UIActivityViewController` (to Mail, Messages, AirDrop, etc.) is not supported | `FilesHeaderActions.swift`, `FilesPanel+ContextMenu.swift` | [handoffs](./patterns/handoffs) |
 | Chat conversations cannot be exported or shared — individual messages can be copied but there is no action to share or export a full conversation as text | `ChatView.swift`, `ChatMessageRow.swift` | [handoffs](./patterns/handoffs) |
 | `QuickSaveIntent` is dead code — not surfaced in any widget view, only registered as a Siri shortcut phrase; remove intent, Shortcuts registration, and `WidgetDataManager.recordQuickSaveIntent()` | `WebsiteIntents.swift`, `TaskIntents.swift` (shortcuts provider), `WidgetDataManager.swift` | [widgets](./platform-strategy/widgets) |
