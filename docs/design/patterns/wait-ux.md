@@ -5,7 +5,7 @@ description: How sideBar handles loading, saving, generating, and syncing — th
 
 | Field | Value |
 |---|---|
-| Status | draft |
+| Status | approved |
 | Owner | both |
 | Outputs | this doc |
 | Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [web-conventions](../platform-strategy/web-conventions), [components](../components/overview), [feedback-and-haptics](./feedback-and-haptics) |

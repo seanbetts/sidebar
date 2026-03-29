@@ -20,7 +20,7 @@ Document the repeated interaction patterns that sit above individual components 
 |---|---|
 | [Navigation](./navigation) | approved |
 | [Feedback and Haptics](./feedback-and-haptics) | approved |
-| [Wait UX](./wait-ux) | draft |
+| [Wait UX](./wait-ux) | approved |
 | Onboarding | not started |
 | Handoffs | not started |
 | AI Assistant UI | not started |
