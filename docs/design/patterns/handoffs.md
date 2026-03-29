@@ -32,22 +32,9 @@ Define how sideBar handles incoming context from outside the main app process â€
 
 Website saves from the Share extension and Safari extension are the most complex handoff type because they originate in a separate process and may arrive while the app is backgrounded, locked, or signed out.
 
-### Two-path save model
-
-Saves arrive via one of two paths depending on how much the extension was able to process:
-
-| Path | Content | When used |
-|---|---|---|
-| Direct save | Full metadata (title, content, reading time, etc.) stored in `ExtensionEventStore` | Extension completed a full save before handing off |
-| URL queue | URL only, stored in `PendingShareStore` for async processing | Extension queued the save for the main app to process |
-
-Both paths write to App Group UserDefaults so the data survives process termination.
-
 ### Queue and drain
 
-When an extension save is recorded, an inter-process notification wakes the main app immediately if it is running. On next foreground entry, the app drains all queued items via `consumeExtensionEvents()` followed by `consumePendingShares()`.
-
-Direct saves are applied immediately to the store. URL-queue items are submitted to the backend, with exponential backoff retry (30s base, max 30 minutes) and a 5-attempt limit before an item is marked as failed.
+The extension writes the URL to `PendingShareStore` in App Group UserDefaults, then posts an inter-process notification to wake the main app immediately if it is running. On next foreground entry, the app drains all queued items via `consumePendingShares()`, submitting each URL to the backend with exponential backoff retry (30s base, max 30 minutes) and a 5-attempt limit before an item is marked as failed.
 
 ### URL deduplication
 
