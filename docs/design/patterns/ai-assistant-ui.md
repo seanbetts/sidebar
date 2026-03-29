@@ -143,10 +143,10 @@ Workspace surfaces are assistant-generated content panels rendered alongside the
 |---|---|
 | Markdown | Scrollable markdown document, text-selectable |
 | Table | Key-value pairs with a summary |
-| Chart | Chart placeholder with summary (native chart rendering future state) |
-| Map | Map placeholder with location and summary (native map rendering future state) |
-| Form | Field inputs with a summary |
-| Action panel | Summary text with primary and secondary action buttons |
+| Chart | Native SwiftUI Charts rendering with summary |
+| Map | Native MapKit rendering with location and summary |
+| Form | Interactive field inputs |
+| Action panel | Summary text with wired primary and secondary action buttons |
 
 ### Surface header
 
