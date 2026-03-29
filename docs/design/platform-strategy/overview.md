@@ -162,5 +162,6 @@ No custom numeric breakpoints are used. The two-state compact/regular model is t
 - [iOS Conventions](./ios-conventions)
 - [macOS Conventions](./macos-conventions)
 - [Web Conventions](./web-conventions)
+- [Widgets](./widgets)
 - [Principles](../principles)
 - [System Inheritance](../system-inheritance)

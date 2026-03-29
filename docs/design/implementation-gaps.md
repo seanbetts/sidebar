@@ -81,6 +81,15 @@ Single working list of every known divergence between the design system and the 
 | `NoteFormattingBar` uses `.thinMaterial` — should migrate to Liquid Glass | `NoteFormattingBar.swift` | [materials-and-appearance](./foundations/materials-and-appearance) |
 | Liquid Glass adoption plan: `MacPopoverShell`, `MacModalShell`, `SettingsMacStyles`, `SidebarRail`, `SiteHeaderBar`, `HeaderActionIcon`, `PanelHeader`, `SearchField` dock chrome, `LoginView` not yet using `glassEffect` | Multiple files | [materials-and-appearance](./foundations/materials-and-appearance) |
 
+### Widget gaps
+
+| Gap | File(s) | Source |
+|---|---|---|
+| Lock screen widgets are all static configurations — no intent-based customisation for dynamic content selection (e.g. choose which note or project to show) | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
+| Home screen widgets have no content filtering — tasks cannot be filtered by project, notes by folder, etc. from widget configuration | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
+| Favicons fetched fresh on every timeline generation — no disk cache; repeated fetches on 15-minute cadence for unchanged data | `SavedSitesProvider.swift` | [widgets](./platform-strategy/widgets) |
+| Notes, files, and websites use a fixed 15-minute refresh interval — unlike tasks, no smart timeline boundaries are calculated from data changes | `PinnedNotesProvider.swift`, `PinnedFilesProvider.swift`, `SavedSitesProvider.swift` | [widgets](./platform-strategy/widgets) |
+
 ### Low priority
 
 | Gap | File(s) | Source |
