@@ -85,6 +85,12 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
+| `QuickSaveIntent` is dead code — not surfaced in any widget view, only registered as a Siri shortcut phrase; remove intent, Shortcuts registration, and `WidgetDataManager.recordQuickSaveIntent()` | `WebsiteIntents.swift`, `TaskIntents.swift` (shortcuts provider), `WidgetDataManager.swift` | [widgets](./platform-strategy/widgets) |
+| No widget gallery preview images configured — widget picker shows generic previews | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
+| Empty states are inconsistent across widget types — tasks has a purpose-built "All done!" state; behaviour for empty pinned notes, files, and websites needs auditing and alignment | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
+| Lock screen task widgets have no interactive completion — the home screen task widget supports `CompleteTaskIntent` but the lock screen rectangular widget is tap-only; iOS 17+ supports interactive lock screen elements | `LockScreenWidgets.swift` | [widgets](./platform-strategy/widgets) |
+| No Chat or Scratchpad widget — `OpenScratchpadIntent` and `StartChatIntent` exist but have no widget surface | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
+| No StandBy mode optimisation — `systemMedium` widgets display in StandBy on iOS 17+ but without any StandBy-specific layout or content adjustments | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
 | Lock screen widgets are all static configurations — no intent-based customisation for dynamic content selection (e.g. choose which note or project to show) | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
 | Home screen widgets have no content filtering — tasks cannot be filtered by project, notes by folder, etc. from widget configuration | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
 | Favicons fetched fresh on every timeline generation — no disk cache; repeated fetches on 15-minute cadence for unchanged data | `SavedSitesProvider.swift` | [widgets](./platform-strategy/widgets) |
