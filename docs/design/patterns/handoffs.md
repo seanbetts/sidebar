@@ -5,7 +5,7 @@ description: How sideBar receives and processes external context — share exten
 
 | Field | Value |
 |---|---|
-| Status | draft |
+| Status | approved |
 | Owner | ios |
 | Outputs | this doc |
 | Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [authentication](./authentication), [wait-ux](./wait-ux) |
