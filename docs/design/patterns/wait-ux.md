@@ -137,17 +137,19 @@ Save feedback follows a location-driven principle — the treatment depends on w
 
 ### Detail view: toolbar icon (notes pattern)
 
-The notes detail view shows a small icon in the title bar. Five states:
+The notes detail view shows a small icon in the title bar — icon only, no visible text label. Five states:
 
-| State | Icon | Text | Behaviour |
-|---|---|---|---|
-| Saving | pencil.circle | "Saving note..." | Persists while save in flight |
-| Saved | checkmark.circle.fill (green) | "Saved just now" / "Xm ago" | Shows for 2 seconds, then hides |
-| Unsaved changes | pencil.circle.fill | "Unsaved changes" | Shows when user edits after a save |
-| Sync queued | icloud.and.arrow.up | "Queued to sync" / "Saved offline" | Shows when offline or write queued |
-| Error | exclamationmark.triangle.fill (red) | Error message | Persists until acknowledged |
+| State | Icon | Behaviour |
+|---|---|---|
+| Saving | pencil.circle | Persists while save in flight |
+| Saved | checkmark.circle.fill (green) | Shows for 2 seconds, then hides |
+| Unsaved changes | pencil.circle.fill | Shows when user edits after a save |
+| Sync queued | icloud.and.arrow.up | Shows when offline or write queued |
+| Error | exclamationmark.triangle.fill (red) | Persists until acknowledged |
 
 The saved state auto-dismisses using a cancellable `Task.sleep` of 2 seconds. If the user edits during that window, the task cancels and the state returns to "Unsaved changes".
+
+Each icon must carry a VoiceOver accessibility label describing its state — the absence of visible text does not remove the accessibility requirement.
 
 This is the reference pattern for any new detail view that needs save status.
 
