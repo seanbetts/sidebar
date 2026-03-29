@@ -20,8 +20,9 @@ description: Working brief for the internal sideBar design-system documentation 
 | 11 | Components | [components/overview.md](./components/overview) | approved |
 | 12 | Patterns: navigation | [patterns/navigation.md](./patterns/navigation) | approved |
 | 13 | Patterns: feedback and haptics | [patterns/feedback-and-haptics.md](./patterns/feedback-and-haptics) | approved |
-| 14 | Patterns: wait UX | [patterns/wait-ux.md](./patterns/wait-ux) | draft |
-| 15 | Patterns: onboarding | patterns/onboarding.md | not started |
+| 14 | Patterns: wait UX | [patterns/wait-ux.md](./patterns/wait-ux) | approved |
+| 14a | Patterns: authentication | [patterns/authentication.md](./patterns/authentication) | approved |
+| 15 | Patterns: onboarding | [patterns/onboarding.md](./patterns/onboarding) | approved |
 | 16 | Patterns: handoffs | patterns/handoffs.md | not started |
 | 17 | Patterns: AI assistant UI | patterns/ai-assistant-ui.md | not started |
 | 18 | Agent rules | agent-rules/ | not started |
