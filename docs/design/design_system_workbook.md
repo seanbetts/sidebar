@@ -23,7 +23,7 @@ description: Working brief for the internal sideBar design-system documentation 
 | 14 | Patterns: wait UX | [patterns/wait-ux.md](./patterns/wait-ux) | approved |
 | 14a | Patterns: authentication | [patterns/authentication.md](./patterns/authentication) | approved |
 | 15 | Patterns: onboarding | [patterns/onboarding.md](./patterns/onboarding) | partial |
-| 16 | Patterns: handoffs | [patterns/handoffs.md](./patterns/handoffs) | approved |
+| 16 | Patterns: handoffs | [patterns/handoffs.md](./patterns/handoffs) | draft |
 | 17 | Patterns: AI assistant UI | patterns/ai-assistant-ui.md | not started |
 | 18 | Agent rules | agent-rules/ | not started |
 | 19 | Audits | [token-audit](./audits/token-audit) (approved), [current-ui-audit](./audits/current-ui-audit), [patterns-audit](./audits/patterns-audit), [component-inventory](./audits/component-inventory), [system-framework-usage](./audits/system-framework-usage-audit) (drafted) | partial |
