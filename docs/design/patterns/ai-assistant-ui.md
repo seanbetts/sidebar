@@ -269,13 +269,14 @@ The user is always identified as "You". This is not configurable.
 4. **Retry is shown only on the latest retryable failure.** Multiple error pills may exist in a conversation; only one shows a retry action.
 5. **The assistant never silently writes to user content.** Any skill that creates or modifies notes, tasks, files, or other owned content must be surfaced in the tool disclosure.
 6. **Destructive delete tools always require confirmation.** Execution is paused until the user accepts or declines. No exceptions for in-scope tools.
-7. **Confirmation and undo cards are inline, never modal.** They appear in the message area as part of the conversation flow.
+7. **Inline action cards never interrupt the conversation flow.** They appear in the message area as part of the chat — never as sheets, alerts, or modals.
 8. **Decline is final and feeds back into the assistant.** A declined confirmation injects a deterministic result into the model context so the assistant can respond without retrying.
 9. **Workspace surface headers follow the standard layout.** Icon, title, subtitle, and action row in that order. Never omit the header.
 10. **All assistant inline actions use the shared card component.** Navigational, confirmation, and undo variants share the same container and anatomy — they are never loose buttons or modals.
 11. **All assistant navigation routes through the deep link system.** `presentAgentSurface` converts to `sidebar://` before routing. No direct navigation bypasses the handler.
 12. **`assistantDisplayName` must be used for all references to the assistant.** Never hardcode a name.
 13. **Reduce motion must be respected for all assistant animations.** Thinking dismissal, streaming reveal, and any other assistant-driven motion must have instant fallbacks.
+14. **Skill detail leads with a human-readable summary.** Parameters, result payloads, and prompt preview are secondary — collapsible, never the primary disclosure.
 
 ---
 
