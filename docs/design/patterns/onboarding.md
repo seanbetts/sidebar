@@ -40,7 +40,7 @@ Content is identical across all platforms. Only the presentation wrapper differs
 
 ## Account setup wizard
 
-A modal wizard with no navigation chrome. Progress shown via dots at the bottom of each screen, above the home indicator. Back navigation is available on steps 2, 4, 5, and 6. Steps without a back button use an invisible spacer of the same height to maintain alignment.
+A modal wizard with no navigation chrome. Progress shown via dots at the bottom of each screen, above the home indicator. Back navigation is available on steps 2, 4, 5, 6, 7, and 8. Steps without a back button use an invisible spacer of the same height to maintain alignment.
 
 ### Step 1: Welcome
 
@@ -91,36 +91,25 @@ A modal wizard with no navigation chrome. Progress shown via dots at the bottom 
 - Error states for invalid key, network failure, and rate limiting, each with actionable messages
 - "Skip for now" link routes to the `dismissed` (no provider key) state
 
-### Step 7: You're All Set
+### Step 7: Share Your Location (Optional)
+
+- Explains product value: location enables weather, local recommendations, and time-aware responses
+- "Enable" triggers the system location prompt
+- "Not now" skips without prompting — advances to Step 8
+- Outcome written to backend: `permissions.location`
+
+### Step 8: Stay in the Loop (Optional)
+
+- Explains product value: task reminders, file completion, and assistant attention
+- "Enable" triggers the system notifications prompt
+- "Not now" skips without prompting — advances to Step 9
+- Outcome written to backend: `permissions.notifications`
+
+### Step 9: You're All Set
 
 - Checkmark icon in a circular container
 - "Meet sideBar" primary button
 - Dismisses the modal and opens the main app with Chat focused
-
----
-
-## Permission setup
-
-After the wizard dismisses and the user is in the main app with Chat focused, permission cards are presented inline in the chat view. These are the only trigger for Apple system permission prompts — they must never fire at launch or sign-in.
-
-Cards appear sequentially. The feature tour begins after both are resolved (granted, denied, or dismissed).
-
-### Location
-
-- Explains product value: location enables weather, local recommendations, and time-aware responses
-- "Enable" triggers the system location prompt
-- "Not now" dismisses without prompting
-- If previously denied, shows a recovery CTA linking to system Settings
-- Outcome written to backend: `permissions.location`
-
-### Notifications
-
-- Explains product value: task reminders, file completion, and assistant attention
-- "Enable" / "Not now" behavior mirrors location
-- If previously denied, shows a recovery CTA linking to system Settings
-- Outcome written to backend: `permissions.notifications`
-
-Cards use the same monochrome inline card style as feature discovery cards.
 
 ---
 
@@ -224,7 +213,7 @@ The iOS client reads derived fields from the API response; it does not recompute
 
 1. **Backend is the source of truth.** All onboarding state is persisted on the backend. iOS renders it; it does not maintain a parallel state machine.
 2. **Onboarding is assistant-first.** Provider setup is offered before any AI interaction. Chat generation is not available until a key is connected.
-3. **Permission prompts require explicit user action.** No location or notification prompts at launch or sign-in. All system prompts are triggered only by the inline permission cards.
+3. **Permission prompts require explicit user action.** No location or notification prompts at launch or sign-in. All system prompts are triggered only by the "Enable" button in Steps 7 and 8 of the wizard.
 4. **Skipping is always available.** Provider selection, API key entry, and permission cards each have a "Skip for now" or "Not now" exit. Skipping never blocks access to non-AI features.
 5. **Provider-dismissed users get a recovery path.** An add-key banner and static feature carousel are shown until a key is added. Chat must explain why AI features are unavailable.
 6. **Feature discovery has a static fallback.** If the AI is unavailable, a `StaticFeatureCarousel` covers the same content.
