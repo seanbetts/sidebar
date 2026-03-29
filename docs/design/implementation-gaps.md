@@ -125,6 +125,13 @@ Single working list of every known divergence between the design system and the 
 | Favicons fetched fresh on every timeline generation — no disk cache; repeated fetches on 15-minute cadence for unchanged data | `SavedSitesProvider.swift` | [widgets](./platform-strategy/widgets) |
 | Notes, files, and websites use a fixed 15-minute refresh interval — unlike tasks, no smart timeline boundaries are calculated from data changes | `PinnedNotesProvider.swift`, `PinnedFilesProvider.swift`, `SavedSitesProvider.swift` | [widgets](./platform-strategy/widgets) |
 
+### AI assistant UI gaps
+
+| Gap | File(s) | Source |
+|---|---|---|
+| No confirmation gate for destructive skill actions — delete tools (note, folder, website, task, project, group, file) execute immediately without pausing for user confirmation; `SkillsGuardService`, `tool_confirmation_requested`/`tool_confirmation_resolved` SSE events, confirmation decision endpoint, and inline confirmation card UI all need to be built | `backend/api/services/agent/tools/skills_guard.py` (new), `stream_runner.py`, `tool_event_mapper.py`, `chat.py`, `ChatToolComponents.swift` | [ai-assistant-ui](./patterns/ai-assistant-ui) |
+| No undo for reversible destructive skill actions — notes, folders, websites, tasks, projects, and groups are soft-delete-backed but have no restore service methods, no `undo_available` SSE event, no undo token endpoint, and no inline undo card UI | `notes_service.py`, `websites_service.py`, `tasks_service.py`, `projects_service.py`, `groups_service.py`, `ChatToolComponents.swift` | [ai-assistant-ui](./patterns/ai-assistant-ui) |
+
 ### Low priority
 
 | Gap | File(s) | Source |
