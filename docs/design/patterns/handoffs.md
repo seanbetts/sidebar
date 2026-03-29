@@ -262,6 +262,7 @@ The in-app browser is the default for title taps. The external browser is an exp
 9. **All outgoing handoffs require explicit user action.** Nothing is shared, copied, or exported automatically.
 10. **Clipboard content auto-clears after 30 seconds.** Applies to all copy operations on both iOS and macOS.
 11. **Use `SystemSharePresenter` for all share sheet actions.** Never invoke `UIActivityViewController` or `NSSharingServicePicker` directly — use the shared wrapper for consistent cross-platform behaviour.
+12. **Notifications deliver only when the user is away from the app.** Every delivered notification must have a semantic category and a deep link target. Not every event deserves a notification.
 
 ---
 
