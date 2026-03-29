@@ -58,8 +58,6 @@ struct ProfileStepView: View {
             }
             .padding(.horizontal, layoutMode.horizontalPadding)
         }
-        .onAppear {
-            nameFieldFocused = true
-        }
+        .onboardingDeferredAutofocus($nameFieldFocused)
     }
 }

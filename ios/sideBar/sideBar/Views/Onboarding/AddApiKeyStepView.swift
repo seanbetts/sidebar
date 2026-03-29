@@ -88,8 +88,6 @@ struct AddApiKeyStepView: View {
             }
             .padding(.horizontal, layoutMode.horizontalPadding)
         }
-        .onAppear {
-            keyFieldFocused = true
-        }
+        .onboardingDeferredAutofocus($keyFieldFocused)
     }
 }

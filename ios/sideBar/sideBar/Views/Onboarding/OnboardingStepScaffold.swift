@@ -1,5 +1,9 @@
 import SwiftUI
 
+private enum OnboardingAutofocus {
+    static let delayNanoseconds: UInt64 = 150_000_000
+}
+
 enum OnboardingLayoutMode {
     case regular
     case compact
@@ -108,29 +112,40 @@ struct OnboardingStepScaffold<Content: View>: View {
     }
 
     var body: some View {
-        Group {
-            if layoutMode == .compact {
-                compactScrollableContent
-            } else {
-                regularContent
-            }
-        }
-    }
-
-    private var regularContent: some View {
-        content()
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-
-    private var compactScrollableContent: some View {
         ScrollView(.vertical, showsIndicators: false) {
             content()
-                .frame(maxWidth: .infinity, alignment: .top)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: layoutMode == .compact ? nil : 0,
+                    alignment: .top
+                )
                 .padding(.bottom, layoutMode.bottomPadding)
         }
+        .defaultScrollAnchor(.top)
         .scrollBounceBehavior(.basedOnSize)
 #if canImport(UIKit)
         .scrollDismissesKeyboard(.interactively)
 #endif
+    }
+}
+
+extension View {
+    func onboardingDeferredAutofocus<Value: Hashable>(
+        _ binding: FocusState<Value?>.Binding,
+        equals value: Value
+    ) -> some View {
+        task {
+            try? await Task.sleep(nanoseconds: OnboardingAutofocus.delayNanoseconds)
+            guard !Task.isCancelled, binding.wrappedValue == nil else { return }
+            binding.wrappedValue = value
+        }
+    }
+
+    func onboardingDeferredAutofocus(_ binding: FocusState<Bool>.Binding) -> some View {
+        task {
+            try? await Task.sleep(nanoseconds: OnboardingAutofocus.delayNanoseconds)
+            guard !Task.isCancelled, binding.wrappedValue == false else { return }
+            binding.wrappedValue = true
+        }
     }
 }

@@ -49,6 +49,40 @@ final class OnboardingViewTests: XCTestCase {
         XCTAssertTrue(result)
     }
 
+    @MainActor
+    func testManualStartAllowedWhenSignedOut() {
+        let result = OnboardingPresentation.shouldAllowManualStart(authState: .signedOut)
+
+        XCTAssertTrue(result)
+    }
+
+    @MainActor
+    func testManualStartNotAllowedWhenSignedIn() {
+        let result = OnboardingPresentation.shouldAllowManualStart(authState: .active)
+
+        XCTAssertFalse(result)
+    }
+
+    @MainActor
+    func testSignedOutContentIsLoginWhenOnboardingHidden() {
+        let result = OnboardingPresentation.signedOutContent(
+            authState: .signedOut,
+            isOnboardingPresented: false
+        )
+
+        XCTAssertEqual(result, .login)
+    }
+
+    @MainActor
+    func testSignedOutContentUsesBackdropWhenOnboardingShown() {
+        let result = OnboardingPresentation.signedOutContent(
+            authState: .signedOut,
+            isOnboardingPresented: true
+        )
+
+        XCTAssertEqual(result, .onboardingBackdrop)
+    }
+
 #if canImport(UIKit)
     @MainActor
     func testPresentationStyleIsFullScreenCoverOnPhone() {

@@ -15,4 +15,12 @@ final class LoginCredentialAutofillHintsTests: XCTestCase {
             PlatformTextContentType.password.rawValue
         )
     }
+
+    func testEmailAutofocusAllowedWhenOnboardingIsHidden() {
+        XCTAssertTrue(LoginFocusPolicy.shouldAutofocusEmail(isOnboardingPresented: false))
+    }
+
+    func testEmailAutofocusSuppressedWhenOnboardingIsShowing() {
+        XCTAssertFalse(LoginFocusPolicy.shouldAutofocusEmail(isOnboardingPresented: true))
+    }
 }

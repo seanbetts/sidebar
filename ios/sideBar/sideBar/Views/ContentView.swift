@@ -78,8 +78,22 @@ public struct ContentView: View {
                 ConfigErrorView(error: configError)
                     .onAppear { logStartup("ConfigErrorView appeared") }
             } else if environment.authState == .signedOut {
-                LoginView()
-                    .onAppear { logStartup("LoginView appeared") }
+                switch OnboardingPresentation.signedOutContent(
+                    authState: environment.authState,
+                    isOnboardingPresented: showOnboarding
+                ) {
+                case .login:
+                    LoginView(
+                        shouldAutofocusEmail: LoginFocusPolicy.shouldAutofocusEmail(
+                            isOnboardingPresented: showOnboarding
+                        ),
+                        onStartOnboarding: presentOnboardingFromLogin
+                    )
+                        .onAppear { logStartup("LoginView appeared") }
+                case .onboardingBackdrop:
+                    signedOutOnboardingBackdrop
+                        .onAppear { logStartup("OnboardingBackdrop appeared") }
+                }
             } else {
                 signedInContent
                     .onAppear { logStartup("SignedInContent appeared") }
@@ -166,5 +180,15 @@ public struct ContentView: View {
         if isTestingOnboarding {
             suppressAutomaticOnboarding = true
         }
+    }
+
+    private func presentOnboardingFromLogin() {
+        suppressAutomaticOnboarding = false
+        showOnboarding = true
+    }
+
+    private var signedOutOnboardingBackdrop: some View {
+        DesignTokens.Colors.background
+            .ignoresSafeArea()
     }
 }

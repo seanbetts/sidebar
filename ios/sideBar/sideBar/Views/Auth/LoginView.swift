@@ -21,13 +21,19 @@ public struct LoginView: View {
     @State private var lockoutSecondsRemaining: Int?
     @FocusState private var focusedField: Field?
     private let lockoutTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    private let onStartOnboarding: () -> Void
+    private let shouldAutofocusEmail: Bool
 
     private enum Field {
         case email
         case password
     }
-
-    public init() {
+    public init(
+        shouldAutofocusEmail: Bool = true,
+        onStartOnboarding: @escaping () -> Void = {}
+    ) {
+        self.shouldAutofocusEmail = shouldAutofocusEmail
+        self.onStartOnboarding = onStartOnboarding
     }
 
     public var body: some View {
@@ -43,6 +49,7 @@ public struct LoginView: View {
                         }
                         errorView
                         signInButton
+                        onboardingEntryView
                     }
                 }
                 .groupBoxStyle(LoginGroupBoxStyle())
@@ -74,13 +81,16 @@ public struct LoginView: View {
         }
         .onAppear {
             email = LoginEmailPrefill.initialEmail(currentEmail: email, storedEmail: lastSignInEmail)
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 150_000_000)
-                if focusedField == nil {
-                    focusedField = .email
-                }
-            }
             updateLockoutState()
+        }
+        .task(id: shouldAutofocusEmail) {
+            guard shouldAutofocusEmail else {
+                focusedField = nil
+                return
+            }
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled, focusedField == nil else { return }
+            focusedField = .email
         }
         .onReceive(lockoutTimer) { _ in
             updateLockoutState()
@@ -91,7 +101,6 @@ public struct LoginView: View {
             }
         }
     }
-
     private var headerView: some View {
         VStack(spacing: 12) {
             LoadingIndicatorView(size: 64, variant: .hero)
@@ -363,28 +372,19 @@ public struct LoginView: View {
         Button {
             Task { await signIn() }
         } label: {
-            ZStack {
-                HStack(spacing: 8) {
-                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                    Text("Signing in...")
-                }
-                .opacity(0)
-                // Visible content
-                if isSigningIn {
-                    HStack(spacing: 8) {
-                        LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                        Text("Signing in...")
-                    }
-                } else {
-                    Text("Sign in")
-                }
-            }
-            .frame(maxWidth: .infinity)
+            LoginPrimaryActionLabel(isLoading: isSigningIn)
         }
         .buttonStyle(LoginPrimaryActionButtonStyle())
         .keyboardShortcut(.defaultAction)
         .disabled(isSignInDisabled)
         .accessibilitySortPriority(1)
+    }
+
+    @ViewBuilder
+    private var onboardingEntryView: some View {
+        if OnboardingPresentation.shouldAllowManualStart(authState: environment.authState) {
+            LoginManualSignUpPrompt(action: onStartOnboarding)
+        }
     }
 
     private var isSignInDisabled: Bool {

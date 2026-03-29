@@ -82,9 +82,7 @@ struct VerifyEmailStepView: View {
             }
             .padding(.horizontal, layoutMode.horizontalPadding)
         }
-        .onAppear {
-            focusedIndex = 0
-        }
+        .onboardingDeferredAutofocus($focusedIndex, equals: 0)
     }
 
     private func handleDigitChange(at index: Int, value: String) {

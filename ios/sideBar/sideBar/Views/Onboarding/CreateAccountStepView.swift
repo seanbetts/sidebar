@@ -107,8 +107,6 @@ struct CreateAccountStepView: View {
             }
             .padding(.horizontal, layoutMode.horizontalPadding)
         }
-        .onAppear {
-            focusedField = .email
-        }
+        .onboardingDeferredAutofocus($focusedField, equals: .email)
     }
 }

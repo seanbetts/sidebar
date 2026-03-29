@@ -300,6 +300,12 @@ public final class OnboardingViewModel: ObservableObject {
 
 /// Determines when onboarding should be shown and which presentation style to use.
 public enum OnboardingPresentation {
+    /// Signed-out root content to show behind or instead of the onboarding flow.
+    public enum SignedOutContent: Equatable {
+        case login
+        case onboardingBackdrop
+    }
+
     /// Modal presentation style chosen for the current device family.
     public enum Style: Equatable {
         case fullScreenCover
@@ -315,6 +321,20 @@ public enum OnboardingPresentation {
             return true
         }
         return authState == .signedOut && onboardingStatus == .notStarted
+    }
+
+    public static func shouldAllowManualStart(authState: AuthState) -> Bool {
+        authState == .signedOut
+    }
+
+    public static func signedOutContent(
+        authState: AuthState,
+        isOnboardingPresented: Bool
+    ) -> SignedOutContent {
+        guard authState == .signedOut else {
+            return .login
+        }
+        return isOnboardingPresented ? .onboardingBackdrop : .login
     }
 
 #if canImport(UIKit)

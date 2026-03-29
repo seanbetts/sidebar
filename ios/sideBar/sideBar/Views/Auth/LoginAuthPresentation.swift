@@ -21,6 +21,12 @@ enum LoginCredentialAutofillHints {
     }
 }
 
+enum LoginFocusPolicy {
+    static func shouldAutofocusEmail(isOnboardingPresented: Bool) -> Bool {
+        !isOnboardingPresented
+    }
+}
+
 struct LoginPrimaryActionButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled
