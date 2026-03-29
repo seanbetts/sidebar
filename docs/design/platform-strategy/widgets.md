@@ -229,17 +229,13 @@ Favicons are fetched fresh on every timeline generation. There is no disk cache.
 
 ---
 
-## Design principles
+## Rules summary
 
-**Glanceable first.** The user is not in the app. Every element must earn its place at a glance. If it requires reading, it is probably too much.
-
-**Show the most actionable content.** Tasks are sorted overdue first, then by earliest deadline, then alphabetically. Pinned items appear because the user explicitly signalled they are important.
-
-**Never block on network.** All widget data comes from the App Group cache. If data is stale, show the stale data. The 15-minute refresh cadence and targeted reloads keep it reasonably fresh.
-
-**Optimistic actions feel instant.** Task completion updates the widget immediately — no spinner, no delay, no waiting for the server.
-
-**Honest empty states.** "All done!" with a checkmark is a positive empty state for tasks. Empty pinned notes shows a create affordance. Neither pretends there is content when there is none.
+1. **Every element must be glanceable.** The user is not in the app. If it requires reading, it is probably too much.
+2. **Show the most actionable content.** Tasks sort overdue first, then by earliest deadline. Pinned items appear because the user explicitly signalled they are important.
+3. **Never block on network.** All data comes from the App Group cache. Show stale data rather than a loading state — the 15-minute cadence and targeted reloads keep it fresh enough.
+4. **Optimistic actions feel instant.** Task completion updates the widget immediately. No spinner, no delay, no waiting for the server.
+5. **Honest empty states.** Never pretend there is content when there is none. Provide a purposeful empty state — positive for tasks ("All done!"), actionable for notes (create affordance).
 
 ---
 

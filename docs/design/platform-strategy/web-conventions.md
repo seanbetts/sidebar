@@ -206,6 +206,18 @@ Full shortcut documentation for web is incomplete. A web keyboard shortcut audit
 
 ---
 
+## Rules summary
+
+1. **Mirror the workspace model, not browser-native navigation.** The web layout is intentionally consistent with native — do not replace it with browser-native patterns.
+2. **System fonts only.** Do not import a web font for general UI text.
+3. **Icon vocabulary must match native.** Use the closest Lucide equivalent to the SF Symbol used in native. Do not introduce decorative icons not present in the native apps.
+4. **Create actions belong in the section header.** The header button is the web equivalent of the native floating action dock.
+5. **Do not design for mobile browsers.** Web targets desktop. If mobile access is needed, the native iOS app is the answer.
+6. **Settings must be a dedicated `/settings` route.** Browser navigation and direct URL access are required.
+7. **Respect `prefers-reduced-motion` in all animations.**
+
+---
+
 ## Related docs
 
 - `platform-strategy/overview.md`

@@ -242,6 +242,16 @@ The values are the same regardless of trigger mechanism. There are no platform-s
 
 ---
 
+## Rules summary
+
+1. **Always use semantic color tokens.** Use `DesignTokens.Colors.*` on native and CSS variables on web. Never hardcode hex values in views.
+2. **The canonical palette is the reference.** Platform files (`Color+Platform.swift`, `app.css`) must match the canonical values, not diverge from them.
+3. **Dark mode is required on all platforms.** There are no platform-specific dark mode variants — the same values apply everywhere.
+4. **Do not introduce new platform-specific color branching.** The `#if os(macOS)` branching in `Color+Platform.swift` is being removed, not extended.
+5. **Use `success` and `warning` tokens for semantic states.** Do not use neutral text colors for states that carry meaning.
+
+---
+
 ## Related docs
 
 - [Token Audit](../audits/token-audit)

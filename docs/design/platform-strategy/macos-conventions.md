@@ -226,6 +226,16 @@ Source: `Views/Websites/SiteHeaderBar.swift`
 ---
 
 
+## Rules summary
+
+1. **All common actions must have keyboard shortcuts.** New Mac features must include shortcuts by default, not as an afterthought.
+2. **Mac settings = dedicated window.** Do not present settings as a sheet on macOS.
+3. **Every interactive element must have a hover state.** Wrap `.onHover` in `#if os(macOS)` for Mac-only hover; omit the guard where iPad pointer should also get hover.
+4. **Follow the Liquid Glass rollout order for Mac surfaces.** Primitives first, then individual surfaces one at a time.
+5. **Use the View menu for all global commands.** `Toggle Sidebar` (Cmd+Shift+S) and `Open Scratchpad` (Cmd+Shift+O) belong in the menu bar, not only in the UI.
+
+---
+
 ## Related docs
 
 - `platform-strategy/overview.md`

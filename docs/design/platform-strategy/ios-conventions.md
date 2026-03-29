@@ -192,6 +192,18 @@ Confirmed. All panel lists use native SwiftUI `.refreshable`: Chat, Notes, Tasks
 
 ---
 
+## Rules summary
+
+1. **Tab bar is navigation only.** Do not customise beyond tint color. Do not replace it with a custom bottom bar.
+2. **Search belongs in the search dock.** Use the search dock pattern for all panel-level search on iPhone. Do not add search to the navigation bar.
+3. **Create actions belong in the floating action dock on iPhone.** Do not add create actions to the navigation bar on iPhone.
+4. **iPhone settings = sheet.** No other presentation.
+5. **Minimum touch target is 44pt.** No interactive element smaller than 44pt in the compact layout.
+6. **Use `Haptics.*` for all haptic calls.** Never instantiate feedback generators directly in views.
+7. **iPad pointer hover must match macOS hover.** Any `.onHover` behaviour that applies to both iPad and Mac must not be gated behind `#if os(macOS)`.
+
+---
+
 ## Related docs
 
 - `platform-strategy/overview.md`

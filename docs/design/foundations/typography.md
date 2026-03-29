@@ -226,7 +226,7 @@ Prose and markdown content uses `@tailwindcss/typography`. Rich text editing use
 
 ---
 
-## Rules
+## Rules summary
 
 1. **Always use `.appFont()`**. Never use `.font(.system(size:weight:))` directly in views.
 2. **Prefer semantically named styles** (`body`, `footnote`, `labelMd`) over size-named ones (`size16Semibold`). If no semantic style fits, use the escape hatch or add a new named case.
