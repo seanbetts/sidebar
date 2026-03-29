@@ -43,6 +43,19 @@ Single working list of every known divergence between the design system and the 
 |---|---|---|
 | Haptic: settings save missing `Haptics.selection()` on explicit save completion — `SettingsSaveStatusPill` shows visual saved state but no haptic fires | `SettingsSaveStatusPill.swift` | [wait-ux](./patterns/wait-ux) |
 | Pull-to-refresh not confirmed implemented on iOS list panels — all sidebar list panels should use the `refreshable` modifier | Sidebar panel views | [wait-ux](./patterns/wait-ux) |
+| Website save detail view shows static "Reading..." for the full duration of job polling (up to 5 minutes) with no stage progression — server job status stages should be surfaced | `WebsitesDetailView+PendingSave.swift`, `WebsitesViewModel+JobPolling.swift` | [wait-ux](./patterns/wait-ux) |
+| Cancel website save is unavailable for queued-share saves (`canCancelWebsiteSave()` only returns true for `.directSave` sources) — cancellation should be available regardless of how the save was initiated | `WebsitesViewModel.swift` | [wait-ux](./patterns/wait-ux) |
+| `IngestionCenterView` is an active per-file tracking panel — should be replaced with a lightweight ingestion history summary; active progress tracking moves to Live Activities | `IngestionCenterView.swift` | [wait-ux](./patterns/wait-ux) |
+| Live Activities not implemented for file ingestion — `IngestionProgressActivityAttributes.swift` and `IngestionProgressActivityCoordinator.swift` do not exist | `Views/Files/` | [wait-ux](./patterns/wait-ux) |
+| Live Activities not implemented for video transcription | `Views/Files/` | [wait-ux](./patterns/wait-ux) |
+| Note content edits bypass `WriteQueue` when online — `NotesEditorViewModel` calls the API directly; should apply locally first and sync in background | `NotesEditorViewModel.swift` | [wait-ux](./patterns/wait-ux) |
+| Website mutations (pin, rename, archive, delete) bypass `WriteQueue` when online — only queued when offline; should be consistently optimistic | `WebsitesViewModel.swift`, `WebsitesWriteQueueExecutor.swift` | [wait-ux](./patterns/wait-ux) |
+| `WriteQueue` pauses on conflict and waits for manual resolution — should auto-resolve with `keepLocal` rebase and continue without pausing | `WriteQueue.swift` | [wait-ux](./patterns/wait-ux) |
+| Note entity has no rebase logic in `WriteQueueConflictRebase.swift` — `rebaseConflictPayload()` returns `nil` for notes, which will cause infinite conflict loops under auto-resolution; rebase must be implemented before auto-resolution is enabled for notes | `WriteQueueConflictRebase.swift` | [wait-ux](./patterns/wait-ux) |
+| `QueuedChangeResolutionSheet` conflict resolution modal should be removed — local always wins, no user input needed | `QueuedChangeResolutionSheet.swift`, `ContentView+SignedIn.swift` | [wait-ux](./patterns/wait-ux) |
+| `QueuedChangesView` in Settings shows conflict resolution buttons ("Keep Queued Change" / "Use Server Version") — remove conflict UI; keep failed write visibility and retry only | `QueuedChangesView.swift` | [wait-ux](./patterns/wait-ux) |
+| Web `TaskConflictDialog` conflict resolution modal should be removed — local always wins | `frontend/src/lib/components/tasks/TaskConflictDialog.svelte` | [wait-ux](./patterns/wait-ux) |
+| Web note and website mutations are fire-and-forget — no in-session retry or error surfacing when API calls fail; should retry on transient failures before surfacing an error | `frontend/src/lib/` | [wait-ux](./patterns/wait-ux) |
 | SidebarRail section button hover gated by `#if os(macOS)` — remove guard so iPad pointer gets hover state too | `SidebarRail.swift:117` | [ios-conventions](./platform-strategy/ios-conventions) |
 | SidebarRail app logo button missing `.onHover` | `SidebarRail.swift:32` | [ios-conventions](./platform-strategy/ios-conventions) |
 | SidebarRail profile avatar button missing `.onHover` | `SidebarRail.swift:54` | [ios-conventions](./platform-strategy/ios-conventions) |

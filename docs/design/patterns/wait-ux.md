@@ -27,7 +27,7 @@ This doc defines how sideBar should behave during short delays, long waits, and 
 | Haptics on wait completion | Yes | No | No |
 | Progressive reveal (character-paced) | Yes | Yes | No |
 | Progressive reveal (chunk-driven) | No | No | Yes |
-| Live Activities | Target | No | No |
+| Live Activities | Target | No (completion notification instead) | No |
 | Pull-to-refresh | Yes | No | No |
 
 Platform differences are called out inline throughout this doc. Unless noted, a rule applies to all platforms.
@@ -237,6 +237,18 @@ AI generation is not fetching. Do not use the same visual language for a streame
 
 ## Long-running operations
 
+### Website saving
+
+Website saving is a long-running server-side operation that cannot be made optimistic — the server must fetch and process the page. The pattern has two entry points:
+
+**In-app save**: A pending item appears immediately in the sidebar list (optimistic row), and the detail view shows a spinner with a contextual message ("Reading...", "Watching..." for video). A Cancel button appears when cancellation is available. The pending item persists until the server job completes or fails.
+
+**Share extension and Safari extension**: The extension queues the URL immediately without waiting for the server. It shows "Saved for later" — not "Saved" — because the outcome is not yet guaranteed. The main app picks up the queued item on next launch or when the app is active.
+
+**Rule**: When the outcome of a save is not yet confirmed, use "Saved for later" messaging. Never show "Saved" until the operation has actually completed. Honest feedback preserves user trust more than premature confirmation.
+
+**Rule**: Pending items in the sidebar list are the reference pattern for surfacing in-progress long-running saves. Show the pending row immediately; update it as status changes; replace it with the real item on completion.
+
 ### File processing progress
 
 When a file is uploading or processing, surface progress per file:
@@ -251,18 +263,97 @@ Use a determinate progress bar whenever numeric progress is available. Use an in
 
 ### Live Activities (iOS)
 
-Long-running file operations on iOS use Live Activities to surface progress outside the app:
+Long-running file operations on iOS use Live Activities to surface progress outside the app. The qualifying criterion is that the operation is long-running enough that users would benefit from knowing its status without staying in the app.
 
-- Upload and processing progress appears in the Dynamic Island and on the lock screen
-- Users do not need to stay in the app during file processing
-- The in-app surface is a lightweight summary of recent ingestion history, not an active tracking panel
-- `Haptics.notification(.success)` fires and a local notification is sent when processing completes
+**Operations that use Live Activities:**
+
+| Operation | Progress surface | Completion |
+|---|---|---|
+| File ingestion (upload + processing) | Dynamic Island + lock screen progress bar | `Haptics.notification(.success)` + local notification |
+| Video transcription (URL input) | Dynamic Island + lock screen status | `Haptics.notification(.success)` + local notification |
+
+Not every background task qualifies. Optimistic writes, settings saves, and brief network operations do not need Live Activities — they complete quickly enough that persistent visibility adds no value.
+
+**In-app surface**: A lightweight summary of recent ingestion history. Not an active tracking panel — users who stay in the app see the same completion state as users who background it.
+
+**Implementation**: `IngestionProgressActivityAttributes` and `IngestionProgressActivityCoordinator` feed from `IngestionViewModel` state. See the [notifications and progress surfaces plan](../../superpowers/plans/2026-03-15-apple-notifications-and-progress-surfaces) for rollout details.
+
+### Long-running operations (macOS)
+
+macOS does not support Live Activities. The same product rules apply — users should not need to stay in the app during long-running file operations — but the implementation differs:
+
+- Normal routing and completion notifications replace Live Activities
+- A completion notification fires when processing finishes, with a deep link back to the relevant panel
+- The in-app surface mirrors iOS: a lightweight history summary, not an active tracker
 
 ---
 
 ## Optimistic updates
 
-The app uses optimistic updates for note edits, task changes, and website saves via the `WriteQueue` system. Local changes apply immediately; syncing happens in the background.
+Optimistic updates are the default pattern for any user-initiated mutation where the outcome is deterministic — the result is known locally before the server confirms. The UI applies the change immediately; the write syncs in the background. This is the primary reason sideBar feels fast and responsive.
+
+**Rule**: If the outcome of a mutation is deterministic, apply it optimistically. Never show a blocking loading state for an operation that can be optimistic.
+
+### When to apply optimistically
+
+Apply optimistically when:
+- The outcome is entirely determined by the user's action (not server logic)
+- Failure is recoverable without confusing the user (undo or retry)
+- The operation is a standard CRUD mutation on user-owned content
+
+Do not apply optimistically when:
+- The server must compute the result (AI generation, file processing, transcription)
+- The outcome depends on server-side validation that may reject the write
+- The operation is irreversible and catastrophic if incorrectly applied
+
+### WriteQueue: the iOS implementation
+
+All eligible writes go through `WriteQueue`, which:
+
+1. Applies the change to local state immediately
+2. Queues a network write to CoreData
+3. Executes the write when online, with up to 5 retries and exponential backoff
+4. Coalesces rapid updates (note content edits merge into a single queued write)
+5. Pauses the queue and surfaces a conflict resolution sheet if the server returns a conflict
+
+**Current coverage:**
+
+| Section | Operations |
+|---|---|
+| Tasks | Create, complete, rename, update notes, move, set/clear due date, defer, set repeat, trash |
+| Notes | Archive, pin, move, delete |
+| Websites | Pin, rename, archive, delete |
+
+### Failure handling
+
+When a write fails after exhausting retries:
+- The write enters `failed` state and remains in the queue
+- The error is surfaced at the level where it occurred — inline or toast
+- The user can retry or discard the failed write
+
+**Rule**: Do not silently swallow write failures. Surface them at the appropriate level and always provide a retry path.
+
+### Conflict resolution: local always wins
+
+When the server returns a conflict (the entity was changed on another device since the local write was queued), the local version always wins. The queue rebases the write automatically by updating the client timestamp to match the server's, then retries without pausing or asking the user.
+
+There is no manual conflict resolution. The user's most recent intent — the action they took on this device — is authoritative. Showing a resolution sheet interrupts the user for a problem they cannot meaningfully reason about (they rarely remember what changed on another device).
+
+**Rule**: Conflicts are resolved automatically in favour of local. The queue must never pause for user input. No conflict resolution UI should exist anywhere in the product.
+
+### Web
+
+The web frontend does not have and does not need a persistent write queue. Users are almost always online in a browser session, page refreshes are expected to reset in-memory state, and Supabase realtime heals any divergent state after transient failures. A full IndexedDB-backed queue with background sync would be significant complexity for marginal benefit on a secondary platform.
+
+The target for web is:
+- Consistent in-memory optimistic updates for all mutations (not just task creation)
+- Retry within the session for transient failures before surfacing an error
+- Clear error surfacing when retries are exhausted
+- No manual conflict resolution — local wins, same as native
+
+Persistent queue parity with iOS is an accepted asymmetry.
+
+### Rule
 
 **Rule**: Do not show a blocking loading state for operations that are optimistically applied. Optimistic writes are silent — the UI has already updated. If the write fails, surface the error through the normal error pattern.
 
@@ -270,13 +361,21 @@ The app uses optimistic updates for note edits, task changes, and website saves 
 
 ## Cancellation and retry
 
-When a long wait can be cancelled, always provide a cancel affordance. The website save overlay is the model for this: a full-screen `LoadingView` with a "Cancel" button when cancellation is available.
+### Cancellation
+
+Cancellation is only relevant for operations that are genuinely long-running and cannot be made optimistic — primarily file ingestion and video transcription.
+
+When cancellation is available, surface a Cancel button inline with the loading state. The website save detail view is an example: while a save is in progress, the detail view content area shows a spinner with an optional Cancel button below it, visible only when `canCancelWebsiteSave()` is true. There is no separate full-screen modal — the loading state occupies the view's content area in place of the normal content.
+
+Do not add a cancel affordance to short operations or optimistic writes — they complete or fail fast enough that cancellation adds no value.
+
+### Retry
 
 When an operation fails:
 
-1. Surface the error at the level where it occurred — in-row pill, toolbar icon, or toast — not always a modal
+1. Surface the error at the level where it occurred — in-row pill, toolbar icon, or toast — not a modal
 2. Provide a retry action inline where possible
-3. During retry, show a spinner in the retry button and disable it
+3. During retry, show a spinner inside the retry button and disable it
 
 **Rule**: Retry shows a spinner within the button itself. Keep the layout stable.
 
@@ -295,14 +394,17 @@ Show a skeleton first. Transition to the empty state only when the load complete
 1. **No feedback under 150ms.** Instant responses render directly.
 2. **Skeleton for initial list load. Never for refresh.** Keep visible content in place during refresh.
 3. **Descriptive messages for long waits.** "Loading note..." is always better than "Loading...".
-4. **Save status is location-driven.** Toolbar icon for detail views, floating pill for sheets, ambient dot for background writes.
+4. **Save status is location-driven.** Toolbar icon for detail views, floating pill for sheets, silent for background writes.
 5. **Auto-saves are silent on iOS. Explicit saves fire `Haptics.selection()`.** Long-operation completion fires `.notification(.success)` and a toast.
 6. **Async buttons disable in place.** Change the label text. Show a spinner inside the button for retry.
 7. **AI generation is not fetching.** Inline thinking indicator before first token. Progressive reveal once content arrives — character-paced on native, chunk-driven on web. Content must never appear all at once at stream end.
 8. **Background operations never block.** Ambient indicators only.
-9. **Optimistic updates are silent.** No indicator needed — the UI has already updated. Surface errors if the write fails.
-10. **Empty state appears after loading, not during.**
-11. **Live Activities is the target for long-running file operations on iOS.** IngestionCenter is the current interim pattern.
+9. **If the outcome is deterministic, apply it optimistically.** Optimistic writes are silent — the UI has already updated. Surface errors if the write fails.
+10. **Conflicts resolve automatically in favour of local.** The queue never pauses for user input. No conflict resolution UI.
+11. **Don't confirm what isn't confirmed.** Use "Saved for later" when a save is queued but not yet complete. "Saved" means the operation succeeded.
+12. **Cancel is for genuinely long-running operations only.** Don't add cancel affordances to optimistic writes or short operations. Cancel must be available regardless of how the operation was initiated.
+13. **Empty state appears after loading, not during.**
+14. **Live Activities is the target for long-running file operations on iOS.**
 
 ---
 
