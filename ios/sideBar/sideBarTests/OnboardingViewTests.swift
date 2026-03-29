@@ -308,6 +308,95 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
+    func testWelcomeSecondaryActionUsesPlainTextLinkPresentation() throws {
+        let normalized = try onboardingBottomAreaViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "secondaryTextLink(\"Alreadyhaveanaccount?SignIn\",action:routeToSignIn)"
+            )
+        )
+        XCTAssertTrue(normalized.contains(".buttonStyle(.plain)"))
+    }
+
+    @MainActor
+    func testVerifyEmailResendActionUsesPlainTextLinkPresentation() throws {
+        let normalized = try verifyEmailStepViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "Button(resendCooldown>0?\"Resendcode(\\(resendCooldown)s)\":\"Resendcode\"){resendCode()}.buttonStyle(.plain)"
+            )
+        )
+    }
+
+    @MainActor
+    func testVerifyEmailStepDoesNotAddCustomFocusOverlayStroke() throws {
+        let normalized = try verifyEmailStepViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains(".overlay("))
+        XCTAssertFalse(normalized.contains(".stroke(focusedIndex==index?Color.primary:Color.clear,lineWidth:2)"))
+    }
+
+    @MainActor
+    func testChooseProviderCardsUseMutedBackgroundFill() throws {
+        let normalized = try chooseProviderStepViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".background(DesignTokens.Colors.muted)"))
+        XCTAssertFalse(normalized.contains(".background(DesignTokens.Colors.surface)"))
+    }
+
+    @MainActor
+    func testNotificationsPermissionStepDoesNotUseSkippedCopy() throws {
+        let normalized = try notificationsPermissionStepViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("return\"NotificationsEnabled\""))
+        XCTAssertTrue(normalized.contains("return\"StayInTheLoop\""))
+        XCTAssertTrue(normalized.contains("return\"CheckingNotificationStatus\""))
+        XCTAssertFalse(normalized.contains("NotificationsSkipped"))
+    }
+
+    @MainActor
+    func testNotificationsPermissionActionWaitsForRefreshBeforeShowingPrompt() throws {
+        let normalized = try onboardingBottomAreaViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("isRefreshing:viewModel.isRefreshingNotificationsPermissionState"))
+        XCTAssertTrue(normalized.contains("showsProgress:viewModel.isLoading||isRefreshing"))
+        XCTAssertTrue(normalized.contains(".disabled(viewModel.isLoading||isRefreshing)"))
+        XCTAssertTrue(normalized.contains("ifactionState.hidesSecondaryAction||isRefreshing"))
+    }
+
+    @MainActor
+    func testBackButtonUsesPlainPresentation() throws {
+        let normalized = try onboardingViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Button(action:{viewModel.goBack()}"))
+        XCTAssertTrue(normalized.contains(".buttonStyle(.plain)"))
+    }
+
+    @MainActor
+    func testOnboardingViewOnlyAllowsDismissDuringMacTermination() throws {
+        let normalized = try onboardingViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".interactiveDismissDisabled(shouldDisableInteractiveDismiss)"))
+        XCTAssertTrue(normalized.contains("privatevarshouldDisableInteractiveDismiss:Bool"))
+        XCTAssertTrue(normalized.contains("#ifos(macOS)!allowsTerminationDismiss#elsetrue#endif"))
+        XCTAssertTrue(
+            normalized.contains(
+                ".onReceive(NotificationCenter.default.publisher(for:.macAppTerminationRequested)){_inallowsTerminationDismiss=true}"
+            )
+        )
+    }
+
+    @MainActor
     func testOnboardingViewCanRenderLocationStep() {
         XCTAssertEqual(
             OnboardingView.contentKind(for: .locationPermission),
@@ -332,11 +421,12 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
-    func testOnboardingViewSourceDoesNotContainMacSpecificStepLayoutBranch() throws {
+    func testOnboardingViewSourceKeepsMacDifferencesLimitedToTerminationDismissHandling() throws {
         let normalized = try onboardingViewSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertFalse(normalized.contains("#ifos(macOS)"))
+        XCTAssertTrue(normalized.contains("#ifos(macOS)"))
+        XCTAssertTrue(normalized.contains("allowsTerminationDismiss"))
     }
 
     @MainActor
@@ -503,6 +593,94 @@ final class OnboardingViewTests: XCTestCase {
             return try String(contentsOf: sourceURL, encoding: .utf8)
         } catch {
             XCTFail("Failed to read OnboardingChromeLayout.swift: \(error)", file: file, line: line)
+            throw error
+        }
+    }
+
+    private func onboardingBottomAreaViewSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("Onboarding")
+            .appendingPathComponent("OnboardingBottomAreaView.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read OnboardingBottomAreaView.swift: \(error)", file: file, line: line)
+            throw error
+        }
+    }
+
+    private func verifyEmailStepViewSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("Onboarding")
+            .appendingPathComponent("VerifyEmailStepView.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read VerifyEmailStepView.swift: \(error)", file: file, line: line)
+            throw error
+        }
+    }
+
+    private func chooseProviderStepViewSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("Onboarding")
+            .appendingPathComponent("ChooseProviderStepView.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read ChooseProviderStepView.swift: \(error)", file: file, line: line)
+            throw error
+        }
+    }
+
+    private func notificationsPermissionStepViewSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("Onboarding")
+            .appendingPathComponent("NotificationsPermissionStepView.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read NotificationsPermissionStepView.swift: \(error)", file: file, line: line)
             throw error
         }
     }

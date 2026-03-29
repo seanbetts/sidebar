@@ -17,7 +17,8 @@ public protocol LocationPermissionRequesting: AnyObject {
 @MainActor
 /// Provides onboarding-specific access to the current notifications permission state.
 public protocol NotificationPermissionRequesting: AnyObject {
-    func currentState() async -> OnboardingPermissionState
+    var currentState: OnboardingPermissionState { get }
+    func refreshCurrentState() async -> OnboardingPermissionState
     func requestPermission() async -> OnboardingPermissionState
 }
 
@@ -90,6 +91,11 @@ public final class NotificationPermissionRequester: NotificationPermissionReques
     private let center: UNUserNotificationCenter
     private let requestOptions: UNAuthorizationOptions
     private let registerForRemoteNotifications: @MainActor @Sendable () -> Void
+    private var cachedState: OnboardingPermissionState = .notAsked
+
+    public var currentState: OnboardingPermissionState {
+        cachedState
+    }
 
     public init(
         center: UNUserNotificationCenter = .current(),
@@ -109,19 +115,25 @@ public final class NotificationPermissionRequester: NotificationPermissionReques
         self.center = center
         self.requestOptions = requestOptions
         self.registerForRemoteNotifications = registerForRemoteNotifications
+        Task { [weak self] in
+            guard let self else { return }
+            _ = await self.refreshCurrentState()
+        }
     }
 
-    public func currentState() async -> OnboardingPermissionState {
+    public func refreshCurrentState() async -> OnboardingPermissionState {
         let status = await withCheckedContinuation { continuation in
             center.getNotificationSettings { settings in
                 continuation.resume(returning: settings.authorizationStatus)
             }
         }
-        return Self.map(status)
+        let state = Self.map(status)
+        cachedState = state
+        return state
     }
 
     public func requestPermission() async -> OnboardingPermissionState {
-        let state = await currentState()
+        let state = await refreshCurrentState()
         guard state == .notAsked else {
             if state == .granted {
                 registerForRemoteNotifications()
@@ -136,11 +148,12 @@ public final class NotificationPermissionRequester: NotificationPermissionReques
         }
 
         if isGranted {
+            cachedState = .granted
             registerForRemoteNotifications()
             return .granted
         }
 
-        let updatedState = await currentState()
+        let updatedState = await refreshCurrentState()
         return updatedState == .notAsked ? .denied : updatedState
     }
 

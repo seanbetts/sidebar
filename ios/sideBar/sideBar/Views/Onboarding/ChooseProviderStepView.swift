@@ -102,7 +102,7 @@ struct ChooseProviderStepView: View {
                 }
             }
             .padding(DesignTokens.Spacing.md)
-            .background(DesignTokens.Colors.surface)
+            .background(DesignTokens.Colors.muted)
             .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous))
             .overlay(alignment: .center) {
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)

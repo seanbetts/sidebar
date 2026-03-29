@@ -34,9 +34,7 @@ struct OnboardingBottomAreaView: View {
                 OnboardingActionArea(layoutMode: layoutMode) {
                     primaryButton("Get Started", action: startOnboarding)
                 } secondary: {
-                    Button("Already have an account? Sign In", action: routeToSignIn)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    secondaryTextLink("Already have an account? Sign In", action: routeToSignIn)
                 }
             }
         case .createAccount:
@@ -61,9 +59,7 @@ struct OnboardingBottomAreaView: View {
                 OnboardingActionArea(layoutMode: layoutMode) {
                     primaryButton("Continue", action: saveProfile)
                 } secondary: {
-                    Button("Skip for now", action: viewModel.skipProfile)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    secondaryTextLink("Skip for now", action: viewModel.skipProfile)
                 }
             }
         case .chooseProvider:
@@ -73,9 +69,7 @@ struct OnboardingBottomAreaView: View {
                         .disabled(viewModel.selectedProvider == nil)
                         .opacity(viewModel.selectedProvider == nil ? 0.4 : 1.0)
                 } secondary: {
-                    Button("Skip for now", action: skipProviderSetup)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    secondaryTextLink("Skip for now", action: skipProviderSetup)
                 }
             }
         case .addApiKey:
@@ -88,9 +82,7 @@ struct OnboardingBottomAreaView: View {
                     .disabled(viewModel.trimmedApiKey.isEmpty || viewModel.isLoading)
                     .opacity(viewModel.trimmedApiKey.isEmpty ? 0.4 : 1.0)
                 } secondary: {
-                    Button("Skip for now", action: skipProviderSetup)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    secondaryTextLink("Skip for now", action: skipProviderSetup)
                 }
             }
         case .locationPermission:
@@ -108,6 +100,7 @@ struct OnboardingBottomAreaView: View {
                     isResolved: viewModel.isNotificationsPermissionResolved,
                     permissionState: viewModel.notificationsPermissionState
                 ),
+                isRefreshing: viewModel.isRefreshingNotificationsPermissionState,
                 primaryAction: continueOrEnableNotifications,
                 secondaryAction: skipNotificationsPermission
             )
@@ -137,6 +130,7 @@ struct OnboardingBottomAreaView: View {
     @ViewBuilder
     private func permissionArea(
         actionState: OnboardingPermissionActionState,
+        isRefreshing: Bool = false,
         primaryAction: @escaping () -> Void,
         secondaryAction: @escaping () -> Void
     ) -> some View {
@@ -146,17 +140,18 @@ struct OnboardingBottomAreaView: View {
                 reservesSecondarySpace: actionState.hidesSecondaryAction
             ) {
                 Button(action: primaryAction, label: {
-                    primaryLabel(actionState.primaryTitle, showsProgress: viewModel.isLoading)
+                    primaryLabel(
+                        actionState.primaryTitle,
+                        showsProgress: viewModel.isLoading || isRefreshing
+                    )
                 })
                 .buttonStyle(OnboardingPrimaryButtonStyle())
-                .disabled(viewModel.isLoading)
+                .disabled(viewModel.isLoading || isRefreshing)
             } secondary: {
-                if actionState.hidesSecondaryAction {
+                if actionState.hidesSecondaryAction || isRefreshing {
                     hiddenSecondaryLabel
                 } else {
-                    Button("Not now", action: secondaryAction)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    secondaryTextLink("Not now", action: secondaryAction)
                 }
             }
         }
@@ -174,6 +169,14 @@ struct OnboardingBottomAreaView: View {
             primaryLabel(title)
         })
         .buttonStyle(OnboardingPrimaryButtonStyle())
+    }
+
+    private func secondaryTextLink(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(.plain)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
     }
 
     private func primaryLabel(

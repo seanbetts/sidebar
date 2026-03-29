@@ -5,30 +5,6 @@ import SwiftUI
 import UIKit
 #endif
 
-/// Local wizard step used to drive Phase 1 onboarding UI.
-public enum OnboardingStep: Int, CaseIterable {
-    case welcome
-    case createAccount
-    case verifyEmail
-    case profile
-    case chooseProvider
-    case addApiKey
-    case locationPermission
-    case notificationsPermission
-    case finalStep
-}
-
-enum OnboardingTransitionVariant: Equatable {
-    case providerConnected
-    case providerSetupSkipped
-}
-
-/// Indicates whether the wizard is moving forward or backward between steps.
-public enum OnboardingNavigationDirection: Equatable {
-    case forward
-    case backward
-}
-
 @MainActor
 /// Observable state and actions for the Phase 1 onboarding wizard.
 public final class OnboardingViewModel: ObservableObject {
@@ -45,6 +21,7 @@ public final class OnboardingViewModel: ObservableObject {
     @Published public var apiKey = ""
     @Published public private(set) var locationPermissionState: OnboardingPermissionState = .notAsked
     @Published public private(set) var notificationsPermissionState: OnboardingPermissionState = .notAsked
+    @Published public private(set) var isRefreshingNotificationsPermissionState = false
 
     public let isTestingOnboarding: Bool
 
@@ -90,64 +67,8 @@ public final class OnboardingViewModel: ObservableObject {
     public var currentStepHasBack: Bool { Self.stepsWithBack.contains(currentStep) }
     public var totalSteps: Int { OnboardingStep.allCases.count }
     public var currentStepIndex: Int { currentStep.rawValue }
-
-    public var isEmailValid: Bool {
-        let pattern = #"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$"#
-        return email.range(of: pattern, options: .regularExpression) != nil
-    }
-
-    /// Scores password strength from 0 to 4 based on increasingly strict criteria.
-    public var passwordStrength: Int {
-        let candidate = password
-        guard candidate.count >= 8 else { return 0 }
-
-        var score = 1
-        if candidate.rangeOfCharacter(from: .uppercaseLetters) != nil &&
-            candidate.rangeOfCharacter(from: .lowercaseLetters) != nil {
-            score += 1
-        }
-        if candidate.rangeOfCharacter(from: .decimalDigits) != nil {
-            score += 1
-        }
-        let specials = CharacterSet.alphanumerics.inverted
-        if candidate.unicodeScalars.contains(where: { specials.contains($0) }) {
-            score += 1
-        }
-        return score
-    }
-
-    public var isCreateAccountValid: Bool {
-        isEmailValid && password.count >= 8
-    }
-
-    public var trimmedApiKey: String {
-        apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    public var providerHelpURL: URL? {
-        selectedProvider?.apiKeySetupURL
-    }
-
-    public var addApiKeySubtitle: String {
-        let providerName = selectedProvider?.displayName ?? "your AI provider"
-        return "Paste your \(providerName) API key so I can start helping you."
-    }
-
     public var isLocationPermissionResolved: Bool { resolvedPermissionSteps.contains(.locationPermission) }
     public var isNotificationsPermissionResolved: Bool { resolvedPermissionSteps.contains(.notificationsPermission) }
-
-    public var apiKeyPlaceholder: String {
-        switch selectedProvider {
-        case .anthropic:
-            return "sk-ant-..."
-        case .openai:
-            return "sk-..."
-        case .google:
-            return "AI..."
-        case nil:
-            return "Paste your API key"
-        }
-    }
 
     var transitionVariant: OnboardingTransitionVariant {
         skippedProviderSetup ? .providerSetupSkipped : .providerConnected
@@ -351,6 +272,22 @@ public final class OnboardingViewModel: ObservableObject {
         }
     }
 
+    public func refreshPermissionStateForCurrentStep() async {
+        switch currentStep {
+        case .locationPermission:
+            refreshLocationPermissionState(locationPermissionRequester.currentState)
+        case .notificationsPermission:
+            refreshNotificationsPermissionState(notificationsPermissionRequester.currentState)
+            isRefreshingNotificationsPermissionState = true
+            let state = await notificationsPermissionRequester.refreshCurrentState()
+            isRefreshingNotificationsPermissionState = false
+            refreshNotificationsPermissionState(state)
+        default:
+            isRefreshingNotificationsPermissionState = false
+            return
+        }
+    }
+
     public func skipProviderSetup() async {
         skippedProviderSetup = true
 
@@ -388,8 +325,7 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     private func resolveLocationPermission(_ state: OnboardingPermissionState) async {
-        locationPermissionState = state
-        resolvedPermissionSteps.insert(.locationPermission)
+        syncLocationPermissionState(state)
 
         if !isTestingOnboarding {
             _ = try? await onboardingAPI.updateOnboarding(
@@ -403,8 +339,7 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     private func resolveNotificationsPermission(_ state: OnboardingPermissionState) async {
-        notificationsPermissionState = state
-        resolvedPermissionSteps.insert(.notificationsPermission)
+        syncNotificationsPermissionState(state)
 
         if !isTestingOnboarding {
             _ = try? await onboardingAPI.updateOnboarding(
@@ -417,6 +352,50 @@ public final class OnboardingViewModel: ObservableObject {
         advance(from: .notificationsPermission)
     }
 
+    private func syncLocationPermissionState(_ state: OnboardingPermissionState) {
+        locationPermissionState = state
+        resolvedPermissionSteps.insert(.locationPermission)
+    }
+
+    private func syncNotificationsPermissionState(_ state: OnboardingPermissionState) {
+        notificationsPermissionState = state
+        resolvedPermissionSteps.insert(.notificationsPermission)
+    }
+
+    private func refreshLocationPermissionState(_ state: OnboardingPermissionState) {
+        refreshPermissionState(
+            state,
+            for: .locationPermission
+        ) { [weak self] refreshedState in
+            self?.locationPermissionState = refreshedState
+        }
+    }
+
+    private func refreshNotificationsPermissionState(_ state: OnboardingPermissionState) {
+        refreshPermissionState(
+            state,
+            for: .notificationsPermission
+        ) { [weak self] refreshedState in
+            self?.notificationsPermissionState = refreshedState
+        }
+    }
+
+    private func refreshPermissionState(
+        _ state: OnboardingPermissionState,
+        for step: OnboardingStep,
+        apply: (OnboardingPermissionState) -> Void
+    ) {
+        if state == .notAsked {
+            if !resolvedPermissionSteps.contains(step) {
+                apply(.notAsked)
+            }
+            return
+        }
+
+        apply(state)
+        resolvedPermissionSteps.insert(step)
+    }
+
     private func navigate(
         to step: OnboardingStep,
         direction: OnboardingNavigationDirection
@@ -424,6 +403,27 @@ public final class OnboardingViewModel: ObservableObject {
         navigationDirection = direction
         withAnimation(OnboardingMotion.animation(for: direction)) {
             currentStep = step
+        }
+        refreshPermissionStateIfNeeded(for: step)
+    }
+
+    private func refreshPermissionStateIfNeeded(for step: OnboardingStep) {
+        switch step {
+        case .locationPermission:
+            isRefreshingNotificationsPermissionState = false
+            refreshLocationPermissionState(locationPermissionRequester.currentState)
+            Task { [weak self] in
+                await self?.refreshPermissionStateForCurrentStep()
+            }
+        case .notificationsPermission:
+            isRefreshingNotificationsPermissionState = true
+            refreshNotificationsPermissionState(notificationsPermissionRequester.currentState)
+            Task { [weak self] in
+                await self?.refreshPermissionStateForCurrentStep()
+            }
+        default:
+            isRefreshingNotificationsPermissionState = false
+            return
         }
     }
 
@@ -450,50 +450,4 @@ public final class OnboardingViewModel: ObservableObject {
             return true
         }
     }
-}
-
-/// Determines when onboarding should be shown and which presentation style to use.
-public enum OnboardingPresentation {
-    /// Signed-out root content to show behind or instead of the onboarding flow.
-    public enum SignedOutContent: Equatable {
-        case login
-        case onboardingBackdrop
-    }
-
-    /// Modal presentation style chosen for the current device family.
-    public enum Style: Equatable {
-        case fullScreenCover
-        case sheet
-    }
-
-    public static func shouldPresent(
-        authState: AuthState,
-        onboardingStatus: OnboardingStatus,
-        isTestingOnboarding: Bool
-    ) -> Bool {
-        if isTestingOnboarding {
-            return true
-        }
-        return authState == .signedOut && onboardingStatus == .notStarted
-    }
-
-    public static func shouldAllowManualStart(authState: AuthState) -> Bool {
-        authState == .signedOut
-    }
-
-    public static func signedOutContent(
-        authState: AuthState,
-        isOnboardingPresented: Bool
-    ) -> SignedOutContent {
-        guard authState == .signedOut else {
-            return .login
-        }
-        return isOnboardingPresented ? .onboardingBackdrop : .login
-    }
-
-#if canImport(UIKit)
-    public static func style(for idiom: UIUserInterfaceIdiom) -> Style {
-        idiom == .phone ? .fullScreenCover : .sheet
-    }
-#endif
 }

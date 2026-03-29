@@ -48,10 +48,6 @@ struct VerifyEmailStepView: View {
                             .frame(width: 44, height: 52)
                             .background(DesignTokens.Colors.surface)
                             .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
-                                    .stroke(focusedIndex == index ? Color.primary : Color.clear, lineWidth: 2)
-                            )
                             .focused($focusedIndex, equals: index)
                             .onChange(of: otpDigits[index]) { _, newValue in
                                 handleDigitChange(at: index, value: newValue)
@@ -75,6 +71,7 @@ struct VerifyEmailStepView: View {
                 Button(resendCooldown > 0 ? "Resend code (\(resendCooldown)s)" : "Resend code") {
                     resendCode()
                 }
+                .buttonStyle(.plain)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .disabled(resendCooldown > 0)

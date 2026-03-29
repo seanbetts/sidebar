@@ -46,9 +46,15 @@ final class MockNotificationPermissionRequester: NotificationPermissionRequestin
     var currentStateValue: OnboardingPermissionState = .notAsked
     var requestResult: OnboardingPermissionState = .granted
     private(set) var requestCount = 0
+    private(set) var refreshCount = 0
 
-    func currentState() async -> OnboardingPermissionState {
+    var currentState: OnboardingPermissionState {
         currentStateValue
+    }
+
+    func refreshCurrentState() async -> OnboardingPermissionState {
+        refreshCount += 1
+        return currentStateValue
     }
 
     func requestPermission() async -> OnboardingPermissionState {

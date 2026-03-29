@@ -1,3 +1,4 @@
+#if os(macOS)
 import XCTest
 @testable import sideBar
 
@@ -31,3 +32,4 @@ final class MacWindowFramePersistenceTests: XCTestCase {
         )
     }
 }
+#endif

@@ -93,6 +93,22 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         )
     }
 
+    func testMacAppDelegatePostsTerminationNotificationBeforeQuit() throws {
+        let normalized = try macAppDelegateSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "extensionNotification.Name{staticletmacAppTerminationRequested=Notification.Name(\"sideBar.macAppTerminationRequested\")}"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "funcapplicationShouldTerminate(_application:NSApplication)->NSApplication.TerminateReply{_=applicationNotificationCenter.default.post(name:.macAppTerminationRequested,object:nil)return.terminateNow}"
+            )
+        )
+    }
+
     func testMacSubscriptionSetupDoesNotRegisterRemoteNotificationsDuringEnvironmentInit() throws {
         let normalized = try appEnvironmentSetupSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

@@ -3,6 +3,10 @@ import AppKit
 import os
 import sideBarShared
 
+extension Notification.Name {
+    static let macAppTerminationRequested = Notification.Name("sideBar.macAppTerminationRequested")
+}
+
 final class MacAppDelegate: NSObject, NSApplicationDelegate {
     private let logger = Logger(subsystem: "sideBar", category: "Push")
     private let deepLinkLogger = Logger(subsystem: "sideBar", category: "DeepLink")
@@ -26,6 +30,12 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldSaveApplicationState(_ application: NSApplication) -> Bool {
         _ = application
         return false
+    }
+
+    func applicationShouldTerminate(_ application: NSApplication) -> NSApplication.TerminateReply {
+        _ = application
+        NotificationCenter.default.post(name: .macAppTerminationRequested, object: nil)
+        return .terminateNow
     }
 
     func application(

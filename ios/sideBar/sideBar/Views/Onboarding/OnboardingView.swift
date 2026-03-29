@@ -10,6 +10,9 @@ struct OnboardingView: View {
     @State private var isSoftwareKeyboardVisible = false
     @State private var keyboardHeight: CGFloat = 0
     @State private var bottomAreaHeight: CGFloat = 0
+    #if os(macOS)
+    @State private var allowsTerminationDismiss = false
+    #endif
     let onRouteToSignIn: () -> Void
 
     init(
@@ -65,9 +68,12 @@ struct OnboardingView: View {
                     .ignoresSafeArea(.keyboard, edges: .bottom)
             }
         }
-        .interactiveDismissDisabled()
+        .interactiveDismissDisabled(shouldDisableInteractiveDismiss)
         .onOnboardingBottomAreaHeightChange { height in
             bottomAreaHeight = height
+        }
+        .task(id: viewModel.currentStep) {
+            await viewModel.refreshPermissionStateForCurrentStep()
         }
 #if canImport(UIKit)
         .modifier(OnboardingKeyboardSafeAreaModifier(isEnabled: OnboardingChromeLayoutPolicy.rootIgnoresKeyboardSafeArea))
@@ -91,6 +97,11 @@ struct OnboardingView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
             isSoftwareKeyboardVisible = false
             keyboardHeight = 0
+        }
+#endif
+#if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: .macAppTerminationRequested)) { _ in
+            allowsTerminationDismiss = true
         }
 #endif
     }
@@ -201,6 +212,14 @@ struct OnboardingView: View {
         )
     }
 
+    private var shouldDisableInteractiveDismiss: Bool {
+        #if os(macOS)
+        !allowsTerminationDismiss
+        #else
+        true
+        #endif
+    }
+
     private var backSwipeGesture: some Gesture {
         DragGesture(minimumDistance: 24)
             .onEnded { value in
@@ -225,6 +244,7 @@ struct OnboardingView: View {
             }
             .foregroundStyle(.primary)
         })
+        .buttonStyle(.plain)
         .frame(height: DesignTokens.Size.touchTarget)
         .padding(.horizontal, DesignTokens.Spacing.lg)
     }

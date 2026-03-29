@@ -7,26 +7,23 @@ struct NotificationsPermissionStepView: View {
     let bottomContentInset: CGFloat
 
     private var title: String {
-        guard viewModel.isNotificationsPermissionResolved else { return "Stay In The Loop" }
-        switch viewModel.notificationsPermissionState {
-        case .granted:
-            return "Notifications Enabled"
-        case .notAsked, .denied:
-            return "Notifications Skipped"
+        if viewModel.isRefreshingNotificationsPermissionState {
+            return "Checking Notification Status"
         }
+        if viewModel.isNotificationsPermissionResolved && viewModel.notificationsPermissionState == .granted {
+            return "Notifications Enabled"
+        }
+        return "Stay In The Loop"
     }
 
     private var subtitle: String {
-        guard viewModel.isNotificationsPermissionResolved else {
-            return "Enable notifications for due tasks, finished processing, and assistant follow-up."
+        if viewModel.isRefreshingNotificationsPermissionState {
+            return "Checking whether notifications are already enabled for this device."
         }
-
-        switch viewModel.notificationsPermissionState {
-        case .granted:
+        if viewModel.isNotificationsPermissionResolved && viewModel.notificationsPermissionState == .granted {
             return "You'll be able to get alerts for due tasks, finished processing, and assistant follow-up."
-        case .notAsked, .denied:
-            return "You can keep going without notifications. You can change this later in Settings."
         }
+        return "Enable notifications for due tasks, finished processing, and assistant follow-up."
     }
 
     var body: some View {
