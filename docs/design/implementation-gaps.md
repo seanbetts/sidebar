@@ -41,6 +41,8 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
+| Website save job polling not background-capable — polling runs as a Swift `Task` that suspends when the app is backgrounded; share queue URLs queued via the extension are only processed on foreground entry; saves should complete without requiring the app to stay active (`BGProcessingTask` or background `URLSession` required) | `WebsitesViewModel+JobPolling.swift`, `WebsitesViewModel+ExtensionHandoff.swift`, `Info.plist` | [ios-conventions](./platform-strategy/ios-conventions) |
+| `WriteQueue` does not flush in the background — offline writes are only processed when the app is in the foreground and network is available; if the app is backgrounded before coming online, the queue does not flush until next foreground session (`BGProcessingTask` on network availability required) | `WriteQueue.swift`, `Info.plist` | [ios-conventions](./platform-strategy/ios-conventions) |
 | Haptic: settings save missing `Haptics.selection()` on explicit save completion — `SettingsSaveStatusPill` shows visual saved state but no haptic fires | `SettingsSaveStatusPill.swift` | [wait-ux](./patterns/wait-ux) |
 | Pull-to-refresh not confirmed implemented on iOS list panels — all sidebar list panels should use the `refreshable` modifier | Sidebar panel views | [wait-ux](./patterns/wait-ux) |
 | Website save detail view shows static "Reading..." for the full duration of job polling (up to 5 minutes) with no stage progression — server job status stages should be surfaced | `WebsitesDetailView+PendingSave.swift`, `WebsitesViewModel+JobPolling.swift` | [wait-ux](./patterns/wait-ux) |

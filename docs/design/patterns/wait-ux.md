@@ -401,7 +401,7 @@ Show a skeleton first. Transition to the empty state only when the load complete
 8. **Background operations never block.** Ambient indicators only.
 9. **If the outcome is deterministic, apply it optimistically.** Optimistic writes are silent — the UI has already updated. Surface errors if the write fails.
 10. **Conflicts resolve automatically in favour of local.** The queue never pauses for user input. No conflict resolution UI.
-11. **Don't confirm what isn't confirmed.** Use "Saved for later" when a save is queued but not yet complete. "Saved" means the operation succeeded.
+11. **Don't confirm what isn't confirmed.** Use "Saved for later" when a save is queued but not yet complete. "Saved" means the operation succeeded. This promise is only honest if the operation can complete in the background — see [iOS Conventions](../platform-strategy/ios-conventions#background-execution).
 12. **Cancel is for genuinely long-running operations only.** Don't add cancel affordances to optimistic writes or short operations. Cancel must be available regardless of how the operation was initiated.
 13. **Empty state appears after loading, not during.**
 14. **Live Activities is the target for long-running file operations on iOS.**

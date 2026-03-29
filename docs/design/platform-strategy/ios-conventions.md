@@ -182,6 +182,25 @@ Confirmed. All panel lists use native SwiftUI `.refreshable`: Chat, Notes, Tasks
 
 ---
 
+## Background execution
+
+User-initiated operations must complete regardless of whether the app stays in the foreground. If the user saves a website, queues a file upload, or makes an edit while offline, those operations must finish even if the user immediately backgrounds the app.
+
+This is the other half of the "Saved for later" contract: the messaging is honest only if the save will eventually happen without requiring the user to return to the app.
+
+**Rule**: Any operation that makes a promise to the user must be capable of completing in the background. Use the appropriate mechanism for each operation type:
+
+| Operation type | Background mechanism |
+|---|---|
+| File uploads | `URLSessionConfiguration.background` (already implemented) |
+| Website save job polling | `BGProcessingTask` or background URLSession |
+| WriteQueue flush (offline writes) | `BGProcessingTask` on network availability |
+| Long-running processing | Live Activities + completion notification |
+
+Operations that are already optimistic (note edits, task mutations) do not need background execution — they apply locally immediately and the WriteQueue handles eventual sync.
+
+---
+
 ## iOS accessibility conventions
 
 - Minimum touch target: 44pt (enforced via `DesignTokens.Size.touchTarget`)
@@ -201,6 +220,7 @@ Confirmed. All panel lists use native SwiftUI `.refreshable`: Chat, Notes, Tasks
 5. **Minimum touch target is 44pt.** No interactive element smaller than 44pt in the compact layout.
 6. **Use `Haptics.*` for all haptic calls.** Never instantiate feedback generators directly in views.
 7. **iPad pointer hover must match macOS hover.** Any `.onHover` behaviour that applies to both iPad and Mac must not be gated behind `#if os(macOS)`.
+8. **User-initiated operations must complete in the background.** Any operation that makes a promise to the user must be capable of finishing without requiring the app to stay in the foreground. See [background execution](#background-execution).
 
 ---
 
