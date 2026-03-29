@@ -64,7 +64,7 @@ struct ChooseProviderStepView: View {
     ) -> some View {
         let isSelected = viewModel.selectedProvider == provider
         return Button(action: {
-            viewModel.selectedProvider = provider
+            viewModel.selectProvider(provider)
         }, label: {
             HStack(spacing: DesignTokens.Spacing.md) {
                 OnboardingProviderLogoBadge(

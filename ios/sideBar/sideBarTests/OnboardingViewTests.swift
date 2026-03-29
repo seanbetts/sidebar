@@ -22,6 +22,32 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
+    func testSmallAccessoryFrameDoesNotCountAsSoftwareKeyboard() {
+        let frame = CGRect(x: 0, y: 970, width: 1024, height: 54)
+
+        XCTAssertEqual(
+            OnboardingKeyboardMetrics.softwareKeyboardHeight(
+                from: frame,
+                screenMaxY: 1024
+            ),
+            0
+        )
+    }
+
+    @MainActor
+    func testFullKeyboardFrameCountsAsSoftwareKeyboard() {
+        let frame = CGRect(x: 0, y: 700, width: 1024, height: 324)
+
+        XCTAssertEqual(
+            OnboardingKeyboardMetrics.softwareKeyboardHeight(
+                from: frame,
+                screenMaxY: 1024
+            ),
+            324
+        )
+    }
+
+    @MainActor
     func testChromeLayoutIgnoresKeyboardSafeAreaAtRoot() {
         XCTAssertTrue(OnboardingChromeLayoutPolicy.rootIgnoresKeyboardSafeArea)
     }

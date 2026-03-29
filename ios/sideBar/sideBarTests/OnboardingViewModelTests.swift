@@ -190,6 +190,22 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentStep, .chooseProvider)
     }
 
+    func testSelectingProviderClearsMissingProviderErrorBeforeReturningToApiKey() async {
+        let viewModel = makeViewModel()
+        viewModel.currentStep = .addApiKey
+
+        await viewModel.validateAndSaveApiKey()
+        XCTAssertEqual(viewModel.errorMessage, "Please go back and select a provider.")
+
+        viewModel.currentStep = .chooseProvider
+        viewModel.selectProvider(.anthropic)
+        viewModel.advance(from: .chooseProvider)
+
+        XCTAssertEqual(viewModel.currentStep, .addApiKey)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(viewModel.selectedProvider, .anthropic)
+    }
+
     func testApiKeyTrimmed() {
         let viewModel = makeViewModel()
         viewModel.apiKey = "  sk-ant-abc123  "
@@ -313,6 +329,18 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertEqual(onboardingAPI.updates.last?.locationPermission, .notAsked)
     }
 
+    func testSkipProviderSetupDoesNotResolvePermissionSteps() async {
+        let viewModel = makeViewModel()
+        viewModel.currentStep = .chooseProvider
+
+        await viewModel.skipProviderSetup()
+
+        XCTAssertFalse(viewModel.isLocationPermissionResolved)
+        XCTAssertFalse(viewModel.isNotificationsPermissionResolved)
+        XCTAssertEqual(viewModel.locationPermissionState, .notAsked)
+        XCTAssertEqual(viewModel.notificationsPermissionState, .notAsked)
+    }
+
     func testEnableLocationPermissionGrantedWritesGrantedAndAdvancesToNotificationsPermission() async {
         let onboardingAPI = MockOnboardingAPI()
         let locationRequester = MockLocationPermissionRequester()
@@ -397,6 +425,36 @@ final class OnboardingViewModelTests: XCTestCase {
         await viewModel.saveProfile()
 
         XCTAssertEqual(viewModel.currentStep, .chooseProvider)
+    }
+
+    func testSaveProfileAdvancesImmediatelyWhileBackgroundSaveIsInFlight() async {
+        let onboardingAPI = MockOnboardingAPI()
+        let settingsAPI = DelayedProfileSettingsAPI()
+        settingsAPI.updateDelayNanoseconds = 2_000_000_000
+        let updateStarted = expectation(description: "Profile settings update started")
+        let updateCompleted = expectation(description: "Profile settings update completed")
+        settingsAPI.onUpdateStarted = {
+            updateStarted.fulfill()
+        }
+        settingsAPI.onUpdateCompleted = {
+            updateCompleted.fulfill()
+        }
+
+        let viewModel = retain(OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
+            onboardingAPI: onboardingAPI,
+            settingsAPI: settingsAPI,
+            userDefaults: makeUserDefaults()
+        ))
+        viewModel.currentStep = .profile
+        viewModel.displayName = "Sean"
+
+        let saveTask = Task { await viewModel.saveProfile() }
+
+        await fulfillment(of: [updateStarted], timeout: 1.0)
+        XCTAssertEqual(viewModel.currentStep, .chooseProvider)
+        await saveTask.value
+        await fulfillment(of: [updateCompleted], timeout: 3.0)
     }
 
     func testResolvedLocationPermissionDoesNotRequestAgainWhenRevisited() async {

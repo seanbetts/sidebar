@@ -79,8 +79,10 @@ struct OnboardingView: View {
         }
 #if canImport(UIKit)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
-            isSoftwareKeyboardVisible = true
-            keyboardHeight = keyboardHeight(from: notification)
+            updateKeyboardPresentation(from: notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+            updateKeyboardPresentation(from: notification)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             isSoftwareKeyboardVisible = false
@@ -228,6 +230,12 @@ struct OnboardingView: View {
     }
 
 #if canImport(UIKit)
+    private func updateKeyboardPresentation(from notification: Notification) {
+        let height = keyboardHeight(from: notification)
+        keyboardHeight = height
+        isSoftwareKeyboardVisible = height > 0
+    }
+
     private func keyboardHeight(from notification: Notification) -> CGFloat {
         guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
             return 0
@@ -238,7 +246,10 @@ struct OnboardingView: View {
             .screen
             .bounds
             .maxY ?? frame.maxY
-        return max(0, screenMaxY - frame.minY)
+        return OnboardingKeyboardMetrics.softwareKeyboardHeight(
+            from: frame,
+            screenMaxY: screenMaxY
+        )
     }
 #endif
 }

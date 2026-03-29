@@ -87,17 +87,9 @@ public final class OnboardingViewModel: ObservableObject {
         self.userDefaults = userDefaults
     }
 
-    public var currentStepHasBack: Bool {
-        return Self.stepsWithBack.contains(currentStep)
-    }
-
-    public var totalSteps: Int {
-        OnboardingStep.allCases.count
-    }
-
-    public var currentStepIndex: Int {
-        currentStep.rawValue
-    }
+    public var currentStepHasBack: Bool { Self.stepsWithBack.contains(currentStep) }
+    public var totalSteps: Int { OnboardingStep.allCases.count }
+    public var currentStepIndex: Int { currentStep.rawValue }
 
     public var isEmailValid: Bool {
         let pattern = #"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$"#
@@ -141,13 +133,8 @@ public final class OnboardingViewModel: ObservableObject {
         return "Paste your \(providerName) API key so I can start helping you."
     }
 
-    public var isLocationPermissionResolved: Bool {
-        resolvedPermissionSteps.contains(.locationPermission)
-    }
-
-    public var isNotificationsPermissionResolved: Bool {
-        resolvedPermissionSteps.contains(.notificationsPermission)
-    }
+    public var isLocationPermissionResolved: Bool { resolvedPermissionSteps.contains(.locationPermission) }
+    public var isNotificationsPermissionResolved: Bool { resolvedPermissionSteps.contains(.notificationsPermission) }
 
     public var apiKeyPlaceholder: String {
         switch selectedProvider {
@@ -167,21 +154,13 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     var transitionTitle: String {
-        switch transitionVariant {
-        case .providerConnected:
-            return "You're All Set"
-        case .providerSetupSkipped:
-            return "You're Ready To Explore"
-        }
+        transitionVariant == .providerConnected ? "You're All Set" : "You're Ready To Explore"
     }
 
     var transitionSubtitle: String {
-        switch transitionVariant {
-        case .providerConnected:
-            return "I'm connected and ready to go.\nLet me show you around."
-        case .providerSetupSkipped:
-            return "You can start using sideBar now, even without connecting an AI provider yet."
-        }
+        transitionVariant == .providerConnected
+            ? "I'm connected and ready to go.\nLet me show you around."
+            : "You can start using sideBar now, even without connecting an AI provider yet."
     }
 
     var transitionHighlights: [String] {
@@ -210,9 +189,14 @@ public final class OnboardingViewModel: ObservableObject {
 
     public func goBack() {
         guard currentStepHasBack else { return }
-
-        guard let previous = OnboardingStep(rawValue: currentStep.rawValue - 1) else { return }
+        guard let previous = previousStep(for: currentStep) else { return }
         navigate(to: previous, direction: .backward)
+    }
+
+    public func selectProvider(_ provider: AIPrimaryProvider) {
+        selectedProvider = provider
+        skippedProviderSetup = false
+        errorMessage = nil
     }
 
     public func createAccount() async {
@@ -266,20 +250,27 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     public func saveProfile() async {
-        let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard currentStep == .profile else { return }
 
-        if !trimmedName.isEmpty {
-            _ = try? await settingsAPI.updateSettings(SettingsUpdate(name: trimmedName))
-            _ = try? await onboardingAPI.updateOnboarding(
-                OnboardingUpdate(
-                    milestones: OnboardingMilestonesUpdate(
-                        profileBasicsSet: Self.isoFormatter.string(from: Date())
-                    )
-                )
-            )
-        }
+        let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let profileBasicsTimestamp = Self.isoFormatter.string(from: Date())
 
         advance(from: .profile)
+
+        if !trimmedName.isEmpty {
+            let settingsAPI = settingsAPI
+            let onboardingAPI = onboardingAPI
+            Task {
+                _ = try? await settingsAPI.updateSettings(SettingsUpdate(name: trimmedName))
+                _ = try? await onboardingAPI.updateOnboarding(
+                    OnboardingUpdate(
+                        milestones: OnboardingMilestonesUpdate(
+                            profileBasicsSet: profileBasicsTimestamp
+                        )
+                    )
+                )
+            }
+        }
     }
 
     public func skipProfile() {
@@ -433,6 +424,17 @@ public final class OnboardingViewModel: ObservableObject {
         navigationDirection = direction
         withAnimation(OnboardingMotion.animation(for: direction)) {
             currentStep = step
+        }
+    }
+
+    private func previousStep(for step: OnboardingStep) -> OnboardingStep? {
+        switch step {
+        case .locationPermission:
+            return (skippedProviderSetup || selectedProvider == nil) ? .chooseProvider : .addApiKey
+        case .addApiKey:
+            return .chooseProvider
+        default:
+            return OnboardingStep(rawValue: step.rawValue - 1)
         }
     }
 

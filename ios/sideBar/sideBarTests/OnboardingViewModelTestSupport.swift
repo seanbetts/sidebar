@@ -4,6 +4,7 @@ import Foundation
 final class MockOnboardingAPI: OnboardingProviding {
     struct RecordedUpdate: Equatable {
         let status: OnboardingStatus?
+        let profileBasicsSet: String?
         let locationPermission: OnboardingPermissionState?
         let notificationsPermission: OnboardingPermissionState?
     }
@@ -19,6 +20,7 @@ final class MockOnboardingAPI: OnboardingProviding {
     func updateOnboarding(_ update: OnboardingUpdate) async throws -> OnboardingState {
         updates.append(RecordedUpdate(
             status: update.status,
+            profileBasicsSet: update.milestones?.profileBasicsSet,
             locationPermission: update.permissions?.location,
             notificationsPermission: update.permissions?.notifications
         ))
@@ -77,13 +79,14 @@ final class OnboardingMockSettingsAPI: SettingsProviding {
         keyLast4: nil
     )
     var shortcutsToken = ShortcutsTokenResponse(token: "shortcuts-token")
+    private(set) var updates: [SettingsUpdate] = []
 
     func getSettings() async throws -> UserSettings {
         settings
     }
 
     func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
-        _ = update
+        updates.append(update)
         return settings
     }
 
@@ -147,6 +150,71 @@ final class OnboardingMockSettingsAPI: SettingsProviding {
     }
 
     func deleteProfileImage() async throws {}
+}
+
+final class DelayedProfileSettingsAPI: SettingsProviding {
+    private let base = OnboardingMockSettingsAPI()
+    var onUpdateStarted: (() -> Void)?
+    var onUpdateCompleted: (() -> Void)?
+    var updateDelayNanoseconds: UInt64 = 0
+
+    func getSettings() async throws -> UserSettings {
+        try await base.getSettings()
+    }
+
+    func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
+        onUpdateStarted?()
+        if updateDelayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: updateDelayNanoseconds)
+        }
+        let settings = try await base.updateSettings(update)
+        onUpdateCompleted?()
+        return settings
+    }
+
+    func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse {
+        try await base.getProviderKeyStatus(provider: provider)
+    }
+
+    func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
+        try await base.upsertProviderKey(provider: provider, apiKey: apiKey)
+    }
+
+    func deleteProviderKey(provider: String?) async throws -> ProviderKeyStatusResponse {
+        try await base.deleteProviderKey(provider: provider)
+    }
+
+    func disconnectProviderConsumer(
+        provider: String,
+        source: ProviderKeyDisconnectSource,
+        skillId: String?
+    ) async throws -> ProviderKeyDisconnectResponse {
+        try await base.disconnectProviderConsumer(
+            provider: provider,
+            source: source,
+            skillId: skillId
+        )
+    }
+
+    func getShortcutsToken() async throws -> ShortcutsTokenResponse {
+        try await base.getShortcutsToken()
+    }
+
+    func rotateShortcutsToken() async throws -> ShortcutsTokenResponse {
+        try await base.rotateShortcutsToken()
+    }
+
+    func uploadProfileImage(data: Data, contentType: String, filename: String) async throws {
+        try await base.uploadProfileImage(data: data, contentType: contentType, filename: filename)
+    }
+
+    func getProfileImage() async throws -> Data {
+        try await base.getProfileImage()
+    }
+
+    func deleteProfileImage() async throws {
+        try await base.deleteProfileImage()
+    }
 }
 
 extension OnboardingState {

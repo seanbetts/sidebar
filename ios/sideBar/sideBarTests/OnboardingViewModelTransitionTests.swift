@@ -84,6 +84,16 @@ final class OnboardingViewModelTransitionTests: XCTestCase {
         XCTAssertEqual(viewModel.currentStep, .notificationsPermission)
     }
 
+    func testGoBackFromLocationPermissionReturnsToChooseProviderWhenProviderSetupWasSkipped() async {
+        let viewModel = makeViewModel(isTestingOnboarding: true)
+        viewModel.currentStep = .chooseProvider
+
+        await viewModel.skipProviderSetup()
+        viewModel.goBack()
+
+        XCTAssertEqual(viewModel.currentStep, .chooseProvider)
+    }
+
     func testGoBackFromFinalStepReturnsToNotificationsPermissionWhenProviderIsConnected() async {
         let viewModel = makeViewModel(isTestingOnboarding: true)
         viewModel.selectedProvider = .anthropic

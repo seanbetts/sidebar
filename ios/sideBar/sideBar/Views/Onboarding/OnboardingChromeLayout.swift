@@ -21,6 +21,19 @@ enum OnboardingChromeLayoutPolicy {
     }
 }
 
+enum OnboardingKeyboardMetrics {
+    private static let minimumSoftwareKeyboardHeight: CGFloat = 120
+
+    static func softwareKeyboardHeight(
+        from frame: CGRect,
+        screenMaxY: CGFloat
+    ) -> CGFloat {
+        let overlap = max(0, screenMaxY - frame.minY)
+        guard overlap >= minimumSoftwareKeyboardHeight else { return 0 }
+        return overlap
+    }
+}
+
 private struct OnboardingBottomAreaHeightPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 

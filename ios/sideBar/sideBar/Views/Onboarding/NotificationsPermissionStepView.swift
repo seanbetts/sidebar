@@ -54,14 +54,6 @@ struct NotificationsPermissionStepView: View {
                     .frame(maxWidth: 310)
                     .padding(.bottom, layoutMode.sectionSpacing)
 
-                if viewModel.isNotificationsPermissionResolved {
-                    Text("You can revisit this in Settings at any time.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 310)
-                }
-
                 Spacer()
             }
             .padding(.horizontal, layoutMode.horizontalPadding)
