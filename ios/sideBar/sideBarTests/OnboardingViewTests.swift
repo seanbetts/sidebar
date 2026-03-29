@@ -40,6 +40,61 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
+    func testBackSwipePolicyAllowsLeadingHorizontalSwipeWhenBackIsAvailable() {
+        XCTAssertTrue(
+            OnboardingBackSwipePolicy.shouldNavigateBack(
+                hasBackButton: true,
+                startLocation: CGPoint(x: 20, y: 240),
+                translation: CGSize(width: 120, height: 12)
+            )
+        )
+    }
+
+    @MainActor
+    func testBackSwipePolicyRejectsSwipeWhenBackIsUnavailable() {
+        XCTAssertFalse(
+            OnboardingBackSwipePolicy.shouldNavigateBack(
+                hasBackButton: false,
+                startLocation: CGPoint(x: 20, y: 240),
+                translation: CGSize(width: 120, height: 12)
+            )
+        )
+    }
+
+    @MainActor
+    func testBackSwipePolicyRejectsShortSwipe() {
+        XCTAssertFalse(
+            OnboardingBackSwipePolicy.shouldNavigateBack(
+                hasBackButton: true,
+                startLocation: CGPoint(x: 20, y: 240),
+                translation: CGSize(width: 60, height: 8)
+            )
+        )
+    }
+
+    @MainActor
+    func testBackSwipePolicyRejectsMostlyVerticalSwipe() {
+        XCTAssertFalse(
+            OnboardingBackSwipePolicy.shouldNavigateBack(
+                hasBackButton: true,
+                startLocation: CGPoint(x: 20, y: 240),
+                translation: CGSize(width: 120, height: 80)
+            )
+        )
+    }
+
+    @MainActor
+    func testBackSwipePolicyRejectsSwipeAwayFromLeadingEdge() {
+        XCTAssertFalse(
+            OnboardingBackSwipePolicy.shouldNavigateBack(
+                hasBackButton: true,
+                startLocation: CGPoint(x: 140, y: 240),
+                translation: CGSize(width: 120, height: 12)
+            )
+        )
+    }
+
+    @MainActor
     func testShouldShowOnboardingWhenSignedOutAndNotStarted() {
         let result = OnboardingPresentation.shouldPresent(
             authState: .signedOut,

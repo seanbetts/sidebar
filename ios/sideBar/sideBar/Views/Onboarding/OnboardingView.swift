@@ -323,9 +323,11 @@ struct OnboardingView: View {
     private var backSwipeGesture: some Gesture {
         DragGesture(minimumDistance: 24)
             .onEnded { value in
-                guard viewModel.currentStepHasBack,
-                      value.translation.width > 90,
-                      abs(value.translation.height) < 60 else {
+                guard OnboardingBackSwipePolicy.shouldNavigateBack(
+                    hasBackButton: viewModel.currentStepHasBack,
+                    startLocation: value.startLocation,
+                    translation: value.translation
+                ) else {
                     return
                 }
                 viewModel.goBack()
@@ -354,6 +356,24 @@ struct OnboardingView: View {
         return max(0, UIScreen.main.bounds.maxY - frame.minY)
     }
 #endif
+}
+
+enum OnboardingBackSwipePolicy {
+    private static let minimumHorizontalTranslation: CGFloat = 90
+    private static let maximumVerticalDrift: CGFloat = 60
+    private static let maximumLeadingEdgeStartX: CGFloat = DesignTokens.Size.touchTarget
+
+    static func shouldNavigateBack(
+        hasBackButton: Bool,
+        startLocation: CGPoint,
+        translation: CGSize
+    ) -> Bool {
+        guard hasBackButton else { return false }
+        guard startLocation.x <= maximumLeadingEdgeStartX else { return false }
+        guard translation.width > minimumHorizontalTranslation else { return false }
+        guard abs(translation.height) < maximumVerticalDrift else { return false }
+        return true
+    }
 }
 
 #if canImport(UIKit)
