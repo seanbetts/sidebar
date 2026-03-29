@@ -22,7 +22,7 @@ description: Working brief for the internal sideBar design-system documentation 
 | 13 | Patterns: feedback and haptics | [patterns/feedback-and-haptics.md](./patterns/feedback-and-haptics) | approved |
 | 14 | Patterns: wait UX | [patterns/wait-ux.md](./patterns/wait-ux) | approved |
 | 14a | Patterns: authentication | [patterns/authentication.md](./patterns/authentication) | approved |
-| 15 | Patterns: onboarding | [patterns/onboarding.md](./patterns/onboarding) | approved |
+| 15 | Patterns: onboarding | [patterns/onboarding.md](./patterns/onboarding) | partial |
 | 16 | Patterns: handoffs | patterns/handoffs.md | not started |
 | 17 | Patterns: AI assistant UI | patterns/ai-assistant-ui.md | not started |
 | 18 | Agent rules | agent-rules/ | not started |

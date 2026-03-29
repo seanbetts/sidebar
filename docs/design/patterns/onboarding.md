@@ -5,7 +5,7 @@ description: How sideBar introduces new users to the product — account creatio
 
 | Field | Value |
 |---|---|
-| Status | approved |
+| Status | partial |
 | Owner | both |
 | Outputs | this doc |
 | Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [authentication](./authentication), [wait-ux](./wait-ux) |
