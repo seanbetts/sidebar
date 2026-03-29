@@ -16,6 +16,11 @@ public enum OnboardingStep: Int, CaseIterable {
     case transition
 }
 
+enum OnboardingTransitionVariant: Equatable {
+    case providerConnected
+    case providerSetupSkipped
+}
+
 @MainActor
 /// Observable state and actions for the Phase 1 onboarding wizard.
 public final class OnboardingViewModel: ObservableObject {
@@ -36,6 +41,7 @@ public final class OnboardingViewModel: ObservableObject {
     private let onboardingAPI: OnboardingProviding
     private let settingsAPI: SettingsProviding
     private let userDefaults: UserDefaults
+    private var skippedProviderSetup = false
     private static let stepsWithBack: Set<OnboardingStep> = [
         .createAccount,
         .verifyEmail,
@@ -61,7 +67,10 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     public var currentStepHasBack: Bool {
-        Self.stepsWithBack.contains(currentStep)
+        if currentStep == .transition {
+            return transitionVariant == .providerSetupSkipped
+        }
+        return Self.stepsWithBack.contains(currentStep)
     }
 
     public var totalSteps: Int {
@@ -136,14 +145,55 @@ public final class OnboardingViewModel: ObservableObject {
         }
     }
 
+    var transitionVariant: OnboardingTransitionVariant {
+        skippedProviderSetup ? .providerSetupSkipped : .providerConnected
+    }
+
+    var transitionTitle: String {
+        switch transitionVariant {
+        case .providerConnected:
+            return "You're All Set"
+        case .providerSetupSkipped:
+            return "You're Ready To Explore"
+        }
+    }
+
+    var transitionSubtitle: String {
+        switch transitionVariant {
+        case .providerConnected:
+            return "I'm connected and ready to go.\nLet me show you around."
+        case .providerSetupSkipped:
+            return "You can start using sideBar now, even without connecting an AI provider yet."
+        }
+    }
+
+    var transitionHighlights: [String] {
+        switch transitionVariant {
+        case .providerConnected:
+            return []
+        case .providerSetupSkipped:
+            return [
+                "You can still capture notes, tasks, files, and save websites to read later.",
+                "Chat and other assistant-powered features stay unavailable until you add an API key.",
+                "You can connect your AI brain later in Settings whenever you're ready."
+            ]
+        }
+    }
+
     public func advance() {
         guard let next = OnboardingStep(rawValue: currentStep.rawValue + 1) else { return }
         currentStep = next
     }
 
     public func goBack() {
-        guard currentStepHasBack,
-              let previous = OnboardingStep(rawValue: currentStep.rawValue - 1) else { return }
+        guard currentStepHasBack else { return }
+
+        if currentStep == .transition {
+            currentStep = selectedProvider == nil ? .chooseProvider : .addApiKey
+            return
+        }
+
+        guard let previous = OnboardingStep(rawValue: currentStep.rawValue - 1) else { return }
         currentStep = previous
     }
 
@@ -245,6 +295,7 @@ public final class OnboardingViewModel: ObservableObject {
                 SettingsUpdate(aiPrimaryProvider: provider.rawValue)
             )
             _ = try await settingsAPI.upsertProviderKey(provider: provider.rawValue, apiKey: key)
+            skippedProviderSetup = false
             let state = try? await onboardingAPI.updateOnboarding(
                 OnboardingUpdate(
                     milestones: OnboardingMilestonesUpdate(
@@ -264,6 +315,8 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     public func skipProviderSetup() async {
+        skippedProviderSetup = true
+
         if isTestingOnboarding {
             persistOnboardingStatus(.dismissed)
             currentStep = .transition

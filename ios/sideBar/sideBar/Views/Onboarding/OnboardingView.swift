@@ -138,7 +138,7 @@ struct OnboardingView: View {
     }
 
     private var layoutMode: OnboardingLayoutMode {
-        isSoftwareKeyboardVisible ? .compact : .regular
+        OnboardingChromeLayoutPolicy.layoutMode(isSoftwareKeyboardVisible: isSoftwareKeyboardVisible)
     }
 
     private var showsBackButton: Bool {

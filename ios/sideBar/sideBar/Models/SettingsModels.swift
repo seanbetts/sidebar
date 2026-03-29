@@ -53,6 +53,17 @@ public enum AIPrimaryProvider: String, Codable, CaseIterable, Identifiable {
             return "Google"
         }
     }
+
+    public var onboardingLogoAssetName: String {
+        switch self {
+        case .anthropic:
+            return "ProviderAnthropicLogo"
+        case .openai:
+            return "ProviderOpenAILogo"
+        case .google:
+            return "ProviderGoogleLogo"
+        }
+    }
 }
 
 /// Represents an user settings struct.

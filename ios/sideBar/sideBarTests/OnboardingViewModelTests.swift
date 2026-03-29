@@ -37,13 +37,13 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentStep, .welcome)
     }
 
-    func testGoBackNotAllowedFromVerifyEmail() {
+    func testGoBackFromVerifyEmailReturnsToCreateAccount() {
         let viewModel = makeViewModel()
         viewModel.currentStep = .verifyEmail
 
         viewModel.goBack()
 
-        XCTAssertEqual(viewModel.currentStep, .verifyEmail)
+        XCTAssertEqual(viewModel.currentStep, .createAccount)
     }
 
     func testStepHasBack() {
@@ -54,7 +54,7 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.currentStepHasBack)
 
         viewModel.currentStep = .verifyEmail
-        XCTAssertFalse(viewModel.currentStepHasBack)
+        XCTAssertTrue(viewModel.currentStepHasBack)
 
         viewModel.currentStep = .profile
         XCTAssertTrue(viewModel.currentStepHasBack)
@@ -198,6 +198,7 @@ final class OnboardingViewModelTests: XCTestCase {
         await viewModel.validateAndSaveApiKey()
 
         XCTAssertEqual(viewModel.currentStep, .transition)
+        XCTAssertEqual(viewModel.transitionVariant, .providerConnected)
     }
 
     func testValidateApiKeyShowsErrorOnEmpty() async {
@@ -247,6 +248,7 @@ final class OnboardingViewModelTests: XCTestCase {
         await viewModel.validateAndSaveApiKey()
 
         XCTAssertEqual(viewModel.currentStep, .transition)
+        XCTAssertEqual(viewModel.transitionVariant, .providerConnected)
         XCTAssertNil(viewModel.errorMessage)
     }
 

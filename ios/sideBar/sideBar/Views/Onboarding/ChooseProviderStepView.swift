@@ -8,16 +8,15 @@ struct ChooseProviderStepView: View {
 
     private struct ProviderOption: Identifiable {
         let provider: AIPrimaryProvider
-        let initial: String
         let description: String
 
         var id: AIPrimaryProvider { provider }
     }
 
     private let providers: [ProviderOption] = [
-        ProviderOption(provider: .anthropic, initial: "A", description: "Claude models"),
-        ProviderOption(provider: .openai, initial: "O", description: "GPT models"),
-        ProviderOption(provider: .google, initial: "G", description: "Gemini models")
+        ProviderOption(provider: .anthropic, description: "Claude models"),
+        ProviderOption(provider: .openai, description: "GPT models"),
+        ProviderOption(provider: .google, description: "Gemini models")
     ]
 
     var body: some View {
@@ -26,7 +25,7 @@ struct ChooseProviderStepView: View {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)
 
-                Image(systemName: "cpu")
+                Image(systemName: "brain")
                     .font(.system(size: 48))
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)
@@ -47,7 +46,6 @@ struct ChooseProviderStepView: View {
                     ForEach(providers) { option in
                         providerCard(
                             provider: option.provider,
-                            initial: option.initial,
                             description: option.description
                         )
                     }
@@ -62,7 +60,6 @@ struct ChooseProviderStepView: View {
 
     private func providerCard(
         provider: AIPrimaryProvider,
-        initial: String,
         description: String
     ) -> some View {
         let isSelected = viewModel.selectedProvider == provider
@@ -70,9 +67,11 @@ struct ChooseProviderStepView: View {
             viewModel.selectedProvider = provider
         }, label: {
             HStack(spacing: DesignTokens.Spacing.md) {
-                Text(initial)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.primary)
+                Image(provider.onboardingLogoAssetName)
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+                    .frame(width: 26, height: 26)
                     .frame(width: 40, height: 40)
                     .background(DesignTokens.Colors.muted)
                     .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous))

@@ -26,6 +26,19 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
+    func testLayoutModeStaysRegularWhenKeyboardIsVisible() {
+        XCTAssertEqual(
+            OnboardingChromeLayoutPolicy.layoutMode(isSoftwareKeyboardVisible: true),
+            .regular
+        )
+    }
+
+    @MainActor
+    func testRegularLayoutAddsMoreTopSpacing() {
+        XCTAssertEqual(OnboardingLayoutMode.regular.topSpacing, 40)
+    }
+
+    @MainActor
     func testShouldShowOnboardingWhenSignedOutAndNotStarted() {
         let result = OnboardingPresentation.shouldPresent(
             authState: .signedOut,

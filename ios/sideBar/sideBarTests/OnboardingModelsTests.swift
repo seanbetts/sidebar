@@ -2,6 +2,12 @@ import XCTest
 @testable import sideBar
 
 final class OnboardingModelsTests: XCTestCase {
+    func testPrimaryProviderExposesOnboardingLogoAssetNames() {
+        XCTAssertEqual(AIPrimaryProvider.anthropic.onboardingLogoAssetName, "ProviderAnthropicLogo")
+        XCTAssertEqual(AIPrimaryProvider.openai.onboardingLogoAssetName, "ProviderOpenAILogo")
+        XCTAssertEqual(AIPrimaryProvider.google.onboardingLogoAssetName, "ProviderGoogleLogo")
+    }
+
     func testOnboardingStateDecodesFromBackendJSON() throws {
         let json = """
         {
@@ -21,7 +27,7 @@ final class OnboardingModelsTests: XCTestCase {
             },
             "last_prompted_at": null
         }
-        """.data(using: .utf8)!
+        """.utf8Data
 
         let state = try JSONDecoder().decode(OnboardingState.self, from: json)
         XCTAssertEqual(state.status, .inProgress)
@@ -51,7 +57,7 @@ final class OnboardingModelsTests: XCTestCase {
             },
             "last_prompted_at": null
         }
-        """.data(using: .utf8)!
+        """.utf8Data
 
         let state = try JSONDecoder().decode(OnboardingState.self, from: json)
         XCTAssertEqual(state.status, .notStarted)
@@ -84,5 +90,11 @@ final class OnboardingModelsTests: XCTestCase {
 
         XCTAssertEqual(milestones["profile_basics_set"] as? String, "2026-03-28T10:00:00Z")
         XCTAssertNil(milestones["provider_connected"])
+    }
+}
+
+private extension String {
+    var utf8Data: Data {
+        Data(utf8)
     }
 }

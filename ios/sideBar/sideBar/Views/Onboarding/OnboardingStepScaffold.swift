@@ -11,7 +11,7 @@ enum OnboardingLayoutMode {
     var topSpacing: CGFloat {
         switch self {
         case .regular:
-            DesignTokens.Spacing.xxl
+            40
         case .compact:
             DesignTokens.Spacing.lg
         }

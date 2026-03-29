@@ -8,6 +8,11 @@ enum OnboardingChromeLayoutPolicy {
     static let bottomAreaPlacement: OnboardingBottomChromePlacement = .overlay
     static let rootIgnoresKeyboardSafeArea = true
 
+    static func layoutMode(isSoftwareKeyboardVisible: Bool) -> OnboardingLayoutMode {
+        _ = isSoftwareKeyboardVisible
+        return .regular
+    }
+
     static func contentBottomInset(
         for bottomAreaHeight: CGFloat,
         keyboardHeight: CGFloat = 0
