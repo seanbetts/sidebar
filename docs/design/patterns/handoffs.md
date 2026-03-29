@@ -47,8 +47,6 @@ The extension writes the URL to `PendingShareStore` in App Group UserDefaults, t
 | Signed out | Items written to App Group storage after sign-out clear; retained until sign-in | Queue; drain after sign-in |
 | App not running | Items written to App Group storage by the extension; drained on next launch | Queue; drain on launch |
 
-Two states currently diverge from target behaviour: backgrounded processing requires a background `URLSession` (not yet implemented), and biometric lock state is not accessible from `AppEnvironment`. See [Implementation Gaps](../implementation-gaps).
-
 ### URL deduplication
 
 Before inserting a URL-queue item, the app normalises the URL canonically and checks it against already-saved items. Duplicate saves from the extension are discarded rather than inserted.
