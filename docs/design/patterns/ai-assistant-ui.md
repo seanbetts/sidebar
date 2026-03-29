@@ -77,11 +77,18 @@ When the assistant uses one or more skills to produce a response, a tool pill ap
 | Icon + "N skills used" | Multiple skills |
 | Icon only | Width-constrained contexts |
 
-Tapping the pill opens a popover (sheet on compact) with:
+Tapping the pill opens a popover (sheet on compact).
 
-- A list of skills used, each showing name, status indicator, and status label
-- Detail for the selected skill: parameters, result summary, and any workspace surface links
-- A "Skills Used" label as the section header
+**Single skill:** go straight to detail — no list step.
+
+**Multiple skills:** show a list first (name, status indicator, status label), then detail for the selected skill.
+
+**Skill detail view:**
+
+1. **Summary** — a human-readable description of what the skill did (e.g. "Deleted note: My Shopping List"). This is the primary content.
+2. **Workspace surface links** — action buttons to open any surfaces produced by this skill.
+3. **Prompt preview** — collapsible section showing system prompt sections, budget report, and prompt content. Available to all users for transparency into what the assistant was working with.
+4. **Technical detail** — collapsible section with raw parameters and result payload, for power users and debugging.
 
 **Status colors:**
 
