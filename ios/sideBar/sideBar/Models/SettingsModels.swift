@@ -64,6 +64,17 @@ public enum AIPrimaryProvider: String, Codable, CaseIterable, Identifiable {
             return "ProviderGoogleLogo"
         }
     }
+
+    public var apiKeySetupURL: URL? {
+        switch self {
+        case .anthropic:
+            return URL(string: "https://platform.claude.com/docs/en/api/overview")
+        case .openai:
+            return URL(string: "https://developers.openai.com/api/docs/quickstart")
+        case .google:
+            return URL(string: "https://ai.google.dev/gemini-api/docs/quickstart")
+        }
+    }
 }
 
 /// Represents an user settings struct.

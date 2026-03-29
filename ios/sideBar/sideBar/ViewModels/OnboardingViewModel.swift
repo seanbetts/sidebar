@@ -115,16 +115,7 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     public var providerHelpURL: URL? {
-        switch selectedProvider {
-        case .anthropic:
-            return URL(string: "https://console.anthropic.com/settings/keys")
-        case .openai:
-            return URL(string: "https://platform.openai.com/api-keys")
-        case .google:
-            return URL(string: "https://aistudio.google.com/apikey")
-        case nil:
-            return nil
-        }
+        selectedProvider?.apiKeySetupURL
     }
 
     public var addApiKeySubtitle: String {

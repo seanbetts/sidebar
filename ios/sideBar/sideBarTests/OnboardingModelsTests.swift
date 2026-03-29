@@ -8,6 +8,21 @@ final class OnboardingModelsTests: XCTestCase {
         XCTAssertEqual(AIPrimaryProvider.google.onboardingLogoAssetName, "ProviderGoogleLogo")
     }
 
+    func testPrimaryProviderExposesAPIKeySetupURLs() {
+        XCTAssertEqual(
+            AIPrimaryProvider.anthropic.apiKeySetupURL?.absoluteString,
+            "https://platform.claude.com/docs/en/api/overview"
+        )
+        XCTAssertEqual(
+            AIPrimaryProvider.openai.apiKeySetupURL?.absoluteString,
+            "https://developers.openai.com/api/docs/quickstart"
+        )
+        XCTAssertEqual(
+            AIPrimaryProvider.google.apiKeySetupURL?.absoluteString,
+            "https://ai.google.dev/gemini-api/docs/quickstart"
+        )
+    }
+
     func testOnboardingStateDecodesFromBackendJSON() throws {
         let json = """
         {

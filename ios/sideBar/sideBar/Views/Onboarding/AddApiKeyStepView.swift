@@ -13,10 +13,25 @@ struct AddApiKeyStepView: View {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)
 
-                Image(systemName: "key.horizontal")
-                    .font(.system(size: 48))
-                    .foregroundStyle(.primary)
-                    .padding(.bottom, layoutMode.iconBottomSpacing)
+                if let provider = viewModel.selectedProvider {
+                    Image(provider.onboardingLogoAssetName)
+                        .resizable()
+                        .renderingMode(.original)
+                        .scaledToFit()
+                        .frame(width: 40, height: 40)
+                        .frame(width: 64, height: 64)
+                        .background(DesignTokens.Colors.muted)
+                        .clipShape(RoundedRectangle(
+                            cornerRadius: DesignTokens.Radius.md,
+                            style: .continuous
+                        ))
+                        .padding(.bottom, layoutMode.iconBottomSpacing)
+                } else {
+                    Image(systemName: "key.horizontal")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.primary)
+                        .padding(.bottom, layoutMode.iconBottomSpacing)
+                }
 
                 Text("Connect Me")
                     .font(.system(size: 28, weight: .bold))
