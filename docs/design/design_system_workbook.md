@@ -27,6 +27,9 @@ description: Working brief for the internal sideBar design-system documentation 
 | 17 | Patterns: AI assistant UI | [patterns/ai-assistant-ui.md](./patterns/ai-assistant-ui) | approved |
 | 18 | Agent rules | [agent-rules/overview.md](./agent-rules/overview) | approved |
 | 19 | Audits | [token-audit](./audits/token-audit) (approved), [current-ui-audit](./audits/current-ui-audit) (live), [patterns-audit](./audits/patterns-audit) (live), [component-inventory](./audits/component-inventory) (live), [system-framework-usage](./audits/system-framework-usage-audit) (live) | live |
+| 20 | Patterns: menus and shortcuts | [patterns/menus-and-shortcuts.md](./patterns/menus-and-shortcuts) | not started |
+| 21 | Agent rules: component template | [agent-rules/component-template.md](./agent-rules/component-template) | not started |
+| 22 | Agent rules: feature UI checklist | [agent-rules/feature-ui-checklist.md](./agent-rules/feature-ui-checklist) | not started |
 
 ## Supporting documents
 
@@ -226,75 +229,53 @@ This workflow layer should keep the workbook practical and stop it from becoming
 
 ---
 
-## Proposed design docs structure
+## Design docs structure
+
+The initial proposed structure has been reviewed and rationalised. Many foundations (spacing, sizing, radius, borders, elevation, layout, motion, theming) are fully covered by `token-model.md`, `colour.md`, and `materials-and-appearance.md` and do not warrant standalone files. Individual component docs (buttons, inputs, cards, etc.) are deferred — the component inventory and overview serve the current team size. Several proposed patterns were consolidated into broader docs or deemed too thin for standalone treatment.
 
 ```text
 docs/
   design/
     README.md
-    design-system-workbook.md
+    design_system_workbook.md
     principles.md
     system-inheritance.md
     voice-and-content.md
+    implementation-gaps.md
     platform-strategy/
       overview.md
       ios-conventions.md
       macos-conventions.md
       web-conventions.md
+      widgets.md
     foundations/
       overview.md
-      token-model.md
+      token-model.md        ← covers spacing, sizing, radius, borders, motion
       colour.md
       typography.md
-      spacing.md
-      sizing.md
-      radius.md
-      borders.md
-      elevation.md
-      layout.md
-      materials-and-appearance.md
-      motion.md
+      materials-and-appearance.md  ← covers elevation, theming
       iconography.md
-      theming.md
       accessibility.md
     components/
-      overview.md
-      buttons.md
-      inputs.md
-      search.md
-      cards.md
-      lists.md
-      navigation.md
-      modals.md
-      feedback.md
-      loading.md
-      empty-states.md
+      overview.md           ← inventory + rules; individual docs added on demand
     patterns/
+      overview.md
       navigation.md
-      sidebars-toolbars-and-split-views.md
-      windows-and-panels.md
-      menus-commands-and-shortcuts.md
-      search-and-filtering.md
-      forms.md
-      editing.md
+      feedback-and-haptics.md
       wait-ux.md
+      authentication.md
       onboarding.md
       handoffs.md
-      settings.md
       ai-assistant-ui.md
-      feedback-and-haptics.md
-      writing-and-localisation.md
-      loading-errors-success.md
+      menus-and-shortcuts.md  ← to build
     agent-rules/
-      ui-implementation-rules.md
-      component-template.md
-      feature-ui-checklist.md
-      prompt-templates.md
-      design-to-code-parity.md
+      overview.md
+      component-template.md   ← to build
+      feature-ui-checklist.md ← to build
     audits/
-      current-ui-audit.md
-      inconsistency-backlog.md
       token-audit.md
+      current-ui-audit.md
+      patterns-audit.md
       component-inventory.md
       system-framework-usage-audit.md
 ```
