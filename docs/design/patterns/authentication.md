@@ -40,8 +40,10 @@ On launch, the app determines initial auth state before showing any content:
 
 1. Check Keychain for a stored session
 2. If a valid session exists within the 24-hour offline access window: restore as `.active` (if network is available) or `.stale` (if offline)
-3. If the session exists but the offline window has expired: attempt a token refresh. Success → `.active`; auth error → `signedOut` with full state clear; network error → `.stale`
-4. If no session: `signedOut` → show login
+3. If the session exists but the offline window has expired: attempt a token refresh. Success → `.active`; auth error → `signedOut`; network error → `.stale`
+4. If no session: `signedOut`
+
+**Rule**: `signedOut` always shows the login screen — no exceptions, no partial access. Any transition to `signedOut`, whether from sign-out, token expiry, or failed session restore, must result in the login screen being shown and all user data cleared.
 
 The app must not show a blank main UI while auth state is being determined. Show a loading state or the login screen until the initial state is resolved.
 
