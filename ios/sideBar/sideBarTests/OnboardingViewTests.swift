@@ -1,6 +1,7 @@
 import XCTest
 #if canImport(UIKit)
 import UIKit
+import SwiftUI
 #endif
 @testable import sideBar
 
@@ -130,5 +131,87 @@ final class OnboardingViewTests: XCTestCase {
 
         XCTAssertEqual(style, .sheet)
     }
+
+    @MainActor
+    func testCreateAccountPasswordFieldUsesPasswordContentTypeAndLabelColorInDarkMode() throws {
+        let viewModel = OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
+            onboardingAPI: MockOnboardingAPI(),
+            settingsAPI: OnboardingMockSettingsAPI(),
+            isTestingOnboarding: true,
+            userDefaults: makeUserDefaults()
+        )
+        viewModel.currentStep = .createAccount
+        viewModel.password = "Secret123!"
+
+        let controller = mountCreateAccountStep(
+            viewModel: viewModel,
+            interfaceStyle: UIUserInterfaceStyle.dark
+        )
+        let secureField = try XCTUnwrap(
+            findTextFields(in: controller.view).first(where: \.isSecureTextEntry)
+        )
+        let renderedColor = try XCTUnwrap(secureField.textColor)
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+
+        XCTAssertEqual(secureField.textContentType, .password)
+        XCTAssertEqual(
+            rgbaComponents(for: renderedColor),
+            rgbaComponents(for: UIColor.label.resolvedColor(with: darkTraits))
+        )
+    }
+
+    private func makeUserDefaults() -> UserDefaults {
+        let suiteName = "OnboardingViewTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        defaults.removePersistentDomain(forName: suiteName)
+        return defaults
+    }
+
+    @MainActor
+    private func mountCreateAccountStep(
+        viewModel: OnboardingViewModel,
+        interfaceStyle: UIUserInterfaceStyle,
+        width: CGFloat = 390,
+        height: CGFloat = 844
+    ) -> UIHostingController<AnyView> {
+        let controller = UIHostingController(
+            rootView: AnyView(
+                CreateAccountStepView(
+                    viewModel: viewModel,
+                    layoutMode: .regular,
+                    bottomContentInset: 0
+                )
+            )
+        )
+        let frame = CGRect(x: 0, y: 0, width: width, height: height)
+        let window = UIWindow(frame: frame)
+        window.overrideUserInterfaceStyle = interfaceStyle
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        controller.view.frame = frame
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        return controller
+    }
+
+    private func findTextFields(in view: UIView) -> [UITextField] {
+        var textFields = view.subviews.compactMap { $0 as? UITextField }
+        for subview in view.subviews {
+            textFields.append(contentsOf: findTextFields(in: subview))
+        }
+        return textFields
+    }
+
+    private func rgbaComponents(for color: UIColor) -> [CGFloat] {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        XCTAssertTrue(color.getRed(&red, green: &green, blue: &blue, alpha: &alpha))
+        return [red, green, blue, alpha]
+    }
+
 #endif
 }

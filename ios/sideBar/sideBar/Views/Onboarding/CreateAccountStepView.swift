@@ -69,7 +69,7 @@ struct CreateAccountStepView: View {
                             .foregroundStyle(.secondary)
                             .tracking(0.5)
                         SecureField("Choose a password", text: $viewModel.password)
-                            .textContentType(.newPassword)
+                            .textContentType(.password)
                             .padding(DesignTokens.Spacing.sm)
                             .background {
                                 RoundedRectangle(
