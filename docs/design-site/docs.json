@@ -27,7 +27,8 @@
           "platform-strategy/overview",
           "platform-strategy/ios-conventions",
           "platform-strategy/macos-conventions",
-          "platform-strategy/web-conventions"
+          "platform-strategy/web-conventions",
+          "platform-strategy/widgets"
         ]
       },
       {
