@@ -13,12 +13,20 @@ public enum OnboardingStep: Int, CaseIterable {
     case profile
     case chooseProvider
     case addApiKey
-    case transition
+    case locationPermission
+    case notificationsPermission
+    case finalStep
 }
 
 enum OnboardingTransitionVariant: Equatable {
     case providerConnected
     case providerSetupSkipped
+}
+
+/// Indicates whether the wizard is moving forward or backward between steps.
+public enum OnboardingNavigationDirection: Equatable {
+    case forward
+    case backward
 }
 
 @MainActor
@@ -28,26 +36,35 @@ public final class OnboardingViewModel: ObservableObject {
     @Published public var isLoading = false
     @Published public var errorMessage: String?
     @Published public var routeToSignIn = false
+    @Published public private(set) var navigationDirection: OnboardingNavigationDirection = .forward
 
     @Published public var email = ""
     @Published public var password = ""
     @Published public var displayName = ""
     @Published public var selectedProvider: AIPrimaryProvider?
     @Published public var apiKey = ""
+    @Published public private(set) var locationPermissionState: OnboardingPermissionState = .notAsked
+    @Published public private(set) var notificationsPermissionState: OnboardingPermissionState = .notAsked
 
     public let isTestingOnboarding: Bool
 
     private let authSession: AuthSession
     private let onboardingAPI: OnboardingProviding
     private let settingsAPI: SettingsProviding
+    private let locationPermissionRequester: any LocationPermissionRequesting
+    private let notificationsPermissionRequester: any NotificationPermissionRequesting
     private let userDefaults: UserDefaults
     private var skippedProviderSetup = false
+    private var resolvedPermissionSteps = Set<OnboardingStep>()
     private static let stepsWithBack: Set<OnboardingStep> = [
         .createAccount,
         .verifyEmail,
         .profile,
         .chooseProvider,
-        .addApiKey
+        .addApiKey,
+        .locationPermission,
+        .notificationsPermission,
+        .finalStep
     ]
     private static let isoFormatter = ISO8601DateFormatter()
     private static let onboardingStatusKey = AppStorageKeys.onboardingStatus
@@ -56,20 +73,21 @@ public final class OnboardingViewModel: ObservableObject {
         authSession: AuthSession,
         onboardingAPI: OnboardingProviding,
         settingsAPI: SettingsProviding,
+        locationPermissionRequester: (any LocationPermissionRequesting)? = nil,
+        notificationsPermissionRequester: (any NotificationPermissionRequesting)? = nil,
         isTestingOnboarding: Bool = ProcessInfo.processInfo.arguments.contains("-resetOnboarding"),
         userDefaults: UserDefaults = .standard
     ) {
         self.authSession = authSession
         self.onboardingAPI = onboardingAPI
         self.settingsAPI = settingsAPI
+        self.locationPermissionRequester = locationPermissionRequester ?? LocationPermissionRequester()
+        self.notificationsPermissionRequester = notificationsPermissionRequester ?? NotificationPermissionRequester()
         self.isTestingOnboarding = isTestingOnboarding
         self.userDefaults = userDefaults
     }
 
     public var currentStepHasBack: Bool {
-        if currentStep == .transition {
-            return transitionVariant == .providerSetupSkipped
-        }
         return Self.stepsWithBack.contains(currentStep)
     }
 
@@ -123,6 +141,14 @@ public final class OnboardingViewModel: ObservableObject {
         return "Paste your \(providerName) API key so I can start helping you."
     }
 
+    public var isLocationPermissionResolved: Bool {
+        resolvedPermissionSteps.contains(.locationPermission)
+    }
+
+    public var isNotificationsPermissionResolved: Bool {
+        resolvedPermissionSteps.contains(.notificationsPermission)
+    }
+
     public var apiKeyPlaceholder: String {
         switch selectedProvider {
         case .anthropic:
@@ -173,18 +199,15 @@ public final class OnboardingViewModel: ObservableObject {
 
     public func advance() {
         guard let next = OnboardingStep(rawValue: currentStep.rawValue + 1) else { return }
+        navigationDirection = .forward
         currentStep = next
     }
 
     public func goBack() {
         guard currentStepHasBack else { return }
 
-        if currentStep == .transition {
-            currentStep = selectedProvider == nil ? .chooseProvider : .addApiKey
-            return
-        }
-
         guard let previous = OnboardingStep(rawValue: currentStep.rawValue - 1) else { return }
+        navigationDirection = .backward
         currentStep = previous
     }
 
@@ -259,6 +282,34 @@ public final class OnboardingViewModel: ObservableObject {
         advance()
     }
 
+    public func skipLocationPermission() async {
+        await resolveLocationPermission(.notAsked)
+    }
+
+    public func enableLocationPermission() async {
+        guard !isLocationPermissionResolved else {
+            advance()
+            return
+        }
+
+        let state = await locationPermissionRequester.requestPermission()
+        await resolveLocationPermission(state)
+    }
+
+    public func skipNotificationsPermission() async {
+        await resolveNotificationsPermission(.notAsked)
+    }
+
+    public func enableNotificationsPermission() async {
+        guard !isNotificationsPermissionResolved else {
+            advance()
+            return
+        }
+
+        let state = await notificationsPermissionRequester.requestPermission()
+        await resolveNotificationsPermission(state)
+    }
+
     public func validateAndSaveApiKey() async {
         errorMessage = nil
         isLoading = true
@@ -309,18 +360,20 @@ public final class OnboardingViewModel: ObservableObject {
         skippedProviderSetup = true
 
         if isTestingOnboarding {
-            persistOnboardingStatus(.dismissed)
-            currentStep = .transition
+            persistOnboardingStatus(.inProgress)
+            navigationDirection = .forward
+            currentStep = .locationPermission
             return
         }
 
-        let state = try? await onboardingAPI.updateOnboarding(OnboardingUpdate(status: .dismissed))
+        let state = try? await onboardingAPI.updateOnboarding(OnboardingUpdate(status: .inProgress))
         if let status = state?.status {
             persistOnboardingStatus(status)
         } else {
-            persistOnboardingStatus(.dismissed)
+            persistOnboardingStatus(.inProgress)
         }
-        currentStep = .transition
+        navigationDirection = .forward
+        currentStep = .locationPermission
     }
 
     public func completeOnboarding() async {
@@ -339,6 +392,36 @@ public final class OnboardingViewModel: ObservableObject {
 
     private func persistOnboardingStatus(_ status: OnboardingStatus) {
         userDefaults.set(status.rawValue, forKey: Self.onboardingStatusKey)
+    }
+
+    private func resolveLocationPermission(_ state: OnboardingPermissionState) async {
+        locationPermissionState = state
+        resolvedPermissionSteps.insert(.locationPermission)
+
+        if !isTestingOnboarding {
+            _ = try? await onboardingAPI.updateOnboarding(
+                OnboardingUpdate(
+                    permissions: OnboardingPermissionsUpdate(location: state)
+                )
+            )
+        }
+
+        advance()
+    }
+
+    private func resolveNotificationsPermission(_ state: OnboardingPermissionState) async {
+        notificationsPermissionState = state
+        resolvedPermissionSteps.insert(.notificationsPermission)
+
+        if !isTestingOnboarding {
+            _ = try? await onboardingAPI.updateOnboarding(
+                OnboardingUpdate(
+                    permissions: OnboardingPermissionsUpdate(notifications: state)
+                )
+            )
+        }
+
+        advance()
     }
 }
 

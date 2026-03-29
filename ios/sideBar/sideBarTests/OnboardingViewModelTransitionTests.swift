@@ -3,16 +3,13 @@ import XCTest
 
 @MainActor
 final class OnboardingViewModelTransitionTests: XCTestCase {
-    func testConnectedTransitionDoesNotShowBack() async {
+    func testGoBackFromFinalStepReturnsToNotificationsPermission() {
         let viewModel = makeViewModel(isTestingOnboarding: true)
-        viewModel.selectedProvider = .anthropic
-        viewModel.apiKey = "sk-ant-valid-key"
-        viewModel.currentStep = .addApiKey
+        viewModel.currentStep = .finalStep
 
-        await viewModel.validateAndSaveApiKey()
+        viewModel.goBack()
 
-        XCTAssertEqual(viewModel.currentStep, .transition)
-        XCTAssertFalse(viewModel.currentStepHasBack)
+        XCTAssertEqual(viewModel.currentStep, .notificationsPermission)
     }
 
     func testConnectedProviderTransitionKeepsExistingAllSetContent() async {
@@ -23,6 +20,7 @@ final class OnboardingViewModelTransitionTests: XCTestCase {
 
         await viewModel.validateAndSaveApiKey()
 
+        viewModel.currentStep = .finalStep
         XCTAssertEqual(viewModel.transitionTitle, "You're All Set")
         XCTAssertEqual(viewModel.transitionSubtitle, "I'm connected and ready to go.\nLet me show you around.")
         XCTAssertTrue(viewModel.transitionHighlights.isEmpty)
@@ -34,7 +32,7 @@ final class OnboardingViewModelTransitionTests: XCTestCase {
 
         await viewModel.skipProviderSetup()
 
-        XCTAssertEqual(viewModel.currentStep, .transition)
+        XCTAssertEqual(viewModel.currentStep, .locationPermission)
         XCTAssertEqual(viewModel.transitionVariant, .providerSetupSkipped)
     }
 
@@ -44,7 +42,7 @@ final class OnboardingViewModelTransitionTests: XCTestCase {
 
         await viewModel.skipProviderSetup()
 
-        XCTAssertEqual(viewModel.currentStep, .transition)
+        XCTAssertEqual(viewModel.currentStep, .locationPermission)
         XCTAssertEqual(viewModel.transitionVariant, .providerSetupSkipped)
     }
 
@@ -68,35 +66,34 @@ final class OnboardingViewModelTransitionTests: XCTestCase {
         )
     }
 
-    func testSkippedTransitionShowsBackWhenNoProviderSelected() async {
+    func testFinalStepShowsBackWhenProviderSetupWasSkipped() {
         let viewModel = makeViewModel(isTestingOnboarding: true)
-        viewModel.currentStep = .chooseProvider
+        viewModel.currentStep = .finalStep
 
-        await viewModel.skipProviderSetup()
-
-        XCTAssertEqual(viewModel.currentStep, .transition)
         XCTAssertTrue(viewModel.currentStepHasBack)
     }
 
-    func testGoBackFromSkippedTransitionReturnsToChooseProviderWhenNoProviderSelected() async {
+    func testGoBackFromFinalStepReturnsToNotificationsPermissionWhenProviderSetupWasSkipped() async {
         let viewModel = makeViewModel(isTestingOnboarding: true)
         viewModel.currentStep = .chooseProvider
 
         await viewModel.skipProviderSetup()
+        viewModel.currentStep = .finalStep
         viewModel.goBack()
 
-        XCTAssertEqual(viewModel.currentStep, .chooseProvider)
+        XCTAssertEqual(viewModel.currentStep, .notificationsPermission)
     }
 
-    func testGoBackFromSkippedTransitionReturnsToAddApiKeyWhenProviderAlreadySelected() async {
+    func testGoBackFromFinalStepReturnsToNotificationsPermissionWhenProviderIsConnected() async {
         let viewModel = makeViewModel(isTestingOnboarding: true)
         viewModel.selectedProvider = .anthropic
         viewModel.currentStep = .addApiKey
 
-        await viewModel.skipProviderSetup()
+        await viewModel.validateAndSaveApiKey()
+        viewModel.currentStep = .finalStep
         viewModel.goBack()
 
-        XCTAssertEqual(viewModel.currentStep, .addApiKey)
+        XCTAssertEqual(viewModel.currentStep, .notificationsPermission)
     }
 
     private func makeViewModel(isTestingOnboarding: Bool = false) -> OnboardingViewModel {

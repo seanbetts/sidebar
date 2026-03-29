@@ -188,6 +188,52 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
+    func testTransitionContainerUsesDirectionalForwardStyleWhenReduceMotionIsOff() {
+        XCTAssertEqual(
+            OnboardingStepTransitionContainer<EmptyView>.transitionStyle(
+                reduceMotion: false,
+                direction: .forward
+            ),
+            .movingForward
+        )
+    }
+
+    @MainActor
+    func testTransitionContainerUsesReducedMotionFallback() {
+        XCTAssertEqual(
+            OnboardingStepTransitionContainer<EmptyView>.transitionStyle(
+                reduceMotion: true,
+                direction: .backward
+            ),
+            .reducedMotion
+        )
+    }
+
+    @MainActor
+    func testOnboardingViewCanRenderLocationStep() {
+        XCTAssertEqual(
+            OnboardingView.contentKind(for: .locationPermission),
+            .locationPermission
+        )
+    }
+
+    @MainActor
+    func testOnboardingViewCanRenderNotificationsStep() {
+        XCTAssertEqual(
+            OnboardingView.contentKind(for: .notificationsPermission),
+            .notificationsPermission
+        )
+    }
+
+    @MainActor
+    func testOnboardingViewRoutesFinalStepThroughFinalStepView() {
+        XCTAssertEqual(
+            OnboardingView.contentKind(for: .finalStep),
+            .finalStep
+        )
+    }
+
+    @MainActor
     func testCreateAccountPasswordFieldUsesPasswordContentTypeAndLabelColorInDarkMode() throws {
         let viewModel = OnboardingViewModel(
             authSession: MockAuthSessionForOnboarding(),
@@ -224,6 +270,17 @@ final class OnboardingViewTests: XCTestCase {
     }
 
     @MainActor
+    private func makeTestingViewModel() -> OnboardingViewModel {
+        OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
+            onboardingAPI: MockOnboardingAPI(),
+            settingsAPI: OnboardingMockSettingsAPI(),
+            isTestingOnboarding: true,
+            userDefaults: makeUserDefaults()
+        )
+    }
+
+    @MainActor
     private func mountCreateAccountStep(
         viewModel: OnboardingViewModel,
         interfaceStyle: UIUserInterfaceStyle,
@@ -251,12 +308,44 @@ final class OnboardingViewTests: XCTestCase {
         return controller
     }
 
+    @MainActor
+    private func mountOnboardingView(
+        viewModel: OnboardingViewModel,
+        interfaceStyle: UIUserInterfaceStyle = .light,
+        width: CGFloat = 390,
+        height: CGFloat = 844
+    ) -> UIHostingController<AnyView> {
+        let controller = UIHostingController(
+            rootView: AnyView(
+                OnboardingView(viewModel: viewModel)
+            )
+        )
+        let frame = CGRect(x: 0, y: 0, width: width, height: height)
+        let window = UIWindow(frame: frame)
+        window.overrideUserInterfaceStyle = interfaceStyle
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        controller.view.frame = frame
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        return controller
+    }
+
     private func findTextFields(in view: UIView) -> [UITextField] {
         var textFields = view.subviews.compactMap { $0 as? UITextField }
         for subview in view.subviews {
             textFields.append(contentsOf: findTextFields(in: subview))
         }
         return textFields
+    }
+
+    private func findLabels(in view: UIView) -> [UILabel] {
+        var labels = view.subviews.compactMap { $0 as? UILabel }
+        for subview in view.subviews {
+            labels.append(contentsOf: findLabels(in: subview))
+        }
+        return labels
     }
 
     private func rgbaComponents(for color: UIColor) -> [CGFloat] {

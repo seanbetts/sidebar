@@ -1,9 +1,8 @@
 import SwiftUI
 
 /// Final onboarding step before entering the signed-in experience.
-struct TransitionStepView: View {
+struct FinalStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
-    let dismiss: DismissAction
     let layoutMode: OnboardingLayoutMode
     let bottomContentInset: CGFloat
 
@@ -27,6 +26,7 @@ struct TransitionStepView: View {
                     .font(.system(size: 28, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(.primary)
+                    .accessibilityIdentifier("onboarding.finalStep.title")
                     .padding(.bottom, layoutMode.titleBottomSpacing)
 
                 Text(viewModel.transitionSubtitle)
