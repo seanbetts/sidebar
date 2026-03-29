@@ -175,45 +175,47 @@ On iPad and Mac, workspace surfaces can be expanded to full-pane width via an ex
 
 ---
 
-## Assistant handoffs
+## Inline actions
 
-When a skill produces a result that corresponds to a product destination (a note, file, task, website, or other sideBar surface), the assistant surfaces inline action buttons in the message row below the content body.
+The assistant surfaces interactive elements in the message area for three distinct purposes: navigating to produced content, confirming destructive actions before execution, and reversing completed actions. All three use the same shared card component with visual variants that communicate their intent. Cards are never modals — they appear as part of the conversation flow.
 
-### Inline actions
+### Shared anatomy
+
+Every inline action card contains:
+
+- A plain-language summary of what happened or will happen
+- One or more action buttons
+- A resolved/expired state that disables interaction once the card is no longer actionable
+
+Buttons show a loading state while a request is in flight.
+
+### Navigational (assistant handoffs)
+
+Appears after the assistant produces a result that corresponds to a product destination (note, file, task, website, or other sideBar surface).
 
 | Count | Layout |
 |---|---|
-| 1 target | Full-width prominent button (`.borderedProminent`) centered in the message |
+| 1 target | Full-width prominent button (`.borderedProminent`) |
 | 2+ targets | Horizontal scrolling row of bordered buttons |
 
-Action labels come from the workspace surface target. Icons use the relevant section's SF Symbol.
+Action labels come from the workspace surface target. Icons use the relevant section's SF Symbol. Tapping routes through the standard deep link handler. See [Handoffs](./handoffs) for routing rules.
 
-Tapping an action routes to the target via `AppEnvironment.presentAgentSurface(...)`, which converts to a deep link and routes through the standard handler. See [Handoffs](./handoffs) for routing rules.
+### Confirmation (pre-execution)
 
----
+Appears when the assistant attempts a destructive action. Execution is paused until the user responds. Triggered by a `tool_confirmation_requested` SSE event.
 
-## Confirmation cards
+Card contents:
 
-Destructive skill actions (delete note, delete task, delete website, etc.) require explicit user confirmation before execution. The confirmation is presented as an inline card in the chat message area, not as a modal interruption.
-
-### Confirmation card anatomy
-
-When the backend receives a guarded tool call, it emits a `tool_confirmation_requested` event before executing. The inline card renders:
-
-- The skill name and a plain-language summary of what will happen
+- Skill name and plain-language summary of what will happen
 - The entity name being affected
 - **Accept** and **Decline** buttons
 - An expiry indicator (the confirmation has a short TTL)
 
-Both buttons show a loading state while the decision request is in flight. Once resolved, the card updates to reflect the decision and disables further interaction.
+Once resolved, the card updates to reflect the decision and disables further interaction.
 
-### Decline behaviour
+**Decline behaviour:** the backend injects a deterministic "declined" tool result into the assistant's context so it can acknowledge the refusal without retrying the same action.
 
-When the user declines, the backend injects a deterministic "declined" tool result into the assistant's context so the assistant can acknowledge the refusal and continue the conversation without retrying the same action.
-
-### Guarded tool scope
-
-The following tools require confirmation:
+**Guarded tool scope:**
 
 | Tool | Undo supported |
 |---|---|
@@ -227,25 +229,19 @@ The following tools require confirmation:
 
 File deletion is guarded but not undoable because it involves destructive storage cleanup.
 
----
+### Undo (post-execution)
 
-## Undo
+Appears after a confirmed reversible delete. Triggered by an `undo_available` SSE event with a short-lived token.
 
-For reversible destructive actions (soft-delete-backed entities), the assistant surfaces an inline undo action after successful execution.
-
-### Undo card anatomy
-
-After a confirmed and executed reversible delete, the backend emits an `undo_available` event with a short-lived token. The inline undo card renders:
+Card contents:
 
 - A summary of what was deleted
 - An **Undo** button
-- A visual indication that the window is limited
+- A visual indication that the window is time-limited
 
-The undo button shows a loading state while the undo request is in flight. Once the token expires or is consumed, the card resolves and the undo action is no longer available.
+Once the token expires or is consumed, the card resolves and the undo action is no longer available.
 
-### Undo scope
-
-Undo is supported for notes, note folders, websites, tasks, projects, and groups. Hierarchical deletes (e.g. deleting a project that contains tasks) restore the full hierarchy deterministically. File deletion is explicitly not undoable.
+**Undo scope:** notes, note folders, websites, tasks, projects, and groups. Hierarchical deletes (e.g. deleting a project that contains tasks) restore the full hierarchy deterministically. File deletion is explicitly not undoable.
 
 ---
 
@@ -276,7 +272,7 @@ The user is always identified as "You". This is not configurable.
 7. **Confirmation and undo cards are inline, never modal.** They appear in the message area as part of the conversation flow.
 8. **Decline is final and feeds back into the assistant.** A declined confirmation injects a deterministic result into the model context so the assistant can respond without retrying.
 9. **Workspace surface headers follow the standard layout.** Icon, title, subtitle, and action row in that order. Never omit the header.
-10. **Workspace handoff actions use inline buttons, not text links.** One target: prominent full-width button. Multiple targets: bordered horizontal scroll.
+10. **All assistant inline actions use the shared card component.** Navigational, confirmation, and undo variants share the same container and anatomy — they are never loose buttons or modals.
 11. **All assistant navigation routes through the deep link system.** `presentAgentSurface` converts to `sidebar://` before routing. No direct navigation bypasses the handler.
 12. **`assistantDisplayName` must be used for all references to the assistant.** Never hardcode a name.
 13. **Reduce motion must be respected for all assistant animations.** Thinking dismissal, streaming reveal, and any other assistant-driven motion must have instant fallbacks.
