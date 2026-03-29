@@ -55,6 +55,7 @@
           "patterns/overview",
           "patterns/authentication",
           "patterns/onboarding",
+          "patterns/handoffs",
           "patterns/navigation",
           "patterns/feedback-and-haptics",
           "patterns/wait-ux"
