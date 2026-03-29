@@ -53,6 +53,7 @@
         "group": "Patterns",
         "pages": [
           "patterns/overview",
+          "patterns/authentication",
           "patterns/navigation",
           "patterns/feedback-and-haptics",
           "patterns/wait-ux"

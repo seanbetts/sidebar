@@ -26,6 +26,11 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
+| Rate limiting on sign-in not persisted — `failedLoginAttempts` and `lockoutEndTime` are in-memory only; app restart resets the lockout, providing no meaningful brute-force protection | `SupabaseAuthAdapter.swift` | [authentication](./patterns/authentication) |
+| Deep links not gated on auth completion — links arriving while auth is initialising or biometric lock is showing route to feature content that may be blank or loading indefinitely | `AppEnvironment+DeepLink.swift` | [authentication](./patterns/authentication) |
+| No manual retry action for `.stale` state — app shows a toast but provides no button to immediately attempt session recovery; user must wait for background/foreground transition | `AppEnvironment+Auth.swift` | [authentication](./patterns/authentication) |
+| Offline access window backed by UserDefaults — `lastAuthTimestamp` can be cleared independently of the Keychain session, making the 24-hour window trivially bypassable; should be stored in Keychain | `SupabaseAuthAdapter.swift` | [authentication](./patterns/authentication) |
+| Auth error toast not cleared on state recovery — `authError` is only cleared when the sink fires; if the session recovers, a stale error toast may persist | `AppEnvironment+Setup.swift` | [authentication](./patterns/authentication) |
 | Scratchpad button accessible only inside open ChatView conversation — should appear wherever the profile/settings avatar appears, to its left, presented as `.sheet` | `ChatView.swift` | [ios-conventions](./platform-strategy/ios-conventions) |
 | `Design/Haptics.swift` not yet created — all haptic call sites are blocked on this; `LoginView` and `BiometricLockView` still use inline `UINotificationFeedbackGenerator` and must migrate once the helper exists | `Design/Haptics.swift` (to create), `LoginView.swift`, `BiometricLockView.swift` | [feedback-and-haptics](./patterns/feedback-and-haptics) |
 | Haptic: task completion checkbox missing `.success` feedback | `TasksViewComponents.swift:87` | [ios-conventions](./platform-strategy/ios-conventions) |
