@@ -98,6 +98,7 @@ Single working list of every known divergence between the design system and the 
 |---|---|---|
 | `SidebarLoading` has CSS shimmer animation (`loading-shimmer`) — remove and replace with static placeholder rows matching native `SidebarListSkeleton` | `frontend/src/lib/components/left-sidebar/SidebarLoading.svelte` | [wait-ux](./patterns/wait-ux) |
 | `ConversationsPanel` skeleton uses 6 rows — standardise to 8 to match all other panels | `ConversationsPanel.swift` | [wait-ux](./patterns/wait-ux) |
+| `SyncStatusIndicator` component and its usage in settings should be removed — background writes are silent | `SyncStatusIndicator.swift`, `SettingsSections+System.swift` | [wait-ux](./patterns/wait-ux) |
 | Note save status indicator shows visible text labels ("Saving note...", "Saved just now", etc.) — remove text, keep icons only; ensure accessibility labels are set on each state | `NotesDetailView.swift` | [wait-ux](./patterns/wait-ux) |
 | Chat pre-first-token state shows "Working..." animated dot — should be replaced with an inline thinking indicator in the message row, matching native | `frontend/src/lib/components/chat/Message.svelte` | [wait-ux](./patterns/wait-ux) |
 | Native chat missing inline tool execution states — web shows "Using {name}" / "Used {name}" / "Failed to use {name}" per message; native has no equivalent | `ChatToolBanners.swift` / chat message components | [wait-ux](./patterns/wait-ux) |

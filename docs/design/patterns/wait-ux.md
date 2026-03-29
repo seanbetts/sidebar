@@ -133,7 +133,7 @@ Save feedback follows a location-driven principle — the treatment depends on w
 |---|---|
 | Detail view with toolbar | Inline icon in toolbar area |
 | Sheet or modal (no toolbar) | Floating pill at bottom of sheet |
-| Background / optimistic write | Ambient dot only (`SyncStatusIndicator`) |
+| Background / optimistic write | Silent — no indicator |
 
 ### Detail view: toolbar icon (notes pattern)
 
@@ -164,12 +164,6 @@ This is the reference pattern for any new detail view that needs save status.
 | Error | exclamationmark.triangle.fill | "Couldn't save settings" | Persists until acknowledged |
 
 Use this pattern for any sheet or modal that has ongoing auto-save behaviour.
-
-### Background / optimistic writes: ambient dot
-
-`SyncStatusIndicator` is a small filled dot that appears when `WriteQueue.pendingCount > 0`. When the queue is actively processing, the dot gains a pulsing ring (1s easeInOut, 0.9–1.2 scale). No blocking UI. No label in the default layout.
-
-Use this for background sync of notes, tasks, and websites where optimistic updates have already updated the UI.
 
 ### Haptics and save completion (iOS only)
 
@@ -270,7 +264,7 @@ Long-running file operations on iOS use Live Activities to surface progress outs
 
 The app uses optimistic updates for note edits, task changes, and website saves via the `WriteQueue` system. Local changes apply immediately; syncing happens in the background.
 
-**Rule**: Do not show a blocking loading state for operations that are optimistically applied. Show ambient sync state (`SyncStatusIndicator`) or a brief save confirmation (toolbar icon, pill) instead.
+**Rule**: Do not show a blocking loading state for operations that are optimistically applied. Optimistic writes are silent — the UI has already updated. If the write fails, surface the error through the normal error pattern.
 
 ---
 
@@ -306,7 +300,7 @@ Show a skeleton first. Transition to the empty state only when the load complete
 6. **Async buttons disable in place.** Change the label text. Show a spinner inside the button for retry.
 7. **AI generation is not fetching.** Inline thinking indicator before first token. Progressive reveal once content arrives — character-paced on native, chunk-driven on web. Content must never appear all at once at stream end.
 8. **Background operations never block.** Ambient indicators only.
-9. **Optimistic updates need ambient confirmation, not blocking states.**
+9. **Optimistic updates are silent.** No indicator needed — the UI has already updated. Surface errors if the write fails.
 10. **Empty state appears after loading, not during.**
 11. **Live Activities is the target for long-running file operations on iOS.** IngestionCenter is the current interim pattern.
 

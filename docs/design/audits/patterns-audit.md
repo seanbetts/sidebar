@@ -99,9 +99,8 @@ Both implementations are functional but surface-heavy for what is typically a ba
 |---|---|---|
 | Notes detail view | Toolbar icon in `NotesDetailView.swift` | Saving, Saved (2s auto-dismiss), Unsaved changes, Sync queued, Error |
 | Settings sheet | `SettingsSaveStatusPill.swift` | Saving, Saved (auto-dismiss), Error |
-| Background writes | `SyncStatusIndicator.swift` | Pending (dot), Processing (dot + pulse ring) |
 
-These three components use different visual treatments for the same underlying concept. The [wait-ux spec](../patterns/wait-ux) defines a location-driven principle for when each applies.
+`SyncStatusIndicator.swift` exists and is used in `SettingsSections+System.swift` as a verbose sync status display with text and a "View queued changes" button. This component is being removed — background/optimistic writes are silent per the spec.
 
 ### Button async states
 
