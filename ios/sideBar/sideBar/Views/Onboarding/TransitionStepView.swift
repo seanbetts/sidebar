@@ -5,9 +5,10 @@ struct TransitionStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let dismiss: DismissAction
     let layoutMode: OnboardingLayoutMode
+    let bottomContentInset: CGFloat
 
     var body: some View {
-        OnboardingStepScaffold(layoutMode: layoutMode) {
+        OnboardingStepScaffold(layoutMode: layoutMode, bottomContentInset: bottomContentInset) {
             VStack(spacing: 0) {
                 Spacer()
                     .frame(height: layoutMode.topSpacing * 1.5)

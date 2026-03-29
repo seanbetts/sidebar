@@ -6,6 +6,26 @@ import UIKit
 
 final class OnboardingViewTests: XCTestCase {
     @MainActor
+    func testBottomChromeUsesOverlayPlacement() {
+        XCTAssertEqual(OnboardingChromeLayoutPolicy.bottomAreaPlacement, .overlay)
+    }
+
+    @MainActor
+    func testContentBottomInsetMatchesMeasuredBottomChromeHeight() {
+        XCTAssertEqual(OnboardingChromeLayoutPolicy.contentBottomInset(for: 96), 96)
+    }
+
+    @MainActor
+    func testContentBottomInsetAddsKeyboardHeightWhenPresent() {
+        XCTAssertEqual(OnboardingChromeLayoutPolicy.contentBottomInset(for: 96, keyboardHeight: 240), 336)
+    }
+
+    @MainActor
+    func testChromeLayoutIgnoresKeyboardSafeAreaAtRoot() {
+        XCTAssertTrue(OnboardingChromeLayoutPolicy.rootIgnoresKeyboardSafeArea)
+    }
+
+    @MainActor
     func testShouldShowOnboardingWhenSignedOutAndNotStarted() {
         let result = OnboardingPresentation.shouldPresent(
             authState: .signedOut,

@@ -4,6 +4,7 @@ import SwiftUI
 struct CreateAccountStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let layoutMode: OnboardingLayoutMode
+    let bottomContentInset: CGFloat
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -12,7 +13,7 @@ struct CreateAccountStepView: View {
     }
 
     var body: some View {
-        OnboardingStepScaffold(layoutMode: layoutMode) {
+        OnboardingStepScaffold(layoutMode: layoutMode, bottomContentInset: bottomContentInset) {
             VStack(spacing: 0) {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)

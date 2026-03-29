@@ -4,12 +4,13 @@ import SwiftUI
 struct VerifyEmailStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let layoutMode: OnboardingLayoutMode
+    let bottomContentInset: CGFloat
     @State private var otpDigits = Array(repeating: "", count: 6)
     @FocusState private var focusedIndex: Int?
     @State private var resendCooldown = 0
 
     var body: some View {
-        OnboardingStepScaffold(layoutMode: layoutMode) {
+        OnboardingStepScaffold(layoutMode: layoutMode, bottomContentInset: bottomContentInset) {
             VStack(spacing: 0) {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)

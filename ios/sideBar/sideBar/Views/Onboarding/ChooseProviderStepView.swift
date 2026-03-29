@@ -4,6 +4,7 @@ import SwiftUI
 struct ChooseProviderStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let layoutMode: OnboardingLayoutMode
+    let bottomContentInset: CGFloat
 
     private struct ProviderOption: Identifiable {
         let provider: AIPrimaryProvider
@@ -20,7 +21,7 @@ struct ChooseProviderStepView: View {
     ]
 
     var body: some View {
-        OnboardingStepScaffold(layoutMode: layoutMode) {
+        OnboardingStepScaffold(layoutMode: layoutMode, bottomContentInset: bottomContentInset) {
             VStack(spacing: 0) {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)

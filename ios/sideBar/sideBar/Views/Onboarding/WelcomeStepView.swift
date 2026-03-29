@@ -4,10 +4,11 @@ import SwiftUI
 struct WelcomeStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let layoutMode: OnboardingLayoutMode
+    let bottomContentInset: CGFloat
     private let animationSize: CGFloat = LoadingIndicatorSize.hero * 0.7
 
     var body: some View {
-        OnboardingStepScaffold(layoutMode: layoutMode) {
+        OnboardingStepScaffold(layoutMode: layoutMode, bottomContentInset: bottomContentInset) {
             VStack(spacing: 0) {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)

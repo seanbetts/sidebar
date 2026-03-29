@@ -4,10 +4,11 @@ import SwiftUI
 struct AddApiKeyStepView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let layoutMode: OnboardingLayoutMode
+    let bottomContentInset: CGFloat
     @FocusState private var keyFieldFocused: Bool
 
     var body: some View {
-        OnboardingStepScaffold(layoutMode: layoutMode) {
+        OnboardingStepScaffold(layoutMode: layoutMode, bottomContentInset: bottomContentInset) {
             VStack(spacing: 0) {
                 Spacer()
                     .frame(height: layoutMode.topSpacing)

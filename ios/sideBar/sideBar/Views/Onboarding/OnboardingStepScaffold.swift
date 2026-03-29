@@ -101,13 +101,16 @@ enum OnboardingLayoutMode {
 /// Shared step scaffold that preserves the normal layout, then falls back to scrolling when height is constrained.
 struct OnboardingStepScaffold<Content: View>: View {
     let layoutMode: OnboardingLayoutMode
+    let bottomContentInset: CGFloat
     @ViewBuilder private let content: () -> Content
 
     init(
         layoutMode: OnboardingLayoutMode,
+        bottomContentInset: CGFloat = 0,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.layoutMode = layoutMode
+        self.bottomContentInset = bottomContentInset
         self.content = content
     }
 
@@ -119,7 +122,7 @@ struct OnboardingStepScaffold<Content: View>: View {
                     minHeight: layoutMode == .compact ? nil : 0,
                     alignment: .top
                 )
-                .padding(.bottom, layoutMode.bottomPadding)
+                .padding(.bottom, bottomContentInset)
         }
         .defaultScrollAnchor(.top)
         .scrollBounceBehavior(.basedOnSize)

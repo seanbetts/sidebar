@@ -8,6 +8,8 @@ struct OnboardingView: View {
     @StateObject private var viewModel: OnboardingViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isSoftwareKeyboardVisible = false
+    @State private var keyboardHeight: CGFloat = 0
+    @State private var bottomAreaHeight: CGFloat = 0
     let onRouteToSignIn: () -> Void
 
     init(
@@ -43,24 +45,38 @@ struct OnboardingView: View {
                     .padding(.top, DesignTokens.Spacing.xs)
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            bottomArea
+        .overlay(alignment: .bottom) {
+            if OnboardingChromeLayoutPolicy.bottomAreaPlacement == .overlay {
+                bottomArea
+                    .background(DesignTokens.Colors.background)
+                    .onboardingBottomAreaHeightReader()
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
+            }
         }
         .interactiveDismissDisabled()
+        .onOnboardingBottomAreaHeightChange { height in
+            bottomAreaHeight = height
+        }
+#if canImport(UIKit)
+        .modifier(OnboardingKeyboardSafeAreaModifier(isEnabled: OnboardingChromeLayoutPolicy.rootIgnoresKeyboardSafeArea))
+#endif
         .onChange(of: viewModel.routeToSignIn) { _, shouldRouteToSignIn in
             guard shouldRouteToSignIn else { return }
             onRouteToSignIn()
             dismiss()
         }
 #if canImport(UIKit)
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
             isSoftwareKeyboardVisible = true
+            keyboardHeight = keyboardHeight(from: notification)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             isSoftwareKeyboardVisible = false
+            keyboardHeight = 0
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
             isSoftwareKeyboardVisible = false
+            keyboardHeight = 0
         }
 #endif
     }
@@ -69,20 +85,56 @@ struct OnboardingView: View {
     private var stepContent: some View {
         switch viewModel.currentStep {
         case .welcome:
-            WelcomeStepView(viewModel: viewModel, layoutMode: layoutMode)
+            WelcomeStepView(
+                viewModel: viewModel,
+                layoutMode: layoutMode,
+                bottomContentInset: effectiveBottomContentInset
+            )
         case .createAccount:
-            CreateAccountStepView(viewModel: viewModel, layoutMode: layoutMode)
+            CreateAccountStepView(
+                viewModel: viewModel,
+                layoutMode: layoutMode,
+                bottomContentInset: effectiveBottomContentInset
+            )
         case .verifyEmail:
-            VerifyEmailStepView(viewModel: viewModel, layoutMode: layoutMode)
+            VerifyEmailStepView(
+                viewModel: viewModel,
+                layoutMode: layoutMode,
+                bottomContentInset: effectiveBottomContentInset
+            )
         case .profile:
-            ProfileStepView(viewModel: viewModel, layoutMode: layoutMode)
+            ProfileStepView(
+                viewModel: viewModel,
+                layoutMode: layoutMode,
+                bottomContentInset: effectiveBottomContentInset
+            )
         case .chooseProvider:
-            ChooseProviderStepView(viewModel: viewModel, layoutMode: layoutMode)
+            ChooseProviderStepView(
+                viewModel: viewModel,
+                layoutMode: layoutMode,
+                bottomContentInset: effectiveBottomContentInset
+            )
         case .addApiKey:
-            AddApiKeyStepView(viewModel: viewModel, layoutMode: layoutMode)
+            AddApiKeyStepView(
+                viewModel: viewModel,
+                layoutMode: layoutMode,
+                bottomContentInset: effectiveBottomContentInset
+            )
         case .transition:
-            TransitionStepView(viewModel: viewModel, dismiss: dismiss, layoutMode: layoutMode)
+            TransitionStepView(
+                viewModel: viewModel,
+                dismiss: dismiss,
+                layoutMode: layoutMode,
+                bottomContentInset: effectiveBottomContentInset
+            )
         }
+    }
+
+    private var effectiveBottomContentInset: CGFloat {
+        OnboardingChromeLayoutPolicy.contentBottomInset(
+            for: bottomAreaHeight,
+            keyboardHeight: keyboardHeight
+        )
     }
 
     private var layoutMode: OnboardingLayoutMode {
@@ -293,4 +345,27 @@ struct OnboardingView: View {
         .frame(height: DesignTokens.Size.touchTarget)
         .padding(.horizontal, DesignTokens.Spacing.lg)
     }
+
+#if canImport(UIKit)
+    private func keyboardHeight(from notification: Notification) -> CGFloat {
+        guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+            return 0
+        }
+        return max(0, UIScreen.main.bounds.maxY - frame.minY)
+    }
+#endif
 }
+
+#if canImport(UIKit)
+private struct OnboardingKeyboardSafeAreaModifier: ViewModifier {
+    let isEnabled: Bool
+
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content.ignoresSafeArea(.keyboard, edges: .bottom)
+        } else {
+            content
+        }
+    }
+}
+#endif
