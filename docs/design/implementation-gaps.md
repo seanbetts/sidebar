@@ -129,6 +129,7 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
+| No completion indicator on assistant messages — when streaming ends, the loading indicator disappears with no positive confirmation; target is a brief `SuccessCheckBadge` (14px) in the header that fades after ~1.5s | `ChatMessageRow.swift`, `ChatMessagePresentation` | [ai-assistant-ui](./patterns/ai-assistant-ui) |
 | No confirmation gate for destructive skill actions — delete tools (note, folder, website, task, project, group, file) execute immediately without pausing for user confirmation; `SkillsGuardService`, `tool_confirmation_requested`/`tool_confirmation_resolved` SSE events, confirmation decision endpoint, and inline confirmation card UI all need to be built | `backend/api/services/agent/tools/skills_guard.py` (new), `stream_runner.py`, `tool_event_mapper.py`, `chat.py`, `ChatToolComponents.swift` | [ai-assistant-ui](./patterns/ai-assistant-ui) |
 | No undo for reversible destructive skill actions — notes, folders, websites, tasks, projects, and groups are soft-delete-backed but have no restore service methods, no `undo_available` SSE event, no undo token endpoint, and no inline undo card UI | `notes_service.py`, `websites_service.py`, `tasks_service.py`, `projects_service.py`, `groups_service.py`, `ChatToolComponents.swift` | [ai-assistant-ui](./patterns/ai-assistant-ui) |
 

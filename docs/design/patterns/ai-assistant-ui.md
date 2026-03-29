@@ -60,8 +60,8 @@ Assistant bubbles use `surface` color. User bubbles use `muted` color.
 | Waiting for first token | Loading indicator (14px inline) left of role pill | "Thinking..." placeholder text in secondary style |
 | Streaming | Loading indicator (14px inline) left of role pill | Content revealed progressively via character-paced reveal |
 | Thinking dismissal | Loading indicator fades out as first token arrives | "Thinking..." text erases character by character before content takes its place |
-| Complete | No indicator | Fully rendered markdown, copy button enabled |
-| Error | No indicator | Rendered partial content (if any), error pill in header |
+| Complete | `SuccessCheckBadge` (14px) briefly appears in header where the loading indicator was, then fades after ~1.5s | Fully rendered markdown, copy button enabled |
+| Error | Error pill in header row (warning triangle + short label, tappable for detail) | Rendered partial content (if any) |
 
 The `accessibilityReduceMotion` environment value must be respected for the thinking dismissal animation — when reduce motion is active, the dismissal transition is instant rather than animated.
 
