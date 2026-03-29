@@ -38,7 +38,7 @@ Content is identical across all platforms. Only the presentation wrapper differs
 
 ---
 
-## Account setup wizard (Phase 1)
+## Account setup wizard
 
 A modal wizard with no navigation chrome. Progress shown via dots at the bottom of each screen, above the home indicator. Back navigation is available on steps 2, 4, 5, and 6. Steps without a back button use an invisible spacer of the same height to maintain alignment.
 
