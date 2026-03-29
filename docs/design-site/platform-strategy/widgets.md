@@ -1,0 +1,1 @@
+../../design/platform-strategy/widgets.md
