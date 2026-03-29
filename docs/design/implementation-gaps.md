@@ -101,6 +101,7 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
+| `ExtensionEventStore.recordWebsiteSaved(website:)` and the `applySavedWebsiteEvent` branch in `consumeExtensionEvents()` are dead code — the extension never calls the full-metadata path; only the URL-queue path via `PendingShareStore` is used | `ExtensionEventStore.swift`, `AppEnvironment+Auth.swift` | [handoffs](./patterns/handoffs) |
 | Files have no share sheet action — files can only be exported to the Files app via `fileExporter`; sharing a binary file directly via `UIActivityViewController` (to Mail, Messages, AirDrop, etc.) is not supported | `FilesHeaderActions.swift`, `FilesPanel+ContextMenu.swift` | [handoffs](./patterns/handoffs) |
 | Chat conversations cannot be exported or shared — individual messages can be copied but there is no action to share or export a full conversation as text | `ChatView.swift`, `ChatMessageRow.swift` | [handoffs](./patterns/handoffs) |
 | `QuickSaveIntent` is dead code — not surfaced in any widget view, only registered as a Siri shortcut phrase; remove intent, Shortcuts registration, and `WidgetDataManager.recordQuickSaveIntent()` | `WebsiteIntents.swift`, `TaskIntents.swift` (shortcuts provider), `WidgetDataManager.swift` | [widgets](./platform-strategy/widgets) |
