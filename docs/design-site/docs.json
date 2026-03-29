@@ -58,7 +58,8 @@
           "patterns/handoffs",
           "patterns/navigation",
           "patterns/feedback-and-haptics",
-          "patterns/wait-ux"
+          "patterns/wait-ux",
+          "patterns/ai-assistant-ui"
         ]
       },
       {
