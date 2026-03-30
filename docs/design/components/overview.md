@@ -41,6 +41,21 @@ Section title bar used at the top of every left-panel section. Accepts a title, 
 - Do not add a custom background to `PanelHeader` — the platform-adaptive background is intentional.
 - The trailing content slot is for `HeaderActionRow` with `HeaderActionButton` instances. Do not place arbitrary views there.
 
+### ContentHeaderRow
+
+The standard header row for content detail views (the right-side content area). Renders a leading icon, title, optional subtitle, optional title accessory, and an optional trailing content slot. Used in Chat, Notes, Tasks, Files, Websites, Agent Workspace, and Skills Store detail headers.
+
+Two layout axes:
+- `.horizontal` (default) — title and subtitle sit side-by-side, separated by an optional vertical divider rule
+- `.vertical` — subtitle stacks below the title
+
+**When to use**: Any content detail view that opens from a panel section. Do not build a custom icon-title-subtitle layout for content headers — use `ContentHeaderRow`.
+
+**Key rules**:
+- Pass `iconName:` for SF Symbol icons or `iconView:` for custom icon views. Do not render the icon separately outside the component.
+- The `trailing` slot is for `HeaderActionRow` / `HeaderActionButton` instances. Do not place arbitrary views there.
+- Use `.vertical` axis when the subtitle needs its own line (longer metadata strings). Use `.horizontal` for compact one-line headers.
+
 ### EmptyStateView
 
 Centred title + optional subtitle for empty list states. Token-backed font and color.
@@ -233,11 +248,12 @@ These Apple components are used without wrapping. Apply them directly — do not
 
 1. **Use the component.** If a design system component exists for the pattern, use it. Do not build ad-hoc alternatives inline in feature views.
 2. **Do not override backgrounds on `PanelHeader`.** The platform-adaptive background is intentional.
-3. **`HeaderActionButton` is mandatory for header icon buttons.** It enforces the accessibility label requirement.
-4. **`SidebarMenuItem` for all action icon assignments.** No inline SF Symbol name assignments for menu or swipe actions.
-5. **`DeleteConfirmationAlert` for all delete confirmations.** Consistent wording is a UX requirement.
-6. **`.pillStyle()` is not for new transient chrome.** New floating surfaces use Liquid Glass.
-7. **`PhoneFloatingActionDock` is iPhone-only.** Do not render on iPad or Mac.
+3. **`ContentHeaderRow` for all content detail headers.** Do not build custom icon-title layouts for right-side content views.
+4. **`HeaderActionButton` is mandatory for header icon buttons.** It enforces the accessibility label requirement.
+5. **`SidebarMenuItem` for all action icon assignments.** No inline SF Symbol name assignments for menu or swipe actions.
+6. **`DeleteConfirmationAlert` for all delete confirmations.** Consistent wording is a UX requirement.
+7. **`.pillStyle()` is not for new transient chrome.** New floating surfaces use Liquid Glass.
+8. **`PhoneFloatingActionDock` is iPhone-only.** Do not render on iPad or Mac.
 
 ---
 
