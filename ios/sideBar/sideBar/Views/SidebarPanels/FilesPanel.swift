@@ -196,11 +196,12 @@ extension FilesPanelView {
                 if viewModel.panelSearchQuery.trimmed.isEmpty {
                     EmptyStateView(
                         title: "No files yet",
-                        subtitle: "Upload or create a file to get started."
+                        subtitle: "Upload or create a file to get started.",
+                        systemImage: "folder"
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    EmptyStateView(title: "No results")
+                    EmptyStateView(title: "No results", systemImage: "magnifyingglass")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {

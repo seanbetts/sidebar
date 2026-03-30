@@ -259,7 +259,8 @@ extension WebsitesPanelView {
         } else if panelState == .empty {
             EmptyStateView(
                 title: "No websites yet",
-                subtitle: "Save a link to get started."
+                subtitle: "Save a link to get started.",
+                systemImage: "globe"
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(panelBackground)

@@ -311,7 +311,8 @@ extension NotesPanelView {
             } else if panelState == .empty {
                 EmptyStateView(
                     title: "No notes yet",
-                    subtitle: "Create a note to get started."
+                    subtitle: "Create a note to get started.",
+                    systemImage: "note.text"
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(panelBackground)

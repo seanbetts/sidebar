@@ -816,6 +816,23 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(normalized.contains("NavigationSplitView"))
     }
 
+    func testSettingsMoreMemoriesBrowserUsesEmptyStateViewForEmptyStates() throws {
+        let normalized = try settingsMoreTabSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "EmptyStateView(title:\"Nomemoriesyet\",subtitle:\"Memoriessavedfromyourchatsappearhere.\",systemImage:\"bookmark\")"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "EmptyStateView(title:\"Nomemoriesmatchthatsearch\",systemImage:\"magnifyingglass\")"
+            )
+        )
+        XCTAssertFalse(normalized.contains("SidebarPanelPlaceholder(title:searchQuery.trimmed.isEmpty?\"No memories yet.\""))
+    }
+
     func testMemoriesSettingsMacRoutingUsesInspectorDetailInsteadOfPlaceholderForm() throws {
         let normalized = try memoriesSettingsRoutingSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -882,6 +899,22 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(
             listSection.contains("memorySearchField"),
             "memoryListContent should render the search UI even when filteredItems is empty"
+        )
+    }
+
+    func testMemoriesSettingsDetailSourceUsesIconedEmptyStates() throws {
+        let normalized = try memoriesSettingsDetailSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "EmptyStateView(title:\"Nomemoriesyet\",subtitle:\"Memoriessavedfromyourchatsappearhere.\",systemImage:\"bookmark\")"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "EmptyStateView(title:\"Nomemoriesmatchthatsearch\",systemImage:\"magnifyingglass\")"
+            )
         )
     }
 

@@ -105,11 +105,18 @@ private struct SettingsMoreMemoriesBrowser: View {
                         Task { await viewModel.load() }
                     }
                 } else if filteredItems.isEmpty {
-                    SidebarPanelPlaceholder(
-                        title: searchQuery.trimmed.isEmpty
-                            ? "No memories yet."
-                            : "No memories match that search."
-                    )
+                    if searchQuery.trimmed.isEmpty {
+                        EmptyStateView(
+                            title: "No memories yet",
+                            subtitle: "Memories saved from your chats appear here.",
+                            systemImage: "bookmark"
+                        )
+                    } else {
+                        EmptyStateView(
+                            title: "No memories match that search",
+                            systemImage: "magnifyingglass"
+                        )
+                    }
                 } else {
                     List {
                         Section {

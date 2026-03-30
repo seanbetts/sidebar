@@ -61,7 +61,8 @@ struct ConversationsPanelView: View {
                     if searchQuery.isEmpty {
                         EmptyStateView(
                             title: "No conversations",
-                            subtitle: "Start a new chat to begin."
+                            subtitle: "Start a new chat to begin.",
+                            systemImage: "bubble.left.and.bubble.right"
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(DesignTokens.Colors.sidebar)

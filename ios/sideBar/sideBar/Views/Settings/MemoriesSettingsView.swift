@@ -100,11 +100,15 @@ struct MemoriesSettingsDetailView: View {
                 if searchQuery.trimmed.isEmpty {
                     EmptyStateView(
                         title: "No memories yet",
-                        subtitle: "Memories saved from your chats appear here."
+                        subtitle: "Memories saved from your chats appear here.",
+                        systemImage: "bookmark"
                     )
                     .frame(maxWidth: .infinity, minHeight: 220)
                 } else {
-                    EmptyStateView(title: "No memories match that search")
+                    EmptyStateView(
+                        title: "No memories match that search",
+                        systemImage: "magnifyingglass"
+                    )
                         .frame(maxWidth: .infinity, minHeight: 220)
                 }
             } else {
@@ -238,11 +242,15 @@ struct MemoriesSettingsDetailView: View {
             if searchQuery.trimmed.isEmpty {
                 EmptyStateView(
                     title: "No memories yet",
-                    subtitle: "Memories saved from your chats appear here."
+                    subtitle: "Memories saved from your chats appear here.",
+                    systemImage: "bookmark"
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                EmptyStateView(title: "No memories match that search")
+                EmptyStateView(
+                    title: "No memories match that search",
+                    systemImage: "magnifyingglass"
+                )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         } else {
