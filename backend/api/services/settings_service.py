@@ -134,6 +134,14 @@ class SettingsService:
         return trimmed if trimmed else default
 
     @staticmethod
+    def _trim_text_value(value: Any) -> str | None:
+        """Return a trimmed text value or None when blank."""
+        if not isinstance(value, str):
+            return None
+        trimmed = value.strip()
+        return trimmed if trimmed else None
+
+    @staticmethod
     def _profile_image_url(settings_record) -> str | None:
         """Build a profile image URL for a settings record.
 
@@ -279,7 +287,7 @@ class SettingsService:
         return SettingsService._resolve_enabled_skills(settings_record)
 
     @staticmethod
-    def _resolve_assistant_identity(settings_record) -> dict[str, str]:
+    def _resolve_assistant_identity(settings_record) -> dict[str, str | None]:
         """Resolve assistant identity settings with defaults.
 
         Args:
@@ -296,20 +304,18 @@ class SettingsService:
         if not isinstance(raw, dict):
             raw = {}
 
-        resolved: dict[str, str] = {}
-        for field_name in SettingsService.ASSISTANT_IDENTITY_FIELDS:
-            default = DEFAULT_ASSISTANT_IDENTITY[field_name]
-            value = raw.get(field_name)
-            if isinstance(value, str):
-                trimmed = value.strip()
-                resolved[field_name] = trimmed if trimmed else default
-            else:
-                resolved[field_name] = default
+        resolved: dict[str, str | None] = {
+            "name": SettingsService._trim_text_value(raw.get("name"))
+            or DEFAULT_ASSISTANT_IDENTITY["name"],
+            "tone": SettingsService._trim_text_value(raw.get("tone")),
+            "values": SettingsService._trim_text_value(raw.get("values")),
+            "boundaries": SettingsService._trim_text_value(raw.get("boundaries")),
+        }
 
         return resolved
 
     @staticmethod
-    def _resolve_assistant_soul(settings_record) -> dict[str, str]:
+    def _resolve_assistant_soul(settings_record) -> dict[str, str | None]:
         """Resolve assistant soul settings with defaults."""
         raw = (
             getattr(settings_record, "assistant_soul", None)
@@ -319,15 +325,9 @@ class SettingsService:
         if not isinstance(raw, dict):
             raw = {}
 
-        resolved: dict[str, str] = {}
+        resolved: dict[str, str | None] = {}
         for field_name in SettingsService.ASSISTANT_SOUL_FIELDS:
-            default = DEFAULT_ASSISTANT_SOUL[field_name]
-            value = raw.get(field_name)
-            if isinstance(value, str):
-                trimmed = value.strip()
-                resolved[field_name] = trimmed if trimmed else default
-            else:
-                resolved[field_name] = default
+            resolved[field_name] = SettingsService._trim_text_value(raw.get(field_name))
         return resolved
 
     @staticmethod
@@ -581,13 +581,11 @@ class SettingsService:
             )
         return {
             "user_id": user_id,
-            "communication_style": SettingsService._resolve_default(
-                settings_record.communication_style if settings_record else None,
-                DEFAULT_COMMUNICATION_STYLE,
+            "communication_style": SettingsService._trim_text_value(
+                settings_record.communication_style if settings_record else None
             ),
-            "working_relationship": SettingsService._resolve_default(
-                settings_record.working_relationship if settings_record else None,
-                DEFAULT_WORKING_RELATIONSHIP,
+            "working_relationship": SettingsService._trim_text_value(
+                settings_record.working_relationship if settings_record else None
             ),
             "name": settings_record.name if settings_record else None,
             "job_title": settings_record.job_title if settings_record else None,

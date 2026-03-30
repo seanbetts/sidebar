@@ -7,6 +7,7 @@ from api.services.agent.prompt.sections import (
     build_first_message_prompt,
     build_open_context_block,
     build_recent_activity_block,
+    build_response_style_block,
     build_system_prompt,
     resolve_template,
 )
@@ -25,6 +26,7 @@ class DummySettings:
         working_relationship: str | None = None,
         location: str | None = None,
         assistant_identity: dict | None = None,
+        assistant_soul: dict | None = None,
         tasks_ai_snapshot: str | None = None,
     ):
         self.name = name
@@ -37,6 +39,7 @@ class DummySettings:
         self.working_relationship = working_relationship
         self.location = location
         self.assistant_identity = assistant_identity
+        self.assistant_soul = assistant_soul
         self.tasks_ai_snapshot = tasks_ai_snapshot
 
 
@@ -95,12 +98,45 @@ def test_build_first_message_prompt_includes_profile() -> None:
     assert "I am the Engineer at Acme." in prompt
 
 
+def test_build_first_message_prompt_omits_blank_response_preferences() -> None:
+    settings = DummySettings(name="Sam")
+    now = datetime(2025, 1, 2, 9, 0, tzinfo=UTC)
+
+    prompt = build_first_message_prompt(settings, "macOS", now)
+
+    assert "<communication_style>" not in prompt
+    assert "<working_relationship>" not in prompt
+    assert "Use UK English." not in prompt
+    assert "Challenge my assumptions constructively when useful." not in prompt
+
+
+def test_build_response_style_block_omits_blank_fields() -> None:
+    settings = DummySettings()
+
+    block = build_response_style_block(settings)
+
+    assert block == ""
+
+
+def test_build_response_style_block_includes_only_populated_fields() -> None:
+    settings = DummySettings(communication_style="Be brief.")
+
+    block = build_response_style_block(settings)
+
+    assert "<response_style>" in block
+    assert "<communication_style>" in block
+    assert "Be brief." in block
+    assert "<working_relationship>" not in block
+
+
 def test_build_assistant_identity_block_defaults() -> None:
     settings = DummySettings()
     block = build_assistant_identity_block(settings)
     assert "<assistant_identity>" in block
     assert "Name: sideBar" in block
-    assert "Tone: Pragmatic, direct, and collaborative." in block
+    assert "Tone:" not in block
+    assert "Values:" not in block
+    assert "Boundaries:" not in block
 
 
 def test_build_assistant_identity_block_uses_overrides() -> None:
@@ -123,18 +159,22 @@ def test_build_assistant_soul_block_defaults() -> None:
     settings = DummySettings()
     block = build_assistant_soul_block(settings)
     assert "<assistant_soul>" in block
-    assert "Purpose:" in block
+    assert "Purpose:" not in block
+    assert "Operating principles:" not in block
+    assert "Adaptation policy:" not in block
+    assert "Success signals:" not in block
     assert "Bootstrap guidance:" in block
 
 
 def test_build_assistant_soul_block_uses_overrides() -> None:
-    settings = DummySettings()
-    settings.assistant_soul = {
-        "purpose": "Help me execute deliberately.",
-        "operating_principles": "Be concise and explicit.",
-        "adaptation_policy": "Adapt on repeated feedback.",
-        "success_signals": "Less rework.",
-    }
+    settings = DummySettings(
+        assistant_soul={
+            "purpose": "Help me execute deliberately.",
+            "operating_principles": "Be concise and explicit.",
+            "adaptation_policy": "Adapt on repeated feedback.",
+            "success_signals": "Less rework.",
+        }
+    )
     block = build_assistant_soul_block(settings)
     assert "Purpose: Help me execute deliberately." in block
     assert "Operating principles: Be concise and explicit." in block

@@ -23,9 +23,6 @@ from api.services.agent.prompt.templates import (
     CURRENT_OPEN_NOTE_HEADER,
     CURRENT_OPEN_WEBSITE_HEADER,
     CURRENT_OPEN_WRAPPER_TEMPLATE,
-    DEFAULT_COMMUNICATION_STYLE,
-    DEFAULT_WORKING_RELATIONSHIP,
-    FIRST_MESSAGE_TEMPLATE,
     RECENT_ACTIVITY_CHATS_HEADER,
     RECENT_ACTIVITY_EMPTY_TEXT,
     RECENT_ACTIVITY_FILES_HEADER,
@@ -114,6 +111,14 @@ def resolve_default(value: str | None, default: str) -> str:
         return default
     trimmed = value.strip()
     return trimmed if trimmed else default
+
+
+def resolve_optional_text(value: Any) -> str | None:
+    """Return a trimmed string or None when blank."""
+    if not isinstance(value, str):
+        return None
+    trimmed = value.strip()
+    return trimmed if trimmed else None
 
 
 def build_prompt_variables(
@@ -448,34 +453,23 @@ def build_assistant_identity_block(settings_record: Any) -> str:
     )
     identity = identity_raw if isinstance(identity_raw, dict) else {}
 
-    name = identity.get("name")
-    tone = identity.get("tone")
-    values = identity.get("values")
-    boundaries = identity.get("boundaries")
-
-    resolved = {
-        "name": name.strip()
-        if isinstance(name, str) and name.strip()
-        else DEFAULT_ASSISTANT_IDENTITY["name"],
-        "tone": tone.strip()
-        if isinstance(tone, str) and tone.strip()
-        else DEFAULT_ASSISTANT_IDENTITY["tone"],
-        "values": values.strip()
-        if isinstance(values, str) and values.strip()
-        else DEFAULT_ASSISTANT_IDENTITY["values"],
-        "boundaries": boundaries.strip()
-        if isinstance(boundaries, str) and boundaries.strip()
-        else DEFAULT_ASSISTANT_IDENTITY["boundaries"],
-    }
-
-    return (
-        "<assistant_identity>\n"
-        f"Name: {resolved['name']}\n"
-        f"Tone: {resolved['tone']}\n"
-        f"Values: {resolved['values']}\n"
-        f"Boundaries: {resolved['boundaries']}\n"
-        "</assistant_identity>"
+    name = (
+        resolve_optional_text(identity.get("name"))
+        or DEFAULT_ASSISTANT_IDENTITY["name"]
     )
+    tone = resolve_optional_text(identity.get("tone"))
+    values = resolve_optional_text(identity.get("values"))
+    boundaries = resolve_optional_text(identity.get("boundaries"))
+
+    lines = ["<assistant_identity>", f"Name: {name}"]
+    if tone:
+        lines.append(f"Tone: {tone}")
+    if values:
+        lines.append(f"Values: {values}")
+    if boundaries:
+        lines.append(f"Boundaries: {boundaries}")
+    lines.append("</assistant_identity>")
+    return "\n".join(lines)
 
 
 def build_assistant_soul_block(settings_record: Any) -> str:
@@ -499,13 +493,9 @@ def build_assistant_soul_block(settings_record: Any) -> str:
 
     resolved: dict[str, str] = {}
     for field_name in soul_fields:
-        field_value = soul.get(field_name)
-        if isinstance(field_value, str):
-            trimmed = field_value.strip()
-            if trimmed:
-                resolved[field_name] = trimmed
-                continue
-        resolved[field_name] = DEFAULT_ASSISTANT_SOUL[field_name]
+        trimmed = resolve_optional_text(soul.get(field_name))
+        if trimmed:
+            resolved[field_name] = trimmed
 
     bootstrap_guidance = ""
     if is_uninitialized:
@@ -516,37 +506,47 @@ def build_assistant_soul_block(settings_record: Any) -> str:
             "with the durable results."
         )
 
-    return (
-        "<assistant_soul>\n"
-        f"Purpose: {resolved['purpose']}\n"
-        f"Operating principles: {resolved['operating_principles']}\n"
-        f"Adaptation policy: {resolved['adaptation_policy']}\n"
-        f"Success signals: {resolved['success_signals']}"
-        f"{bootstrap_guidance}\n"
-        "</assistant_soul>"
-    )
+    lines = ["<assistant_soul>"]
+    if "purpose" in resolved:
+        lines.append(f"Purpose: {resolved['purpose']}")
+    if "operating_principles" in resolved:
+        lines.append(f"Operating principles: {resolved['operating_principles']}")
+    if "adaptation_policy" in resolved:
+        lines.append(f"Adaptation policy: {resolved['adaptation_policy']}")
+    if "success_signals" in resolved:
+        lines.append(f"Success signals: {resolved['success_signals']}")
+    if bootstrap_guidance:
+        lines.append(bootstrap_guidance.strip())
+    lines.append("</assistant_soul>")
+    return "\n".join(lines)
 
 
 def build_response_style_block(settings_record: Any) -> str:
     """Build response style defaults for durable system-level guidance."""
-    communication_style = resolve_default(
-        settings_record.communication_style if settings_record else None,
-        DEFAULT_COMMUNICATION_STYLE,
+    communication_style = resolve_optional_text(
+        settings_record.communication_style if settings_record else None
     )
-    working_relationship = resolve_default(
-        settings_record.working_relationship if settings_record else None,
-        DEFAULT_WORKING_RELATIONSHIP,
+    working_relationship = resolve_optional_text(
+        settings_record.working_relationship if settings_record else None
     )
-    return (
-        "<response_style>\n"
-        "<communication_style>\n"
-        f"{communication_style}\n"
-        "</communication_style>\n\n"
-        "<working_relationship>\n"
-        f"{working_relationship}\n"
-        "</working_relationship>\n"
-        "</response_style>"
-    )
+    if not communication_style and not working_relationship:
+        return ""
+
+    blocks: list[str] = []
+    if communication_style:
+        blocks.append(
+            "<communication_style>\n"
+            f"{communication_style}\n"
+            "</communication_style>"
+        )
+    if working_relationship:
+        blocks.append(
+            "<working_relationship>\n"
+            f"{working_relationship}\n"
+            "</working_relationship>"
+        )
+    body = "\n\n".join(blocks)
+    return f"<response_style>\n{body}\n</response_style>"
 
 
 def build_first_message_prompt(
@@ -555,13 +555,11 @@ def build_first_message_prompt(
     now: datetime,
 ) -> str:
     """Build the initial user message prompt."""
-    communication_style = resolve_default(
-        settings_record.communication_style if settings_record else None,
-        DEFAULT_COMMUNICATION_STYLE,
+    communication_style = resolve_optional_text(
+        settings_record.communication_style if settings_record else None
     )
-    working_relationship = resolve_default(
-        settings_record.working_relationship if settings_record else None,
-        DEFAULT_WORKING_RELATIONSHIP,
+    working_relationship = resolve_optional_text(
+        settings_record.working_relationship if settings_record else None
     )
     variables = build_prompt_variables(
         settings_record, "", None, None, operating_system, now
@@ -595,11 +593,22 @@ def build_first_message_prompt(
     conversation_context = (
         "\n\n".join(context_lines) if context_lines else "I am the user."
     )
-    variables.update(
-        {
-            "conversation_context": conversation_context,
-            "communication_style": communication_style,
-            "working_relationship": working_relationship,
-        }
+    conversation_block = (
+        "<conversation_context>\n\n"
+        f"{conversation_context}\n\n"
+        "</conversation_context>"
     )
-    return resolve_template(FIRST_MESSAGE_TEMPLATE, variables)
+    blocks = [conversation_block]
+    if communication_style:
+        blocks.append(
+            "<communication_style>\n\n"
+            f"{communication_style}\n\n"
+            "</communication_style>"
+        )
+    if working_relationship:
+        blocks.append(
+            "<working_relationship>\n\n"
+            f"{working_relationship}\n\n"
+            "</working_relationship>"
+        )
+    return "\n\n".join(blocks)

@@ -6,8 +6,6 @@ from fastapi import HTTPException
 
 from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.settings_service import (
-    DEFAULT_ASSISTANT_IDENTITY,
-    DEFAULT_ASSISTANT_SOUL,
     MAX_ASSISTANT_IDENTITY_NAME_CHARS,
     MAX_ASSISTANT_SOUL_TEXT_CHARS,
     SettingsService,
@@ -120,10 +118,18 @@ def test_clean_agent_updates_rejects_long_assistant_soul_field() -> None:
     assert "assistant_soul.purpose exceeds" in str(exc_info.value.detail)
 
 
-def test_build_response_resolves_default_assistant_identity() -> None:
+def test_build_response_returns_blank_new_user_defaults_except_assistant_name() -> None:
     payload = SettingsService.build_response(settings_record=None, user_id="user-1")
-    assert payload["assistant_identity"] == DEFAULT_ASSISTANT_IDENTITY
-    assert payload["assistant_soul"] == DEFAULT_ASSISTANT_SOUL
+    assert payload["communication_style"] is None
+    assert payload["working_relationship"] is None
+    assert payload["assistant_identity"]["name"] == "sideBar"
+    assert payload["assistant_identity"]["tone"] is None
+    assert payload["assistant_identity"]["values"] is None
+    assert payload["assistant_identity"]["boundaries"] is None
+    assert payload["assistant_soul"]["purpose"] is None
+    assert payload["assistant_soul"]["operating_principles"] is None
+    assert payload["assistant_soul"]["adaptation_policy"] is None
+    assert payload["assistant_soul"]["success_signals"] is None
 
 
 def test_build_response_uses_assistant_identity_overrides(monkeypatch) -> None:
