@@ -1,33 +1,28 @@
 ---
 title: Design System Overview
-description: Internal overview of the sideBar design documentation, how it is organized, and how to review it.
+description: The sideBar design system — foundations, components, patterns, and conventions for iOS, macOS, and web.
 ---
 
-This internal site is the review surface for sideBar's design-system work. It is not production-facing documentation.
+The sideBar design system is the source of truth for UI decisions across iOS, macOS, and web. It documents the target state — how things should be built — not the current state of the codebase. Current-state gaps are tracked in [Implementation Gaps](./implementation-gaps).
 
-## Purpose
+## How this is organised
 
-Use this site to read the evolving design documentation in a structured way while the system is being defined.
+**Overview** — Core principles, voice and content rules, system inheritance policy, and working tools (feature checklist, component template, implementation gaps).
 
-## How this is organized
+**Platform Strategy** — Conventions specific to iPhone, iPad, Mac, web, and widgets.
 
-The navigation mirrors the design-system workbook:
+**Foundations** — The lowest-level building blocks: colour, tokens, typography, materials, iconography, and accessibility.
 
-- Overview documents define the design-system direction and operating model.
-- Platform Strategy covers iPhone, iPad, Mac, and web conventions.
-- Foundations, Components, Patterns, and Agent Rules collect the target system guidance.
-- Audits document the current product and the gaps that still need design decisions.
+**Components** — The shared component library with usage rules.
 
-## Reading order
+**Patterns** — Interaction and behavioural patterns: navigation, feedback, wait states, errors, authentication, onboarding, AI assistant UI, and more.
 
-Start here:
+**Audits** — Current-state snapshots of the codebase. Updated as gaps are closed.
 
-1. [Workbook](./workbook)
-2. [Design Principles](./principles)
-3. [System Inheritance](./system-inheritance)
-4. [Platform Strategy Overview](./platform-strategy/overview)
-5. [Current UI Audit](./audits/current-ui-audit)
+## Where to start
 
-## Draft status
-
-Many pages are still in draft. Placeholder pages exist where the workbook defines an information-architecture slot but the final document has not been written yet.
+- [Design Principles](./principles) — what good looks like in sideBar
+- [System Inheritance](./system-inheritance) — what we inherit from Apple vs. design ourselves
+- [Token Model](./foundations/token-model) — spacing, sizing, radius, colour tokens, and motion
+- [Components](./components/overview) — shared component library
+- [Implementation Gaps](./implementation-gaps) — known divergences between the spec and the codebase

@@ -13,7 +13,7 @@ Define the single unified color palette for sideBar across all platforms (iOS, m
 
 sideBar uses a **near-neutral palette**: near-white in light mode, near-black in dark mode, with no chromatic hue in the base surfaces. The palette is the same across all platforms — there are no iOS-specific or macOS-specific background colors, and no separate dark mode variants per platform.
 
-**The canonical values are drawn from the current macOS implementation.** The macOS palette is the reference because it was hand-crafted to the correct aesthetic. iOS currently diverges (UIKit semantic colors), and web diverges slightly (OKLCH approximations). Both should be migrated to match the canonical values.
+**The macOS palette is the canonical reference** — it was hand-crafted to the correct aesthetic. iOS and web implementations should be aligned to the values defined here. See [implementation gaps](../implementation-gaps) for the migration status.
 
 Accent and system colors (action states, error, success) are documented separately below.
 
@@ -231,7 +231,7 @@ The values are the same regardless of trigger mechanism. There are no platform-s
 - **Typography**: Defined in `foundations/typography.md`
 - **Iconography**: Defined in `foundations/iconography.md`
 - **Liquid Glass**: A rendering primitive, not a color. Covered per-component in platform convention docs.
-- **Chart colors**: Web-only at present. The `--chart-*` variables in `app.css` are for data visualisation. No native equivalent. Leave as-is until native charts are needed.
+- **Chart colors**: Web-only. The `--chart-*` variables in `app.css` are for data visualisation. No native equivalent is needed until native charts are required.
 
 ---
 
