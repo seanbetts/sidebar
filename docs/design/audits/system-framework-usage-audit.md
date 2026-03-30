@@ -263,6 +263,122 @@ These platform capabilities are already available via native components and shou
 
 ---
 
+## Framework usage by app section
+
+A per-section breakdown of the native framework split. Use this as a reference when building new features in a given area — it documents why each bridge exists and what the correct starting point is for new work.
+
+### Chat
+
+**Primary framework**: SwiftUI
+
+SwiftUI handles all message rendering, layout, scroll behaviour, and state management. The only native bridges are the text input surfaces.
+
+| Component | Bridge | Reason |
+|---|---|---|
+| `ChatInputUIKit` | `UIViewRepresentable` → `UITextView` | Reliable multi-line input, custom return key behaviour (`returnKeyType = .send`), accurate height measurement |
+| `ChatInputAppKit` | `NSViewRepresentable` → `NSTextView` | macOS equivalent of the above |
+
+**New work guidance**: New chat UI should be pure SwiftUI. The input surface bridges are stable — do not replace them unless SwiftUI's `TextEditor` gains equivalent control over return key handling and height measurement.
+
+---
+
+### Notes
+
+**Primary framework**: UIKit (iOS) / AppKit (macOS), coordinated by a SwiftUI container
+
+Notes has the most complex bridging in the app. Rich text editing requires capabilities that SwiftUI's `TextEditor` does not provide: attributed string formatting, custom undo snapshots, viewport restoration, and a formatting toolbar.
+
+| Component | Bridge | Reason |
+|---|---|---|
+| `UIKitNoteTextEditorSurface` | `UIViewRepresentable` → `UITextView` | Rich text with `NSAttributedString`, custom undo, selection tracking, viewport restoration |
+| `AppKitNoteTextEditorSurface` | `NSViewRepresentable` → `NSTextView` | macOS equivalent — `NSTextView` in a scroll view |
+| `UIKitNoteFormattingBar` | `UIViewRepresentable` → `UIView` | Formatting toolbar requiring UIKit layout |
+| `AppKitNoteFormattingBar` | `NSViewRepresentable` → `NSView` | macOS equivalent |
+| `AttributedNoteEditorContainer` | `UIViewRepresentable` | Container managing native editor lifecycle and `AttributedString` ↔ `NSAttributedString` bridging |
+
+`SwiftUINoteTextEditorSurface` is dead code — it has no callers and is not mounted anywhere at runtime. Tests in `NotesEditorSurfaceParityTests` and `NotesDetailViewMountedMacOSTests` assert it is not used, but those tests read `AttributedNoteEditorContainer.swift` directly and do not depend on the surface file existing. It can be safely removed.
+
+**New work guidance**: New notes editing features should target the UIKit/AppKit surfaces. SwiftUI coordination (toolbar buttons, mode switching, sheet presentation) belongs in the SwiftUI container layer, not in the editor surface itself.
+
+---
+
+### Tasks
+
+**Primary framework**: SwiftUI throughout
+
+No UIKit or AppKit bridges. All task UI — lists, detail views, modals, floating action dock — is pure SwiftUI.
+
+**New work guidance**: New tasks features should be pure SwiftUI. There is no established reason to introduce native bridges in this section.
+
+---
+
+### Websites
+
+**Primary framework**: SwiftUI throughout
+
+No UIKit or AppKit bridges in the section UI. Safari is presented via `SafariView` (`UIViewRepresentable` → `SFSafariViewController`) when opening in browser — this is a shared utility component, not website-section-specific.
+
+**New work guidance**: New website features should be pure SwiftUI. File export uses SwiftUI's `.fileExporter` modifier — no UIKit bridge needed.
+
+---
+
+### Files
+
+**Primary framework**: SwiftUI for routing and list UI; native bridges for each specialised content viewer
+
+`FileViewerView` is a pure SwiftUI router that switches on file kind and delegates to the appropriate viewer. Each content-specific viewer uses the correct native API for its format.
+
+| Component | Bridge | Native API | Reason |
+|---|---|---|---|
+| `YouTubePlayerView` | `UIViewRepresentable` / `NSViewRepresentable` | `WKWebView` | YouTube embeds require a web view; no native YouTube SDK |
+| `TikTokEmbedView` | `UIViewRepresentable` / `NSViewRepresentable` | `WKWebView` | Same as above for TikTok |
+| `PDFKitView` | `UIViewRepresentable` / `NSViewRepresentable` | `PDFView` | Native PDF rendering with zoom and scroll |
+| `NativeVideoPlayer` (macOS) | `NSViewRepresentable` | `AVPlayerView` | macOS native video playback UI |
+| `SpreadsheetGridView` | `UIViewRepresentable` (iOS only) | `UICollectionView` | Spreadsheet grid with dynamic column widths and cell recycling; SwiftUI `Grid` cannot match the performance at this row count. On macOS, `SpreadsheetViewer` uses a pure SwiftUI `ScrollView` + `LazyVStack` path instead — no bridge needed. |
+
+**New work guidance**: Adding support for a new file type means adding a viewer component and a new case to the `FileViewerView` router. Use a native bridge only if SwiftUI cannot render the content type adequately — PDFs, video, and grid-heavy spreadsheets (iOS) justify bridges; simple text and image formats do not. For platform-specific rendering differences, follow the `SpreadsheetViewer` pattern: `#if os(iOS)` uses the bridge, `#else` uses a SwiftUI fallback.
+
+---
+
+### Settings
+
+**Primary framework**: SwiftUI throughout, with narrow bridges for plain text editing
+
+All settings UI — form groups, toggles, pickers, section tabs — is pure SwiftUI using `Form` with `.formStyle(.grouped)`. The only bridges are for multi-line plain text fields (bio, notes fields) where `UITextView`/`NSTextView` provides better auto-sizing behaviour than SwiftUI's `TextEditor`.
+
+| Component | Bridge | Reason |
+|---|---|---|
+| `SettingsIOSPlainTextEditor` | `UIViewRepresentable` → `UITextView` | Auto-sizing multi-line text field that fits its content height |
+| `SettingsMacPlainTextEditor` | `NSViewRepresentable` → `NSTextView` | macOS equivalent |
+
+**New work guidance**: New settings should be pure SwiftUI using `Form`, `Toggle`, `Picker`, and `TextField`. Only introduce a text editor bridge for multi-line fields that need to grow with their content.
+
+---
+
+### Agent Workspace
+
+**Primary framework**: SwiftUI throughout
+
+The workspace surface system — surface routing, header, action buttons, context menus, file export, keyboard shortcuts — is pure SwiftUI.
+
+**New work guidance**: New workspace surface types should be pure SwiftUI. The existing placeholder surfaces (chart, map, form, action panel) will use SwiftUI Charts, MapKit SwiftUI, and SwiftUI form components when implemented — no native bridges required.
+
+---
+
+### Section summary
+
+| Section | Framework | Bridges | New work starting point |
+|---|---|---|---|
+| Chat | SwiftUI + input bridges | `UITextView`, `NSTextView` | SwiftUI; keep existing input bridges |
+| Notes | UIKit/AppKit + SwiftUI container | `UITextView`, `NSTextView`, formatting bars | UIKit/AppKit surface; SwiftUI coordination layer |
+| Tasks | SwiftUI | None | Pure SwiftUI |
+| Websites | SwiftUI | None (shared `SafariView` utility) | Pure SwiftUI |
+| Files | SwiftUI router + content viewer bridges | `WKWebView`, `PDFView`, `AVPlayerView`, `UICollectionView` | SwiftUI router; native bridge only for specialised content formats |
+| Settings | SwiftUI + text editor bridges | `UITextView`, `NSTextView` | Pure SwiftUI; bridge only for auto-sizing multi-line fields |
+| Agent Workspace | SwiftUI | None | Pure SwiftUI |
+
+---
+
 ## Resolved questions
 
 - **`NavigationSplitView` vs custom layout**: the custom implementation is intentional. `NavigationSplitView` does not support drag-to-resize, custom snap behaviour, or the three-column workspace model with independent right sidebar. The custom approach is the right call for the product.
