@@ -40,7 +40,7 @@ extension AppEnvironment {
                 completion(granted)
             }
         },
-        registerForRemoteNotifications: @escaping () -> Void = {
+        registerForRemoteNotifications: @escaping @MainActor @Sendable () -> Void = {
 #if targetEnvironment(simulator)
             Logger(subsystem: "sideBar", category: "Push").debug(
                 "Skipping remote notification registration on iOS simulator."
