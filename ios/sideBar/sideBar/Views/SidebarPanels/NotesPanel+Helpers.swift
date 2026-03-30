@@ -312,7 +312,7 @@ extension NotesPanelView {
                 EmptyStateView(
                     title: "No notes yet",
                     subtitle: "Create a note to get started.",
-                    systemImage: "note.text"
+                    systemImage: "text.document"
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(panelBackground)
