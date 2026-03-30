@@ -34,6 +34,8 @@ export interface SSECallbacks {
 		titleGenerated?: boolean;
 		updatedAt?: string;
 	}) => void;
+	onAssistantIdentityUpdated?: (data: Record<string, unknown>) => void;
+	onAssistantSoulUpdated?: (data: Record<string, unknown>) => void;
 	onNoteDeleted?: (data: { id?: string }) => void;
 	onWebsiteDeleted?: (data: { id?: string }) => void;
 	onIngestionUpdated?: (data: { file_id?: string }) => void;
@@ -253,6 +255,14 @@ export class SSEClient {
 
 			case 'conversation_title_updated':
 				callbacks.onConversationTitleUpdated?.(data);
+				break;
+
+			case 'assistant_identity_updated':
+				callbacks.onAssistantIdentityUpdated?.(data);
+				break;
+
+			case 'assistant_soul_updated':
+				callbacks.onAssistantSoulUpdated?.(data);
 				break;
 
 			case 'note_deleted':

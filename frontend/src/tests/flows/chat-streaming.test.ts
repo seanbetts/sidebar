@@ -43,6 +43,8 @@ describe('chat streaming flow', () => {
 		const onWebsiteRenamed = vi.fn();
 		const onIngestionUpdated = vi.fn();
 		const onConversationTitleUpdated = vi.fn();
+		const onAssistantIdentityUpdated = vi.fn();
+		const onAssistantSoulUpdated = vi.fn();
 		const onProfileUserSettingsUpdated = vi.fn();
 		const onOtherPreferencesUpdated = vi.fn();
 
@@ -55,6 +57,10 @@ describe('chat streaming flow', () => {
 			'data: {"file_id":"file-1"}\n\n',
 			'event: conversation_title_updated\n',
 			'data: {"id":"conv-1","title":"Renamed","titleGenerated":false,"updatedAt":"2026-03-28T12:00:00Z"}\n\n',
+			'event: assistant_identity_updated\n',
+			'data: {"assistant_identity":{"name":"Updated Assistant"},"assistant_identity_meta":{"version":2}}\n\n',
+			'event: assistant_soul_updated\n',
+			'data: {"assistant_soul":{"purpose":"Updated purpose"},"assistant_soul_meta":{"version":3}}\n\n',
 			'event: profile_user_settings_updated\n',
 			'data: {"name":"Sean"}\n\n',
 			'event: other_preferences_updated\n',
@@ -77,6 +83,8 @@ describe('chat streaming flow', () => {
 				onWebsiteRenamed,
 				onIngestionUpdated,
 				onConversationTitleUpdated,
+				onAssistantIdentityUpdated,
+				onAssistantSoulUpdated,
 				onProfileUserSettingsUpdated,
 				onOtherPreferencesUpdated
 			}
@@ -93,6 +101,14 @@ describe('chat streaming flow', () => {
 			title: 'Renamed',
 			titleGenerated: false,
 			updatedAt: '2026-03-28T12:00:00Z'
+		});
+		expect(onAssistantIdentityUpdated).toHaveBeenCalledWith({
+			assistant_identity: { name: 'Updated Assistant' },
+			assistant_identity_meta: { version: 2 }
+		});
+		expect(onAssistantSoulUpdated).toHaveBeenCalledWith({
+			assistant_soul: { purpose: 'Updated purpose' },
+			assistant_soul_meta: { version: 3 }
 		});
 		expect(onProfileUserSettingsUpdated).toHaveBeenCalledWith({ name: 'Sean' });
 		expect(onOtherPreferencesUpdated).toHaveBeenCalledWith({

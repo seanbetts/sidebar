@@ -1,55 +1,62 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useChatSSE } from '$lib/composables/useChatSSE';
 
-const { sseConnectMock, editorStateStore, editorStore, currentNoteId, dispatchCacheEvent } =
-	vi.hoisted(() => {
-		const createStore = <T>(initial: T) => {
-			let value = initial;
-			const subscribers = new Set<(next: T) => void>();
-			return {
-				subscribe(run: (next: T) => void) {
-					run(value);
-					subscribers.add(run);
-					return () => subscribers.delete(run);
-				},
-				set(next: T) {
-					value = next;
-					subscribers.forEach((fn) => fn(value));
-				}
-			};
-		};
-
-		const editorStateStore = createStore({
-			currentNoteId: 'note-1',
-			currentNotePath: 'note-1',
-			currentNoteName: 'Note',
-			content: 'Old content',
-			originalContent: 'Old content',
-			isDirty: false,
-			isSaving: false,
-			isLoading: false,
-			lastSaved: null,
-			saveError: null,
-			basePath: 'notes',
-			isReadOnly: false,
-			lastUpdateSource: null
-		});
-
+const {
+	sseConnectMock,
+	editorStateStore,
+	editorStore,
+	currentNoteId,
+	dispatchCacheEvent,
+	dispatchSettingsRealtimeUpdate
+} = vi.hoisted(() => {
+	const createStore = <T>(initial: T) => {
+		let value = initial;
+		const subscribers = new Set<(next: T) => void>();
 		return {
-			sseConnectMock: vi.fn(),
-			editorStateStore,
-			editorStore: {
-				subscribe: editorStateStore.subscribe,
-				loadNote: vi.fn(),
-				applyRemoteNoteUpdate: vi.fn(),
-				reset: vi.fn()
+			subscribe(run: (next: T) => void) {
+				run(value);
+				subscribers.add(run);
+				return () => subscribers.delete(run);
 			},
-			currentNoteId: {
-				set: vi.fn()
-			},
-			dispatchCacheEvent: vi.fn()
+			set(next: T) {
+				value = next;
+				subscribers.forEach((fn) => fn(value));
+			}
 		};
+	};
+
+	const editorStateStore = createStore({
+		currentNoteId: 'note-1',
+		currentNotePath: 'note-1',
+		currentNoteName: 'Note',
+		content: 'Old content',
+		originalContent: 'Old content',
+		isDirty: false,
+		isSaving: false,
+		isLoading: false,
+		lastSaved: null,
+		saveError: null,
+		basePath: 'notes',
+		isReadOnly: false,
+		lastUpdateSource: null
 	});
+
+	return {
+		sseConnectMock: vi.fn(),
+		editorStateStore,
+		editorStore: {
+			subscribe: editorStateStore.subscribe,
+			loadNote: vi.fn(),
+			applyRemoteNoteUpdate: vi.fn(),
+			reset: vi.fn()
+		},
+		currentNoteId: {
+			set: vi.fn()
+		},
+		dispatchCacheEvent: vi.fn(),
+		dispatchSettingsRealtimeUpdate: vi.fn()
+	};
+});
 
 vi.mock('$lib/api/sse', () => ({
 	SSEClient: class {
@@ -134,6 +141,10 @@ vi.mock('$lib/stores/weatherPreferences', () => ({
 
 vi.mock('$lib/utils/cacheEvents', () => ({
 	dispatchCacheEvent
+}));
+
+vi.mock('$lib/utils/settingsRealtime', () => ({
+	dispatchSettingsRealtimeUpdate
 }));
 
 vi.mock('$lib/utils/theme', () => ({
@@ -228,5 +239,40 @@ describe('useChatSSE', () => {
 		expect(dispatchCacheEvent).toHaveBeenCalledWith('website.renamed');
 		expect(websitesStore.renameLocal).toHaveBeenCalledWith('website-1', 'Renamed website');
 		expect(websitesStore.updateActiveLocal).toHaveBeenCalledWith({ title: 'Renamed website' });
+	});
+
+	it('dispatches realtime settings updates from assistant events', async () => {
+		sseConnectMock.mockImplementation(async (_payload, callbacks) => {
+			await callbacks.onAssistantIdentityUpdated?.({
+				assistant_identity: { name: 'Updated Assistant' },
+				assistant_identity_meta: { version: 2 }
+			});
+			await callbacks.onAssistantSoulUpdated?.({
+				assistant_soul: { purpose: 'Updated purpose' },
+				assistant_soul_meta: { version: 3 }
+			});
+			await callbacks.onProfileUserSettingsUpdated?.({
+				name: 'Sean',
+				communication_style: 'Updated style'
+			});
+		});
+
+		await useChatSSE().connect({
+			assistantMessageId: 'assistant-1',
+			message: 'Update settings'
+		});
+
+		expect(dispatchSettingsRealtimeUpdate).toHaveBeenCalledWith({
+			assistant_identity: { name: 'Updated Assistant' },
+			assistant_identity_meta: { version: 2 }
+		});
+		expect(dispatchSettingsRealtimeUpdate).toHaveBeenCalledWith({
+			assistant_soul: { purpose: 'Updated purpose' },
+			assistant_soul_meta: { version: 3 }
+		});
+		expect(dispatchSettingsRealtimeUpdate).toHaveBeenCalledWith({
+			name: 'Sean',
+			communication_style: 'Updated style'
+		});
 	});
 });

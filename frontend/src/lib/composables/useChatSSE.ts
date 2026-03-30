@@ -16,6 +16,7 @@ import { get } from 'svelte/store';
 import { toast } from 'svelte-sonner';
 import { markFirstEvent, markSseError } from '$lib/utils/chatMetrics';
 import { ingestionAPI } from '$lib/services/api';
+import { dispatchSettingsRealtimeUpdate } from '$lib/utils/settingsRealtime';
 
 export interface ChatSSEConnectArgs {
 	assistantMessageId: string;
@@ -191,6 +192,14 @@ export function useChatSSE() {
 					dispatchCacheEvent('conversation.title_updated');
 				},
 
+				onAssistantIdentityUpdated: (data) => {
+					dispatchSettingsRealtimeUpdate(data);
+				},
+
+				onAssistantSoulUpdated: (data) => {
+					dispatchSettingsRealtimeUpdate(data);
+				},
+
 				onNoteDeleted: async (data) => {
 					const editorState = get(editorStore);
 					if (data?.id && editorState.currentNoteId === data.id) {
@@ -271,7 +280,9 @@ export function useChatSSE() {
 					await memoriesStore.load();
 				},
 
-				onProfileUserSettingsUpdated: () => undefined,
+				onProfileUserSettingsUpdated: (data) => {
+					dispatchSettingsRealtimeUpdate(data);
+				},
 
 				onOtherPreferencesUpdated: (data) => {
 					if (data?.weather_unit === 'celsius' || data?.weather_unit === 'fahrenheit') {

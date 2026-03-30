@@ -22,6 +22,10 @@
 	} from '$lib/components/left-sidebar/panels/settingsUtils';
 	import { weatherPreferencesStore, type WeatherUnit } from '$lib/stores/weatherPreferences';
 	import { logError } from '$lib/utils/errorHandling';
+	import {
+		onSettingsRealtimeUpdate,
+		type SettingsRealtimePayload
+	} from '$lib/utils/settingsRealtime';
 
 	export let open = false;
 	export let profileImageSrc = '';
@@ -82,6 +86,7 @@
 	let lastSelectedLocation = '';
 	let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let weatherPreferenceUnsubscribe: (() => void) | null = null;
+	let settingsRealtimeUnsubscribe: (() => void) | null = null;
 	let wasSettingsOpen = false;
 	let settingsDirty = false;
 	let weatherUnit: WeatherUnit = 'celsius';
@@ -109,6 +114,10 @@
 		weatherPreferenceUnsubscribe = weatherPreferencesStore.subscribe((value) => {
 			weatherUnit = value;
 		});
+		settingsRealtimeUnsubscribe = onSettingsRealtimeUpdate((payload) => {
+			if (!open) return;
+			applyRealtimeSettingsUpdate(payload);
+		});
 		weatherPreferencesStore.refreshFromStorage();
 		loadSettings(true);
 		loadSkills();
@@ -118,7 +127,74 @@
 		if (locationLookupTimer) clearTimeout(locationLookupTimer);
 		if (autosaveTimer) clearTimeout(autosaveTimer);
 		if (weatherPreferenceUnsubscribe) weatherPreferenceUnsubscribe();
+		if (settingsRealtimeUnsubscribe) settingsRealtimeUnsubscribe();
 	});
+
+	function applyRealtimeAssistantIdentity(payload: SettingsRealtimePayload) {
+		const assistantIdentity = payload.assistant_identity;
+		if (assistantIdentity) {
+			assistantIdentityName = assistantIdentity.name ?? assistantIdentityName;
+			assistantIdentityTone = assistantIdentity.tone ?? assistantIdentityTone;
+			assistantIdentityValues = assistantIdentity.values ?? assistantIdentityValues;
+			assistantIdentityBoundaries = assistantIdentity.boundaries ?? assistantIdentityBoundaries;
+		}
+		if (payload.assistant_identity_meta) {
+			assistantIdentityMeta = payload.assistant_identity_meta;
+		}
+	}
+
+	function applyRealtimeAssistantSoul(payload: SettingsRealtimePayload) {
+		const assistantSoul = payload.assistant_soul;
+		if (assistantSoul) {
+			assistantSoulPurpose = assistantSoul.purpose ?? assistantSoulPurpose;
+			assistantSoulOperatingPrinciples =
+				assistantSoul.operating_principles ?? assistantSoulOperatingPrinciples;
+			assistantSoulAdaptationPolicy =
+				assistantSoul.adaptation_policy ?? assistantSoulAdaptationPolicy;
+			assistantSoulSuccessSignals = assistantSoul.success_signals ?? assistantSoulSuccessSignals;
+		}
+		if (payload.assistant_soul_meta) {
+			assistantSoulMeta = payload.assistant_soul_meta;
+		}
+	}
+
+	function applyRealtimeProfileSettings(payload: SettingsRealtimePayload) {
+		if (settingsDirty) return;
+
+		communicationStyle = payload.communication_style ?? communicationStyle;
+		workingRelationship = payload.working_relationship ?? workingRelationship;
+		name = payload.name ?? name;
+		jobTitle = payload.job_title ?? jobTitle;
+		employer = payload.employer ?? employer;
+		dateOfBirth = payload.date_of_birth ?? dateOfBirth;
+		gender = payload.gender ?? gender;
+		pronouns = payload.pronouns ?? pronouns;
+		location = payload.location ?? location;
+		if (Array.isArray(payload.enabled_skills)) {
+			enabledSkills = payload.enabled_skills;
+			initialEnabledSkills = [...payload.enabled_skills];
+		}
+		if (payload.profile_image_url !== undefined) {
+			profileImageUrl = payload.profile_image_url ?? '';
+			profileImageVersion = Date.now();
+		}
+
+		initialCommunicationStyle = communicationStyle;
+		initialWorkingRelationship = workingRelationship;
+		initialName = name;
+		initialJobTitle = jobTitle;
+		initialEmployer = employer;
+		initialDateOfBirth = dateOfBirth;
+		initialGender = gender;
+		initialPronouns = pronouns;
+		initialLocation = location;
+	}
+
+	function applyRealtimeSettingsUpdate(payload: SettingsRealtimePayload) {
+		applyRealtimeAssistantIdentity(payload);
+		applyRealtimeAssistantSoul(payload);
+		applyRealtimeProfileSettings(payload);
+	}
 
 	function setWeatherUnit(value: WeatherUnit) {
 		weatherPreferencesStore.setWeatherUnit(value);
