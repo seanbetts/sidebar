@@ -5,7 +5,21 @@ description: How sideBar manages auth state, sessions, biometric lock, offline a
 
 ## Purpose
 
-Define how sideBar should handle authentication state, session lifecycle, and the transitions a user moves through — from first sign-in through to biometric lock, offline access, token expiry, and sign-out. This doc covers both the user-visible patterns and the underlying state model that drives them.
+Define how sideBar handles authentication state, session lifecycle, and the transitions a user moves through — from sign-up through to biometric lock, offline access, token expiry, and sign-out. This doc covers both the user-visible patterns and the underlying state model that drives them.
+
+The full architectural design, including Apple framework mapping, Supabase boundary, and native client module structure, is in the [Apple-Native Auth Service Design](../../superpowers/specs/2026-03-30-apple-native-auth-service-design.md). This doc is the design system view: how auth should feel and behave.
+
+---
+
+## Account model
+
+sideBar uses app-owned, password-primary accounts. Email and password is the canonical login path. Supabase provides auth infrastructure but is an adapter, not the product model — client code calls product-shaped interfaces, not Supabase-specific APIs.
+
+Each account has one primary credential path: `email_password`. Passkeys and Sign in with Apple are not part of the current model. If either is added later:
+
+- Passkeys are an explicit security upgrade, not a silent alternate identity
+- Sign in with Apple creates a distinct account family, not a merge with password accounts
+- Neither should silently turn a password account into a mixed-identity account
 
 ---
 
@@ -64,7 +78,18 @@ When in `.stale`, the app:
 
 ## Sign-in
 
-Email and password authentication via Supabase. The sign-in screen is the only entry point for `signedOut` users — there is no partial access or guest mode.
+Email and password is the only primary credential path. The sign-in screen is the only entry point for `signedOut` users — there is no partial access or guest mode.
+
+Two entry modes converge on the same flow: explicit email/password entry, and AutoFill-assisted credential selection through AuthenticationServices (`ASAuthorizationPasswordProvider`).
+
+### AutoFill and content types
+
+Login fields must use the correct content types for AutoFill:
+
+- Email field: username content type
+- Password field: password content type
+
+Do not use embedded browsers or web views for first-party login. All sign-in UI is native.
 
 ### Rate limiting
 
@@ -81,6 +106,34 @@ The last successfully signed-in email is remembered and prefilled on the login f
 ## Sign-up and OTP verification
 
 New users sign up with email and password (minimum 8 characters). An OTP verification email is sent before the session is activated. The app holds a `pendingVerificationEmail` state and shows the OTP entry screen until verification completes or the user cancels.
+
+The OTP input field must use the one-time-code content type so verification benefits from AutoFill. Do not force the user through a browser for sign-up or verification.
+
+---
+
+## Password reset
+
+1. User taps "Forgot password" and enters their email
+2. Backend starts the reset flow and sends a reset code or link
+3. The app handles the reset natively — the reset code field uses the one-time-code content type for AutoFill
+4. Backend updates the credential and revokes prior sessions according to policy
+5. User lands either in a fresh session or back at sign-in with a clear success state
+
+Email is the only recovery channel for password accounts. Recovery must not branch into unrelated identity systems — Sign in with Apple is not a fallback for password-rooted accounts.
+
+---
+
+## Session management in settings
+
+Settings should support:
+
+- Change password (requires biometric reauth)
+- Sign out
+- View active sessions (per-device inventory)
+- Sign out of other sessions (requires biometric reauth)
+- Biometric unlock configuration
+
+These features require the backend to maintain a per-device session inventory and support remote session revocation.
 
 ---
 
@@ -111,9 +164,19 @@ If the user backgrounds the app and returns within 5 minutes, the lock screen is
 
 **Rule**: Always provide a fallback path. Never leave the user stuck on the lock screen with no way to proceed — passcode fallback or sign-out must always be available.
 
+### Biometric reauth for sensitive actions
+
+Separate from the lock screen, biometric reauth is required for specific in-session actions:
+
+- Changing password
+- Viewing active sessions
+- Signing out other sessions
+
+This is a local trust gate, not a session operation — it does not affect the backend session. If biometrics fail, offer passcode fallback. Do not skip the reauth step.
+
 ### macOS
 
-macOS supports Touch ID. The same biometric lock pattern applies — lock screen shown after grace period, auto-triggers on app activation, passcode fallback available.
+macOS supports Touch ID. The same biometric lock pattern applies — lock screen shown after grace period, auto-triggers on app activation, passcode fallback available. The same reauth requirements apply for sensitive settings actions.
 
 ---
 
@@ -179,6 +242,8 @@ Unlike deep links, website saves do not require navigation after completion. The
 
 ## Auth error surfaces
 
+Auth errors must be product-facing and action-oriented, not provider-facing. "Check your password." not "Supabase auth error: invalid_grant". Framework-level cancellations (dismissing a system sheet, cancelling a biometric prompt) are neutral outcomes, not failures — they should return the user to the prior screen without escalating.
+
 Auth errors are surfaced non-modally in order of severity:
 
 | Error type | Surface |
@@ -211,7 +276,7 @@ The web app has no biometric lock (no API equivalent in browsers), no offline ac
 
 ## Rules summary
 
-1. **Three states only: `signedOut`, `stale`, `active`.** No additional states should be introduced.
+1. **Three states only: `signedOut`, `stale`, `active`.** No additional top-level states should be introduced.
 2. **`.stale` is functional, not an error.** The user continues working with cached data. Sync resumes automatically.
 3. **Always provide a manual retry for `.stale` state.** Do not rely solely on background/foreground transitions to recover.
 4. **Rate limiting must be persisted.** In-memory lockout provides no meaningful protection against brute force.
@@ -220,6 +285,10 @@ The web app has no biometric lock (no API equivalent in browsers), no offline ac
 7. **Biometric lock always has an exit path.** Passcode fallback and sign-out must always be available.
 8. **Sign-out is complete.** All user data is cleared. No partial sign-out.
 9. **Auth errors clear automatically on recovery.** Do not leave stale error toasts after the session is restored.
+10. **No embedded browsers for first-party auth.** All sign-in, sign-up, verification, and reset flows are native.
+11. **Auth fields use correct content types.** Email uses username, password uses password, OTP uses one-time-code — for AutoFill.
+12. **Auth errors are product-facing.** Never expose provider error codes. Framework cancellations are neutral, not failures.
+13. **One primary credential path per account.** Email/password only. Do not silently merge with Sign in with Apple or passkey identities.
 
 ---
 
