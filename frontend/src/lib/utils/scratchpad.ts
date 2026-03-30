@@ -1,4 +1,5 @@
 export const SCRATCHPAD_HEADING = '# ✏️ Scratchpad';
+export const SCRATCHPAD_TITLE = '✏️ Scratchpad';
 
 /**
  * Remove the scratchpad heading from markdown content.
@@ -8,8 +9,13 @@ export const SCRATCHPAD_HEADING = '# ✏️ Scratchpad';
  */
 export function stripHeading(markdown: string): string {
 	const trimmed = markdown.trim();
-	if (!trimmed.startsWith(SCRATCHPAD_HEADING)) return markdown;
-	const withoutHeading = trimmed.slice(SCRATCHPAD_HEADING.length).trimStart();
+	const prefix = trimmed.startsWith(SCRATCHPAD_HEADING)
+		? SCRATCHPAD_HEADING
+		: trimmed.startsWith(SCRATCHPAD_TITLE)
+			? SCRATCHPAD_TITLE
+			: null;
+	if (!prefix) return markdown;
+	const withoutHeading = trimmed.slice(prefix.length).trimStart();
 	return withoutHeading.replace(/^\n+/, '');
 }
 

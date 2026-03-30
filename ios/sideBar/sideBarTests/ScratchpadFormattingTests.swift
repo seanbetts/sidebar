@@ -10,6 +10,12 @@ final class ScratchpadFormattingTests: XCTestCase {
         XCTAssertEqual(stripped, "Hello")
     }
 
+    func testStripHeadingRemovesPlainScratchpadTitle() async {
+        let content = "✏️ Scratchpad\n\nHello\n"
+        let stripped = ScratchpadFormatting.stripHeading(content)
+        XCTAssertEqual(stripped, "Hello")
+    }
+
     func testStripHeadingLeavesOtherContent() async {
         let content = "# Notes\n\nHello"
         let stripped = ScratchpadFormatting.stripHeading(content)

@@ -10,10 +10,15 @@ public enum ScratchpadConstants {
 public enum ScratchpadFormatting {
     public static func stripHeading(_ markdown: String) -> String {
         let trimmed = markdown.trimmed
-        guard trimmed.hasPrefix(ScratchpadConstants.heading) else {
+        let prefix: String
+        if trimmed.hasPrefix(ScratchpadConstants.heading) {
+            prefix = ScratchpadConstants.heading
+        } else if trimmed.hasPrefix(ScratchpadConstants.title) {
+            prefix = ScratchpadConstants.title
+        } else {
             return markdown
         }
-        var remainder = trimmed.dropFirst(ScratchpadConstants.heading.count)
+        var remainder = trimmed.dropFirst(prefix.count)
         while let first = remainder.first, first == "\n" || first == "\r" {
             remainder = remainder.dropFirst()
         }
