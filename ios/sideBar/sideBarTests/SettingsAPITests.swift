@@ -357,9 +357,9 @@ final class SettingsAPITests: XCTestCase {
             return (response, Data(payload.utf8))
         }
 
-        async let left = leftAPI.getSettings()
-        async let right = rightAPI.getSettings()
-        let results = try await (left, right)
+        let leftTask = Task { try await leftAPI.getSettings() }
+        let rightTask = Task { try await rightAPI.getSettings() }
+        let results = try await (leftTask.value, rightTask.value)
 
         XCTAssertEqual(results.0.userId, "left")
         XCTAssertEqual(results.1.userId, "right")

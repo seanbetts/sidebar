@@ -319,6 +319,7 @@ public enum ErrorMapping {
                     || sourceText.contains("timeout")
                     || sourceText.contains("408")
                     || sourceText.contains("504")
+                    || sourceText.contains("nsurlerrordomain error -1001")
                     || sourceText.contains("took too long to respond"),
                 category: .requestTimeout,
                 title: "Request timed out",
@@ -326,6 +327,10 @@ public enum ErrorMapping {
             ),
             ChatStreamPresentationRule(
                 matches: sourceText.contains("offline")
+                    || sourceText.contains("nsurlerrordomain error -1003")
+                    || sourceText.contains("nsurlerrordomain error -1004")
+                    || sourceText.contains("nsurlerrordomain error -1005")
+                    || sourceText.contains("nsurlerrordomain error -1009")
                     || sourceText.contains("not connected to internet")
                     || sourceText.contains("network connection")
                     || sourceText.contains("could not reach the server")
