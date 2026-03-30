@@ -100,6 +100,90 @@ def test_notes_get_success(test_client, test_db):
     assert body["document_version"] == 1
 
 
+def test_notes_get_rejects_legacy_scratchpad_note(test_client, test_db):
+    note_id = uuid.uuid4()
+    note = Note(
+        id=note_id,
+        user_id=TEST_USER_ID,
+        title="# ✏️ Scratchpad",
+        document=note_document_from_plain_text("# ✏️ Scratchpad\n\nBody"),
+        document_version=1,
+        plain_text="# ✏️ Scratchpad\n\nBody",
+        folder_path="",
+        pinned=False,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(note)
+    test_db.commit()
+
+    response = test_client.get(f"/api/notes/{note_id}", headers=_auth_headers())
+    assert response.status_code == 404
+    assert error_message(response) == "Note not found"
+
+
+def test_notes_tree_excludes_legacy_scratchpad_note(test_client, test_db):
+    note = Note(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        title="# ✏️ Scratchpad",
+        document=note_document_from_plain_text("# ✏️ Scratchpad\n\nBody"),
+        document_version=1,
+        plain_text="# ✏️ Scratchpad\n\nBody",
+        folder_path="",
+        pinned=False,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    visible_note = Note(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        title="Visible Note",
+        document=note_document_from_plain_text("Visible Note\nBody"),
+        document_version=1,
+        plain_text="Visible Note\nBody",
+        folder_path="",
+        pinned=False,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add_all([note, visible_note])
+    test_db.commit()
+
+    response = test_client.get("/api/notes/tree", headers=_auth_headers())
+    assert response.status_code == 200
+    children = response.json().get("children", [])
+    names = [child.get("name") for child in children if child.get("type") == "file"]
+    assert "# ✏️ Scratchpad" not in names
+    assert "Visible Note" in names
+
+
+def test_notes_search_excludes_legacy_scratchpad_note(test_client, test_db):
+    note = Note(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        title="# ✏️ Scratchpad",
+        document=note_document_from_plain_text("# ✏️ Scratchpad\n\nBody"),
+        document_version=1,
+        plain_text="# ✏️ Scratchpad\n\nBody",
+        folder_path="",
+        pinned=False,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(note)
+    test_db.commit()
+
+    response = test_client.post(
+        "/api/notes/search",
+        json={"query": "Scratchpad", "limit": 10},
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert all(item["name"] != "# ✏️ Scratchpad" for item in payload.get("items", []))
+
+
 def test_notes_download_handles_unicode_filename(test_client, test_db):
     note_id = uuid.uuid4()
     note = Note(

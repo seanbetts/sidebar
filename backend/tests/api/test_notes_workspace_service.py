@@ -95,6 +95,43 @@ def test_search_returns_items():
     assert result["items"][0]["pinned"] is True
 
 
+def test_search_excludes_legacy_scratchpad_items(test_db):
+    legacy = Note(
+        id=uuid.uuid4(),
+        user_id="user-1",
+        title="# ✏️ Scratchpad",
+        document=note_document_from_plain_text("# ✏️ Scratchpad\n\nBody"),
+        document_version=NOTE_DOCUMENT_VERSION,
+        plain_text="# ✏️ Scratchpad\n\nBody",
+        folder_path="",
+        pinned=False,
+        pinned_order=None,
+        is_folder_marker=False,
+        is_archived=False,
+    )
+    visible = Note(
+        id=uuid.uuid4(),
+        user_id="user-1",
+        title="Visible Note",
+        document=note_document_from_plain_text("Visible Note\nScratchpad body"),
+        document_version=NOTE_DOCUMENT_VERSION,
+        plain_text="Visible Note\nScratchpad body",
+        folder_path="",
+        pinned=False,
+        pinned_order=None,
+        is_folder_marker=False,
+        is_archived=False,
+    )
+    test_db.add_all([legacy, visible])
+    test_db.commit()
+
+    result = NotesWorkspaceService.search(test_db, "user-1", "Scratchpad", limit=10)
+
+    names = [item["name"] for item in result["items"]]
+    assert "# ✏️ Scratchpad" not in names
+    assert "Visible Note" in names
+
+
 def test_build_note_payload_includes_explicit_state_fields():
     note = _note(title="Alpha", content="Body", folder="Inbox", pinned=True)
     payload = NotesWorkspaceService.build_note_payload(note, include_content=True)
@@ -226,3 +263,15 @@ def test_list_tree_query_defers_note_content_columns(test_db):
 
     assert inspect(listed).attrs.document.loaded_value is NO_VALUE
     assert inspect(listed).attrs.plain_text.loaded_value is NO_VALUE
+
+
+def test_get_note_rejects_legacy_scratchpad_title(monkeypatch):
+    legacy_scratchpad = _note(title="# ✏️ Scratchpad", content="# ✏️ Scratchpad\n\nBody")
+    monkeypatch.setattr(
+        service_module.NotesService,
+        "get_note",
+        lambda *args, **kwargs: legacy_scratchpad,
+    )
+
+    with pytest.raises(service_module.NoteNotFoundError, match="Note not found"):
+        NotesWorkspaceService.get_note(FakeDB([]), "user-1", str(uuid.uuid4()))

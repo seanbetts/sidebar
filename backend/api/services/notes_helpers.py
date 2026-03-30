@@ -8,6 +8,7 @@ from datetime import datetime
 from api.exceptions import ConflictError
 from api.models.note import Note
 from api.services.notes_document_types import note_document_from_plain_text
+from api.services.scratchpad_identity import is_scratchpad_title
 
 
 def build_notes_tree(notes: Iterable[Note]) -> dict[str, object]:
@@ -22,7 +23,7 @@ def build_notes_tree(notes: Iterable[Note]) -> dict[str, object]:
     index: dict[str, dict[str, object]] = {"": root}
 
     for note in notes:
-        if note.title == "✏️ Scratchpad":
+        if is_scratchpad_title(note.title):
             continue
         folder = (note.folder_path or "").strip("/")
         folder_parts = [part for part in folder.split("/") if part]

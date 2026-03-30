@@ -53,3 +53,27 @@ def test_note_conflict_payload_does_not_require_legacy_markdown_fields():
     server_note = payload["serverNote"]
     assert "document" in server_note
     assert "plain_text" in server_note
+
+
+def test_build_notes_tree_excludes_legacy_and_canonical_scratchpad_titles():
+    legacy = _note()
+    legacy.id = "legacy-scratchpad"
+    legacy.title = "# ✏️ Scratchpad"
+    legacy.folder_path = ""
+    canonical = _note()
+    canonical.id = "canonical-scratchpad"
+    canonical.title = "✏️ Scratchpad"
+    canonical.folder_path = ""
+    visible = _note()
+    visible.id = "visible-note"
+    visible.title = "Visible Note"
+    visible.folder_path = ""
+
+    tree = notes_helpers.build_notes_tree([legacy, canonical, visible])
+
+    children = tree["children"]
+    assert isinstance(children, list)
+    names = [child["name"] for child in children if child["type"] == "file"]
+    assert "# ✏️ Scratchpad" not in names
+    assert "✏️ Scratchpad" not in names
+    assert "Visible Note" in names

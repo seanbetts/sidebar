@@ -21,6 +21,7 @@ from api.services.notes_document_types import (
 from api.services.notes_helpers import build_notes_tree
 from api.services.notes_service import NotesService
 from api.services.notes_title import derive_note_title_from_document
+from api.services.scratchpad_identity import is_scratchpad_title, scratchpad_titles
 from api.services.workspace_service import WorkspaceService
 from api.utils.search import build_text_search_filter
 from api.utils.validation import parse_uuid
@@ -169,6 +170,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
                 Note.user_id == user_id,
                 Note.deleted_at.is_(None),
                 Note.is_folder_marker.is_(False),
+                Note.title.notin_(scratchpad_titles()),
                 build_text_search_filter(
                     [Note.title, Note.plain_text],
                     query,
@@ -367,6 +369,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
 
         note = NotesService.get_note(db, user_id, note_uuid, mark_opened=True)
         if not note:
+            raise NoteNotFoundError("Note not found")
+        if is_scratchpad_title(note.title):
             raise NoteNotFoundError("Note not found")
 
         return NotesWorkspaceService.build_note_payload(note, include_content=True)

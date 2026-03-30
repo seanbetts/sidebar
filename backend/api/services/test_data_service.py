@@ -23,6 +23,7 @@ from api.services.memory_service import MemoryService
 from api.services.notes_document_types import note_document_from_plain_text
 from api.services.notes_service import NotesService
 from api.services.notes_workspace_service import NotesWorkspaceService
+from api.services.scratchpad_identity import scratchpad_document
 from api.services.task_service import TaskService
 from api.services.tasks_snapshot_service import TasksSnapshotService
 from api.services.test_data_plan import (
@@ -92,13 +93,13 @@ class TestDataService:
                 db,
                 user_id,
                 scratchpad_note.id,
-                note_document_from_plain_text(plan.scratchpad),
+                scratchpad_document(plan.scratchpad),
             )
         else:
             NotesService.create_note(
                 db,
                 user_id,
-                note_document_from_plain_text(plan.scratchpad),
+                scratchpad_document(plan.scratchpad),
                 folder="",
                 tags=["scratchpad"],
             )
@@ -266,7 +267,7 @@ class TestDataService:
                 db,
                 user_id,
                 scratchpad_note.id,
-                note_document_from_plain_text(f"# {SCRATCHPAD_TITLE}\n\n"),
+                scratchpad_document(""),
             )
 
         for website in targets["websites"]:

@@ -46,7 +46,6 @@ def test_seed_and_delete_round_trip(db_session):
     assert any(
         "seed:test-data" in (note.metadata_ or {}).get("tags", []) for note in notes
     )
-
     websites = WebsitesService.list_websites(db_session, user_id)
     assert any((site.title or "").startswith(plan.title_prefix) for site in websites)
 
