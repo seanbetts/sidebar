@@ -131,7 +131,9 @@ final class AppCommandsTests: XCTestCase {
 
         XCTAssertTrue(
             normalized.contains(
-                "ifletsectionCommandContext=Self.macSectionCommandContext(focusedSection:environment.focusedSection,activeSection:environment.activeSection)"
+                "ifletsectionCommandContext=Self.macSectionCommandContext(" +
+                    "focusedSection:environment.focusedSection," +
+                    "activeSection:environment.activeSection)"
             )
         )
         XCTAssertFalse(

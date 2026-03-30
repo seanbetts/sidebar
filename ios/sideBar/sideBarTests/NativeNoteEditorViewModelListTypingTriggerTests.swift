@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-final class NativeNoteEditorViewModelListTypingTriggerTests: XCTestCase {
+final class NativeNoteEditorListTypingTriggerTests: XCTestCase {
     func testTypingSpaceAfterDashAtParagraphStartConvertsToUnorderedList() async throws {
         let viewModel = try makeViewModelForEmptyBodyParagraph()
         noteAppendTypedText("-", to: viewModel)

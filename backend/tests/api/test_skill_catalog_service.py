@@ -137,7 +137,7 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
 
 
 def test_catalog_version_exposed() -> None:
-    assert SkillCatalogService.catalog_version() == 9
+    assert SkillCatalogService.catalog_version() == 10
 
 
 def test_capability_registry_exposes_code_backed_contract() -> None:

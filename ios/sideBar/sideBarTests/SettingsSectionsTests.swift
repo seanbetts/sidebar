@@ -923,10 +923,18 @@ final class SettingsSectionsTests: XCTestCase {
         let normalized = try systemSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"Purpose\",assistantDisplayName:assistantDisplayName)"))
-        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"OperatingPrinciples\",assistantDisplayName:assistantDisplayName)"))
-        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"AdaptationPolicy\",assistantDisplayName:assistantDisplayName)"))
-        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"SuccessSignals\",assistantDisplayName:assistantDisplayName)"))
+        XCTAssertTrue(
+            normalized.contains("title:Self.assistantSectionTitle(\"Purpose\",assistantDisplayName:assistantDisplayName)")
+        )
+        XCTAssertTrue(
+            normalized.contains("title:Self.assistantSectionTitle(\"OperatingPrinciples\",assistantDisplayName:assistantDisplayName)")
+        )
+        XCTAssertTrue(
+            normalized.contains("title:Self.assistantSectionTitle(\"AdaptationPolicy\",assistantDisplayName:assistantDisplayName)")
+        )
+        XCTAssertTrue(
+            normalized.contains("title:Self.assistantSectionTitle(\"SuccessSignals\",assistantDisplayName:assistantDisplayName)")
+        )
         XCTAssertFalse(normalized.contains("title:\"SoulPurpose\""))
         XCTAssertFalse(normalized.contains("title:\"SoulOperatingPrinciples\""))
     }
@@ -945,10 +953,18 @@ final class SettingsSectionsTests: XCTestCase {
         let normalized = try systemMacSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"Purpose\",assistantDisplayName:assistantDisplayName)"))
-        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"OperatingPrinciples\",assistantDisplayName:assistantDisplayName)"))
-        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"AdaptationPolicy\",assistantDisplayName:assistantDisplayName)"))
-        XCTAssertTrue(normalized.contains("title:Self.assistantSectionTitle(\"SuccessSignals\",assistantDisplayName:assistantDisplayName)"))
+        XCTAssertTrue(
+            normalized.contains("title:Self.assistantSectionTitle(\"Purpose\",assistantDisplayName:assistantDisplayName)")
+        )
+        XCTAssertTrue(
+            normalized.contains("title:Self.assistantSectionTitle(\"OperatingPrinciples\",assistantDisplayName:assistantDisplayName)")
+        )
+        XCTAssertTrue(
+            normalized.contains("title:Self.assistantSectionTitle(\"AdaptationPolicy\",assistantDisplayName:assistantDisplayName)")
+        )
+        XCTAssertTrue(
+            normalized.contains("title:Self.assistantSectionTitle(\"SuccessSignals\",assistantDisplayName:assistantDisplayName)")
+        )
         XCTAssertFalse(normalized.contains("title:\"SoulPurpose\""))
         XCTAssertFalse(normalized.contains("title:\"SoulOperatingPrinciples\""))
     }

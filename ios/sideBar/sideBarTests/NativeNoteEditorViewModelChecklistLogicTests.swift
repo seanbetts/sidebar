@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
-final class NativeNoteEditorViewModelChecklistLogicTests: XCTestCase {
+final class NativeNoteEditorChecklistLogicTests: XCTestCase {
     func testTypingSpaceAfterChecklistTriggerAtParagraphStartConvertsToChecklist() async throws {
         let viewModel = try makeViewModelForBodyParagraph("[]")
 

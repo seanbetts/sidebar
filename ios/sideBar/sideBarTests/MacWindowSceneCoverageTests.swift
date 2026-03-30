@@ -158,23 +158,30 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(normalized.contains("vardidRequestOpenMainWindow=false"))
         XCTAssertTrue(
             normalized.contains(
-                "if!didRequestOpenMainWindow,MacMainWindowSceneBridge.openMainWindowIfAvailable(){didRequestOpenMainWindow=trueNSApplication.shared.activate(ignoringOtherApps:true)}"
+                "if!didRequestOpenMainWindow," +
+                    "MacMainWindowSceneBridge.openMainWindowIfAvailable(){" +
+                    "didRequestOpenMainWindow=trueNSApplication.shared.activate(ignoringOtherApps:true)}"
             )
         )
         XCTAssertTrue(
             normalized.contains(
-                "letshouldRestoreFrame=MacWindowFramePersistence.shouldRestoreSavedWindowFrame(isVisible:window.isVisible,isKeyWindow:window.isKeyWindow,isMainWindow:window.isMainWindow)"
+                "letshouldRestoreFrame=MacWindowFramePersistence.shouldRestoreSavedWindowFrame(" +
+                    "isVisible:window.isVisible,isKeyWindow:window.isKeyWindow," +
+                    "isMainWindow:window.isMainWindow)"
             )
         )
         XCTAssertTrue(
             normalized.contains(
-                "letrestoredFrame=shouldRestoreFrame&&MacWindowFramePersistence.restoreSavedWindowFrameIfNeeded(window,autosaveName:MacWindowConfiguration.mainWindowID)"
+                "letrestoredFrame=shouldRestoreFrame&&" +
+                    "MacWindowFramePersistence.restoreSavedWindowFrameIfNeeded(" +
+                    "window,autosaveName:MacWindowConfiguration.mainWindowID)"
             )
         )
         XCTAssertTrue(normalized.contains("ifshouldRestoreFrame&&!restoredFrame{window.center()}"))
         XCTAssertTrue(
             normalized.contains(
-                "letrecentered=restoredFrame&&MacWindowFramePersistence.recenterWindowIfNeeded(window,preferredScreen:NSScreen.main,enforcePreferredScreen:true)"
+                "letrecentered=restoredFrame&&MacWindowFramePersistence.recenterWindowIfNeeded(" +
+                    "window,preferredScreen:NSScreen.main,enforcePreferredScreen:true)"
             )
         )
         XCTAssertTrue(normalized.contains("NSApplication.shared.activate(ignoringOtherApps:true)"))
