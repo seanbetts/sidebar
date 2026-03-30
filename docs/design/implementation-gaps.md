@@ -50,6 +50,7 @@ Single working list of every known divergence between the design system and the 
 | Haptic: drag reorder completion missing `.success` feedback | Panel reorder files | [ios-conventions](./platform-strategy/ios-conventions) |
 | macOS View menu missing — `Toggle Sidebar` (Cmd+Shift+S) and `Open Scratchpad` (Cmd+Shift+O) not in menu bar | `AppCommands.swift` | [menus-and-shortcuts](./patterns/menus-and-shortcuts) |
 | `SidebarMenuItem` missing factory methods for `Copy Title` and `Copy URL` — both are created inline in `WebsitesPanel+ContextMenu.swift`, `WebsitesView.swift`, and `WebsitesDetailView+MenuActions.swift`, violating the rule that all action icons use factory methods | `Design/Components/SidebarMenuItem.swift`, `Views/Websites/` | [menus-and-shortcuts](./patterns/menus-and-shortcuts) |
+| Files header menu on macOS uses a raw `Menu` with inline `Label` + SF Symbol strings — should use `SidebarMenuItem` factory methods; the iOS branch correctly uses `HeaderActionMenuButton` with `SidebarMenuItem` items | `Views/Files/FilesHeaderActions.swift` | [menus-and-shortcuts](./patterns/menus-and-shortcuts) |
 | `success` and `warning` color tokens alias to neutral text colors — should be `#16a34a`/`#4ade80` and `#d97706`/`#fbbf24` | `DesignTokens.swift` | [colour](./foundations/colour) |
 
 ### Medium priority
