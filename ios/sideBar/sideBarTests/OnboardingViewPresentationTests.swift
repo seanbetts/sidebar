@@ -167,6 +167,25 @@ final class OnboardingViewPresentationTests: OnboardingViewTestCase {
     }
 
     @MainActor
+    func testFinalStepCompletionRoutesThroughExplicitOwnerCallback() throws {
+        let onboardingView = try onboardingViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let bottomArea = try onboardingBottomAreaViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(onboardingView.contains("letonComplete:()->Void"))
+        XCTAssertTrue(
+            onboardingView.contains(
+                "OnboardingBottomAreaView(viewModel:viewModel,layoutMode:layoutMode,onComplete:onComplete)"
+            )
+        )
+        XCTAssertTrue(bottomArea.contains("letonComplete:()->Void"))
+        XCTAssertTrue(bottomArea.contains("awaitviewModel.completeOnboarding()"))
+        XCTAssertTrue(bottomArea.contains("onComplete()"))
+        XCTAssertFalse(bottomArea.contains("dismiss()"))
+    }
+
+    @MainActor
     func testOnboardingViewOnlyAllowsDismissDuringMacTermination() throws {
         let normalized = try onboardingViewSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

@@ -25,7 +25,7 @@ struct OnboardingPermissionActionState: Equatable {
 struct OnboardingBottomAreaView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     let layoutMode: OnboardingLayoutMode
-    let dismiss: DismissAction
+    let onComplete: () -> Void
 
     var body: some View {
         switch viewModel.currentStep {
@@ -251,7 +251,7 @@ struct OnboardingBottomAreaView: View {
     private func completeOnboarding() {
         Task {
             await viewModel.completeOnboarding()
-            dismiss()
+            onComplete()
         }
     }
 }

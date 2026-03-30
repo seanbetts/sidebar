@@ -14,12 +14,14 @@ struct OnboardingView: View {
     @State private var allowsTerminationDismiss = false
     #endif
     let onRouteToSignIn: () -> Void
+    let onComplete: () -> Void
 
     init(
         authSession: AuthSession,
         onboardingAPI: OnboardingProviding,
         settingsAPI: SettingsProviding,
-        onRouteToSignIn: @escaping () -> Void = {}
+        onRouteToSignIn: @escaping () -> Void = {},
+        onComplete: @escaping () -> Void = {}
     ) {
         _viewModel = StateObject(
             wrappedValue: OnboardingViewModel(
@@ -29,14 +31,17 @@ struct OnboardingView: View {
             )
         )
         self.onRouteToSignIn = onRouteToSignIn
+        self.onComplete = onComplete
     }
 
     init(
         viewModel: OnboardingViewModel,
-        onRouteToSignIn: @escaping () -> Void = {}
+        onRouteToSignIn: @escaping () -> Void = {},
+        onComplete: @escaping () -> Void = {}
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.onRouteToSignIn = onRouteToSignIn
+        self.onComplete = onComplete
     }
 
     var body: some View {
@@ -208,7 +213,7 @@ struct OnboardingView: View {
         OnboardingBottomAreaView(
             viewModel: viewModel,
             layoutMode: layoutMode,
-            dismiss: dismiss
+            onComplete: onComplete
         )
     }
 

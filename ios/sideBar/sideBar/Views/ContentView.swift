@@ -142,7 +142,8 @@ public struct ContentView: View {
             settingsAPI: environment.container.settingsAPI,
             onRouteToSignIn: {
                 suppressAutomaticOnboarding = true
-            }
+            },
+            onComplete: handleOnboardingCompleted
         )
     }
 
@@ -185,6 +186,13 @@ public struct ContentView: View {
         if isTestingOnboarding {
             suppressAutomaticOnboarding = true
         }
+    }
+
+    private func handleOnboardingCompleted() {
+        if isTestingOnboarding {
+            suppressAutomaticOnboarding = true
+        }
+        showOnboarding = false
     }
 
     private func presentOnboardingFromLogin() {
