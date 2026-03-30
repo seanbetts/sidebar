@@ -4,13 +4,13 @@ final class WidgetSignedOutViewTests: XCTestCase {
     func testHomeWidgetSignedOutViewUsesContrastAwareIconColor() throws {
         let normalized = try widgetListLayoutSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let expectedIconStyle =
+            "Image(systemName:\"person.crop.circle.badge.exclamationmark\")"
+            + ".font(.system(size:32))"
+            + ".foregroundStyle(colorScheme==.dark?.white:.black)"
 
         XCTAssertTrue(normalized.contains("@Environment(\\.colorScheme)privatevarcolorScheme"))
-        XCTAssertTrue(
-            normalized.contains(
-                "Image(systemName:\"person.crop.circle.badge.exclamationmark\").font(.system(size:32)).foregroundStyle(colorScheme==.dark?.white:.black)"
-            )
-        )
+        XCTAssertTrue(normalized.contains(expectedIconStyle))
     }
 }
 

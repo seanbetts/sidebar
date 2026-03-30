@@ -1,4 +1,5 @@
 import Foundation
+import XCTest
 import sideBarShared
 @testable import sideBar
 
@@ -144,5 +145,115 @@ enum ChatViewModelTestsSupport {
             _ = updates
             return try updateResult.get()
         }
+    }
+}
+
+@MainActor
+class ChatViewModelTestCase: XCTestCase {
+    private static let sharedAPIClient = APIClient(
+        config: APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil }
+        )
+    )
+    private static let sharedThemeManager: ThemeManager = {
+        let defaults = UserDefaults(suiteName: "ChatViewModelTestsTheme") ?? .standard
+        defaults.removePersistentDomain(forName: "ChatViewModelTestsTheme")
+        return ThemeManager(userDefaults: defaults)
+    }()
+    private static var retainedViewModels: [ChatViewModel] = []
+
+    override func tearDown() {
+        ChatViewModelTestsURLProtocolMock.requestHandler = nil
+        super.tearDown()
+    }
+
+    func makeViewModel<API: ConversationsProviding & ConversationsAPIProviding>(
+        api: API,
+        cache: CacheClient,
+        networkStatus: ChatViewModelTestsSupport.TestNetworkStatus? = nil,
+        scratchpadStore: ScratchpadStore? = nil,
+        ingestionAPI: IngestionAPI? = nil,
+        streamClient: ChatViewModelTestsSupport.MockChatStreamClient? = nil,
+        requestContextProvider: (() -> ChatRequestContext?)? = nil,
+        workspaceActionDispatcher: ((WorkspaceAction) -> Void)? = nil,
+        attachmentPollingInitialDelayNanoseconds: UInt64 = 1_500_000_000,
+        attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000
+    ) -> ChatViewModel {
+        let chatAPI = ChatAPI(client: Self.sharedAPIClient)
+        let themeManager = Self.sharedThemeManager
+        let defaults = UserDefaults(suiteName: "ChatViewModelTests") ?? .standard
+        defaults.removePersistentDomain(forName: "ChatViewModelTests")
+        let chatStore = ChatStore(conversationsAPI: api, cache: cache)
+        let resolvedIngestionAPI = ingestionAPI ?? IngestionAPI(client: Self.sharedAPIClient)
+        let effectiveNetworkStatus = networkStatus ?? ChatViewModelTestsSupport.TestNetworkStatus(isNetworkAvailable: true)
+        let resolvedStreamClient = streamClient ?? ChatViewModelTestsSupport.MockChatStreamClient()
+        let viewModel = ChatViewModel(
+            network: ChatNetworkCoordinator(
+                chatAPI: chatAPI,
+                conversationsAPI: api,
+                ingestionAPI: resolvedIngestionAPI,
+                streamClient: resolvedStreamClient,
+                networkStatus: effectiveNetworkStatus
+            ),
+            storage: ChatStorageCoordinator(
+                cache: cache,
+                chatStore: chatStore,
+                notesStore: nil,
+                websitesStore: nil,
+                ingestionStore: nil,
+                scratchpadStore: scratchpadStore
+            ),
+            ui: ChatUICoordinator(
+                themeManager: themeManager,
+                userDefaults: defaults,
+                clock: { Date(timeIntervalSince1970: 0) },
+                requestContextProvider: requestContextProvider,
+                attachmentPollingInitialDelayNanoseconds: attachmentPollingInitialDelayNanoseconds,
+                attachmentPollingIntervalNanoseconds: attachmentPollingIntervalNanoseconds
+            )
+        )
+        viewModel.workspaceActionDispatcher = workspaceActionDispatcher
+        Self.retainedViewModels.append(viewModel)
+        return viewModel
+    }
+
+    func makeIngestionAPIForAttachmentPollingTest(
+        statusCode: Int = 500,
+        responseBody: String = "{\"detail\":\"internal\"}"
+    ) -> IngestionAPI {
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil }
+        )
+        let sessionConfig = URLSessionConfiguration.ephemeral
+        sessionConfig.protocolClasses = [ChatViewModelTestsURLProtocolMock.self]
+        let session = URLSession(configuration: sessionConfig)
+        ChatViewModelTestsURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertTrue(request.url?.absoluteString.contains("files/file-1/meta") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: statusCode,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data(responseBody.utf8))
+        }
+        return IngestionAPI(client: APIClient(config: config, session: session), session: session)
+    }
+
+    func makeIngestionAPIForAttachmentCancelTest(
+        requestHandler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
+    ) -> IngestionAPI {
+        let config = APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil }
+        )
+        let sessionConfig = URLSessionConfiguration.ephemeral
+        sessionConfig.protocolClasses = [ChatViewModelTestsURLProtocolMock.self]
+        let session = URLSession(configuration: sessionConfig)
+        ChatViewModelTestsURLProtocolMock.requestHandler = requestHandler
+        return IngestionAPI(client: APIClient(config: config, session: session), session: session)
     }
 }
