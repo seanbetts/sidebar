@@ -129,8 +129,8 @@ def get_note(
         return NotesWorkspaceService.get_note(db, user_id, str(note_id))
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
-    except NoteNotFoundError as exc:
-        raise NotFoundError("Note", str(note_id)) from exc
+    except NoteNotFoundError:
+        raise
 
 
 @router.post("")

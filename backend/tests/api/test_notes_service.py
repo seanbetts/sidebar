@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import text
-from api.exceptions import BadRequestError, ConflictError
+
+from api.exceptions import BadRequestError, ConflictError, NoteNotFoundError
 from api.services.notes_document_types import (
     NOTE_DOCUMENT_VERSION,
     note_document_from_plain_text,
@@ -115,6 +116,20 @@ def test_update_note_title(db_session):
     assert updated.document == _document("# New Title\n\nBody")
     assert updated.document_version == NOTE_DOCUMENT_VERSION
     assert updated.plain_text == "# New Title\n\nBody"
+
+
+def test_update_note_missing_raises_single_formatted_not_found(db_session):
+    missing_id = uuid.uuid4()
+
+    with pytest.raises(NoteNotFoundError) as error:
+        NotesService.update_note(
+            db_session,
+            "test_user",
+            missing_id,
+            _document("# Missing\n\nBody"),
+        )
+
+    assert str(error.value) == f"Note not found: {missing_id}"
 
 
 def test_create_note_uses_block_zero_plain_text_line_for_title(db_session):

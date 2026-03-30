@@ -208,7 +208,7 @@ class NotesSyncService:
             .first()
         )
         if not note:
-            raise NoteNotFoundError(f"Note not found: {note_id}")
+            raise NoteNotFoundError(str(note_id))
         _ = operation
         _ = client_updated_at
         return note

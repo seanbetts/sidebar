@@ -9,7 +9,7 @@ from typing import cast
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.exc import ObjectDeletedError
 
-from api.exceptions import BadRequestError, NoteNotFoundError
+from api.exceptions import APIError, BadRequestError, NoteNotFoundError
 from api.models.note import Note
 from api.services.notes_document_types import (
     NOTE_DOCUMENT_VERSION,
@@ -369,9 +369,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
 
         note = NotesService.get_note(db, user_id, note_uuid, mark_opened=True)
         if not note:
-            raise NoteNotFoundError("Note not found")
+            raise NoteNotFoundError(str(note_uuid))
         if is_scratchpad_title(note.title):
-            raise NoteNotFoundError("Note not found")
+            raise APIError(404, "NOT_FOUND", "Note not found")
 
         return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
@@ -589,7 +589,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             raise ValueError("Invalid note ID")
         note = NotesService.get_note(db, user_id, note_uuid, mark_opened=False)
         if not note:
-            raise NoteNotFoundError("Note not found")
+            raise NoteNotFoundError(str(note_uuid))
         deleted = NotesService.delete_note(
             db,
             user_id,
@@ -597,7 +597,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             client_updated_at=client_updated_at,
         )
         if not deleted:
-            raise NoteNotFoundError("Note not found")
+            raise NoteNotFoundError(str(note_uuid))
         return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
     @staticmethod
@@ -628,7 +628,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             .first()
         )
         if not note:
-            raise NoteNotFoundError("Note not found")
+            raise NoteNotFoundError(str(note_uuid))
 
         safe_plain_text = note.plain_text or ""
         filename = (

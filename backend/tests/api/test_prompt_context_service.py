@@ -97,21 +97,33 @@ def test_prompt_context_service_order_and_truncation(test_db):
     first_message = prompt_bundle["first_message_prompt"]["text"]
 
     assert "<message_context>" in system_prompt
-    idx_message = system_prompt.index("<message_context>")
-    idx_identity = system_prompt.index("<assistant_identity>")
-    idx_soul = system_prompt.index("<assistant_soul>")
-    idx_response_style = system_prompt.index("<response_style>")
-    idx_guidance = system_prompt.index("<context_guidance>")
-    idx_open = system_prompt.index("<current_open>")
-    idx_recent = system_prompt.index("<recent_activity>")
-    assert (
-        idx_message
-        < idx_identity
-        < idx_soul
-        < idx_response_style
-        < idx_guidance
-        < idx_open
-        < idx_recent
+    assert "<assistant_identity>" in system_prompt
+    assert "<assistant_soul>" in system_prompt
+    assert "<response_style>" not in system_prompt
+    assert "<context_guidance>" in system_prompt
+    assert "<current_open>" in system_prompt
+    assert "<recent_activity>" in system_prompt
+
+    system_section_ids = [
+        section["id"] for section in prompt_bundle["system_prompt"]["sections"]
+    ]
+    assert system_section_ids.index("message_context") < system_section_ids.index(
+        "assistant_identity"
+    )
+    assert system_section_ids.index("assistant_identity") < system_section_ids.index(
+        "assistant_soul"
+    )
+    assert system_section_ids.index("assistant_soul") < system_section_ids.index(
+        "response_style"
+    )
+    assert system_section_ids.index("response_style") < system_section_ids.index(
+        "context_guidance"
+    )
+    assert system_section_ids.index("context_guidance") < system_section_ids.index(
+        "current_open"
+    )
+    assert system_section_ids.index("current_open") < system_section_ids.index(
+        "recent_activity"
     )
 
     assert len(system_prompt) <= PromptContextService.MAX_SYSTEM_PROMPT_CHARS

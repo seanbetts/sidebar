@@ -75,7 +75,7 @@ class NotesEditService:
         """Return the live note targeted by the edit request."""
         note = NotesService.get_note(db, user_id, note_id, mark_opened=False)
         if note is None:
-            raise NoteNotFoundError(f"Note not found: {note_id}")
+            raise NoteNotFoundError(str(note_id))
         return note
 
     @staticmethod

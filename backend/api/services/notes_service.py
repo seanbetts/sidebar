@@ -163,7 +163,7 @@ class NotesService:
             .first()
         )
         if not note:
-            raise NoteNotFoundError(f"Note not found: {note_id}")
+            raise NoteNotFoundError(str(note_id))
 
         ensure_note_no_conflict(note, client_updated_at, op="update")
 
@@ -246,7 +246,7 @@ class NotesService:
             .first()
         )
         if not note:
-            raise NoteNotFoundError(f"Note not found: {note_id}")
+            raise NoteNotFoundError(str(note_id))
 
         ensure_note_no_conflict(note, client_updated_at, op=op)
 
@@ -294,7 +294,7 @@ class NotesService:
             .first()
         )
         if not note:
-            raise NoteNotFoundError(f"Note not found: {note_id}")
+            raise NoteNotFoundError(str(note_id))
 
         ensure_note_no_conflict(note, client_updated_at, op="pin")
 

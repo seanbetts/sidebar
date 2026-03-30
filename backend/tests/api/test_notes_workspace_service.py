@@ -273,5 +273,5 @@ def test_get_note_rejects_legacy_scratchpad_title(monkeypatch):
         lambda *args, **kwargs: legacy_scratchpad,
     )
 
-    with pytest.raises(service_module.NoteNotFoundError, match="Note not found"):
+    with pytest.raises(service_module.APIError, match="Note not found"):
         NotesWorkspaceService.get_note(FakeDB([]), "user-1", str(uuid.uuid4()))
