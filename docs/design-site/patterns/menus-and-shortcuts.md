@@ -1,1 +1,0 @@
-../../design/patterns/menus-and-shortcuts.md

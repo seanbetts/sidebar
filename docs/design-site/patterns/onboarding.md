@@ -1,1 +1,0 @@
-../../design/patterns/onboarding.md

@@ -1,1 +1,0 @@
-../../design/foundations/token-model.md

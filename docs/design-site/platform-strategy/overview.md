@@ -1,1 +1,0 @@
-../../design/platform-strategy/overview.md

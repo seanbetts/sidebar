@@ -1,1 +1,0 @@
-../../design/patterns/ai-assistant-ui.md

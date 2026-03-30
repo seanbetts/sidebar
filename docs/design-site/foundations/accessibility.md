@@ -1,1 +1,0 @@
-../../design/foundations/accessibility.md

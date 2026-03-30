@@ -53,7 +53,7 @@ mint dev
 If you prefer not to install globally:
 
 ```bash
-cd docs/design-site
+cd docs/design
 npx mint dev --port 3002
 ```
 

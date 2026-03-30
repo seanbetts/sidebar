@@ -1,1 +1,0 @@
-../design/component-template.md

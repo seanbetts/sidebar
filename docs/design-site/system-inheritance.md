@@ -1,1 +1,0 @@
-../design/system-inheritance.md

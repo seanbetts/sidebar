@@ -522,7 +522,7 @@ is_docs_process() {
 
 is_design_docs_process() {
   local command="$1"
-  [[ "${command}" == *"mintlify"* ]] && [[ "${command}" == *"${REPO_ROOT}/docs/design-site"* ]]
+  [[ "${command}" == *"mintlify"* ]] && [[ "${command}" == *"${REPO_ROOT}/docs/design"* ]]
 }
 
 is_website_process() {
@@ -822,7 +822,7 @@ start_design_docs() {
   fi
   ensure_port_available 3002 design-docs
   echo "Starting design docs..."
-  (cd "${REPO_ROOT}/docs/design-site" && mintlify dev --port 3002) >"${DESIGN_DOCS_LOG}" 2>&1 </dev/null &
+  (cd "${REPO_ROOT}/docs/design" && mintlify dev --port 3002) >"${DESIGN_DOCS_LOG}" 2>&1 </dev/null &
   echo $! >"${DESIGN_DOCS_PID}"
   if ! wait_for_role_port 3002 design-docs "${DESIGN_DOCS_PID}"; then
     echo "Design docs failed to bind to port 3002. Check logs: ${DESIGN_DOCS_LOG}"

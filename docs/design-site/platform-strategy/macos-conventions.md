@@ -1,1 +1,0 @@
-../../design/platform-strategy/macos-conventions.md
