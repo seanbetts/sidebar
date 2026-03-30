@@ -123,7 +123,7 @@ extension ChatViewModel {
             status: .streaming,
             toolCalls: nil,
             needsNewline: nil,
-            timestamp: Self.isoTimestamp(from: clock()),
+            timestamp: nextAppendedMessageTimestamp(),
             error: nil
         )
         messages.append(retryMessage)

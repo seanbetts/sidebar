@@ -11,6 +11,34 @@ import UIKit
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class ReadChecklistActivationTests: XCTestCase {
+    func testChecklistClickPointsResolveExpectedCharacterOffsets() async throws {
+        let document = checklistActivationDocument()
+        let textView = try makeChecklistReadActivationTextView(
+            document: document,
+            frame: NSRect(x: 0, y: 0, width: 320, height: 180),
+            onActivateEditing: { _ in }
+        )
+        let checkboxPoint = try checklistClickPoint(
+            in: textView,
+            characterIndex: 8,
+            horizontalBias: 0.5
+        )
+        let textPoint = try checklistClickPoint(
+            in: textView,
+            characterIndex: 12,
+            horizontalBias: 0.5
+        )
+
+        XCTAssertEqual(
+            SelectableNoteReadView.characterOffsetForEditingActivation(in: textView, at: checkboxPoint),
+            8
+        )
+        XCTAssertEqual(
+            SelectableNoteReadView.characterOffsetForEditingActivation(in: textView, at: textPoint),
+            12
+        )
+    }
+
     func testChecklistCheckboxClickTogglesInsteadOfActivatingEditing() async throws {
         var capturedTarget: NotesEditorViewModel.PendingEditSelectionTarget?
         var capturedToggle: (blockIndex: Int, itemIndex: Int)?

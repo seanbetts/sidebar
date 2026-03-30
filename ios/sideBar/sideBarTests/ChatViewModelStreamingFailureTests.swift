@@ -93,6 +93,50 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         XCTAssertNil(viewModel.streamingConversationId)
     }
 
+    func testUnexpectedEOFWithEmptyAssistantMessagePreservesRetryableFailure() async throws {
+        let cache = TestCacheClient()
+        let conversationsAPI = StubConversationsAPI()
+        let viewModel = makeStreamingFailureViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            streamClient: IncompleteChatStreamClient()
+        )
+
+        let initialMessage = seedStreamingFailureMessage(on: viewModel)
+        viewModel.messages = [initialMessage]
+        viewModel.beginStreamingMessage(assistantMessageId: initialMessage.id)
+        viewModel.latestRetrySource = ChatRetrySource(
+            conversationID: "conv-1",
+            userMessageID: "user-1",
+            userMessageText: "Hello",
+            assistantMessageID: initialMessage.id,
+            attachments: nil,
+            openContext: nil,
+            currentLocation: nil,
+            currentLocationLevels: nil,
+            currentWeather: nil,
+            currentTimezone: nil
+        )
+
+        await viewModel.startStream(
+            request: ChatStreamRequest(
+                message: "Hello",
+                conversationId: "conv-1",
+                userMessageId: "user-1",
+                assistantMessageId: initialMessage.id
+            )
+        )
+
+        let failedAssistant = try XCTUnwrap(viewModel.messages.last)
+        XCTAssertEqual(failedAssistant.id, initialMessage.id)
+        XCTAssertEqual(failedAssistant.status, .error)
+        XCTAssertEqual(
+            failedAssistant.error,
+            "The response stream ended unexpectedly. Please try again."
+        )
+        XCTAssertEqual(viewModel.latestRetryableAssistantMessageID, initialMessage.id)
+    }
+
     func testErrorEventWithEmptyAssistantMessageDoesNotPersistPlaceholder() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()

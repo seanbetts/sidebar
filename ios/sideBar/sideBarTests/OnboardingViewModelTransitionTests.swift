@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class OnboardingViewModelTransitionTests: XCTestCase {
-    func testGoBackFromFinalStepReturnsToNotificationsPermission() {
+    func testGoBackFromFinalStepReturnsToNotificationsPermission() async {
         let viewModel = makeViewModel(isTestingOnboarding: true)
         viewModel.currentStep = .finalStep
 
@@ -66,7 +66,7 @@ final class OnboardingViewModelTransitionTests: XCTestCase {
         )
     }
 
-    func testFinalStepShowsBackWhenProviderSetupWasSkipped() {
+    func testFinalStepShowsBackWhenProviderSetupWasSkipped() async {
         let viewModel = makeViewModel(isTestingOnboarding: true)
         viewModel.currentStep = .finalStep
 

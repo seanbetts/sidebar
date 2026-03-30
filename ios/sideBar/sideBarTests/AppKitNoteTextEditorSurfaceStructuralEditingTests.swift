@@ -72,7 +72,7 @@ extension AppKitNoteTextEditorSurfaceTests {
                 version: NotesSemanticDocument.currentVersion,
                 blocks: [
                     .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                    .paragraph([.init(text: "- [ ]", marks: [])])
+                    .paragraph([.init(text: "[]", marks: [])])
                 ]
             ),
             baseFontSize: NoteTextTypography.defaultBodyFontSize,
@@ -98,7 +98,7 @@ extension AppKitNoteTextEditorSurfaceTests {
                 version: NotesSemanticDocument.currentVersion,
                 blocks: [
                     .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                    .paragraph([.init(text: "- [ ]", marks: [])])
+                    .paragraph([.init(text: "[]", marks: [])])
                 ]
             ),
             baseFontSize: NoteTextTypography.defaultBodyFontSize,
@@ -123,8 +123,8 @@ extension AppKitNoteTextEditorSurfaceTests {
 
         let snapshot = try XCTUnwrap(mountedEditorSnapshot(from: textView))
         XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .paragraph])
-        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "- [ ] ", marks: [])])
-        XCTAssertEqual(snapshot.plainText, "Title\n- [ ] ")
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "[] ", marks: [])])
+        XCTAssertEqual(snapshot.plainText, "Title\n[] ")
     }
 }
 #endif

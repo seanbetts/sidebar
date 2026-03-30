@@ -400,8 +400,12 @@ struct SelectableNoteReadView: View {
             return line.endCharacterOffset
         }
 
-        let insertionIndex = textView.characterIndexForInsertion(at: point)
-        return min(max(insertionIndex, 0), plainText.length)
+        let characterIndex = layoutManager.characterIndex(
+            for: containerPoint,
+            in: textContainer,
+            fractionOfDistanceBetweenInsertionPoints: nil
+        )
+        return min(max(characterIndex, 0), plainText.length)
     }
     #endif
 
@@ -505,7 +509,7 @@ private final class SelectableNoteReadTextView: NSTextView {
     }
 
     override func mouseUp(with event: NSEvent) {
-        let point = convert(event.locationInWindow, from: nil)
+        let point = localPoint(for: event)
         super.mouseUp(with: event)
         guard event.clickCount == 1, didDragSelectionGesture == false else { return }
         activateEditingIfNeeded(at: point)
@@ -565,6 +569,13 @@ private final class SelectableNoteReadTextView: NSTextView {
         )
         guard textContainerInset != resolvedInset else { return }
         textContainerInset = resolvedInset
+    }
+
+    private func localPoint(for event: NSEvent) -> NSPoint {
+        guard window != nil || event.windowNumber != 0 else {
+            return event.locationInWindow
+        }
+        return convert(event.locationInWindow, from: nil)
     }
 
     private func drawCodeBlockBackgrounds(in dirtyRect: NSRect) {

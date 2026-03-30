@@ -28,8 +28,8 @@ public final class OnboardingViewModel: ObservableObject {
     private let authSession: AuthSession
     private let onboardingAPI: OnboardingProviding
     private let settingsAPI: SettingsProviding
-    private let locationPermissionRequester: any LocationPermissionRequesting
-    private let notificationsPermissionRequester: any NotificationPermissionRequesting
+    private var locationPermissionRequesterStorage: (any LocationPermissionRequesting)?
+    private var notificationsPermissionRequesterStorage: (any NotificationPermissionRequesting)?
     private let userDefaults: UserDefaults
     private var skippedProviderSetup = false
     private var resolvedPermissionSteps = Set<OnboardingStep>()
@@ -46,6 +46,24 @@ public final class OnboardingViewModel: ObservableObject {
     private static let isoFormatter = ISO8601DateFormatter()
     private static let onboardingStatusKey = AppStorageKeys.onboardingStatus
 
+    private var locationPermissionRequester: any LocationPermissionRequesting {
+        if let requester = locationPermissionRequesterStorage {
+            return requester
+        }
+        let requester = LocationPermissionRequester()
+        locationPermissionRequesterStorage = requester
+        return requester
+    }
+
+    private var notificationsPermissionRequester: any NotificationPermissionRequesting {
+        if let requester = notificationsPermissionRequesterStorage {
+            return requester
+        }
+        let requester = NotificationPermissionRequester()
+        notificationsPermissionRequesterStorage = requester
+        return requester
+    }
+
     public init(
         authSession: AuthSession,
         onboardingAPI: OnboardingProviding,
@@ -58,8 +76,8 @@ public final class OnboardingViewModel: ObservableObject {
         self.authSession = authSession
         self.onboardingAPI = onboardingAPI
         self.settingsAPI = settingsAPI
-        self.locationPermissionRequester = locationPermissionRequester ?? LocationPermissionRequester()
-        self.notificationsPermissionRequester = notificationsPermissionRequester ?? NotificationPermissionRequester()
+        self.locationPermissionRequesterStorage = locationPermissionRequester
+        self.notificationsPermissionRequesterStorage = notificationsPermissionRequester
         self.isTestingOnboarding = isTestingOnboarding ?? OnboardingPresentation.isTestingOnboardingEnabled()
         self.userDefaults = userDefaults
     }

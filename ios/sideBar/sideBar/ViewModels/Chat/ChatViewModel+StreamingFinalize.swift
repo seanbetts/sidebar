@@ -134,10 +134,17 @@ extension ChatViewModel {
               !shouldPersistAssistantMessage(assistantMessage) else {
             return nil
         }
-        guard let presentation = retryableEmptyResponsePresentation(
+        guard let presentation = emptyAssistantPresentation(
             for: status,
             streamError: streamError,
             errorDetails: errorDetails
+        ) else {
+            return .discard
+        }
+        guard shouldPreserveEmptyAssistantFailure(
+            presentation: presentation,
+            status: status,
+            messageId: messageId
         ) else {
             return .discard
         }
@@ -156,7 +163,7 @@ extension ChatViewModel {
         currentStreamMessageId = nil
     }
 
-    private func retryableEmptyResponsePresentation(
+    private func emptyAssistantPresentation(
         for status: MessageStatus,
         streamError: String?,
         errorDetails: String?
@@ -167,14 +174,32 @@ extension ChatViewModel {
             )
         }
 
-        let presentation = ErrorMapping.chatStreamPresentation(
+        guard streamError?.trimmedOrNil != nil || errorDetails?.trimmedOrNil != nil else {
+            return nil
+        }
+
+        return ErrorMapping.chatStreamPresentation(
             from: errorDetails ?? streamError,
             fallbackUserMessage: streamError
         )
-        guard presentation.category == .emptyResponse, presentation.isRetryable else {
-            return nil
+    }
+
+    private func shouldPreserveEmptyAssistantFailure(
+        presentation: ChatStreamErrorPresentation,
+        status: MessageStatus,
+        messageId: String
+    ) -> Bool {
+        if status == .complete || presentation.category == .emptyResponse {
+            return isRetryReplayFinalization(for: messageId)
         }
-        return presentation
+        return status == .error
+    }
+
+    private func isRetryReplayFinalization(for messageId: String) -> Bool {
+        guard retryStateBeforeReplay != nil else {
+            return false
+        }
+        return latestRetrySource?.assistantMessageID == messageId
     }
 
     private func updateRetryStateAfterFinalize(

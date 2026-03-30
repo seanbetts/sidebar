@@ -67,7 +67,7 @@ extension ChatViewModel {
         clearRetryState()
         let userMessageId = UUID().uuidString
         let assistantMessageId = UUID().uuidString
-        let timestamp = Self.isoTimestamp(from: self.clock())
+        let timestamp = nextAppendedMessageTimestamp()
         let attachmentsForMessage = readyAttachments.compactMap { attachment -> ChatAttachment? in
             guard let fileId = attachment.fileId else { return nil }
             return ChatAttachment(fileId: fileId, filename: attachment.name)
@@ -398,5 +398,18 @@ extension ChatViewModel {
         if !silent {
             isLoadingMessages = false
         }
+    }
+
+    func nextAppendedMessageTimestamp() -> String {
+        let currentDate = clock()
+        guard let latestMessageDate = messages.compactMap({ DateParsing.parseISO8601($0.timestamp) }).max() else {
+            return Self.isoTimestamp(from: currentDate)
+        }
+
+        if currentDate > latestMessageDate {
+            return Self.isoTimestamp(from: currentDate)
+        }
+
+        return Self.isoTimestamp(from: latestMessageDate.addingTimeInterval(0.001))
     }
 }

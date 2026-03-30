@@ -113,12 +113,13 @@ enum HomeWidgetSignedOutContent {
 
 struct HomeWidgetSignedOutView: View {
     let content: HomeWidgetSignedOutContent
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "person.crop.circle.badge.exclamationmark")
                 .font(.system(size: 32))
-                .foregroundStyle(.white)
+                .foregroundStyle(colorScheme == .dark ? .white : .black)
             Text("Sign in to sideBar")
                 .font(.headline)
             Text(content.subtitle)

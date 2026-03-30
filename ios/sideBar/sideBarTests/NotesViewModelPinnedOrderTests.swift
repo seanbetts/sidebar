@@ -38,6 +38,9 @@ final class NotesViewModelPinnedOrderTests: XCTestCase {
             networkStatus: NotesPinnedOrderTestNetworkStatus(isNetworkAvailable: true)
         )
         store.applyTreeUpdate(makePinnedTree(), persist: false)
+        await waitUntil(timeout: .milliseconds(200)) {
+            currentPinnedOrder(in: viewModel.tree) == ["/a.md", "/b.md"]
+        }
         let previousOrder = currentPinnedOrder(in: viewModel.tree)
 
         let success = await viewModel.reorderPinnedNotes(ids: ["/b.md", "/a.md"])

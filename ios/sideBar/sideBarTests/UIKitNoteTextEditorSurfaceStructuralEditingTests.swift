@@ -98,7 +98,7 @@ extension UIKitNoteTextEditorSurfaceEditingTests {
         let document = NotesSemanticDocument(
             blocks: [
                 .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                .paragraph([.init(text: "- [ ]", marks: [])])
+                .paragraph([.init(text: "[]", marks: [])])
             ]
         )
         let viewModel = NativeNoteEditorViewModel()
@@ -125,7 +125,7 @@ extension UIKitNoteTextEditorSurfaceEditingTests {
         let document = NotesSemanticDocument(
             blocks: [
                 .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                .paragraph([.init(text: "- [ ]", marks: [])])
+                .paragraph([.init(text: "[]", marks: [])])
             ]
         )
         let viewModel = NativeNoteEditorViewModel()
@@ -153,8 +153,8 @@ extension UIKitNoteTextEditorSurfaceEditingTests {
 
         let undoneSnapshot = viewModel.currentPersistenceSnapshot()
         XCTAssertEqual(undoneSnapshot.document.blocks.map(\.type), [.title, .paragraph])
-        XCTAssertEqual(undoneSnapshot.document.blocks[1].content, [.init(text: "- [ ] ", marks: [])])
-        XCTAssertEqual(undoneSnapshot.plainText, "Title\n- [ ] ")
+        XCTAssertEqual(undoneSnapshot.document.blocks[1].content, [.init(text: "[] ", marks: [])])
+        XCTAssertEqual(undoneSnapshot.plainText, "Title\n[] ")
     }
 }
 #endif

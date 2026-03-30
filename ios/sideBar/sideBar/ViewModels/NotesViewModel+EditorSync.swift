@@ -67,11 +67,13 @@ extension NotesViewModel {
             return false
         }
         store.applyPinnedOrder(ids)
+        setMirroredTree(store.tree)
         do {
             try await api.updatePinnedOrder(ids: ids)
             return true
         } catch {
             store.applyPinnedOrder(previousOrder)
+            setMirroredTree(store.tree)
             toastCenter.show(message: "Failed to reorder pinned notes")
             return false
         }
