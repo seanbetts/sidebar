@@ -96,6 +96,7 @@ def validate_note_document(
             _adapt_version_one_block(block, index=index)
             for index, block in enumerate(blocks)
         ]
+    blocks = _normalize_root_block_inputs(blocks)
 
     canonical_blocks = []
     for index, block in enumerate(blocks):
@@ -231,6 +232,14 @@ def _normalize_block(
 
     if block_type == "blockquote":
         children = normalized.get("children")
+        if children is None and isinstance(normalized.get("content"), list):
+            children = [
+                {
+                    "type": "paragraph",
+                    "content": normalized["content"],
+                }
+            ]
+            normalized["children"] = children
         if not isinstance(children, list):
             raise _invalid_document(f"block {index} children must be a list")
         normalized_children = []
@@ -275,6 +284,71 @@ def _normalize_block(
         "content": normalized["content"],
     }
     return canonical
+
+
+def _normalize_root_block_inputs(blocks: list[Any]) -> list[Any]:
+    """Normalize root-level AI drift before canonical block validation."""
+    normalized_blocks: list[Any] = []
+    index = 0
+
+    while index < len(blocks):
+        block = blocks[index]
+        if not _starts_root_list_item_sequence(blocks, index):
+            normalized_blocks.append(block)
+            index += 1
+            continue
+
+        grouped_blocks, next_index = _collect_root_list_item_sequence(blocks, index)
+        normalized_blocks.append(grouped_blocks)
+        index = next_index
+
+    return normalized_blocks
+
+
+def _starts_root_list_item_sequence(blocks: list[Any], index: int) -> bool:
+    """Return True when a root list-item run should become a list container."""
+    if index == 0:
+        return False
+    if index + 1 >= len(blocks):
+        return False
+    return _is_list_item_block(blocks[index]) and _is_list_item_block(blocks[index + 1])
+
+
+def _collect_root_list_item_sequence(
+    blocks: list[Any],
+    index: int,
+) -> tuple[dict[str, Any], int]:
+    """Collect one run of root list items into an inferred list container."""
+    children: list[dict[str, Any]] = []
+    inferred_type = "checklist"
+
+    while index < len(blocks) and _is_list_item_block(blocks[index]):
+        child = deepcopy(blocks[index])
+        _normalize_legacy_block_aliases(child)
+        if not isinstance(child.get("checked"), bool):
+            inferred_type = "unordered_list"
+        children.append(child)
+        index += 1
+
+    canonical_children: list[dict[str, Any]] = []
+    for child in children:
+        canonical_child = {
+            "type": "list_item",
+            "content": child.get("content", []),
+        }
+        if inferred_type == "checklist":
+            canonical_child["checked"] = bool(child.get("checked"))
+        canonical_children.append(canonical_child)
+
+    return {"type": inferred_type, "children": canonical_children}, index
+
+
+def _is_list_item_block(block: Any) -> bool:
+    """Return True when a block is a raw list item."""
+    if not isinstance(block, dict):
+        return False
+    block_type = block.get("type")
+    return isinstance(block_type, str) and block_type == "list_item"
 
 
 def _normalize_legacy_block_aliases(block: Any) -> None:

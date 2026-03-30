@@ -146,6 +146,49 @@ def test_validate_note_document_accepts_version_two_nested_container_blocks() ->
     assert validated == document
 
 
+def test_validate_note_document_normalizes_blockquote_content_to_children() -> None:
+    document = {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            {"type": "title", "content": [{"text": "Title", "marks": []}]},
+            {
+                "type": "blockquote",
+                "content": [{"text": "Quoted", "marks": []}],
+            },
+        ],
+    }
+
+    validated = validate_note_document(document)
+
+    assert validated["blocks"][1] == {
+        "type": "blockquote",
+        "children": [
+            {"type": "paragraph", "content": [{"text": "Quoted", "marks": []}]}
+        ],
+    }
+
+
+def test_validate_note_document_groups_consecutive_root_list_items() -> None:
+    document = {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            {"type": "title", "content": [{"text": "Title", "marks": []}]},
+            {"type": "list_item", "content": [{"text": "First", "marks": []}]},
+            {"type": "list_item", "content": [{"text": "Second", "marks": []}]},
+        ],
+    }
+
+    validated = validate_note_document(document)
+
+    assert validated["blocks"][1] == {
+        "type": "unordered_list",
+        "children": [
+            {"type": "list_item", "content": [{"text": "First", "marks": []}]},
+            {"type": "list_item", "content": [{"text": "Second", "marks": []}]},
+        ],
+    }
+
+
 def test_validate_note_document_accepts_inline_link_payload() -> None:
     document = {
         "version": NOTE_DOCUMENT_VERSION,

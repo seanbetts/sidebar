@@ -103,6 +103,55 @@ def test_notes_tool_definitions_use_document_payloads_and_semantic_writer() -> N
     assert scratchpad_update["input_schema"]["required"] == ["document"]
 
 
+def test_notes_create_contract_describes_nested_document_shape() -> None:
+    definitions = get_notes_definitions()
+    create = definitions["Create Note"]
+    document_description = create["input_schema"]["properties"]["document"][
+        "description"
+    ]
+    notes_skill = (BACKEND_ROOT / "skills" / "notes" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "children" in document_description
+    assert "blockquote" in document_description
+    assert "list_item" in document_description
+    assert "top-level list_item" in document_description
+    assert "children" in notes_skill
+
+
+def test_notes_skill_includes_canonical_nested_document_example() -> None:
+    notes_skill = (BACKEND_ROOT / "skills" / "notes" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Canonical example:" in notes_skill
+    assert '"type": "unordered_list"' in notes_skill
+    assert '"type": "blockquote"' in notes_skill
+    assert '"children"' in notes_skill
+    assert "do not send `blockquote.content`" in notes_skill
+
+
+def test_tool_mapper_failure_logging_happens_in_executor_only() -> None:
+    mapper_source = (
+        API_ROOT / "services" / "agent" / "tools" / "mapper.py"
+    ).read_text(encoding="utf-8")
+
+    execution_block = (
+        "normalized = self._normalize_result(result)\n"
+        "            if normalized.get(\"success\"):\n"
+        "                AuditLogger.log_tool_call("
+    )
+
+    assert execution_block in mapper_source
+    assert (
+        "tool_name=display_name,\n"
+        "                parameters=log_params,\n"
+        "                duration_ms=(time.time() - start_time) * 1000,\n"
+        "                success=result.get(\"success\", False),"
+    ) not in mapper_source
+
+
 def test_notes_writer_surface_no_longer_references_save_markdown_or_content_flags() -> None:
     contract_files = (
         API_ROOT / "mcp" / "notes_tools.py",

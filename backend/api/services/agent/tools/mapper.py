@@ -415,14 +415,14 @@ class ToolMapper:
             ]:
                 log_params.pop("content", None)
 
-            AuditLogger.log_tool_call(
-                tool_name=display_name,
-                parameters=log_params,
-                duration_ms=(time.time() - start_time) * 1000,
-                success=result.get("success", False),
-            )
-
             normalized = self._normalize_result(result)
+            if normalized.get("success"):
+                AuditLogger.log_tool_call(
+                    tool_name=display_name,
+                    parameters=log_params,
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=True,
+                )
             status = "success" if normalized.get("success") else "error"
             tool_executions_total.labels(tool_skill, status).inc()
             tool_execution_duration_seconds.labels(tool_skill).observe(

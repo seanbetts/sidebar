@@ -20,7 +20,14 @@ def get_notes_definitions() -> dict:
                 "properties": {
                     "document": {
                         "type": "object",
-                        "description": "Semantic note document with version and blocks",
+                        "description": (
+                            "Semantic note document with version and blocks. "
+                            "Use container blocks with children: unordered_list, "
+                            "ordered_list, and checklist require children list_item "
+                            "blocks, and blockquote requires children body blocks "
+                            "such as paragraph. Do not emit top-level list_item "
+                            "blocks."
+                        ),
                     },
                     "folder": {"type": "string", "description": "Optional folder path"},
                     "tags": {"type": "array", "items": {"type": "string"}},

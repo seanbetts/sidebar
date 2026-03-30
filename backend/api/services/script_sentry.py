@@ -14,6 +14,19 @@ _DEFAULT_PROCESS_TYPE = "script"
 _sentry_initialized = False
 
 
+def resolve_sentry_environment(app_env: str | None) -> str | None:
+    """Return a canonical Sentry environment tag for the current app environment."""
+    if not isinstance(app_env, str):
+        return None
+
+    normalized = app_env.strip().lower()
+    if not normalized:
+        return None
+    if normalized in {"prod", "production"}:
+        return "production"
+    return normalized
+
+
 def initialize_script_sentry(
     script_name: str,
     *,
@@ -33,7 +46,7 @@ def initialize_script_sentry(
             integrations=merged_integrations,
             traces_sample_rate=settings.sentry_traces_sample_rate,
             profiles_sample_rate=settings.sentry_profiles_sample_rate,
-            environment=settings.app_env or None,
+            environment=resolve_sentry_environment(settings.app_env),
         )
         _sentry_initialized = True
 

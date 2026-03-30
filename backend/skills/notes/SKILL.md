@@ -48,10 +48,60 @@ Notes writes use canonical semantic note documents:
   `unordered_list`, `ordered_list`, `checklist`, `list_item`, `blockquote`,
   and `code_block`
 - block `0` is normalized to `title`
+- container blocks use `children`, not `content`
+- `unordered_list`, `ordered_list`, and `checklist` contain `children` made of
+  `list_item` blocks
+- `blockquote` contains `children` made of body blocks such as `paragraph`,
+  `heading`, `subheading`, lists, or `code_block`
+- do not emit top-level `list_item` blocks, wrap them in a list container
 - block `content` is a list of inline segments with `text`, `marks`, and
   optional `link`
 - supported inline marks are `bold`, `italic`, `underline`, `strikethrough`,
   and `inline_code`
+
+Canonical example:
+
+```json
+{
+  "version": 2,
+  "blocks": [
+    {
+      "type": "title",
+      "content": [{"text": "Q2 AI Strategy", "marks": []}]
+    },
+    {
+      "type": "unordered_list",
+      "children": [
+        {
+          "type": "list_item",
+          "content": [{"text": "Activation at scale", "marks": ["bold"]}]
+        },
+        {
+          "type": "list_item",
+          "content": [{"text": "Measurement reinvention", "marks": []}]
+        }
+      ]
+    },
+    {
+      "type": "blockquote",
+      "children": [
+        {
+          "type": "paragraph",
+          "content": [{"text": "The workflow layer is the moat.", "marks": []}]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [{"text": "Next step: align with regional MDs.", "marks": []}]
+    }
+  ]
+}
+```
+
+Invalid shape to avoid:
+- do not send a top-level `list_item`
+- do not send `blockquote.content`, use `blockquote.children`
 
 Titles are derived from the first non-empty projected plain-text line. Literal `#`
 prefixes remain part of the title when they are part of the content.

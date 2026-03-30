@@ -49,6 +49,7 @@ from api.routers import settings as user_settings
 from api.security.path_validator import PathValidator
 from api.services.agent.skills.executor import SkillExecutor
 from api.services.knowledge.provider import init_docs_indexer
+from api.services.script_sentry import resolve_sentry_environment
 from api.services.user_settings_service import UserSettingsService
 from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 
@@ -82,7 +83,7 @@ if settings.sentry_dsn:
         integrations=integrations,
         traces_sample_rate=settings.sentry_traces_sample_rate,
         profiles_sample_rate=settings.sentry_profiles_sample_rate,
-        environment=settings.app_env or None,
+        environment=resolve_sentry_environment(settings.app_env),
     )
 
 
