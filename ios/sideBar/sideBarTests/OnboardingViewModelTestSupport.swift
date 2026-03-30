@@ -125,6 +125,28 @@ final class OnboardingMockSettingsAPI: SettingsProviding {
 
     func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
         updates.append(update)
+        settings = UserSettings(
+            userId: settings.userId,
+            communicationStyle: update.communicationStyle ?? settings.communicationStyle,
+            workingRelationship: update.workingRelationship ?? settings.workingRelationship,
+            name: update.name ?? settings.name,
+            jobTitle: update.jobTitle ?? settings.jobTitle,
+            employer: update.employer ?? settings.employer,
+            dateOfBirth: update.includeDateOfBirth ? update.dateOfBirth : (update.dateOfBirth ?? settings.dateOfBirth),
+            gender: update.gender ?? settings.gender,
+            pronouns: update.pronouns ?? settings.pronouns,
+            location: update.location ?? settings.location,
+            profileImageUrl: settings.profileImageUrl,
+            assistantIdentity: update.assistantIdentity ?? settings.assistantIdentity,
+            assistantIdentityMeta: settings.assistantIdentityMeta,
+            assistantSoul: settings.assistantSoul,
+            assistantSoulMeta: settings.assistantSoulMeta,
+            aiPrimaryProvider: update.aiPrimaryProvider ?? settings.aiPrimaryProvider,
+            aiPrimaryProviderHasKey: settings.aiPrimaryProviderHasKey,
+            aiPrimaryProviderKeyLast4: settings.aiPrimaryProviderKeyLast4,
+            enabledSkills: update.enabledSkills ?? settings.enabledSkills,
+            installedStoreSkills: settings.installedStoreSkills
+        )
         return settings
     }
 

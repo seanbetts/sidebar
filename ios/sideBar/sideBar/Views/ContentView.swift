@@ -140,6 +140,9 @@ public struct ContentView: View {
             authSession: environment.container.authSession,
             onboardingAPI: environment.container.onboardingAPI,
             settingsAPI: environment.container.settingsAPI,
+            onSettingsUpdated: { settings in
+                environment.settingsViewModel.applySettingsResponse(settings)
+            },
             onRouteToSignIn: {
                 suppressAutomaticOnboarding = true
             },

@@ -28,6 +28,7 @@ public final class OnboardingViewModel: ObservableObject {
     private let authSession: AuthSession
     private let onboardingAPI: OnboardingProviding
     private let settingsAPI: SettingsProviding
+    private let onSettingsUpdated: ((UserSettings) -> Void)?
     private var locationPermissionRequesterStorage: (any LocationPermissionRequesting)?
     private var notificationsPermissionRequesterStorage: (any NotificationPermissionRequesting)?
     private let userDefaults: UserDefaults
@@ -68,6 +69,7 @@ public final class OnboardingViewModel: ObservableObject {
         authSession: AuthSession,
         onboardingAPI: OnboardingProviding,
         settingsAPI: SettingsProviding,
+        onSettingsUpdated: ((UserSettings) -> Void)? = nil,
         locationPermissionRequester: (any LocationPermissionRequesting)? = nil,
         notificationsPermissionRequester: (any NotificationPermissionRequesting)? = nil,
         isTestingOnboarding: Bool? = nil,
@@ -76,6 +78,7 @@ public final class OnboardingViewModel: ObservableObject {
         self.authSession = authSession
         self.onboardingAPI = onboardingAPI
         self.settingsAPI = settingsAPI
+        self.onSettingsUpdated = onSettingsUpdated
         self.locationPermissionRequesterStorage = locationPermissionRequester
         self.notificationsPermissionRequesterStorage = notificationsPermissionRequester
         self.isTestingOnboarding = isTestingOnboarding ?? OnboardingPresentation.isTestingOnboardingEnabled()
@@ -84,29 +87,6 @@ public final class OnboardingViewModel: ObservableObject {
 
     var transitionVariant: OnboardingTransitionVariant {
         skippedProviderSetup ? .providerSetupSkipped : .providerConnected
-    }
-
-    var transitionTitle: String {
-        transitionVariant == .providerConnected ? "You're All Set" : "You're Ready To Explore"
-    }
-
-    var transitionSubtitle: String {
-        transitionVariant == .providerConnected
-            ? "I'm connected and ready to go.\nLet me show you around."
-            : "You can start using sideBar now, even without connecting an AI provider yet."
-    }
-
-    var transitionHighlights: [String] {
-        switch transitionVariant {
-        case .providerConnected:
-            return []
-        case .providerSetupSkipped:
-            return [
-                "You can still capture notes, tasks, files, and save websites to read later.",
-                "Chat and other assistant-powered features stay unavailable until you add an API key.",
-                "You can connect your AI brain later in Settings whenever you're ready."
-            ]
-        }
     }
 
     public func advance() {
@@ -193,8 +173,11 @@ public final class OnboardingViewModel: ObservableObject {
         if !trimmedName.isEmpty {
             let settingsAPI = settingsAPI
             let onboardingAPI = onboardingAPI
-            Task {
-                _ = try? await settingsAPI.updateSettings(SettingsUpdate(name: trimmedName))
+            let onSettingsUpdated = onSettingsUpdated
+            Task { @MainActor in
+                if let response = try? await settingsAPI.updateSettings(SettingsUpdate(name: trimmedName)) {
+                    onSettingsUpdated?(response)
+                }
                 _ = try? await onboardingAPI.updateOnboarding(
                     OnboardingUpdate(
                         milestones: OnboardingMilestonesUpdate(
@@ -468,6 +451,29 @@ public final class OnboardingViewModel: ObservableObject {
 }
 
 extension OnboardingViewModel {
+    var transitionTitle: String {
+        transitionVariant == .providerConnected ? "You're All Set" : "You're Ready To Explore"
+    }
+
+    var transitionSubtitle: String {
+        transitionVariant == .providerConnected
+            ? "I'm connected and ready to go.\nLet me show you around."
+            : "You can start using sideBar now, even without connecting an AI provider yet."
+    }
+
+    var transitionHighlights: [String] {
+        switch transitionVariant {
+        case .providerConnected:
+            return []
+        case .providerSetupSkipped:
+            return [
+                "You can still capture notes, tasks, files, and save websites to read later.",
+                "Chat and other assistant-powered features stay unavailable until you add an API key.",
+                "You can connect your AI brain later in Settings whenever you're ready."
+            ]
+        }
+    }
+
     public var currentStepHasBack: Bool { Self.stepsWithBack.contains(currentStep) }
     public var totalSteps: Int { OnboardingStep.allCases.count }
     public var currentStepIndex: Int { currentStep.rawValue }

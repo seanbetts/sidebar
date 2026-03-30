@@ -20,6 +20,7 @@ struct OnboardingView: View {
         authSession: AuthSession,
         onboardingAPI: OnboardingProviding,
         settingsAPI: SettingsProviding,
+        onSettingsUpdated: ((UserSettings) -> Void)? = nil,
         onRouteToSignIn: @escaping () -> Void = {},
         onComplete: @escaping () -> Void = {}
     ) {
@@ -27,7 +28,8 @@ struct OnboardingView: View {
             wrappedValue: OnboardingViewModel(
                 authSession: authSession,
                 onboardingAPI: onboardingAPI,
-                settingsAPI: settingsAPI
+                settingsAPI: settingsAPI,
+                onSettingsUpdated: onSettingsUpdated
             )
         )
         self.onRouteToSignIn = onRouteToSignIn
