@@ -7,7 +7,7 @@ description: Central tracker for all known divergences between the design system
 |---|---|
 | Status | live |
 | Owner | both |
-| Updated | 2026-03-29 |
+| Updated | 2026-03-30 |
 | Dependencies | all approved design docs |
 
 ## Purpose
@@ -154,6 +154,8 @@ Single working list of every known divergence between the design system and the 
 | `SettingsMoreTabView` uses `.appFont(.subheadline)` — removed in rationalisation; replace with `.body` | `SettingsMoreTabView.swift` | [typography](./foundations/typography) |
 | `SettingsTabsView` applies `.appFont(.subheadline)` as a global modifier on the whole tab view — removed in rationalisation; replace with `.body` | `SettingsTabsView.swift` | [typography](./foundations/typography) |
 | `MacModalShell` inspector sheet `maxWidth: 1_120` is hardcoded — should be a `Size` token (`Size.inspectorMaxWidth`) | `MacModalShell.swift` | [components](./components/overview) |
+| `SkillsStoreDetailView` "Unable to load Skills Store" placeholder has no retry action — user cannot recover without navigating away and back | `SkillsStoreDetailView.swift:117` | [error-presentation](./patterns/error-presentation) |
+| `ChatViewModel.toastCenter` is optional via `ui.toastCenter` — if nil at runtime, stream error toasts silently drop with no user feedback | `ChatViewModel.swift:132`, `ChatViewModel+StreamingErrors.swift:52` | [error-presentation](./patterns/error-presentation) |
 | `DesignTokens.Typography` is unused — parallel system to `AppFontStyle`, should be removed | `DesignTokens.swift` | [token-audit](./audits/token-audit) |
 | `SwiftUINoteTextEditorSurface.swift` is dead code — no callers, not mounted at runtime; safe to delete | `Views/Notes/SwiftUINoteTextEditorSurface.swift` | [system-framework-usage-audit](./audits/system-framework-usage-audit) |
 | `PlatformTokens.panelHeaderBackground` is a single-value alias for `DesignTokens.Colors.sidebar` — remove and update callers | `PlatformTokens.swift` | [token-audit](./audits/token-audit) |
