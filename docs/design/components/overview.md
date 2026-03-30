@@ -15,14 +15,7 @@ Define the shared component library — what exists, when to use each component,
 
 ### SelectableRow
 
-The core building block for all list rows in panel sections. Provides selection highlight, touch target enforcement (44pt minimum), animation on selection change (respects reduce motion), and an optional trailing primary action button.
-
-**When to use**: Any tappable row in a `List` or standalone scroll context that needs selection state. This is the default row wrapper — do not build ad-hoc row highlight and selection logic inline.
-
-**Key rules**:
-- Always use `SelectableRow` for list rows that have a selected state. Do not implement selection highlight manually.
-- Pass `isSelected` correctly — the component handles the visual state.
-- The optional `primaryAction` trailing button is for the single most important secondary action on the row (e.g., complete task). Do not overload it.
+The core building block for all list rows in panel sections. Handles selection highlight, 44pt touch targets, reduce-motion-aware animation, and the `.isSelected` accessibility trait. See [SelectableRow](./selectable-row) for full usage rules.
 
 ### PanelHeader
 
@@ -67,27 +60,13 @@ Search input with leading icon and clear button. Two variants:
 
 ## Action components
 
-### HeaderActionButton / HeaderActionIcon / HeaderActionRow
+### HeaderActionButton / HeaderActionRow / HeaderActionMenuButton
 
-`HeaderActionButton` is the standard interactive icon button for panel headers and toolbars. It wraps `HeaderActionIcon` in a `Button` and requires an `accessibilityLabel`.
-
-`HeaderActionRow` is an `HStack` wrapper for grouping multiple `HeaderActionButton` instances with consistent spacing (default 20pt).
-
-`HeaderActionMenuButton` (iOS only) wraps `UIKitMenuButton` for buttons that present a `Menu`.
-
-**When to use**: All icon buttons in panel headers and toolbars. Do not build ad-hoc icon buttons inline in header views.
-
-**Key rules**:
-- `accessibilityLabel` is required — the API enforces it.
-- Use `HeaderActionRow` to group multiple actions. Do not build a custom `HStack` for header button groups.
+Standard icon buttons and button groups for panel headers and toolbars. `accessibilityLabel` is required and enforced by the API. See [Header Actions](./header-actions) for full usage rules.
 
 ### SidebarMenuItem
 
-Factory type for context menu and swipe action items. Provides pre-configured factory methods for all common row actions with assigned SF Symbol names. See [iconography](../foundations/iconography) for the full action symbol table.
-
-**When to use**: All context menus and swipe action configurations on list rows.
-
-**Key rules**: Do not assign SF Symbol names to menu items inline in views. Use `SidebarMenuItem` factory methods. If a new action is needed, add a factory method to `SidebarMenuItem`.
+Factory type for all context menu and swipe action items. Provides canonical SF Symbol assignments and destructive role handling. See [SidebarMenuItem](./sidebar-menu-item) for the full factory method table and usage rules.
 
 ### SidebarSwipeActions
 

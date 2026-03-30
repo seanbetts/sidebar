@@ -48,6 +48,9 @@
         "group": "Components",
         "pages": [
           "components/overview",
+          "components/selectable-row",
+          "components/header-actions",
+          "components/sidebar-menu-item",
           "components/empty-state",
           "components/placeholder",
           "components/list-skeleton"
