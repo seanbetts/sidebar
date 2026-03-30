@@ -38,6 +38,12 @@ public struct LoginView: View {
 
     public var body: some View {
         ZStack {
+            DesignTokens.Colors.background
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    focusedField = nil
+                }
             VStack(spacing: 24) {
                 headerView
                 GroupBox {
@@ -56,11 +62,6 @@ public struct LoginView: View {
             .frame(maxWidth: 420)
             .padding(DesignTokens.Spacing.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            .background(DesignTokens.Colors.background)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                focusedField = nil
-            }
 
             if showSuccess {
                 ZStack {
