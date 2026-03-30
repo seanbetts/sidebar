@@ -51,13 +51,7 @@ Two layout axes:
 
 ### EmptyStateView
 
-Centred icon, title, and optional subtitle for empty list states. Token-backed font and color.
-
-**When to use**: Any panel section or content area that can be empty. Do not use inline `Text` for empty states — use `EmptyStateView` for consistency.
-
-**Key rules**:
-- Pass `systemImage:` when the empty state represents a whole panel or section and an icon clarifies the context.
-- Keep panel empty-state icons aligned with the owning section's canonical navigation icon. Do not introduce ad-hoc symbols for the same concept in the empty state.
+Centred title, optional subtitle, and optional SF Symbol icon for genuinely empty content areas. See [EmptyStateView](./empty-state) for full usage rules.
 
 ### SearchField
 
@@ -133,11 +127,13 @@ Consistent loading state presentation. `LoadingIndicatorView` is the visual indi
 
 **When to use**: `LoadingView` for full-panel loading states. `LoadingIndicatorView` for inline loading within a populated view. Do not use bare `ProgressView()` without wrapping — use these components for consistent sizing and accessibility handling (the indicator is hidden from VoiceOver).
 
-### ListSkeletons
+### SidebarListSkeleton
 
-Skeleton loading placeholder rows for list panels. Shown while data loads to prevent layout shift.
+Skeleton loading placeholder rows for panel list sections during initial data load. See [SidebarListSkeleton](./list-skeleton) for full usage rules.
 
-**When to use**: Panel list sections during initial load. Prefer skeletons over a spinner when the list structure is known.
+### PlaceholderView
+
+Full-surface error state for content areas that failed to load, with an optional retry action. See [PlaceholderView](./placeholder) for full usage rules.
 
 ### OfflineBanner
 

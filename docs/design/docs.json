@@ -47,7 +47,10 @@
       {
         "group": "Components",
         "pages": [
-          "components/overview"
+          "components/overview",
+          "components/empty-state",
+          "components/placeholder",
+          "components/list-skeleton"
         ]
       },
       {
