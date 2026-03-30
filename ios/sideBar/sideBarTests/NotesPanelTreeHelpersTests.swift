@@ -49,6 +49,9 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         ])
         store.applyTreeUpdate(updatedTree, persist: false)
 
+        await waitUntil(timeout: .milliseconds(200)) {
+            panel.pinnedItems.map { $0.id } == ["note-b", "note-a"]
+        }
         XCTAssertEqual(panel.pinnedItems.map { $0.id }, ["note-b", "note-a"])
     }
 

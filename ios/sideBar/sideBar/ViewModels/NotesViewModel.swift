@@ -44,10 +44,10 @@ public final class NotesViewModel: ObservableObject {
     @Published public private(set) var isLoadingArchived: Bool = false
     @Published public private(set) var errorMessage: String?
 
-    private let api: any NotesProviding
-    private let store: NotesStore
-    private let toastCenter: ToastCenter
-    private let networkStatus: any NetworkStatusProviding
+    let api: any NotesProviding
+    let store: NotesStore
+    let toastCenter: ToastCenter
+    let networkStatus: any NetworkStatusProviding
     private let searchTask = ManagedTask()
     private var cancellables = Set<AnyCancellable>()
     var treeMirrorTask: Task<Void, Never>?, archivedTreeMirrorTask: Task<Void, Never>?
@@ -97,6 +97,7 @@ public final class NotesViewModel: ObservableObject {
         errorMessage = nil
         do {
             try await store.loadTree()
+            tree = store.tree
         } catch {
             if tree == nil {
                 errorMessage = ErrorMapping.message(for: error)
@@ -118,6 +119,7 @@ public final class NotesViewModel: ObservableObject {
         defer { isLoadingArchived = false }
         do {
             try await store.loadArchivedTree(force: force)
+            archivedTree = store.archivedTree
         } catch {
             toastCenter.show(message: "Failed to load archived notes")
         }
@@ -134,6 +136,7 @@ public final class NotesViewModel: ObservableObject {
         }
         do {
             try await store.loadNote(id: id)
+            activeNote = store.activeNote
             pendingNoteId = nil
         } catch {
             if activeNote == nil {
@@ -169,6 +172,9 @@ public final class NotesViewModel: ObservableObject {
             selectedNoteId = nil
         }
         await store.applyRealtimeEvent(payload)
+        tree = store.tree
+        archivedTree = store.archivedTree
+        activeNote = store.activeNote
     }
 
     public func createBlankNote() async -> NotePayload? {
@@ -315,50 +321,6 @@ public final class NotesViewModel: ObservableObject {
         }
     }
 
-    public func updateNoteContent(id: String, document: NotesSemanticDocument) async -> NotePayload? {
-        do {
-            return try await api.updateNote(id: id, document: document)
-        } catch {
-            if let urlError = error as? URLError,
-               urlError.code == .notConnectedToInternet || urlError.code == .timedOut {
-                return nil
-            }
-            toastCenter.show(message: "Failed to update note")
-            return nil
-        }
-    }
-
-    func applySavedNoteAcknowledgement(serverNote: NotePayload, document: NotesSemanticDocument) {
-        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
-        let acknowledged = NotePayload(
-            id: serverNote.id,
-            name: NotesSemanticDocumentProjection.title(from: document),
-            document: document,
-            documentVersion: document.version,
-            plainText: plainText,
-            path: serverNote.path,
-            modified: serverNote.modified,
-            created: serverNote.created
-        )
-        store.applyEditorUpdate(acknowledged)
-    }
-
-    public func applyLocalNoteSnapshot(id: String, document: NotesSemanticDocument) {
-        guard let note = activeNote, note.id == id else { return }
-        let plainText = NotesSemanticDocumentProjection.plainText(from: document)
-        let updated = NotePayload(
-            id: note.id,
-            name: NotesSemanticDocumentProjection.title(from: document),
-            document: document,
-            documentVersion: document.version,
-            plainText: plainText,
-            path: note.path,
-            modified: note.modified,
-            created: note.created
-        )
-        store.applyEditorUpdate(updated)
-    }
-
     public func renameFolder(path: String, newName: String) async {
         guard let trimmed = newName.trimmedOrNil else { return }
         let normalized = normalizeFolderPath(path)
@@ -462,36 +424,5 @@ public final class NotesViewModel: ObservableObject {
         let normalizedFolder = folder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let newPath = normalizedFolder.isEmpty ? filename : "\(normalizedFolder)/\(filename)"
         return path.hasPrefix("/") ? "/\(newPath)" : newPath
-    }
-
-    /// Refreshes widget data by fetching the latest notes tree
-    /// Called by background refresh task to keep widgets up-to-date
-    func refreshWidgetData() async {
-        do {
-            try await store.loadTree(force: true)
-        } catch {
-            // Silently fail - widget will use cached data
-        }
-    }
-}
-
-extension NotesViewModel {
-    public func reorderPinnedNotes(ids: [String]) async -> Bool {
-        guard networkStatus.isNetworkAvailable, !networkStatus.isOffline else {
-            return false
-        }
-        let previousOrder = store.pinnedNoteOrder()
-        guard ids.count == previousOrder.count, Set(ids) == Set(previousOrder) else {
-            return false
-        }
-        store.applyPinnedOrder(ids)
-        do {
-            try await api.updatePinnedOrder(ids: ids)
-            return true
-        } catch {
-            store.applyPinnedOrder(previousOrder)
-            toastCenter.show(message: "Failed to reorder pinned notes")
-            return false
-        }
     }
 }
