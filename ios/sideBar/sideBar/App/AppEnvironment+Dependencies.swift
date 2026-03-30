@@ -48,6 +48,7 @@ extension AppEnvironment {
             container: container,
             core: core,
             stores: stores,
+            isTestMode: isTestMode,
             widgetDataManager: widgetDataManager,
             workspaceStateProvider: workspaceStateProvider
         )

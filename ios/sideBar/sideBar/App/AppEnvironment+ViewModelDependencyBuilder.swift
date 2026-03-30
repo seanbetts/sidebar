@@ -268,6 +268,7 @@ extension AppEnvironment {
             container: ServiceContainer,
             core: CoreDependencyBuilder.Output,
             stores: StoreDependencyBuilder.Output,
+            isTestMode: Bool,
             widgetDataManager: WidgetDataManager,
             workspaceStateProvider: @escaping () -> WorkspaceState? = { nil }
         ) -> Output {
@@ -315,10 +316,7 @@ extension AppEnvironment {
                 cache: container.cacheClient
             )
             let weatherViewModel = WeatherViewModel(api: container.weatherAPI)
-            let currentLocationViewModel = CurrentLocationViewModel(
-                provider: CoreLocationProvider(),
-                labelResolver: CLGeocoderLocationLabelResolver()
-            )
+            let currentLocationViewModel = makeCurrentLocationViewModel(isTestMode: isTestMode)
             let chatViewModel = ChatViewModel(
                 network: ChatNetworkCoordinator(
                     chatAPI: container.chatAPI,
@@ -365,6 +363,29 @@ extension AppEnvironment {
                 weatherViewModel: weatherViewModel,
                 currentLocationViewModel: currentLocationViewModel
             )
+        }
+
+        static func makeCurrentLocationViewModel(isTestMode: Bool) -> CurrentLocationViewModel {
+            CurrentLocationViewModel(
+                provider: makeCurrentLocationProvider(isTestMode: isTestMode),
+                labelResolver: makeCurrentLocationLabelResolver(isTestMode: isTestMode)
+            )
+        }
+
+        static func makeCurrentLocationProvider(isTestMode: Bool) -> any CurrentLocationProviding {
+            if isTestMode {
+                return NoOpCurrentLocationProvider()
+            }
+            return CoreLocationProvider()
+        }
+
+        static func makeCurrentLocationLabelResolver(
+            isTestMode: Bool
+        ) -> any CurrentLocationLabelResolving {
+            if isTestMode {
+                return NoOpCurrentLocationLabelResolver()
+            }
+            return CLGeocoderLocationLabelResolver()
         }
     }
 }

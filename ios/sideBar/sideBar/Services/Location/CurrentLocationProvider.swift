@@ -116,3 +116,38 @@ public final class CLGeocoderLocationLabelResolver: CurrentLocationLabelResolvin
         }
     }
 }
+
+@MainActor
+final class NoOpCurrentLocationProvider: CurrentLocationProviding {
+    private let authorizationStatusSubject = CurrentValueSubject<CLAuthorizationStatus, Never>(
+        .notDetermined
+    )
+    private let locationSubject = PassthroughSubject<CLLocation, Never>()
+
+    var authorizationStatus: CLAuthorizationStatus {
+        authorizationStatusSubject.value
+    }
+
+    var authorizationStatusPublisher: AnyPublisher<CLAuthorizationStatus, Never> {
+        authorizationStatusSubject.eraseToAnyPublisher()
+    }
+
+    var locationPublisher: AnyPublisher<CLLocation, Never> {
+        locationSubject.eraseToAnyPublisher()
+    }
+
+    func requestWhenInUseAuthorization() {
+    }
+
+    func startUpdatingLocation() {
+    }
+
+    func stopUpdatingLocation() {
+    }
+}
+
+final class NoOpCurrentLocationLabelResolver: CurrentLocationLabelResolving {
+    func resolveLabel(for location: CLLocation) async -> String? {
+        nil
+    }
+}
