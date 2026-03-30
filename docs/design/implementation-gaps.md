@@ -11,6 +11,8 @@ Single working list of every known divergence between the design system and the 
 
 **Lifecycle**: When a gap is resolved, remove it from this list and update the source design doc to reflect the corrected state. Done items are not retained here — the updated design doc is the permanent record.
 
+**Execution planning**: Grouped remediation batches, issue sizing, and review/test gates live in [Design System Gap Remediation Implementation Plan](../superpowers/plans/2026-03-30-design-system-gap-remediation.md).
+
 ---
 
 ## iOS / macOS (native)
