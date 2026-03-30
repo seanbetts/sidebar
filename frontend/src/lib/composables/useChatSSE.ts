@@ -119,14 +119,17 @@ export function useChatSSE() {
 					dispatchCacheEvent('note.updated');
 					websitesStore.clearActive();
 					ingestionViewerStore.clearActive();
-					currentNoteId.set(null);
 					if (data?.id && data?.title) {
 						treeStore.renameNoteNode?.(data.id, `${data.title}.md`);
 					}
 					if (data?.id) {
 						const editorState = get(editorStore);
 						if (editorState.currentNoteId === data.id) {
-							await editorStore.loadNote('notes', data.id, { source: 'ai' });
+							if (typeof data.content === 'string') {
+								editorStore.applyRemoteNoteUpdate(data);
+							} else {
+								await editorStore.loadNote('notes', data.id, { source: 'ai' });
+							}
 						}
 					}
 				},

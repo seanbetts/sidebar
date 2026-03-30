@@ -138,3 +138,34 @@ def test_tool_side_effect_events_maps_conversation_title_updated() -> None:
             },
         }
     ]
+
+
+def test_tool_side_effect_events_maps_edit_note_snapshot() -> None:
+    events = tool_side_effect_events(
+        "Edit Note",
+        {
+            "success": True,
+            "data": {
+                "id": "note-1",
+                "title": "Renamed",
+                "name": "Renamed",
+                "path": "note-1",
+                "content": "Renamed\nBody",
+                "updated_at": "2026-03-30T15:10:00Z",
+            },
+        },
+    )
+
+    assert events == [
+        {
+            "type": "note_updated",
+            "data": {
+                "id": "note-1",
+                "title": "Renamed",
+                "name": "Renamed",
+                "path": "note-1",
+                "content": "Renamed\nBody",
+                "updated_at": "2026-03-30T15:10:00Z",
+            },
+        }
+    ]

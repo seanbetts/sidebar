@@ -103,6 +103,10 @@ def tool_side_effect_events(
                 "data": {
                     "id": result_data.get("id"),
                     "title": result_data.get("title"),
+                    "name": result_data.get("name"),
+                    "path": result_data.get("path"),
+                    "content": result_data.get("content"),
+                    "updated_at": result_data.get("updated_at"),
                 },
             }
         )

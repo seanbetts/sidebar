@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from api.exceptions import BadRequestError, NoteNotFoundError
 from api.models.note import Note
 from api.services.notes_service import NotesService
+from api.services.notes_workspace_service import NotesWorkspaceService
 from api.utils.timestamps import parse_client_timestamp
 
 
@@ -30,7 +31,7 @@ class NotesEditService:
         *,
         expected_updated_at: str,
         operations: list[dict[str, Any]],
-    ) -> dict[str, str]:
+    ) -> dict[str, Any]:
         """Apply ordered edit operations and persist atomically."""
         note = NotesEditService._get_note(db, user_id, note_id)
         client_updated_at = parse_client_timestamp(
@@ -64,11 +65,11 @@ class NotesEditService:
         )
         if updated_at is None:
             raise BadRequestError("Updated note is missing updated_at")
-        return {
-            "id": str(updated_note.id),
-            "title": updated_note.title,
-            "updated_at": updated_at,
-        }
+        payload = NotesWorkspaceService.build_note_payload(
+            updated_note, include_content=True
+        )
+        payload["updated_at"] = updated_at
+        return payload
 
     @staticmethod
     def _get_note(db: Session, user_id: str, note_id: UUID) -> Note:

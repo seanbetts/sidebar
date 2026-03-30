@@ -68,11 +68,12 @@ def test_edit_note_renames_title_block_and_returns_updated_metadata(db_session):
 
     refreshed = _refresh_note(db_session, note.id)
     assert refreshed is not None
-    assert result == {
-        "id": str(note.id),
-        "title": "Renamed title",
-        "updated_at": refreshed.updated_at.isoformat(),
-    }
+    assert result["id"] == str(note.id)
+    assert result["title"] == "Renamed title"
+    assert result["name"] == "Renamed title"
+    assert result["path"] == str(note.id)
+    assert result["content"] == "Renamed title\nBody"
+    assert result["updated_at"] == refreshed.updated_at.isoformat()
     assert refreshed.title == "Renamed title"
     assert refreshed.document_version == NOTE_DOCUMENT_VERSION
     assert refreshed.document["blocks"][0] == {

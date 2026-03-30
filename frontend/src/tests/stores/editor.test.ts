@@ -45,4 +45,27 @@ describe('editorStore', () => {
 		expect(state.isReadOnly).toBe(true);
 		expect(state.currentNoteId).toBe('prompt-preview');
 	});
+
+	it('applies a streamed note update to the active note', async () => {
+		vi.spyOn(global, 'fetch').mockResolvedValue({
+			ok: true,
+			json: async () => ({ path: 'note-1', name: 'Note', content: 'Hello' })
+		} as Response);
+
+		await editorStore.loadNote('notes', 'note-1');
+
+		editorStore.applyRemoteNoteUpdate({
+			id: 'note-1',
+			name: 'Renamed Note',
+			path: 'note-1',
+			content: 'Updated content'
+		});
+
+		const state = get(editorStore);
+		expect(state.currentNoteName).toBe('Renamed Note');
+		expect(state.content).toBe('Updated content');
+		expect(state.originalContent).toBe('Updated content');
+		expect(state.isDirty).toBe(false);
+		expect(state.lastUpdateSource).toBe('ai');
+	});
 });

@@ -17,6 +17,14 @@ export interface EditorState {
 	lastUpdateSource: 'ai' | 'user' | null;
 }
 
+interface RemoteNoteUpdate {
+	id?: string;
+	name?: string;
+	title?: string;
+	path?: string;
+	content?: string;
+}
+
 function createEditorStore() {
 	const { subscribe, set, update } = writable<EditorState>({
 		currentNoteId: null,
@@ -96,6 +104,31 @@ function createEditorStore() {
 				currentNoteName: newName,
 				lastUpdateSource: null
 			}));
+		},
+
+		applyRemoteNoteUpdate(note: RemoteNoteUpdate) {
+			update((state) => {
+				if (
+					!note.id ||
+					state.currentNoteId !== note.id ||
+					state.isDirty ||
+					typeof note.content !== 'string'
+				) {
+					return state;
+				}
+
+				return {
+					...state,
+					currentNotePath: note.path ?? state.currentNotePath,
+					currentNoteName: note.name ?? note.title ?? state.currentNoteName,
+					content: note.content,
+					originalContent: note.content,
+					isDirty: false,
+					isLoading: false,
+					saveError: null,
+					lastUpdateSource: 'ai'
+				};
+			});
 		},
 
 		async saveNote() {

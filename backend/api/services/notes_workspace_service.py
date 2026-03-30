@@ -52,6 +52,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             "title": note.title,
             "name": note.title,
             "path": str(note.id),
+            "content": note.plain_text or "",
             "modified": note.updated_at.timestamp() if note.updated_at else None,
             "created": note.created_at.timestamp() if note.created_at else None,
             "document": document,

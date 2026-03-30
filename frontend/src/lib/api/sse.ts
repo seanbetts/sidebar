@@ -14,7 +14,14 @@ export interface SSECallbacks {
 	onFirstEvent?: (data: { elapsedMs: number }) => void;
 	onStreamClosed?: () => void;
 	onNoteCreated?: (data: { id?: string; title?: string; folder?: string }) => void;
-	onNoteUpdated?: (data: { id?: string; title?: string }) => void;
+	onNoteUpdated?: (data: {
+		id?: string;
+		title?: string;
+		name?: string;
+		path?: string;
+		content?: string;
+		updated_at?: string;
+	}) => void;
 	onNotePinned?: (data: { id?: string; pinned?: boolean }) => void;
 	onNoteMoved?: (data: { id?: string; folder?: string }) => void;
 	onWebsiteSaved?: (data: { id?: string; title?: string; url?: string }) => void;
