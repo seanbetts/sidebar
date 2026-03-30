@@ -14,7 +14,6 @@
         "group": "Overview",
         "pages": [
           "index",
-          "workbook",
           "implementation-gaps",
           "feature-ui-checklist",
           "component-template",

@@ -3,13 +3,6 @@ title: sideBar Model
 description: Behavioral model for the sideBar AI assistant — skill tiers, action autonomy, system prompt architecture, and behavioral constraints.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [ai-assistant-ui](./ai-assistant-ui), [handoffs](./handoffs) |
-
 ## Purpose
 
 Define the behavioral model that governs what the sideBar AI assistant can do, when it needs permission, and how it should behave across all interactions. These rules inform UI decisions (when to show confirmation gates, undo actions, or disclosure), system prompt structure, and skill design.

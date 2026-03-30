@@ -3,13 +3,6 @@ title: Design Principles
 description: Draft practical decision rules for what good product design looks like in sideBar.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [current-ui-audit](./audits/current-ui-audit) |
-
 ## Purpose
 
 Define what "good" looks like in sideBar. These principles are practical decision rules, not brand language. They should help resolve questions when there is no obvious right answer.

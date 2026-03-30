@@ -3,13 +3,6 @@ title: Platform Strategy Overview
 description: Cross-platform strategy for keeping sideBar coherent across iPhone, iPad, Mac, and web.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | AI coding agent |
-| Outputs | this doc + ios-conventions.md + macos-conventions.md + web-conventions.md |
-| Dependencies | [principles](../principles), [system-inheritance](../system-inheritance) |
-
 ## Purpose
 
 Define how sideBar should behave and feel differently across iPhone, iPad, Mac, and web, while remaining one coherent product.

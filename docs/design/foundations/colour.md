@@ -3,13 +3,6 @@ title: Colour
 description: Unified color palette and semantic token layer for sideBar across iOS, macOS, and web.
 ---
 
-| Field | Value |
-|---|---|
-| Status | draft |
-| Owner | AI coding agent |
-| Outputs | this doc |
-| Dependencies | [token-audit](../audits/token-audit), [system-inheritance](../system-inheritance), [macos-conventions](../platform-strategy/macos-conventions), [web-conventions](../platform-strategy/web-conventions) |
-
 ## Purpose
 
 Define the single unified color palette for sideBar across all platforms (iOS, macOS, web). This document is the canonical source of truth for all color values. Platform-specific color files (`Color+Platform.swift`, `app.css`) should be derived from or aligned with the values defined here.

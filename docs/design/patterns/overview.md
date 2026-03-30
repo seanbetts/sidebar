@@ -3,13 +3,6 @@ title: Patterns Overview
 description: Index of multi-component UX patterns that recur across sideBar.
 ---
 
-| Field | Value |
-|---|---|
-| Status | in progress |
-| Owner | both |
-| Outputs | this doc and pattern docs |
-| Dependencies | [current-ui-audit](../audits/current-ui-audit), [platform-strategy/overview](../platform-strategy/overview) |
-
 ## Purpose
 
 Document the repeated interaction patterns that sit above individual components — navigation, feedback, waiting states, onboarding, and AI assistant interactions.

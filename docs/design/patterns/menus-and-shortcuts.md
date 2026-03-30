@@ -3,13 +3,6 @@ title: Menus and Shortcuts
 description: Mac menu bar structure, keyboard shortcuts, context menus, and swipe actions for sideBar across iOS, macOS, and web.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [macos-conventions](../platform-strategy/macos-conventions), [ios-conventions](../platform-strategy/ios-conventions), [web-conventions](../platform-strategy/web-conventions), [iconography](../foundations/iconography), [components overview](../components/overview) |
-
 ## Purpose
 
 Define the complete shortcut set, menu bar structure, context menu conventions, and swipe action rules for sideBar across all platforms.

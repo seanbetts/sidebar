@@ -3,13 +3,6 @@ title: Component Template
 description: Template and requirements for building new shared UI components in the sideBar design system.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [token-model](./foundations/token-model), [typography](./foundations/typography), [accessibility](./foundations/accessibility), [components overview](./components/overview) |
-
 ## Purpose
 
 Define what a shared component is, where it lives, and what it must contain. Provides a copy-ready Swift scaffold to use as a starting point for any new component added to `Design/Components/`.

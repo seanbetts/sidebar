@@ -3,13 +3,6 @@ title: AI Assistant UI
 description: Visual and interaction patterns for assistant-driven and AI-supported moments across sideBar.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [navigation](./navigation), [handoffs](./handoffs), [wait-ux](./wait-ux), [feedback-and-haptics](./feedback-and-haptics) |
-
 ## Purpose
 
 Define how assistant-driven moments look and behave across sideBar. The assistant is not a separate layer pasted on top of the app — its surfaces must feel like a natural extension of the product. This doc covers the chat conversation, generation states, tool call disclosure, error and retry behaviour, workspace surfaces, and assistant handoffs into product features.

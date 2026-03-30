@@ -3,13 +3,6 @@ title: Patterns Audit
 description: Current-state snapshot of behavioral patterns in sideBar — haptics, wait states, navigation, and material usage as they exist in the codebase today.
 ---
 
-| Field | Value |
-|---|---|
-| Status | live |
-| Owner | both |
-| Updated | 2026-03-29 |
-| Dependencies | none |
-
 ## Purpose
 
 Documents how behavioral patterns are currently implemented in sideBar. This is a snapshot of reality, not a specification. As gaps are closed and the codebase converges with the design system, this doc should be updated to reflect the new state.

@@ -3,13 +3,6 @@ title: System Inheritance
 description: Policy for what sideBar inherits from Apple frameworks and where it intentionally departs from native defaults.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | AI coding agent |
-| Outputs | this doc |
-| Dependencies | [principles](./principles), [system-framework-usage-audit](./audits/system-framework-usage-audit) |
-
 ## Purpose
 
 Define what sideBar inherits from Apple's native frameworks and where we depart from platform defaults. This is a practical guide for making decisions about native vs custom UI.

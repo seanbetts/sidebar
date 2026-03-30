@@ -3,13 +3,6 @@ title: Token Audit
 description: Audit of the current token model and token-like values in the sideBar codebase.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | AI coding agent |
-| Outputs | this doc |
-| Dependencies | [current-ui-audit](./current-ui-audit) |
-
 ## Purpose
 
 Document every token and token-like abstraction in the current sideBar iOS/macOS codebase. Identify what is working, what is missing, and where hard-coded values should be standardised.

@@ -3,13 +3,6 @@ title: macOS Conventions
 description: macOS conventions for layout, windowing, input, and navigation in sideBar.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | AI coding agent |
-| Outputs | this doc |
-| Dependencies | [overview](./overview) |
-
 ## Purpose
 
 Document macOS-specific design conventions for sideBar. This covers the Mac layout model, settings presentation, keyboard navigation, window management, and AppKit integration.

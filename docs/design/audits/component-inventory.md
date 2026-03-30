@@ -3,14 +3,6 @@ title: Component Inventory
 description: Draft inventory of reusable iOS and macOS UI components in the sideBar codebase.
 ---
 
-| Field | Value |
-|---|---|
-| Status | live |
-| Owner | both |
-| Updated | 2026-03-29 |
-| Outputs | this doc |
-| Dependencies | [current-ui-audit](./current-ui-audit) |
-
 ## Purpose
 
 Inventory all shared and reusable components in the sideBar iOS/macOS app. Classify each as native, wrapped, or custom. Identify gaps, inconsistencies, and candidates for documentation.

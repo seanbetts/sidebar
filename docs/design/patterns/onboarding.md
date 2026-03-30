@@ -3,13 +3,6 @@ title: Onboarding
 description: How sideBar introduces new users to the product — account creation, provider setup, Apple permissions, and AI-guided feature discovery.
 ---
 
-| Field | Value |
-|---|---|
-| Status | partial |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [authentication](./authentication), [wait-ux](./wait-ux), [sideBar model](./sidebar-model) |
-
 ## Purpose
 
 Define how sideBar onboards new users from first launch through to a completed first outcome. Onboarding covers account creation, provider setup, Apple permission requests, and AI-guided feature discovery. The goal is for onboarding to feel like starting work with the assistant, not completing a settings wizard.

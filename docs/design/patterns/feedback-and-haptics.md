@@ -3,13 +3,6 @@ title: Feedback and Haptics
 description: Haptic feedback patterns, the proposed Haptics helper, and toast notification usage for sideBar on iOS.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc, `Design/Haptics.swift` |
-| Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [accessibility](../foundations/accessibility), [components](../components/overview) |
-
 ## Purpose
 
 Define when and how to use haptic feedback and toast notifications across sideBar. Haptics make the app feel responsive and native on iOS. They are one of the most visible places where the app either feels polished or flat — users notice their absence more than their presence.

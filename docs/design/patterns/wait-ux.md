@@ -3,13 +3,6 @@ title: Wait UX
 description: How sideBar handles loading, saving, generating, and syncing — the language of waiting across all platforms.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [web-conventions](../platform-strategy/web-conventions), [components](../components/overview), [feedback-and-haptics](./feedback-and-haptics) |
-
 ## Purpose
 
 Loading, syncing, saving, and generating are the moments where users have to trust that sideBar knows what it is doing. If those moments are vague, jumpy, or inconsistent, the app feels unreliable. If they are calm and well-paced, the app feels solid.

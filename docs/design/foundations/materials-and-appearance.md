@@ -3,13 +3,6 @@ title: Materials and Appearance
 description: Surface styling, native materials, Liquid Glass usage, and appearance mode handling across iOS and macOS.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [system-inheritance](../system-inheritance), [ios-conventions](../platform-strategy/ios-conventions), [macos-conventions](../platform-strategy/macos-conventions), [colour](./colour) |
-
 ## Purpose
 
 Define how sideBar handles surface styling, Liquid Glass, and appearance layering. The goal is a coherent visual stack where every surface has a deliberate, documented reason for its fill.

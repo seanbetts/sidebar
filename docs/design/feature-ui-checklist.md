@@ -3,13 +3,6 @@ title: Feature UI Checklist
 description: Pre-flight checklist for shipping new UI. Pass/fail items covering tokens, typography, motion, haptics, accessibility, wait states, platform variants, and components.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [token-model](../foundations/token-model), [typography](../foundations/typography), [accessibility](../foundations/accessibility), [feedback-and-haptics](../patterns/feedback-and-haptics), [wait-ux](../patterns/wait-ux), [components overview](../components/overview), [implementation-gaps](../implementation-gaps) |
-
 ## Purpose
 
 A pre-flight checklist to run before shipping any new UI. Converts the design system's implicit requirements into an explicit pass/fail list. Running through this list takes two to five minutes and prevents the most common design system drift patterns.

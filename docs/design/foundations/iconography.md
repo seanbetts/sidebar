@@ -3,13 +3,6 @@ title: Iconography
 description: SF Symbols usage, sizing, rendering modes, and the SkillIconResolver system for sideBar.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [token-model](./token-model), [ios-conventions](../platform-strategy/ios-conventions), [macos-conventions](../platform-strategy/macos-conventions) |
-
 ## Purpose
 
 Define how icons are used across sideBar: which system, how they are sized, how rendering modes are applied, and how the skill icon system works.

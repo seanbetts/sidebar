@@ -3,14 +3,6 @@ title: System Framework Usage Audit
 description: Draft audit of where sideBar uses native Apple frameworks well and where custom UI departs from them.
 ---
 
-| Field | Value |
-|---|---|
-| Status | live |
-| Owner | both |
-| Updated | 2026-03-29 |
-| Outputs | this doc |
-| Dependencies | [current-ui-audit](./current-ui-audit) |
-
 ## Purpose
 
 Document how sideBar uses Apple's native frameworks. Identify where native frameworks are being used well, where custom UI is fighting the platform, and where we are reinventing things Apple already provides.

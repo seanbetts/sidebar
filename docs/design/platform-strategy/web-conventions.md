@@ -3,13 +3,6 @@ title: Web Conventions
 description: Web app conventions for layout, navigation, settings, and browser-specific patterns in sideBar.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | AI coding agent |
-| Outputs | this doc |
-| Dependencies | [overview](./overview) |
-
 ## Purpose
 
 Document web-specific design conventions for sideBar. The web app is a **secondary platform** — the native Apple apps (iPhone, iPad, Mac) are the reference point for feature completeness and design quality. The web app should preserve the same mental model and aim for feature parity where practical, but does not need to replicate native Apple chrome.

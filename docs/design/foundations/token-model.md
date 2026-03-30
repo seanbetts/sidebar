@@ -3,13 +3,6 @@ title: Token Model
 description: The token architecture, all token scales, usage rules, and known gaps for the sideBar design system.
 ---
 
-| Field | Value |
-|---|---|
-| Status | draft |
-| Owner | AI coding agent |
-| Outputs | this doc |
-| Dependencies | [token-audit](../audits/token-audit), [colour](./colour), [system-inheritance](../system-inheritance) |
-
 ## Purpose
 
 Define the token system for sideBar: the named values that sit between raw numbers and component code. Tokens make the design system consistent, refactorable, and self-documenting.

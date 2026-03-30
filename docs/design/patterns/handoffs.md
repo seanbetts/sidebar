@@ -3,13 +3,6 @@ title: Handoffs
 description: How sideBar receives and processes external context — share extension saves, widget intents, deep links, Spotlight, and push notifications.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | ios |
-| Outputs | this doc |
-| Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [authentication](./authentication), [wait-ux](./wait-ux) |
-
 ## Purpose
 
 Define how sideBar handles incoming context from outside the main app process — share extensions, Safari extensions, widgets, Spotlight, push notifications, and URL scheme deep links. These are referred to collectively as handoffs. Each handoff type has a consistent contract: queue if the app is not ready, drain when it is, never silently drop.

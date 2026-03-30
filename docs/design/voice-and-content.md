@@ -3,13 +3,6 @@ title: Voice and Content
 description: Product voice, UI writing rules, and content standards for sideBar across all surfaces.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [principles](./principles) |
-
 ## Purpose
 
 Define the product voice, writing rules, and content standards for sideBar. This covers how all developer-authored text should sound across UI copy, empty states, errors, notifications, and labels.

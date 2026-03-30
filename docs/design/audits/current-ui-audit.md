@@ -3,14 +3,6 @@ title: Current UI Audit
 description: Draft inventory of the main sideBar screens, navigation, flows, and current UI patterns.
 ---
 
-| Field | Value |
-|---|---|
-| Status | live |
-| Owner | both |
-| Updated | 2026-03-29 |
-| Outputs | this doc |
-| Dependencies | none |
-
 ## Purpose
 
 Document the main screens, flows, navigation structure, and UI patterns in sideBar as they exist today. This is the ground-truth starting point for the design system. It documents reality, not ideals.

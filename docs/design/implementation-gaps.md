@@ -3,13 +3,6 @@ title: Implementation Gaps
 description: Central tracker for all known divergences between the design system and the current codebase.
 ---
 
-| Field | Value |
-|---|---|
-| Status | live |
-| Owner | both |
-| Updated | 2026-03-30 |
-| Dependencies | all approved design docs |
-
 ## Purpose
 
 Single working list of every known divergence between the design system and the current codebase. This is the document to work from when planning implementation sprints.

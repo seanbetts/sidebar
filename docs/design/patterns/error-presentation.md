@@ -3,13 +3,6 @@ title: Error Presentation
 description: When and how to surface errors to users — which presentation surface to use, when each is appropriate, and the rules that govern error copy.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [feedback-and-haptics](./feedback-and-haptics), [wait-ux](./wait-ux), [components overview](../components/overview) |
-
 ## Purpose
 
 Define when and how sideBar surfaces errors to users — which presentation surface to use, when each is appropriate, and the rules that govern error copy.

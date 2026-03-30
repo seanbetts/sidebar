@@ -3,13 +3,6 @@ title: iOS Conventions
 description: iPhone and iPad conventions for navigation, layout, input, and interaction in sideBar.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | AI coding agent |
-| Outputs | this doc |
-| Dependencies | [overview](./overview) |
-
 ## Purpose
 
 Document iOS-specific (iPhone and iPad) design conventions for sideBar. This covers navigation, layout, input, and interaction patterns specific to touch-based Apple platforms.

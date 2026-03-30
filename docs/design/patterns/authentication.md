@@ -3,13 +3,6 @@ title: Authentication
 description: How sideBar manages auth state, sessions, biometric lock, offline access, and sign-out across all platforms.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [wait-ux](./wait-ux) |
-
 ## Purpose
 
 Define how sideBar should handle authentication state, session lifecycle, and the transitions a user moves through — from first sign-in through to biometric lock, offline access, token expiry, and sign-out. This doc covers both the user-visible patterns and the underlying state model that drives them.

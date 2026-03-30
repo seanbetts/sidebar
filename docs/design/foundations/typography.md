@@ -3,13 +3,6 @@ title: Typography
 description: The type system for sideBar — AppFontStyle scale, text size preferences, semantic role aliases, and usage rules across native and web.
 ---
 
-| Field | Value |
-|---|---|
-| Status | draft |
-| Owner | AI coding agent |
-| Outputs | this doc |
-| Dependencies | [token-model](./token-model), [token-audit](../audits/token-audit), [system-inheritance](../system-inheritance) |
-
 ## Purpose
 
 Define the typography system for sideBar: the font scale, how sizes adapt to user preferences, semantic role aliases, and the rules for using type in views. This covers native (iOS/macOS) and web.

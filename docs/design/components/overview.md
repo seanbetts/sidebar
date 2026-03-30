@@ -3,13 +3,6 @@ title: Components
 description: Shared UI component guidance for the sideBar design system — when to use each component, key rules, and known issues.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [component-inventory](../audits/component-inventory), [token-model](../foundations/token-model), [typography](../foundations/typography), [materials-and-appearance](../foundations/materials-and-appearance) |
-
 ## Purpose
 
 Define the shared component library — what exists, when to use each component, and the rules that govern their use and extension. The component inventory (`audits/component-inventory`) is the source of classification and file locations. This doc is the usage guide.

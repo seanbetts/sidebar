@@ -3,13 +3,6 @@ title: Widgets
 description: Design conventions for sideBar's home screen and lock screen widgets on iOS.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | iOS |
-| Outputs | this doc |
-| Dependencies | [ios-conventions](./ios-conventions), [wait-ux](../patterns/wait-ux), [feedback-and-haptics](../patterns/feedback-and-haptics) |
-
 ## Purpose
 
 Define how sideBar's widgets should look, behave, and stay current. Widgets are glanceable surfaces — the user is not in the app. Every design decision should serve that constraint.

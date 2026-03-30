@@ -3,13 +3,6 @@ title: Navigation
 description: Navigation architecture, layout selection, detail presentation patterns, and deep linking for sideBar across iPhone, iPad, and Mac.
 ---
 
-| Field | Value |
-|---|---|
-| Status | draft |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [macos-conventions](../platform-strategy/macos-conventions), [components](../components/overview) |
-
 ## Purpose
 
 Document the navigation system — how layout is selected per platform, how sections and detail views are presented, and the rules that govern adding new destinations. The navigation architecture is one of the most complex parts of the codebase. This doc is the map.

@@ -3,13 +3,6 @@ title: Accessibility
 description: Reduce motion, Dynamic Type, VoiceOver, keyboard navigation, and ARIA patterns for sideBar across iOS, macOS, and web.
 ---
 
-| Field | Value |
-|---|---|
-| Status | approved |
-| Owner | both |
-| Outputs | this doc |
-| Dependencies | [token-model](./token-model), [typography](./typography), [ios-conventions](../platform-strategy/ios-conventions), [macos-conventions](../platform-strategy/macos-conventions), [web-conventions](../platform-strategy/web-conventions) |
-
 ## Purpose
 
 Define accessibility requirements and patterns for sideBar. This is not aspirational — these are working requirements that apply to every surface shipped.
