@@ -4,7 +4,7 @@ import sideBarShared
 public enum ScratchpadConstants {
     public static let title = "✏️ Scratchpad"
     public static let heading = "# \(title)"
-    public static let placeholder = "_Start typing to capture thoughts._"
+    public static let placeholder = "Start typing to capture thoughts."
 }
 
 public enum ScratchpadFormatting {

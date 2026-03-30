@@ -7,6 +7,7 @@ public struct ScratchpadPopoverView: View {
     @State private var isSaving: Bool = false
     @State private var isLoading: Bool = false
     @State private var isUpdatingContent: Bool = false
+    @State private var suppressNextDraftChange = false
     @State private var hasUserEdits: Bool = false
     @State private var lastSavedContent: String = ""
     @State private var hasLoaded = false
@@ -72,6 +73,10 @@ public struct ScratchpadPopoverView: View {
         }
         .onChange(of: draft) { _, _ in
             guard hasLoaded, !isUpdatingContent else { return }
+            if suppressNextDraftChange {
+                suppressNextDraftChange = false
+                return
+            }
             hasUserEdits = true
             scheduleSave()
         }
@@ -127,6 +132,7 @@ public struct ScratchpadPopoverView: View {
         let stripped = ScratchpadFormatting.stripHeading(content)
         guard stripped != draft else { return }
         isUpdatingContent = true
+        suppressNextDraftChange = true
         hasUserEdits = false
         lastSavedContent = content
         draft = stripped

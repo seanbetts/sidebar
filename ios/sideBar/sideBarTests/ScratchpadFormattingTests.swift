@@ -37,4 +37,8 @@ final class ScratchpadFormattingTests: XCTestCase {
         let cleaned = ScratchpadFormatting.removeEmptyTaskItems(content)
         XCTAssertEqual(cleaned, "- [x] Done")
     }
+
+    func testPlaceholderDoesNotContainMarkdownMarkers() async {
+        XCTAssertFalse(ScratchpadConstants.placeholder.contains("_"))
+    }
 }
