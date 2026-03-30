@@ -154,6 +154,16 @@ def tool_side_effect_events(
                 },
             }
         )
+    elif display_name == "Rename Website":
+        events.append(
+            {
+                "type": "website_renamed",
+                "data": {
+                    "id": result_data.get("id"),
+                    "title": result_data.get("title"),
+                },
+            }
+        )
     elif display_name == "Pin Website":
         events.append(
             {

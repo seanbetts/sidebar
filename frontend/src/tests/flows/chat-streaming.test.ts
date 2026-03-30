@@ -40,6 +40,7 @@ describe('chat streaming flow', () => {
 	it('dispatches custom SSE events', async () => {
 		const client = new SSEClient();
 		const onNotePinned = vi.fn();
+		const onWebsiteRenamed = vi.fn();
 		const onIngestionUpdated = vi.fn();
 		const onConversationTitleUpdated = vi.fn();
 		const onProfileUserSettingsUpdated = vi.fn();
@@ -48,6 +49,8 @@ describe('chat streaming flow', () => {
 		const stream = createStream([
 			'event: note_pinned\n',
 			'data: {"id":"note-1","pinned":true}\n\n',
+			'event: website_renamed\n',
+			'data: {"id":"website-1","title":"Renamed website"}\n\n',
 			'event: ingestion_updated\n',
 			'data: {"file_id":"file-1"}\n\n',
 			'event: conversation_title_updated\n',
@@ -71,6 +74,7 @@ describe('chat streaming flow', () => {
 			{ message: 'Hi' },
 			{
 				onNotePinned,
+				onWebsiteRenamed,
 				onIngestionUpdated,
 				onConversationTitleUpdated,
 				onProfileUserSettingsUpdated,
@@ -79,6 +83,10 @@ describe('chat streaming flow', () => {
 		);
 
 		expect(onNotePinned).toHaveBeenCalledWith({ id: 'note-1', pinned: true });
+		expect(onWebsiteRenamed).toHaveBeenCalledWith({
+			id: 'website-1',
+			title: 'Renamed website'
+		});
 		expect(onIngestionUpdated).toHaveBeenCalledWith({ file_id: 'file-1' });
 		expect(onConversationTitleUpdated).toHaveBeenCalledWith({
 			id: 'conv-1',

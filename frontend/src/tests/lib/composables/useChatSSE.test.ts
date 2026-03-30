@@ -82,6 +82,7 @@ vi.mock('$lib/stores/tree', () => ({
 vi.mock('$lib/stores/websites', () => ({
 	websitesStore: {
 		clearActive: vi.fn(),
+		renameLocal: vi.fn(),
 		setPinnedLocal: vi.fn(),
 		updateActiveLocal: vi.fn(),
 		setArchivedLocal: vi.fn(),
@@ -207,5 +208,25 @@ describe('useChatSSE', () => {
 		});
 		expect(editorStore.loadNote).not.toHaveBeenCalled();
 		expect(currentNoteId.set).not.toHaveBeenCalled();
+	});
+
+	it('updates website list and active website title after an AI rename', async () => {
+		sseConnectMock.mockImplementation(async (_payload, callbacks) => {
+			await callbacks.onWebsiteRenamed?.({
+				id: 'website-1',
+				title: 'Renamed website'
+			});
+		});
+
+		const { websitesStore } = await import('$lib/stores/websites');
+
+		await useChatSSE().connect({
+			assistantMessageId: 'assistant-1',
+			message: 'Rename the website'
+		});
+
+		expect(dispatchCacheEvent).toHaveBeenCalledWith('website.renamed');
+		expect(websitesStore.renameLocal).toHaveBeenCalledWith('website-1', 'Renamed website');
+		expect(websitesStore.updateActiveLocal).toHaveBeenCalledWith({ title: 'Renamed website' });
 	});
 });

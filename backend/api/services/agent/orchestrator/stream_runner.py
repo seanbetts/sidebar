@@ -432,6 +432,14 @@ async def stream_with_tools(
                                                 "url": result_data.get("url"),
                                             },
                                         }
+                                    elif display_name == "Rename Website":
+                                        yield {
+                                            "type": "website_renamed",
+                                            "data": {
+                                                "id": result_data.get("id"),
+                                                "title": result_data.get("title"),
+                                            },
+                                        }
                                     elif display_name == "Pin Website":
                                         yield {
                                             "type": "website_pinned",

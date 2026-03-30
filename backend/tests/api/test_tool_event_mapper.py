@@ -169,3 +169,26 @@ def test_tool_side_effect_events_maps_edit_note_snapshot() -> None:
             },
         }
     ]
+
+
+def test_tool_side_effect_events_maps_rename_website() -> None:
+    events = tool_side_effect_events(
+        "Rename Website",
+        {
+            "success": True,
+            "data": {
+                "id": "website-1",
+                "title": "Renamed website",
+            },
+        },
+    )
+
+    assert events == [
+        {
+            "type": "website_renamed",
+            "data": {
+                "id": "website-1",
+                "title": "Renamed website",
+            },
+        }
+    ]

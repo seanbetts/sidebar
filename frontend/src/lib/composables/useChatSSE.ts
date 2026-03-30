@@ -152,6 +152,14 @@ export function useChatSSE() {
 					dispatchCacheEvent('website.saved');
 				},
 
+				onWebsiteRenamed: (data) => {
+					if (data?.id && data?.title) {
+						websitesStore.renameLocal?.(data.id, data.title);
+						websitesStore.updateActiveLocal?.({ title: data.title });
+					}
+					dispatchCacheEvent('website.renamed');
+				},
+
 				onWebsitePinned: (data) => {
 					if (data?.id && data?.pinned !== undefined) {
 						websitesStore.setPinnedLocal?.(data.id, data.pinned);

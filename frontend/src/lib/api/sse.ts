@@ -25,6 +25,7 @@ export interface SSECallbacks {
 	onNotePinned?: (data: { id?: string; pinned?: boolean }) => void;
 	onNoteMoved?: (data: { id?: string; folder?: string }) => void;
 	onWebsiteSaved?: (data: { id?: string; title?: string; url?: string }) => void;
+	onWebsiteRenamed?: (data: { id?: string; title?: string }) => void;
 	onWebsitePinned?: (data: { id?: string; pinned?: boolean }) => void;
 	onWebsiteArchived?: (data: { id?: string; archived?: boolean }) => void;
 	onConversationTitleUpdated?: (data: {
@@ -236,6 +237,10 @@ export class SSEClient {
 
 			case 'website_saved':
 				callbacks.onWebsiteSaved?.(data);
+				break;
+
+			case 'website_renamed':
+				callbacks.onWebsiteRenamed?.(data);
 				break;
 
 			case 'website_pinned':

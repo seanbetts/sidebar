@@ -570,6 +570,7 @@ async def stream_chat(
                     "note_moved",
                     "conversation_title_updated",
                     "website_saved",
+                    "website_renamed",
                     "website_pinned",
                     "website_archived",
                     "note_deleted",
