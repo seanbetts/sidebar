@@ -14,6 +14,8 @@ description: Policy for what sideBar inherits from Apple frameworks and where it
 
 Define what sideBar inherits from Apple's native frameworks and where we depart from platform defaults. This is a practical guide for making decisions about native vs custom UI.
 
+The upstream source for iOS and macOS conventions is the [Apple Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/). This design system sits on top of the HIG rather than replacing it — where the HIG gives a strong answer, we adopt it and document the choice here.
+
 ---
 
 ## Why this matters
