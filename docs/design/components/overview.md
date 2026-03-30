@@ -51,9 +51,13 @@ Two layout axes:
 
 ### EmptyStateView
 
-Centred title + optional subtitle for empty list states. Token-backed font and color.
+Centred icon, title, and optional subtitle for empty list states. Token-backed font and color.
 
 **When to use**: Any panel section or content area that can be empty. Do not use inline `Text` for empty states — use `EmptyStateView` for consistency.
+
+**Key rules**:
+- Pass `systemImage:` when the empty state represents a whole panel or section and an icon clarifies the context.
+- Keep panel empty-state icons aligned with the owning section's canonical navigation icon. Do not introduce ad-hoc symbols for the same concept in the empty state.
 
 ### SearchField
 

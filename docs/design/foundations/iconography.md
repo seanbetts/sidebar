@@ -132,11 +132,11 @@ The web app uses **Lucide Svelte** (`lucide-svelte`) for icons. Lucide does not 
 
 | Concept | SF Symbol (native) | Lucide (web) |
 |---|---|---|
-| Notes section | `note.text` | `FileText` |
+| Notes section | `text.document` | `FileText` |
 | Tasks section | `checkmark.square` | `CheckSquare` |
 | Websites section | `globe` | `Globe` |
 | Files section | `folder` | `FolderOpen` |
-| Chat section | `message` | `MessageSquare` |
+| Chat section | `bubble` | `MessageSquare` |
 | Skills Store | `puzzlepiece.extension` | `Store` |
 | Toggle sidebar | — | `Menu` |
 | Search | `magnifyingglass` | `Search` |
