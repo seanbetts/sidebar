@@ -7,7 +7,7 @@ description: How sideBar manages auth state, sessions, biometric lock, offline a
 
 Define how sideBar handles authentication state, session lifecycle, and the transitions a user moves through — from sign-up through to biometric lock, offline access, token expiry, and sign-out. This doc covers both the user-visible patterns and the underlying state model that drives them.
 
-The full architectural design, including Apple framework mapping, Supabase boundary, and native client module structure, is in the [Apple-Native Auth Service Design](../../superpowers/specs/2026-03-30-apple-native-auth-service-design.md). This doc is the design system view: how auth should feel and behave.
+This doc is the design system view: how auth should feel and behave.
 
 ---
 
@@ -129,11 +129,7 @@ Settings should support:
 
 - Change password (requires biometric reauth)
 - Sign out
-- View active sessions (per-device inventory)
-- Sign out of other sessions (requires biometric reauth)
 - Biometric unlock configuration
-
-These features require the backend to maintain a per-device session inventory and support remote session revocation.
 
 ---
 
@@ -169,8 +165,6 @@ If the user backgrounds the app and returns within 5 minutes, the lock screen is
 Separate from the lock screen, biometric reauth is required for specific in-session actions:
 
 - Changing password
-- Viewing active sessions
-- Signing out other sessions
 
 This is a local trust gate, not a session operation — it does not affect the backend session. If biometrics fail, offer passcode fallback. Do not skip the reauth step.
 
