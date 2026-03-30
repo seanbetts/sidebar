@@ -27,10 +27,10 @@ description: Working brief for the internal sideBar design-system documentation 
 | 17 | Patterns: AI assistant UI | [patterns/ai-assistant-ui.md](./patterns/ai-assistant-ui) | approved |
 | 18 | sideBar model | [patterns/sidebar-model.md](./patterns/sidebar-model) | approved |
 | 19 | Audits | [token-audit](./audits/token-audit) (approved), [current-ui-audit](./audits/current-ui-audit) (live), [patterns-audit](./audits/patterns-audit) (live), [component-inventory](./audits/component-inventory) (live), [system-framework-usage](./audits/system-framework-usage-audit) (live) | live |
-| 20 | Patterns: menus and shortcuts | [patterns/menus-and-shortcuts.md](./patterns/menus-and-shortcuts) | not started |
+| 20 | Patterns: menus and shortcuts | [patterns/menus-and-shortcuts.md](./patterns/menus-and-shortcuts) | approved |
 | 23 | Audits: framework usage by app section | [audits/system-framework-usage-audit.md](./audits/system-framework-usage-audit) | not started |
 | 21 | Component template | [component-template.md](./component-template) | not started |
-| 22 | Feature UI checklist | [feature-ui-checklist.md](./feature-ui-checklist) | drafted |
+| 22 | Feature UI checklist | [feature-ui-checklist.md](./feature-ui-checklist) | approved |
 
 ## Supporting documents
 

@@ -61,7 +61,8 @@
           "patterns/feedback-and-haptics",
           "patterns/wait-ux",
           "patterns/ai-assistant-ui",
-          "patterns/sidebar-model"
+          "patterns/sidebar-model",
+          "patterns/menus-and-shortcuts"
         ]
       },
       {
