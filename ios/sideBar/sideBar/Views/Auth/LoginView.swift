@@ -107,8 +107,7 @@ public struct LoginView: View {
             Text("sideBar")
                 .appFont(.title2Semibold)
             VStack(spacing: 4) {
-                Text("The AI assistant that actually knows you.")
-                Text("Everything you need in one place, endlessly extensible with skills.")
+                Text("The AI assisstant that actually knows you")
             }
             .appFont(.subheadline)
             .foregroundStyle(.primary)
