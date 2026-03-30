@@ -52,7 +52,7 @@ public final class OnboardingViewModel: ObservableObject {
         settingsAPI: SettingsProviding,
         locationPermissionRequester: (any LocationPermissionRequesting)? = nil,
         notificationsPermissionRequester: (any NotificationPermissionRequesting)? = nil,
-        isTestingOnboarding: Bool = ProcessInfo.processInfo.arguments.contains("-resetOnboarding"),
+        isTestingOnboarding: Bool? = nil,
         userDefaults: UserDefaults = .standard
     ) {
         self.authSession = authSession
@@ -60,7 +60,7 @@ public final class OnboardingViewModel: ObservableObject {
         self.settingsAPI = settingsAPI
         self.locationPermissionRequester = locationPermissionRequester ?? LocationPermissionRequester()
         self.notificationsPermissionRequester = notificationsPermissionRequester ?? NotificationPermissionRequester()
-        self.isTestingOnboarding = isTestingOnboarding
+        self.isTestingOnboarding = isTestingOnboarding ?? OnboardingPresentation.isTestingOnboardingEnabled()
         self.userDefaults = userDefaults
     }
 

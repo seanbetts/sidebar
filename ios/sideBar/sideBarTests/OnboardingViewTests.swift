@@ -149,7 +149,11 @@ final class OnboardingViewTests: XCTestCase {
             isTestingOnboarding: false
         )
 
+#if os(macOS)
+        XCTAssertFalse(result)
+#else
         XCTAssertTrue(result)
+#endif
     }
 
     @MainActor
@@ -182,7 +186,22 @@ final class OnboardingViewTests: XCTestCase {
             isTestingOnboarding: true
         )
 
+#if os(macOS)
+        XCTAssertFalse(result)
+#else
         XCTAssertTrue(result)
+#endif
+    }
+
+    @MainActor
+    func testResetOnboardingLaunchArgumentIgnoredOnMac() {
+        let result = OnboardingPresentation.isTestingOnboardingEnabled(arguments: ["-resetOnboarding"])
+
+#if os(macOS)
+        XCTAssertFalse(result)
+#else
+        XCTAssertTrue(result)
+#endif
     }
 
     @MainActor
@@ -215,8 +234,11 @@ final class OnboardingViewTests: XCTestCase {
             authState: .signedOut,
             isOnboardingPresented: true
         )
-
+#if os(macOS)
+        XCTAssertEqual(result, .login)
+#else
         XCTAssertEqual(result, .onboardingBackdrop)
+#endif
     }
 
 #if canImport(UIKit)

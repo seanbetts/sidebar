@@ -103,10 +103,26 @@ public enum OnboardingPresentation {
         onboardingStatus: OnboardingStatus,
         isTestingOnboarding: Bool
     ) -> Bool {
+#if os(macOS)
+        _ = authState
+        _ = onboardingStatus
+        _ = isTestingOnboarding
+        return false
+#else
         if isTestingOnboarding {
             return true
         }
         return authState == .signedOut && onboardingStatus == .notStarted
+#endif
+    }
+
+    public static func isTestingOnboardingEnabled(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
+#if os(macOS)
+        _ = arguments
+        return false
+#else
+        return arguments.contains("-resetOnboarding")
+#endif
     }
 
     public static func shouldAllowManualStart(authState: AuthState) -> Bool {
@@ -120,7 +136,12 @@ public enum OnboardingPresentation {
         guard authState == .signedOut else {
             return .login
         }
+#if os(macOS)
+        _ = isOnboardingPresented
+        return .login
+#else
         return isOnboardingPresented ? .onboardingBackdrop : .login
+#endif
     }
 
 #if canImport(UIKit)

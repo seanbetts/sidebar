@@ -68,6 +68,9 @@ public struct ContentView: View {
             .onChange(of: onboardingStatusRaw) { _, _ in
                 syncOnboardingPresentation()
             }
+            .onChange(of: scenePhase) { _, _ in
+                syncOnboardingPresentation()
+            }
             .appTextSize()
     }
 
@@ -148,7 +151,7 @@ public struct ContentView: View {
     }
 
     private var isTestingOnboarding: Bool {
-        ProcessInfo.processInfo.arguments.contains("-resetOnboarding")
+        OnboardingPresentation.isTestingOnboardingEnabled()
     }
 
     private var shouldAutoPresentOnboarding: Bool {
@@ -193,4 +196,5 @@ public struct ContentView: View {
         DesignTokens.Colors.background
             .ignoresSafeArea()
     }
+
 }

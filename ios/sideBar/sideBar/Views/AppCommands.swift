@@ -5,12 +5,22 @@ import AppKit
 
 struct SidebarCommands: Commands {
     @ObservedObject private var environment: AppEnvironment
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     init(environment: AppEnvironment) {
         _environment = ObservedObject(wrappedValue: environment)
     }
 
     var body: some Commands {
+        #if os(macOS)
+        // SwiftUI's CommandsBuilder rejects `_ = ...` here, but `let _ = ...`
+        // preserves the early bridge installation needed for macOS launch recovery.
+        // swiftlint:disable redundant_discardable_let
+        let _ = installMacMainWindowOpenActionIfNeeded()
+        // swiftlint:enable redundant_discardable_let
+        #endif
         notesFormatCommands
 
         #if os(macOS)
@@ -58,6 +68,14 @@ struct SidebarCommands: Commands {
         }
         #endif
     }
+
+    #if os(macOS)
+    private func installMacMainWindowOpenActionIfNeeded() {
+        MacMainWindowSceneBridge.install {
+            openWindow(id: MacWindowConfiguration.mainWindowID)
+        }
+    }
+    #endif
 
     static func macSectionCommandContext(
         focusedSection: AppSection?,

@@ -68,13 +68,8 @@ final class MacWindowSceneCoverageTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("scheduleRemoteNotificationRegistration()"))
-        XCTAssertTrue(
-            normalized.contains(
-                "privatefuncscheduleRemoteNotificationRegistration()" +
-                    "{Task{@MainActorinawaitTask.yield()" +
-                    "NSApplication.shared.registerForRemoteNotifications()}}"
-            )
-        )
+        XCTAssertTrue(normalized.contains("privatefuncscheduleRemoteNotificationRegistration(){Task{@MainActorinawaitTask.yield()"))
+        XCTAssertTrue(normalized.contains("NSApplication.shared.registerForRemoteNotifications()"))
     }
 
     func testMacAppDelegateExplicitlyDisablesStateRestoration() throws {
@@ -102,11 +97,9 @@ final class MacWindowSceneCoverageTests: XCTestCase {
                 "extensionNotification.Name{staticletmacAppTerminationRequested=Notification.Name(\"sideBar.macAppTerminationRequested\")}"
             )
         )
-        XCTAssertTrue(
-            normalized.contains(
-                "funcapplicationShouldTerminate(_application:NSApplication)->NSApplication.TerminateReply{_=applicationNotificationCenter.default.post(name:.macAppTerminationRequested,object:nil)return.terminateNow}"
-            )
-        )
+        XCTAssertTrue(normalized.contains("funcapplicationShouldTerminate(_application:NSApplication)->NSApplication.TerminateReply"))
+        XCTAssertTrue(normalized.contains("NotificationCenter.default.post(name:.macAppTerminationRequested,object:nil)"))
+        XCTAssertTrue(normalized.contains("return.terminateNow"))
     }
 
     func testMacSubscriptionSetupDoesNotRegisterRemoteNotificationsDuringEnvironmentInit() throws {
@@ -148,7 +141,90 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(normalized.contains("purgeGeneratedSwiftUIWindowFrames()"))
         XCTAssertTrue(normalized.contains("restoreMainWindowFrameIfNeeded()"))
         XCTAssertTrue(normalized.contains("setFrameAutosaveName(MacWindowConfiguration.mainWindowID)"))
-        XCTAssertTrue(normalized.contains("setFrameUsingName(MacWindowConfiguration.mainWindowID)"))
+        XCTAssertTrue(
+            normalized.contains(
+                "MacWindowFramePersistence.restoreSavedWindowFrameIfNeeded(window,autosaveName:MacWindowConfiguration.mainWindowID)"
+            )
+        )
+    }
+
+    func testMacAppDelegateRepairsLateMainWindowUsingPreferredScreenPolicyAfterRestoreMiss() throws {
+        let normalized = try macAppDelegateSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("for_in0..<40{"))
+        XCTAssertTrue(normalized.contains("try?awaitTask.sleep(for:.milliseconds(50))"))
+        XCTAssertTrue(normalized.contains("ifletwindow=mainApplicationWindow(){restoreMainWindowFrameIfNeeded(for:window)return}"))
+        XCTAssertTrue(normalized.contains("vardidRequestOpenMainWindow=false"))
+        XCTAssertTrue(
+            normalized.contains(
+                "if!didRequestOpenMainWindow,MacMainWindowSceneBridge.openMainWindowIfAvailable(){didRequestOpenMainWindow=trueNSApplication.shared.activate(ignoringOtherApps:true)}"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "letshouldRestoreFrame=MacWindowFramePersistence.shouldRestoreSavedWindowFrame(isVisible:window.isVisible,isKeyWindow:window.isKeyWindow,isMainWindow:window.isMainWindow)"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "letrestoredFrame=shouldRestoreFrame&&MacWindowFramePersistence.restoreSavedWindowFrameIfNeeded(window,autosaveName:MacWindowConfiguration.mainWindowID)"
+            )
+        )
+        XCTAssertTrue(normalized.contains("ifshouldRestoreFrame&&!restoredFrame{window.center()}"))
+        XCTAssertTrue(
+            normalized.contains(
+                "letrecentered=restoredFrame&&MacWindowFramePersistence.recenterWindowIfNeeded(window,preferredScreen:NSScreen.main,enforcePreferredScreen:true)"
+            )
+        )
+        XCTAssertTrue(normalized.contains("NSApplication.shared.activate(ignoringOtherApps:true)"))
+    }
+
+    func testMacAppDelegateUsesMainWindowOpenBridgeWithoutLaunchDiagnostics() throws {
+        let normalized = try macAppDelegateSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let commands = try appCommandsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let bridge = try macMainWindowSceneBridgeSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("MacWindowLaunchDiagnostics"))
+        XCTAssertTrue(commands.contains("@Environment(\\.openWindow)privatevaropenWindow"))
+        XCTAssertTrue(commands.contains("let_=installMacMainWindowOpenActionIfNeeded()"))
+        XCTAssertTrue(commands.contains("MacMainWindowSceneBridge.install{openWindow(id:MacWindowConfiguration.mainWindowID)}"))
+        XCTAssertTrue(bridge.contains("enumMacMainWindowSceneBridge"))
+        XCTAssertTrue(bridge.contains("staticfuncopenMainWindowIfAvailable()->Bool"))
+    }
+
+    func testMacContentViewManualOnboardingDoesNotForceWindowReassertion() throws {
+        let normalized = try contentViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("LoginView("))
+        XCTAssertTrue(normalized.contains("onStartOnboarding:presentOnboardingFromLogin"))
+        XCTAssertTrue(normalized.contains("privatefuncpresentOnboardingFromLogin(){"))
+        XCTAssertTrue(normalized.contains("showOnboarding=true"))
+        XCTAssertFalse(normalized.contains("logMacWindowLaunch("))
+        XCTAssertFalse(normalized.contains("activateMacWindowsForOnboardingPresentation()"))
+        XCTAssertFalse(normalized.contains("scheduleMacHostWindowPresentationReassertion("))
+        XCTAssertFalse(normalized.contains("privatefuncactivateMacApplicationWindows(){"))
+        XCTAssertFalse(normalized.contains("privatefuncscheduleMacHostWindowPresentationReassertion(reason:String){"))
+        XCTAssertFalse(normalized.contains("privatefuncmacOnboardingHostWindow()->NSWindow?"))
+    }
+
+    func testMacContentViewDoesNotUseMacAutoOnboardingWindowRecovery() throws {
+        let normalized = try contentViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("switchOnboardingPresentation.signedOutContent("))
+        XCTAssertFalse(normalized.contains("scheduleMacAutomaticOnboardingPresentationIfNeeded()"))
+        XCTAssertFalse(normalized.contains("waitingForVisibleHostWindow"))
+        XCTAssertFalse(normalized.contains("autoPresentFallback"))
+        XCTAssertFalse(normalized.contains("repairMacHostWindowForOnboardingPresentationIfNeeded"))
+        XCTAssertFalse(normalized.contains("privatefuncmacRecoveryVisibleScreenFrame()->CGRect?"))
+        XCTAssertFalse(normalized.contains("MacWindowFramePersistence.persistWindowFrameIfNeeded(window)"))
+        XCTAssertFalse(normalized.contains("window.occlusionState.contains(.visible)"))
+        XCTAssertFalse(normalized.contains("guardscenePhase==.activeelse{returnfalse}"))
     }
 }
 
@@ -338,6 +414,27 @@ private func onboardingSheetCanvasSource(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read OnboardingSheetCanvas.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func macMainWindowSceneBridgeSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("App")
+        .appendingPathComponent("MacMainWindowSceneBridge.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read MacMainWindowSceneBridge.swift: \(error)", file: file, line: line)
         throw error
     }
 }

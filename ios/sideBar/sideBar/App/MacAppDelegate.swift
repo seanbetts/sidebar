@@ -109,6 +109,19 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
                 await Task.yield()
                 try? await Task.sleep(for: .milliseconds(50))
             }
+            var didRequestOpenMainWindow = false
+            for _ in 0..<40 {
+                if let window = mainApplicationWindow() {
+                    restoreMainWindowFrameIfNeeded(for: window)
+                    return
+                }
+                if !didRequestOpenMainWindow, MacMainWindowSceneBridge.openMainWindowIfAvailable() {
+                    didRequestOpenMainWindow = true
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                }
+                await Task.yield()
+                try? await Task.sleep(for: .milliseconds(50))
+            }
         }
     }
 
@@ -126,9 +139,25 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     private func restoreMainWindowFrameIfNeeded(for window: NSWindow) {
         window.setFrameAutosaveName(MacWindowConfiguration.mainWindowID)
-        let restoredFrame = window.setFrameUsingName(MacWindowConfiguration.mainWindowID)
-        if !restoredFrame {
+        let shouldRestoreFrame = MacWindowFramePersistence.shouldRestoreSavedWindowFrame(
+            isVisible: window.isVisible,
+            isKeyWindow: window.isKeyWindow,
+            isMainWindow: window.isMainWindow
+        )
+        let restoredFrame = shouldRestoreFrame && MacWindowFramePersistence.restoreSavedWindowFrameIfNeeded(
+            window,
+            autosaveName: MacWindowConfiguration.mainWindowID
+        )
+        if shouldRestoreFrame && !restoredFrame {
             window.center()
+        }
+        let recentered = restoredFrame && MacWindowFramePersistence.recenterWindowIfNeeded(
+            window,
+            preferredScreen: NSScreen.main,
+            enforcePreferredScreen: true
+        )
+        if recentered {
+            MacWindowFramePersistence.persistWindowFrameIfNeeded(window)
         }
         window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
