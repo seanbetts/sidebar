@@ -1,6 +1,6 @@
 ---
-title: Agent Rules Overview
-description: Behavioral rules for the sideBar AI assistant — skill tiers, action autonomy, system prompt architecture, and behavioral constraints.
+title: sideBar Model
+description: Behavioral model for the sideBar AI assistant — skill tiers, action autonomy, system prompt architecture, and behavioral constraints.
 ---
 
 | Field | Value |
@@ -8,7 +8,7 @@ description: Behavioral rules for the sideBar AI assistant — skill tiers, acti
 | Status | approved |
 | Owner | both |
 | Outputs | this doc |
-| Dependencies | [ai-assistant-ui](../patterns/ai-assistant-ui), [handoffs](../patterns/handoffs) |
+| Dependencies | [ai-assistant-ui](./ai-assistant-ui), [handoffs](./handoffs) |
 
 ## Purpose
 

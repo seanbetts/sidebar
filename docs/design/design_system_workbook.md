@@ -25,11 +25,12 @@ description: Working brief for the internal sideBar design-system documentation 
 | 15 | Patterns: onboarding | [patterns/onboarding.md](./patterns/onboarding) | partial |
 | 16 | Patterns: handoffs | [patterns/handoffs.md](./patterns/handoffs) | approved |
 | 17 | Patterns: AI assistant UI | [patterns/ai-assistant-ui.md](./patterns/ai-assistant-ui) | approved |
-| 18 | Agent rules | [agent-rules/overview.md](./agent-rules/overview) | approved |
+| 18 | sideBar model | [patterns/sidebar-model.md](./patterns/sidebar-model) | approved |
 | 19 | Audits | [token-audit](./audits/token-audit) (approved), [current-ui-audit](./audits/current-ui-audit) (live), [patterns-audit](./audits/patterns-audit) (live), [component-inventory](./audits/component-inventory) (live), [system-framework-usage](./audits/system-framework-usage-audit) (live) | live |
 | 20 | Patterns: menus and shortcuts | [patterns/menus-and-shortcuts.md](./patterns/menus-and-shortcuts) | not started |
-| 21 | Agent rules: component template | [agent-rules/component-template.md](./agent-rules/component-template) | not started |
-| 22 | Agent rules: feature UI checklist | [agent-rules/feature-ui-checklist.md](./agent-rules/feature-ui-checklist) | not started |
+| 23 | Audits: framework usage by app section | [audits/system-framework-usage-audit.md](./audits/system-framework-usage-audit) | not started |
+| 21 | Component template | [component-template.md](./component-template) | not started |
+| 22 | Feature UI checklist | [feature-ui-checklist.md](./feature-ui-checklist) | drafted |
 
 ## Supporting documents
 
@@ -267,11 +268,8 @@ docs/
       onboarding.md
       handoffs.md
       ai-assistant-ui.md
+      sidebar-model.md
       menus-and-shortcuts.md  ← to build
-    agent-rules/
-      overview.md
-      component-template.md   ← to build
-      feature-ui-checklist.md ← to build
     audits/
       token-audit.md
       current-ui-audit.md
@@ -309,19 +307,27 @@ Output: `patterns/menus-and-shortcuts.md`
 
 ---
 
-### 21. Agent rules: component template
+### 21. Component template
 
-A template the coding agent follows when building a new component. Covers file structure, token usage, accessibility requirements, platform branching, and reduce-motion handling. Ensures new components conform to the design system from the start without requiring a separate review pass.
+A template to follow when building a new component. Covers file structure, token usage, accessibility requirements, platform branching, and reduce-motion handling. Ensures new components conform to the design system from the start without requiring a separate review pass.
 
-Output: `agent-rules/component-template.md`
+Output: `component-template.md`
 
 ---
 
-### 22. Agent rules: feature UI checklist
+### 22. Feature UI checklist
 
 A pre-flight checklist for shipping new UI. Covers tokens used, haptics added, reduce-motion respected, accessibility labels present, platform variants tested, and implementation-gaps checked. Converts the design system's implicit requirements into an explicit pass/fail list.
 
-Output: `agent-rules/feature-ui-checklist.md`
+Output: `feature-ui-checklist.md` (drafted)
+
+---
+
+### 23. Audits: framework usage by app section
+
+Extend `system-framework-usage-audit.md` with a per-section breakdown of the native frameworks used in each area of the app. Covers Chat, Notes, Tasks, Websites, Files, and Settings — documenting the UIKit/AppKit/SwiftUI split, any bridging complexity, and prescriptive guidance for new work in each area.
+
+Output: new section in `audits/system-framework-usage-audit.md`
 
 ---
 

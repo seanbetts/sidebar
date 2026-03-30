@@ -8,7 +8,7 @@ description: How sideBar introduces new users to the product — account creatio
 | Status | partial |
 | Owner | both |
 | Outputs | this doc |
-| Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [authentication](./authentication), [wait-ux](./wait-ux), [agent-rules](../agent-rules/overview) |
+| Dependencies | [ios-conventions](../platform-strategy/ios-conventions), [authentication](./authentication), [wait-ux](./wait-ux), [sideBar model](./sidebar-model) |
 
 ## Purpose
 
@@ -236,5 +236,5 @@ The iOS client reads derived fields from the API response; it does not recompute
 - [iOS Conventions](../platform-strategy/ios-conventions)
 - [Wait UX](./wait-ux)
 - [Feedback and Haptics](./feedback-and-haptics)
-- [Agent Rules](../agent-rules/overview)
+- [sideBar Model](./sidebar-model)
 - [Implementation Gaps](../implementation-gaps)

@@ -16,6 +16,7 @@
           "index",
           "workbook",
           "implementation-gaps",
+          "feature-ui-checklist",
           "principles",
           "system-inheritance",
           "voice-and-content"
@@ -59,13 +60,8 @@
           "patterns/navigation",
           "patterns/feedback-and-haptics",
           "patterns/wait-ux",
-          "patterns/ai-assistant-ui"
-        ]
-      },
-      {
-        "group": "Agent Rules",
-        "pages": [
-          "agent-rules/overview"
+          "patterns/ai-assistant-ui",
+          "patterns/sidebar-model"
         ]
       },
       {

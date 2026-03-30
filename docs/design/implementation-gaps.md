@@ -195,7 +195,7 @@ Single working list of every known divergence between the design system and the 
 
 | Gap | File(s) | Source |
 |---|---|---|
-| `<memory_guidance>` instructs the assistant to "Use Write File only for project files or documents in the workspace" — no Write File capability exists in the Files skill; the instruction should be removed | `backend/api/config/prompts.yaml` | [agent-rules](./agent-rules/overview) |
+| `<memory_guidance>` instructs the assistant to "Use Write File only for project files or documents in the workspace" — no Write File capability exists in the Files skill; the instruction should be removed | `backend/api/config/prompts.yaml` | [sideBar model](./patterns/sidebar-model) |
 
 ---
 
