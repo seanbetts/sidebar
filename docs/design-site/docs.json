@@ -63,7 +63,8 @@
           "patterns/wait-ux",
           "patterns/ai-assistant-ui",
           "patterns/sidebar-model",
-          "patterns/menus-and-shortcuts"
+          "patterns/menus-and-shortcuts",
+          "patterns/error-presentation"
         ]
       },
       {
