@@ -194,9 +194,14 @@ extension FilesPanelView {
                 }
             } else if filteredItems.isEmpty {
                 if viewModel.panelSearchQuery.trimmed.isEmpty {
-                    SidebarPanelPlaceholder(title: "No files yet.")
+                    EmptyStateView(
+                        title: "No files yet",
+                        subtitle: "Upload or create a file to get started."
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    SidebarPanelPlaceholder(title: "No results.")
+                    EmptyStateView(title: "No results")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {
                 filesListView

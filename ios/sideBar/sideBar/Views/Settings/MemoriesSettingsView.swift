@@ -97,12 +97,16 @@ struct MemoriesSettingsDetailView: View {
                 LoadingView(message: "Loading memories…")
                     .frame(maxWidth: .infinity, minHeight: 220)
             } else if filteredItems.isEmpty {
-                SettingsMacStatusBanner(
-                    message: searchQuery.trimmed.isEmpty
-                        ? "No memories saved yet."
-                        : "No memories match that search.",
-                    tone: .info
-                )
+                if searchQuery.trimmed.isEmpty {
+                    EmptyStateView(
+                        title: "No memories yet",
+                        subtitle: "Memories saved from your chats appear here."
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 220)
+                } else {
+                    EmptyStateView(title: "No memories match that search")
+                        .frame(maxWidth: .infinity, minHeight: 220)
+                }
             } else {
                 LazyVStack(spacing: DesignTokens.Spacing.sm) {
                     ForEach(filteredItems) { item in
@@ -231,11 +235,16 @@ struct MemoriesSettingsDetailView: View {
                 Task { await viewModel.load() }
             }
         } else if filteredItems.isEmpty {
-            SidebarPanelPlaceholder(
-                title: searchQuery.trimmed.isEmpty
-                    ? "No memories yet."
-                    : "No memories match that search."
-            )
+            if searchQuery.trimmed.isEmpty {
+                EmptyStateView(
+                    title: "No memories yet",
+                    subtitle: "Memories saved from your chats appear here."
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                EmptyStateView(title: "No memories match that search")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         } else {
             List(selection: $selection) {
                 ForEach(filteredItems) { item in

@@ -194,23 +194,38 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertEqual(panel.archivedNodes.map(\.path), ["arch-new", "arch-mid", "arch-old"])
     }
 
-    func testSectionOrderShowsSparseStateThenArchiveWhenOnlyArchiveRemains() async {
-        let viewModel = makeViewModel(tree: FileTree(children: []))
+    func testSectionOrderOmitsArchiveWhenNoArchivedContentExists() async {
+        let viewModel = makeViewModel(tree: FileTree(children: []), archivedTree: FileTree(children: []))
 
         await viewModel.loadTree()
+        await viewModel.loadArchivedTree()
+        let panel = NotesPanelView(viewModel: viewModel)
+
+        XCTAssertEqual(panel.listSectionLayout, [])
+    }
+
+    func testSectionOrderShowsSparseStateThenArchiveWhenOnlyArchiveRemains() async {
+        let archivedTree = FileTree(children: [
+            makeFile(path: "archived-note", name: "Archived.md", created: 100, archived: true)
+        ])
+        let viewModel = makeViewModel(tree: FileTree(children: []), archivedTree: archivedTree)
+
+        await viewModel.loadTree()
+        await viewModel.loadArchivedTree()
         let panel = NotesPanelView(viewModel: viewModel)
 
         XCTAssertEqual(panel.listSectionLayout, [.sparseState, .archive])
     }
 
-    func testSectionOrderShowsPinnedMainAndArchiveWhenContentExists() async {
+    func testSectionOrderShowsPinnedAndMainWithoutArchiveWhenNothingIsArchived() async {
         let tree = FileTree(children: [makeFile(path: "note-1", name: "Note.md", created: 100)])
-        let viewModel = makeViewModel(tree: tree)
+        let viewModel = makeViewModel(tree: tree, archivedTree: FileTree(children: []))
 
         await viewModel.loadTree()
+        await viewModel.loadArchivedTree()
         let panel = NotesPanelView(viewModel: viewModel)
 
-        XCTAssertEqual(panel.listSectionLayout, [.pinned, .mainNotes, .archive])
+        XCTAssertEqual(panel.listSectionLayout, [.pinned, .mainNotes])
     }
 
     func testNoteContextMenuIncludesShareTextForFileItems() {

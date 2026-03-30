@@ -16,7 +16,24 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         )
     }
 
-    func testSectionOrderShowsPrimaryContentThenArchiveWhenItemsExist() {
+    func testSectionOrderOmitsArchiveWhenNothingIsArchived() async {
+        let panel = await makeView(items: [])
+
+        XCTAssertEqual(panel.listSectionLayout, [])
+    }
+
+    func testSectionOrderShowsSparseStateThenArchiveWhenOnlyArchiveRemainsInViewState() async {
+        let panel = await makeView(items: [
+            makeWebsiteItem(id: "arch-1", archived: true)
+        ])
+
+        XCTAssertEqual(
+            panel.listSectionLayout,
+            [.sparseState, .archive]
+        )
+    }
+
+    func testSectionOrderShowsPrimaryContentWithoutArchiveWhenNothingIsArchived() {
         XCTAssertEqual(
             WebsitesPanelView.listSectionLayout(
                 panelState: .content,
@@ -24,7 +41,7 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
                 hasMainItems: false,
                 hasPendingItems: false
             ),
-            [.primaryContent, .archive]
+            [.primaryContent]
         )
     }
 

@@ -10,6 +10,7 @@ extension WebsitesPanelView {
         case loading
         case error
         case search
+        case empty
         case content
         case sparse
     }
@@ -21,7 +22,7 @@ extension WebsitesPanelView {
     }
 
     static let sparseStateTitle = "No websites yet"
-    static let sparseStateSubtitle = "Archived websites are still available below."
+    static let sparseStateSubtitle: String? = nil
 
     static func resolvePanelState(
         isLoading: Bool,
@@ -55,14 +56,14 @@ extension WebsitesPanelView {
             return [.sparseState, .archive]
         case .content:
             let hasPrimaryContent = hasPinnedItems || hasMainItems || hasPendingItems
-            return hasPrimaryContent ? [.primaryContent, .archive] : [.archive]
-        default:
+            return hasPrimaryContent ? [.primaryContent] : []
+        case .loading, .error, .search, .empty:
             return []
         }
     }
 
     var panelState: PanelState {
-        Self.resolvePanelState(
+        let resolvedState = Self.resolvePanelState(
             isLoading: viewModel.isLoading || isInitialLoadPending,
             hasError: viewModel.errorMessage != nil,
             hasLoadedContent: !viewModel.items.isEmpty || !viewModel.pendingWebsites.isEmpty,
@@ -71,15 +72,25 @@ extension WebsitesPanelView {
             mainCount: mainItems.count,
             pendingCount: viewModel.pendingWebsites.count
         )
+        if resolvedState == .sparse && !hasArchivedContent {
+            return .empty
+        }
+        return resolvedState
     }
 
     var listSectionLayout: [ListSectionLayout] {
-        Self.listSectionLayout(
+        var sections = Self.listSectionLayout(
             panelState: panelState,
             hasPinnedItems: !pinnedItemsSorted.isEmpty,
             hasMainItems: !mainItems.isEmpty,
             hasPendingItems: !viewModel.pendingWebsites.isEmpty
         )
+        if hasArchivedContent &&
+            !sections.contains(.archive) &&
+            (panelState == .content || panelState == .sparse) {
+            sections.append(.archive)
+        }
+        return sections
     }
 
     func open(item: WebsiteItem) {
@@ -187,6 +198,13 @@ extension WebsitesPanelView {
 
     var archivedItems: [WebsiteItem] {
         viewModel.panelArchivedItems
+    }
+
+    var hasArchivedContent: Bool {
+        if let count = viewModel.archivedSummary?.count {
+            return count > 0
+        }
+        return !archivedItems.isEmpty
     }
 
     var archivedEmptyStateText: String {

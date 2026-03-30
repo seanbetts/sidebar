@@ -3,6 +3,7 @@
 	import { treeStore } from '$lib/stores/tree';
 	import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
 	import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
+	import SidebarSparseState from '$lib/components/left-sidebar/SidebarSparseState.svelte';
 	import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
 	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
 	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
@@ -150,6 +151,10 @@
 	$: pinnedNodes = sortPinnedNodes(collectPinned(children));
 	$: mainNodes = filterNodes(children, { excludePinned: true, excludeArchive: true });
 	$: archiveNodes = getArchiveChildren(children);
+	$: hasArchivedItems = archiveNodes.length > 0;
+	$: hasActiveItems = pinnedNodes.length > 0 || mainNodes.length > 0;
+	$: showTrueEmptyState = !searchQuery && !hasActiveItems && !hasArchivedItems;
+	$: showArchivedOnlyState = !searchQuery && !hasActiveItems && hasArchivedItems;
 	$: if (isArchiveExpanded) {
 		void treeStore.loadArchived(basePath);
 	}
@@ -163,7 +168,7 @@
 		title="Service unavailable"
 		subtitle="Please try again later."
 	/>
-{:else if children.length === 0 && !searchQuery}
+{:else if showTrueEmptyState}
 	<SidebarEmptyState
 		icon={FileText}
 		title="No notes yet"
@@ -193,116 +198,124 @@
 	</div>
 {:else}
 	<div class="notes-sections">
-		<div class="notes-block">
-			<div class="notes-block-title">Pinned</div>
-			{#if pinnedNodes.length > 0}
-				<div class="notes-block-content">
-					{#each pinnedNodes as node (node.path)}
-						<FileTreeNode
-							{node}
-							level={0}
-							onToggle={handleToggle}
-							{basePath}
-							{hideExtensions}
-							{onFileClick}
-							showGrabHandle
-							isDragging={draggingPinnedId === node.path}
-							isDragOver={dragOverPinnedId === node.path}
-							onGrabStart={(event) => handlePinnedDragStart(event, node.path)}
-							onGrabOver={(event) => handlePinnedDragOver(event, node.path)}
-							onGrabDrop={(event) => handlePinnedDrop(event, node.path)}
-							onGrabEnd={handlePinnedDragEnd}
-						/>
-					{/each}
-					<div
-						class="pinned-drop-zone"
-						class:drag-over={dragOverPinnedId === PINNED_DROP_END}
-						role="separator"
-						aria-label="Drop pinned note at end"
-						ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
-						ondrop={handlePinnedDropEnd}
-					></div>
-				</div>
-			{:else}
-				<div class="notes-empty">No pinned notes</div>
-			{/if}
-		</div>
+		{#if showArchivedOnlyState}
+			<SidebarSparseState icon={FileText} title="No notes yet" />
+		{/if}
 
-		<div class="notes-block">
-			<div class="notes-block-title">Notes</div>
-			{#if mainNodes.length > 0}
-				<div class="notes-block-content">
-					{#each mainNodes as node (node.path)}
-						<FileTreeNode
-							{node}
-							level={0}
-							onToggle={handleToggle}
-							{basePath}
-							{hideExtensions}
-							{onFileClick}
-						/>
-					{/each}
-				</div>
-			{:else}
-				<div class="notes-empty">{emptyMessage}</div>
-			{/if}
-		</div>
-
-		<div class="notes-block notes-archive">
-			<Collapsible.Root
-				bind:open={isArchiveExpanded}
-				class="group/collapsible"
-				data-collapsible-root
-			>
-				<div
-					data-slot="sidebar-group"
-					data-sidebar="group"
-					class="relative flex w-full min-w-0 flex-col p-2"
-				>
-					<Collapsible.Trigger
-						data-slot="sidebar-group-label"
-						data-sidebar="group-label"
-						class="archive-trigger"
-					>
-						<span class="notes-block-title archive-label">Archive</span>
-						<span
-							class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90"
-						>
-							<ChevronRight size={16} />
-						</span>
-					</Collapsible.Trigger>
-					<Collapsible.Content data-slot="collapsible-content" class="archive-content pt-1">
+		{#if !showArchivedOnlyState}
+			<div class="notes-block">
+				<div class="notes-block-title">Pinned</div>
+				{#if pinnedNodes.length > 0}
+					<div class="notes-block-content">
+						{#each pinnedNodes as node (node.path)}
+							<FileTreeNode
+								{node}
+								level={0}
+								onToggle={handleToggle}
+								{basePath}
+								{hideExtensions}
+								{onFileClick}
+								showGrabHandle
+								isDragging={draggingPinnedId === node.path}
+								isDragOver={dragOverPinnedId === node.path}
+								onGrabStart={(event) => handlePinnedDragStart(event, node.path)}
+								onGrabOver={(event) => handlePinnedDragOver(event, node.path)}
+								onGrabDrop={(event) => handlePinnedDrop(event, node.path)}
+								onGrabEnd={handlePinnedDragEnd}
+							/>
+						{/each}
 						<div
-							data-slot="sidebar-group-content"
-							data-sidebar="group-content"
-							class="w-full text-sm"
+							class="pinned-drop-zone"
+							class:drag-over={dragOverPinnedId === PINNED_DROP_END}
+							role="separator"
+							aria-label="Drop pinned note at end"
+							ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
+							ondrop={handlePinnedDropEnd}
+						></div>
+					</div>
+				{:else}
+					<div class="notes-empty">No pinned notes</div>
+				{/if}
+			</div>
+
+			<div class="notes-block">
+				<div class="notes-block-title">Notes</div>
+				{#if mainNodes.length > 0}
+					<div class="notes-block-content">
+						{#each mainNodes as node (node.path)}
+							<FileTreeNode
+								{node}
+								level={0}
+								onToggle={handleToggle}
+								{basePath}
+								{hideExtensions}
+								{onFileClick}
+							/>
+						{/each}
+					</div>
+				{:else}
+					<div class="notes-empty">{emptyMessage}</div>
+				{/if}
+			</div>
+		{/if}
+
+		{#if hasArchivedItems}
+			<div class="notes-block notes-archive">
+				<Collapsible.Root
+					bind:open={isArchiveExpanded}
+					class="group/collapsible"
+					data-collapsible-root
+				>
+					<div
+						data-slot="sidebar-group"
+						data-sidebar="group"
+						class="relative flex w-full min-w-0 flex-col p-2"
+					>
+						<Collapsible.Trigger
+							data-slot="sidebar-group-label"
+							data-sidebar="group-label"
+							class="archive-trigger"
 						>
-							{#if isArchiveExpanded && treeData?.archivedLoading}
-								<div class="notes-empty notes-loading" role="status" aria-live="polite">
-									<LoadingGlyph size={LOADING_SIZES.inline} />
-									<span>Loading archived notes...</span>
-								</div>
-							{:else if archiveNodes.length > 0}
-								<div class="notes-block-content">
-									{#each archiveNodes as node (node.path)}
-										<FileTreeNode
-											{node}
-											level={0}
-											onToggle={handleToggle}
-											{basePath}
-											{hideExtensions}
-											{onFileClick}
-										/>
-									{/each}
-								</div>
-							{:else}
-								<div class="notes-empty">No archived notes</div>
-							{/if}
-						</div>
-					</Collapsible.Content>
-				</div>
-			</Collapsible.Root>
-		</div>
+							<span class="notes-block-title archive-label">Archive</span>
+							<span
+								class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90"
+							>
+								<ChevronRight size={16} />
+							</span>
+						</Collapsible.Trigger>
+						<Collapsible.Content data-slot="collapsible-content" class="archive-content pt-1">
+							<div
+								data-slot="sidebar-group-content"
+								data-sidebar="group-content"
+								class="w-full text-sm"
+							>
+								{#if isArchiveExpanded && treeData?.archivedLoading}
+									<div class="notes-empty notes-loading" role="status" aria-live="polite">
+										<LoadingGlyph size={LOADING_SIZES.inline} />
+										<span>Loading archived notes...</span>
+									</div>
+								{:else if archiveNodes.length > 0}
+									<div class="notes-block-content">
+										{#each archiveNodes as node (node.path)}
+											<FileTreeNode
+												{node}
+												level={0}
+												onToggle={handleToggle}
+												{basePath}
+												{hideExtensions}
+												{onFileClick}
+											/>
+										{/each}
+									</div>
+								{:else}
+									<div class="notes-empty">No archived notes</div>
+								{/if}
+							</div>
+						</Collapsible.Content>
+					</div>
+				</Collapsible.Root>
+			</div>
+		{/if}
 	</div>
 {/if}
 

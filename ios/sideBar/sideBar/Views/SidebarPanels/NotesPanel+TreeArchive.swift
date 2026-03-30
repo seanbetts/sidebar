@@ -44,64 +44,66 @@ extension NotesPanelView {
                 } header: {
                     sidebarProminentSectionHeader("Notes")
                 }
-            case .loading, .error, .search:
+            case .loading, .error, .search, .empty:
                 EmptyView()
             }
-            Section {
-                SelectableRow(
-                    isSelected: false,
-                    insets: EdgeInsets(
-                        top: DesignTokens.Spacing.xxl,
-                        leading: archiveRowHorizontalInset,
-                        bottom: 0,
-                        trailing: archiveRowHorizontalInset
-                    )
-                ) {
-                    HStack(spacing: DesignTokens.Spacing.xs) {
-                        Label("Archive", systemImage: "archivebox")
-                            .appFont(SidebarTypography.primary)
-                        Spacer()
-                        if isArchiveLoading && !archivedNodes.isEmpty {
-                            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                        }
-                        Image(systemName: isArchiveExpanded ? "chevron.down" : "chevron.right")
-                            .appFont(SidebarTypography.secondary)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .onTapGesture {
-                    isArchiveExpanded.toggle()
-                }
-
-                if isArchiveExpanded {
-                    if showArchiveLoadingPlaceholder {
-                        SelectableRow(isSelected: false) {
-                            archiveLoadingRow(message: "Loading archive...")
-                        }
-                    } else if showArchiveEmptyState {
-                        SelectableRow(isSelected: false) {
-                            Text(archivedEmptyStateText)
-                                .appFont(.caption)
+            if listSectionLayout.contains(.archive) {
+                Section {
+                    SelectableRow(
+                        isSelected: false,
+                        insets: EdgeInsets(
+                            top: DesignTokens.Spacing.xxl,
+                            leading: archiveRowHorizontalInset,
+                            bottom: 0,
+                            trailing: archiveRowHorizontalInset
+                        )
+                    ) {
+                        HStack(spacing: DesignTokens.Spacing.xs) {
+                            Label("Archive", systemImage: "archivebox")
+                                .appFont(SidebarTypography.primary)
+                            Spacer()
+                            if isArchiveLoading && !archivedNodes.isEmpty {
+                                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                            }
+                            Image(systemName: isArchiveExpanded ? "chevron.down" : "chevron.right")
+                                .appFont(SidebarTypography.secondary)
                                 .foregroundStyle(.secondary)
                         }
-                    } else {
-                        OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
-                            NotesTreeRow(
-                                item: item,
-                                isSelected: viewModel.selectedNoteId == item.id,
-                                onSelect: {
-                                    if item.isFile {
-                                        requestNoteSelection(id: item.id)
+                    }
+                    .onTapGesture {
+                        isArchiveExpanded.toggle()
+                    }
+
+                    if isArchiveExpanded {
+                        if showArchiveLoadingPlaceholder {
+                            SelectableRow(isSelected: false) {
+                                archiveLoadingRow(message: "Loading archive...")
+                            }
+                        } else if showArchiveEmptyState {
+                            SelectableRow(isSelected: false) {
+                                Text(archivedEmptyStateText)
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else {
+                            OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
+                                NotesTreeRow(
+                                    item: item,
+                                    isSelected: viewModel.selectedNoteId == item.id,
+                                    onSelect: {
+                                        if item.isFile {
+                                            requestNoteSelection(id: item.id)
+                                        }
+                                    },
+                                    onRename: item.isFile ? nil : { beginRename(for: item) },
+                                    onDelete: {
+                                        confirmDelete(for: item)
                                     }
-                                },
-                                onRename: item.isFile ? nil : { beginRename(for: item) },
-                                onDelete: {
-                                    confirmDelete(for: item)
-                                }
-                            )
-                            .platformContextMenu(items: noteContextMenuItemsList(for: item))
+                                )
+                                .platformContextMenu(items: noteContextMenuItemsList(for: item))
+                            }
+                            .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                         }
-                        .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                     }
                 }
             }

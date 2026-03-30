@@ -87,9 +87,10 @@ describe('WebsitesPanel', () => {
 	it('shows global empty state when no websites exist', () => {
 		render(WebsitesPanel);
 		expect(screen.getByText('No websites yet')).toBeInTheDocument();
+		expect(screen.queryByText('Archive')).not.toBeInTheDocument();
 	});
 
-	it('hides non-archived websites empty block when only archived websites exist', () => {
+	it('shows archive and archived-only sparse state when only archived websites exist', () => {
 		setWebsitesState({
 			error: null,
 			loading: false,
@@ -108,7 +109,7 @@ describe('WebsitesPanel', () => {
 		});
 
 		render(WebsitesPanel);
-		expect(screen.queryByText('No websites saved')).not.toBeInTheDocument();
+		expect(screen.getByText('No websites yet')).toBeInTheDocument();
 		expect(screen.getByText('Archive')).toBeInTheDocument();
 	});
 });

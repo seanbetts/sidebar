@@ -6,6 +6,7 @@ extension NotesPanelView {
         case loading
         case error
         case search
+        case empty
         case content
         case sparse
     }
@@ -18,7 +19,7 @@ extension NotesPanelView {
     }
 
     static let sparseStateTitle = "No notes yet"
-    static let sparseStateSubtitle = "Archived notes are still available below."
+    static let sparseStateSubtitle: String? = nil
 
     static func resolvePanelState(
         isTreeLoaded: Bool,
@@ -40,13 +41,17 @@ extension NotesPanelView {
     }
 
     var panelState: PanelState {
-        Self.resolvePanelState(
+        let resolvedState = Self.resolvePanelState(
             isTreeLoaded: viewModel.tree != nil,
             hasError: viewModel.errorMessage != nil,
             searchQuery: viewModel.searchQuery,
             pinnedCount: pinnedItems.count,
             mainNodeCount: mainNodes.count
         )
+        if resolvedState == .sparse && !hasArchivedContent {
+            return .empty
+        }
+        return resolvedState
     }
 
     var listSectionLayout: [ListSectionLayout] {
@@ -54,10 +59,21 @@ extension NotesPanelView {
         case .sparse:
             return [.sparseState, .archive]
         case .content:
-            return [.pinned, .mainNotes, .archive]
-        default:
+            var sections: [ListSectionLayout] = [.pinned, .mainNotes]
+            if hasArchivedContent {
+                sections.append(.archive)
+            }
+            return sections
+        case .loading, .error, .search, .empty:
             return []
         }
+    }
+
+    var hasArchivedContent: Bool {
+        if let count = viewModel.tree?.archivedCount {
+            return count > 0
+        }
+        return !archivedNodes.isEmpty
     }
 
     func noteNavigationItems() -> [String] {

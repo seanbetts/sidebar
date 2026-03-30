@@ -308,6 +308,13 @@ extension NotesPanelView {
                 }
             } else if viewModel.tree == nil {
                 SidebarListSkeleton(rowCount: 8, showSubtitle: false)
+            } else if panelState == .empty {
+                EmptyStateView(
+                    title: "No notes yet",
+                    subtitle: "Create a note to get started."
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(panelBackground)
             } else if !viewModel.searchQuery.trimmed.isEmpty {
                 searchResultsView
             } else {

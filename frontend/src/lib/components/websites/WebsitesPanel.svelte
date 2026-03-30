@@ -4,6 +4,7 @@
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
 	import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
+	import SidebarSparseState from '$lib/components/left-sidebar/SidebarSparseState.svelte';
 	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
 	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
 	import { websitesStore } from '$lib/stores/websites';
@@ -35,8 +36,11 @@
 	});
 	$: mainItems = $websitesStore.items.filter((site) => !site.pinned && !isArchived(site));
 	$: archivedItems = $websitesStore.items.filter((site) => isArchived(site));
-	$: totalItems = $websitesStore.items.length;
 	$: pendingWebsite = $websitesStore.pendingWebsite;
+	$: hasActiveItems =
+		Boolean(pendingWebsite) || pinnedItemsSorted.length > 0 || mainItems.length > 0;
+	$: showTrueEmptyState = !searchQuery && !hasActiveItems && archivedItems.length === 0;
+	$: showArchivedOnlyState = !searchQuery && !hasActiveItems && archivedItems.length > 0;
 
 	let activeMenuId: string | null = null;
 	let menuTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -338,11 +342,11 @@
 		/>
 	{:else if $websitesStore.loading}
 		<SidebarLoading message="Loading websites..." />
-	{:else if !searchQuery && totalItems === 0}
+	{:else if showTrueEmptyState}
 		<SidebarEmptyState
 			icon={Globe}
 			title="No websites yet"
-			subtitle="Save a link to start building your library."
+			subtitle="Save a link to get started."
 		/>
 	{:else if searchQuery}
 		<div class="websites-block">
@@ -375,6 +379,10 @@
 			{/if}
 		</div>
 	{:else}
+		{#if showArchivedOnlyState}
+			<SidebarSparseState icon={Globe} title="No websites yet" />
+		{/if}
+
 		{#if pendingWebsite}
 			<div class="websites-block">
 				<div class="websites-block-title">Saving</div>
@@ -454,72 +462,74 @@
 			</div>
 		{/if}
 
-		<div class="websites-block websites-archive">
-			<Collapsible.Root
-				bind:open={isArchiveExpanded}
-				class="group/collapsible"
-				data-collapsible-root
-			>
-				<div
-					data-slot="sidebar-group"
-					data-sidebar="group"
-					class="relative flex w-full min-w-0 flex-col p-2"
+		{#if archivedItems.length > 0}
+			<div class="websites-block websites-archive">
+				<Collapsible.Root
+					bind:open={isArchiveExpanded}
+					class="group/collapsible"
+					data-collapsible-root
 				>
-					<Collapsible.Trigger
-						data-slot="sidebar-group-label"
-						data-sidebar="group-label"
-						class="archive-trigger"
+					<div
+						data-slot="sidebar-group"
+						data-sidebar="group"
+						class="relative flex w-full min-w-0 flex-col p-2"
 					>
-						<span class="websites-block-title archive-label">Archive</span>
-						<span
-							class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90"
+						<Collapsible.Trigger
+							data-slot="sidebar-group-label"
+							data-sidebar="group-label"
+							class="archive-trigger"
 						>
-							<ChevronRight size={16} />
-						</span>
-					</Collapsible.Trigger>
-					<Collapsible.Content
-						data-slot="collapsible-content"
-						class="websites-archive-content pt-1"
-					>
-						<div
-							data-slot="sidebar-group-content"
-							data-sidebar="group-content"
-							class="w-full text-sm"
+							<span class="websites-block-title archive-label">Archive</span>
+							<span
+								class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90"
+							>
+								<ChevronRight size={16} />
+							</span>
+						</Collapsible.Trigger>
+						<Collapsible.Content
+							data-slot="collapsible-content"
+							class="websites-archive-content pt-1"
 						>
-							{#if $websitesStore.archivedLoading}
-								<div class="websites-empty websites-loading" role="status" aria-live="polite">
-									<LoadingGlyph size={LOADING_SIZES.inline} />
-									<span>Loading archived websites...</span>
-								</div>
-							{:else if archivedItems.length === 0}
-								<div class="websites-empty">No archived websites</div>
-							{:else}
-								<div class="websites-list">
-									{#each archivedItems as site (site.id)}
-										<WebsiteRow
-											{site}
-											archived={isArchived(site)}
-											isMenuOpen={activeMenuId === site.id}
-											onOpen={openWebsite}
-											onOpenMenu={openMenu}
-											onPin={handlePin}
-											onRename={openRenameDialog}
-											onCopy={handleCopy}
-											onCopyTitle={handleCopyTitle}
-											onCopyUrl={handleCopyUrl}
-											onDownload={handleDownload}
-											onArchive={handleArchive}
-											onDelete={openDeleteDialog}
-											onMenuInteract={resetMenuTimeout}
-										/>
-									{/each}
-								</div>
-							{/if}
-						</div>
-					</Collapsible.Content>
-				</div>
-			</Collapsible.Root>
-		</div>
+							<div
+								data-slot="sidebar-group-content"
+								data-sidebar="group-content"
+								class="w-full text-sm"
+							>
+								{#if $websitesStore.archivedLoading}
+									<div class="websites-empty websites-loading" role="status" aria-live="polite">
+										<LoadingGlyph size={LOADING_SIZES.inline} />
+										<span>Loading archived websites...</span>
+									</div>
+								{:else if archivedItems.length === 0}
+									<div class="websites-empty">No archived websites</div>
+								{:else}
+									<div class="websites-list">
+										{#each archivedItems as site (site.id)}
+											<WebsiteRow
+												{site}
+												archived={isArchived(site)}
+												isMenuOpen={activeMenuId === site.id}
+												onOpen={openWebsite}
+												onOpenMenu={openMenu}
+												onPin={handlePin}
+												onRename={openRenameDialog}
+												onCopy={handleCopy}
+												onCopyTitle={handleCopyTitle}
+												onCopyUrl={handleCopyUrl}
+												onDownload={handleDownload}
+												onArchive={handleArchive}
+												onDelete={openDeleteDialog}
+												onMenuInteract={resetMenuTimeout}
+											/>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						</Collapsible.Content>
+					</div>
+				</Collapsible.Root>
+			</div>
+		{/if}
 	{/if}
 </div>
 

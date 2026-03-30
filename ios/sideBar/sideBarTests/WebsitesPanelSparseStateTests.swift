@@ -88,9 +88,6 @@ final class WebsitesPanelSparseStateTests: XCTestCase {
 
     func testSparseStateCopyMatchesWebsitesSection() {
         XCTAssertEqual(WebsitesPanelView.sparseStateTitle, "No websites yet")
-        XCTAssertEqual(
-            WebsitesPanelView.sparseStateSubtitle,
-            "Archived websites are still available below."
-        )
+        XCTAssertNil(WebsitesPanelView.sparseStateSubtitle)
     }
 }

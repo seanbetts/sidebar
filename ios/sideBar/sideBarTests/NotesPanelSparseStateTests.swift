@@ -70,9 +70,6 @@ final class NotesPanelSparseStateTests: XCTestCase {
 
     func testSparseStateCopyMatchesNotesSection() {
         XCTAssertEqual(NotesPanelView.sparseStateTitle, "No notes yet")
-        XCTAssertEqual(
-            NotesPanelView.sparseStateSubtitle,
-            "Archived notes are still available below."
-        )
+        XCTAssertNil(NotesPanelView.sparseStateSubtitle)
     }
 }

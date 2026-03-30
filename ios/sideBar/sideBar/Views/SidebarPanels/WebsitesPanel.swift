@@ -256,6 +256,13 @@ extension WebsitesPanelView {
             ) {
                 Task { await viewModel.load() }
             }
+        } else if panelState == .empty {
+            EmptyStateView(
+                title: "No websites yet",
+                subtitle: "Save a link to get started."
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(panelBackground)
         } else if panelState == .search {
             List {
                 if !viewModel.pendingWebsites.isEmpty {
@@ -321,54 +328,53 @@ extension WebsitesPanelView {
                         }
                     }
                 }
-                Section {
-                    SelectableRow(
-                        isSelected: false,
-                        insets: EdgeInsets(
-                            top: DesignTokens.Spacing.xxl,
-                            leading: archiveRowHorizontalInset,
-                            bottom: 0,
-                            trailing: archiveRowHorizontalInset
-                        )
-                    ) {
-                        HStack(spacing: DesignTokens.Spacing.xs) {
-                            Label("Archive", systemImage: "archivebox")
-                                .appFont(SidebarTypography.primary)
-                            Spacer()
-                            if isArchiveLoading && !archivedItems.isEmpty {
-                                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                            }
-                            Image(systemName: isArchiveExpanded ? "chevron.down" : "chevron.right")
-                                .appFont(SidebarTypography.secondary)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .onTapGesture {
-                        isArchiveExpanded.toggle()
-                    }
-
-                    if isArchiveExpanded {
-                        if showArchiveLoadingPlaceholder {
-                            SelectableRow(isSelected: false) {
-                                archiveLoadingRow(message: "Loading archive...")
-                            }
-                        } else if showArchiveEmptyState {
-                            SelectableRow(isSelected: false) {
-                                Text(archivedEmptyStateText)
-                                    .appFont(.caption)
+                if listSectionLayout.contains(.archive) {
+                    Section {
+                        SelectableRow(
+                            isSelected: false,
+                            insets: EdgeInsets(
+                                top: DesignTokens.Spacing.xxl,
+                                leading: archiveRowHorizontalInset,
+                                bottom: 0,
+                                trailing: archiveRowHorizontalInset
+                            )
+                        ) {
+                            HStack(spacing: DesignTokens.Spacing.xs) {
+                                Label("Archive", systemImage: "archivebox")
+                                    .appFont(SidebarTypography.primary)
+                                Spacer()
+                                if isArchiveLoading && !archivedItems.isEmpty {
+                                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                                }
+                                Image(systemName: isArchiveExpanded ? "chevron.down" : "chevron.right")
+                                    .appFont(SidebarTypography.secondary)
                                     .foregroundStyle(.secondary)
                             }
-                        } else {
-                            ForEach(archivedItems, id: \.id) { item in
-                                let index = staggerIndex(for: item.id, section: "archived")
-                                websiteListRow(item: item, index: index, allowArchive: false)
-            }
-            #if os(iOS)
-            .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
-            #endif
-        }
-    }
-}
+                        }
+                        .onTapGesture {
+                            isArchiveExpanded.toggle()
+                        }
+
+                        if isArchiveExpanded {
+                            if showArchiveLoadingPlaceholder {
+                                SelectableRow(isSelected: false) {
+                                    archiveLoadingRow(message: "Loading archive...")
+                                }
+                            } else if showArchiveEmptyState {
+                                SelectableRow(isSelected: false) {
+                                    Text(archivedEmptyStateText)
+                                        .appFont(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } else {
+                                ForEach(archivedItems, id: \.id) { item in
+                                    let index = staggerIndex(for: item.id, section: "archived")
+                                    websiteListRow(item: item, index: index, allowArchive: false)
+                                }
+                            }
+                        }
+                    }
+                }
             }
             .sidebarPanelListStyle()
             #if os(iOS)

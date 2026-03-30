@@ -58,11 +58,20 @@ struct ConversationsPanelView: View {
                         Task { await viewModel.loadConversations(force: true) }
                     }
                 } else if filteredGroups.isEmpty {
-                    SidebarPanelPlaceholder(
-                        title: searchQuery.isEmpty ? "No conversations" : "No matching conversations",
-                        subtitle: searchQuery.isEmpty ? nil : searchErrorMessage,
-                        style: searchErrorMessage == nil ? .standard : .error
-                    )
+                    if searchQuery.isEmpty {
+                        EmptyStateView(
+                            title: "No conversations",
+                            subtitle: "Start a new chat to begin."
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(DesignTokens.Colors.sidebar)
+                    } else {
+                        SidebarPanelPlaceholder(
+                            title: "No matching conversations",
+                            subtitle: searchErrorMessage,
+                            style: searchErrorMessage == nil ? .standard : .error
+                        )
+                    }
                 } else {
                     conversationsList
                 }

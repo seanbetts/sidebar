@@ -25,7 +25,7 @@
 		{:else}
 			<SidebarEmptyState
 				icon={MessageSquare}
-				title="No conversations yet"
+				title="No conversations"
 				subtitle="Start a new chat to begin."
 			/>
 		{/if}
