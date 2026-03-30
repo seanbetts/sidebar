@@ -199,8 +199,9 @@ Sign-out is explicit and complete:
 
 1. Best-effort server-side sign-out (Supabase session revoked)
 2. All persisted auth state cleared from Keychain
-3. All in-memory and cached data cleared (stores, view models, caches, drafts, widget data, spotlight indexes)
-4. Navigation reset to root
+3. Extension auth state cleared (share extension, Safari extension) via shared Keychain group
+4. All in-memory and cached data cleared (stores, view models, caches, drafts, widget data, spotlight indexes)
+5. Navigation reset to root
 
 The sign-out wipe is intentionally thorough — no data from the previous session should be visible after sign-out, including to a different user who signs into the same device.
 
@@ -219,8 +220,9 @@ Deep links that arrive while the app is not in `.active` state:
 - If the app is loading (auth state not yet determined): queue the deep link and process after auth resolves
 - If `signedOut`: complete sign-in, then process the queued deep link
 - If biometric lock is showing: complete biometric auth, then process the deep link
+- If `.stale`: process immediately. The destination works from cached data, same as any other navigation in stale state.
 
-**Rule**: Deep links must never route to feature content before auth is complete. Silent failure (routing to a blank/loading screen) is not acceptable.
+**Rule**: Deep links must never route to feature content before auth is complete. Silent failure (routing to a blank/loading screen) is not acceptable. However, `.stale` counts as authenticated, so deep links should not be blocked by offline state.
 
 ### Website saves (share extension and Safari extension)
 
