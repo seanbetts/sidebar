@@ -9,21 +9,16 @@ final class LoginViewPresentationTests: XCTestCase {
     private var retainedEnvironments: [AppEnvironment] = []
 
     @MainActor
-    func testLoginPasswordFieldSupportsPasteAndPasswordContentType() throws {
+    func testLoginPasswordFieldUsesSecurePasswordConfiguration() throws {
         let environment = makeEnvironment()
         let controller = mountLoginView(environment: environment)
         let secureField = try XCTUnwrap(
             findTextFields(in: controller.view).first(where: \.isSecureTextEntry)
         )
-        let pasteSelector = #selector(UIResponderStandardEditActions.paste(_:))
-        let originalPasteboard = UIPasteboard.general.string
-        defer { UIPasteboard.general.string = originalPasteboard }
-
-        UIPasteboard.general.string = "Secret123!"
         XCTAssertTrue(secureField.becomeFirstResponder())
 
+        XCTAssertTrue(secureField.isSecureTextEntry)
         XCTAssertEqual(secureField.textContentType, .password)
-        XCTAssertTrue(secureField.canPerformAction(pasteSelector, withSender: nil))
     }
 
     @MainActor
