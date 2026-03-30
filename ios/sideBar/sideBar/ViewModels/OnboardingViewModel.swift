@@ -82,12 +82,6 @@ public final class OnboardingViewModel: ObservableObject {
         self.userDefaults = userDefaults
     }
 
-    public var currentStepHasBack: Bool { Self.stepsWithBack.contains(currentStep) }
-    public var totalSteps: Int { OnboardingStep.allCases.count }
-    public var currentStepIndex: Int { currentStep.rawValue }
-    public var isLocationPermissionResolved: Bool { resolvedPermissionSteps.contains(.locationPermission) }
-    public var isNotificationsPermissionResolved: Bool { resolvedPermissionSteps.contains(.notificationsPermission) }
-
     var transitionVariant: OnboardingTransitionVariant {
         skippedProviderSetup ? .providerSetupSkipped : .providerConnected
     }
@@ -325,16 +319,19 @@ public final class OnboardingViewModel: ObservableObject {
     }
 
     public func completeOnboarding() async {
+        guard !isLoading else { return }
+        persistOnboardingStatus(.completed)
         if isTestingOnboarding {
-            persistOnboardingStatus(.completed)
             return
         }
-
-        let state = try? await onboardingAPI.updateOnboarding(OnboardingUpdate(status: .completed))
-        if let status = state?.status {
-            persistOnboardingStatus(status)
-        } else {
-            persistOnboardingStatus(.completed)
+        isLoading = true
+        let onboardingAPI = onboardingAPI
+        let userDefaults = userDefaults
+        Task { @MainActor in
+            let state = try? await onboardingAPI.updateOnboarding(OnboardingUpdate(status: .completed))
+            let status = state?.status ?? .completed
+            userDefaults.set(status.rawValue, forKey: Self.onboardingStatusKey)
+            isLoading = false
         }
     }
 
@@ -468,4 +465,12 @@ public final class OnboardingViewModel: ObservableObject {
             return true
         }
     }
+}
+
+extension OnboardingViewModel {
+    public var currentStepHasBack: Bool { Self.stepsWithBack.contains(currentStep) }
+    public var totalSteps: Int { OnboardingStep.allCases.count }
+    public var currentStepIndex: Int { currentStep.rawValue }
+    public var isLocationPermissionResolved: Bool { resolvedPermissionSteps.contains(.locationPermission) }
+    public var isNotificationsPermissionResolved: Bool { resolvedPermissionSteps.contains(.notificationsPermission) }
 }

@@ -28,6 +28,38 @@ final class MockOnboardingAPI: OnboardingProviding {
     }
 }
 
+final class DelayedOnboardingAPI: OnboardingProviding {
+    private let base = MockOnboardingAPI()
+    var getResult: Result<OnboardingState, Error> {
+        get { base.getResult }
+        set { base.getResult = newValue }
+    }
+    var updateResult: Result<OnboardingState, Error> {
+        get { base.updateResult }
+        set { base.updateResult = newValue }
+    }
+    var updateDelayNanoseconds: UInt64 = 0
+    var onUpdateStarted: (() -> Void)?
+    var onUpdateCompleted: (() -> Void)?
+
+    private(set) var updates: [MockOnboardingAPI.RecordedUpdate] = []
+
+    func getOnboarding() async throws -> OnboardingState {
+        try await base.getOnboarding()
+    }
+
+    func updateOnboarding(_ update: OnboardingUpdate) async throws -> OnboardingState {
+        onUpdateStarted?()
+        if updateDelayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: updateDelayNanoseconds)
+        }
+        let state = try await base.updateOnboarding(update)
+        updates = base.updates
+        onUpdateCompleted?()
+        return state
+    }
+}
+
 @MainActor
 final class MockLocationPermissionRequester: LocationPermissionRequesting {
     var currentState: OnboardingPermissionState = .notAsked

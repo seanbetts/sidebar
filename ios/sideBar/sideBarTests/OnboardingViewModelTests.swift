@@ -381,6 +381,41 @@ final class OnboardingViewModelTests: XCTestCase {
         await fulfillment(of: [updateCompleted], timeout: 3.0)
     }
 
+    func testCompleteOnboardingReturnsImmediatelyWhileBackendUpdateIsInFlight() async {
+        let onboardingAPI = DelayedOnboardingAPI()
+        onboardingAPI.updateDelayNanoseconds = 2_000_000_000
+        let updateStarted = expectation(description: "Onboarding completion update started")
+        let updateCompleted = expectation(description: "Onboarding completion update completed")
+        let completionReturned = expectation(description: "Completion call returned")
+        onboardingAPI.onUpdateStarted = {
+            updateStarted.fulfill()
+        }
+        onboardingAPI.onUpdateCompleted = {
+            updateCompleted.fulfill()
+        }
+        let userDefaults = makeUserDefaults()
+        let viewModel = retain(OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
+            onboardingAPI: onboardingAPI,
+            settingsAPI: OnboardingMockSettingsAPI(),
+            userDefaults: userDefaults
+        ))
+        viewModel.currentStep = .finalStep
+
+        Task {
+            await viewModel.completeOnboarding()
+            completionReturned.fulfill()
+        }
+
+        await fulfillment(of: [updateStarted], timeout: 1.0)
+        await fulfillment(of: [completionReturned], timeout: 0.2)
+        XCTAssertEqual(
+            userDefaults.string(forKey: AppStorageKeys.onboardingStatus),
+            OnboardingStatus.completed.rawValue
+        )
+        await fulfillment(of: [updateCompleted], timeout: 3.0)
+    }
+
     func testTestingModeSkipsRealAuth() async {
         let viewModel = retain(OnboardingViewModel(
             authSession: MockAuthSessionForOnboarding(),
