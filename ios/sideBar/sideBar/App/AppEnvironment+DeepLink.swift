@@ -1,9 +1,6 @@
 import Foundation
 import os
 import sideBarShared
-#if os(iOS)
-import UIKit
-#endif
 
 @MainActor
 extension AppEnvironment {

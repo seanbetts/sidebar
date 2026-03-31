@@ -63,6 +63,12 @@ public struct ContentView: View {
             .onChange(of: onboardingStatusRaw) { _, _ in
                 syncOnboardingPresentation()
             }
+            .onChange(of: environment.passwordResetState) { _, passwordResetState in
+                if passwordResetState != nil {
+                    showOnboarding = false
+                }
+                syncOnboardingPresentation()
+            }
             .onChange(of: scenePhase) { _, _ in
                 syncOnboardingPresentation()
             }
@@ -167,6 +173,9 @@ public struct ContentView: View {
         guard environment.configError == nil, !suppressAutomaticOnboarding else {
             return false
         }
+        guard environment.passwordResetState == nil else {
+            return false
+        }
         return OnboardingPresentation.shouldPresent(
             authState: environment.authState,
             onboardingStatus: onboardingStatus,
@@ -183,6 +192,10 @@ public struct ContentView: View {
     }
 
     private func syncOnboardingPresentation() {
+        if environment.passwordResetState != nil {
+            showOnboarding = false
+            return
+        }
         guard !showOnboarding else { return }
         if shouldAutoPresentOnboarding {
             showOnboarding = true

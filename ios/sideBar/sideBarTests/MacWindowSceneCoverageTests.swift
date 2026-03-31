@@ -256,6 +256,15 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertFalse(normalized.contains("privatefuncmacOnboardingHostWindow()->NSWindow?"))
     }
 
+    func testSignedOutOnboardingDoesNotAutoPresentDuringPasswordRecovery() throws {
+        let normalized = try contentViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("environment.passwordResetState==nil"))
+        XCTAssertTrue(normalized.contains(".onChange(of:environment.passwordResetState){_,passwordResetStatein"))
+        XCTAssertTrue(normalized.contains("showOnboarding=false"))
+    }
+
 }
 
 private func sideBarAppSource(

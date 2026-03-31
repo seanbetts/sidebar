@@ -127,11 +127,13 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         if let keychainStore = stateStore as? KeychainAuthStateStore {
             return SupabaseClientOptions.AuthOptions(
                 storage: SupabaseKeychainStorage(stateStore: keychainStore),
+                flowType: .implicit,
                 emitLocalSessionAsInitialSession: true
             )
         }
         return SupabaseClientOptions.AuthOptions(
             storage: SupabaseInMemoryStorage(),
+            flowType: .implicit,
             emitLocalSessionAsInitialSession: true
         )
     }

@@ -47,6 +47,11 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertTrue(options.storage is SupabaseInMemoryStorage)
     }
 
+    func testMakeAuthOptionsUsesImplicitFlowForRecoveryCallbacks() {
+        let options = SupabaseAuthAdapter.makeAuthOptions(stateStore: InMemoryAuthStateStore())
+        XCTAssertEqual(options.flowType, .implicit)
+    }
+
     func testMakeAuthOptionsUsesKeychainStorageForKeychainStore() {
         let store = KeychainAuthStateStore(
             service: "sideBar.AuthTests.\(UUID().uuidString)",

@@ -47,6 +47,35 @@ import sideBarShared
         XCTAssertEqual(environment.passwordResetState, .enterNewPassword)
     }
 
+    func testHandleDeepLinkWithRecoveryFailureLeavesResetFlowInactive() async {
+        let manager = FakePasswordRecoveryManager()
+        manager.startRecoveryError = NSError(domain: "PasswordRecoveryFlowTests", code: 7, userInfo: [
+            NSLocalizedDescriptionKey: "Recovery callback was missing credentials."
+        ])
+        let authSession = FakeAuthSession(authState: .signedOut)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient(),
+            passwordRecoveryManager: manager
+        )
+        let defaults = TestIsolation.makeUserDefaults(prefix: "PasswordRecoveryDiagnosticsTests")
+        let storage = AppEnvironmentStorage(
+            userDefaults: defaults.defaults,
+            widgetDataManager: WidgetDataManager(userDefaults: defaults.defaults),
+            extensionEventStore: ExtensionEventStore(userDefaults: defaults.defaults),
+            pendingShareStore: PendingShareStore(userDefaults: defaults.defaults)
+        )
+        let environment = AppEnvironment(container: container, storage: storage)
+
+        let url = URL(string: recoveryCallbackURLString)!
+
+        environment.handleDeepLink(url)
+        await Task.yield()
+
+        XCTAssertNil(environment.passwordResetState)
+    }
+
     func testCompletePasswordRecoveryClearsFlowAndReturnsToLogin() async throws {
         let manager = FakePasswordRecoveryManager()
         let authSession = FakeAuthSession(authState: .active)
@@ -109,8 +138,12 @@ import sideBarShared
 private final class FakePasswordRecoveryManager: PasswordRecoveryManaging {
     private(set) var startedURLs: [URL] = []
     private(set) var completedPasswords: [String] = []
+    var startRecoveryError: Error?
 
     func startRecoverySession(from url: URL) async throws {
+        if let startRecoveryError {
+            throw startRecoveryError
+        }
         startedURLs.append(url)
     }
 

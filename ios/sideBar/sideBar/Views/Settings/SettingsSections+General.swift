@@ -1,11 +1,6 @@
 import LocalAuthentication
 import sideBarShared
 import SwiftUI
-#if os(macOS)
-import AppKit
-#elseif os(iOS)
-import UIKit
-#endif
 
 struct GeneralSettingsView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -24,7 +19,6 @@ struct GeneralSettingsView: View {
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     @State private var canUseDeviceAuth = false
     @State private var biometryType: LABiometryType = .none
-    @State private var diagnosticsStatusMessage: String?
     @State private var isPasswordChangePresented = false
     @State private var isStartingPasswordChange = false
     @State private var passwordChangeAuthFailure: LocalDeviceAuthenticationFailure?
@@ -99,29 +93,6 @@ struct GeneralSettingsView: View {
                 .appFont(.body)
                 .pickerStyle(settingsMacWeatherPickerStyle())
             }
-
-            Section {
-                SettingsMacActionSection(
-                    title: "Diagnostics",
-                    message: "Capture or clear the external-surface diagnostics used to debug share extensions and related app flows."
-                ) {
-                    HStack(spacing: DesignTokens.Spacing.sm) {
-                        Button("Copy External Surface Diagnostics") {
-                            copyExternalSurfaceDiagnostics()
-                        }
-                        .buttonStyle(.bordered)
-
-                        Button("Clear External Surface Diagnostics") {
-                            clearExternalSurfaceDiagnostics()
-                        }
-                        .buttonStyle(.bordered)
-                    }
-
-                    if let diagnosticsStatusMessage {
-                        SettingsMacStatusBanner(message: diagnosticsStatusMessage, tone: .info)
-                    }
-                }
-            }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
@@ -160,19 +131,6 @@ struct GeneralSettingsView: View {
                 }
                 .appFont(.body)
                 .pickerStyle(.segmented)
-            }
-            Section("Diagnostics") {
-                Button("Copy External Surface Diagnostics") {
-                    copyExternalSurfaceDiagnostics()
-                }
-                Button("Clear External Surface Diagnostics") {
-                    clearExternalSurfaceDiagnostics()
-                }
-                if let diagnosticsStatusMessage {
-                    Text(diagnosticsStatusMessage)
-                        .appFont(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
         }
         .onAppear {
@@ -251,29 +209,6 @@ struct GeneralSettingsView: View {
         canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         biometryType = context.biometryType
-    }
-
-    private func copyExternalSurfaceDiagnostics() {
-        let payload = ExternalSurfaceDiagnosticsStore.shared.exportText()
-        guard !payload.isEmpty else {
-            diagnosticsStatusMessage = "No external surface diagnostics have been recorded yet."
-            return
-        }
-
-        #if os(macOS)
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(payload, forType: .string)
-        #elseif os(iOS)
-        UIPasteboard.general.string = payload
-        #endif
-
-        diagnosticsStatusMessage = "Copied recent external surface diagnostics."
-    }
-
-    private func clearExternalSurfaceDiagnostics() {
-        ExternalSurfaceDiagnosticsStore.shared.clear()
-        diagnosticsStatusMessage = "Cleared external surface diagnostics."
     }
 
     private func startPasswordChangeFlow() {

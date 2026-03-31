@@ -2312,7 +2312,6 @@
 				INFOPLIST_FILE = sideBar/Info.plist;
 				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
-				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleTypeRole = Editor;\n    CFBundleURLName = \"ai.sidebar.sidebar.logic-host\";\n    CFBundleURLSchemes =     (\n        sidebar\n    );\n}";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We use Face ID to securely unlock sideBar and protect your data.";
@@ -2390,7 +2389,6 @@
 				INFOPLIST_FILE = sideBar/Info.plist;
 				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
 				INFOPLIST_KEY_CFBundleDisplayName = sideBar;
-				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleTypeRole = Editor;\n    CFBundleURLName = \"ai.sidebar.sidebar.logic-host\";\n    CFBundleURLSchemes =     (\n        sidebar\n    );\n}";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We use Face ID to securely unlock sideBar and protect your data.";
