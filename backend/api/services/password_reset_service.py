@@ -34,13 +34,17 @@ class PasswordResetService:
             "apikey": api_key,
             "Content-Type": "application/json",
         }
+        payload = {"email": email}
+        redirect_to = settings.password_reset_redirect_to.strip()
+        if redirect_to:
+            payload["redirect_to"] = redirect_to
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
                     request_url,
                     headers=headers,
-                    json={"email": email},
+                    json=payload,
                 )
                 response.raise_for_status()
         except httpx.HTTPError as exc:

@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_role_key: str | None = None
+    password_reset_redirect_to: str = os.getenv(
+        "PASSWORD_RESET_REDIRECT_TO",
+        "sidebar://auth/callback",
+    )
 
     # JWT validation
     jwt_audience: str = "authenticated"

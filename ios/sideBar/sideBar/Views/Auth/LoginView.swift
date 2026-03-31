@@ -465,8 +465,8 @@ private extension LoginView {
         defer { isRequestingPasswordReset = false }
         do {
             try await environment.container.passwordResetAPI.requestPasswordReset(email: trimmedEmail)
-            passwordResetNotice = "Check your email for a reset link or code."
-            passwordResetNoticeDetail = "Use the newest email from sideBar to finish resetting your password."
+            passwordResetNotice = "Check your email for a reset link."
+            passwordResetNoticeDetail = nil
         } catch {
             errorMessage = PasswordResetErrorPresentation.message(for: error)
         }

@@ -6,7 +6,7 @@ final class LoginViewPasswordResetSourceTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("Forgotpassword?"))
-        XCTAssertTrue(normalized.contains("Checkyouremailforaresetlinkorcode."))
+        XCTAssertTrue(normalized.contains("Checkyouremailforaresetlink."))
         XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity,alignment:.center)"))
         XCTAssertTrue(normalized.contains("DesignTokens.Colors.actionPrimary"))
     }
