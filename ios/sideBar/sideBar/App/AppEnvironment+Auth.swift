@@ -255,6 +255,7 @@ extension AppEnvironment {
         defaults.removeObject(forKey: AppStorageKeys.lastSignInEmail)
         defaults.removeObject(forKey: AppStorageKeys.lastAuthTimestamp)
         storage.widgetDataManager.clearAllDataForSignOut()
+        clearSharedExtensionAuthState()
         if !preserveExtensionHandoffs {
             storage.pendingShareStore.clearAll()
             storage.extensionEventStore.clear()
@@ -263,6 +264,18 @@ extension AppEnvironment {
             try draftStorage.clearAllDrafts()
         } catch {
             authLogger.error("Failed to clear local drafts on sign-out: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func clearSharedExtensionAuthState() {
+        do {
+            try SupabaseAuthRecovery.clearPersistedAuthState(
+                stateStore: ExtensionAuthStateStoreFactory.makeSharedStore()
+            )
+        } catch {
+            authLogger.error(
+                "Failed to clear shared extension auth state on sign-out: \(error.localizedDescription, privacy: .public)"
+            )
         }
     }
 

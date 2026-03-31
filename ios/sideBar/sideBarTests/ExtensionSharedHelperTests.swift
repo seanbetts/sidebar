@@ -51,6 +51,7 @@ final class ExtensionSharedHelperTests: XCTestCase {
     func testExtensionAuthStateStoreFactoryCreatesUsableStoreUnderTests() throws {
         let store = ExtensionAuthStateStoreFactory.makeSharedStore()
 
+        try store.clear()
         try store.saveAccessToken("factory-token")
         try store.saveUserId("factory-user")
 
@@ -60,6 +61,20 @@ final class ExtensionSharedHelperTests: XCTestCase {
         try store.clear()
         XCTAssertNil(try store.loadAccessToken())
         XCTAssertNil(try store.loadUserId())
+    }
+
+    func testExtensionAuthStateStoreFactoryReusesSharedStoreUnderTests() throws {
+        let firstStore = ExtensionAuthStateStoreFactory.makeSharedStore()
+        let secondStore = ExtensionAuthStateStoreFactory.makeSharedStore()
+
+        try firstStore.clear()
+        try firstStore.saveAccessToken("shared-token")
+        try firstStore.saveUserId("shared-user")
+
+        XCTAssertEqual(try secondStore.loadAccessToken(), "shared-token")
+        XCTAssertEqual(try secondStore.loadUserId(), "shared-user")
+
+        try secondStore.clear()
     }
 
     private func makeJWT(exp: TimeInterval) -> String {
