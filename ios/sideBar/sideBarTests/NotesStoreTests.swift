@@ -295,6 +295,51 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertNil(archivedNode.pinnedOrder)
     }
 
+    func testApplyOptimisticMoveReparentsNoteIntoDestinationFolder() async {
+        let movedNote = FileNode(
+            name: "Draft.md",
+            path: "/Draft.md",
+            type: .file,
+            size: nil,
+            modified: nil,
+            created: nil,
+            children: nil,
+            expanded: nil,
+            pinned: true,
+            pinnedOrder: 2,
+            archived: false,
+            folderMarker: nil
+        )
+        let destinationFolder = FileNode(
+            name: "Projects",
+            path: "folder:Projects",
+            type: .directory,
+            size: nil,
+            modified: nil,
+            created: nil,
+            children: [],
+            expanded: nil,
+            pinned: nil,
+            pinnedOrder: nil,
+            archived: nil,
+            folderMarker: true
+        )
+        let tree = FileTree(children: [movedNote, destinationFolder])
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
+        let store = NotesStore(api: api, cache: TestCacheClient())
+        store.applyTreeUpdate(tree, persist: false)
+
+        store.applyOptimisticMove(notePath: "/Draft.md", folder: "Projects")
+
+        XCTAssertNil(store.findNode(path: "/Draft.md", in: store.tree?.children ?? []))
+        let movedNode = store.findNode(path: "/Projects/Draft.md", in: store.tree?.children ?? [])
+        XCTAssertEqual(movedNode?.pinned, false)
+        XCTAssertNil(movedNode?.pinnedOrder)
+    }
+
     func testApplyPinnedOrderUpdatesPinnedNodesAcrossFoldersAndCanRestorePreviousOrder() async {
         let tree = makePinnedOrderTree()
         let api = NotesStoreTestsSupport.MockNotesAPI(

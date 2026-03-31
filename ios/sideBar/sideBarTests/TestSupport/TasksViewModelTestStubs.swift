@@ -43,6 +43,8 @@ final class TasksViewModelAPIStub: TasksProviding {
     var deleteGroupResult: Result<Void, Error> = .failure(TasksTestStubError.unused)
     var deleteProjectResult: Result<Void, Error> = .failure(TasksTestStubError.unused)
     private var queuedListResponsesByScope: [String: [TaskListResponse]] = [:]
+    private var suspendedApplyResult: Result<TaskSyncResponse, Error>?
+    private var applyContinuation: CheckedContinuation<TaskSyncResponse, Error>?
 
     func enqueueListResponse(scope: String, tasks: [TaskItem], groups: [TaskGroup]? = nil, projects: [TaskProject]? = nil) {
         let response = TaskListResponse(
@@ -133,12 +135,28 @@ final class TasksViewModelAPIStub: TasksProviding {
     func apply(_ payload: TaskOperationBatch) async throws -> TaskSyncResponse {
         lastApplyPayload = payload
         applyCallCount += 1
+        if let suspendedApplyResult {
+            self.suspendedApplyResult = nil
+            return try await withCheckedThrowingContinuation { continuation in
+                applyContinuation = continuation
+            }
+        }
         return try applyResult.get()
     }
 
     func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse {
         _ = payload
         throw TasksTestStubError.unused
+    }
+
+    func suspendNextApply(result: Result<TaskSyncResponse, Error>? = nil) {
+        suspendedApplyResult = result ?? applyResult
+    }
+
+    func resumeApply() {
+        guard let applyContinuation else { return }
+        self.applyContinuation = nil
+        applyContinuation.resume(with: suspendedApplyResult ?? applyResult)
     }
 }
 

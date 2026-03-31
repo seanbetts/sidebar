@@ -1,8 +1,10 @@
+// swiftlint:disable file_length
 import XCTest
 import sideBarShared
 @testable import sideBar
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class TasksViewModelTests: XCTestCase {
     func testCompleteTaskFailureRestoresTaskAndSetsError() async {
         let api = TasksViewModelAPIStub()
@@ -307,6 +309,48 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertEqual(api.applyCallCount, 1)
         XCTAssertGreaterThanOrEqual(api.listCallCount, 3, "Manual save should refresh list and widget data")
         XCTAssertGreaterThanOrEqual(api.countsCallCount, 1, "Manual save should refresh counts")
+    }
+
+    func testMoveTaskOnlineOptimisticallyUpdatesProjectSelectionBeforeApplyReturns() async {
+        let api = TasksViewModelAPIStub()
+        let sourceProject = TaskProject(id: "project-1", title: "Inbox", groupId: nil, status: "active", updatedAt: nil)
+        let destinationProject = TaskProject(id: "project-2", title: "Later", groupId: nil, status: "active", updatedAt: nil)
+        let task = TaskItem(
+            id: "task-1",
+            title: "Move me",
+            status: "open",
+            projectId: "project-1",
+            updatedAt: "u1"
+        )
+        api.projectTasksResponse = TaskListResponse(
+            scope: "project",
+            generatedAt: nil,
+            tasks: [task],
+            projects: [sourceProject, destinationProject],
+            groups: []
+        )
+        api.applyResult = .success(
+            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
+        )
+        api.suspendNextApply()
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .project(id: "project-1"))
+        XCTAssertEqual(sut.viewModel.viewState.sections.first?.tasks.map(\.id), ["task-1"])
+
+        let moveTask = Task {
+            await sut.viewModel.moveTask(task: task, listId: "project-2")
+        }
+
+        await eventually {
+            sut.viewModel.viewState.sections.flatMap(\.tasks).isEmpty
+        }
+        XCTAssertEqual(sut.store.tasks.first?.projectId, "project-2")
+
+        api.resumeApply()
+        await moveTask.value
+
+        XCTAssertEqual(api.applyCallCount, 1)
     }
 
     // MARK: - New task creation

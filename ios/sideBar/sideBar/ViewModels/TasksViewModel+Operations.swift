@@ -100,15 +100,29 @@ extension TasksViewModel {
     }
 
     public func moveTask(task: TaskItem, listId: String?) async {
-        await applyTaskOperation(
-            TaskOperationPayload(
-                operationId: TaskOperationId.make(),
-                op: "move",
-                id: task.id,
-                listId: listId,
-                clientUpdatedAt: task.updatedAt
-            )
+        let operation = TaskOperationPayload(
+            operationId: TaskOperationId.make(),
+            op: "move",
+            id: task.id,
+            listId: listId,
+            clientUpdatedAt: task.updatedAt
         )
+        setLocalErrorMessage(nil)
+        if shouldQueueTaskWrites {
+            await queueOfflineOperation(operation)
+            return
+        }
+        store.applyLocalOperation(operation)
+        do {
+            let response = try await api.apply(TaskOperationBatch(operations: [operation]))
+            showNextInstanceScheduledToast(nextTasks: response.nextTasks)
+            await load(selection: selection, force: true)
+            await loadCounts(force: true)
+            await refreshWidgetData()
+        } catch {
+            await load(selection: selection, force: true)
+            setLocalErrorMessage(ErrorMapping.message(for: error))
+        }
     }
 
     public func setDueDate(task: TaskItem, date: Date?) async {

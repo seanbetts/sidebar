@@ -239,14 +239,17 @@ public final class NotesViewModel: ObservableObject {
             }
             return
         }
+        let shouldRetainSelection = selectedNoteId == id || activeNote?.path == id
+        store.applyOptimisticMove(notePath: id, folder: folder)
         do {
             let updated = try await api.moveNote(id: id, folder: folder)
             store.applyEditorUpdate(updated)
-            if selectedNoteId != updated.path {
+            if shouldRetainSelection && selectedNoteId != updated.path {
                 selectedNoteId = updated.path
             }
             await refreshTree(force: true)
         } catch {
+            await refreshTree(force: true)
             toastCenter.show(message: "Failed to move note")
         }
     }

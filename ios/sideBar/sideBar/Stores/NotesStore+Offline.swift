@@ -94,7 +94,11 @@ extension NotesStore {
             payload: MoveRequest(folder: folder),
             serverSnapshot: snapshot
         )
-        applyLocalMove(notePath: notePath, folder: folder)
+        applyLocalMove(notePath: notePath, folder: folder, shouldUpdateCachedNotePath: true)
+    }
+
+    func applyOptimisticMove(notePath: String, folder: String) {
+        applyLocalMove(notePath: notePath, folder: folder, shouldUpdateCachedNotePath: false)
     }
 
     /// Enqueues an offline pin toggle operation and applies it optimistically.
@@ -139,13 +143,19 @@ extension NotesStore {
         applyLocalDelete(notePath: notePath)
     }
 
-    private func applyLocalMove(notePath: String, folder: String) {
+    private func applyLocalMove(notePath: String, folder: String, shouldUpdateCachedNotePath: Bool) {
+        guard let tree else { return }
         let newPath = movingPath(notePath, to: folder)
-        guard let updatedTree = updatedTree(in: tree, notePath: notePath, transform: { node in
-            copyNode(node, path: newPath, pinned: false, pinnedOrder: nil)
-        }) else { return }
+        let removal = removeNodeFromTree(in: tree.children, notePath: notePath)
+        guard let removed = removal.removed else { return }
+
+        let movedNode = copyNode(removed, path: newPath, pinned: false, pinnedOrder: nil)
+        let updatedChildren = insertNodeIntoFolder(removal.nodes, node: movedNode, folder: folder)
+        let updatedTree = makeTree(children: updatedChildren)
         persistLocalTree(updatedTree)
-        updateCachedNotePath(from: notePath, to: newPath, newName: nil)
+        if shouldUpdateCachedNotePath {
+            updateCachedNotePath(from: notePath, to: newPath, newName: nil)
+        }
     }
 
     private func applyLocalPin(notePath: String, pinned: Bool) {
@@ -249,6 +259,85 @@ extension NotesStore {
         }
     }
 
+    private func removeNodeFromTree(in nodes: [FileNode], notePath: String) -> (nodes: [FileNode], removed: FileNode?) {
+        var removed: FileNode?
+        let updatedNodes: [FileNode] = nodes.compactMap { node -> FileNode? in
+            if node.path == notePath {
+                removed = node
+                return nil
+            }
+            guard let children = node.children else {
+                return node
+            }
+
+            let childRemoval = removeNodeFromTree(in: children, notePath: notePath)
+            if let child = childRemoval.removed {
+                removed = child
+                return copyNode(node, children: childRemoval.nodes)
+            }
+            return node
+        }
+
+        return (updatedNodes, removed)
+    }
+
+    private func insertNodeIntoFolder(_ nodes: [FileNode], node: FileNode, folder: String) -> [FileNode] {
+        let normalizedFolder = folder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !normalizedFolder.isEmpty else {
+            return nodes + [node]
+        }
+        let components = normalizedFolder.split(separator: "/").map(String.init)
+        return insertNodeIntoFolder(nodes, node: node, components: components, currentPath: "")
+    }
+
+    private func insertNodeIntoFolder(
+        _ nodes: [FileNode],
+        node: FileNode,
+        components: [String],
+        currentPath: String
+    ) -> [FileNode] {
+        guard let component = components.first else {
+            return nodes + [node]
+        }
+
+        let nextPath = currentPath.isEmpty ? component : "\(currentPath)/\(component)"
+        var updatedNodes = nodes
+        let remaining = Array(components.dropFirst())
+        let targetIndex = updatedNodes.firstIndex { existing in
+            existing.type == .directory && normalizedFolderNodePath(existing.path) == nextPath
+        }
+
+        if let targetIndex {
+            let existing = updatedNodes[targetIndex]
+            let existingChildren = existing.children ?? []
+            let updatedChildren = remaining.isEmpty
+                ? existingChildren + [node]
+                : insertNodeIntoFolder(existingChildren, node: node, components: remaining, currentPath: nextPath)
+            updatedNodes[targetIndex] = copyNode(existing, children: updatedChildren)
+            return updatedNodes
+        }
+
+        let newChildren = remaining.isEmpty
+            ? [node]
+            : insertNodeIntoFolder([], node: node, components: remaining, currentPath: nextPath)
+        let newFolderNode = FileNode(
+            name: component,
+            path: "folder:\(nextPath)",
+            type: .directory,
+            size: nil,
+            modified: nil,
+            created: nil,
+            children: newChildren,
+            expanded: nil,
+            pinned: nil,
+            pinnedOrder: nil,
+            archived: nil,
+            folderMarker: true
+        )
+        updatedNodes.append(newFolderNode)
+        return updatedNodes
+    }
+
     func copyNode(
         _ node: FileNode,
         name: String? = nil,
@@ -290,6 +379,14 @@ extension NotesStore {
         let normalizedFolder = folder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let newPath = normalizedFolder.isEmpty ? filename : "\(normalizedFolder)/\(filename)"
         return path.hasPrefix("/") ? "/\(newPath)" : newPath
+    }
+
+    private func normalizedFolderNodePath(_ path: String) -> String {
+        if path.hasPrefix("folder:") {
+            return String(path.dropFirst("folder:".count))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        }
+        return path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 
     private func makeServerSnapshot(noteId: String?, notePath: String?) -> ServerSnapshot? {

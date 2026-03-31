@@ -348,6 +348,75 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
         XCTAssertEqual(viewModel.searchResults.map(\.path), ["Cafe.md"])
     }
+
+    func testMoveNoteOnlineOptimisticallyMovesTreeWithoutSelectingUnselectedNote() async throws {
+        let initialTree = FileTree(children: [
+            FileNode(
+                name: "Draft.md",
+                path: "Draft.md",
+                type: .file,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            ),
+            FileNode(
+                name: "Projects",
+                path: "folder:Projects",
+                type: .directory,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: [],
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: true
+            )
+        ])
+        let movedNote = NotePayload(
+            id: "note-1",
+            name: "Draft.md",
+            content: "Body",
+            path: "Projects/Draft.md",
+            modified: nil,
+            created: nil
+        )
+        let api = ControlledMoveNotesAPI(moveResult: movedNote)
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        store.applyTreeUpdate(initialTree, persist: false)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let moveTask = Task {
+            await viewModel.moveNote(id: "Draft.md", folder: "Projects")
+        }
+
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.tree?.children.contains(where: { $0.path == "Projects/Draft.md" }) == true
+                || viewModel.tree?.children.contains(where: { node in
+                    node.path == "folder:Projects"
+                        && (node.children ?? []).contains(where: { $0.path == "Projects/Draft.md" })
+                }) == true
+        }
+        XCTAssertNil(viewModel.selectedNoteId)
+
+        api.resumeMove()
+        await moveTask.value
+
+        XCTAssertNil(viewModel.selectedNoteId)
+    }
 }
 
 private enum MockError: Error {
@@ -771,6 +840,114 @@ private final class ControlledArchivedNotesAPI: NotesProviding {
         guard let continuation = archivedContinuation else { return }
         archivedContinuation = nil
         continuation.resume(with: result)
+    }
+}
+
+@MainActor
+private final class ControlledMoveNotesAPI: NotesProviding {
+    private let moveResult: NotePayload
+    private var moveContinuation: CheckedContinuation<NotePayload, Error>?
+
+    init(moveResult: NotePayload) {
+        self.moveResult = moveResult
+    }
+
+    func listTree() async throws -> FileTree {
+        FileTree(children: [])
+    }
+
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        return FileTree(children: [])
+    }
+
+    func getNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func updateNote(id: String, content: String) async throws -> NotePayload {
+        _ = id
+        _ = content
+        throw MockError.forced
+    }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw MockError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw MockError.forced
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        return try await withCheckedThrowingContinuation { continuation in
+            moveContinuation = continuation
+        }
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw MockError.forced
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        throw MockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func createFolder(path: String) async throws {
+        _ = path
+    }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = path
+    }
+
+    func resumeMove() {
+        guard let moveContinuation else { return }
+        self.moveContinuation = nil
+        moveContinuation.resume(returning: moveResult)
     }
 }
 
