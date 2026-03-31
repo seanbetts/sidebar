@@ -3,6 +3,10 @@ import OSLog
 import sideBarShared
 
 extension AppEnvironment {
+    private var staleAuthToastMessage: String {
+        "Sync paused — trying to refresh your session."
+    }
+
     private var biometricGracePeriod: TimeInterval {
         300
     }
@@ -42,12 +46,17 @@ extension AppEnvironment {
         let requiresSignedOutReset = authState == .signedOut
             && (previousAuthState != .signedOut || storedCacheScopeUserId != nil)
         let becameStale = previousAuthState != .stale && authState == .stale
+        let recoveredFromStale = previousAuthState == .stale && authState != .stale
         if requiresSignedOutReset {
             clearStoredCacheScopeUserId()
             resetSignedInData(clearNavigationState: true)
         }
         if becameStale && wasAuthenticated {
-            toastCenter.show(message: "Sync paused — trying to refresh your session.")
+            toastCenter.show(message: staleAuthToastMessage)
+        }
+        if recoveredFromStale,
+           toastCenter.toast?.message == staleAuthToastMessage {
+            toastCenter.dismiss()
         }
         if isAuthenticated {
             reconcileCacheScopeForAuthenticatedUser()

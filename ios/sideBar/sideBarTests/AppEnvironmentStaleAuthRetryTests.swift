@@ -35,6 +35,45 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
         XCTAssertEqual(authSession.refreshSessionCallCount, 0)
         XCTAssertEqual(environment.authState, .active)
     }
+
+    func testRefreshAuthStateClearsStaleAuthToastOnRecovery() {
+        let authSession = StaleRetryAuthSession(authState: .stale)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(container: container)
+        environment.authState = .stale
+        environment.toastCenter.show(
+            message: "Sync paused — trying to refresh your session.",
+            duration: 30
+        )
+
+        authSession.authState = .active
+        environment.refreshAuthState()
+
+        XCTAssertNil(environment.toastCenter.toast)
+        XCTAssertEqual(environment.authState, .active)
+    }
+
+    func testRefreshAuthStateKeepsUnrelatedToastOnRecovery() {
+        let authSession = StaleRetryAuthSession(authState: .stale)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(container: container)
+        environment.authState = .stale
+        environment.toastCenter.show(message: "Different message", duration: 30)
+
+        authSession.authState = .active
+        environment.refreshAuthState()
+
+        XCTAssertEqual(environment.toastCenter.toast?.message, "Different message")
+        XCTAssertEqual(environment.authState, .active)
+    }
 }
 
 private final class StaleRetryAuthSession: AuthSession {

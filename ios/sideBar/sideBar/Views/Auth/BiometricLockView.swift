@@ -208,16 +208,12 @@ public struct BiometricLockView: View {
 
     private func handleBiometricUnavailable(error: NSError?) {
         let code = LAError.Code(rawValue: error?.code ?? -1)
-        switch code {
-        case .biometryNotAvailable:
-            errorMessage = "\(biometryName) is not available on this device."
-        case .biometryNotEnrolled:
-            errorMessage = "\(biometryName) is not set up. Enable it in Settings."
-        case .passcodeNotSet:
-            errorMessage = "Set a device passcode to use \(biometryName)."
-        default:
-            errorMessage = "Biometric authentication is unavailable."
-        }
+        let state = BiometricLockErrorPresentation.unavailableState(
+            for: code,
+            biometryName: biometryName
+        )
+        errorMessage = state.message
+        showPasscodeFallback = state.showsPasscodeFallback
     }
 
     private func handleAuthenticationError(_ error: Error) {
