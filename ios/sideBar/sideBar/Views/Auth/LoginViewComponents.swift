@@ -1,26 +1,135 @@
 import SwiftUI
+import sideBarShared
+
+struct LoginPasswordResetNoticeView: View {
+    let message: String
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .center, spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(DesignTokens.Colors.actionPrimary)
+                Text(message)
+                    .foregroundStyle(DesignTokens.Colors.textPrimary)
+                    .appFont(.callout)
+                Text("Use the newest email from sideBar to finish resetting your password.")
+                    .foregroundStyle(.secondary)
+                    .appFont(.caption)
+            }
+            .multilineTextAlignment(.center)
+        }
+        .padding(DesignTokens.Spacing.sm)
+        .background(DesignTokens.Colors.surface)
+        .cornerRadius(DesignTokens.Radius.xsPlus)
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
+                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity, alignment: .center)
+        .accessibilityLabel("Password reset requested")
+        .accessibilityValue(message)
+    }
+}
+
+struct LoginOfflineNoticeView: View {
+    var body: some View {
+        HStack {
+            VStack(alignment: .center, spacing: 6) {
+                Image(systemName: "wifi.slash")
+                    .foregroundStyle(DesignTokens.Colors.error)
+                Text("You're offline.")
+                    .foregroundStyle(DesignTokens.Colors.error)
+                    .appFont(.callout)
+                Text("Sign in requires a connection.")
+                    .foregroundStyle(.secondary)
+                    .appFont(.caption)
+            }
+            .multilineTextAlignment(.center)
+        }
+        .padding(DesignTokens.Spacing.sm)
+        .background(DesignTokens.Colors.surface)
+        .cornerRadius(DesignTokens.Radius.xsPlus)
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
+                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity, alignment: .center)
+        .accessibilityLabel("Offline")
+        .accessibilityValue("Sign in requires a connection.")
+    }
+}
+
+struct LoginOfflineUnlockView: View {
+    let title: String
+    let isLoading: Bool
+    let action: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Text("You're offline.")
+                .appFont(.callout)
+                .foregroundStyle(DesignTokens.Colors.textPrimary)
+            Text("Continue using your cached session.")
+                .appFont(.caption)
+                .foregroundStyle(.secondary)
+            Button(action: action) {
+                if isLoading {
+                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text(title)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(DesignTokens.Colors.actionPrimary)
+            .disabled(isLoading)
+        }
+        .padding(DesignTokens.Spacing.sm)
+        .background(DesignTokens.Colors.surface)
+        .cornerRadius(DesignTokens.Radius.xsPlus)
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
+                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+}
+
+struct LoginPasswordResetActionRow: View {
+    let isRequesting: Bool
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(isRequesting ? "Sending…" : "Forgot password?")
+                .frame(maxWidth: .infinity, alignment: .center)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .appFont(.caption)
+        .foregroundStyle(color)
+        .disabled(isRequesting)
+        .frame(maxWidth: .infinity)
+        .accessibilitySortPriority(1.5)
+    }
+}
 
 struct LoginPrimaryActionLabel: View {
     let isLoading: Bool
 
     var body: some View {
-        ZStack {
-            HStack(spacing: 8) {
-                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                Text("Signing in...")
-            }
-            .opacity(0)
-
+        Group {
             if isLoading {
-                HStack(spacing: 8) {
-                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                    Text("Signing in...")
-                }
+                LoadingIndicatorView(size: LoadingIndicatorSize.inline)
+                    .frame(maxWidth: .infinity)
             } else {
                 Text("Sign in")
+                    .frame(maxWidth: .infinity)
             }
         }
-        .frame(maxWidth: .infinity)
     }
 }
 
@@ -28,11 +137,18 @@ struct LoginManualSignUpPrompt: View {
     let action: () -> Void
 
     var body: some View {
-        Button("Don't have an account yet? Sign Up", action: action)
+        VStack(spacing: DesignTokens.Spacing.xsPlus) {
+            Text("Need an account?")
+                .appFont(.caption)
+                .foregroundStyle(.secondary)
+            Button(action: action) {
+                Text("Create one")
+                    .frame(maxWidth: .infinity)
+            }
             .buttonStyle(.plain)
-            .font(.subheadline)
-            .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.top, 2)
+            .appFont(.captionSemibold)
+            .foregroundStyle(DesignTokens.Colors.actionPrimary)
+        }
+        .frame(maxWidth: .infinity)
     }
 }

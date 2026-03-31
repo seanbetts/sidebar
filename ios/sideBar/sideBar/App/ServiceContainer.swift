@@ -42,6 +42,8 @@ public final class ServiceContainer {
     public let tasksAPI: TasksAPI
     /// Device tokens API wrapper for push token registration.
     public let deviceTokensAPI: DeviceTokensAPI
+    /// Password reset API wrapper for reset initiation from signed-out surfaces.
+    public let passwordResetAPI: any PasswordResetRequesting
 
     public var observableAuthSession: (any AuthSessionObserving)? {
         authSession as? any AuthSessionObserving
@@ -89,6 +91,7 @@ public final class ServiceContainer {
         self.scratchpadAPI = ScratchpadAPI(client: apiClient)
         self.tasksAPI = TasksAPI(client: apiClient)
         self.deviceTokensAPI = DeviceTokensAPI(client: apiClient)
+        self.passwordResetAPI = PasswordResetAPI(client: apiClient)
     }
 
     /// Creates a chat streaming client bound to the current auth session token provider.

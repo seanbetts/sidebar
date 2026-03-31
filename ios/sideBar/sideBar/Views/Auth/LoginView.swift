@@ -15,7 +15,9 @@ public struct LoginView: View {
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var errorMessage: String?
+    @State private var passwordResetNotice: String?
     @State private var isSigningIn: Bool = false
+    @State private var isRequestingPasswordReset: Bool = false
     @State private var isOfflineUnlocking: Bool = false
     @State private var showSuccess: Bool = false
     @State private var lockoutSecondsRemaining: Int?
@@ -51,6 +53,7 @@ public struct LoginView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             emailFieldRow
                             passwordFieldRow
+                            passwordResetActionRow
                         }
                         errorView
                         signInButton
@@ -75,9 +78,11 @@ public struct LoginView: View {
         .background(DesignTokens.Colors.background)
         .onChange(of: email) { _, _ in
             errorMessage = nil
+            passwordResetNotice = nil
         }
         .onChange(of: password) { _, _ in
             errorMessage = nil
+            passwordResetNotice = nil
         }
         .onAppear {
             email = LoginEmailPrefill.initialEmail(currentEmail: email, storedEmail: lastSignInEmail)
@@ -194,6 +199,9 @@ public struct LoginView: View {
 
     @ViewBuilder
     private var errorView: some View {
+        if let passwordResetNotice {
+            LoginPasswordResetNoticeView(message: passwordResetNotice)
+        }
         if !environment.isNetworkAvailable {
             offlineNoticeView
         }
@@ -245,29 +253,7 @@ public struct LoginView: View {
     }
 
     private var offlineNoticeView: some View {
-        HStack {
-            VStack(alignment: .center, spacing: 6) {
-                Image(systemName: "wifi.slash")
-                    .foregroundStyle(DesignTokens.Colors.error)
-                Text("You're offline.")
-                    .foregroundStyle(DesignTokens.Colors.error)
-                    .appFont(.callout)
-                Text("Sign in requires a connection.")
-                    .foregroundStyle(.secondary)
-                    .appFont(.caption)
-            }
-            .multilineTextAlignment(.center)
-        }
-        .padding(DesignTokens.Spacing.sm)
-        .background(DesignTokens.Colors.surface)
-        .cornerRadius(DesignTokens.Radius.xsPlus)
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
-        .frame(maxWidth: .infinity, alignment: .center)
-        .accessibilityLabel("Offline")
-        .accessibilityValue("Sign in requires a connection.")
+        LoginOfflineNoticeView()
     }
 
     private func formatLockoutTime(_ seconds: Int) -> String {
@@ -310,37 +296,11 @@ public struct LoginView: View {
     }
 
     private var offlineUnlockView: some View {
-        VStack(spacing: 10) {
-            Text("You're offline.")
-                .appFont(.callout)
-                .foregroundStyle(DesignTokens.Colors.textPrimary)
-            Text("Continue using your cached session.")
-                .appFont(.caption)
-                .foregroundStyle(.secondary)
-            Button {
-                Task { _ = await attemptOfflineUnlock() }
-            } label: {
-                if isOfflineUnlocking {
-                    LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Text(offlineUnlockTitle)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(DesignTokens.Colors.actionPrimary)
-            .disabled(isOfflineUnlocking)
-        }
-        .padding(DesignTokens.Spacing.sm)
-        .background(DesignTokens.Colors.surface)
-        .cornerRadius(DesignTokens.Radius.xsPlus)
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        LoginOfflineUnlockView(
+            title: offlineUnlockTitle,
+            isLoading: isOfflineUnlocking,
+            action: { Task { _ = await attemptOfflineUnlock() } }
         )
-        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private func authenticateForOfflineUnlock() async -> Bool {
@@ -376,6 +336,14 @@ public struct LoginView: View {
         .accessibilitySortPriority(1)
     }
 
+    private var passwordResetActionRow: some View {
+        LoginPasswordResetActionRow(
+            isRequesting: isRequestingPasswordReset,
+            color: passwordResetActionColor,
+            action: { Task { await requestPasswordReset() } }
+        )
+    }
+
     @ViewBuilder
     private var onboardingEntryView: some View {
         if OnboardingPresentation.shouldAllowManualStart(authState: environment.authState) {
@@ -398,7 +366,15 @@ public struct LoginView: View {
     }
 
     private var isValidEmail: Bool {
-        let trimmed = email.trimmed
+        isValidEmail(email)
+    }
+
+    private var passwordResetActionColor: Color {
+        isRequestingPasswordReset ? DesignTokens.Colors.textSecondary : DesignTokens.Colors.actionPrimary
+    }
+
+    private func isValidEmail(_ candidate: String) -> Bool {
+        let trimmed = candidate.trimmed
         guard !trimmed.isEmpty else { return false }
         let regex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         return NSPredicate(format: "SELF MATCHES %@", regex).evaluate(with: trimmed)
@@ -423,6 +399,7 @@ private extension LoginView {
 
     func signIn() async {
         errorMessage = nil
+        passwordResetNotice = nil
         isSigningIn = true
         defer { isSigningIn = false }
 
@@ -465,6 +442,36 @@ private extension LoginView {
             #if os(iOS)
             triggerHaptic(.error)
             #endif
+        }
+    }
+
+    func requestPasswordReset() async {
+        errorMessage = nil
+        passwordResetNotice = nil
+
+        let trimmedEmail = email.trimmed
+        if trimmedEmail != email {
+            email = trimmedEmail
+        }
+
+        guard isValidEmail(trimmedEmail) else {
+            errorMessage = "Enter your email to reset your password."
+            return
+        }
+
+        guard environment.isNetworkAvailable else {
+            errorMessage = "Password reset requires a connection."
+            return
+        }
+
+        isRequestingPasswordReset = true
+        defer { isRequestingPasswordReset = false }
+
+        do {
+            try await environment.container.passwordResetAPI.requestPasswordReset(email: trimmedEmail)
+            passwordResetNotice = "Check your email for a reset link or code."
+        } catch {
+            errorMessage = PasswordResetErrorPresentation.message(for: error)
         }
     }
 
