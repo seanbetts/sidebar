@@ -87,7 +87,11 @@ public struct ContentView: View {
                 case .login:
                     LoginView(
                         initialPasswordResetNotice: environment.passwordResetSuccessMessage,
-                        onConsumePasswordResetNotice: { environment.passwordResetSuccessMessage = nil },
+                        initialPasswordResetNoticeDetail: environment.passwordResetSuccessDetail,
+                        onConsumePasswordResetNotice: {
+                            environment.passwordResetSuccessMessage = nil
+                            environment.passwordResetSuccessDetail = nil
+                        },
                         shouldAutofocusEmail: LoginFocusPolicy.shouldAutofocusEmail(
                             isOnboardingPresented: showOnboarding
                         ),

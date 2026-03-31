@@ -16,6 +16,7 @@ public struct LoginView: View {
     @State private var password: String = ""
     @State private var errorMessage: String?
     @State private var passwordResetNotice: String?
+    @State private var passwordResetNoticeDetail: String?
     @State private var isSigningIn: Bool = false
     @State private var isRequestingPasswordReset: Bool = false
     @State private var isOfflineUnlocking: Bool = false
@@ -24,6 +25,7 @@ public struct LoginView: View {
     @FocusState private var focusedField: Field?
     private let lockoutTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     private let initialPasswordResetNotice: String?
+    private let initialPasswordResetNoticeDetail: String?
     private let onConsumePasswordResetNotice: (() -> Void)?
     private let onStartOnboarding: () -> Void
     private let shouldAutofocusEmail: Bool
@@ -34,16 +36,17 @@ public struct LoginView: View {
     }
     public init(
         initialPasswordResetNotice: String? = nil,
+        initialPasswordResetNoticeDetail: String? = nil,
         onConsumePasswordResetNotice: (() -> Void)? = nil,
         shouldAutofocusEmail: Bool = true,
         onStartOnboarding: @escaping () -> Void = {}
     ) {
         self.initialPasswordResetNotice = initialPasswordResetNotice
+        self.initialPasswordResetNoticeDetail = initialPasswordResetNoticeDetail
         self.onConsumePasswordResetNotice = onConsumePasswordResetNotice
         self.shouldAutofocusEmail = shouldAutofocusEmail
         self.onStartOnboarding = onStartOnboarding
     }
-
     public var body: some View {
         ZStack {
             DesignTokens.Colors.background
@@ -71,7 +74,6 @@ public struct LoginView: View {
             .frame(maxWidth: 420)
             .padding(DesignTokens.Spacing.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-
             if showSuccess {
                 ZStack {
                     DesignTokens.Colors.background.opacity(0.9)
@@ -85,15 +87,18 @@ public struct LoginView: View {
         .onChange(of: email) { _, _ in
             errorMessage = nil
             passwordResetNotice = nil
+            passwordResetNoticeDetail = nil
         }
         .onChange(of: password) { _, _ in
             errorMessage = nil
             passwordResetNotice = nil
+            passwordResetNoticeDetail = nil
         }
         .onAppear {
             email = LoginEmailPrefill.initialEmail(currentEmail: email, storedEmail: lastSignInEmail)
             if passwordResetNotice == nil, let initialPasswordResetNotice {
                 passwordResetNotice = initialPasswordResetNotice
+                passwordResetNoticeDetail = initialPasswordResetNoticeDetail
                 onConsumePasswordResetNotice?()
             }
             updateLockoutState()
@@ -130,7 +135,6 @@ public struct LoginView: View {
             .padding(.horizontal, DesignTokens.Spacing.sm)
         }
     }
-
     private var emailFieldRow: some View {
         HStack(spacing: 10) {
             Image(systemName: "envelope")
@@ -174,7 +178,6 @@ public struct LoginView: View {
         .overlay(fieldBorder)
         .accessibilitySortPriority(3)
     }
-
     private var passwordFieldRow: some View {
         HStack(spacing: 10) {
             Image(systemName: "lock")
@@ -206,11 +209,13 @@ public struct LoginView: View {
         .overlay(fieldBorder)
         .accessibilitySortPriority(2)
     }
-
     @ViewBuilder
     private var errorView: some View {
         if let passwordResetNotice {
-            LoginPasswordResetNoticeView(message: passwordResetNotice)
+            LoginPasswordResetNoticeView(
+                message: passwordResetNotice,
+                detail: passwordResetNoticeDetail
+            )
         }
         if !environment.isNetworkAvailable {
             offlineNoticeView
@@ -261,7 +266,6 @@ public struct LoginView: View {
             offlineUnlockView
         }
     }
-
     private var offlineNoticeView: some View {
         LoginOfflineNoticeView()
     }
@@ -355,24 +359,21 @@ public struct LoginView: View {
     private var isSignInDisabled: Bool {
         isSigningIn || email.isEmpty || password.isEmpty || isLockedOut || !environment.isNetworkAvailable
     }
+
     private var fieldBackground: some View {
         RoundedRectangle(cornerRadius: 8)
             .fill(Color.secondary.opacity(0.08))
     }
-
     private var fieldBorder: some View {
         RoundedRectangle(cornerRadius: 8)
             .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
     }
-
     private var isValidEmail: Bool {
         isValidEmail(email)
     }
-
     private var passwordResetActionColor: Color {
         isRequestingPasswordReset ? DesignTokens.Colors.textSecondary : DesignTokens.Colors.actionPrimary
     }
-
     private func isValidEmail(_ candidate: String) -> Bool {
         let trimmed = candidate.trimmed
         guard !trimmed.isEmpty else { return false }
@@ -392,11 +393,9 @@ private extension LoginView {
     func updateLockoutState() {
         lockoutSecondsRemaining = environment.container.signInRateLimiter?.lockoutRemainingSeconds
     }
-
     var isLockedOut: Bool {
         lockoutSecondsRemaining != nil && lockoutSecondsRemaining! > 0
     }
-
     func signIn() async {
         errorMessage = nil
         passwordResetNotice = nil
@@ -444,10 +443,10 @@ private extension LoginView {
             #endif
         }
     }
-
     func requestPasswordReset() async {
         errorMessage = nil
         passwordResetNotice = nil
+        passwordResetNoticeDetail = nil
 
         let trimmedEmail = email.trimmed
         if trimmedEmail != email {
@@ -458,23 +457,20 @@ private extension LoginView {
             errorMessage = "Enter your email to reset your password."
             return
         }
-
         guard environment.isNetworkAvailable else {
             errorMessage = "Password reset requires a connection."
             return
         }
-
         isRequestingPasswordReset = true
         defer { isRequestingPasswordReset = false }
-
         do {
             try await environment.container.passwordResetAPI.requestPasswordReset(email: trimmedEmail)
             passwordResetNotice = "Check your email for a reset link or code."
+            passwordResetNoticeDetail = "Use the newest email from sideBar to finish resetting your password."
         } catch {
             errorMessage = PasswordResetErrorPresentation.message(for: error)
         }
     }
-
     func attemptOfflineUnlock() async -> Bool {
         guard let offlineAccessRestorer = environment.container.offlineAccessRestorer,
               offlineAccessRestorer.canRestoreOfflineSession else {

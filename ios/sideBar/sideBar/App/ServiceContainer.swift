@@ -46,6 +46,8 @@ public final class ServiceContainer {
     public let passwordResetAPI: any PasswordResetRequesting
     /// Password recovery manager for recovery-link handling and completion.
     public let passwordRecoveryManager: any PasswordRecoveryManaging
+    /// Password change manager for in-session credential updates.
+    public let passwordChangeManager: any PasswordChanging
 
     public var observableAuthSession: (any AuthSessionObserving)? {
         authSession as? any AuthSessionObserving
@@ -65,7 +67,8 @@ public final class ServiceContainer {
         authSession: AuthSession,
         cacheClient: CacheClient,
         websitesAPI: (any WebsitesProviding)? = nil,
-        passwordRecoveryManager: (any PasswordRecoveryManaging)? = nil
+        passwordRecoveryManager: (any PasswordRecoveryManaging)? = nil,
+        passwordChangeManager: (any PasswordChanging)? = nil
     ) {
         self.config = config
         self.authSession = authSession
@@ -99,6 +102,10 @@ public final class ServiceContainer {
             passwordRecoveryManager
             ?? (authSession as? any PasswordRecoveryManaging)
             ?? UnavailablePasswordRecoveryManager()
+        self.passwordChangeManager =
+            passwordChangeManager
+            ?? (authSession as? any PasswordChanging)
+            ?? UnavailablePasswordChangeManager()
     }
 
     /// Creates a chat streaming client bound to the current auth session token provider.
@@ -123,6 +130,13 @@ private final class UnavailablePasswordRecoveryManager: PasswordRecoveryManaging
     }
 
     func completePasswordReset(newPassword: String) async throws {
+        _ = newPassword
+        throw AuthAdapterError.serviceUnavailable
+    }
+}
+
+private final class UnavailablePasswordChangeManager: PasswordChanging {
+    func changePassword(newPassword: String) async throws {
         _ = newPassword
         throw AuthAdapterError.serviceUnavailable
     }

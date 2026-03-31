@@ -176,6 +176,7 @@ extension AppEnvironment {
         do {
             try await container.passwordRecoveryManager.startRecoverySession(from: url)
             passwordResetSuccessMessage = nil
+            passwordResetSuccessDetail = nil
             passwordResetState = .enterNewPassword
         } catch {
             passwordResetState = nil
@@ -186,6 +187,7 @@ extension AppEnvironment {
         try await container.passwordRecoveryManager.completePasswordReset(newPassword: newPassword)
         passwordResetState = nil
         passwordResetSuccessMessage = "Password updated. Sign in with your new password."
+        passwordResetSuccessDetail = nil
         await container.authSession.signOut()
         refreshAuthState()
     }

@@ -122,6 +122,8 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var passwordResetState: PasswordResetState?
     /// Tracks the login notice shown after a successful password reset.
     @Published public internal(set) var passwordResetSuccessMessage: String?
+    /// Optional supporting copy for the signed-out password notice.
+    @Published public internal(set) var passwordResetSuccessDetail: String?
     var previousFocusedSectionBeforeMacSettings: AppSection?
     var isConsumingPendingShares: Bool = false
     var queuedProtectedDeepLinks: [URL] = []

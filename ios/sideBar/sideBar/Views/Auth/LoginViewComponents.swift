@@ -3,6 +3,7 @@ import sideBarShared
 
 struct LoginPasswordResetNoticeView: View {
     let message: String
+    let detail: String?
 
     var body: some View {
         HStack {
@@ -12,9 +13,11 @@ struct LoginPasswordResetNoticeView: View {
                 Text(message)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
                     .appFont(.callout)
-                Text("Use the newest email from sideBar to finish resetting your password.")
-                    .foregroundStyle(.secondary)
-                    .appFont(.caption)
+                if let detail {
+                    Text(detail)
+                        .foregroundStyle(.secondary)
+                        .appFont(.caption)
+                }
             }
             .multilineTextAlignment(.center)
         }
@@ -26,7 +29,7 @@ struct LoginPasswordResetNoticeView: View {
                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
         )
         .frame(maxWidth: .infinity, alignment: .center)
-        .accessibilityLabel("Password reset requested")
+        .accessibilityLabel("Authentication notice")
         .accessibilityValue(message)
     }
 }

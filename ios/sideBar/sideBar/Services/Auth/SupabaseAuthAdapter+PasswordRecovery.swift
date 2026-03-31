@@ -8,10 +8,6 @@ extension SupabaseAuthAdapter: PasswordRecoveryManaging {
     }
 
     public func completePasswordReset(newPassword: String) async throws {
-        let trimmedPassword = newPassword.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedPassword.count >= 8 else {
-            throw AuthAdapterError.weakPassword
-        }
-        try await authClient.updatePassword(trimmedPassword)
+        try await authClient.updatePassword(try validatedPasswordForMutation(newPassword))
     }
 }

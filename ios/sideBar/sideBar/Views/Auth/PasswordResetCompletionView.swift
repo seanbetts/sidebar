@@ -27,7 +27,7 @@ struct PasswordResetCompletionView: View {
     }
 
     private var hasMinimumPasswordLength: Bool {
-        trimmedNewPassword.count >= 8
+        trimmedNewPassword.count >= PasswordStrengthRules.minimumLength
     }
 
     private var passwordMismatchMessage: String? {

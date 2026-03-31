@@ -3,15 +3,9 @@ import os
 
 @MainActor
 extension SupabaseAuthAdapter {
-    private static let minimumPasswordLength = 8
-
     public func signUp(email: String, password: String) async throws {
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let trimmedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard trimmedPassword.count >= Self.minimumPasswordLength else {
-            throw AuthAdapterError.weakPassword
-        }
+        let trimmedPassword = try validatedPasswordForMutation(password)
 
         do {
             try await authClient.signUp(email: trimmedEmail, password: trimmedPassword)

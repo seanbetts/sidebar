@@ -1,10 +1,11 @@
 import Foundation
 
 enum PasswordStrengthRules {
+    static let minimumLength = 8
     static let guidanceMessage = "Use 8+ characters with upper and lower case, a number, and a symbol."
 
     static func score(for candidate: String) -> Int {
-        guard candidate.count >= 8 else { return 0 }
+        guard candidate.count >= minimumLength else { return 0 }
 
         var score = 1
         if candidate.rangeOfCharacter(from: .uppercaseLetters) != nil &&

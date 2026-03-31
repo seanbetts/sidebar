@@ -8,6 +8,7 @@ import UIKit
 #endif
 
 struct GeneralSettingsView: View {
+    @EnvironmentObject private var environment: AppEnvironment
     enum TextSizeControlMode: Equatable {
         case picker
         case menuPicker
@@ -24,6 +25,10 @@ struct GeneralSettingsView: View {
     @State private var canUseDeviceAuth = false
     @State private var biometryType: LABiometryType = .none
     @State private var diagnosticsStatusMessage: String?
+    @State private var isPasswordChangePresented = false
+    @State private var isStartingPasswordChange = false
+    @State private var passwordChangeAuthFailure: LocalDeviceAuthenticationFailure?
+    private let localDeviceAuthenticator: any LocalDeviceAuthenticating
 
     static func textSizeControlMode(for platform: TextSizeControlPlatform) -> TextSizeControlMode {
         switch platform {
@@ -32,6 +37,10 @@ struct GeneralSettingsView: View {
         case .macOS:
             return .menuPicker
         }
+    }
+
+    init(localDeviceAuthenticator: (any LocalDeviceAuthenticating)? = nil) {
+        self.localDeviceAuthenticator = localDeviceAuthenticator ?? LocalDeviceAuthenticator()
     }
 
     var body: some View {
@@ -60,6 +69,14 @@ struct GeneralSettingsView: View {
                 ) {
                     Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
                         .disabled(!canUseDeviceAuth)
+
+                    Button {
+                        startPasswordChangeFlow()
+                    } label: {
+                        Text("Change password")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isStartingPasswordChange || environment.authState != .active)
 
                     if !canUseDeviceAuth {
                         SettingsMacStatusBanner(
@@ -124,6 +141,12 @@ struct GeneralSettingsView: View {
             Section("Security") {
                 Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
                     .disabled(!canUseDeviceAuth)
+                Button {
+                    startPasswordChangeFlow()
+                } label: {
+                    Text("Change password")
+                }
+                .disabled(isStartingPasswordChange || environment.authState != .active)
                 if !canUseDeviceAuth {
                     Text("Set up Face ID or Touch ID to enable biometric unlock.")
                         .appFont(.caption)
@@ -155,6 +178,26 @@ struct GeneralSettingsView: View {
         .onAppear {
             appTextSizeRaw = AppTextSizeOption.resolved(from: appTextSizeRaw).rawValue
             evaluateBiometricSupport()
+        }
+        .sheet(isPresented: $isPasswordChangePresented) {
+            SettingsPasswordChangeView()
+                .environmentObject(environment)
+        }
+        .alert(item: $passwordChangeAuthFailure) { failure in
+            if failure.showsSettingsAction {
+                Alert(
+                    title: Text("Authentication unavailable"),
+                    message: Text(failure.message),
+                    primaryButton: .default(Text("Enable in Settings"), action: openSystemSettings),
+                    secondaryButton: .cancel()
+                )
+            } else {
+                Alert(
+                    title: Text("Authentication failed"),
+                    message: Text(failure.message),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
         }
     }
 
@@ -231,5 +274,38 @@ struct GeneralSettingsView: View {
     private func clearExternalSurfaceDiagnostics() {
         ExternalSurfaceDiagnosticsStore.shared.clear()
         diagnosticsStatusMessage = "Cleared external surface diagnostics."
+    }
+
+    private func startPasswordChangeFlow() {
+        guard !isStartingPasswordChange else { return }
+        isStartingPasswordChange = true
+        passwordChangeAuthFailure = nil
+
+        Task {
+            let result = await localDeviceAuthenticator.authenticateForSensitiveAction(
+                reason: "Confirm it's you before changing your password."
+            )
+            await MainActor.run {
+                isStartingPasswordChange = false
+                switch result {
+                case .success:
+                    isPasswordChangePresented = true
+                case .cancelled:
+                    break
+                case .failure(let failure):
+                    passwordChangeAuthFailure = failure
+                }
+            }
+        }
+    }
+
+    private func openSystemSettings() {
+        #if os(iOS)
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+        #elseif os(macOS)
+        guard let url = URL(string: "x-apple.systempreferences:") else { return }
+        NSWorkspace.shared.open(url)
+        #endif
     }
 }

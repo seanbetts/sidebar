@@ -702,6 +702,15 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(normalized.contains(".pickerStyle(.radioGroup)"))
     }
 
+    func testGeneralSettingsSourceIncludesPasswordChangeActionAndSheet() throws {
+        let normalized = try generalSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Text(\"Changepassword\")"))
+        XCTAssertTrue(normalized.contains("SettingsPasswordChangeView("))
+        XCTAssertTrue(normalized.contains("startPasswordChangeFlow()"))
+    }
+
     func testSkillsSettingsMacSourceUsesInspectorIntroAndCardRows() throws {
         let normalized = try skillsSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

@@ -81,6 +81,29 @@ import sideBarShared
 
         XCTAssertEqual(environment.passwordResetState, .enterNewPassword)
     }
+
+    func testCompleteSettingsPasswordChangeSignsOutWithSuccessNotice() async throws {
+        let recoveryManager = FakePasswordRecoveryManager()
+        let passwordChangeManager = FakePasswordChangeManager()
+        let authSession = FakeAuthSession(authState: .active)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient(),
+            passwordRecoveryManager: recoveryManager,
+            passwordChangeManager: passwordChangeManager
+        )
+        let environment = AppEnvironment(container: container)
+        environment.authState = .active
+
+        try await environment.completeSettingsPasswordChange(newPassword: "StrongPass123!")
+
+        XCTAssertEqual(passwordChangeManager.completedPasswords, ["StrongPass123!"])
+        XCTAssertEqual(authSession.signOutCallCount, 1)
+        XCTAssertEqual(environment.passwordResetSuccessMessage, "Password updated. Sign in with your new password.")
+        XCTAssertNil(environment.passwordResetSuccessDetail)
+        XCTAssertEqual(environment.authState, .signedOut)
+    }
 }
 
 private final class FakePasswordRecoveryManager: PasswordRecoveryManaging {
@@ -92,6 +115,14 @@ private final class FakePasswordRecoveryManager: PasswordRecoveryManaging {
     }
 
     func completePasswordReset(newPassword: String) async throws {
+        completedPasswords.append(newPassword)
+    }
+}
+
+private final class FakePasswordChangeManager: PasswordChanging {
+    var completedPasswords: [String] = []
+
+    func changePassword(newPassword: String) async throws {
         completedPasswords.append(newPassword)
     }
 }

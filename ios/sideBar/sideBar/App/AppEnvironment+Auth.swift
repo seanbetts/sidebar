@@ -165,6 +165,14 @@ extension AppEnvironment {
         await replayProtectedDeferredActionsIfReady()
     }
 
+    func completeSettingsPasswordChange(newPassword: String) async throws {
+        try await container.passwordChangeManager.changePassword(newPassword: newPassword)
+        passwordResetSuccessMessage = "Password updated. Sign in with your new password."
+        passwordResetSuccessDetail = nil
+        await container.authSession.signOut()
+        refreshAuthState()
+    }
+
     func replayProtectedDeferredActionsIfReady() async {
         guard isProtectedContentReady else { return }
 
