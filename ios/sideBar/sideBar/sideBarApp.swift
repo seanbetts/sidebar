@@ -179,7 +179,7 @@ struct AddTaskIntent: AppIntent {
                 environment.consumeWidgetAddTask()
             }
         }
-        guard let url = URL(string: "sidebar://tasks/today") else {
+        guard let url = URL(string: "sidebar://tasks/new") else {
             logger.error("AddTaskIntent failed: invalid deep link URL")
             return .result()
         }
@@ -236,7 +236,7 @@ struct CreateNoteIntent: AppIntent {
                 environment.consumeWidgetAddNote()
             }
         }
-        guard let url = URL(string: "sidebar://notes") else {
+        guard let url = URL(string: "sidebar://notes/new") else {
             logger.error("CreateNoteIntent failed: invalid deep link URL")
             return .result()
         }

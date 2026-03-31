@@ -57,6 +57,7 @@ struct SavedSitesWidgetView: View {
                 Spacer()
             }
         }
+        .widgetURL(URL(string: "sidebar://websites"))
     }
 
     private var sitesList: some View {

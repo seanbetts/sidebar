@@ -94,7 +94,7 @@ struct AddTaskIntent: AppIntent {
     func perform() async throws -> some IntentResult & OpensIntent {
         logger.info("AddTaskIntent recording pending add task")
         WidgetDataManager.shared.recordAddTaskIntent()
-        guard let url = URL(string: "sidebar://tasks/today") else {
+        guard let url = URL(string: "sidebar://tasks/new") else {
             logger.error("AddTaskIntent failed: invalid deep link URL")
             return .result()
         }

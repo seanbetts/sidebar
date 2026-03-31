@@ -60,6 +60,7 @@ struct PinnedNotesWidgetView: View {
         .overlay(alignment: .bottomTrailing) {
             createNoteButton
         }
+        .widgetURL(URL(string: "sidebar://notes"))
     }
 
     private var notesList: some View {

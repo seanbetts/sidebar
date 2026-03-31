@@ -57,6 +57,7 @@ struct PinnedFilesWidgetView: View {
                 Spacer()
             }
         }
+        .widgetURL(URL(string: "sidebar://files"))
     }
 
     private var filesList: some View {
