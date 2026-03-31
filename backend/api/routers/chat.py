@@ -47,6 +47,7 @@ from api.services.capabilities.loader import CapabilityLoaderService
 from api.services.capabilities.resolver import CapabilityResolverService
 from api.services.capabilities.runtime_state import RuntimeCapabilityService
 from api.services.conversation_service import ConversationService
+from api.services.onboarding_service import OnboardingService
 from api.services.settings_service import SettingsService
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
 from api.services.user_settings_service import UserSettingsService
@@ -157,6 +158,7 @@ def _assemble_prepared_request(
     current_weather: dict[str, object] | str | None,
     current_timezone: str | None,
     now: datetime,
+    onboarding_state: dict[str, object] | None,
     provider: AIProvider,
     model: str,
     selected_skill_ids: list[str] | None,
@@ -187,6 +189,7 @@ def _assemble_prepared_request(
         current_weather=current_weather,
         current_timezone=current_timezone,
         now=now,
+        onboarding_state=onboarding_state,
         blocked_skill_summaries=blocked_skill_summaries,
         capability_loader_result=capability_loader_result,
         prompt_context_service=PromptContextService,
@@ -282,6 +285,7 @@ async def stream_chat(
     user_agent = request.headers.get("user-agent")
     app_version = request.headers.get("x-app-version")
     now = datetime.now(UTC)
+    onboarding_state = OnboardingService.get_onboarding_state(db, user_id)
 
     conversation_messages = None
     if conversation_id:
@@ -359,6 +363,7 @@ async def stream_chat(
         current_weather=current_weather,
         current_timezone=current_timezone,
         now=now,
+        onboarding_state=onboarding_state,
         blocked_skill_summaries=blocked_skill_summaries,
         capability_loader_result=capability_loader_result,
         prompt_context_service=PromptContextService,
@@ -467,6 +472,7 @@ async def stream_chat(
             current_weather=current_weather,
             current_timezone=current_timezone,
             now=now,
+            onboarding_state=onboarding_state,
             provider=chat_resolution.provider,
             model=chat_resolution.model,
             selected_skill_ids=selected_skill_ids,

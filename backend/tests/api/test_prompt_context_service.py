@@ -276,6 +276,93 @@ def test_prompt_context_service_includes_file_paths_in_current_open_and_attachme
     assert "path: Uploads/brief.pdf" in current_open
 
 
+def test_prompt_context_service_includes_onboarding_block_for_incomplete_user(test_db):
+    Base.metadata.create_all(bind=test_db.connection())
+    _ensure_user_settings_prompt_columns(test_db)
+    user_id = "user-onboarding-incomplete"
+    test_db.add(UserSettings(user_id=user_id, name="Sam"))
+    test_db.commit()
+
+    prompt_bundle = PromptContextService.build_prompts(
+        db=test_db,
+        user_id=user_id,
+        open_context={},
+        attachments=[],
+        user_agent=None,
+        now=datetime(2026, 3, 31, 12, 0, tzinfo=UTC),
+        onboarding_state={
+            "status": "dismissed",
+            "provider_ready": False,
+            "current_onboarding_step": "provider_recovery",
+            "is_onboarding_complete": False,
+            "intent": "notes",
+            "milestones": {
+                "provider_connected": None,
+                "first_outcome_completed": None,
+                "profile_basics_set": "2026-03-30T10:00:00Z",
+                "communication_style_set": None,
+                "secondary_tour_seen": None,
+            },
+            "permissions": {
+                "location": "not_asked",
+                "notifications": "not_asked",
+            },
+            "last_prompted_at": "2026-03-31T09:00:00Z",
+        },
+    )
+
+    system_prompt = prompt_bundle["system_prompt"]["text"]
+    section_ids = [section["id"] for section in prompt_bundle["system_prompt"]["sections"]]
+
+    assert "onboarding_state" in section_ids
+    assert "<onboarding_state>" in system_prompt
+    assert "Current step: provider_recovery" in system_prompt
+    assert "Provider ready: no" in system_prompt
+    assert "The user is still onboarding" in system_prompt
+
+
+def test_prompt_context_service_omits_onboarding_block_for_completed_user(test_db):
+    Base.metadata.create_all(bind=test_db.connection())
+    _ensure_user_settings_prompt_columns(test_db)
+    user_id = "user-onboarding-complete"
+    test_db.add(UserSettings(user_id=user_id, name="Sam"))
+    test_db.commit()
+
+    prompt_bundle = PromptContextService.build_prompts(
+        db=test_db,
+        user_id=user_id,
+        open_context={},
+        attachments=[],
+        user_agent=None,
+        now=datetime(2026, 3, 31, 12, 0, tzinfo=UTC),
+        onboarding_state={
+            "status": "completed",
+            "provider_ready": True,
+            "current_onboarding_step": "completed",
+            "is_onboarding_complete": True,
+            "intent": "notes",
+            "milestones": {
+                "provider_connected": "2026-03-30T10:00:00Z",
+                "first_outcome_completed": "2026-03-30T10:05:00Z",
+                "profile_basics_set": "2026-03-30T09:55:00Z",
+                "communication_style_set": "2026-03-30T10:06:00Z",
+                "secondary_tour_seen": "2026-03-30T10:07:00Z",
+            },
+            "permissions": {
+                "location": "granted",
+                "notifications": "granted",
+            },
+            "last_prompted_at": "2026-03-31T09:00:00Z",
+        },
+    )
+
+    system_prompt = prompt_bundle["system_prompt"]["text"]
+    section_ids = [section["id"] for section in prompt_bundle["system_prompt"]["sections"]]
+
+    assert "onboarding_state" not in section_ids
+    assert "<onboarding_state>" not in system_prompt
+
+
 def test_recent_activity_cache_hit(test_db):
     PromptContextService._recent_activity_cache.clear()
     Base.metadata.create_all(bind=test_db.connection())

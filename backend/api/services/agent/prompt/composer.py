@@ -15,11 +15,20 @@ from api.models.conversation import Conversation
 from api.models.file_ingestion import IngestedFile
 from api.models.note import Note
 from api.models.website import Website
+from api.services.agent.prompt.document_builder import (
+    PromptDocument,
+    PromptDocumentReport,
+    build_prompt_document,
+    build_prompt_report,
+    build_section,
+    truncate_text,
+)
 from api.services.agent.prompt.sections import (
     CONTEXT_GUIDANCE_TEMPLATE,
     build_assistant_identity_block,
     build_assistant_soul_block,
     build_first_message_prompt,
+    build_onboarding_block,
     build_open_context_block,
     build_recent_activity_block,
     build_response_style_block,
@@ -33,52 +42,6 @@ from api.services.storage.service import get_storage_backend
 from api.services.user_settings_service import UserSettingsService
 
 logger = logging.getLogger(__name__)
-
-
-class PromptSection(TypedDict):
-    """Structured prompt section with source metadata."""
-
-    id: str
-    title: str
-    source: str
-    content: str
-    chars: int
-
-
-class PromptSectionReport(TypedDict):
-    """Prompt section diagnostics without content payload."""
-
-    id: str
-    title: str
-    source: str
-    chars: int
-
-
-class PromptDocument(TypedDict):
-    """Prompt document payload with flattened text and section list."""
-
-    text: str
-    max_chars: int
-    total_chars: int
-    raw_total_chars: int
-    constrained_total_chars: int
-    truncated: bool
-    truncated_by_section_limits: bool
-    truncated_by_budget: bool
-    sections: list[PromptSection]
-
-
-class PromptDocumentReport(TypedDict):
-    """Prompt diagnostics payload for one prompt document."""
-
-    total_chars: int
-    max_chars: int
-    raw_total_chars: int
-    constrained_total_chars: int
-    truncated: bool
-    truncated_by_section_limits: bool
-    truncated_by_budget: bool
-    sections: list[PromptSectionReport]
 
 
 class PromptBuildResult(TypedDict):
@@ -122,6 +85,7 @@ class PromptContextService:
         blocked_skill_summaries: list[dict[str, Any]] | None = None,
         loaded_instructions: list[dict[str, Any]] | None = None,
         loaded_examples: list[dict[str, Any]] | None = None,
+        onboarding_state: dict[str, Any] | None = None,
         strict_system_prompt: bool = False,
         include_attachment_content: bool = True,
     ) -> PromptBuildResult:
@@ -138,6 +102,7 @@ class PromptContextService:
             current_weather: Weather payload.
             current_timezone: User timezone identifier.
             now: Optional timestamp override.
+            onboarding_state: Derived onboarding contract for the current user.
             blocked_skill_summaries: Compact blocked capability metadata for
                 reconnect or remediation guidance.
             loaded_instructions: Full selected-skill instruction documents.
@@ -177,6 +142,7 @@ class PromptContextService:
         assistant_identity = build_assistant_identity_block(settings_record)
         assistant_soul = build_assistant_soul_block(settings_record)
         response_style = build_response_style_block(settings_record)
+        onboarding_block = build_onboarding_block(onboarding_state)
         open_note = open_context.get("note") if isinstance(open_context, dict) else None
         open_website = (
             open_context.get("website") if isinstance(open_context, dict) else None
@@ -229,68 +195,78 @@ class PromptContextService:
             product_knowledge_brief = ""
 
         system_sections = [
-            PromptContextService._build_section(
+            build_section(
                 section_id="message_context",
                 title="Message Context",
                 source="system_template",
                 content=system_template,
             ),
-            PromptContextService._build_section(
+            build_section(
                 section_id="assistant_identity",
                 title="Assistant Identity",
                 source="assistant_identity",
                 content=assistant_identity,
             ),
-            PromptContextService._build_section(
+            build_section(
                 section_id="assistant_soul",
                 title="Assistant Soul",
                 source="assistant_soul",
                 content=assistant_soul,
             ),
-            PromptContextService._build_section(
+            build_section(
                 section_id="response_style",
                 title="Response Style",
                 source="response_style",
                 content=response_style,
             ),
-            PromptContextService._build_section(
+            build_section(
                 section_id="context_guidance",
                 title="Context Guidance",
                 source="context_guidance_template",
                 content=context_guidance,
             ),
-            PromptContextService._build_section(
+            build_section(
                 section_id="product_knowledge",
                 title="Product Knowledge",
                 source="docs_indexer",
                 content=product_knowledge_brief,
             ),
-            PromptContextService._build_section(
+            build_section(
                 section_id="selected_capabilities",
                 title="Selected Capabilities",
                 source="capability_loader",
                 content=selected_capabilities_block,
             ),
-            PromptContextService._build_section(
+            build_section(
                 section_id="blocked_capabilities",
                 title="Blocked Capabilities",
                 source="capability_resolver",
                 content=blocked_capabilities_block,
             ),
-            PromptContextService._build_section(
+            build_section(
                 section_id="current_open",
                 title="Current Open Context",
                 source="open_context",
                 content=open_block,
             ),
-            PromptContextService._build_section(
+            build_section(
                 section_id="recent_activity",
                 title="Recent Activity",
                 source="recent_activity",
                 content=recent_activity_block,
             ),
         ]
-        system_prompt_document = PromptContextService._build_prompt_document(
+        if onboarding_block:
+            system_sections.insert(
+                4,
+                build_section(
+                    section_id="onboarding_state",
+                    title="Onboarding State",
+                    source="onboarding_state",
+                    content=onboarding_block,
+                ),
+            )
+        system_prompt_document = build_prompt_document(
             system_sections,
             PromptContextService.MAX_SYSTEM_PROMPT_CHARS,
             section_char_limits={
@@ -309,25 +285,21 @@ class PromptContextService:
             timestamp,
         )
         first_message_sections = [
-            PromptContextService._build_section(
+            build_section(
                 section_id="first_message",
                 title="First Message Context",
                 source="first_message_template",
                 content=first_message_text,
             )
         ]
-        first_message_document = PromptContextService._build_prompt_document(
+        first_message_document = build_prompt_document(
             first_message_sections,
             PromptContextService.MAX_FIRST_MESSAGE_CHARS,
         )
 
         report = {
-            "system_prompt": PromptContextService._build_prompt_report(
-                system_prompt_document
-            ),
-            "first_message_prompt": PromptContextService._build_prompt_report(
-                first_message_document
-            ),
+            "system_prompt": build_prompt_report(system_prompt_document),
+            "first_message_prompt": build_prompt_report(first_message_document),
         }
         if strict_system_prompt and report["system_prompt"]["truncated_by_budget"]:
             raise ValueError(
@@ -340,90 +312,6 @@ class PromptContextService:
             "system_prompt": system_prompt_document,
             "first_message_prompt": first_message_document,
             "report": report,
-        }
-
-    @staticmethod
-    def _build_section(
-        *,
-        section_id: str,
-        title: str,
-        source: str,
-        content: str,
-    ) -> PromptSection:
-        """Create a prompt section structure."""
-        section_text = content or ""
-        return {
-            "id": section_id,
-            "title": title,
-            "source": source,
-            "content": section_text,
-            "chars": len(section_text),
-        }
-
-    @staticmethod
-    def _build_prompt_document(
-        sections: list[PromptSection],
-        max_chars: int,
-        section_char_limits: dict[str, int] | None = None,
-    ) -> PromptDocument:
-        """Build a flattened prompt document from ordered sections."""
-        original_sections = PromptContextService._normalize_sections(sections)
-        normalized_sections = PromptContextService._normalize_sections(sections)
-        if section_char_limits:
-            normalized_sections = PromptContextService._apply_section_char_limits(
-                normalized_sections,
-                section_char_limits,
-            )
-        joined = PromptContextService._join_sections(normalized_sections)
-        original_joined = PromptContextService._join_sections(original_sections)
-        raw_total_chars = len(original_joined)
-        constrained_total_chars = len(joined)
-        truncated_by_section_limits = joined != original_joined
-        truncated_by_budget = False
-
-        if len(joined) > max_chars:
-            truncated_by_budget = True
-            normalized_sections = PromptContextService._fit_sections_to_budget(
-                normalized_sections,
-                max_chars=max_chars,
-            )
-            joined = PromptContextService._join_sections(normalized_sections)
-
-        truncated = truncated_by_section_limits or truncated_by_budget
-        text = PromptContextService._truncate_text(joined, max_chars)
-        return {
-            "text": text,
-            "max_chars": max_chars,
-            "total_chars": len(text),
-            "raw_total_chars": raw_total_chars,
-            "constrained_total_chars": constrained_total_chars,
-            "truncated": truncated,
-            "truncated_by_section_limits": truncated_by_section_limits,
-            "truncated_by_budget": truncated_by_budget,
-            "sections": normalized_sections,
-        }
-
-    @staticmethod
-    def _build_prompt_report(document: PromptDocument) -> PromptDocumentReport:
-        """Build prompt diagnostics without section content."""
-        section_reports: list[PromptSectionReport] = [
-            {
-                "id": section["id"],
-                "title": section["title"],
-                "source": section["source"],
-                "chars": section["chars"],
-            }
-            for section in document["sections"]
-        ]
-        return {
-            "total_chars": document["total_chars"],
-            "max_chars": document["max_chars"],
-            "raw_total_chars": document["raw_total_chars"],
-            "constrained_total_chars": document["constrained_total_chars"],
-            "truncated": document["truncated"],
-            "truncated_by_section_limits": document["truncated_by_section_limits"],
-            "truncated_by_budget": document["truncated_by_budget"],
-            "sections": section_reports,
         }
 
     @staticmethod
@@ -529,7 +417,7 @@ class PromptContextService:
                 )
                 content = None
         if content:
-            content = PromptContextService._truncate_text(content, max_chars)
+            content = truncate_text(content, max_chars)
         return {
             "id": str(record.id),
             "filename": record.filename_original,
@@ -579,7 +467,7 @@ class PromptContextService:
                         )
                         content = None
             if content:
-                content = PromptContextService._truncate_text(content, max_chars)
+                content = truncate_text(content, max_chars)
             resolved.append(
                 {
                     "id": str(record.id),
@@ -596,13 +484,6 @@ class PromptContextService:
     def _start_of_today(now: datetime) -> datetime:
         """Return a timezone-aware start-of-day timestamp."""
         return datetime(now.year, now.month, now.day, tzinfo=now.tzinfo)
-
-    @staticmethod
-    def _truncate_text(value: str, max_chars: int) -> str:
-        """Truncate a string to a maximum length."""
-        if len(value) <= max_chars:
-            return value
-        return value[:max_chars]
 
     @staticmethod
     def _resolve_timestamp(
@@ -627,150 +508,6 @@ class PromptContextService:
             )
             return timestamp
         return timestamp.astimezone(user_timezone)
-
-    @staticmethod
-    def _normalize_sections(sections: list[PromptSection]) -> list[PromptSection]:
-        """Copy sections and recalculate char counts from current content."""
-        normalized: list[PromptSection] = []
-        for section in sections:
-            content = section["content"] or ""
-            normalized.append(
-                {
-                    "id": section["id"],
-                    "title": section["title"],
-                    "source": section["source"],
-                    "content": content,
-                    "chars": len(content),
-                }
-            )
-        return normalized
-
-    @staticmethod
-    def _join_sections(sections: list[PromptSection]) -> str:
-        """Join non-empty section content into the flattened document."""
-        return "\n\n".join(
-            section["content"] for section in sections if section["content"]
-        )
-
-    @classmethod
-    def _apply_section_char_limits(
-        cls,
-        sections: list[PromptSection],
-        section_char_limits: dict[str, int],
-    ) -> list[PromptSection]:
-        """Apply per-section caps before fitting the full prompt budget."""
-        updated = cls._normalize_sections(sections)
-        for index, section in enumerate(updated):
-            max_chars = section_char_limits.get(section["id"])
-            if max_chars is None or max_chars <= 0:
-                continue
-            content = cls._truncate_section_content(section["content"], max_chars)
-            updated[index]["content"] = content
-            updated[index]["chars"] = len(content)
-        return updated
-
-    @classmethod
-    def _fit_sections_to_budget(
-        cls,
-        sections: list[PromptSection],
-        *,
-        max_chars: int,
-    ) -> list[PromptSection]:
-        """Reduce large sections while preserving section wrappers where possible."""
-        updated = cls._normalize_sections(sections)
-        shrink_order = [
-            "current_open",
-            "recent_activity",
-            "message_context",
-            "assistant_soul",
-            "assistant_identity",
-            "response_style",
-            "context_guidance",
-        ]
-
-        while len(cls._join_sections(updated)) > max_chars:
-            overflow = len(cls._join_sections(updated)) - max_chars
-            reduced = False
-
-            for section_id in shrink_order:
-                index = next(
-                    (
-                        i
-                        for i, section in enumerate(updated)
-                        if section["id"] == section_id
-                    ),
-                    None,
-                )
-                if index is None:
-                    continue
-                current_content = updated[index]["content"]
-                minimum_chars = cls._minimum_section_chars(current_content)
-                if len(current_content) <= minimum_chars:
-                    continue
-
-                reduce_by = max(overflow, 256)
-                target_chars = max(minimum_chars, len(current_content) - reduce_by)
-                next_content = cls._truncate_section_content(
-                    current_content,
-                    target_chars,
-                )
-                if len(next_content) >= len(current_content):
-                    continue
-                updated[index]["content"] = next_content
-                updated[index]["chars"] = len(next_content)
-                reduced = True
-                if len(cls._join_sections(updated)) <= max_chars:
-                    break
-
-            if not reduced:
-                break
-        return updated
-
-    @staticmethod
-    def _minimum_section_chars(content: str) -> int:
-        """Return minimum chars to keep wrapper tags intact when possible."""
-        wrapped = PromptContextService._extract_wrapped_section(content)
-        if wrapped is None:
-            return min(len(content), 64)
-        opening_tag, _inner, closing_tag = wrapped
-        return len(opening_tag) + len(closing_tag) + 2
-
-    @staticmethod
-    def _truncate_section_content(content: str, max_chars: int) -> str:
-        """Truncate content while preserving wrapper tags for XML-like blocks."""
-        if len(content) <= max_chars:
-            return content
-        wrapped = PromptContextService._extract_wrapped_section(content)
-        if wrapped is None:
-            return PromptContextService._truncate_text(content, max_chars)
-
-        opening_tag, inner, closing_tag = wrapped
-        overhead = len(opening_tag) + len(closing_tag) + 2
-        available = max_chars - overhead
-        if available <= 0:
-            return PromptContextService._truncate_text(content, max_chars)
-        return f"{opening_tag}\n{inner[:available]}\n{closing_tag}"
-
-    @staticmethod
-    def _extract_wrapped_section(content: str) -> tuple[str, str, str] | None:
-        """Extract opening tag, inner content, and closing tag for wrapped sections."""
-        stripped = content.strip()
-        if not stripped.startswith("<"):
-            return None
-        opening_end = stripped.find(">")
-        if opening_end <= 0:
-            return None
-        opening_tag = stripped[: opening_end + 1]
-        if opening_tag.startswith("</"):
-            return None
-        tag_name = opening_tag[1:-1].strip()
-        if not tag_name:
-            return None
-        closing_tag = f"</{tag_name}>"
-        if not stripped.endswith(closing_tag):
-            return None
-        inner = stripped[opening_end + 1 : -len(closing_tag)]
-        return opening_tag, inner, closing_tag
 
     @classmethod
     def _get_recent_activity(

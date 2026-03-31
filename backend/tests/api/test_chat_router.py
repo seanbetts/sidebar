@@ -188,6 +188,107 @@ def test_stream_chat_forwards_assistant_identity_events(test_client, monkeypatch
     assert "event: complete" in body
 
 
+def test_stream_chat_loads_onboarding_state_and_passes_it_to_request_assembly(
+    test_client, monkeypatch
+):
+    captured: dict[str, object] = {}
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **_kwargs):
+            yield {"type": "token", "content": "Hello"}
+
+    onboarding_state = {
+        "status": "dismissed",
+        "provider_ready": False,
+        "current_onboarding_step": "provider_recovery",
+        "is_onboarding_complete": False,
+        "intent": "notes",
+        "milestones": {},
+        "permissions": {"location": "not_asked", "notifications": "not_asked"},
+        "last_prompted_at": None,
+    }
+
+    def _build_assembled_inputs(**kwargs):
+        captured["onboarding_state"] = kwargs.get("onboarding_state")
+        return AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Help me finish setup",
+            prompt_bundle={},
+        )
+
+    def _build_prepared_request(**_kwargs):
+        return PreparedChatRequest(
+            provider="anthropic",
+            model="claude-sonnet-4-6",
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Help me finish setup",
+            tool_definitions=[],
+            budget_report=RequestBudgetReport(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                context_window_chars=40000,
+                reserved_output_chars=4000,
+                available_input_chars=35000,
+                provider_framing_chars=100,
+                system_prompt_chars=6,
+                bootstrap_history_chars=0,
+                conversation_history_chars=0,
+                current_message_chars=20,
+                tool_schema_chars=0,
+                total_input_chars=26,
+                overflow_chars=0,
+                within_budget=True,
+                failure_reason=None,
+                trimming_applied=False,
+                compaction_applied=False,
+            ),
+        )
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.OnboardingService,
+        "get_onboarding_state",
+        staticmethod(lambda *_args, **_kwargs: onboarding_state),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_assembled_inputs",
+        staticmethod(_build_assembled_inputs),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_prepared_request",
+        staticmethod(_build_prepared_request),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 200
+    assert captured["onboarding_state"] == onboarding_state
+
+
 def test_stream_chat_forwards_other_preferences_events(test_client, monkeypatch):
     _patch_stream_gateway(
         monkeypatch,

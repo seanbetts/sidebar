@@ -242,6 +242,49 @@ def test_build_assembled_inputs_passes_blocked_skill_summaries_to_prompt_builder
     assert captured["blocked_skill_summaries"] == blocked_skill_summaries
 
 
+def test_build_assembled_inputs_passes_onboarding_state_to_prompt_builder():
+    captured: dict[str, object] = {}
+
+    class FakePromptContextService:
+        @staticmethod
+        def build_prompts(**kwargs):
+            captured["onboarding_state"] = kwargs.get("onboarding_state")
+            return _prompt_bundle(system_prompt="assembled-system")
+
+    onboarding_state = {
+        "status": "dismissed",
+        "provider_ready": False,
+        "current_onboarding_step": "provider_recovery",
+        "is_onboarding_complete": False,
+        "intent": "notes",
+        "milestones": {},
+        "permissions": {"location": "not_asked", "notifications": "not_asked"},
+        "last_prompted_at": None,
+    }
+
+    RequestAssemblyService.build_assembled_inputs(
+        db=object(),
+        user_id="user-1",
+        message="Help me finish setup",
+        conversation_id="conversation-1",
+        conversation_messages=None,
+        request_history=[],
+        user_message_id=None,
+        open_context={},
+        attachments=[],
+        user_agent=None,
+        current_location=None,
+        current_location_levels=None,
+        current_weather=None,
+        current_timezone=None,
+        now=datetime.now(UTC),
+        onboarding_state=onboarding_state,
+        prompt_context_service=FakePromptContextService,
+    )
+
+    assert captured["onboarding_state"] == onboarding_state
+
+
 def test_build_assembled_inputs_retries_without_attachment_content():
     captured_flags: list[bool] = []
 

@@ -196,6 +196,7 @@ class RequestAssemblyService:
         current_weather: dict[str, Any] | str | None,
         current_timezone: str | None,
         now: datetime,
+        onboarding_state: dict[str, Any] | None = None,
         blocked_skill_summaries: list[dict[str, Any]] | None = None,
         capability_loader_result: CapabilityLoaderResult | None = None,
         prompt_context_service: type[PromptContextService] = PromptContextService,
@@ -227,6 +228,7 @@ class RequestAssemblyService:
                 current_weather=current_weather,
                 current_timezone=current_timezone,
                 now=now,
+                onboarding_state=onboarding_state,
                 blocked_skill_summaries=blocked_skill_summaries,
                 loaded_instructions=list(
                     (

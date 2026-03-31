@@ -46,6 +46,7 @@ __all__ = [
     "build_assistant_identity_block",
     "build_assistant_soul_block",
     "build_response_style_block",
+    "build_onboarding_block",
     "build_system_prompt",
     "build_first_message_prompt",
 ]
@@ -547,6 +548,81 @@ def build_response_style_block(settings_record: Any) -> str:
         )
     body = "\n\n".join(blocks)
     return f"<response_style>\n{body}\n</response_style>"
+
+
+def build_onboarding_block(onboarding_state: dict[str, Any] | None) -> str:
+    """Build compact onboarding guidance for incomplete users."""
+    if not isinstance(onboarding_state, dict):
+        return ""
+
+    if onboarding_state.get("is_onboarding_complete") is True:
+        return ""
+
+    status = resolve_optional_text(onboarding_state.get("status")) or "not_started"
+    current_step = (
+        resolve_optional_text(onboarding_state.get("current_onboarding_step"))
+        or "phase1_wizard"
+    )
+    provider_ready = bool(onboarding_state.get("provider_ready"))
+    intent = resolve_optional_text(onboarding_state.get("intent")) or "unknown"
+    permissions = onboarding_state.get("permissions")
+    permissions = permissions if isinstance(permissions, dict) else {}
+    location = resolve_optional_text(permissions.get("location")) or "not_asked"
+    notifications = (
+        resolve_optional_text(permissions.get("notifications")) or "not_asked"
+    )
+    milestones = onboarding_state.get("milestones")
+    milestones = milestones if isinstance(milestones, dict) else {}
+
+    guidance = [
+        (
+            "The user is still onboarding. Prioritize setup and "
+            "first-outcome guidance before general exploration."
+        ),
+    ]
+    if not provider_ready:
+        guidance.append(
+            "Provider setup is still incomplete. Help the user connect a "
+            "supported AI provider before normal AI chat."
+        )
+    elif current_step == "permission_recovery":
+        guidance.append(
+            "Permission recovery is next. Only suggest permissions from "
+            "explicit user action, and direct the user to Settings recovery "
+            "paths when needed."
+        )
+    elif current_step == "feature_discovery":
+        guidance.append(
+            "The user is ready for guided feature discovery. Focus on a "
+            "first useful outcome and short orientation, not broad "
+            "free-form chat."
+        )
+
+    milestone_lines = []
+    for key in (
+        "provider_connected",
+        "first_outcome_completed",
+        "profile_basics_set",
+        "communication_style_set",
+        "secondary_tour_seen",
+    ):
+        milestone_value = resolve_optional_text(milestones.get(key))
+        milestone_lines.append(f"- {key}: {milestone_value or 'missing'}")
+
+    lines = [
+        "<onboarding_state>",
+        f"Status: {status}",
+        f"Current step: {current_step}",
+        f"Provider ready: {'yes' if provider_ready else 'no'}",
+        f"Intent: {intent}",
+        f"Permissions: location={location}, notifications={notifications}",
+        "Milestones:",
+        *milestone_lines,
+        "Guidance:",
+        *(f"- {item}" for item in guidance),
+        "</onboarding_state>",
+    ]
+    return "\n".join(lines)
 
 
 def build_first_message_prompt(
