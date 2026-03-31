@@ -114,10 +114,13 @@ The OTP input field must use the one-time-code content type so verification bene
 ## Password reset
 
 1. User taps "Forgot password" and enters their email
-2. Backend starts the reset flow and sends a reset code or link
-3. The app handles the reset natively — the reset code field uses the one-time-code content type for AutoFill
-4. Backend updates the credential and revokes prior sessions according to policy
-5. User lands either in a fresh session or back at sign-in with a clear success state
+2. Backend starts the reset flow and sends a reset link
+3. Tapping the link opens sideBar directly and restores a recovery session in-app
+4. The app presents a native "Enter a new password" screen and completes the password update without a web detour
+5. User returns to sign-in with a clear success state
+
+The current implementation is link-based. A native reset-code entry path is not
+part of the shipped flow yet.
 
 Email is the only recovery channel for password accounts. Recovery must not branch into unrelated identity systems — Sign in with Apple is not a fallback for password-rooted accounts.
 
