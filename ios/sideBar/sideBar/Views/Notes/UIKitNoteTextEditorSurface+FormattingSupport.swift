@@ -26,7 +26,12 @@ extension UIKitNoteTextEditorSurface {
         textView: AccessoryTextView,
         coordinator: Coordinator
     ) {
-        guard let pendingSelectionTarget, textView.selectedRange == selectedRange else {
+        let document = viewModel.currentPersistenceSnapshot().document
+        let displaySelectedRange = SelectableNoteReadView.editorDisplaySelectedRange(
+            in: document,
+            logicalSelectedRange: selectedRange
+        )
+        guard let pendingSelectionTarget, textView.selectedRange == displaySelectedRange else {
             coordinator.acknowledgedPendingSelectionTarget = nil
             return
         }
@@ -34,9 +39,13 @@ extension UIKitNoteTextEditorSurface {
         coordinator.acknowledgedPendingSelectionTarget = pendingSelectionTarget
         DispatchQueue.main.async { [weak textView] in
             guard let textView else { return }
-            if textView.selectedRange == selectedRange {
+            if textView.selectedRange == displaySelectedRange {
+                let logicalRange = SelectableNoteReadView.logicalEditorSelectedRange(
+                    fromDisplaySelectedRange: textView.selectedRange,
+                    in: textView.attributedText
+                )
                 let selection = viewModel.selection(
-                    fromUTF16Range: selectedRange,
+                    fromUTF16Range: logicalRange,
                     in: viewModel.attributedContent
                 )
                 if selection != viewModel.selection {

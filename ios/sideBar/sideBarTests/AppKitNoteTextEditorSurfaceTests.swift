@@ -7,6 +7,41 @@ import XCTest
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
+    func testMountedAppKitChecklistDocumentRendersAttachmentMarkers() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Task", marks: [])], checked: false)
+                    ]
+                )
+            ]
+        )
+        let textView = try mountEditorTextView(
+            document: document,
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+
+        XCTAssertNotNil(textView.textStorage?.attribute(.attachment, at: 0, effectiveRange: nil))
+    }
+
+    func testEscapeCommandFromAppKitEditorSurfaceInvokesExitCallback() throws {
+        var escapeCount = 0
+        let textView = try mountEditorTextView(
+            plainText: "Hello",
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180),
+            onEscape: { escapeCount += 1 }
+        )
+
+        textView.cancelOperation(nil)
+
+        XCTAssertEqual(escapeCount, 1)
+    }
+
     func testWideMacOSContainerKeepsScrollViewAtHostEdgeAndCentersReadableColumn() async throws {
         let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello"))
         let environment = makeNotesDetailTestEnvironment()

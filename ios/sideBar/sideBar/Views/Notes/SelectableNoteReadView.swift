@@ -6,6 +6,20 @@ import AppKit
 #endif
 // swiftlint:disable file_length
 
+final class ChecklistMarkerTextAttachment: NSTextAttachment {
+    let isChecked: Bool
+
+    init(isChecked: Bool) {
+        self.isChecked = isChecked
+        super.init(data: nil, ofType: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
 @available(iOS 26.0, macOS 26.0, *)
 // swiftlint:disable type_body_length
 struct SelectableNoteReadView: View {
@@ -157,7 +171,7 @@ struct SelectableNoteReadView: View {
         let isChecked: Bool
     }
 
-    private static func replaceChecklistMarkersWithAttachments(
+    static func replaceChecklistMarkersWithAttachments(
         in mutable: NSMutableAttributedString,
         document: NotesSemanticDocument,
         baseFontSize: CGFloat
@@ -231,7 +245,7 @@ struct SelectableNoteReadView: View {
             : nil)
         let markerColor = isChecked ? checklistCompletedPlatformTextColor : defaultPlatformTextColor
 
-        let attachment = NSTextAttachment()
+        let attachment = ChecklistMarkerTextAttachment(isChecked: isChecked)
         attachment.image = checklistMarkerImage(
             isChecked: isChecked,
             pointSize: font?.pointSize ?? baseFontSize,
@@ -246,7 +260,8 @@ struct SelectableNoteReadView: View {
             attributedString: NSAttributedString(attachment: attachment)
         )
         var markerAttributes: [NSAttributedString.Key: Any] = [
-            .foregroundColor: markerColor
+            .foregroundColor: markerColor,
+            NSAttributedString.Key(NoteTextChecklistCompletionAttribute.name): NSNumber(value: isChecked)
         ]
         if let font {
             markerAttributes[.font] = font
@@ -374,7 +389,7 @@ struct SelectableNoteReadView: View {
         noteSwiftUIFontTraits(from: noteExplicitSwiftUIFont(from: run.attributes))
     }
 
-    private static func notePlatformCapHeight(_ font: NotePlatformFont) -> CGFloat {
+    nonisolated private static func notePlatformCapHeight(_ font: NotePlatformFont) -> CGFloat {
         #if os(iOS)
         return font.capHeight
         #elseif os(macOS)

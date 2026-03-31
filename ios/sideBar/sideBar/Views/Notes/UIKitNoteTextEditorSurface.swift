@@ -1,6 +1,8 @@
+// swiftlint:disable file_length
 #if os(iOS)
 import SwiftUI
 import UIKit
+// swiftlint:disable type_body_length
 
 struct UIKitNoteTextEditorRenderSignature: Equatable {
     let renderGeneration: UInt64
@@ -55,6 +57,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var onBoldCommand: (() -> Void)?
         var onItalicCommand: (() -> Void)?
         var onUnderlineCommand: (() -> Void)?
+        var onEscapeCommand: (() -> Void)?
         var onTitleCommand: (() -> Void)?
         var onHeadingCommand: (() -> Void)?
         var onSubheadingCommand: (() -> Void)?
@@ -84,16 +87,28 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
 
         override var keyCommands: [UIKeyCommand]? {
-            guard formattingCommandsEnabled else { return super.keyCommands }
-            return [
-                UIKeyCommand(input: "t", modifierFlags: [.command, .shift], action: #selector(handleTitleCommand)),
-                UIKeyCommand(input: "h", modifierFlags: [.command, .shift], action: #selector(handleHeadingCommand)),
-                UIKeyCommand(input: "j", modifierFlags: [.command, .shift], action: #selector(handleSubheadingCommand)),
-                UIKeyCommand(input: "b", modifierFlags: [.command, .shift], action: #selector(handleBodyCommand)),
-                UIKeyCommand(input: "b", modifierFlags: [.command], action: #selector(handleBoldCommand)),
-                UIKeyCommand(input: "i", modifierFlags: [.command], action: #selector(handleItalicCommand)),
-                UIKeyCommand(input: "u", modifierFlags: [.command], action: #selector(handleUnderlineCommand))
-            ]
+            var commands = super.keyCommands ?? []
+            if formattingCommandsEnabled {
+                commands.append(contentsOf: [
+                    UIKeyCommand(input: "t", modifierFlags: [.command, .shift], action: #selector(handleTitleCommand)),
+                    UIKeyCommand(input: "h", modifierFlags: [.command, .shift], action: #selector(handleHeadingCommand)),
+                    UIKeyCommand(input: "j", modifierFlags: [.command, .shift], action: #selector(handleSubheadingCommand)),
+                    UIKeyCommand(input: "b", modifierFlags: [.command, .shift], action: #selector(handleBodyCommand)),
+                    UIKeyCommand(input: "b", modifierFlags: [.command], action: #selector(handleBoldCommand)),
+                    UIKeyCommand(input: "i", modifierFlags: [.command], action: #selector(handleItalicCommand)),
+                    UIKeyCommand(input: "u", modifierFlags: [.command], action: #selector(handleUnderlineCommand))
+                ])
+            }
+            if onEscapeCommand != nil {
+                commands.append(
+                    UIKeyCommand(
+                        input: UIKeyCommand.inputEscape,
+                        modifierFlags: [],
+                        action: #selector(handleEscapeCommand)
+                    )
+                )
+            }
+            return commands.isEmpty ? nil : commands
         }
 
         @objc private func handleTitleCommand() { onTitleCommand?() }
@@ -103,6 +118,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         @objc private func handleBoldCommand() { onBoldCommand?() }
         @objc private func handleItalicCommand() { onItalicCommand?() }
         @objc private func handleUnderlineCommand() { onUnderlineCommand?() }
+        @objc func handleEscapeCommand() { onEscapeCommand?() }
 
         override func layoutSubviews() {
             super.layoutSubviews()
@@ -204,6 +220,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     let onViewportSnapshotChange: ((CGPoint, NSRange, CGFloat?) -> Void)?
     let onTextViewReady: ((AccessoryTextView) -> Void)?
     let makeTextView: (() -> AccessoryTextView)?
+    let onEscape: (() -> Void)?
 
     init(
         viewModel: NativeNoteEditorViewModel,
@@ -218,7 +235,8 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         onDidBeginEditing: ((AccessoryTextView) -> Void)? = nil,
         onViewportSnapshotChange: ((CGPoint, NSRange, CGFloat?) -> Void)? = nil,
         onTextViewReady: ((AccessoryTextView) -> Void)? = nil,
-        makeTextView: (() -> AccessoryTextView)? = nil
+        makeTextView: (() -> AccessoryTextView)? = nil,
+        onEscape: (() -> Void)? = nil
     ) {
         self.viewModel = viewModel
         self.maxContentWidth = maxContentWidth
@@ -233,6 +251,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         self.onViewportSnapshotChange = onViewportSnapshotChange
         self.onTextViewReady = onTextViewReady
         self.makeTextView = makeTextView
+        self.onEscape = onEscape
     }
 
     func makeCoordinator() -> Coordinator {
@@ -251,6 +270,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0
         textView.maxReadableContentWidth = maxContentWidth
         textView.onViewportSnapshotChange = onViewportSnapshotChange
+        textView.onEscapeCommand = onEscape
         textView.delegate = context.coordinator
         textView.textFormattingConfiguration = nil
         if shouldShowFormattingAccessory, let formattingBarConfiguration {
@@ -270,6 +290,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.maxReadableContentWidth = maxContentWidth
         textView.onViewportSnapshotChange = onViewportSnapshotChange
+        textView.onEscapeCommand = onEscape
         if pendingSelectionViewportAnchorY != nil, textView.shouldAutofocus, !textView.isFirstResponder {
             textView.suppressAutofocusReveal = true
         }
@@ -336,9 +357,17 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingProgrammaticText else { return }
             (textView as? AccessoryTextView)?.invalidateCodeBlockBackgroundLayout()
+            let document = viewModel.currentPersistenceSnapshot().document
 
-            let attributedText = NSAttributedString(attributedString: textView.attributedText)
-            let selectedRange = textView.selectedRange
+            let attributedText = SelectableNoteReadView.expandingChecklistEditorMarkers(
+                in: textView.attributedText,
+                document: document
+            )
+            let selectedRange = SelectableNoteReadView.logicalEditorSelectedRange(
+                fromDisplaySelectedRange: textView.selectedRange,
+                in: textView.attributedText,
+                document: document
+            )
             DispatchQueue.main.async {
                 self.viewModel.replaceAttributedContentFromLiveTextView(
                     attributedText,
@@ -353,9 +382,15 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isApplyingProgrammaticText, !isApplyingProgrammaticSelection else { return }
+            let document = viewModel.currentPersistenceSnapshot().document
 
+            let logicalSelectedRange = SelectableNoteReadView.logicalEditorSelectedRange(
+                fromDisplaySelectedRange: textView.selectedRange,
+                in: textView.attributedText,
+                document: document
+            )
             let selection = viewModel.selection(
-                fromUTF16Range: textView.selectedRange,
+                fromUTF16Range: logicalSelectedRange,
                 in: viewModel.attributedContent
             )
             if selection != viewModel.selection {
@@ -375,13 +410,22 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
-            let selection = viewModel.selection(fromUTF16Range: range, in: viewModel.attributedContent)
+            guard viewModel.shouldHandleStructuralTextReplacement(text) else { return true }
+            let document = viewModel.currentPersistenceSnapshot().document
+
+            let logicalRange = SelectableNoteReadView.logicalEditorSelectedRange(
+                fromDisplaySelectedRange: range,
+                in: textView.attributedText,
+                document: document
+            )
+            let selection = viewModel.selection(
+                fromUTF16Range: logicalRange,
+                in: viewModel.attributedContent
+            )
             if selection != viewModel.selection {
                 viewModel.selection = selection
                 viewModel.handleSelectionChange()
             }
-
-            guard viewModel.shouldHandleStructuralTextReplacement(text) else { return true }
             let undoSnapshot = literalUndoSnapshot(
                 in: textView,
                 selectedRange: range,
@@ -397,8 +441,9 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
 
         private func applyCurrentEditorState(to textView: UITextView) {
-            let bridgedText = SelectableNoteReadView.bridgedPlatformAttributedString(
+            let bridgedText = SelectableNoteReadView.bridgedPlatformEditorAttributedString(
                 from: viewModel.attributedContent,
+                document: viewModel.currentPersistenceSnapshot().document,
                 baseFontSize: viewModel.baseFontSize
             )
             isApplyingProgrammaticText = true
@@ -411,7 +456,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             )
 
             isApplyingProgrammaticSelection = true
-            textView.selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
+            textView.selectedRange = SelectableNoteReadView.editorDisplaySelectedRange(
+                in: viewModel.currentPersistenceSnapshot().document,
+                logicalSelectedRange: viewModel.utf16SelectedRange(in: viewModel.attributedContent)
+            )
             isApplyingProgrammaticSelection = false
 
             var sample = AttributedString("x")
@@ -437,11 +485,19 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 attributes: textView.typingAttributes
             )
             updatedText.replaceCharacters(in: selectedRange, with: insertedText)
+            let updatedSelection = NSRange(
+                location: selectedRange.location + insertedText.length,
+                length: 0
+            )
             return UIKitNoteTextEditorUndoSnapshot(
-                attributedText: updatedText,
-                selectedRange: NSRange(
-                    location: selectedRange.location + insertedText.length,
-                    length: 0
+                attributedText: SelectableNoteReadView.expandingChecklistEditorMarkers(
+                    in: updatedText,
+                    document: viewModel.currentPersistenceSnapshot().document
+                ),
+                selectedRange: SelectableNoteReadView.logicalEditorSelectedRange(
+                    fromDisplaySelectedRange: updatedSelection,
+                    in: updatedText,
+                    document: viewModel.currentPersistenceSnapshot().document
                 )
             )
         }
@@ -460,8 +516,15 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             on textView: UITextView
         ) {
             let redoSnapshot = UIKitNoteTextEditorUndoSnapshot(
-                attributedText: NSAttributedString(attributedString: textView.attributedText),
-                selectedRange: textView.selectedRange
+                attributedText: SelectableNoteReadView.expandingChecklistEditorMarkers(
+                    in: textView.attributedText,
+                    document: viewModel.currentPersistenceSnapshot().document
+                ),
+                selectedRange: SelectableNoteReadView.logicalEditorSelectedRange(
+                    fromDisplaySelectedRange: textView.selectedRange,
+                    in: textView.attributedText,
+                    document: viewModel.currentPersistenceSnapshot().document
+                )
             )
             viewModel.replaceAttributedContent(
                 snapshot.attributedText,
@@ -473,4 +536,5 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
     }
 }
 
+// swiftlint:enable type_body_length
 #endif

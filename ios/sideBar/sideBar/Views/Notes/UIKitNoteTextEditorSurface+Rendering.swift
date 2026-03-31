@@ -33,9 +33,13 @@ extension UIKitNoteTextEditorSurface {
         coordinator: Coordinator,
         selectedRange: NSRange
     ) {
-        guard textView.selectedRange != selectedRange else { return }
+        let displaySelectedRange = SelectableNoteReadView.editorDisplaySelectedRange(
+            in: viewModel.currentPersistenceSnapshot().document,
+            logicalSelectedRange: selectedRange
+        )
+        guard textView.selectedRange != displaySelectedRange else { return }
         coordinator.isApplyingProgrammaticSelection = true
-        textView.selectedRange = selectedRange
+        textView.selectedRange = displaySelectedRange
         coordinator.isApplyingProgrammaticSelection = false
     }
 }

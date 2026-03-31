@@ -21,6 +21,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         )
 
         var shouldAutofocus = false
+        var onEscapeCommand: (() -> Void)?
         private var didScheduleAutofocus = false
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { needsLayout = true }
@@ -41,6 +42,14 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         override func draw(_ dirtyRect: NSRect) {
             drawCodeBlockBackgrounds(in: dirtyRect)
             super.draw(dirtyRect)
+        }
+
+        override func cancelOperation(_ sender: Any?) {
+            if let onEscapeCommand {
+                onEscapeCommand()
+                return
+            }
+            super.cancelOperation(sender)
         }
 
         func scheduleAutofocusIfNeeded() {
@@ -95,17 +104,20 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
     let maxContentWidth: CGFloat
     let isEditable: Bool
     let shouldAutofocus: Bool
+    let onEscape: (() -> Void)?
 
     init(
         viewModel: NativeNoteEditorViewModel,
         maxContentWidth: CGFloat,
         isEditable: Bool,
-        shouldAutofocus: Bool = true
+        shouldAutofocus: Bool = true,
+        onEscape: (() -> Void)? = nil
     ) {
         self.viewModel = viewModel
         self.maxContentWidth = maxContentWidth
         self.isEditable = isEditable
         self.shouldAutofocus = shouldAutofocus
+        self.onEscape = onEscape
     }
 
     func makeCoordinator() -> Coordinator {
@@ -121,6 +133,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         textView.importsGraphics = false
         textView.allowsUndo = true
         textView.shouldAutofocus = isEditable && shouldAutofocus
+        textView.onEscapeCommand = onEscape
         textView.maxReadableContentWidth = maxContentWidth
         textView.textColor = .labelColor
         textView.insertionPointColor = NoteTextAppearance.caretTintColor
@@ -155,6 +168,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
 
         textView.isEditable = isEditable
         textView.shouldAutofocus = isEditable && shouldAutofocus
+        textView.onEscapeCommand = onEscape
         textView.maxReadableContentWidth = maxContentWidth
 
         let renderSignature = RenderSignature(
@@ -170,9 +184,13 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         }
 
         let selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
-        if textView.selectedRange() != selectedRange {
+        let displaySelectedRange = SelectableNoteReadView.editorDisplaySelectedRange(
+            in: viewModel.currentPersistenceSnapshot().document,
+            logicalSelectedRange: selectedRange
+        )
+        if textView.selectedRange() != displaySelectedRange {
             context.coordinator.isApplyingProgrammaticSelection = true
-            textView.setSelectedRange(selectedRange)
+            textView.setSelectedRange(displaySelectedRange)
             context.coordinator.isApplyingProgrammaticSelection = false
         }
 
@@ -192,8 +210,9 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
     }
 
     private func bridgedAttributedText(from text: AttributedString) -> NSAttributedString {
-        SelectableNoteReadView.bridgedPlatformAttributedString(
+        SelectableNoteReadView.bridgedPlatformEditorAttributedString(
             from: text,
+            document: viewModel.currentPersistenceSnapshot().document,
             baseFontSize: viewModel.baseFontSize
         )
     }
@@ -225,12 +244,20 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                   let textView = notification.object as? NSTextView else {
                 return
             }
+            let document = viewModel.currentPersistenceSnapshot().document
 
             let attributedText = NSAttributedString(attributedString: textView.attributedString())
-            let selectedRange = textView.selectedRange()
+            let selectedRange = SelectableNoteReadView.logicalEditorSelectedRange(
+                fromDisplaySelectedRange: textView.selectedRange(),
+                in: textView.attributedString(),
+                document: document
+            )
             DispatchQueue.main.async {
                 self.viewModel.replaceAttributedContent(
-                    attributedText,
+                    SelectableNoteReadView.expandingChecklistEditorMarkers(
+                        in: attributedText,
+                        document: document
+                    ),
                     selectedUTF16Range: selectedRange
                 )
                 self.lastAppliedRenderSignature = RenderSignature(
@@ -246,9 +273,15 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                   let textView = notification.object as? NSTextView else {
                 return
             }
+            let document = viewModel.currentPersistenceSnapshot().document
 
+            let logicalSelectedRange = SelectableNoteReadView.logicalEditorSelectedRange(
+                fromDisplaySelectedRange: textView.selectedRange(),
+                in: textView.attributedString(),
+                document: document
+            )
             let selection = viewModel.selection(
-                fromUTF16Range: textView.selectedRange(),
+                fromUTF16Range: logicalSelectedRange,
                 in: viewModel.attributedContent
             )
             guard selection != viewModel.selection else { return }
@@ -294,8 +327,14 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             selectedRange: NSRange,
             replacementText: String
         ) -> Bool {
+            let document = viewModel.currentPersistenceSnapshot().document
+            let logicalSelectedRange = SelectableNoteReadView.logicalEditorSelectedRange(
+                fromDisplaySelectedRange: selectedRange,
+                in: textView.attributedString(),
+                document: document
+            )
             let selection = viewModel.selection(
-                fromUTF16Range: selectedRange,
+                fromUTF16Range: logicalSelectedRange,
                 in: viewModel.attributedContent
             )
             if selection != viewModel.selection {
@@ -319,8 +358,9 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         }
 
         private func applyCurrentEditorState(to textView: NSTextView) {
-            let bridgedText = SelectableNoteReadView.bridgedPlatformAttributedString(
+            let bridgedText = SelectableNoteReadView.bridgedPlatformEditorAttributedString(
                 from: viewModel.attributedContent,
+                document: viewModel.currentPersistenceSnapshot().document,
                 baseFontSize: viewModel.baseFontSize
             )
             isApplyingProgrammaticText = true
@@ -332,7 +372,12 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             )
 
             isApplyingProgrammaticSelection = true
-            textView.setSelectedRange(viewModel.utf16SelectedRange(in: viewModel.attributedContent))
+            textView.setSelectedRange(
+                SelectableNoteReadView.editorDisplaySelectedRange(
+                    in: viewModel.currentPersistenceSnapshot().document,
+                    logicalSelectedRange: viewModel.utf16SelectedRange(in: viewModel.attributedContent)
+                )
+            )
             isApplyingProgrammaticSelection = false
 
             var sample = AttributedString("x")
@@ -360,11 +405,19 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                 attributes: textView.typingAttributes
             )
             updatedText.replaceCharacters(in: selectedRange, with: insertedText)
+            let updatedSelection = NSRange(
+                location: selectedRange.location + insertedText.length,
+                length: 0
+            )
             return AppKitNoteTextEditorUndoSnapshot(
-                attributedText: updatedText,
-                selectedRange: NSRange(
-                    location: selectedRange.location + insertedText.length,
-                    length: 0
+                attributedText: SelectableNoteReadView.expandingChecklistEditorMarkers(
+                    in: updatedText,
+                    document: viewModel.currentPersistenceSnapshot().document
+                ),
+                selectedRange: SelectableNoteReadView.logicalEditorSelectedRange(
+                    fromDisplaySelectedRange: updatedSelection,
+                    in: updatedText,
+                    document: viewModel.currentPersistenceSnapshot().document
                 )
             )
         }
@@ -383,8 +436,15 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             on textView: NSTextView
         ) {
             let redoSnapshot = AppKitNoteTextEditorUndoSnapshot(
-                attributedText: textView.attributedString(),
-                selectedRange: textView.selectedRange()
+                attributedText: SelectableNoteReadView.expandingChecklistEditorMarkers(
+                    in: textView.attributedString(),
+                    document: viewModel.currentPersistenceSnapshot().document
+                ),
+                selectedRange: SelectableNoteReadView.logicalEditorSelectedRange(
+                    fromDisplaySelectedRange: textView.selectedRange(),
+                    in: textView.attributedString(),
+                    document: viewModel.currentPersistenceSnapshot().document
+                )
             )
             viewModel.replaceAttributedContent(
                 snapshot.attributedText,

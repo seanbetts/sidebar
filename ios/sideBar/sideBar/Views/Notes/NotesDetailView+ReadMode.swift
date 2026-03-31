@@ -186,11 +186,11 @@ extension NotesDetailView {
         if #available(iOS 26.0, *) {
             _ = editorViewModel.nativeEditorTextView?.resignFirstResponder()
         }
+        editorViewModel.exitEditModeToRead(
+            captureAttachedTextViewSnapshot: capturedViewportBeforeDismissal == false
+        )
         Task {
             await editorViewModel.saveIfNeeded()
-            editorViewModel.exitEditModeToRead(
-                captureAttachedTextViewSnapshot: capturedViewportBeforeDismissal == false
-            )
         }
         #endif
     }

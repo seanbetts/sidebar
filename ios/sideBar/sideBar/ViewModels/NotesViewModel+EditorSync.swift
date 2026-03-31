@@ -27,7 +27,6 @@ extension NotesViewModel {
             modified: serverNote.modified,
             created: serverNote.created
         )
-        setMirroredActiveNote(acknowledged)
         store.applyEditorUpdate(acknowledged)
     }
 
@@ -44,7 +43,6 @@ extension NotesViewModel {
             modified: note.modified,
             created: note.created
         )
-        setMirroredActiveNote(updated)
         store.applyEditorUpdate(updated)
     }
 

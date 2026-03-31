@@ -218,13 +218,15 @@ func glyphRect(
 func mountEditorTextView(
     plainText: String,
     baseFontSize: CGFloat,
-    frame: NSRect
+    frame: NSRect,
+    onEscape: (() -> Void)? = nil
 ) throws -> NSTextView {
     let document = NotesSemanticDocumentProjection.document(fromPlainText: plainText)
     return try mountEditorTextView(
         document: document,
         baseFontSize: baseFontSize,
-        frame: frame
+        frame: frame,
+        onEscape: onEscape
     )
 }
 
@@ -233,7 +235,8 @@ func mountEditorTextView(
 func mountEditorTextView(
     document: NotesSemanticDocument,
     baseFontSize: CGFloat,
-    frame: NSRect
+    frame: NSRect,
+    onEscape: (() -> Void)? = nil
 ) throws -> NSTextView {
     let nativeViewModel = NativeNoteEditorViewModel()
     nativeViewModel.setBaseFontSize(baseFontSize)
@@ -247,7 +250,8 @@ func mountEditorTextView(
             AppKitNoteTextEditorSurface(
                 viewModel: nativeViewModel,
                 maxContentWidth: frame.width,
-                isEditable: true
+                isEditable: true,
+                onEscape: onEscape
             )
         )
     )

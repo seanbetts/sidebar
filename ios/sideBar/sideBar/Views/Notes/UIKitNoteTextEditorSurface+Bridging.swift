@@ -4,8 +4,9 @@ import UIKit
 @available(iOS 26.0, *)
 extension UIKitNoteTextEditorSurface {
     func bridgedAttributedText(from text: AttributedString) -> NSAttributedString {
-        SelectableNoteReadView.bridgedPlatformAttributedString(
+        SelectableNoteReadView.bridgedPlatformEditorAttributedString(
             from: text,
+            document: viewModel.currentPersistenceSnapshot().document,
             baseFontSize: viewModel.baseFontSize
         )
     }

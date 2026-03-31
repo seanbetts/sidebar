@@ -26,6 +26,7 @@ func mountTextView(
     pendingSelectionViewportAnchorY: CGFloat? = nil,
     onDidBeginEditing: ((UIKitNoteTextEditorSurface.AccessoryTextView) -> Void)? = nil,
     makeTextView: (() -> UIKitNoteTextEditorSurface.AccessoryTextView)? = nil,
+    onEscape: (() -> Void)? = nil,
     maxContentWidth: CGFloat? = nil,
     width: CGFloat = 360,
     height: CGFloat = 320
@@ -42,7 +43,8 @@ func mountTextView(
                 pendingSelectionTarget: pendingSelectionTarget,
                 pendingSelectionViewportAnchorY: pendingSelectionViewportAnchorY,
                 onDidBeginEditing: onDidBeginEditing,
-                makeTextView: makeTextView
+                makeTextView: makeTextView,
+                onEscape: onEscape
             )
         )
     )
@@ -89,6 +91,7 @@ func mountTextView(
     pendingSelectionViewportAnchorY: CGFloat? = nil,
     onDidBeginEditing: ((UIKitNoteTextEditorSurface.AccessoryTextView) -> Void)? = nil,
     makeTextView: (() -> UIKitNoteTextEditorSurface.AccessoryTextView)? = nil,
+    onEscape: (() -> Void)? = nil,
     maxContentWidth: CGFloat? = nil,
     width: CGFloat = 360,
     height: CGFloat = 320
@@ -105,6 +108,7 @@ func mountTextView(
         pendingSelectionViewportAnchorY: pendingSelectionViewportAnchorY,
         onDidBeginEditing: onDidBeginEditing,
         makeTextView: makeTextView,
+        onEscape: onEscape,
         maxContentWidth: maxContentWidth,
         width: width,
         height: height

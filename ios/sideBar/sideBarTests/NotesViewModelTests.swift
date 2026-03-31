@@ -176,6 +176,99 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.activeNote?.id, "note-id")
     }
 
+    func testApplyLocalNoteSnapshotMirrorsActiveNoteOnNextMainActorTurn() async throws {
+        let api = NotesAPISpy()
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "note-id",
+            name: "Original",
+            document: NotesSemanticDocumentProjection.document(fromPlainText: "Original"),
+            plainText: "Original",
+            path: "note-id",
+            modified: nil,
+            created: nil
+        )
+        let updatedDocument = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Updated", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+
+        store.applyEditorUpdate(note)
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.activeNote?.id == "note-id"
+        }
+
+        viewModel.applyLocalNoteSnapshot(id: "note-id", document: updatedDocument)
+
+        XCTAssertEqual(viewModel.activeNote?.plainText, "Original")
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.activeNote?.plainText == "Updated\nBody"
+        }
+        XCTAssertEqual(viewModel.activeNote?.plainText, "Updated\nBody")
+    }
+
+    func testApplySavedNoteAcknowledgementMirrorsActiveNoteOnNextMainActorTurn() async throws {
+        let api = NotesAPISpy()
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        let note = NotePayload(
+            id: "note-id",
+            name: "Original",
+            document: NotesSemanticDocumentProjection.document(fromPlainText: "Original"),
+            plainText: "Original",
+            path: "note-id",
+            modified: nil,
+            created: nil
+        )
+        let savedDocument = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Saved", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+        let serverNote = NotePayload(
+            id: "note-id",
+            name: "Original",
+            document: note.document,
+            plainText: note.plainText,
+            path: "note-id",
+            modified: 42,
+            created: nil
+        )
+
+        store.applyEditorUpdate(note)
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.activeNote?.id == "note-id"
+        }
+
+        viewModel.applySavedNoteAcknowledgement(serverNote: serverNote, document: savedDocument)
+
+        XCTAssertEqual(viewModel.activeNote?.plainText, "Original")
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.activeNote?.plainText == "Saved\nBody"
+        }
+        XCTAssertEqual(viewModel.activeNote?.plainText, "Saved\nBody")
+    }
+
     func testStoreTreeMirrorsOnNextMainActorTurn() async throws {
         let api = NotesAPISpy()
         let cache = InMemoryCacheClient()

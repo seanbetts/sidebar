@@ -8,6 +8,116 @@ import XCTest
 @MainActor
 @available(iOS 26.0, *)
 final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCase {
+    func testChecklistDocumentRendersAttachmentMarkersInUIKitEditorSurface() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Task", marks: [])], checked: false)
+                    ]
+                )
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+
+        let textView = try mountTextView(viewModel: viewModel)
+
+        XCTAssertNotNil(textView.attributedText.attribute(.attachment, at: 0, effectiveRange: nil))
+        XCTAssertEqual(textView.selectedRange.length, 0)
+    }
+
+    func testUIKitChecklistSelectionChangesMapDisplayOffsetsBackIntoCanonicalSelection() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Task", marks: [])], checked: false)
+                    ]
+                )
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+
+        let textView = try mountTextView(viewModel: viewModel)
+        simulateUIKitSelectionChange(on: textView, to: NSRange(location: 2, length: 0))
+
+        assertUIKitInsertionPointUTF16Offset(
+            viewModel.selection,
+            in: viewModel.attributedContent,
+            equals: 6
+        )
+    }
+
+    func testUIKitChecklistTextChangesExpandDisplayMarkersBackIntoCanonicalContent() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Task", marks: [])], checked: false)
+                    ]
+                )
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+
+        let textView = try mountTextView(viewModel: viewModel)
+        let updated = NSMutableAttributedString(attributedString: textView.attributedText)
+        updated.append(NSAttributedString(string: "!"))
+        textView.attributedText = updated
+        textView.selectedRange = NSRange(location: updated.length, length: 0)
+        textView.delegate?.textViewDidChange?(textView)
+
+        await waitUntil(timeout: .seconds(1)) {
+            viewModel.currentPersistenceSnapshot().document.blocks.first?.children?.first?.content
+                == [.init(text: "Task!", marks: [])]
+        }
+
+        XCTAssertEqual(
+            viewModel.currentPersistenceSnapshot().document.blocks.first?.children?.first?.content,
+            [.init(text: "Task!", marks: [])]
+        )
+        assertUIKitInsertionPointUTF16Offset(
+            viewModel.selection,
+            in: viewModel.attributedContent,
+            equals: 11
+        )
+    }
+
+    func testEscapeKeyCommandFromUIKitEditorSurfaceInvokesExitCallback() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        var escapeCount = 0
+
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            makeKeyAndVisible: true,
+            onEscape: { escapeCount += 1 }
+        )
+        XCTAssertTrue(textView.becomeFirstResponder())
+
+        textView.handleEscapeCommand()
+
+        XCTAssertEqual(escapeCount, 1)
+    }
+
     func testUIKitSelectionChangesFlowBackIntoCanonicalSelectionUsingUTF16Offsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -292,6 +402,13 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
         textView.attributedText = updated
         textView.selectedRange = NSRange(location: updated.length, length: 0)
         textView.delegate?.textViewDidChange?(textView)
+
+        let expectation = XCTestExpectation(description: "formatted text change applied")
+        DispatchQueue.main.async {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1)
+
         let updatedRange = noteCharacterRange(length: 4, in: viewModel.attributedContent)
         XCTAssertEqual(String(viewModel.attributedContent.characters), "Bold!")
         XCTAssertTrue(noteRangeHasBoldTrait(viewModel.attributedContent, range: updatedRange))

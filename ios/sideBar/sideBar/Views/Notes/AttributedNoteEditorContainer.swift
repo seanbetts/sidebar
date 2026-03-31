@@ -264,6 +264,11 @@ struct AttributedNoteEditorContainer: View {
                     pendingSelectionViewportOffset = nil
                     pendingSelectionViewportAnchorY = nil
                 }
+            },
+            onEscape: {
+                _ = handleEscapeKey(
+                    document: nativeViewModel.currentPersistenceSnapshot().document
+                )
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -273,7 +278,12 @@ struct AttributedNoteEditorContainer: View {
             viewModel: nativeViewModel,
             maxContentWidth: maxContentWidth,
             isEditable: true,
-            shouldAutofocus: autofocusEnabled
+            shouldAutofocus: autofocusEnabled,
+            onEscape: {
+                _ = handleEscapeKey(
+                    document: nativeViewModel.currentPersistenceSnapshot().document
+                )
+            }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Colors.background)
