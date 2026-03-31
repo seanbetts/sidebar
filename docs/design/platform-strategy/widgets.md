@@ -55,12 +55,15 @@ Widget extension (reads on timeline generation)
   ↓
 TimelineProvider → Widget views
   ↓ (on user action)
-AppIntent → optimistic write to App Group store
-  ├─ Best-effort direct backend write (if auth available)
-  │    ├─ Success → clear pending operation
-  │    └─ Failure → keep pending operation for app recovery
-  └─ pending operation record
-Main app (processes on next launch or active state)
+Widget interaction
+  ├─ Section or row tap → open app via deep link
+  ├─ Add/create action → record pending operation, open app
+  └─ Task completion → optimistic App Group update
+       ├─ Best-effort direct backend write
+       │    ├─ Success → clear pending completion
+       │    └─ Failure → keep pending completion for app recovery
+       └─ pending completion record
+Main app (processes pending operations on next launch or active state)
 ```
 
 **`WidgetDataManager.shared`** is the single access point for all widget data reads and writes in both directions.
@@ -125,7 +128,9 @@ These widgets use a fixed `.after(now + 15 minutes)` refresh policy. There are n
 
 ### Unauthenticated state
 
-All providers fall back to `.after(nextMidnight())` when the user is not authenticated. No data is displayed.
+If no cached snapshot exists and the widget cannot authenticate, providers fall back to `.after(nextMidnight())` and render the signed-out state.
+
+If a cached snapshot exists, providers should continue to render it even when live auth is unavailable. Lack of auth should not blank a widget that still has useful cached content.
 
 ### Targeted reloads from main app
 
@@ -198,23 +203,24 @@ Circular button, 20pt diameter on small, 24pt on medium/large. Rendering-mode-aw
 
 **Lock screen**: Single row — section icon + "Sign in to sideBar" label.
 
-No data is shown. No action is provided beyond the implicit tap-to-open.
+This state is only shown when there is no cached snapshot to render. If cached content exists, keep showing it rather than replacing it with the signed-out state. No action is provided beyond the implicit tap-to-open.
 
 ---
 
 ## Interactivity and optimistic updates
 
-### App Intents
+### Widget interactions
 
-Interactive actions use `AppIntent` (iOS 17+) with deep link fallback for earlier versions:
+Interactive actions use `AppIntent` (iOS 17+) with deep link fallback for earlier versions where needed:
 
-| Intent | Action |
+| Interaction | Action |
 |---|---|
 | `CompleteTaskIntent` | Mark task complete with immediate optimistic update and best-effort backend sync |
 | `AddTaskIntent` | Record pending operation, open app to new task |
 | `CreateNoteIntent` | Record pending operation, open app to new note |
-| `QuickSaveIntent` | Save URL to pending share queue (registered as app shortcut, not surfaced in any widget view) |
-| `OpenScratchpadIntent`, `StartChatIntent` | Deep link to section |
+| Section tap or row tap | Open app to the relevant list or item deep link |
+
+Legacy app shortcuts such as `QuickSaveIntent`, `OpenScratchpadIntent`, and `StartChatIntent` are outside the active widget surface and should not shape widget architecture decisions.
 
 ### Optimistic update pattern
 
@@ -242,6 +248,11 @@ When the tasks provider refreshes from the backend, it must merge server data wi
 | Notes | `sidebar://notes` | `sidebar://notes/{path}` |
 | Websites | `sidebar://websites` | `sidebar://websites/{id}` |
 | Files | `sidebar://files` | `sidebar://files/{id}` |
+
+Widget create actions use:
+
+- Tasks: `sidebar://tasks/new`
+- Notes: `sidebar://notes/new`
 
 ---
 
