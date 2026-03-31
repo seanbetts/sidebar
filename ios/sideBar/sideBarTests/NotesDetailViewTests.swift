@@ -266,6 +266,10 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
             viewportAnchorY: nil
         )
 
+        await waitUntil(timeout: .milliseconds(150)) {
+            context.editorViewModel.pendingReadSurfaceViewportOffset == CGPoint(x: 0, y: 184)
+        }
+
         context.makeView().handleReadInitialViewportRestorationApplied()
 
         XCTAssertEqual(context.editorViewModel.pendingReadSurfaceViewportOffset, CGPoint(x: 0, y: 184))

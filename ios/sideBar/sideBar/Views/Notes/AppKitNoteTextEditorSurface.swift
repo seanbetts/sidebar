@@ -209,25 +209,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         }
     }
 
-    private func bridgedAttributedText(from text: AttributedString) -> NSAttributedString {
-        SelectableNoteReadView.bridgedPlatformEditorAttributedString(
-            from: text,
-            document: viewModel.currentPersistenceSnapshot().document,
-            baseFontSize: viewModel.baseFontSize
-        )
-    }
-
-    private func bridgedTypingAttributes(from text: AttributedString) -> [NSAttributedString.Key: Any] {
-        var sample = AttributedString("x")
-        let range = sample.startIndex..<sample.endIndex
-        sample[range].mergeAttributes(viewModel.typingAttributesForInsertion(in: text))
-        let bridged = SelectableNoteReadView.bridgedPlatformAttributedString(
-            from: sample,
-            baseFontSize: viewModel.baseFontSize
-        )
-        return bridged.attributes(at: 0, effectiveRange: nil)
-    }
-
     final class Coordinator: NSObject, NSTextViewDelegate {
         let viewModel: NativeNoteEditorViewModel
         weak var textView: NSTextView?
@@ -290,18 +271,22 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         }
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-            guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
+            switch commandSelector {
+            case #selector(NSResponder.insertNewline(_:)):
+                return handleStructuralReplacement(
+                    in: textView,
+                    selectedRange: textView.selectedRange(),
+                    replacementText: "\n"
+                )
+            case #selector(NSResponder.deleteBackward(_:)):
+                return handleStructuralReplacement(
+                    in: textView,
+                    selectedRange: textView.selectedRange(),
+                    replacementText: ""
+                )
+            default:
                 return false
             }
-            guard handleStructuralReplacement(
-                in: textView,
-                selectedRange: textView.selectedRange(),
-                replacementText: "\n"
-            ) else {
-                return false
-            }
-
-            return true
         }
 
         func textView(

@@ -50,6 +50,7 @@ extension NotesEditorViewModel {
         viewportAnchorY: CGFloat? = nil
     ) {
         guard currentNoteId != nil, unsupportedContent == nil else { return }
+        cancelPendingPresentationMirrorTasks()
         pendingEditSelectionTarget = target
         pendingEditViewportOffset = viewportAnchorY == nil ? nil : heldReadSurfaceViewportOffset
         pendingEditViewportAnchorY = viewportAnchorY
@@ -173,18 +174,16 @@ extension NotesEditorViewModel {
             viewportAnchorY: liveEditorSelectionViewportAnchorY
         )
         pendingReadViewportRestoration = restoration
-        setPendingReadSurfaceViewportRestoration(
-            offset: restoration.offset,
-            target: restoration.target,
-            viewportAnchorY: restoration.viewportAnchorY
-        )
         debugLastExitReadViewportRestoration = restoration
         liveEditorViewportOffset = nil
         liveEditorSelectionTarget = nil
         liveEditorSelectionViewportAnchorY = nil
-        isHoldingReadSurfaceDuringEditEntry = false
         heldReadSurfaceActivationTarget = nil
         heldReadSurfaceViewportAnchorY = nil
-        presentationMode = .read
+        scheduleExitEditModePresentation(
+            offset: restoration.offset,
+            target: restoration.target,
+            viewportAnchorY: restoration.viewportAnchorY
+        )
     }
 }

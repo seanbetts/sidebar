@@ -1,11 +1,26 @@
 import Foundation
 
 extension NotesEditorViewModel {
+    func cancelPendingPresentationMirrorTasks() {
+        pendingReadSurfaceViewportMirrorTask?.cancel()
+        pendingReadSurfaceViewportMirrorTask = nil
+        pendingEditEntryPresentationHoldTask?.cancel()
+        pendingEditEntryPresentationHoldTask = nil
+        pendingExitEditPresentationTask?.cancel()
+        pendingExitEditPresentationTask = nil
+    }
+
     public func completeEditEntryPresentationHold() {
         guard isHoldingReadSurfaceDuringEditEntry else { return }
-        isHoldingReadSurfaceDuringEditEntry = false
         heldReadSurfaceActivationTarget = nil
         heldReadSurfaceViewportAnchorY = nil
+        pendingEditEntryPresentationHoldTask?.cancel()
+        pendingEditEntryPresentationHoldTask = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self, Task.isCancelled == false else { return }
+            self.isHoldingReadSurfaceDuringEditEntry = false
+            self.pendingEditEntryPresentationHoldTask = nil
+        }
     }
 
     public func setPendingReadSurfaceViewportRestoration(
@@ -13,15 +28,45 @@ extension NotesEditorViewModel {
         target: PendingEditSelectionTarget?,
         viewportAnchorY: CGFloat?
     ) {
-        pendingReadSurfaceViewportOffset = offset
-        pendingReadSurfaceViewportAnchorTarget = target
-        pendingReadSurfaceViewportAnchorY = viewportAnchorY
+        pendingReadSurfaceViewportMirrorTask?.cancel()
+        pendingReadSurfaceViewportMirrorTask = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self, Task.isCancelled == false else { return }
+            self.pendingReadSurfaceViewportOffset = offset
+            self.pendingReadSurfaceViewportAnchorTarget = target
+            self.pendingReadSurfaceViewportAnchorY = viewportAnchorY
+            self.pendingReadSurfaceViewportMirrorTask = nil
+        }
     }
 
     public func clearPendingReadSurfaceViewportRestoration() {
-        pendingReadSurfaceViewportOffset = nil
-        pendingReadSurfaceViewportAnchorTarget = nil
-        pendingReadSurfaceViewportAnchorY = nil
+        setPendingReadSurfaceViewportRestoration(
+            offset: nil,
+            target: nil,
+            viewportAnchorY: nil
+        )
+    }
+
+    func scheduleExitEditModePresentation(
+        offset: CGPoint?,
+        target: PendingEditSelectionTarget?,
+        viewportAnchorY: CGFloat?
+    ) {
+        pendingReadSurfaceViewportMirrorTask?.cancel()
+        pendingEditEntryPresentationHoldTask?.cancel()
+        pendingExitEditPresentationTask?.cancel()
+        pendingExitEditPresentationTask = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self, Task.isCancelled == false else { return }
+            self.pendingReadSurfaceViewportOffset = offset
+            self.pendingReadSurfaceViewportAnchorTarget = target
+            self.pendingReadSurfaceViewportAnchorY = viewportAnchorY
+            self.isHoldingReadSurfaceDuringEditEntry = false
+            self.presentationMode = .read
+            self.pendingReadSurfaceViewportMirrorTask = nil
+            self.pendingEditEntryPresentationHoldTask = nil
+            self.pendingExitEditPresentationTask = nil
+        }
     }
 
     func applyReadModeSnapshot(_ document: NotesSemanticDocument) {

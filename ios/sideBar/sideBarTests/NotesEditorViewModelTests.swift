@@ -312,9 +312,46 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         context.viewModel.exitEditModeToRead()
 
+        let didExit = await waitUntil(timeoutSeconds: 1.0, failOnTimeout: false) {
+            context.viewModel.presentationMode == .read
+        }
+
+        XCTAssertTrue(didExit)
         XCTAssertEqual(context.viewModel.presentationMode, .read)
         XCTAssertFalse(context.viewModel.isEditingNote)
         XCTAssertEqual(context.viewModel.currentNoteId, "n1")
+    }
+
+    func testExitEditModeDefersReadPresentationModeUntilNextMainActorTurn() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+        context.viewModel.enterEditMode()
+
+        XCTAssertEqual(context.viewModel.presentationMode, .edit)
+
+        context.viewModel.exitEditModeToRead()
+
+        XCTAssertEqual(context.viewModel.presentationMode, .edit)
+        XCTAssertTrue(context.viewModel.isEditingNote)
+
+        let didExit = await waitUntil(timeoutSeconds: 1.0, failOnTimeout: false) {
+            context.viewModel.presentationMode == .read
+        }
+
+        XCTAssertTrue(didExit)
+        XCTAssertFalse(context.viewModel.isEditingNote)
     }
 
     func testExitEditModeClearsPendingSelectionTarget() async {
@@ -1643,6 +1680,10 @@ extension NotesEditorViewModelTests {
             NotesSemanticDocumentCodec.decode(context.viewModel.canonicalContent),
             updatedDocument
         )
+        let didMirrorActiveNote = await waitUntil(timeoutSeconds: 2.0, failOnTimeout: false) {
+            context.notesViewModel.activeNote?.document == updatedDocument
+        }
+        XCTAssertTrue(didMirrorActiveNote)
         XCTAssertEqual(context.notesViewModel.activeNote?.document, updatedDocument)
         XCTAssertFalse(context.viewModel.isQueuedForSync)
     }

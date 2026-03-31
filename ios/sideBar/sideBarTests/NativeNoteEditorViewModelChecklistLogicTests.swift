@@ -214,6 +214,124 @@ final class NativeNoteEditorChecklistLogicTests: XCTestCase {
         XCTAssertEqual(snapshot.plainText, "Title\n- [ ] First\nBody")
     }
 
+    func testHandleReturnKeyImmediatelyAfterChecklistMarkerSplitsCurrentItem() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Task", marks: [])], checked: false)
+                    ]
+                )
+            ]
+        )
+        let viewModel = try makeViewModel(from: document)
+        let insertion = viewModel.index(forCharacterOffset: 12, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleReturnKey())
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .checklist])
+        XCTAssertEqual(
+            snapshot.document.blocks[1],
+            .init(
+                type: .checklist,
+                children: [
+                    .init(type: .listItem, content: [.init(text: "", marks: [])], checked: false),
+                    .init(type: .listItem, content: [.init(text: "Task", marks: [])], checked: false)
+                ]
+            )
+        )
+        XCTAssertEqual(snapshot.plainText, "Title\n- [ ] \n- [ ] Task")
+        XCTAssertEqual(selectionInsertionOffset(in: viewModel), 19)
+    }
+
+    func testHandleReturnKeyOnEmptyMiddleChecklistItemSplitsChecklistAroundBlankParagraph() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "First", marks: [])], checked: false),
+                        .init(type: .listItem, content: [.init(text: "Second", marks: [])], checked: false)
+                    ]
+                )
+            ]
+        )
+        let viewModel = try makeViewModel(from: document)
+        let firstRange = try XCTUnwrap(
+            viewModel.currentPersistenceSnapshot().plainText.range(of: "First")
+        )
+        let insertionOffset = viewModel.currentPersistenceSnapshot().plainText.distance(
+            from: viewModel.currentPersistenceSnapshot().plainText.startIndex,
+            to: firstRange.upperBound
+        )
+        let insertion = viewModel.index(forCharacterOffset: insertionOffset, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleReturnKey())
+        XCTAssertTrue(viewModel.handleReturnKey())
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .checklist, .paragraph, .checklist])
+        XCTAssertEqual(
+            snapshot.document.blocks[1],
+            .init(
+                type: .checklist,
+                children: [
+                    .init(type: .listItem, content: [.init(text: "First", marks: [])], checked: false)
+                ]
+            )
+        )
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "", marks: [])])
+        XCTAssertEqual(
+            snapshot.document.blocks[3],
+            .init(
+                type: .checklist,
+                children: [
+                    .init(type: .listItem, content: [.init(text: "Second", marks: [])], checked: false)
+                ]
+            )
+        )
+        XCTAssertEqual(snapshot.plainText, "Title\n- [ ] First\n\n- [ ] Second")
+    }
+
+    func testHandleDeleteBackwardAtEmptyChecklistItemStartSplitsChecklistAroundBlankParagraph() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "First", marks: [])], checked: false),
+                        .init(type: .listItem, content: [.init(text: "Second", marks: [])], checked: false)
+                    ]
+                )
+            ]
+        )
+        let viewModel = try makeViewModel(from: document)
+        let firstRange = try XCTUnwrap(
+            viewModel.currentPersistenceSnapshot().plainText.range(of: "First")
+        )
+        let insertionOffset = viewModel.currentPersistenceSnapshot().plainText.distance(
+            from: viewModel.currentPersistenceSnapshot().plainText.startIndex,
+            to: firstRange.upperBound
+        )
+        let insertion = viewModel.index(forCharacterOffset: insertionOffset, in: viewModel.attributedContent)
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleReturnKey())
+        XCTAssertTrue(viewModel.handleTextReplacement(""))
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .checklist, .paragraph, .checklist])
+        XCTAssertEqual(snapshot.plainText, "Title\n- [ ] First\n\n- [ ] Second")
+        XCTAssertEqual(selectionInsertionOffset(in: viewModel), 18)
+    }
+
     private func makeViewModel(from document: NotesSemanticDocument) throws -> NativeNoteEditorViewModel {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(

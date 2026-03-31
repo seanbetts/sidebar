@@ -103,6 +103,38 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertLessThan(attachment.bounds.minY, 0)
     }
 
+    func testLogicalEditorSelectedRangeKeepsCaretOnEmptyChecklistLine() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "", marks: [])], checked: false),
+                        .init(type: .listItem, content: [.init(text: "Next", marks: [])], checked: false)
+                    ]
+                )
+            ]
+        )
+        let attributed = NotesAttributedDocumentCodec.attributedString(
+            from: document,
+            baseFontSize: 16
+        )
+        let editorAttributed = SelectableNoteReadView.bridgedPlatformEditorAttributedString(
+            from: attributed,
+            document: document,
+            baseFontSize: 16
+        )
+
+        let logicalRange = SelectableNoteReadView.logicalEditorSelectedRange(
+            fromDisplaySelectedRange: NSRange(location: 3, length: 0),
+            in: editorAttributed,
+            document: document
+        )
+
+        XCTAssertEqual(logicalRange, NSRange(location: 6, length: 0))
+    }
+
     #if os(macOS)
     func testMakePlatformTextViewIsSelectableAndNonEditable() throws {
         let document = NotesSemanticDocument(

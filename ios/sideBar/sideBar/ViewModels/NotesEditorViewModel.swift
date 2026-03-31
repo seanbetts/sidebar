@@ -71,6 +71,9 @@ public final class NotesEditorViewModel: ObservableObject {
     var pendingEditViewportAnchorY: CGFloat?
     private var syncRequestedWhileSaving = false
     var pendingNoteUpdateTask: Task<Void, Never>?
+    var pendingReadSurfaceViewportMirrorTask: Task<Void, Never>?
+    var pendingEditEntryPresentationHoldTask: Task<Void, Never>?
+    var pendingExitEditPresentationTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     init(
         notesViewModel: NotesViewModel,
@@ -88,7 +91,12 @@ public final class NotesEditorViewModel: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    deinit { pendingNoteUpdateTask?.cancel() }
+    deinit {
+        pendingNoteUpdateTask?.cancel()
+        pendingReadSurfaceViewportMirrorTask?.cancel()
+        pendingEditEntryPresentationHoldTask?.cancel()
+        pendingExitEditPresentationTask?.cancel()
+    }
     func handleNoteUpdate(_ note: NotePayload?) {
         let previousNoteId = currentNoteId
         guard let note else {

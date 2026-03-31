@@ -128,6 +128,7 @@ extension SelectableNoteReadView {
         document: NotesSemanticDocument?
     ) -> Int {
         let markers = checklistDisplayMarkers(in: attributedText, document: document)
+        let plainText = attributedText.string as NSString
         var delta = 0
 
         for marker in markers {
@@ -139,6 +140,11 @@ extension SelectableNoteReadView {
                 return displayOffset + delta
             }
             if displayOffset <= displayPrefixEnd {
+                return logicalPrefixEnd
+            }
+            if displayOffset == displayPrefixEnd + 1,
+               displayPrefixEnd < plainText.length,
+               plainText.substring(with: NSRange(location: displayPrefixEnd, length: 1)) == "\n" {
                 return logicalPrefixEnd
             }
 

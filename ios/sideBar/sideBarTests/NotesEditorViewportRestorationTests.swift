@@ -3,6 +3,31 @@ import XCTest
 
 @MainActor
 final class NotesEditorViewportRestorationTests: XCTestCase {
+    func testSetPendingReadSurfaceViewportRestorationDefersPublishedMirrorUntilNextMainActorTurn() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: EditViewportMockNotesAPI(updateResult: .failure(EditViewportMockError.forced))
+        )
+
+        context.viewModel.setPendingReadSurfaceViewportRestoration(
+            offset: CGPoint(x: 0, y: 184),
+            target: .characterOffset(7),
+            viewportAnchorY: 96
+        )
+
+        XCTAssertNil(context.viewModel.pendingReadSurfaceViewportOffset)
+        XCTAssertNil(context.viewModel.pendingReadSurfaceViewportAnchorTarget)
+        XCTAssertNil(context.viewModel.pendingReadSurfaceViewportAnchorY)
+
+        try? await NotesStoreTestsSupport.waitUntilCondition(timeoutSeconds: 1.0) {
+            context.viewModel.pendingReadSurfaceViewportOffset == CGPoint(x: 0, y: 184)
+                && context.viewModel.pendingReadSurfaceViewportAnchorTarget == .characterOffset(7)
+                && context.viewModel.pendingReadSurfaceViewportAnchorY == 96
+        }
+        XCTAssertEqual(context.viewModel.pendingReadSurfaceViewportOffset, CGPoint(x: 0, y: 184))
+        XCTAssertEqual(context.viewModel.pendingReadSurfaceViewportAnchorTarget, .characterOffset(7))
+        XCTAssertEqual(context.viewModel.pendingReadSurfaceViewportAnchorY, 96)
+    }
+
     func testExitEditModeStoresPendingReadViewportRestoration() async {
         let context = makeNotesEditorViewModelTestContext(
             api: EditViewportMockNotesAPI(updateResult: .failure(EditViewportMockError.forced))

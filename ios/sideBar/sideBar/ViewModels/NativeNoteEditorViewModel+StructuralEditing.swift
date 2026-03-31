@@ -27,6 +27,11 @@ extension NativeNoteEditorViewModel {
             return false
         }
         let document = currentPersistenceSnapshot().document
+        if replacementText.isEmpty,
+           selectionRange.isEmpty,
+           structuralDeleteBackwardMutation(in: document) != nil {
+            return true
+        }
         return listTypingTriggerMutation(
             in: document,
             selectionRange: selectionRange,
@@ -57,12 +62,31 @@ extension NativeNoteEditorViewModel {
         if selectionRange.isEmpty, replacementText == "\n" {
             return handleReturnKey()
         }
+        if selectionRange.isEmpty, replacementText.isEmpty {
+            return handleDeleteBackwardKey()
+        }
 
         guard let mutation = replacementMutation(
             in: document,
             selectionRange: selectionRange,
             replacementText: replacementText
         ) else { return false }
+
+        applyDocumentMutation(
+            mutation.document,
+            insertionCharacterOffset: mutation.insertionOffset,
+            typingBlockType: mutation.typingBlockType
+        )
+        return true
+    }
+
+    @discardableResult
+    func handleDeleteBackwardKey() -> Bool {
+        guard !isReadOnly else { return false }
+        let document = currentPersistenceSnapshot().document
+        guard let mutation = structuralDeleteBackwardMutation(in: document) else {
+            return false
+        }
 
         applyDocumentMutation(
             mutation.document,
@@ -313,67 +337,6 @@ extension NativeNoteEditorViewModel {
             insertionOffset: blockInfo.range.lowerBound + selectionOffset + 1,
             typingBlockType: .codeBlock
         )
-    }
-
-    private func mutateListReturn(
-        in document: NotesSemanticDocument,
-        blockInfo: DocumentBlockInfo,
-        selectionOffset: Int,
-        blockText: String
-    ) -> StructuralReplacementMutation? {
-        guard selectionOffset == blockText.count else { return nil }
-        guard blockInfo.block.type == .unorderedList
-                || blockInfo.block.type == .orderedList
-                || blockInfo.block.type == .checklist else {
-            return nil
-        }
-
-        var children = blockInfo.block.children ?? []
-        if let lastChild = children.last, isEmptyListItem(lastChild) {
-            children.removeLast()
-
-            let updatedListBlock = NotesSemanticDocument.Block(
-                type: blockInfo.block.type,
-                children: children
-            )
-            var updatedBlocks = document.blocks
-            updatedBlocks[blockInfo.index] = updatedListBlock
-            updatedBlocks.insert(.paragraph([.init(text: "", marks: [])]), at: blockInfo.index + 1)
-
-            let updatedListTextLength = blockPlainText(updatedListBlock).count
-            return StructuralReplacementMutation(
-                document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
-                insertionOffset: blockInfo.range.lowerBound + updatedListTextLength + 1,
-                typingBlockType: .paragraph
-            )
-        }
-
-        children.append(
-            .init(
-                type: .listItem,
-                content: [.init(text: "", marks: [])],
-                checked: blockInfo.block.type == .checklist ? false : nil
-            )
-        )
-
-        let updatedBlock = NotesSemanticDocument.Block(
-            type: blockInfo.block.type,
-            children: children
-        )
-        var updatedBlocks = document.blocks
-        updatedBlocks[blockInfo.index] = updatedBlock
-
-        let updatedBlockTextLength = blockPlainText(updatedBlock).count
-        return StructuralReplacementMutation(
-            document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
-            insertionOffset: blockInfo.range.lowerBound + updatedBlockTextLength,
-            typingBlockType: blockInfo.block.type
-        )
-    }
-
-    private func isEmptyListItem(_ block: NotesSemanticDocument.Block) -> Bool {
-        guard block.type == .listItem else { return false }
-        return block.content.allSatisfy { $0.text.isEmpty }
     }
 
     private func replaceTextAcrossTextStyleBlocks(
