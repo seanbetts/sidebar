@@ -44,6 +44,8 @@ public final class ServiceContainer {
     public let deviceTokensAPI: DeviceTokensAPI
     /// Password reset API wrapper for reset initiation from signed-out surfaces.
     public let passwordResetAPI: any PasswordResetRequesting
+    /// Password recovery manager for recovery-link handling and completion.
+    public let passwordRecoveryManager: any PasswordRecoveryManaging
 
     public var observableAuthSession: (any AuthSessionObserving)? {
         authSession as? any AuthSessionObserving
@@ -62,7 +64,8 @@ public final class ServiceContainer {
         config: EnvironmentConfig,
         authSession: AuthSession,
         cacheClient: CacheClient,
-        websitesAPI: (any WebsitesProviding)? = nil
+        websitesAPI: (any WebsitesProviding)? = nil,
+        passwordRecoveryManager: (any PasswordRecoveryManaging)? = nil
     ) {
         self.config = config
         self.authSession = authSession
@@ -92,6 +95,10 @@ public final class ServiceContainer {
         self.tasksAPI = TasksAPI(client: apiClient)
         self.deviceTokensAPI = DeviceTokensAPI(client: apiClient)
         self.passwordResetAPI = PasswordResetAPI(client: apiClient)
+        self.passwordRecoveryManager =
+            passwordRecoveryManager
+            ?? (authSession as? any PasswordRecoveryManaging)
+            ?? UnavailablePasswordRecoveryManager()
     }
 
     /// Creates a chat streaming client bound to the current auth session token provider.
@@ -106,5 +113,17 @@ public final class ServiceContainer {
     /// Creates a realtime client configured from the active environment settings.
     public func makeRealtimeClient(handler: RealtimeEventHandler?) -> RealtimeClient {
         SupabaseRealtimeAdapter(config: config, handler: handler)
+    }
+}
+
+private final class UnavailablePasswordRecoveryManager: PasswordRecoveryManaging {
+    func startRecoverySession(from url: URL) async throws {
+        _ = url
+        throw AuthAdapterError.serviceUnavailable
+    }
+
+    func completePasswordReset(newPassword: String) async throws {
+        _ = newPassword
+        throw AuthAdapterError.serviceUnavailable
     }
 }

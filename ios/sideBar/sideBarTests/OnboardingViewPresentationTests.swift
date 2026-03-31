@@ -136,6 +136,19 @@ final class OnboardingViewPresentationTests: OnboardingViewTestCase {
     }
 
     @MainActor
+    func testCreateAccountStepShowsCenteredPasswordGuidance() throws {
+        let normalized = try createAccountStepViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "Text(PasswordStrengthRules.guidanceMessage).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)"
+            )
+        )
+        XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity,minHeight:32,alignment:.center)"))
+    }
+
+    @MainActor
     func testNotificationsPermissionStepDoesNotUseSkippedCopy() throws {
         let normalized = try notificationsPermissionStepViewSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

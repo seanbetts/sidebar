@@ -44,6 +44,15 @@ final class SupabaseAuthSignUpTests: XCTestCase {
             return session
         }
 
+        func session(from url: URL) async throws -> SupabaseSessionInfo {
+            _ = url
+            throw AuthAdapterError.invalidCredentials
+        }
+
+        func updatePassword(_ password: String) async throws {
+            _ = password
+        }
+
         func refreshSession() async throws -> SupabaseSessionInfo {
             throw AuthAdapterError.sessionRefreshFailed
         }

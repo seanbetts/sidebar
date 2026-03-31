@@ -32,6 +32,8 @@ public protocol SupabaseAuthClientProtocol: Sendable {
     func signIn(email: String, password: String) async throws
     func signUp(email: String, password: String) async throws
     func verifyOTP(email: String, code: String) async throws -> SupabaseSessionInfo
+    func session(from url: URL) async throws -> SupabaseSessionInfo
+    func updatePassword(_ password: String) async throws
     func refreshSession() async throws -> SupabaseSessionInfo
     func signOut() async throws
 }
@@ -84,6 +86,15 @@ public final class SupabaseAuthClient: SupabaseAuthClientProtocol {
             code: 1,
             userInfo: [NSLocalizedDescriptionKey: "OTP verification did not produce a session."]
         )
+    }
+
+    public func session(from url: URL) async throws -> SupabaseSessionInfo {
+        let session = try await supabase.auth.session(from: url)
+        return Self.mapSession(session)
+    }
+
+    public func updatePassword(_ password: String) async throws {
+        _ = try await supabase.auth.update(user: UserAttributes(password: password))
     }
 
     public func refreshSession() async throws -> SupabaseSessionInfo {

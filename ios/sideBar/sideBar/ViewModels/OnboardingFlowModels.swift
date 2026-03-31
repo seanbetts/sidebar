@@ -35,22 +35,7 @@ extension OnboardingViewModel {
 
     /// Scores password strength from 0 to 4 based on increasingly strict criteria.
     public var passwordStrength: Int {
-        let candidate = password
-        guard candidate.count >= 8 else { return 0 }
-
-        var score = 1
-        if candidate.rangeOfCharacter(from: .uppercaseLetters) != nil &&
-            candidate.rangeOfCharacter(from: .lowercaseLetters) != nil {
-            score += 1
-        }
-        if candidate.rangeOfCharacter(from: .decimalDigits) != nil {
-            score += 1
-        }
-        let specials = CharacterSet.alphanumerics.inverted
-        if candidate.unicodeScalars.contains(where: { specials.contains($0) }) {
-            score += 1
-        }
-        return score
+        PasswordStrengthRules.score(for: password)
     }
 
     public var isCreateAccountValid: Bool {

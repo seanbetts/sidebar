@@ -5,6 +5,7 @@ enum UITestAuthBootstrap {
     static let accessTokenKey = "SIDEBAR_UI_TEST_ACCESS_TOKEN"
     static let userIdKey = "SIDEBAR_UI_TEST_USER_ID"
     static let forceStaleAuthKey = "SIDEBAR_UI_TEST_FORCE_STALE_AUTH"
+    static let forcePasswordResetKey = "SIDEBAR_UI_TEST_FORCE_PASSWORD_RESET"
     private static let fallbackAccessToken = "debug-stale-auth-token"
     private static let fallbackUserId = "debug-stale-auth-user"
 
@@ -27,6 +28,10 @@ enum UITestAuthBootstrap {
             userId: userId,
             authState: .active
         )
+    }
+
+    static func shouldForcePasswordReset(from environment: [String: String]) -> Bool {
+        environment[forcePasswordResetKey] == "1"
     }
 
     private static func trimmedValue(

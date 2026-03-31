@@ -138,6 +138,17 @@ class OnboardingViewTestCase: XCTestCase {
         )
     }
 
+    func createAccountStepViewSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        try sourceFile(
+            named: "CreateAccountStepView.swift",
+            file: file,
+            line: line
+        )
+    }
+
     func notificationsPermissionStepViewSource(
         file: StaticString = #filePath,
         line: UInt = #line

@@ -75,6 +75,10 @@ public struct ContentView: View {
             if let configError = environment.configError {
                 ConfigErrorView(error: configError)
                     .onAppear { logStartup("ConfigErrorView appeared") }
+            } else if environment.passwordResetState != nil {
+                PasswordResetCompletionView()
+                    .environmentObject(environment)
+                    .onAppear { logStartup("PasswordResetCompletionView appeared") }
             } else if environment.authState == .signedOut {
                 switch OnboardingPresentation.signedOutContent(
                     authState: environment.authState,
@@ -82,6 +86,8 @@ public struct ContentView: View {
                 ) {
                 case .login:
                     LoginView(
+                        initialPasswordResetNotice: environment.passwordResetSuccessMessage,
+                        onConsumePasswordResetNotice: { environment.passwordResetSuccessMessage = nil },
                         shouldAutofocusEmail: LoginFocusPolicy.shouldAutofocusEmail(
                             isOnboardingPresented: showOnboarding
                         ),

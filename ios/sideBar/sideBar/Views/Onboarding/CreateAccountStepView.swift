@@ -93,6 +93,13 @@ struct CreateAccountStepView: View {
                             }
                         }
                         .padding(.top, DesignTokens.Spacing.xxs)
+
+                        Text(PasswordStrengthRules.guidanceMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: 32, alignment: .center)
                     }
                 }
                 .frame(maxWidth: 310)

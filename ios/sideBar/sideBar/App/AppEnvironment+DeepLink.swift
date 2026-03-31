@@ -8,6 +8,13 @@ import UIKit
 @MainActor
 extension AppEnvironment {
     func handleDeepLink(_ url: URL) {
+        if PasswordRecoveryURLMatcher.matches(url) {
+            Task { [weak self] in
+                await self?.beginPasswordRecovery(from: url)
+            }
+            return
+        }
+
         guard url.scheme == "sidebar" else { return }
         let logger = Logger(subsystem: "sideBar", category: "DeepLink")
         guard !(isAuthenticated && !isProtectedContentReady) else {
@@ -163,5 +170,29 @@ extension AppEnvironment {
         default:
             return "Opened Tasks via Deep Link"
         }
+    }
+
+    func beginPasswordRecovery(from url: URL) async {
+        do {
+            try await container.passwordRecoveryManager.startRecoverySession(from: url)
+            passwordResetSuccessMessage = nil
+            passwordResetState = .enterNewPassword
+        } catch {
+            passwordResetState = nil
+        }
+    }
+
+    func completePasswordRecovery(newPassword: String) async throws {
+        try await container.passwordRecoveryManager.completePasswordReset(newPassword: newPassword)
+        passwordResetState = nil
+        passwordResetSuccessMessage = "Password updated. Sign in with your new password."
+        await container.authSession.signOut()
+        refreshAuthState()
+    }
+
+    func cancelPasswordRecovery() async {
+        passwordResetState = nil
+        await container.authSession.signOut()
+        refreshAuthState()
     }
 }

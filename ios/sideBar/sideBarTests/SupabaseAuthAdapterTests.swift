@@ -64,6 +64,15 @@ final class SupabaseAuthAdapterTests: XCTestCase {
             throw AuthAdapterError.invalidCredentials
         }
 
+        func session(from url: URL) async throws -> SupabaseSessionInfo {
+            _ = url
+            throw AuthAdapterError.invalidCredentials
+        }
+
+        func updatePassword(_ password: String) async throws {
+            _ = password
+        }
+
         func refreshSession() async throws -> SupabaseSessionInfo {
             guard let refreshResult else {
                 throw NSError(domain: "FakeSupabaseAuthClient", code: 1, userInfo: [

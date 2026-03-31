@@ -54,6 +54,13 @@ final class UITestAuthBootstrapTests: XCTestCase {
         XCTAssertNil(session.authorizationToken)
     }
 
+    func testShouldForcePasswordResetReadsLaunchEnvironment() {
+        XCTAssertTrue(UITestAuthBootstrap.shouldForcePasswordReset(from: [
+            UITestAuthBootstrap.forcePasswordResetKey: "1"
+        ]))
+        XCTAssertFalse(UITestAuthBootstrap.shouldForcePasswordReset(from: [:]))
+    }
+
     func testSeededSessionSignOutClearsAuthorization() async {
         let session = PlaceholderAuthSession(
             accessToken: "token-123",

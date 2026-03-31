@@ -118,6 +118,10 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var isBiometricUnlocked: Bool = false
     /// Tracks whether a user-triggered stale-session refresh is currently running.
     @Published public internal(set) var isRetryingStaleAuth: Bool = false
+    /// Tracks whether a signed-out recovery flow is collecting a new password.
+    @Published public internal(set) var passwordResetState: PasswordResetState?
+    /// Tracks the login notice shown after a successful password reset.
+    @Published public internal(set) var passwordResetSuccessMessage: String?
     var previousFocusedSectionBeforeMacSettings: AppSection?
     var isConsumingPendingShares: Bool = false
     var queuedProtectedDeepLinks: [URL] = []
@@ -138,7 +142,8 @@ public final class AppEnvironment: ObservableObject {
     public init(
         container: ServiceContainer,
         storage: AppEnvironmentStorage? = nil,
-        configError: EnvironmentConfigLoadError? = nil
+        configError: EnvironmentConfigLoadError? = nil,
+        initialPasswordResetState: PasswordResetState? = nil
     ) {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
         #if DEBUG
@@ -193,6 +198,7 @@ public final class AppEnvironment: ObservableObject {
         self.draftStorage = dependencies.draftStorage
         self.spotlightIndexer = dependencies.spotlightIndexer
         self.configError = configError
+        self.passwordResetState = initialPasswordResetState
         let chatViewModel = dependencies.chatViewModel
         let notesViewModel = dependencies.notesViewModel
         let websitesViewModel = dependencies.websitesViewModel

@@ -11,6 +11,22 @@ final class LoginViewPasswordResetSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("DesignTokens.Colors.actionPrimary"))
     }
 
+    func testSignedOutAuthFlowIncludesResetCompletionSurface() throws {
+        let normalized = try combinedLoginSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Enteranewpassword"))
+        XCTAssertTrue(normalized.contains("Updatepassword"))
+        XCTAssertTrue(normalized.contains("Backtosignin"))
+        XCTAssertTrue(normalized.contains("SecureFieldWithToggle("))
+        XCTAssertTrue(normalized.contains("ForEach(0..<4,id:\\.self)"))
+        XCTAssertTrue(normalized.contains("Passwordsdonotmatch."))
+        XCTAssertTrue(normalized.contains("DesignTokens.Colors.border.opacity(0.85)"))
+        XCTAssertTrue(normalized.contains("PasswordStrengthRules.guidanceMessage"))
+        XCTAssertTrue(normalized.contains(".multilineTextAlignment(.center)"))
+        XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity,minHeight:32,alignment:.center)"))
+    }
+
     private func combinedLoginSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {
         let fileURL = URL(fileURLWithPath: "\(file)")
         let sideBarRoot = fileURL
@@ -22,7 +38,8 @@ final class LoginViewPasswordResetSourceTests: XCTestCase {
             .appendingPathComponent("Auth")
         let sourceURLs = [
             authRoot.appendingPathComponent("LoginView.swift"),
-            authRoot.appendingPathComponent("LoginViewComponents.swift")
+            authRoot.appendingPathComponent("LoginViewComponents.swift"),
+            authRoot.appendingPathComponent("PasswordResetCompletionView.swift")
         ]
 
         do {

@@ -119,7 +119,15 @@ struct SideBarApp: App {
         logStep("Service container", cacheStart, cacheEnd)
 
         let envStart = CFAbsoluteTimeGetCurrent()
-        _environment = StateObject(wrappedValue: AppEnvironment(container: container, configError: configError))
+        let initialPasswordResetState: PasswordResetState? =
+            UITestAuthBootstrap.shouldForcePasswordReset(from: processEnvironment)
+            ? .enterNewPassword
+            : nil
+        _environment = StateObject(wrappedValue: AppEnvironment(
+            container: container,
+            configError: configError,
+            initialPasswordResetState: initialPasswordResetState
+        ))
         let envEnd = CFAbsoluteTimeGetCurrent()
         logStep("Environment", envStart, envEnd)
 

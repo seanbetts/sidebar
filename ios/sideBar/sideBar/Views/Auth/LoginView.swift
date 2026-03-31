@@ -23,6 +23,8 @@ public struct LoginView: View {
     @State private var lockoutSecondsRemaining: Int?
     @FocusState private var focusedField: Field?
     private let lockoutTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    private let initialPasswordResetNotice: String?
+    private let onConsumePasswordResetNotice: (() -> Void)?
     private let onStartOnboarding: () -> Void
     private let shouldAutofocusEmail: Bool
 
@@ -31,9 +33,13 @@ public struct LoginView: View {
         case password
     }
     public init(
+        initialPasswordResetNotice: String? = nil,
+        onConsumePasswordResetNotice: (() -> Void)? = nil,
         shouldAutofocusEmail: Bool = true,
         onStartOnboarding: @escaping () -> Void = {}
     ) {
+        self.initialPasswordResetNotice = initialPasswordResetNotice
+        self.onConsumePasswordResetNotice = onConsumePasswordResetNotice
         self.shouldAutofocusEmail = shouldAutofocusEmail
         self.onStartOnboarding = onStartOnboarding
     }
@@ -86,6 +92,10 @@ public struct LoginView: View {
         }
         .onAppear {
             email = LoginEmailPrefill.initialEmail(currentEmail: email, storedEmail: lastSignInEmail)
+            if passwordResetNotice == nil, let initialPasswordResetNotice {
+                passwordResetNotice = initialPasswordResetNotice
+                onConsumePasswordResetNotice?()
+            }
             updateLockoutState()
         }
         .task(id: shouldAutofocusEmail) {
@@ -255,7 +265,6 @@ public struct LoginView: View {
     private var offlineNoticeView: some View {
         LoginOfflineNoticeView()
     }
-
     private func formatLockoutTime(_ seconds: Int) -> String {
         let minutes = seconds / 60
         let secs = seconds % 60
@@ -269,7 +278,6 @@ public struct LoginView: View {
         guard !environment.isNetworkAvailable else { return false }
         return environment.container.offlineAccessRestorer?.canRestoreOfflineSession == true
     }
-
     private var shouldShowErrorMessage: Bool {
         if environment.isOffline,
            errorMessage == AuthAdapterError.networkUnavailable.errorDescription {
@@ -277,7 +285,6 @@ public struct LoginView: View {
         }
         return true
     }
-
     private var offlineUnlockTitle: String {
         #if canImport(LocalAuthentication)
         let context = LAContext()
@@ -294,7 +301,6 @@ public struct LoginView: View {
         return "Unlock Offline"
         #endif
     }
-
     private var offlineUnlockView: some View {
         LoginOfflineUnlockView(
             title: offlineUnlockTitle,
@@ -302,7 +308,6 @@ public struct LoginView: View {
             action: { Task { _ = await attemptOfflineUnlock() } }
         )
     }
-
     private func authenticateForOfflineUnlock() async -> Bool {
         #if canImport(LocalAuthentication)
         await withCheckedContinuation { continuation in
@@ -323,7 +328,6 @@ public struct LoginView: View {
         return false
         #endif
     }
-
     private var signInButton: some View {
         Button {
             Task { await signIn() }
@@ -335,7 +339,6 @@ public struct LoginView: View {
         .disabled(isSignInDisabled)
         .accessibilitySortPriority(1)
     }
-
     private var passwordResetActionRow: some View {
         LoginPasswordResetActionRow(
             isRequesting: isRequestingPasswordReset,
@@ -343,18 +346,15 @@ public struct LoginView: View {
             action: { Task { await requestPasswordReset() } }
         )
     }
-
     @ViewBuilder
     private var onboardingEntryView: some View {
         if OnboardingPresentation.shouldAllowManualStart(authState: environment.authState) {
             LoginManualSignUpPrompt(action: onStartOnboarding)
         }
     }
-
     private var isSignInDisabled: Bool {
         isSigningIn || email.isEmpty || password.isEmpty || isLockedOut || !environment.isNetworkAvailable
     }
-
     private var fieldBackground: some View {
         RoundedRectangle(cornerRadius: 8)
             .fill(Color.secondary.opacity(0.08))
