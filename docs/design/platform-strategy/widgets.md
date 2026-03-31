@@ -213,6 +213,7 @@ Interactive actions use `AppIntent` (iOS 17+) with deep link fallback for earlie
 | `CompleteTaskIntent` | Mark task complete with immediate optimistic update and best-effort backend sync |
 | `AddTaskIntent` | Record pending operation, open app to new task |
 | `CreateNoteIntent` | Record pending operation, open app to new note |
+| `QuickSaveIntent` | Save URL to pending share queue (registered as app shortcut, not surfaced in any widget view) |
 | `OpenScratchpadIntent`, `StartChatIntent` | Deep link to section |
 
 ### Optimistic update pattern
