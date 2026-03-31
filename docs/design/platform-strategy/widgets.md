@@ -1,6 +1,6 @@
 ---
 title: Widgets
-description: Design conventions for sideBar's home screen and lock screen widgets on iOS.
+description: Design conventions for sideBar's home screen and lock screen widgets across iOS and macOS.
 ---
 
 ## Purpose
@@ -42,17 +42,24 @@ Twelve static widgets across four content categories, three form factors each:
 
 ## Data architecture
 
-Widgets cannot access the app's in-memory state directly. Data flows through a shared App Group UserDefaults container that the main app writes to and the widget extension reads from.
+Widgets cannot access the app's in-memory state directly. Data flows through a shared App Group store. The main app writes snapshots on data changes, and the widget extension reads them on timeline generation. When the app is closed, providers can also refresh directly from the backend using a cache-first, best-effort model.
 
 ```
 Main app (writes on data change)
-  ↓ App Group UserDefaults
+  ↓ App Group store
 Widget extension (reads on timeline generation)
+  ├─ Snapshot fresh? → render from cache
+  └─ Snapshot stale + auth available? → best-effort backend fetch
+       ├─ Success → update cache, render refreshed data
+       └─ Failure → render from cache (no blank widgets)
   ↓
 TimelineProvider → Widget views
   ↓ (on user action)
-AppIntent → optimistic write to UserDefaults
-  ↓ pending operation record
+AppIntent → optimistic write to App Group store
+  ├─ Best-effort direct backend write (if auth available)
+  │    ├─ Success → clear pending operation
+  │    └─ Failure → keep pending operation for app recovery
+  └─ pending operation record
 Main app (processes on next launch or active state)
 ```
 
@@ -72,6 +79,32 @@ Widgets use lightweight Codable structs separate from the main app's full models
 ---
 
 ## Refresh strategy
+
+### Cache-first provider refresh
+
+Every provider follows the same high-level sequence on timeline generation:
+
+1. Load the cached snapshot from the App Group store.
+2. Check whether the snapshot is stale using `lastUpdated`.
+3. If the snapshot is fresh, render from cache immediately.
+4. If the snapshot is stale and the extension has valid auth, perform a bounded backend fetch.
+5. If the fetch succeeds, persist the refreshed snapshot back to the App Group store and render.
+6. If the fetch fails, render from cache. Never blank a widget because a refresh failed.
+
+This model keeps widgets useful when the app is closed (particularly on macOS, where the app may not run for long periods) without requiring helper processes, login items, or widget push notifications.
+
+### Staleness thresholds
+
+| Content type | Stale after |
+|---|---|
+| Tasks | 5 minutes |
+| Notes | 15 minutes |
+| Websites | 15 minutes |
+| Files | 15 minutes |
+
+Tasks use a tighter threshold because they are the most time-sensitive and the only mutating widget. The others are display-only surfaces.
+
+A provider should make at most one bounded fetch attempt per timeline build. No retry loops.
 
 ### Tasks: smart timeline boundaries
 
@@ -177,23 +210,28 @@ Interactive actions use `AppIntent` (iOS 17+) with deep link fallback for earlie
 
 | Intent | Action |
 |---|---|
-| `CompleteTaskIntent` | Mark task complete with immediate optimistic update |
+| `CompleteTaskIntent` | Mark task complete with immediate optimistic update and best-effort backend sync |
 | `AddTaskIntent` | Record pending operation, open app to new task |
 | `CreateNoteIntent` | Record pending operation, open app to new note |
-| `QuickSaveIntent` | Save URL to pending share queue |
 | `OpenScratchpadIntent`, `StartChatIntent` | Deep link to section |
 
 ### Optimistic update pattern
 
 When a user completes a task from the widget:
 
-1. `CompleteTaskIntent.perform()` updates the task's `isCompleted` state and progress counters in UserDefaults immediately
-2. The task shows with a checkmark and strikethrough styling
-3. After 1.25 seconds (the completion display duration), the smart timeline boundary fires and the task disappears from the list
-4. Simultaneously, a pending operation is recorded in UserDefaults
-5. When the main app becomes active, it reads the pending operations and syncs the completion to the backend via `WriteQueue`
+1. `CompleteTaskIntent.perform()` records a pending completion in the App Group store.
+2. The task's `isCompleted` state and progress counters are updated in the store immediately.
+3. The task shows with a checkmark and strikethrough styling.
+4. After 1.25 seconds (the completion display duration), the smart timeline boundary fires and the task disappears from the list.
+5. The intent attempts a direct backend completion write from the widget extension using the existing task API.
+6. If the write succeeds, the pending completion is cleared and a timeline reload is requested.
+7. If the write fails, the pending completion stays in the store. When the main app becomes active, it reads pending operations and syncs them via `WriteQueue`.
 
-The widget never waits for the network. The optimistic update is the user's confirmation.
+The widget never waits for the network to update the UI. The optimistic local update is the user's confirmation. The direct backend write improves cross-device sync when the app is closed, with app-side recovery as fallback.
+
+### Task refresh reconciliation
+
+When the tasks provider refreshes from the backend, it must merge server data with any pending widget completions that have not yet been cleared. Without this, a just-completed task can reappear in the widget if the server snapshot arrives before the completion syncs.
 
 ### Deep link routes
 
@@ -226,7 +264,7 @@ Favicons are fetched fresh on every timeline generation. There is no disk cache.
 
 1. **Every element must be glanceable.** The user is not in the app. If it requires reading, it is probably too much.
 2. **Show the most actionable content.** Tasks sort overdue first, then by earliest deadline. Pinned items appear because the user explicitly signalled they are important.
-3. **Never block on network.** All data comes from the App Group cache. Show stale data rather than a loading state — the 15-minute cadence and targeted reloads keep it fresh enough.
+3. **Cache-first, always.** Show cached data immediately. Best-effort provider refresh improves freshness when the app is closed, but never blocks rendering. Show stale data rather than a loading state.
 4. **Optimistic actions feel instant.** Task completion updates the widget immediately. No spinner, no delay, no waiting for the server.
 5. **Honest empty states.** Never pretend there is content when there is none. Provide a purposeful empty state — positive for tasks ("All done!"), actionable for notes (create affordance).
 
