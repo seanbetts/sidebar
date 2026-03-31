@@ -76,13 +76,7 @@ Configures leading and trailing swipe actions on list rows using `SidebarMenuIte
 
 ### PhoneFloatingActionDock
 
-iPhone-specific floating action capsule using Liquid Glass (`glassEffect`). Contains `PhoneFloatingActionButton` instances (44pt touch targets) and `PhoneFloatingActionDivider` separators. Positioned above the tab bar, trailing-aligned.
-
-**When to use**: Section-specific create actions on iPhone compact layout only. This component is iPhone-specific — do not render it on iPad or Mac.
-
-**Key rules**:
-- `accessibilityLabel` is required on each `PhoneFloatingActionButton`.
-- Do not use `PhoneFloatingActionDock` for non-create actions. It is the create action surface.
+iPhone-specific floating action capsule using Liquid Glass (`glassEffect`). Contains `PhoneFloatingActionButton` instances (44pt touch targets) and `PhoneFloatingActionDivider` separators. See [Pills and Docks](./pills-and-docks#floating-dock) for full anatomy and rules.
 
 ### PlatformContextMenu
 
@@ -160,9 +154,7 @@ Applies `surface` background, `Radius.md` (14pt continuous) corner radius, and 1
 
 ### `.pillStyle()`
 
-Applies `surface` background, capsule shape, and 1pt `border` stroke with standard horizontal/vertical padding.
-
-**When to use**: Tag-like UI elements and status indicators. Note: `PillModifier` is pre-Liquid Glass — `SettingsSaveStatusPill` and similar transient chrome will migrate to `glassEffect`. Do not use `.pillStyle()` for new transient chrome.
+Applies `surface` background, capsule shape, and 1pt `border` stroke with standard horizontal/vertical padding. See [Pills and Docks](./pills-and-docks) for the full taxonomy of capsule-shaped surfaces and when to use `.pillStyle()` versus Liquid Glass.
 
 ### `StaggeredAppearance`
 

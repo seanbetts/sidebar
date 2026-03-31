@@ -53,7 +53,8 @@
           "components/sidebar-menu-item",
           "components/empty-state",
           "components/placeholder",
-          "components/list-skeleton"
+          "components/list-skeleton",
+          "components/pills-and-docks"
         ]
       },
       {
