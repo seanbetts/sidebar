@@ -49,8 +49,11 @@ struct PinnedFilesProvider: TimelineProvider {
     }
 
     private func createEntry() -> PinnedFilesEntry {
-        let isAuthenticated = WidgetDataManager.shared.isAuthenticated()
-        guard isAuthenticated else {
+        let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
+            isAuthenticated: WidgetDataManager.shared.isAuthenticated(),
+            hasCachedSnapshot: WidgetDataManager.shared.hasStoredSnapshot(for: .files)
+        )
+        guard canDisplayContent else {
             return .notAuthenticated
         }
 

@@ -51,4 +51,16 @@ final class WidgetDataBridgeTests: XCTestCase {
             bridge.consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self).isEmpty
         )
     }
+
+    func testHasStoredSnapshotReturnsTrueAfterStoringEmptyPayload() {
+        let suiteName = "WidgetDataBridgeTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let bridge = makeBridge(userDefaults: defaults)
+
+        XCTAssertFalse(bridge.hasStoredSnapshot(for: .notes))
+
+        bridge.store(WidgetNoteData.empty, for: .notes)
+
+        XCTAssertTrue(bridge.hasStoredSnapshot(for: .notes))
+    }
 }

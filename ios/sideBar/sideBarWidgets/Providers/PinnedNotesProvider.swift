@@ -49,8 +49,11 @@ struct PinnedNotesProvider: TimelineProvider {
     }
 
     private func createEntry() -> PinnedNotesEntry {
-        let isAuthenticated = WidgetDataManager.shared.isAuthenticated()
-        guard isAuthenticated else {
+        let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
+            isAuthenticated: WidgetDataManager.shared.isAuthenticated(),
+            hasCachedSnapshot: WidgetDataManager.shared.hasStoredSnapshot(for: .notes)
+        )
+        guard canDisplayContent else {
             return .notAuthenticated
         }
 

@@ -59,6 +59,10 @@ public final class WidgetDataManager {
     bridge.load(for: contentType)
   }
 
+  public func hasStoredSnapshot(for contentType: WidgetContentType) -> Bool {
+    bridge.hasStoredSnapshot(for: contentType)
+  }
+
   /// Stores widget data for a content type (used for optimistic updates from intents)
   public func store<T: WidgetDataContainer>(_ data: T, for contentType: WidgetContentType) {
     bridge.store(data, for: contentType)

@@ -54,8 +54,11 @@ struct SavedSitesProvider: TimelineProvider {
     }
 
     private func createEntry() async -> SavedSitesEntry {
-        let isAuthenticated = WidgetDataManager.shared.isAuthenticated()
-        guard isAuthenticated else {
+        let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
+            isAuthenticated: WidgetDataManager.shared.isAuthenticated(),
+            hasCachedSnapshot: WidgetDataManager.shared.hasStoredSnapshot(for: .websites)
+        )
+        guard canDisplayContent else {
             return .notAuthenticated
         }
 

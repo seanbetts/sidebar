@@ -66,6 +66,11 @@ public final class WidgetDataBridge {
         return decoded ?? T.empty
     }
 
+    public func hasStoredSnapshot(for contentType: WidgetContentType) -> Bool {
+        guard let defaults = userDefaultsProvider() else { return false }
+        return defaults.object(forKey: contentType.dataKey) != nil
+    }
+
     public func store<T: WidgetDataContainer>(_ data: T, for contentType: WidgetContentType) {
         let resolution = appGroupResolutionProvider()
         guard let defaults = userDefaultsProvider() else {

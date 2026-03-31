@@ -70,6 +70,10 @@ public final class WidgetDataManager {
     bridge.load(for: contentType)
   }
 
+  public func hasStoredSnapshot(for contentType: WidgetContentType) -> Bool {
+    bridge.hasStoredSnapshot(for: contentType)
+  }
+
   // MARK: - Generic Pending Operations
 
   /// Records a pending operation from widget

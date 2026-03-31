@@ -47,8 +47,11 @@ struct TodayTasksProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<TodayTasksEntry>) -> Void) {
-        let isAuthenticated = WidgetDataManager.shared.isAuthenticated()
-        guard isAuthenticated else {
+        let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
+            isAuthenticated: WidgetDataManager.shared.isAuthenticated(),
+            hasCachedSnapshot: WidgetDataManager.shared.hasStoredSnapshot(for: .tasks)
+        )
+        guard canDisplayContent else {
             let entry = TodayTasksEntry.notAuthenticated
             recordProviderDiagnostics(stage: "timeline", entry: entry)
             let timeline = Timeline(entries: [entry], policy: .after(nextMidnight()))
@@ -106,8 +109,11 @@ struct TodayTasksProvider: TimelineProvider {
     }
 
     private func createEntry(for date: Date) -> TodayTasksEntry {
-        let isAuthenticated = WidgetDataManager.shared.isAuthenticated()
-        guard isAuthenticated else {
+        let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
+            isAuthenticated: WidgetDataManager.shared.isAuthenticated(),
+            hasCachedSnapshot: WidgetDataManager.shared.hasStoredSnapshot(for: .tasks)
+        )
+        guard canDisplayContent else {
             return .notAuthenticated
         }
 
