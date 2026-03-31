@@ -35,6 +35,8 @@ class OnboardingStateResponse(BaseModel):
 
     status: str
     provider_ready: bool
+    current_onboarding_step: str
+    is_onboarding_complete: bool
     intent: str | None
     milestones: MilestonesPayload
     permissions: PermissionsPayload

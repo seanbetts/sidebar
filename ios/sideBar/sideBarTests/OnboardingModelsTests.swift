@@ -28,6 +28,8 @@ final class OnboardingModelsTests: XCTestCase {
         {
             "status": "in_progress",
             "provider_ready": true,
+            "current_onboarding_step": "feature_discovery",
+            "is_onboarding_complete": false,
             "intent": "notes",
             "milestones": {
                 "provider_connected": "2026-03-28T10:00:00Z",
@@ -47,6 +49,8 @@ final class OnboardingModelsTests: XCTestCase {
         let state = try JSONDecoder().decode(OnboardingState.self, from: json)
         XCTAssertEqual(state.status, .inProgress)
         XCTAssertTrue(state.providerReady)
+        XCTAssertEqual(state.currentOnboardingStep, .featureDiscovery)
+        XCTAssertFalse(state.isOnboardingComplete)
         XCTAssertEqual(state.intent, .notes)
         XCTAssertEqual(state.milestones.providerConnected, "2026-03-28T10:00:00Z")
         XCTAssertNil(state.milestones.firstOutcomeCompleted)
@@ -58,6 +62,8 @@ final class OnboardingModelsTests: XCTestCase {
         {
             "status": "not_started",
             "provider_ready": false,
+            "current_onboarding_step": "phase1_wizard",
+            "is_onboarding_complete": false,
             "intent": null,
             "milestones": {
                 "provider_connected": null,
@@ -77,6 +83,8 @@ final class OnboardingModelsTests: XCTestCase {
         let state = try JSONDecoder().decode(OnboardingState.self, from: json)
         XCTAssertEqual(state.status, .notStarted)
         XCTAssertFalse(state.providerReady)
+        XCTAssertEqual(state.currentOnboardingStep, .phase1Wizard)
+        XCTAssertFalse(state.isOnboardingComplete)
         XCTAssertNil(state.intent)
     }
 

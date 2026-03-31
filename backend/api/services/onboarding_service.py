@@ -31,6 +31,66 @@ class OnboardingService:
     """Service for reading and writing per-user onboarding state."""
 
     @staticmethod
+    def is_onboarding_complete(state: dict[str, Any]) -> bool:
+        """Return whether onboarding is complete for the resolved state."""
+        return state.get("status") == "completed"
+
+    @staticmethod
+    def needs_provider_connection(state: dict[str, Any]) -> bool:
+        """Return whether the user still needs to connect a provider."""
+        return not bool(state.get("provider_ready"))
+
+    @staticmethod
+    def needs_permission_recovery(state: dict[str, Any]) -> bool:
+        """Return whether permission follow-up is the next recovery surface."""
+        if OnboardingService.needs_provider_connection(state):
+            return False
+
+        permissions = state.get("permissions") or {}
+        location = permissions.get("location")
+        notifications = permissions.get("notifications")
+        return location != "granted" or notifications != "granted"
+
+    @staticmethod
+    def needs_feature_discovery(state: dict[str, Any]) -> bool:
+        """Return whether the user should enter the signed-in feature tour."""
+        return (
+            not OnboardingService.is_onboarding_complete(state)
+            and not OnboardingService.needs_provider_connection(state)
+            and not OnboardingService.needs_permission_recovery(state)
+        )
+
+    @staticmethod
+    def current_onboarding_step(state: dict[str, Any]) -> str:
+        """Return the next onboarding surface for the current state."""
+        if OnboardingService.is_onboarding_complete(state):
+            return "completed"
+
+        status = state.get("status")
+        if status == "not_started":
+            return "phase1_wizard"
+
+        if OnboardingService.needs_provider_connection(state):
+            return "provider_recovery"
+
+        if OnboardingService.needs_permission_recovery(state):
+            return "permission_recovery"
+
+        return "feature_discovery"
+
+    @staticmethod
+    def _add_derived_fields(state: dict[str, Any]) -> dict[str, Any]:
+        """Return a copy of state with derived onboarding fields included."""
+        derived = dict(state)
+        derived["is_onboarding_complete"] = OnboardingService.is_onboarding_complete(
+            derived
+        )
+        derived["current_onboarding_step"] = OnboardingService.current_onboarding_step(
+            derived
+        )
+        return derived
+
+    @staticmethod
     def _resolve_state(raw: Any) -> dict[str, Any]:
         """Return canonical onboarding state from stored JSONB, applying defaults.
 
@@ -208,7 +268,7 @@ class OnboardingService:
         raw = getattr(settings_record, "onboarding", None) if settings_record else None
         state = OnboardingService._resolve_state(raw)
         state["provider_ready"] = OnboardingService._compute_provider_ready(db, user_id)
-        return state
+        return OnboardingService._add_derived_fields(state)
 
     @staticmethod
     def update_onboarding_state(

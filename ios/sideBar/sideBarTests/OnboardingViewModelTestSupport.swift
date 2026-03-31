@@ -281,6 +281,8 @@ extension OnboardingState {
     static let `default` = OnboardingState(
         status: .notStarted,
         providerReady: false,
+        currentOnboardingStep: .phase1Wizard,
+        isOnboardingComplete: false,
         intent: nil,
         milestones: OnboardingMilestones(
             providerConnected: nil,

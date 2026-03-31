@@ -23,6 +23,8 @@ def test_get_onboarding_returns_defaults_for_new_user(test_client) -> None:
     body = response.json()
     assert body["status"] == "not_started"
     assert body["provider_ready"] is False
+    assert body["current_onboarding_step"] == "phase1_wizard"
+    assert body["is_onboarding_complete"] is False
     assert body["intent"] is None
     assert body["milestones"]["provider_connected"] is None
     assert body["milestones"]["first_outcome_completed"] is None
@@ -91,6 +93,19 @@ def test_patch_onboarding_persists_across_requests(test_client) -> None:
     body = response.json()
     assert body["status"] == "in_progress"
     assert body["intent"] == "tasks"
+
+
+def test_get_onboarding_returns_derived_completion_fields(test_client) -> None:
+    response = test_client.patch(
+        "/api/v1/onboarding",
+        headers=_auth_headers(),
+        json={"status": "completed"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["current_onboarding_step"] == "completed"
+    assert body["is_onboarding_complete"] is True
 
 
 def test_patch_onboarding_merges_milestones(test_client) -> None:

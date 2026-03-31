@@ -140,3 +140,75 @@ def test_validate_updates_rejects_invalid_last_prompted_at() -> None:
 
 def test_validate_updates_accepts_null_last_prompted_at() -> None:
     OnboardingService._validate_updates({"last_prompted_at": None})
+
+
+# ---------------------------------------------------------------------------
+# derived onboarding helpers
+# ---------------------------------------------------------------------------
+
+
+def test_is_onboarding_complete_false_for_default_state() -> None:
+    state = OnboardingService._resolve_state(None)
+
+    assert OnboardingService.is_onboarding_complete(state) is False
+
+
+def test_is_onboarding_complete_true_for_completed_state() -> None:
+    state = OnboardingService._resolve_state({"status": "completed"})
+
+    assert OnboardingService.is_onboarding_complete(state) is True
+
+
+def test_current_onboarding_step_defaults_to_phase1_wizard() -> None:
+    state = OnboardingService._resolve_state(None)
+
+    assert OnboardingService.current_onboarding_step(state) == "phase1_wizard"
+
+
+def test_current_onboarding_step_uses_provider_recovery_when_dismissed_without_key() -> None:
+    state = OnboardingService._resolve_state({"status": "dismissed"})
+    state["provider_ready"] = False
+
+    assert OnboardingService.current_onboarding_step(state) == "provider_recovery"
+
+
+def test_current_onboarding_step_uses_permission_recovery_when_provider_ready_but_permissions_missing() -> None:
+    state = OnboardingService._resolve_state(
+        {
+            "status": "dismissed",
+            "milestones": {"provider_connected": "2026-03-31T10:00:00Z"},
+            "permissions": {"location": "denied", "notifications": "granted"},
+        }
+    )
+    state["provider_ready"] = True
+
+    assert OnboardingService.current_onboarding_step(state) == "permission_recovery"
+
+
+def test_current_onboarding_step_uses_feature_discovery_when_provider_ready_and_tour_not_seen() -> None:
+    state = OnboardingService._resolve_state(
+        {
+            "status": "in_progress",
+            "milestones": {"provider_connected": "2026-03-31T10:00:00Z"},
+            "permissions": {"location": "granted", "notifications": "granted"},
+        }
+    )
+    state["provider_ready"] = True
+
+    assert OnboardingService.current_onboarding_step(state) == "feature_discovery"
+
+
+def test_current_onboarding_step_uses_completed_for_completed_state() -> None:
+    state = OnboardingService._resolve_state(
+        {
+            "status": "completed",
+            "milestones": {
+                "provider_connected": "2026-03-31T10:00:00Z",
+                "secondary_tour_seen": "2026-03-31T11:00:00Z",
+            },
+            "permissions": {"location": "granted", "notifications": "granted"},
+        }
+    )
+    state["provider_ready"] = True
+
+    assert OnboardingService.current_onboarding_step(state) == "completed"

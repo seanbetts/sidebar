@@ -17,6 +17,15 @@ public enum OnboardingIntent: String, Codable, Equatable {
     case chat
 }
 
+/// Derived onboarding step returned by the backend.
+public enum OnboardingCurrentStep: String, Codable, Equatable {
+    case phase1Wizard = "phase1_wizard"
+    case providerRecovery = "provider_recovery"
+    case permissionRecovery = "permission_recovery"
+    case featureDiscovery = "feature_discovery"
+    case completed
+}
+
 /// Permission state for a single Apple permission.
 public enum OnboardingPermissionState: String, Codable, Equatable {
     case notAsked = "not_asked"
@@ -51,6 +60,8 @@ public struct OnboardingPermissions: Codable, Equatable {
 public struct OnboardingState: Codable, Equatable {
     public let status: OnboardingStatus
     public let providerReady: Bool
+    public let currentOnboardingStep: OnboardingCurrentStep
+    public let isOnboardingComplete: Bool
     public let intent: OnboardingIntent?
     public let milestones: OnboardingMilestones
     public let permissions: OnboardingPermissions
@@ -59,6 +70,8 @@ public struct OnboardingState: Codable, Equatable {
     enum CodingKeys: String, CodingKey {
         case status
         case providerReady = "provider_ready"
+        case currentOnboardingStep = "current_onboarding_step"
+        case isOnboardingComplete = "is_onboarding_complete"
         case intent
         case milestones
         case permissions
