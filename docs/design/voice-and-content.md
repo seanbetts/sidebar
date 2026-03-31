@@ -257,6 +257,32 @@ This is the short description of sideBar's product voice. It reflects the same v
 
 ---
 
+## Email templates
+
+Transactional emails (verification, invitation, password reset) follow the same voice and colour rules as the rest of the product. The structural pattern:
+
+| Element | Style |
+|---|---|
+| Logo | App icon, 56px, centred |
+| Product name | 24px, weight 700, `#000000` (textPrimary) |
+| Heading | 30px, weight 700, `#111111` |
+| Body text | 16px, `#6b6b6b` (textSecondary) |
+| De-emphasised text | 14px, `#aaaaaa` (textTertiary) |
+| OTP code box | 36px, weight 700, `#f5f5f5` fill (muted), `#e5e5e5` border |
+| CTA button | 16px, weight 600, `#111111` fill, `#ffffff` text, 14px radius |
+| Footer | Marketing tagline from `MARKETING_COPY.tagline`, 13px, textTertiary |
+| Card | `#ffffff` background, `#e5e5e5` border, 20px radius |
+| Page background | `#f5f5f5` (muted) |
+
+**Rules**:
+- Use semantic colour tokens, not ad hoc hex values. Body text is textSecondary, not an arbitrary grey.
+- Footer carries the marketing tagline, not a bare product name.
+- Font stack is `-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` to match the system font approach across platforms.
+- Voice is ambient register: direct, no filler, no "Successfully!" language.
+- New templates should follow this pattern. If a new surface needs a different layout, update this section first.
+
+---
+
 ## Related docs
 
 - [Design Principles](./principles)
