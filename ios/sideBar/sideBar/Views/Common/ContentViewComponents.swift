@@ -55,6 +55,7 @@ struct SignedInContentView<Main: View>: View {
     let showsTopSafeAreaOverlay: Bool
     let topSafeAreaBackground: Color
     let onSignOut: () -> Void
+    let onOpenSettings: () -> Void
     let mainView: () -> Main
     let scenePhase: ScenePhase
     @EnvironmentObject private var environment: AppEnvironment
@@ -68,6 +69,7 @@ struct SignedInContentView<Main: View>: View {
                             await environment.completeBiometricUnlock()
                         }
                     },
+                    onOpenSettings: onOpenSettings,
                     onSignOut: onSignOut,
                     scenePhase: scenePhase
                 )

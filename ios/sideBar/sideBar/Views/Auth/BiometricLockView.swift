@@ -6,6 +6,7 @@ import os
 
 public struct BiometricLockView: View {
     let onUnlock: () -> Void
+    let onOpenSettings: () -> Void
     let onSignOut: () -> Void
     let scenePhase: ScenePhase
 
@@ -15,11 +16,18 @@ public struct BiometricLockView: View {
     @State private var errorMessage: String?
     @State private var biometryType: LABiometryType = .none
     @State private var showPasscodeFallback = false
+    @State private var showSettingsAction = false
     @State private var hasAttemptedAutoAuth = false
     @State private var userCancelled = false
 
-    public init(onUnlock: @escaping () -> Void, onSignOut: @escaping () -> Void, scenePhase: ScenePhase) {
+    public init(
+        onUnlock: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void,
+        onSignOut: @escaping () -> Void,
+        scenePhase: ScenePhase
+    ) {
         self.onUnlock = onUnlock
+        self.onOpenSettings = onOpenSettings
         self.onSignOut = onSignOut
         self.scenePhase = scenePhase
     }
@@ -70,6 +78,17 @@ public struct BiometricLockView: View {
                             authenticateWithPasscode()
                         } label: {
                             Text("Use Passcode")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                    }
+
+                    if showSettingsAction {
+                        Button {
+                            onOpenSettings()
+                        } label: {
+                            Text("Enable in Settings")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
@@ -139,6 +158,7 @@ public struct BiometricLockView: View {
         isAuthenticating = true
         errorMessage = nil
         showPasscodeFallback = false
+        showSettingsAction = false
         userCancelled = false
 
         let context = LAContext()
@@ -214,6 +234,7 @@ public struct BiometricLockView: View {
         )
         errorMessage = state.message
         showPasscodeFallback = state.showsPasscodeFallback
+        showSettingsAction = state.showsSettingsAction
     }
 
     private func handleAuthenticationError(_ error: Error) {
@@ -226,25 +247,17 @@ public struct BiometricLockView: View {
         }
 
         switch laError.code {
-        case .biometryLockout:
-            errorMessage = "Too many failed attempts. Use your device passcode to unlock."
-            showPasscodeFallback = true
-        case .biometryNotEnrolled:
-            errorMessage = "\(biometryName) is not set up. Enable it in Settings."
-        case .biometryNotAvailable:
-            errorMessage = "\(biometryName) is not available on this device."
         case .userCancel:
             userCancelled = true
             errorMessage = nil
-        case .userFallback:
-            errorMessage = "Please use your device passcode."
-            showPasscodeFallback = true
-        case .passcodeNotSet:
-            errorMessage = "Set a device passcode to use \(biometryName)."
-        case .authenticationFailed:
-            errorMessage = "\(biometryName) authentication failed. Please try again."
         default:
-            errorMessage = "Unable to authenticate. Please try again."
+            let state = BiometricLockErrorPresentation.authenticationState(
+                for: laError.code,
+                biometryName: biometryName
+            )
+            errorMessage = state.message
+            showPasscodeFallback = state.showsPasscodeFallback
+            showSettingsAction = state.showsSettingsAction
         }
 
         if errorMessage != nil {

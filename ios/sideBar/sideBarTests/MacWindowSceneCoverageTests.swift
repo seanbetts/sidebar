@@ -37,6 +37,15 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity)"))
     }
 
+    func testBiometricUnavailableAlertRoutesUsersToSettings() throws {
+        let normalized = try signedInContentSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("case.biometricUnavailable:"))
+        XCTAssertTrue(normalized.contains("primaryButton:.default(Text(\"EnableinSettings\")"))
+        XCTAssertTrue(normalized.contains("presentSettingsSurface()"))
+    }
+
     func testStaleAuthRetryBannerUsesGlassPillChrome() throws {
         let normalized = try contentViewComponentsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

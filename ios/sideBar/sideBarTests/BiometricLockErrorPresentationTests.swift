@@ -11,6 +11,7 @@ final class BiometricLockErrorPresentationTests: XCTestCase {
 
         XCTAssertEqual(state.message, "Face ID is not available on this device.")
         XCTAssertTrue(state.showsPasscodeFallback)
+        XCTAssertTrue(state.showsSettingsAction)
     }
 
     func testNotEnrolledBiometryOffersPasscodeFallback() {
@@ -21,9 +22,10 @@ final class BiometricLockErrorPresentationTests: XCTestCase {
 
         XCTAssertEqual(state.message, "Touch ID is not set up. Enable it in Settings.")
         XCTAssertTrue(state.showsPasscodeFallback)
+        XCTAssertTrue(state.showsSettingsAction)
     }
 
-    func testPasscodeNotSetDoesNotOfferFallback() {
+    func testPasscodeNotSetOffersSettingsActionWithoutPasscodeFallback() {
         let state = BiometricLockErrorPresentation.unavailableState(
             for: .passcodeNotSet,
             biometryName: "Face ID"
@@ -31,5 +33,17 @@ final class BiometricLockErrorPresentationTests: XCTestCase {
 
         XCTAssertEqual(state.message, "Set a device passcode to use Face ID.")
         XCTAssertFalse(state.showsPasscodeFallback)
+        XCTAssertTrue(state.showsSettingsAction)
+    }
+
+    func testDefaultUnavailableStateDoesNotOfferSettingsAction() {
+        let state = BiometricLockErrorPresentation.unavailableState(
+            for: nil,
+            biometryName: "Biometric Unlock"
+        )
+
+        XCTAssertEqual(state.message, "Biometric authentication is unavailable.")
+        XCTAssertFalse(state.showsPasscodeFallback)
+        XCTAssertFalse(state.showsSettingsAction)
     }
 }

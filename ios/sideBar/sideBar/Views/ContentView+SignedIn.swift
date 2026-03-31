@@ -13,6 +13,7 @@ extension ContentView {
                 showsTopSafeAreaOverlay: shouldShowGlobalTopSafeAreaOverlay,
                 topSafeAreaBackground: topSafeAreaBackground,
                 onSignOut: { Task { await environment.beginSignOut() } },
+                onOpenSettings: { presentSettingsSurface() },
                 mainView: { mainView },
                 scenePhase: scenePhase
             )
@@ -395,7 +396,12 @@ extension ContentView {
                         "Biometric unlock is no longer available on this device. " +
                             "You can re-enable it in Settings once Face ID or Touch ID is available again."
                     ),
-                    dismissButton: .default(Text("OK"))
+                    primaryButton: .default(Text("Enable in Settings"), action: {
+                        enqueueAlertAction {
+                            presentSettingsSurface()
+                        }
+                    }),
+                    secondaryButton: .cancel()
                 )
             case .biometricHint:
                 return Alert(
