@@ -18,24 +18,26 @@ final class ReadChecklistActivationTests: XCTestCase {
             frame: NSRect(x: 0, y: 0, width: 320, height: 180),
             onActivateEditing: { _ in }
         )
+        let checkboxCharacterIndex = try checklistMarkerCharacterIndex(in: textView)
+        let textCharacterIndex = try checklistItemTextCharacterIndex(in: textView)
         let checkboxPoint = try checklistClickPoint(
             in: textView,
-            characterIndex: 8,
+            characterIndex: checkboxCharacterIndex,
             horizontalBias: 0.5
         )
         let textPoint = try checklistClickPoint(
             in: textView,
-            characterIndex: 12,
+            characterIndex: textCharacterIndex,
             horizontalBias: 0.5
         )
 
         XCTAssertEqual(
             SelectableNoteReadView.characterOffsetForEditingActivation(in: textView, at: checkboxPoint),
-            8
+            6
         )
         XCTAssertEqual(
             SelectableNoteReadView.characterOffsetForEditingActivation(in: textView, at: textPoint),
-            12
+            8
         )
     }
 
@@ -53,9 +55,10 @@ final class ReadChecklistActivationTests: XCTestCase {
                 capturedToggle = (blockIndex, itemIndex)
             }
         )
+        let checkboxCharacterIndex = try checklistMarkerCharacterIndex(in: textView)
         let checkboxPoint = try checklistClickPoint(
             in: textView,
-            characterIndex: 8,
+            characterIndex: checkboxCharacterIndex,
             horizontalBias: 0.5
         )
 
@@ -98,9 +101,10 @@ final class ReadChecklistActivationTests: XCTestCase {
                 didToggleChecklistItem = true
             }
         )
+        let textCharacterIndex = try checklistItemTextCharacterIndex(in: textView)
         let textPoint = try checklistClickPoint(
             in: textView,
-            characterIndex: 12,
+            characterIndex: textCharacterIndex,
             horizontalBias: 0.5
         )
 
@@ -210,6 +214,43 @@ private func checklistActivationMouseEvent(
 @MainActor
 @available(iOS 26.0, *)
 final class ReadChecklistActivationIOSTests: NotesDetailViewHostingTestCase {
+    func testChecklistTapPointsResolveExpectedCharacterOffsetsOnIOS() throws {
+        let document = checklistActivationDocument()
+
+        let controller = mount(
+            SelectableNoteReadView(
+                document: document,
+                maxContentWidth: 320,
+                onActivateEditing: { _ in }
+            ),
+            frame: CGRect(x: 0, y: 0, width: 320, height: 180),
+            makeKeyAndVisible: true
+        )
+        let textView = try XCTUnwrap(checklistFindDescendantTextView(in: controller.view))
+        let checkboxCharacterIndex = try checklistMarkerCharacterIndex(in: textView)
+        let textCharacterIndex = try checklistItemTextCharacterIndex(in: textView)
+
+        let checkboxPoint = try checklistLocalTapPoint(
+            in: textView,
+            characterIndex: checkboxCharacterIndex,
+            horizontalBias: 0.5
+        )
+        let textPoint = try checklistLocalTapPoint(
+            in: textView,
+            characterIndex: textCharacterIndex,
+            horizontalBias: 0.5
+        )
+
+        XCTAssertEqual(
+            SelectableNoteReadView.characterOffsetForEditingActivation(in: textView, at: checkboxPoint),
+            6
+        )
+        XCTAssertEqual(
+            SelectableNoteReadView.characterOffsetForEditingActivation(in: textView, at: textPoint),
+            9
+        )
+    }
+
     func testChecklistCheckboxTapTogglesInsteadOfActivatingEditing() throws {
         var capturedTarget: NotesEditorViewModel.PendingEditSelectionTarget?
         var capturedToggle: (blockIndex: Int, itemIndex: Int)?
@@ -230,10 +271,11 @@ final class ReadChecklistActivationIOSTests: NotesDetailViewHostingTestCase {
             makeKeyAndVisible: true
         )
         let textView = try XCTUnwrap(checklistFindDescendantTextView(in: controller.view))
-        let containerView: UIView = try XCTUnwrap(textView.superview)
+        let containerView = try XCTUnwrap(checklistActivationContainerView(for: textView))
+        let checkboxCharacterIndex = try checklistMarkerCharacterIndex(in: textView)
         let tapPoint = try checklistLocalTapPoint(
             in: textView,
-            characterIndex: 8,
+            characterIndex: checkboxCharacterIndex,
             horizontalBias: 0.5
         )
         let recognizer = ReadChecklistTapRecognizer(location: tapPoint)
@@ -269,10 +311,11 @@ final class ReadChecklistActivationIOSTests: NotesDetailViewHostingTestCase {
             makeKeyAndVisible: true
         )
         let textView = try XCTUnwrap(checklistFindDescendantTextView(in: controller.view))
-        let containerView: UIView = try XCTUnwrap(textView.superview)
+        let containerView = try XCTUnwrap(checklistActivationContainerView(for: textView))
+        let textCharacterIndex = try checklistItemTextCharacterIndex(in: textView)
         let tapPoint = try checklistLocalTapPoint(
             in: textView,
-            characterIndex: 12,
+            characterIndex: textCharacterIndex,
             horizontalBias: 0.5
         )
         let recognizer = ReadChecklistTapRecognizer(location: tapPoint)
@@ -283,7 +326,7 @@ final class ReadChecklistActivationIOSTests: NotesDetailViewHostingTestCase {
             with: recognizer
         )
 
-        XCTAssertEqual(capturedTarget, .characterOffset(12))
+        XCTAssertEqual(capturedTarget, .characterOffset(13))
         XCTAssertFalse(didToggleChecklistItem)
     }
 
@@ -351,6 +394,173 @@ final class ReadChecklistActivationIOSTests: NotesDetailViewHostingTestCase {
         XCTAssertTrue(context.editorViewModel.isEditingNote)
         XCTAssertEqual(editorTextView.contentOffset.y, targetEditorOffset, accuracy: 1)
     }
+
+    func testMountedDetailViewCheckboxTapTogglesChecklistItemInReadMode() async throws {
+        let note = checklistActivationNoteWithTrailingContent()
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(
+            checklistFindDescendantTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-read-text-view"
+            )
+        )
+        let containerView = try XCTUnwrap(checklistActivationContainerView(for: readTextView))
+        let checkboxCharacterIndex = try checklistMarkerCharacterIndex(in: readTextView)
+        let tapPoint = try checklistLocalTapPoint(
+            in: readTextView,
+            characterIndex: checkboxCharacterIndex,
+            horizontalBias: 0.5
+        )
+        let recognizer = ReadChecklistTapRecognizer(location: tapPoint)
+        recognizer.setValue(UIGestureRecognizer.State.ended.rawValue, forKey: "state")
+
+        containerView.perform(
+            NSSelectorFromString("handleActivationTapGesture:"),
+            with: recognizer
+        )
+
+        await waitUntil(timeout: .milliseconds(250)) {
+            context.editorViewModel.currentSemanticDocumentSnapshot()
+                .blocks[1]
+                .children?.first?.checked == true
+        }
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertEqual(
+            context.editorViewModel.currentSemanticDocumentSnapshot()
+                .blocks[1]
+                .children?.first?.checked,
+            true
+        )
+    }
+
+    func testMountedDetailViewCheckboxTapTogglesFromUpperHalfOfSymbol() async throws {
+        let note = checklistActivationNoteWithTrailingContent()
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(
+            checklistFindDescendantTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-read-text-view"
+            )
+        )
+        let containerView = try XCTUnwrap(checklistActivationContainerView(for: readTextView))
+        let checkboxCharacterIndex = try checklistMarkerCharacterIndex(in: readTextView)
+        var tapPoint = try checklistLocalTapPoint(
+            in: readTextView,
+            characterIndex: checkboxCharacterIndex,
+            horizontalBias: 0.5
+        )
+        tapPoint.y -= 6
+        let recognizer = ReadChecklistTapRecognizer(location: tapPoint)
+        recognizer.setValue(UIGestureRecognizer.State.ended.rawValue, forKey: "state")
+
+        containerView.perform(
+            NSSelectorFromString("handleActivationTapGesture:"),
+            with: recognizer
+        )
+
+        await waitUntil(timeout: .milliseconds(250)) {
+            context.editorViewModel.currentSemanticDocumentSnapshot()
+                .blocks[1]
+                .children?.first?.checked == true
+        }
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertEqual(
+            context.editorViewModel.currentSemanticDocumentSnapshot()
+                .blocks[1]
+                .children?.first?.checked,
+            true
+        )
+    }
+
+    func testMountedDetailViewCheckboxTapTogglesFromLowerHalfOfSymbol() async throws {
+        let note = checklistActivationNoteWithTrailingContent()
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(
+            checklistFindDescendantTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-read-text-view"
+            )
+        )
+        let containerView = try XCTUnwrap(checklistActivationContainerView(for: readTextView))
+        let checkboxCharacterIndex = try checklistMarkerCharacterIndex(in: readTextView)
+        var tapPoint = try checklistLocalTapPoint(
+            in: readTextView,
+            characterIndex: checkboxCharacterIndex,
+            horizontalBias: 0.5
+        )
+        tapPoint.y += 6
+        let recognizer = ReadChecklistTapRecognizer(location: tapPoint)
+        recognizer.setValue(UIGestureRecognizer.State.ended.rawValue, forKey: "state")
+
+        containerView.perform(
+            NSSelectorFromString("handleActivationTapGesture:"),
+            with: recognizer
+        )
+
+        await waitUntil(timeout: .milliseconds(250)) {
+            context.editorViewModel.currentSemanticDocumentSnapshot()
+                .blocks[1]
+                .children?.first?.checked == true
+        }
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertEqual(
+            context.editorViewModel.currentSemanticDocumentSnapshot()
+                .blocks[1]
+                .children?.first?.checked,
+            true
+        )
+    }
+
+    func testMountedDetailViewCheckboxTapTogglesFromLeadingEdgeOfSymbol() async throws {
+        let note = checklistActivationNoteWithTrailingContent()
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(
+            checklistFindDescendantTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-read-text-view"
+            )
+        )
+        let containerView = try XCTUnwrap(checklistActivationContainerView(for: readTextView))
+        let checkboxCharacterIndex = try checklistMarkerCharacterIndex(in: readTextView)
+        var tapPoint = try checklistLocalTapPoint(
+            in: readTextView,
+            characterIndex: checkboxCharacterIndex,
+            horizontalBias: 0.5
+        )
+        tapPoint.x -= 6
+        let recognizer = ReadChecklistTapRecognizer(location: tapPoint)
+        recognizer.setValue(UIGestureRecognizer.State.ended.rawValue, forKey: "state")
+
+        containerView.perform(
+            NSSelectorFromString("handleActivationTapGesture:"),
+            with: recognizer
+        )
+
+        await waitUntil(timeout: .milliseconds(250)) {
+            context.editorViewModel.currentSemanticDocumentSnapshot()
+                .blocks[1]
+                .children?.first?.checked == true
+        }
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertEqual(
+            context.editorViewModel.currentSemanticDocumentSnapshot()
+                .blocks[1]
+                .children?.first?.checked,
+            true
+        )
+    }
 }
 
 @MainActor
@@ -363,13 +573,20 @@ private func checklistLocalTapPoint(
     guard characterIndex < textView.attributedText.length else {
         throw XCTSkip("Unable to resolve tap point")
     }
-    guard let start = textView.position(from: textView.beginningOfDocument, offset: characterIndex),
-          let end = textView.position(from: start, offset: 1),
-          let textRange = textView.textRange(from: start, to: end) else {
+    guard let start = textView.position(from: textView.beginningOfDocument, offset: characterIndex) else {
         throw XCTSkip("Unable to resolve tap point")
     }
 
-    let characterRect = textView.firstRect(for: textRange)
+    let characterRect: CGRect
+    if let end = textView.position(from: start, offset: 1),
+       let textRange = textView.textRange(from: start, to: end) {
+        let firstRect = textView.firstRect(for: textRange)
+        characterRect = firstRect.isNull == false && firstRect.isEmpty == false
+            ? firstRect
+            : textView.caretRect(for: start)
+    } else {
+        characterRect = textView.caretRect(for: start)
+    }
     guard characterRect.isNull == false, characterRect.isEmpty == false else {
         throw XCTSkip("Unable to resolve tap point")
     }
@@ -401,6 +618,22 @@ private func checklistFindDescendantTextView(
     return nil
 }
 
+private func checklistActivationContainerView(
+    for textView: UIView
+) -> UIView? {
+    let selector = NSSelectorFromString("handleActivationTapGesture:")
+    var currentView: UIView? = textView
+
+    while let view = currentView {
+        if view.responds(to: selector) {
+            return view
+        }
+        currentView = view.superview
+    }
+
+    return nil
+}
+
 private func checklistFindDescendantEditorTextView(
     in view: UIView
 ) -> UIKitNoteTextEditorSurface.AccessoryTextView? {
@@ -419,10 +652,16 @@ private func checklistFindDescendantEditorTextView(
 
 private final class ReadChecklistTapRecognizer: UITapGestureRecognizer, @unchecked Sendable {
     private let testLocation: CGPoint
+    private var forcedState: UIGestureRecognizer.State = .ended
 
     init(location: CGPoint) {
         self.testLocation = location
         super.init(target: nil, action: nil)
+    }
+
+    override var state: UIGestureRecognizer.State {
+        get { forcedState }
+        set { forcedState = newValue }
     }
 
     override func location(in view: UIView?) -> CGPoint {
@@ -444,6 +683,85 @@ private func checklistActivationDocument() -> NotesSemanticDocument {
             )
         ]
     )
+}
+
+#if os(macOS)
+private func checklistMarkerCharacterIndex(in textView: NSTextView) throws -> Int {
+    let attributed = try XCTUnwrap(textView.textStorage)
+    for index in 0..<attributed.length where attributed.attribute(.attachment, at: index, effectiveRange: nil) != nil {
+        return index
+    }
+
+    let string = attributed.string as NSString
+    let checkedRange = string.range(of: "[x]")
+    if checkedRange.location != NSNotFound {
+        return checkedRange.location
+    }
+
+    let uncheckedRange = string.range(of: "[ ]")
+    guard uncheckedRange.location != NSNotFound else {
+        throw XCTSkip("Unable to resolve checklist marker")
+    }
+    return uncheckedRange.location
+}
+#elseif os(iOS)
+private func checklistMarkerCharacterIndex(in textView: UITextView) throws -> Int {
+    let attributed = try XCTUnwrap(textView.attributedText)
+    for index in 0..<attributed.length where attributed.attribute(.attachment, at: index, effectiveRange: nil) != nil {
+        return index
+    }
+
+    let string = attributed.string as NSString
+    let checkedRange = string.range(of: "[x]")
+    if checkedRange.location != NSNotFound {
+        return checkedRange.location
+    }
+
+    let uncheckedRange = string.range(of: "[ ]")
+    guard uncheckedRange.location != NSNotFound else {
+        throw XCTSkip("Unable to resolve checklist marker")
+    }
+    return uncheckedRange.location
+}
+#endif
+
+private func checklistItemTextCharacterIndex(
+    in textView: some NSObject
+) throws -> Int {
+    #if os(macOS)
+    if let macTextView = textView as? NSTextView {
+        let markerIndex = try checklistMarkerCharacterIndex(in: macTextView)
+        if macTextView.textStorage?.attribute(.attachment, at: markerIndex, effectiveRange: nil) != nil {
+            return markerIndex + 2
+        }
+
+        let string = macTextView.string as NSString
+        let textRange = string.range(of: "Done item")
+        guard textRange.location != NSNotFound else {
+            throw XCTSkip("Unable to resolve checklist text")
+        }
+        return textRange.location
+    }
+    #endif
+
+    #if os(iOS)
+    if let iosTextView = textView as? UITextView {
+        let attributed = try XCTUnwrap(iosTextView.attributedText)
+        let markerIndex = try checklistMarkerCharacterIndex(in: iosTextView)
+        if attributed.attribute(.attachment, at: markerIndex, effectiveRange: nil) != nil {
+            return markerIndex + 2
+        }
+
+        let string = attributed.string as NSString
+        let textRange = string.range(of: "Done item")
+        guard textRange.location != NSNotFound else {
+            throw XCTSkip("Unable to resolve checklist text")
+        }
+        return textRange.location
+    }
+    #endif
+
+    throw XCTSkip("Unsupported text view")
 }
 
 private func checklistActivationNoteWithTrailingContent() -> NotePayload {

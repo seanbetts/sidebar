@@ -2,6 +2,9 @@ import Foundation
 
 @available(iOS 26.0, macOS 26.0, *)
 extension SelectableNoteReadView {
+    private static let checklistReadPrefixLength = 2
+    private static let checklistEditorPrefixLength = 6
+
     struct ChecklistToggleTarget: Equatable {
         let blockIndex: Int
         let itemIndex: Int
@@ -12,58 +15,161 @@ extension SelectableNoteReadView {
         in document: NotesSemanticDocument,
         characterOffset: Int
     ) -> ChecklistToggleTarget? {
+        checklistToggleTargets(in: document).first { target in
+            NSLocationInRange(characterOffset, target.checkboxRange)
+        }
+    }
+
+    static func checklistToggleTargets(
+        in document: NotesSemanticDocument
+    ) -> [ChecklistToggleTarget] {
+        var targets: [ChecklistToggleTarget] = []
         var offset = 0
         for (blockIndex, block) in document.blocks.enumerated() {
             if blockIndex > 0 {
                 offset += 1
             }
 
-            if let target = checklistToggleTargetInCurrentBlock(
+            targets.append(
+                contentsOf: checklistToggleTargetsInCurrentBlock(
                 block,
                 blockIndex: blockIndex,
-                characterOffset: characterOffset,
+                characterOffset: nil,
                 startingAt: offset
-            ) {
-                return target
-            }
+            ))
 
             offset = advancedOffset(
                 for: block,
-                startingAt: offset
+                startingAt: offset,
+                checklistPrefixLength: checklistReadPrefixLength
             )
         }
-        return nil
+        return targets
     }
 
-    private static func checklistToggleTargetInCurrentBlock(
+    private static func checklistToggleTargetsInCurrentBlock(
         _ block: NotesSemanticDocument.Block,
         blockIndex: Int,
-        characterOffset: Int,
+        characterOffset: Int?,
         startingAt offset: Int
-    ) -> ChecklistToggleTarget? {
-        guard block.type == .checklist else { return nil }
+    ) -> [ChecklistToggleTarget] {
+        guard block.type == .checklist else { return [] }
         let children = block.children ?? []
         var runningOffset = offset
+        var targets: [ChecklistToggleTarget] = []
         for (itemIndex, child) in children.enumerated() {
             if itemIndex > 0 {
                 runningOffset += 1
             }
-            let checkboxRange = NSRange(location: runningOffset + 2, length: 3)
-            if NSLocationInRange(characterOffset, checkboxRange) {
-                return ChecklistToggleTarget(
+            let target = ChecklistToggleTarget(
                     blockIndex: blockIndex,
                     itemIndex: itemIndex,
-                    checkboxRange: checkboxRange
+                    checkboxRange: NSRange(location: runningOffset, length: 1)
                 )
+            if let characterOffset {
+                if NSLocationInRange(characterOffset, target.checkboxRange) {
+                    return [target]
+                }
+            } else {
+                targets.append(target)
             }
-            runningOffset += 6 + inlineTextLength(for: child.content)
+            runningOffset += checklistReadPrefixLength + inlineTextLength(for: child.content)
         }
+        return targets
+    }
+
+    static func editingActivationCharacterOffset(
+        in document: NotesSemanticDocument,
+        readCharacterOffset: Int
+    ) -> Int {
+        var readOffset = 0
+        var editorOffset = 0
+
+        for (blockIndex, block) in document.blocks.enumerated() {
+            if blockIndex > 0 {
+                if readCharacterOffset == readOffset {
+                    return editorOffset
+                }
+                readOffset += 1
+                editorOffset += 1
+            }
+
+            if let mappedOffset = editingActivationCharacterOffsetInCurrentBlock(
+                block,
+                readCharacterOffset: readCharacterOffset,
+                readOffset: readOffset,
+                editorOffset: editorOffset
+            ) {
+                return mappedOffset
+            }
+
+            readOffset = advancedOffset(
+                for: block,
+                startingAt: readOffset,
+                checklistPrefixLength: checklistReadPrefixLength
+            )
+            editorOffset = advancedOffset(
+                for: block,
+                startingAt: editorOffset,
+                checklistPrefixLength: checklistEditorPrefixLength
+            )
+        }
+
+        return editorOffset
+    }
+
+    private static func editingActivationCharacterOffsetInCurrentBlock(
+        _ block: NotesSemanticDocument.Block,
+        readCharacterOffset: Int,
+        readOffset: Int,
+        editorOffset: Int
+    ) -> Int? {
+        guard block.type == .checklist else {
+            let blockLength = advancedOffset(
+                for: block,
+                startingAt: readOffset,
+                checklistPrefixLength: checklistReadPrefixLength
+            ) - readOffset
+            guard readCharacterOffset <= readOffset + blockLength else { return nil }
+            return editorOffset + max(0, readCharacterOffset - readOffset)
+        }
+
+        let children = block.children ?? []
+        var currentReadOffset = readOffset
+        var currentEditorOffset = editorOffset
+
+        for (itemIndex, child) in children.enumerated() {
+            if itemIndex > 0 {
+                if readCharacterOffset == currentReadOffset {
+                    return currentEditorOffset
+                }
+                currentReadOffset += 1
+                currentEditorOffset += 1
+            }
+
+            let textLength = inlineTextLength(for: child.content)
+            let textStart = currentReadOffset + checklistReadPrefixLength
+            let itemEnd = textStart + textLength
+
+            if readCharacterOffset <= textStart {
+                return currentEditorOffset + checklistEditorPrefixLength
+            }
+            if readCharacterOffset <= itemEnd {
+                let logicalOffset = readCharacterOffset - textStart
+                return currentEditorOffset + checklistEditorPrefixLength + logicalOffset
+            }
+
+            currentReadOffset = itemEnd
+            currentEditorOffset += checklistEditorPrefixLength + textLength
+        }
+
         return nil
     }
 
     private static func advancedOffset(
         for block: NotesSemanticDocument.Block,
-        startingAt offset: Int
+        startingAt offset: Int,
+        checklistPrefixLength: Int
     ) -> Int {
         switch block.type {
         case .title, .paragraph, .heading, .subheading, .listItem, .codeBlock:
@@ -91,7 +197,7 @@ extension SelectableNoteReadView {
                 if itemIndex > 0 {
                     runningOffset += 1
                 }
-                runningOffset += 6 + inlineTextLength(for: child.content)
+                runningOffset += checklistPrefixLength + inlineTextLength(for: child.content)
             }
             return runningOffset
         case .blockquote:

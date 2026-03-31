@@ -71,13 +71,13 @@ repos:
         pass_filenames: false
       - id: ios-doc-comments
         name: ios-doc-comments
-        entry: python scripts/check_ios_doc_comments.py
+        entry: python3 scripts/check_ios_doc_comments.py
         language: system
         files: ^ios/sideBar/sideBar/(ViewModels|Services|Stores)/.*\.swift$
         pass_filenames: false
       - id: ios-extension-config-resolution
         name: ios-extension-config-resolution
-        entry: python scripts/check_ios_extension_config_resolution.py
+        entry: python3 scripts/check_ios_extension_config_resolution.py
         language: system
         files: ^(ios/sideBar/Config/SideBar\.xcconfig|ios/sideBar/sideBar\.xcodeproj/project\.pbxproj|scripts/check_ios_extension_config_resolution\.py)$
         pass_filenames: false
@@ -148,12 +148,12 @@ repos:
         always_run: true
       - id: check-file-size-limits
         name: check-file-size-limits
-        entry: python scripts/check_file_sizes.py
+        entry: python3 scripts/check_file_sizes.py
         language: system
         files: ^(backend/api/services|backend/api/routers|frontend/src/lib/components|frontend/src/lib/stores)/.*\.(py|ts|svelte)$
       - id: check-notes-runtime-boundary
         name: check-notes-runtime-boundary
-        entry: python scripts/check_notes_runtime_boundary.py
+        entry: python3 scripts/check_notes_runtime_boundary.py
         language: system
         files: ^ios/sideBar/sideBar/.*\.swift$
         pass_filenames: false

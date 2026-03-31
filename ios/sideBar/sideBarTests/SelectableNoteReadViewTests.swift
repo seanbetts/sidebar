@@ -78,6 +78,31 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertGreaterThan(subheadingStyle.paragraphSpacingBefore, bodyStyle.paragraphSpacingBefore)
     }
 
+    func testMakePlatformAttributedContentUsesCenteredChecklistAttachmentBounds() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Task", marks: [])], checked: true)
+                    ]
+                )
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+        let attachment = try XCTUnwrap(
+            attributed.attribute(.attachment, at: 0, effectiveRange: nil) as? NSTextAttachment
+        )
+
+        XCTAssertGreaterThan(attachment.bounds.height, 0)
+        XCTAssertLessThan(attachment.bounds.minY, 0)
+    }
+
     #if os(macOS)
     func testMakePlatformTextViewIsSelectableAndNonEditable() throws {
         let document = NotesSemanticDocument(
@@ -326,7 +351,7 @@ final class SelectableNoteReadViewTests: XCTestCase {
             baseFontSize: 17
         )
 
-        let strikethroughValue = attributed.attribute(.strikethroughStyle, at: 12, effectiveRange: nil) as? Int
+        let strikethroughValue = attributed.attribute(.strikethroughStyle, at: 8, effectiveRange: nil) as? Int
         XCTAssertEqual(strikethroughValue, NSUnderlineStyle.single.rawValue)
         XCTAssertEqual(document.blocks[1].children?.first?.content.first?.marks, [])
     }
@@ -374,16 +399,55 @@ final class SelectableNoteReadViewTests: XCTestCase {
         )
 
         #if os(macOS)
-        let color = try XCTUnwrap(
-            attributed.attribute(.foregroundColor, at: 12, effectiveRange: nil) as? NSColor
+        XCTAssertNotNil(attributed.attribute(.attachment, at: 6, effectiveRange: nil))
+
+        let markerColor = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 6, effectiveRange: nil) as? NSColor
         )
-        XCTAssertEqual(color, .secondaryLabelColor)
+        let textColor = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 8, effectiveRange: nil) as? NSColor
+        )
+        XCTAssertEqual(markerColor, .secondaryLabelColor)
+        XCTAssertEqual(textColor, .secondaryLabelColor)
         #elseif os(iOS)
-        let color = try XCTUnwrap(
-            attributed.attribute(.foregroundColor, at: 12, effectiveRange: nil) as? UIColor
+        XCTAssertNotNil(attributed.attribute(.attachment, at: 6, effectiveRange: nil))
+
+        let markerColor = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 6, effectiveRange: nil) as? UIColor
         )
-        XCTAssertEqual(color, .secondaryLabel)
+        let textColor = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 8, effectiveRange: nil) as? UIColor
+        )
+        XCTAssertEqual(markerColor, .secondaryLabel)
+        XCTAssertEqual(textColor, .secondaryLabel)
         #endif
+    }
+
+    func testMakePlatformAttributedContentRendersChecklistMarkersWithSymbolAttachments() {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Done", marks: [])], checked: true),
+                        .init(type: .listItem, content: [.init(text: "Todo", marks: [])], checked: false)
+                    ]
+                )
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+
+        XCTAssertEqual(attributed.string, "Title\n\u{FFFC} Done\n\u{FFFC} Todo")
+        XCTAssertNotNil(attributed.attribute(.attachment, at: 6, effectiveRange: nil))
+        XCTAssertNotNil(attributed.attribute(.attachment, at: 13, effectiveRange: nil))
+        XCTAssertFalse(attributed.string.contains("[ ]"))
+        XCTAssertFalse(attributed.string.contains("[x]"))
     }
 
     func testBridgedPlatformFontTraitsDoNotAddFormattingWithoutSwiftUIFont() throws {

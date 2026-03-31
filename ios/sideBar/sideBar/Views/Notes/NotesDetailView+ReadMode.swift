@@ -79,8 +79,12 @@ extension NotesDetailView {
             from: nil,
             for: nil
         )
-        #endif
+        DispatchQueue.main.async {
+            editorViewModel.enterEditMode(at: target, viewportAnchorY: viewportAnchorY)
+        }
+        #else
         editorViewModel.enterEditMode(at: target, viewportAnchorY: viewportAnchorY)
+        #endif
     }
 
     func handleReadSurfaceChecklistToggle(blockIndex: Int, itemIndex: Int) {

@@ -50,12 +50,34 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
 
         context.makeView().activateReadSurfaceEditing(at: .start)
 
+        #if os(iOS)
+        await waitUntil(timeout: .milliseconds(150)) {
+            context.editorViewModel.presentationMode == .edit
+        }
+        #endif
+
         let view = context.makeView()
         XCTAssertEqual(context.editorViewModel.presentationMode, .edit)
         XCTAssertFalse(view.isShowingReadSurface)
         XCTAssertTrue(view.isShowingEditorSurface)
         XCTAssertTrue(view.isFormattingToolbarVisible)
     }
+
+    #if os(iOS)
+    @available(iOS 26.0, *)
+    func testActivateReadSurfaceEditingDefersPresentationModeUntilNextMainQueueTurnOnIOS() async {
+        let context = await makeNotesDetailViewTestContext()
+
+        context.makeView().activateReadSurfaceEditing(at: .start)
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+
+        await waitUntil(timeout: .milliseconds(150)) {
+            context.editorViewModel.presentationMode == .edit
+        }
+        XCTAssertEqual(context.editorViewModel.presentationMode, .edit)
+    }
+    #endif
 
     func testUnsupportedNotesShowPlaceholderInsteadOfReadOrEditorSurface() async {
         let unsupportedNote = NotePayload(
@@ -408,6 +430,12 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         context.editorViewModel.attachNativeEditor(nativeViewModel)
         context.makeView().activateReadSurfaceEditing(at: .characterOffset(5))
         var loadedNoteId: String?
+
+        #if os(iOS)
+        await waitUntil(timeout: .milliseconds(150)) {
+            context.editorViewModel.presentationMode == .edit
+        }
+        #endif
 
         loadedNoteId = AttributedNoteEditorContainer.loadNoteIfNeeded(
             editorViewModel: context.editorViewModel,
