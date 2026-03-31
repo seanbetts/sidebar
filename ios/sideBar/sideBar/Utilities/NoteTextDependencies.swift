@@ -49,6 +49,7 @@ enum NoteTextParagraphMetrics {
 
     private struct StyleMetrics {
         let lineSpacing: CGFloat
+        let spacingBefore: CGFloat
         let spacingAfter: CGFloat
     }
 
@@ -91,7 +92,7 @@ enum NoteTextParagraphMetrics {
         return paragraphStyle(
             configuration: ParagraphStyleConfiguration(
                 lineSpacing: metrics.lineSpacing,
-                spacingBefore: additionalSpacingBefore,
+                spacingBefore: metrics.spacingBefore + additionalSpacingBefore,
                 spacingAfter: metrics.spacingAfter + additionalSpacingAfter,
                 headIndent: headIndent,
                 firstLineHeadIndent: firstLineHeadIndent ?? headIndent,
@@ -149,23 +150,35 @@ enum NoteTextParagraphMetrics {
         if let style = NoteTextStyle(blockType: blockType) {
             switch style {
             case .title:
-                return StyleMetrics(lineSpacing: 0, spacingAfter: baseFontSize * 0.25)
+                return StyleMetrics(
+                    lineSpacing: 0,
+                    spacingBefore: 0,
+                    spacingAfter: baseFontSize * 0.25
+                )
             case .heading:
-                return StyleMetrics(lineSpacing: 0, spacingAfter: baseFontSize * 0.1875)
+                return StyleMetrics(
+                    lineSpacing: 0,
+                    spacingBefore: baseFontSize * 0.5,
+                    spacingAfter: baseFontSize * 0.1875
+                )
             case .subheading:
-                return StyleMetrics(lineSpacing: 0, spacingAfter: baseFontSize * 0.125)
+                return StyleMetrics(
+                    lineSpacing: 0,
+                    spacingBefore: baseFontSize * 0.375,
+                    spacingAfter: baseFontSize * 0.125
+                )
             case .body:
-                return StyleMetrics(lineSpacing: 0, spacingAfter: 4)
+                return StyleMetrics(lineSpacing: 0, spacingBefore: 0, spacingAfter: 4)
             }
         }
 
         switch blockType {
         case .unorderedList, .orderedList, .checklist, .listItem, .blockquote, .codeBlock:
-            return StyleMetrics(lineSpacing: 0, spacingAfter: 0)
+            return StyleMetrics(lineSpacing: 0, spacingBefore: 0, spacingAfter: 0)
         case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
-            return StyleMetrics(lineSpacing: 0, spacingAfter: 0)
+            return StyleMetrics(lineSpacing: 0, spacingBefore: 0, spacingAfter: 0)
         case .title, .paragraph, .heading, .subheading:
-            return StyleMetrics(lineSpacing: 0, spacingAfter: 0)
+            return StyleMetrics(lineSpacing: 0, spacingBefore: 0, spacingAfter: 0)
         }
     }
 }

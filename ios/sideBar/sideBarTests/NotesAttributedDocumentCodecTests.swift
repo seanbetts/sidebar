@@ -298,6 +298,25 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         XCTAssertEqual(NotesAttributedDocumentCodec.document(from: attributed), document)
     }
 
+    func testUnorderedListContainerProjectsAndRoundTripsUsingBulletPrefix() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .unorderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "First", marks: [])]),
+                        .init(type: .listItem, content: [.init(text: "", marks: [])])
+                    ]
+                )
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(from: document, baseFontSize: 16)
+        XCTAssertTrue(String(attributed.characters).contains("• First"))
+        XCTAssertEqual(NotesAttributedDocumentCodec.document(from: attributed), document)
+    }
+
     func testCodeBlockFollowedByParagraphRoundTripsAcrossSeparatorBoundary() {
         let document = NotesSemanticDocument(
             blocks: [

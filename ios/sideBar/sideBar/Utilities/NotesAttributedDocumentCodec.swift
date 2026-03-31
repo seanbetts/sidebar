@@ -107,9 +107,17 @@ extension NotesAttributedDocumentCodec {
         let combinedText = segments.map(\.text).joined()
         switch blockType {
         case .unorderedList:
+            let prefixLength: Int
+            if combinedText.hasPrefix("- ") {
+                prefixLength = 2
+            } else if combinedText.hasPrefix("\u{2022} ") {
+                prefixLength = 2
+            } else {
+                prefixLength = 0
+            }
             return (
                 droppingPrefixCharacters(
-                    count: combinedText.hasPrefix("- ") ? 2 : 0,
+                    count: prefixLength,
                     from: segments
                 ),
                 nil

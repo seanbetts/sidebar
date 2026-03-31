@@ -7,6 +7,7 @@ import AppKit
 // swiftlint:disable file_length
 
 @available(iOS 26.0, macOS 26.0, *)
+// swiftlint:disable type_body_length
 struct SelectableNoteReadView: View {
     typealias ReadActivationTarget = NotesEditorViewModel.PendingEditSelectionTarget
     typealias ChecklistToggleHandler = (Int, Int) -> Void
@@ -113,87 +114,36 @@ struct SelectableNoteReadView: View {
 
         let mutable = NSMutableAttributedString(attributedString: base)
         let plainText = String(attributed.characters)
-
-        for run in attributed.runs {
-            let nsRange = nsRange(for: run.range, in: attributed, plainText: plainText)
-            guard nsRange.length > 0 else { continue }
-
-            let blockType = blockType(for: run, in: attributed)
-            let swiftTraits = noteSwiftUIFontTraits(
-                from: noteExplicitSwiftUIFont(from: run.attributes)
-            )
-            let monospaced: Bool
-            if let platformFont = noteExplicitPlatformFont(from: run.attributes) {
-                monospaced = notePlatformFontTraits(from: platformFont).monospaced
-            } else {
-                monospaced = false
-            }
-            let hasExplicitBlock = run.noteBlock != nil
-            if hasExplicitBlock {
-                mutable.addAttribute(
-                    .font,
-                    value: notePlatformFont(
-                        baseFontSize: baseFontSize,
-                        blockType: blockType,
-                        bold: swiftTraits.bold,
-                        italic: swiftTraits.italic,
-                        inlineCode: monospaced
-                    ),
-                    range: nsRange
-                )
-            } else {
-                let pointSize = noteBlockPointSize(
-                    baseFontSize: baseFontSize,
-                    blockType: blockType
-                )
-                mutable.addAttribute(
-                    .font,
-                    value: notePlatformFont(
-                        baseFontSize: pointSize,
-                        bold: swiftTraits.bold,
-                        italic: swiftTraits.italic,
-                        monospaced: monospaced
-                    ),
-                    range: nsRange
-                )
-            }
-            mutable.addAttribute(
-                .paragraphStyle,
-                value: run.paragraphStyle ?? paragraphStyle(for: blockType, baseFontSize: baseFontSize),
-                range: nsRange
-            )
-            if run.underlineStyle != nil {
-                mutable.addAttribute(
-                    .underlineStyle,
-                    value: NSUnderlineStyle.single.rawValue,
-                    range: nsRange
-                )
-            } else {
-                mutable.removeAttribute(.underlineStyle, range: nsRange)
-            }
-            if run.strikethroughStyle != nil {
-                mutable.addAttribute(
-                    .strikethroughStyle,
-                    value: NSUnderlineStyle.single.rawValue,
-                    range: nsRange
-                )
-            } else {
-                mutable.removeAttribute(.strikethroughStyle, range: nsRange)
-            }
-        }
-
         mutable.addAttribute(
             .foregroundColor,
             value: defaultPlatformTextColor,
             range: NSRange(location: 0, length: mutable.length)
         )
+
+        for run in attributed.runs {
+            let nsRange = nsRange(for: run.range, in: attributed, plainText: plainText)
+            guard nsRange.length > 0 else { continue }
+            applyBridgedRunAttributes(
+                for: run,
+                nsRange: nsRange,
+                in: attributed,
+                mutable: mutable,
+                baseFontSize: baseFontSize
+            )
+        }
         return mutable
     }
 
     #if os(iOS)
     private static var defaultPlatformTextColor: UIColor { .label }
+    private static var checklistCompletedPlatformTextColor: UIColor {
+        NoteTextAppearance.checklistCompletedTextColor
+    }
     #elseif os(macOS)
     private static var defaultPlatformTextColor: NSColor { .labelColor }
+    private static var checklistCompletedPlatformTextColor: NSColor {
+        NoteTextAppearance.checklistCompletedTextColor
+    }
     #endif
 
     private static func nsRange(
@@ -228,6 +178,99 @@ struct SelectableNoteReadView: View {
         in attributed: AttributedString
     ) -> NotesSemanticDocument.BlockType {
         NoteTextBlockResolution.resolvedBlockType(for: run, in: attributed)
+    }
+
+    private static func applyBridgedRunAttributes(
+        for run: AttributedString.Runs.Run,
+        nsRange: NSRange,
+        in attributed: AttributedString,
+        mutable: NSMutableAttributedString,
+        baseFontSize: CGFloat
+    ) {
+        let blockType = blockType(for: run, in: attributed)
+        let swiftTraits = noteSwiftUIFontTraits(
+            from: noteExplicitSwiftUIFont(from: run.attributes)
+        )
+        let monospaced = noteExplicitPlatformFont(from: run.attributes)
+            .map { notePlatformFontTraits(from: $0).monospaced } ?? false
+
+        mutable.addAttribute(
+            .font,
+            value: bridgedPlatformFont(
+                for: run,
+                blockType: blockType,
+                baseFontSize: baseFontSize,
+                swiftTraits: swiftTraits,
+                monospaced: monospaced
+            ),
+            range: nsRange
+        )
+        mutable.addAttribute(
+            .paragraphStyle,
+            value: run.paragraphStyle ?? paragraphStyle(for: blockType, baseFontSize: baseFontSize),
+            range: nsRange
+        )
+        applyDecorationAttributes(for: run, nsRange: nsRange, mutable: mutable)
+        if run.noteChecklistCompletion == true {
+            mutable.addAttribute(
+                .foregroundColor,
+                value: checklistCompletedPlatformTextColor,
+                range: nsRange
+            )
+        }
+    }
+
+    private static func bridgedPlatformFont(
+        for run: AttributedString.Runs.Run,
+        blockType: NotesSemanticDocument.BlockType,
+        baseFontSize: CGFloat,
+        swiftTraits: NoteInlineFormattingTraits,
+        monospaced: Bool
+    ) -> NotePlatformFont {
+        if run.noteBlock != nil {
+            return notePlatformFont(
+                baseFontSize: baseFontSize,
+                blockType: blockType,
+                bold: swiftTraits.bold,
+                italic: swiftTraits.italic,
+                inlineCode: monospaced
+            )
+        }
+
+        return notePlatformFont(
+            baseFontSize: noteBlockPointSize(
+                baseFontSize: baseFontSize,
+                blockType: blockType
+            ),
+            bold: swiftTraits.bold,
+            italic: swiftTraits.italic,
+            monospaced: monospaced
+        )
+    }
+
+    private static func applyDecorationAttributes(
+        for run: AttributedString.Runs.Run,
+        nsRange: NSRange,
+        mutable: NSMutableAttributedString
+    ) {
+        if run.underlineStyle != nil {
+            mutable.addAttribute(
+                .underlineStyle,
+                value: NSUnderlineStyle.single.rawValue,
+                range: nsRange
+            )
+        } else {
+            mutable.removeAttribute(.underlineStyle, range: nsRange)
+        }
+        if run.strikethroughStyle != nil {
+            mutable.addAttribute(
+                .strikethroughStyle,
+                value: NSUnderlineStyle.single.rawValue,
+                range: nsRange
+            )
+        } else {
+            mutable.removeAttribute(.strikethroughStyle, range: nsRange)
+        }
     }
 
     private static func paragraphStyle(
@@ -1330,4 +1373,5 @@ extension SelectableNoteReadView {
         return currentOffset
     }
 }
+// swiftlint:enable type_body_length
 #endif

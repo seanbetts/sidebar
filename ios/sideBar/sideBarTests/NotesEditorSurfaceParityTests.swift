@@ -186,8 +186,8 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         try assertParagraphStyle(bridgedEditDocument, matches: bodyStyle, at: 25)
 
         XCTAssertEqual(titleStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
-        XCTAssertEqual(headingStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
-        XCTAssertEqual(subheadingStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
+        XCTAssertEqual(headingStyle.paragraphSpacingBefore, baseFontSize * 0.5, accuracy: 0.001)
+        XCTAssertEqual(subheadingStyle.paragraphSpacingBefore, baseFontSize * 0.375, accuracy: 0.001)
         XCTAssertEqual(bodyStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
         XCTAssertEqual(titleStyle.paragraphSpacing, baseFontSize * 0.25, accuracy: 0.001)
         XCTAssertEqual(headingStyle.paragraphSpacing, baseFontSize * 0.1875, accuracy: 0.001)

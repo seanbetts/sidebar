@@ -306,7 +306,7 @@ extension NotesAttributedDocumentCodec {
             case .orderedList:
                 "\(index + 1).\t"
             case .unorderedList:
-                "- "
+                "\u{2022} "
             case .checklist:
                 "- [\(child.checked == true ? "x" : " ")] "
             default:
@@ -371,7 +371,7 @@ extension NotesAttributedDocumentCodec {
     ) -> String? {
         switch block.type {
         case .unorderedList:
-            return "- "
+            return "\u{2022} "
         case .orderedList:
             return "\(orderedListIndex + 1).\t"
         case .checklist:

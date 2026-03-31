@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import XCTest
 import SwiftUI
 #if os(macOS)
@@ -9,6 +10,7 @@ import UIKit
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
+// swiftlint:disable type_body_length
 final class SelectableNoteReadViewTests: XCTestCase {
     func testReadBaseFontSizeMatchesAppBodyTextSize() {
         XCTAssertEqual(
@@ -44,6 +46,36 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(attributed.string, "Title\nHeading\nSubheading")
         XCTAssertGreaterThan(noteReadPlatformFontPointSize(titleFont), noteReadPlatformFontPointSize(headingFont))
         XCTAssertGreaterThan(noteReadPlatformFontPointSize(headingFont), noteReadPlatformFontPointSize(subheadingFont))
+    }
+
+    func testMakePlatformAttributedContentAddsLeadingSpacingBeforeHeadingAndSubheading() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])]),
+                .init(type: .heading, content: [.init(text: "Heading", marks: [])]),
+                .init(type: .subheading, content: [.init(text: "Subheading", marks: [])])
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+
+        let bodyStyle = try XCTUnwrap(
+            attributed.attribute(.paragraphStyle, at: 6, effectiveRange: nil) as? NSParagraphStyle
+        )
+        let headingStyle = try XCTUnwrap(
+            attributed.attribute(.paragraphStyle, at: 11, effectiveRange: nil) as? NSParagraphStyle
+        )
+        let subheadingStyle = try XCTUnwrap(
+            attributed.attribute(.paragraphStyle, at: 19, effectiveRange: nil) as? NSParagraphStyle
+        )
+
+        XCTAssertGreaterThan(headingStyle.paragraphSpacingBefore, bodyStyle.paragraphSpacingBefore)
+        XCTAssertGreaterThan(subheadingStyle.paragraphSpacingBefore, bodyStyle.paragraphSpacingBefore)
     }
 
     #if os(macOS)
@@ -299,6 +331,61 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(document.blocks[1].children?.first?.content.first?.marks, [])
     }
 
+    func testMakePlatformAttributedContentRendersBulletGlyphsForUnorderedLists() {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .unorderedList,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "First", marks: [])]),
+                        .init(type: .listItem, content: [.init(text: "Second", marks: [])])
+                    ]
+                )
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+
+        XCTAssertEqual(attributed.string, "Title\n• First\n• Second")
+    }
+
+    func testMakePlatformAttributedContentAppliesMutedColorForCheckedChecklistItems() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .checklist,
+                    children: [
+                        .init(type: .listItem, content: [.init(text: "Done", marks: [])], checked: true)
+                    ]
+                )
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+
+        #if os(macOS)
+        let color = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 12, effectiveRange: nil) as? NSColor
+        )
+        XCTAssertEqual(color, .secondaryLabelColor)
+        #elseif os(iOS)
+        let color = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 12, effectiveRange: nil) as? UIColor
+        )
+        XCTAssertEqual(color, .secondaryLabel)
+        #endif
+    }
+
     func testBridgedPlatformFontTraitsDoNotAddFormattingWithoutSwiftUIFont() throws {
         var attributed = AttributedString("Bold Italic Underline")
 
@@ -451,3 +538,4 @@ final class SelectableNoteReadViewTests: XCTestCase {
     }
     #endif
 }
+// swiftlint:enable type_body_length
