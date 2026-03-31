@@ -10,8 +10,6 @@ extension ContentView {
     var signedInContent: AnyView {
         var content: AnyView = AnyView(
             SignedInContentView(
-                biometricUnlockEnabled: biometricUnlockEnabled,
-                isBiometricUnlocked: $isBiometricUnlocked,
                 showsTopSafeAreaOverlay: shouldShowGlobalTopSafeAreaOverlay,
                 topSafeAreaBackground: topSafeAreaBackground,
                 onSignOut: { Task { await environment.beginSignOut() } },
@@ -79,10 +77,7 @@ extension ContentView {
                 }
             }
             if newValue == .background {
-                // Record when we went to background for biometric grace period
-                if biometricUnlockEnabled {
-                    backgroundedAt = Date()
-                }
+                environment.noteProtectedContentBackgrounded()
                 #if os(iOS)
                 // Schedule background task for widget refresh (auth refresh is foreground-only)
                 if environment.isAuthenticated {
@@ -91,16 +86,7 @@ extension ContentView {
                 #endif
             }
             if newValue == .active {
-                // Check if we need to require biometric based on grace period
-                if biometricUnlockEnabled && isBiometricUnlocked {
-                    if let backgrounded = backgroundedAt {
-                        let elapsed = Date().timeIntervalSince(backgrounded)
-                        if elapsed > biometricGracePeriod {
-                            isBiometricUnlocked = false
-                        }
-                    }
-                }
-                backgroundedAt = nil
+                environment.noteProtectedContentBecameActive()
                 Task {
                     await environment.handleSignedInActivation()
                 }
@@ -275,7 +261,7 @@ extension ContentView {
             }
         })
         content = AnyView(content.onChange(of: environment.authState) { oldValue, newValue in
-            let oldSignedIn = oldValue != .signedOut
+            _ = oldValue
             let isAuthenticated = newValue != .signedOut
             activeAlert = nil
             pendingBiometricUnavailableAlert = false
@@ -286,17 +272,6 @@ extension ContentView {
                         await environment.consumeExtensionEvents()
                         await environment.consumeWidgetCompletions()
                     }
-                }
-                // When user just signed in (transitioned from not authenticated to authenticated),
-                // consider them already unlocked since they authenticated with password.
-                // Biometric lock should only apply when returning from background.
-                let justSignedIn = !oldSignedIn
-                if justSignedIn {
-                    isBiometricUnlocked = true
-                } else if biometricUnlockEnabled {
-                    isBiometricUnlocked = false
-                } else {
-                    isBiometricUnlocked = true
                 }
                 #if os(iOS)
                 if environment.biometricMonitor.isAvailable
@@ -310,25 +285,18 @@ extension ContentView {
                     }
                 }
                 #endif
-                if !didLoadSettings {
-                    didLoadSettings = true
-                    Task {
-                        guard environment.authState == .active else { return }
-                        environment.currentLocationViewModel.startTrackingIfAuthorized()
-                        await environment.settingsViewModel.load(force: true)
-                        await environment.settingsViewModel.loadProfileImage()
-                        await refreshWeatherIfPossible()
-                    }
-                }
+                triggerSignedInProtectedContentLoadIfNeeded()
                 Task { await ensureInitialPhoneChatInterfaceIfNeeded() }
-                } else {
-                    didEnsureInitialPhoneChatInterface = false
-                    didLoadSettings = false
-                    isBiometricUnlocked = false
-                }
+            } else {
+                didEnsureInitialPhoneChatInterface = false
+                didLoadSettings = false
+            }
         })
         content = AnyView(content.onChange(of: biometricUnlockEnabled) { _, isEnabled in
-            isBiometricUnlocked = !isEnabled
+            environment.updateBiometricUnlockPreference(isEnabled: isEnabled)
+        })
+        content = AnyView(content.onChange(of: environment.isBiometricUnlocked) { _, _ in
+            triggerSignedInProtectedContentLoadIfNeeded()
         })
         content = AnyView(content.onChange(of: environment.settingsViewModel.settings?.location) { _, _ in
             Task {
@@ -361,16 +329,7 @@ extension ContentView {
         #endif
         content = AnyView(content.task {
             applyInitialSelectionIfNeeded()
-            if environment.authState == .active && !didLoadSettings {
-                didLoadSettings = true
-                isBiometricUnlocked = !biometricUnlockEnabled
-                Task {
-                    environment.currentLocationViewModel.startTrackingIfAuthorized()
-                    await environment.settingsViewModel.load(force: true)
-                    await environment.settingsViewModel.loadProfileImage()
-                    await refreshWeatherIfPossible()
-                }
-            }
+            triggerSignedInProtectedContentLoadIfNeeded()
         })
         #if !os(macOS)
         content = AnyView(content.sheet(isPresented: $isSettingsPresented) {
@@ -452,6 +411,18 @@ extension ContentView {
             }
         })
         return content
+    }
+
+    private func triggerSignedInProtectedContentLoadIfNeeded() {
+        guard environment.isProtectedContentReady, !didLoadSettings else { return }
+        didLoadSettings = true
+        Task {
+            guard environment.authState == .active, environment.isProtectedContentReady else { return }
+            environment.currentLocationViewModel.startTrackingIfAuthorized()
+            await environment.settingsViewModel.load(force: true)
+            await environment.settingsViewModel.loadProfileImage()
+            await refreshWeatherIfPossible()
+        }
     }
 
     func logStartup(_ message: String) {

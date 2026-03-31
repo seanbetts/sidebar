@@ -4,6 +4,23 @@ import sideBarShared
 
 @MainActor
 extension AppEnvironmentDeepLinkTests {
+    func testHandleDeepLinkWhenBiometricUnlockRequiredDefersUntilUnlock() async {
+        let environment = requireEnvironment()
+        storage.userDefaults.set(true, forKey: AppStorageKeys.biometricUnlockEnabled)
+        environment.authState = .active
+        environment.isBiometricUnlocked = false
+
+        environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
+
+        XCTAssertNil(environment.commandSelection)
+        XCTAssertFalse(environment.pendingNewTaskDeepLink)
+
+        await environment.completeBiometricUnlock()
+
+        XCTAssertEqual(environment.commandSelection, .tasks)
+        XCTAssertTrue(environment.pendingNewTaskDeepLink)
+    }
+
     func testRefreshAuthStateWhenSessionBecomesActiveConsumesExtensionEvents() async {
         let previousSharedEnvironment = AppEnvironment.shared
         defer { AppEnvironment.shared = previousSharedEnvironment }

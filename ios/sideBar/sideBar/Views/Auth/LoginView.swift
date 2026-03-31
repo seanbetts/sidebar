@@ -281,10 +281,7 @@ public struct LoginView: View {
 
     private var shouldShowOfflineUnlock: Bool {
         guard !environment.isNetworkAvailable else { return false }
-        guard let authAdapter = environment.container.authSession as? SupabaseAuthAdapter else {
-            return false
-        }
-        return authAdapter.canRestoreOfflineSession
+        return environment.container.offlineAccessRestorer?.canRestoreOfflineSession == true
     }
 
     private var shouldShowErrorMessage: Bool {
@@ -417,9 +414,7 @@ public struct LoginView: View {
 
 private extension LoginView {
     func updateLockoutState() {
-        if let authAdapter = environment.container.authSession as? SupabaseAuthAdapter {
-            lockoutSecondsRemaining = authAdapter.lockoutRemainingSeconds
-        }
+        lockoutSecondsRemaining = environment.container.signInRateLimiter?.lockoutRemainingSeconds
     }
 
     var isLockedOut: Bool {
@@ -474,10 +469,8 @@ private extension LoginView {
     }
 
     func attemptOfflineUnlock() async -> Bool {
-        guard let authAdapter = environment.container.authSession as? SupabaseAuthAdapter else {
-            return false
-        }
-        guard authAdapter.canRestoreOfflineSession else {
+        guard let offlineAccessRestorer = environment.container.offlineAccessRestorer,
+              offlineAccessRestorer.canRestoreOfflineSession else {
             return false
         }
         isOfflineUnlocking = true
@@ -489,7 +482,7 @@ private extension LoginView {
                 return false
             }
         }
-        if authAdapter.restoreOfflineSession() {
+        if offlineAccessRestorer.restoreOfflineSession() {
             environment.refreshAuthState()
             return true
         }

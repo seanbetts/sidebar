@@ -114,8 +114,12 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var signOutEvent: UUID?
     /// Tracks whether macOS settings should be presented as an in-window modal.
     @Published public internal(set) var isMacSettingsPresented: Bool = false
+    /// Tracks whether the current authenticated session has cleared local biometric protection.
+    @Published public internal(set) var isBiometricUnlocked: Bool = false
     var previousFocusedSectionBeforeMacSettings: AppSection?
     var isConsumingPendingShares: Bool = false
+    var queuedProtectedDeepLinks: [URL] = []
+    var biometricBackgroundedAt: Date?
     var cancellables = Set<AnyCancellable>()
     var hasPendingForwardedObjectWillChange = false
     var websiteSaveHandoffObserver: AnyObject?
@@ -231,6 +235,7 @@ public final class AppEnvironment: ObservableObject {
             )
         }
         self.authState = container.authSession.authState
+        self.isBiometricUnlocked = authState != .signedOut && !isBiometricUnlockEnabled
         #if os(iOS) || os(macOS)
         AppEnvironment.shared = self
         #endif
@@ -285,6 +290,21 @@ public final class AppEnvironment: ObservableObject {
     /// Indicates whether the current auth state represents a signed-in user.
     public var isAuthenticated: Bool {
         authState != .signedOut
+    }
+
+    /// Indicates whether biometric lock is enabled for the current app profile.
+    public var isBiometricUnlockEnabled: Bool {
+        storage.userDefaults.bool(forKey: AppStorageKeys.biometricUnlockEnabled)
+    }
+
+    /// Indicates whether protected signed-in content may be surfaced immediately.
+    public var isProtectedContentReady: Bool {
+        isAuthenticated && (!isBiometricUnlockEnabled || isBiometricUnlocked)
+    }
+
+    /// Indicates whether the local biometric gate is currently blocking authenticated content.
+    public var isBiometricUnlockRequired: Bool {
+        isAuthenticated && isBiometricUnlockEnabled && !isBiometricUnlocked
     }
 
     /// Selected command palette section routed through the navigation coordinator.

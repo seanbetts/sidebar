@@ -52,8 +52,6 @@ enum ActiveAlert: Identifiable, Equatable {
 }
 
 struct SignedInContentView<Main: View>: View {
-    let biometricUnlockEnabled: Bool
-    @Binding var isBiometricUnlocked: Bool
     let showsTopSafeAreaOverlay: Bool
     let topSafeAreaBackground: Color
     let onSignOut: () -> Void
@@ -63,9 +61,13 @@ struct SignedInContentView<Main: View>: View {
 
     var body: some View {
         Group {
-            if biometricUnlockEnabled && !isBiometricUnlocked {
+            if environment.isBiometricUnlockRequired {
                 BiometricLockView(
-                    onUnlock: { isBiometricUnlocked = true },
+                    onUnlock: {
+                        Task {
+                            await environment.completeBiometricUnlock()
+                        }
+                    },
                     onSignOut: onSignOut,
                     scenePhase: scenePhase
                 )

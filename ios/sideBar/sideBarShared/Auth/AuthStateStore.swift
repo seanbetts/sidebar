@@ -9,6 +9,13 @@ public protocol AuthStateStore {
     func clear() throws
 }
 
+/// Optional metadata storage for auth state that should live alongside secure session data.
+public protocol AuthMetadataStore {
+    func saveAuthMetadataValue(_ value: String?, forKey key: String) throws
+    func loadAuthMetadataValue(forKey key: String) throws -> String?
+    func removeAuthMetadataValue(forKey key: String) throws
+}
+
 /// In-memory auth state store for testing.
 public nonisolated final class InMemoryAuthStateStore: AuthStateStore, @unchecked Sendable {
     private let stateLock = NSLock()

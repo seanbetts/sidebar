@@ -10,6 +10,11 @@ extension AppEnvironment {
     func handleDeepLink(_ url: URL) {
         guard url.scheme == "sidebar" else { return }
         let logger = Logger(subsystem: "sideBar", category: "DeepLink")
+        guard !(isAuthenticated && !isProtectedContentReady) else {
+            logger.info("Queueing protected deep link until auth is ready: \(url.absoluteString, privacy: .public)")
+            queueProtectedDeepLink(url)
+            return
+        }
         logger.info("Handling deep link: \(url.absoluteString, privacy: .public)")
         AppSentry.recordAction(
             category: "deep_link",

@@ -43,6 +43,18 @@ public final class ServiceContainer {
     /// Device tokens API wrapper for push token registration.
     public let deviceTokensAPI: DeviceTokensAPI
 
+    public var observableAuthSession: (any AuthSessionObserving)? {
+        authSession as? any AuthSessionObserving
+    }
+
+    public var offlineAccessRestorer: (any OfflineAccessRestoring)? {
+        authSession as? any OfflineAccessRestoring
+    }
+
+    public var signInRateLimiter: (any SignInRateLimitStatusProviding)? {
+        authSession as? any SignInRateLimitStatusProviding
+    }
+
     /// Builds a service container and initializes feature API wrappers from shared dependencies.
     public init(
         config: EnvironmentConfig,

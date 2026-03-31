@@ -90,6 +90,36 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertEqual(environment.websitesViewModel.items.first?.url, url)
     }
 
+    func testConsumePendingSharesWhenBiometricUnlockRequiredDefersUntilUnlock() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-\(UUID().uuidString)", status: "queued")
+            )
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        storage.userDefaults.set(true, forKey: AppStorageKeys.biometricUnlockEnabled)
+        environment.authState = .active
+        environment.isBiometricUnlocked = false
+
+        _ = storage.pendingShareStore.enqueueWebsite(url: url)
+
+        await environment.consumePendingShares()
+
+        XCTAssertEqual(websitesAPI.saveCallCount, 0)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().count, 1)
+
+        await environment.completeBiometricUnlock()
+
+        for _ in 0..<20 where websitesAPI.saveCallCount == 0 {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertEqual(websitesAPI.saveCallCount, 1)
+    }
+
     func testRemovePendingQueuedWebsiteDoesNotResurrectFailedItem() async {
         let url = "https://example.com/articles/\(UUID().uuidString)"
         let gate = AsyncGate()

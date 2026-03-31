@@ -6,10 +6,13 @@ import Supabase
 @MainActor
 final class SupabaseAuthAdapterTests: XCTestCase {
     private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
+    private let failedLoginAttemptsKey = "sidebar.auth.failedLoginAttempts"
+    private let lockoutEndTimeKey = "sidebar.auth.lockoutEndTime"
     private var isolatedDefaults: [TestIsolation.IsolatedUserDefaults] = []
 
     private final class FakeSupabaseAuthClient: SupabaseAuthClientProtocol, @unchecked Sendable {
         var currentSession: SupabaseSessionInfo?
+        var signInResult: Result<Void, Error>?
         var refreshResult: Result<SupabaseSessionInfo, Error>?
         var signOutError: Error?
 
@@ -40,6 +43,14 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         func signIn(email: String, password: String) async throws {
             _ = email
             _ = password
+            if let signInResult {
+                switch signInResult {
+                case .success:
+                    return
+                case .failure(let error):
+                    throw error
+                }
+            }
         }
 
         func signUp(email: String, password: String) async throws {
@@ -162,6 +173,39 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertNotNil(userId)
     }
 
+    func testSignInLockoutPersistsAcrossAdapterRecreation() async throws {
+        let defaults = makeUserDefaults()
+        let failingClient = FakeSupabaseAuthClient()
+        failingClient.signInResult = .failure(AuthAdapterError.invalidCredentials)
+
+        let firstAdapter = SupabaseAuthAdapter(
+            authClient: failingClient,
+            stateStore: InMemoryAuthStateStore(),
+            startAuthStateTask: false,
+            userDefaults: defaults
+        )
+
+        for _ in 0..<5 {
+            await XCTAssertThrowsErrorAsync {
+                try await firstAdapter.signIn(email: "test@example.com", password: "wrong-password")
+            }
+        }
+
+        XCTAssertTrue(firstAdapter.isLockedOut)
+        XCTAssertEqual(defaults.integer(forKey: failedLoginAttemptsKey), 5)
+        XCTAssertGreaterThan(defaults.double(forKey: lockoutEndTimeKey), Date().timeIntervalSince1970)
+
+        let secondAdapter = SupabaseAuthAdapter(
+            authClient: FakeSupabaseAuthClient(),
+            stateStore: InMemoryAuthStateStore(),
+            startAuthStateTask: false,
+            userDefaults: defaults
+        )
+
+        XCTAssertTrue(secondAdapter.isLockedOut)
+        XCTAssertNotNil(secondAdapter.lockoutRemainingSeconds)
+    }
+
     func testOfflineAccessAllowsStoredCredentialsWithinWindow() async {
         let store = InMemoryAuthStateStore()
         try? store.saveAccessToken("token")
@@ -180,6 +224,53 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertTrue(adapter.restoreOfflineSession())
         XCTAssertEqual(adapter.accessToken, "token")
         XCTAssertEqual(adapter.userId, "user")
+    }
+
+    func testOfflineAccessRejectsExpiredTimestampStoredInAuthStateStore() async throws {
+        let store = KeychainAuthStateStore(
+            service: "sideBar.AuthTests.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        try store.saveAccessToken("token")
+        try store.saveUserId("user")
+        let outsideWindow = Date().addingTimeInterval(-48 * 60 * 60)
+        try store.saveAuthMetadataValue(
+            String(outsideWindow.timeIntervalSince1970),
+            forKey: lastAuthTimestampKey
+        )
+
+        let adapter = SupabaseAuthAdapter(
+            config: EnvironmentConfig.fallbackForTesting(),
+            stateStore: store,
+            userDefaults: makeUserDefaults()
+        )
+
+        XCTAssertFalse(adapter.canRestoreOfflineSession)
+        XCTAssertFalse(adapter.restoreOfflineSession())
+    }
+
+    func testOfflineAccessMigratesLegacyTimestampFromUserDefaultsIntoAuthStateStore() async throws {
+        let store = KeychainAuthStateStore(
+            service: "sideBar.AuthTests.\(UUID().uuidString)",
+            useInMemoryStore: true
+        )
+        try store.saveAccessToken("token")
+        try store.saveUserId("user")
+        let withinWindow = Date().addingTimeInterval(-2 * 60 * 60)
+        let defaults = makeUserDefaults()
+        defaults.set(withinWindow.timeIntervalSince1970, forKey: lastAuthTimestampKey)
+
+        let adapter = SupabaseAuthAdapter(
+            config: EnvironmentConfig.fallbackForTesting(),
+            stateStore: store,
+            userDefaults: defaults
+        )
+
+        XCTAssertTrue(adapter.canRestoreOfflineSession)
+        XCTAssertNil(defaults.object(forKey: lastAuthTimestampKey))
+        let migratedTimestampString = try XCTUnwrap(store.loadAuthMetadataValue(forKey: lastAuthTimestampKey))
+        let migratedTimestamp = try XCTUnwrap(TimeInterval(migratedTimestampString))
+        XCTAssertEqual(migratedTimestamp, withinWindow.timeIntervalSince1970, accuracy: 0.001)
     }
 
     func testOfflineAccessRejectsStoredCredentialsOutsideWindow() async {
@@ -409,6 +500,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         )
         try store.saveAccessToken("token")
         try store.saveUserId("user")
+        try store.saveAuthMetadataValue(String(Date().timeIntervalSince1970), forKey: lastAuthTimestampKey)
         try store.saveSessionData(Data("session".utf8), forKey: "supabase.auth.token")
         try store.saveSessionData(Data("legacy".utf8), forKey: "supabase.session")
 
@@ -431,6 +523,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertEqual(adapter.authState, .signedOut)
         XCTAssertNil(try store.loadAccessToken())
         XCTAssertNil(try store.loadUserId())
+        XCTAssertNil(try store.loadAuthMetadataValue(forKey: lastAuthTimestampKey))
         XCTAssertNil(try store.loadSessionData(forKey: "supabase.auth.token"))
         XCTAssertNil(try store.loadSessionData(forKey: "supabase.session"))
     }
@@ -448,6 +541,18 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         let header = base64UrlEncode(["alg": "none", "typ": "JWT"])
         let payload = base64UrlEncode(["exp": exp, "sub": "user"])
         return "\(header).\(payload)."
+    }
+
+    private func XCTAssertThrowsErrorAsync(
+        _ expression: @escaping () async throws -> Void,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        do {
+            try await expression()
+            XCTFail("Expected error to be thrown", file: file, line: line)
+        } catch {
+        }
     }
 
     private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {

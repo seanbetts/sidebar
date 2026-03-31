@@ -38,8 +38,8 @@ extension AppEnvironment {
     }
 
     func configureSubscriptions() {
-        if let authAdapter = container.authSession as? SupabaseAuthAdapter {
-            bindAuthAdapter(authAdapter)
+        if let authSession = container.observableAuthSession {
+            bindAuthSession(authSession)
         }
         forwardObjectWillChange()
         monitorNetwork()
@@ -77,25 +77,24 @@ extension AppEnvironment {
         realtimeClientStopStart()
     }
 
-    private func bindAuthAdapter(_ authAdapter: SupabaseAuthAdapter) {
-        authAdapter.$accessToken
+    private func bindAuthSession(_ authSession: any AuthSessionObserving) {
+        authSession.accessTokenPublisher
             .sink { [weak self] _ in
                 self?.refreshAuthState()
             }
             .store(in: &cancellables)
 
-        authAdapter.$authState
+        authSession.authStatePublisher
             .removeDuplicates()
             .sink { [weak self] _ in
                 self?.refreshAuthState()
             }
             .store(in: &cancellables)
 
-        authAdapter.$authError
-            .compactMap { $0 }
-            .sink { [weak self, weak authAdapter] event in
+        authSession.authErrorPublisher
+            .sink { [weak self] event in
                 self?.toastCenter.show(message: event.message)
-                authAdapter?.clearAuthError()
+                authSession.clearAuthError()
             }
             .store(in: &cancellables)
     }

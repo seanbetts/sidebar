@@ -31,7 +31,6 @@ public struct ContentView: View {
     @State var didEnsureInitialPhoneChatInterface = false
     @State var didSetInitialSelection = false
     @State var didLoadSettings = false
-    @State var isBiometricUnlocked = false
     @State var activeAlert: ActiveAlert?
     @State var pendingBiometricUnavailableAlert = false
     @State var isSigningOut = false
@@ -46,13 +45,9 @@ public struct ContentView: View {
     @AppStorage(AppStorageKeys.hasShownBiometricHint) var hasShownBiometricHint = false
     #endif
     @State var hasCompletedInitialSetup = false
-    @State var backgroundedAt: Date?
     @State private var showOnboarding = false
     @State private var suppressAutomaticOnboarding = false
     @AppStorage(AppStorageKeys.onboardingStatus) private var onboardingStatusRaw = OnboardingStatus.notStarted.rawValue
-
-    /// Grace period before requiring biometric re-authentication (5 minutes)
-    let biometricGracePeriod: TimeInterval = 300
 
     public init() {
     }

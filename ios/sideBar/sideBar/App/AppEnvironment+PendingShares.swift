@@ -177,7 +177,7 @@ extension AppEnvironment {
     }
 
     public func consumePendingShares() async {
-        guard authState == .active else { return }
+        guard authState == .active, isProtectedContentReady else { return }
         guard !isConsumingPendingShares else { return }
         isConsumingPendingShares = true
         defer { isConsumingPendingShares = false }

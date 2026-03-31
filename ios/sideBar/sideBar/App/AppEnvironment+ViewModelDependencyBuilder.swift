@@ -53,7 +53,7 @@ extension AppEnvironment {
             guard let authorizationToken = authSession.authorizationToken else {
                 return requireAuthorization ? nil : authSession.userId
             }
-            if let tokenSubject = SupabaseAuthAdapter.jwtSubject(from: authorizationToken) {
+            if let tokenSubject = JWTClaims.subject(from: authorizationToken) {
                 return tokenSubject
             }
             return authSession.userId

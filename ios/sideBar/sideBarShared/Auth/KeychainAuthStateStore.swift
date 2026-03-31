@@ -56,7 +56,7 @@ public struct SystemKeychainClient: KeychainClient {
 }
 
 /// Stores auth state securely in the keychain.
-public final class KeychainAuthStateStore: AuthStateStore {
+public final class KeychainAuthStateStore: AuthStateStore, AuthMetadataStore {
     private let service: String
     private let accessGroup: String?
     private let accessTokenAccount = "accessToken"
@@ -101,6 +101,18 @@ public final class KeychainAuthStateStore: AuthStateStore {
     public func clear() throws {
         try deleteItem(account: accessTokenAccount)
         try deleteItem(account: userIdAccount)
+    }
+
+    public func saveAuthMetadataValue(_ value: String?, forKey key: String) throws {
+        try saveString(value, account: key)
+    }
+
+    public func loadAuthMetadataValue(forKey key: String) throws -> String? {
+        try loadString(account: key)
+    }
+
+    public func removeAuthMetadataValue(forKey key: String) throws {
+        try deleteItem(account: key)
     }
 
     // MARK: - Generic Key-Value Storage (for Supabase AuthLocalStorage)

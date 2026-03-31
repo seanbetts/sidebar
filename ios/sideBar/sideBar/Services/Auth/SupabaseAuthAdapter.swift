@@ -55,25 +55,27 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     @Published public private(set) var accessToken: String?
     @Published public private(set) var userId: String?
     @Published public private(set) var authState: AuthState = .signedOut
-    @Published public private(set) var authError: AuthErrorEvent?
+    @Published public internal(set) var authError: AuthErrorEvent?
     @Published public internal(set) var pendingVerificationEmail: String?
 
-    private let stateStore: AuthStateStore
+    let stateStore: AuthStateStore
     let authClient: SupabaseAuthClientProtocol
     private var authStateTask: Task<Void, Never>?
     private var refreshInFlightTask: Task<Void, Never>?
     private var signInTask: Task<Void, Error>?
-    private let userDefaults: UserDefaults
+    let userDefaults: UserDefaults
     let logger = Logger(subsystem: "sideBar", category: "Auth")
     private let sessionRefreshLeadTime: TimeInterval = 600  // 10 min before expiry
     private let refreshCooldown: TimeInterval = 60
-    private let offlineAccessWindow: TimeInterval = 60 * 60 * 24
-    private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
+    let offlineAccessWindow: TimeInterval = 60 * 60 * 24
+    let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
+    let failedLoginAttemptsKey = AppStorageKeys.failedLoginAttempts
+    let lockoutEndTimeKey = AppStorageKeys.lockoutEndTime
     private var lastSessionExpiryDate: Date?
     private var lastRefreshAttempt: Date?
     // Rate limiting for login attempts
-    private var failedLoginAttempts: Int = 0
-    private var lockoutEndTime: Date?
+    var failedLoginAttempts: Int = 0
+    var lockoutEndTime: Date?
     private let maxFailedAttempts: Int = 5
     private let lockoutDuration: TimeInterval = 300  // 5 minutes
 
@@ -84,6 +86,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
             // Lockout expired, reset state
             lockoutEndTime = nil
             failedLoginAttempts = 0
+            persistRateLimitState()
             return false
         }
         return true
@@ -146,6 +149,8 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     }
 
     private func commonInit(startAuthStateTask: Bool) {
+        loadPersistedRateLimitState()
+
         // With unified storage, Supabase now loads sessions from our Keychain automatically.
         // We just need to apply the session if one exists, or check offline window expiry.
         if let session = authClient.currentSession {
@@ -193,6 +198,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
                 // Reset rate limiting on successful login
                 self.failedLoginAttempts = 0
                 self.lockoutEndTime = nil
+                self.persistRateLimitState()
                 self.logger.notice("Sign in succeeded")
             } catch {
                 // Track failed attempts for rate limiting
@@ -201,6 +207,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
                     self.lockoutEndTime = Date().addingTimeInterval(self.lockoutDuration)
                     self.logger.warning("Login rate limit exceeded, locked out for \(Int(self.lockoutDuration))s")
                 }
+                self.persistRateLimitState()
 
                 let mappedError = self.mapAuthError(error)
                 self.logger.error("Sign in failed: \(mappedError.localizedDescription, privacy: .public)")
@@ -276,31 +283,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         }
     }
 
-    public var canRestoreOfflineSession: Bool {
-        do {
-            let storedToken = try stateStore.loadAccessToken()
-            let storedUserId = try stateStore.loadUserId()
-            guard storedToken != nil, storedUserId != nil else { return false }
-            return shouldAllowOfflineAccess(hasStoredToken: true)
-        } catch {
-            return false
-        }
-    }
-
-    @discardableResult
-    public func restoreOfflineSession() -> Bool {
-        do {
-            let storedToken = try stateStore.loadAccessToken()
-            let storedUserId = try stateStore.loadUserId()
-            guard let storedToken, let storedUserId else { return false }
-            guard shouldAllowOfflineAccess(hasStoredToken: true) else { return false }
-            restoreSession(accessToken: storedToken, userId: storedUserId)
-            transitionToStale()
-            return true
-        } catch {
-            return false
-        }
-    }
     func applySession(_ session: SupabaseSessionInfo?) {
         guard let session else { return }
         let resolvedExpiry = Self.sessionExpiryDate(from: session)
@@ -348,68 +330,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         }
         return .unknown(error.localizedDescription)
     }
-    static func sessionExpiryDate(from session: SupabaseSessionInfo) -> Date {
-        if let jwtExpiry = jwtExpiryDate(from: session.accessToken) {
-            return jwtExpiry
-        }
-        return resolveExpiryDate(from: session.expiresAt)
-    }
-
-    static func jwtExpiryDate(from accessToken: String) -> Date? {
-        guard let payloadData = decodeJwtPayload(accessToken) else {
-            return nil
-        }
-        guard
-            let jsonObject = try? JSONSerialization.jsonObject(with: payloadData, options: []),
-            let payload = jsonObject as? [String: Any]
-        else {
-            return nil
-        }
-        if let exp = payload["exp"] as? TimeInterval {
-            return Date(timeIntervalSince1970: exp)
-        }
-        if let expString = payload["exp"] as? String,
-           let exp = TimeInterval(expString) {
-            return Date(timeIntervalSince1970: exp)
-        }
-        return nil
-    }
-
-    static func decodeJwtPayload(_ token: String) -> Data? {
-        let segments = token.split(separator: ".")
-        guard segments.count >= 2 else { return nil }
-        let payload = String(segments[1])
-        return base64UrlDecode(payload)
-    }
-
-    static func base64UrlDecode(_ value: String) -> Data? {
-        var base64 = value
-            .replacingOccurrences(of: "-", with: "+")
-            .replacingOccurrences(of: "_", with: "/")
-        let padding = 4 - (base64.count % 4)
-        if padding < 4 {
-            base64.append(String(repeating: "=", count: padding))
-        }
-        return Data(base64Encoded: base64)
-    }
-    private static func resolveExpiryDate(from expiresAt: TimeInterval) -> Date {
-        let epochThreshold: TimeInterval = 1_000_000_000
-        if expiresAt > epochThreshold {
-            return Date(timeIntervalSince1970: expiresAt)
-        }
-        return Date(timeIntervalSinceNow: max(expiresAt, 0))
-    }
-
-    private func shouldAllowOfflineAccess(hasStoredToken: Bool) -> Bool {
-        let lastAuthTimestamp = userDefaults.double(forKey: lastAuthTimestampKey)
-        if lastAuthTimestamp == 0, hasStoredToken {
-            updateLastAuthTimestamp(Date())
-            return true
-        }
-        guard lastAuthTimestamp > 0 else { return false }
-        let lastAuthDate = Date(timeIntervalSince1970: lastAuthTimestamp)
-        return Date().timeIntervalSince(lastAuthDate) <= offlineAccessWindow
-    }
     /// Attempts to recover a session when the offline access window has expired.
     /// On success, applies the refreshed session. On failure, signs out.
     private func attemptSessionRecovery() async {
@@ -431,19 +351,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         }
     }
 
-    private func updateLastAuthTimestamp(_ date: Date) {
-        userDefaults.set(date.timeIntervalSince1970, forKey: lastAuthTimestampKey)
-    }
-
-    private func recordError(_ message: String) {
-        logger.error("\(message, privacy: .public)")
-        authError = AuthErrorEvent(message: message)
-    }
-
-    public func clearAuthError() {
-        authError = nil
-    }
-    private func transitionToStale() {
+    func transitionToStale() {
         if authState != .stale {
             logger.notice("Auth state transitioned to stale")
         }
