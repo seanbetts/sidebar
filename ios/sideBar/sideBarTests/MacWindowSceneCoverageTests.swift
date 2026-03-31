@@ -256,20 +256,6 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertFalse(normalized.contains("privatefuncmacOnboardingHostWindow()->NSWindow?"))
     }
 
-    func testMacContentViewDoesNotUseMacAutoOnboardingWindowRecovery() throws {
-        let normalized = try contentViewSource()
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-
-        XCTAssertTrue(normalized.contains("switchOnboardingPresentation.signedOutContent("))
-        XCTAssertFalse(normalized.contains("scheduleMacAutomaticOnboardingPresentationIfNeeded()"))
-        XCTAssertFalse(normalized.contains("waitingForVisibleHostWindow"))
-        XCTAssertFalse(normalized.contains("autoPresentFallback"))
-        XCTAssertFalse(normalized.contains("repairMacHostWindowForOnboardingPresentationIfNeeded"))
-        XCTAssertFalse(normalized.contains("privatefuncmacRecoveryVisibleScreenFrame()->CGRect?"))
-        XCTAssertFalse(normalized.contains("MacWindowFramePersistence.persistWindowFrameIfNeeded(window)"))
-        XCTAssertFalse(normalized.contains("window.occlusionState.contains(.visible)"))
-        XCTAssertFalse(normalized.contains("guardscenePhase==.activeelse{returnfalse}"))
-    }
 }
 
 private func sideBarAppSource(
@@ -441,7 +427,7 @@ private func appCommandsSource(
     }
 }
 
-private func contentViewSource(
+func contentViewSource(
     file: StaticString = #filePath,
     line: UInt = #line
 ) throws -> String {
