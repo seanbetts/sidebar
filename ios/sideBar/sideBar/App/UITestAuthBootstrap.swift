@@ -4,8 +4,18 @@ import Foundation
 enum UITestAuthBootstrap {
     static let accessTokenKey = "SIDEBAR_UI_TEST_ACCESS_TOKEN"
     static let userIdKey = "SIDEBAR_UI_TEST_USER_ID"
+    static let forceStaleAuthKey = "SIDEBAR_UI_TEST_FORCE_STALE_AUTH"
+    private static let fallbackAccessToken = "debug-stale-auth-token"
+    private static let fallbackUserId = "debug-stale-auth-user"
 
     static func makeSeededSession(from environment: [String: String]) -> PlaceholderAuthSession? {
+        if environment[forceStaleAuthKey] == "1" {
+            return PlaceholderAuthSession(
+                accessToken: trimmedValue(for: accessTokenKey, in: environment) ?? fallbackAccessToken,
+                userId: trimmedValue(for: userIdKey, in: environment) ?? fallbackUserId,
+                authState: .stale
+            )
+        }
         guard
             let accessToken = trimmedValue(for: accessTokenKey, in: environment),
             let userId = trimmedValue(for: userIdKey, in: environment)

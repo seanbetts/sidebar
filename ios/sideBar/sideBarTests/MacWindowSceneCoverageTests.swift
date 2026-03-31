@@ -26,6 +26,34 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsView(presentationStyle:.macModal"))
     }
 
+    func testSignedInContentShowsManualRetryBannerWhileAuthIsStale() throws {
+        let normalized = try signedInContentSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("ifenvironment.authState==.stale{"))
+        XCTAssertTrue(normalized.contains("StaleAuthRetryBanner("))
+        XCTAssertTrue(normalized.contains("awaitenvironment.retryStaleAuthSession()"))
+        XCTAssertTrue(normalized.contains(".padding(.horizontal,DesignTokens.Spacing.md)"))
+        XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity)"))
+    }
+
+    func testStaleAuthRetryBannerUsesGlassPillChrome() throws {
+        let normalized = try contentViewComponentsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("GlassEffectContainer(spacing:DesignTokens.Spacing.xs){"))
+        XCTAssertTrue(normalized.contains("@Environment(\\.horizontalSizeClass)privatevarhorizontalSizeClass"))
+        XCTAssertTrue(normalized.contains("privatevarbannerMaxWidth:CGFloat{horizontalSizeClass==.compact?360:400}"))
+        XCTAssertTrue(normalized.contains(".frame(width:18,alignment:.leading)"))
+        XCTAssertTrue(normalized.contains("Spacer(minLength:DesignTokens.Spacing.sm)"))
+        XCTAssertTrue(normalized.contains(".padding(.leading,DesignTokens.Spacing.md)"))
+        XCTAssertTrue(normalized.contains(".padding(.trailing,DesignTokens.Spacing.sm)"))
+        XCTAssertTrue(normalized.contains(".frame(maxWidth:bannerMaxWidth)"))
+        XCTAssertTrue(normalized.contains("Text(\"Changesmaybedelayeduntilsessionrefreshes.\")"))
+        XCTAssertTrue(normalized.contains("content.glassEffect(.regular,in:Capsule())"))
+        XCTAssertTrue(normalized.contains("content.glassEffect(.regular.interactive(),in:Capsule())"))
+    }
+
     func testSettingsViewDefinesDedicatedMacModalPresentationChrome() throws {
         let normalized = try settingsViewSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -293,6 +321,28 @@ private func signedInContentSource(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read ContentView+SignedIn.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func contentViewComponentsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("Common")
+        .appendingPathComponent("ContentViewComponents.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read ContentViewComponents.swift: \(error)", file: file, line: line)
         throw error
     }
 }

@@ -33,14 +33,25 @@ extension ContentView {
             .phoneSheetGrabBarVisible()
         })
         content = AnyView(content.overlay(alignment: .top) {
-            if let toast = environment.toastCenter.toast {
-                ToastBanner(toast: toast)
-                    .padding(.top, DesignTokens.Spacing.sm)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .onTapGesture {
-                        environment.toastCenter.dismiss()
+            VStack(spacing: DesignTokens.Spacing.sm) {
+                if environment.authState == .stale {
+                    StaleAuthRetryBanner(isRefreshing: environment.isRetryingStaleAuth) {
+                        Task {
+                            await environment.retryStaleAuthSession()
+                        }
+                    }
+                }
+                if let toast = environment.toastCenter.toast {
+                    ToastBanner(toast: toast)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .onTapGesture {
+                            environment.toastCenter.dismiss()
+                        }
                 }
             }
+            .padding(.top, DesignTokens.Spacing.sm)
+            .padding(.horizontal, DesignTokens.Spacing.md)
+            .frame(maxWidth: .infinity)
         })
         #if os(macOS)
         content = AnyView(content.overlay {

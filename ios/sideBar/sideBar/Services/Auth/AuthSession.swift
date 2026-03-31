@@ -68,6 +68,8 @@ public final class PlaceholderAuthSession: AuthSession {
     }
 
     public func refreshSession() async {
+        guard accessToken != nil, userId != nil else { return }
+        authState = .active
     }
 
     public func refreshSessionIfStale() async {

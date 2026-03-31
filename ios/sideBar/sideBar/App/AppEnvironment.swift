@@ -116,6 +116,8 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var isMacSettingsPresented: Bool = false
     /// Tracks whether the current authenticated session has cleared local biometric protection.
     @Published public internal(set) var isBiometricUnlocked: Bool = false
+    /// Tracks whether a user-triggered stale-session refresh is currently running.
+    @Published public internal(set) var isRetryingStaleAuth: Bool = false
     var previousFocusedSectionBeforeMacSettings: AppSection?
     var isConsumingPendingShares: Bool = false
     var queuedProtectedDeepLinks: [URL] = []

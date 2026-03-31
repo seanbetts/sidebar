@@ -266,6 +266,15 @@ extension AppEnvironment {
         refreshAuthState()
     }
 
+    public func retryStaleAuthSession() async {
+        guard authState == .stale, !isRetryingStaleAuth else { return }
+        isRetryingStaleAuth = true
+        defer { isRetryingStaleAuth = false }
+
+        await container.authSession.refreshSession()
+        refreshAuthState()
+    }
+
     /// Handles signed-in foreground activation work shared by iOS and macOS.
     public func handleSignedInActivation(includeDeferredRefresh: Bool = true) async {
         ExternalSurfaceDiagnosticsStore.shared.record(
