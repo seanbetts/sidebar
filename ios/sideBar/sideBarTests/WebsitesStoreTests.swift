@@ -187,7 +187,7 @@ final class WebsitesStoreTests: XCTestCase {
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: 60)
         let api = WebsitesStoreMockWebsitesAPI(listResult: .success(response), getResult: .failure(WebsitesStoreMockError.forced))
-        api.archivedListDelay = 0.12
+        api.archivedListDelay = 0.5
 
         let store = WebsitesStore(
             api: api,
@@ -207,8 +207,10 @@ final class WebsitesStoreTests: XCTestCase {
         let start = Date()
         await store.loadArchivedList()
         let elapsed = Date().timeIntervalSince(start)
+        let archivedListCallCount = await api.archivedListCallCount
 
-        XCTAssertLessThan(elapsed, 0.1)
+        XCTAssertLessThan(elapsed, 0.25)
+        XCTAssertEqual(archivedListCallCount, 1)
         await firstRefresh.value
     }
 

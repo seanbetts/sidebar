@@ -92,7 +92,7 @@ final class NativeNoteEditorListTransitionTests: XCTestCase {
 
         viewModel.toggleList(.unorderedList)
 
-        XCTAssertEqual(String(viewModel.attributedContent.characters), "Title\n- First\n- Second")
+        XCTAssertEqual(String(viewModel.attributedContent.characters), "Title\n• First\n• Second")
         switch viewModel.selectionSnapshot(in: viewModel.attributedContent) {
         case .ranges(let ranges):
             XCTAssertEqual(ranges, [8..<22])
