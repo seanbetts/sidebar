@@ -57,10 +57,10 @@ async def test_password_reset_service_includes_app_redirect(monkeypatch) -> None
             "headers": {
                 "apikey": "anon-key",
                 "Content-Type": "application/json",
+                "redirect_to": "sidebar://auth/callback",
             },
             "json": {
                 "email": "person@example.com",
-                "redirect_to": "sidebar://auth/callback",
             },
             "timeout": 10.0,
         }

@@ -37,7 +37,7 @@ class PasswordResetService:
         payload = {"email": email}
         redirect_to = settings.password_reset_redirect_to.strip()
         if redirect_to:
-            payload["redirect_to"] = redirect_to
+            headers["redirect_to"] = redirect_to
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
