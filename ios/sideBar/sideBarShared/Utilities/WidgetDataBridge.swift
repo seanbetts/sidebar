@@ -189,6 +189,35 @@ public final class WidgetDataBridge {
         return (try? Self.makeDecoder().decode([WidgetPendingOperation<A>].self, from: data)) ?? []
     }
 
+    public func removePendingOperation<A: Codable & Equatable>(
+        withId operationId: String,
+        for contentType: WidgetContentType,
+        actionType: A.Type
+    ) {
+        guard let defaults = userDefaultsProvider() else { return }
+        let pending = loadPendingOperations(for: contentType, actionType: actionType)
+        guard !pending.isEmpty else { return }
+
+        let filtered = pending.filter { $0.id != operationId }
+        guard filtered.count != pending.count else { return }
+
+        if filtered.isEmpty {
+            defaults.removeObject(forKey: contentType.pendingKey)
+        } else if let encoded = try? Self.makeEncoder().encode(filtered) {
+            defaults.set(encoded, forKey: contentType.pendingKey)
+        }
+        defaults.synchronize()
+        diagnosticsRecorder(
+            "remove_pending_operation",
+            "Removed widget pending operation.",
+            [
+                "content_type": contentType.rawValue,
+                "removed_operation_id": operationId,
+                "remaining_count": "\(filtered.count)"
+            ]
+        )
+    }
+
     private static func makeEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601

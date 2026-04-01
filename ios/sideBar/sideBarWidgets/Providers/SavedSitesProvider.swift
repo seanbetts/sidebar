@@ -26,6 +26,29 @@ struct SavedSitesEntry: TimelineEntry {
 struct SavedSitesProvider: TimelineProvider {
     typealias Entry = SavedSitesEntry
 
+    private let dataManager: WidgetDataManager
+    private let now: () -> Date
+    private let refreshData: @Sendable (Date) async throws -> WidgetWebsiteData
+    private let faviconFetcher: @Sendable ([WidgetWebsite]) async -> [String: Data]
+
+    init(
+        dataManager: WidgetDataManager = .shared,
+        now: @escaping () -> Date = Date.init,
+        refreshData: @escaping @Sendable (Date) async throws -> WidgetWebsiteData = { currentDate in
+            let environment = try WidgetAPIEnvironment()
+            return try await WebsitesWidgetRefreshClient(environment: environment)
+                .refreshSavedWebsites(now: currentDate)
+        },
+        faviconFetcher: @escaping @Sendable ([WidgetWebsite]) async -> [String: Data] = { websites in
+            await Self.fetchFaviconDataByWebsiteId(for: websites)
+        }
+    ) {
+        self.dataManager = dataManager
+        self.now = now
+        self.refreshData = refreshData
+        self.faviconFetcher = faviconFetcher
+    }
+
     func placeholder(in context: Context) -> SavedSitesEntry {
         .placeholder
     }
@@ -36,7 +59,7 @@ struct SavedSitesProvider: TimelineProvider {
             return
         }
         Task {
-            let entry = await createEntry()
+            let entry = await entry(for: now())
             recordProviderDiagnostics(stage: "snapshot", entry: entry)
             completion(entry)
         }
@@ -44,35 +67,55 @@ struct SavedSitesProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SavedSitesEntry>) -> Void) {
         Task {
-            let entry = await createEntry()
-            recordProviderDiagnostics(stage: "timeline", entry: entry)
-            // Refresh every 15 minutes
-            let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
-            let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-            completion(timeline)
+            completion(await timeline(for: now()))
         }
     }
 
-    private func createEntry() async -> SavedSitesEntry {
+    func timeline(for currentDate: Date) async -> Timeline<SavedSitesEntry> {
+        let entry = await entry(for: currentDate)
+        recordProviderDiagnostics(stage: "timeline", entry: entry)
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate) ?? currentDate
+        return Timeline(entries: [entry], policy: .after(nextUpdate))
+    }
+
+    func entry(for date: Date) async -> SavedSitesEntry {
+        let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .websites)
+        let isAuthenticated = dataManager.isAuthenticated()
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
-            isAuthenticated: WidgetDataManager.shared.isAuthenticated(),
-            hasCachedSnapshot: WidgetDataManager.shared.hasStoredSnapshot(for: .websites)
+            isAuthenticated: isAuthenticated,
+            hasCachedSnapshot: hasCachedSnapshot
         )
         guard canDisplayContent else {
             return .notAuthenticated
         }
 
-        let data: WidgetWebsiteData = WidgetDataManager.shared.load(for: .websites)
-        let faviconDataByWebsiteId = await fetchFaviconDataByWebsiteId(for: data.websites)
+        var data: WidgetWebsiteData = dataManager.load(for: .websites)
+        let decision = WidgetRefreshCoordinator.decision(
+            contentType: .websites,
+            lastUpdated: hasCachedSnapshot ? data.lastUpdated : nil,
+            hasCachedSnapshot: hasCachedSnapshot,
+            isAuthenticated: isAuthenticated,
+            now: date
+        )
+
+        if decision.shouldAttemptRefresh {
+            do {
+                let refreshed = try await refreshData(date)
+                dataManager.store(refreshed, for: .websites)
+                data = refreshed
+            } catch {}
+        }
+
+        let faviconDataByWebsiteId = await faviconFetcher(data.websites)
         return SavedSitesEntry(
-            date: Date(),
+            date: date,
             data: data,
             isAuthenticated: true,
             faviconDataByWebsiteId: faviconDataByWebsiteId
         )
     }
 
-    private func fetchFaviconDataByWebsiteId(for websites: [WidgetWebsite]) async -> [String: Data] {
+    private static func fetchFaviconDataByWebsiteId(for websites: [WidgetWebsite]) async -> [String: Data] {
         let candidates = Array(websites.prefix(SavedSitesWidgetView.maxSites(for: .systemLarge)))
         guard !candidates.isEmpty else { return [:] }
 
@@ -97,7 +140,7 @@ struct SavedSitesProvider: TimelineProvider {
         }
     }
 
-    private func fetchFaviconData(from url: URL) async -> Data? {
+    private static func fetchFaviconData(from url: URL) async -> Data? {
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
             guard let httpResponse = response as? HTTPURLResponse,

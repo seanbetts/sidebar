@@ -23,6 +23,24 @@ struct PinnedFilesEntry: TimelineEntry {
 struct PinnedFilesProvider: TimelineProvider {
     typealias Entry = PinnedFilesEntry
 
+    private let dataManager: WidgetDataManager
+    private let now: () -> Date
+    private let refreshData: @Sendable (Date) async throws -> WidgetFileData
+
+    init(
+        dataManager: WidgetDataManager = .shared,
+        now: @escaping () -> Date = Date.init,
+        refreshData: @escaping @Sendable (Date) async throws -> WidgetFileData = { currentDate in
+            let environment = try WidgetAPIEnvironment()
+            return try await FilesWidgetRefreshClient(environment: environment)
+                .refreshPinnedFiles(now: currentDate)
+        }
+    ) {
+        self.dataManager = dataManager
+        self.now = now
+        self.refreshData = refreshData
+    }
+
     func placeholder(in context: Context) -> PinnedFilesEntry {
         .placeholder
     }
@@ -33,32 +51,55 @@ struct PinnedFilesProvider: TimelineProvider {
             return
         }
 
-        let entry = createEntry()
-        recordProviderDiagnostics(stage: "snapshot", entry: entry)
-        completion(entry)
+        Task {
+            let entry = await entry(for: now())
+            recordProviderDiagnostics(stage: "snapshot", entry: entry)
+            completion(entry)
+        }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedFilesEntry>) -> Void) {
-        let entry = createEntry()
-        recordProviderDiagnostics(stage: "timeline", entry: entry)
-
-        // Refresh every 15 minutes
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-        completion(timeline)
+        Task {
+            completion(await timeline(for: now()))
+        }
     }
 
-    private func createEntry() -> PinnedFilesEntry {
+    func timeline(for currentDate: Date) async -> Timeline<PinnedFilesEntry> {
+        let entry = await entry(for: currentDate)
+        recordProviderDiagnostics(stage: "timeline", entry: entry)
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate) ?? currentDate
+        return Timeline(entries: [entry], policy: .after(nextUpdate))
+    }
+
+    func entry(for date: Date) async -> PinnedFilesEntry {
+        let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .files)
+        let isAuthenticated = dataManager.isAuthenticated()
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
-            isAuthenticated: WidgetDataManager.shared.isAuthenticated(),
-            hasCachedSnapshot: WidgetDataManager.shared.hasStoredSnapshot(for: .files)
+            isAuthenticated: isAuthenticated,
+            hasCachedSnapshot: hasCachedSnapshot
         )
         guard canDisplayContent else {
             return .notAuthenticated
         }
 
-        let data: WidgetFileData = WidgetDataManager.shared.load(for: .files)
-        return PinnedFilesEntry(date: Date(), data: data, isAuthenticated: true)
+        var data: WidgetFileData = dataManager.load(for: .files)
+        let decision = WidgetRefreshCoordinator.decision(
+            contentType: .files,
+            lastUpdated: hasCachedSnapshot ? data.lastUpdated : nil,
+            hasCachedSnapshot: hasCachedSnapshot,
+            isAuthenticated: isAuthenticated,
+            now: date
+        )
+
+        if decision.shouldAttemptRefresh {
+            do {
+                let refreshed = try await refreshData(date)
+                dataManager.store(refreshed, for: .files)
+                data = refreshed
+            } catch {}
+        }
+
+        return PinnedFilesEntry(date: date, data: data, isAuthenticated: true)
     }
 
     private func recordProviderDiagnostics(stage: String, entry: PinnedFilesEntry) {

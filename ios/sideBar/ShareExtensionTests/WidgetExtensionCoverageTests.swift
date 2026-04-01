@@ -329,6 +329,75 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(site.displayDomain, "theguardian.com")
     }
 
+    func testTodayTasksProviderKeepsTimelineBoundariesWhenRenderingRefreshedSnapshot() async {
+        let now = Date(timeIntervalSince1970: 50_000)
+        let provider = TodayTasksProvider(
+            now: { now },
+            refreshData: { _, _ in
+                WidgetTaskData(
+                    tasks: [
+                        WidgetTask(id: "completed-task", title: "Completed", isCompleted: true, completedAt: now),
+                        WidgetTask(id: "deadline-task", title: "Deadline", deadline: "2099-01-01")
+                    ],
+                    totalCount: 2,
+                    lastUpdated: now
+                )
+            }
+        )
+        let defaults = UserDefaults(suiteName: appGroupIdForWidgetTests())
+        defaults?.set(true, forKey: "widgetIsAuthenticated")
+        defaults?.synchronize()
+        defer {
+            defaults?.removeObject(forKey: "widgetIsAuthenticated")
+            defaults?.removeObject(forKey: WidgetContentType.tasks.dataKey)
+            defaults?.removeObject(forKey: WidgetContentType.tasks.pendingKey)
+            defaults?.synchronize()
+        }
+
+        let timeline = await provider.timeline(for: now)
+
+        XCTAssertGreaterThanOrEqual(timeline.entries.count, 2)
+    }
+
+    func testSavedSitesProviderPerformsFaviconEnrichmentAfterContentRefresh() async {
+        let now = Date(timeIntervalSince1970: 60_000)
+        let provider = SavedSitesProvider(
+            now: { now },
+            refreshData: { _ in
+                WidgetWebsiteData(
+                    websites: [
+                        WidgetWebsite(
+                            id: "site-a",
+                            title: "Example",
+                            url: "https://example.com",
+                            domain: "example.com",
+                            faviconUrl: "https://example.com/favicon.ico"
+                        )
+                    ],
+                    totalCount: 1,
+                    lastUpdated: now
+                )
+            },
+            faviconFetcher: { websites in
+                XCTAssertEqual(websites.map(\.id), ["site-a"])
+                return ["site-a": Data([0x1, 0x2, 0x3])]
+            }
+        )
+        let defaults = UserDefaults(suiteName: appGroupIdForWidgetTests())
+        defaults?.set(true, forKey: "widgetIsAuthenticated")
+        defaults?.synchronize()
+        defer {
+            defaults?.removeObject(forKey: "widgetIsAuthenticated")
+            defaults?.removeObject(forKey: WidgetContentType.websites.dataKey)
+            defaults?.removeObject(forKey: WidgetContentType.websites.pendingKey)
+            defaults?.synchronize()
+        }
+
+        let timeline = await provider.timeline(for: now)
+
+        XCTAssertEqual(timeline.entries.first?.faviconDataByWebsiteId["site-a"], Data([0x1, 0x2, 0x3]))
+    }
+
     func testWidgetIntentsExecuteWithoutThrowing() async throws {
         _ = try await OpenScratchpadIntent().perform()
         _ = try await StartChatIntent().perform()

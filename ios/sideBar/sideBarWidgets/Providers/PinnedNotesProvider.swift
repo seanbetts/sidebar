@@ -23,6 +23,24 @@ struct PinnedNotesEntry: TimelineEntry {
 struct PinnedNotesProvider: TimelineProvider {
     typealias Entry = PinnedNotesEntry
 
+    private let dataManager: WidgetDataManager
+    private let now: () -> Date
+    private let refreshData: @Sendable (Date) async throws -> WidgetNoteData
+
+    init(
+        dataManager: WidgetDataManager = .shared,
+        now: @escaping () -> Date = Date.init,
+        refreshData: @escaping @Sendable (Date) async throws -> WidgetNoteData = { currentDate in
+            let environment = try WidgetAPIEnvironment()
+            return try await NotesWidgetRefreshClient(environment: environment)
+                .refreshPinnedNotes(now: currentDate)
+        }
+    ) {
+        self.dataManager = dataManager
+        self.now = now
+        self.refreshData = refreshData
+    }
+
     func placeholder(in context: Context) -> PinnedNotesEntry {
         .placeholder
     }
@@ -33,32 +51,55 @@ struct PinnedNotesProvider: TimelineProvider {
             return
         }
 
-        let entry = createEntry()
-        recordProviderDiagnostics(stage: "snapshot", entry: entry)
-        completion(entry)
+        Task {
+            let entry = await entry(for: now())
+            recordProviderDiagnostics(stage: "snapshot", entry: entry)
+            completion(entry)
+        }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedNotesEntry>) -> Void) {
-        let entry = createEntry()
-        recordProviderDiagnostics(stage: "timeline", entry: entry)
-
-        // Refresh every 15 minutes
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-        completion(timeline)
+        Task {
+            completion(await timeline(for: now()))
+        }
     }
 
-    private func createEntry() -> PinnedNotesEntry {
+    func timeline(for currentDate: Date) async -> Timeline<PinnedNotesEntry> {
+        let entry = await entry(for: currentDate)
+        recordProviderDiagnostics(stage: "timeline", entry: entry)
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate) ?? currentDate
+        return Timeline(entries: [entry], policy: .after(nextUpdate))
+    }
+
+    func entry(for date: Date) async -> PinnedNotesEntry {
+        let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .notes)
+        let isAuthenticated = dataManager.isAuthenticated()
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
-            isAuthenticated: WidgetDataManager.shared.isAuthenticated(),
-            hasCachedSnapshot: WidgetDataManager.shared.hasStoredSnapshot(for: .notes)
+            isAuthenticated: isAuthenticated,
+            hasCachedSnapshot: hasCachedSnapshot
         )
         guard canDisplayContent else {
             return .notAuthenticated
         }
 
-        let data: WidgetNoteData = WidgetDataManager.shared.load(for: .notes)
-        return PinnedNotesEntry(date: Date(), data: data, isAuthenticated: true)
+        var data: WidgetNoteData = dataManager.load(for: .notes)
+        let decision = WidgetRefreshCoordinator.decision(
+            contentType: .notes,
+            lastUpdated: hasCachedSnapshot ? data.lastUpdated : nil,
+            hasCachedSnapshot: hasCachedSnapshot,
+            isAuthenticated: isAuthenticated,
+            now: date
+        )
+
+        if decision.shouldAttemptRefresh {
+            do {
+                let refreshed = try await refreshData(date)
+                dataManager.store(refreshed, for: .notes)
+                data = refreshed
+            } catch {}
+        }
+
+        return PinnedNotesEntry(date: date, data: data, isAuthenticated: true)
     }
 
     private func recordProviderDiagnostics(stage: String, entry: PinnedNotesEntry) {

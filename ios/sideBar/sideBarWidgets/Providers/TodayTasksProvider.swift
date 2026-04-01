@@ -23,6 +23,10 @@ struct TodayTasksEntry: TimelineEntry {
 struct TodayTasksProvider: TimelineProvider {
     typealias Entry = TodayTasksEntry
 
+    private let dataManager: WidgetDataManager
+    private let now: () -> Date
+    private let refreshData: @Sendable (WidgetTaskData, Date) async throws -> WidgetTaskData
+
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -30,6 +34,20 @@ struct TodayTasksProvider: TimelineProvider {
         formatter.timeZone = TimeZone.current
         return formatter
     }()
+
+    init(
+        dataManager: WidgetDataManager = .shared,
+        now: @escaping () -> Date = Date.init,
+        refreshData: @escaping @Sendable (WidgetTaskData, Date) async throws -> WidgetTaskData = { cached, currentDate in
+            let environment = try WidgetAPIEnvironment()
+            return try await TasksWidgetRefreshClient(environment: environment)
+                .refreshTodayTasks(previousSnapshot: cached, now: currentDate)
+        }
+    ) {
+        self.dataManager = dataManager
+        self.now = now
+        self.refreshData = refreshData
+    }
 
     func placeholder(in context: Context) -> TodayTasksEntry {
         .placeholder
@@ -41,89 +59,111 @@ struct TodayTasksProvider: TimelineProvider {
             return
         }
 
-        let entry = createEntry(for: Date())
-        recordProviderDiagnostics(stage: "snapshot", entry: entry)
-        completion(entry)
+        Task {
+            let entry = await entry(for: now())
+            recordProviderDiagnostics(stage: "snapshot", entry: entry)
+            completion(entry)
+        }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<TodayTasksEntry>) -> Void) {
-        let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
-            isAuthenticated: WidgetDataManager.shared.isAuthenticated(),
-            hasCachedSnapshot: WidgetDataManager.shared.hasStoredSnapshot(for: .tasks)
-        )
-        guard canDisplayContent else {
-            let entry = TodayTasksEntry.notAuthenticated
+        Task {
+            completion(await timeline(for: now()))
+        }
+    }
+
+    func timeline(for currentDate: Date) async -> Timeline<TodayTasksEntry> {
+        let entry = await entry(for: currentDate)
+        guard entry.isAuthenticated else {
             recordProviderDiagnostics(stage: "timeline", entry: entry)
-            let timeline = Timeline(entries: [entry], policy: .after(nextMidnight()))
-            completion(timeline)
-            return
+            return Timeline(entries: [entry], policy: .after(nextMidnight(from: currentDate)))
         }
 
-        let data = WidgetDataManager.shared.loadTodayTasks()
-        let now = Date()
-        var entries: [TodayTasksEntry] = []
-
-        // Entry for right now
-        entries.append(TodayTasksEntry(date: now, data: data, isAuthenticated: true))
-
-        // Find unique deadline dates that are today or in the future
-        // At midnight, tasks become overdue, so we need entries at those boundaries
+        var entries: [TodayTasksEntry] = [entry]
         let calendar = Calendar.current
         var boundaryDates: Set<Date> = []
 
-        for task in data.tasks {
+        for task in entry.data.tasks {
             if let completionBoundary = WidgetTasksUtils.completionRemovalDate(for: task),
-               completionBoundary > now {
+               completionBoundary > currentDate {
                 boundaryDates.insert(completionBoundary)
             }
             if let deadline = task.deadline,
                deadline.count >= 10,
                let taskDate = Self.dateFormatter.date(from: String(deadline.prefix(10))) {
-                // Task becomes overdue at midnight AFTER its due date
-                let overdueTime = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: taskDate))
-                if let overdueTime, overdueTime > now {
+                let overdueTime = calendar.date(
+                    byAdding: .day,
+                    value: 1,
+                    to: calendar.startOfDay(for: taskDate)
+                )
+                if let overdueTime, overdueTime > currentDate {
                     boundaryDates.insert(overdueTime)
                 }
             }
         }
 
-        // Always add next midnight for general refresh
-        let nextMidnightDate = nextMidnight()
+        let nextMidnightDate = nextMidnight(from: currentDate)
         boundaryDates.insert(nextMidnightDate)
 
-        // Sort and limit to prevent excessive entries (iOS has timeline budget)
         let sortedBoundaries = boundaryDates.sorted().prefix(5)
-
         for boundaryDate in sortedBoundaries {
-            // Create entry with same data but different date
-            // The widget will re-evaluate isOverdue based on the entry date
-            entries.append(TodayTasksEntry(date: boundaryDate, data: data, isAuthenticated: true))
+            entries.append(
+                TodayTasksEntry(
+                    date: boundaryDate,
+                    data: entry.data,
+                    isAuthenticated: true
+                )
+            )
         }
 
-        // Use .after policy for the last boundary + 15 minutes to trigger a fresh data fetch
         let lastEntry = sortedBoundaries.last ?? nextMidnightDate
         let nextRefresh = calendar.date(byAdding: .minute, value: 15, to: lastEntry) ?? lastEntry
-        recordProviderDiagnostics(stage: "timeline", entry: entries.first ?? TodayTasksEntry.notAuthenticated)
-        let timeline = Timeline(entries: entries, policy: .after(nextRefresh))
-        completion(timeline)
+        recordProviderDiagnostics(stage: "timeline", entry: entries.first ?? .notAuthenticated)
+        return Timeline(entries: entries, policy: .after(nextRefresh))
     }
 
-    private func createEntry(for date: Date) -> TodayTasksEntry {
+    func entry(for date: Date) async -> TodayTasksEntry {
+        let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .tasks)
+        let isAuthenticated = dataManager.isAuthenticated()
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
-            isAuthenticated: WidgetDataManager.shared.isAuthenticated(),
-            hasCachedSnapshot: WidgetDataManager.shared.hasStoredSnapshot(for: .tasks)
+            isAuthenticated: isAuthenticated,
+            hasCachedSnapshot: hasCachedSnapshot
         )
         guard canDisplayContent else {
             return .notAuthenticated
         }
 
-        let data = WidgetDataManager.shared.loadTodayTasks()
+        var data = dataManager.loadTodayTasks()
+        let decision = WidgetRefreshCoordinator.decision(
+            contentType: .tasks,
+            lastUpdated: hasCachedSnapshot ? data.lastUpdated : nil,
+            hasCachedSnapshot: hasCachedSnapshot,
+            isAuthenticated: isAuthenticated,
+            now: date
+        )
+
+        if decision.shouldAttemptRefresh {
+            do {
+                let refreshed = try await refreshData(data, date)
+                let pending = dataManager.loadPendingOperations(
+                    for: .tasks,
+                    actionType: TaskWidgetAction.self
+                )
+                let overlaid = WidgetTaskPendingCompletionOverlay.apply(
+                    to: refreshed,
+                    pendingOperations: pending
+                )
+                dataManager.store(overlaid, for: .tasks)
+                data = overlaid
+            } catch {}
+        }
+
         return TodayTasksEntry(date: date, data: data, isAuthenticated: true)
     }
 
-    private func nextMidnight() -> Date {
+    private func nextMidnight(from date: Date) -> Date {
         let calendar = Calendar.current
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: date) ?? date
         return calendar.startOfDay(for: tomorrow)
     }
 

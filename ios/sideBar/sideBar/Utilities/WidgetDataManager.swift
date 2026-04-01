@@ -101,11 +101,23 @@ public final class WidgetDataManager {
     bridge.consumePendingOperations(for: contentType, actionType: actionType, matching: matching)
   }
 
-  private func loadPendingOperations<A: Codable & Equatable>(
+  public func loadPendingOperations<A: Codable & Equatable>(
     for contentType: WidgetContentType,
     actionType: A.Type
   ) -> [WidgetPendingOperation<A>] {
     bridge.loadPendingOperations(for: contentType, actionType: actionType)
+  }
+
+  public func removePendingOperation<A: Codable & Equatable>(
+    withId operationId: String,
+    for contentType: WidgetContentType,
+    actionType: A.Type
+  ) {
+    bridge.removePendingOperation(
+      withId: operationId,
+      for: contentType,
+      actionType: actionType
+    )
   }
 
   // MARK: - Authentication State

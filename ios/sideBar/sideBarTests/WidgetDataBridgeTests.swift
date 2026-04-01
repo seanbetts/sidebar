@@ -63,4 +63,43 @@ final class WidgetDataBridgeTests: XCTestCase {
 
         XCTAssertTrue(bridge.hasStoredSnapshot(for: .notes))
     }
+
+    func testLoadPendingOperationsDoesNotConsumeStoredOperations() {
+        let suiteName = "WidgetDataBridgeTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let bridge = makeBridge(userDefaults: defaults)
+        let completion = WidgetPendingOperation(itemId: "task-1", action: TaskWidgetAction.complete)
+
+        bridge.recordPendingOperation(completion, for: .tasks)
+
+        let loaded = bridge.loadPendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
+        let consumed = bridge.consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
+
+        XCTAssertEqual(loaded.count, 1)
+        XCTAssertEqual(loaded.first?.id, completion.id)
+        XCTAssertEqual(consumed.count, 1)
+        XCTAssertEqual(consumed.first?.id, completion.id)
+    }
+
+    func testRemovePendingOperationByIdentifierKeepsUnrelatedOperations() {
+        let suiteName = "WidgetDataBridgeTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let bridge = makeBridge(userDefaults: defaults)
+        let completion = WidgetPendingOperation(itemId: "task-1", action: TaskWidgetAction.complete)
+        let addNew = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
+
+        bridge.recordPendingOperation(completion, for: .tasks)
+        bridge.recordPendingOperation(addNew, for: .tasks)
+        bridge.removePendingOperation(
+            withId: completion.id,
+            for: .tasks,
+            actionType: TaskWidgetAction.self
+        )
+
+        let remaining = bridge.loadPendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
+
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.id, addNew.id)
+        XCTAssertEqual(remaining.first?.action, .addNew)
+    }
 }
