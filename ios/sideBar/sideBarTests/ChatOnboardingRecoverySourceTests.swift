@@ -4,11 +4,15 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
     func testChatViewIncludesProviderRecoveryBannerAndSettingsCTA() throws {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let settingsRouteSource =
+            "ifenvironment.settingsViewModel.signedInOnboardingRecoveryState==.providerRecovery{" +
+            "OnboardingAddKeyBanner{" +
+            "UserDefaults.standard.set(\"agent\",forKey:AppStorageKeys.settingsSelectedSection)" +
+            "UserDefaults.standard.set(\"agent\",forKey:AppStorageKeys.settingsSelectedTab)" +
+            "environment.commandSelection=.settings}"
 
         XCTAssertTrue(
-            normalized.contains(
-                "ifenvironment.settingsViewModel.signedInOnboardingRecoveryState==.providerRecovery{OnboardingAddKeyBanner{environment.commandSelection=.settings}"
-            )
+            normalized.contains(settingsRouteSource)
         )
         XCTAssertTrue(normalized.contains(".frame(maxWidth:contentMaxWidth)"))
     }
@@ -17,13 +21,19 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("AddanAPIkeytostartusingtheassistant"))
+        XCTAssertTrue(normalized.contains("ChatneedsanAPIkey"))
+        XCTAssertTrue(normalized.contains(".accessibilityLabel(\"OpenSettings\")"))
+    }
+
+    func testChatComposerIsDisabledDuringProviderRecovery() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
         XCTAssertTrue(
             normalized.contains(
-                "Notes,tasks,websites,andfilesstillworkwhilechatstaysunavailable."
+                "environment.settingsViewModel.signedInOnboardingRecoveryState!=.providerRecovery"
             )
         )
-        XCTAssertTrue(normalized.contains("OpenSettings"))
     }
 
     private func combinedChatSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {

@@ -107,6 +107,14 @@ private struct ChatDetailView: View {
                 }
                 if environment.settingsViewModel.signedInOnboardingRecoveryState == .providerRecovery {
                     OnboardingAddKeyBanner {
+                        UserDefaults.standard.set(
+                            "agent",
+                            forKey: AppStorageKeys.settingsSelectedSection
+                        )
+                        UserDefaults.standard.set(
+                            "agent",
+                            forKey: AppStorageKeys.settingsSelectedTab
+                        )
                         environment.commandSelection = .settings
                     }
                     .padding(.horizontal, DesignTokens.Spacing.md)
@@ -215,7 +223,9 @@ private struct ChatDetailView: View {
     }
 
     private var canSendMessages: Bool {
-        !viewModel.isStreaming && environment.isNetworkAvailable
+        !viewModel.isStreaming
+            && environment.isNetworkAvailable
+            && environment.settingsViewModel.signedInOnboardingRecoveryState != .providerRecovery
     }
 
     private var assistantDisplayName: String {
@@ -224,7 +234,7 @@ private struct ChatDetailView: View {
 
     private func handleSend() {
         let message = draftMessage.trimmed
-        guard !message.isEmpty else {
+        guard !message.isEmpty, canSendMessages else {
             return
         }
         draftMessage = ""

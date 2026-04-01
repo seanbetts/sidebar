@@ -165,6 +165,9 @@ struct ChatInputAppKitView: NSViewRepresentable {
         attachButton.alphaValue = isEnabled ? 1.0 : 0.45
         attachButton.contentTintColor = isEnabled ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor
         placeholderLabel.isHidden = !text.trimmed.isEmpty
+        if !isEnabled, textView.window?.firstResponder === textView {
+            textView.window?.makeFirstResponder(nil)
+        }
         context.coordinator.applyResetIfNeeded(token: resetToken, textView: textView)
         context.coordinator.applySizing(for: textView, deferStateMutation: true)
     }

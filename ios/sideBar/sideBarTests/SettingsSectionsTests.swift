@@ -803,6 +803,15 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("Label(\"More\",systemImage:\"ellipsis.circle\")"))
     }
 
+    func testSettingsTabsIOSPersistsSelectedTabForExternalRouting() throws {
+        let normalized = try settingsTabsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("@AppStorage(AppStorageKeys.settingsSelectedTab)privatevarselectedTabRaw=Tab.profile.rawValue"))
+        XCTAssertTrue(normalized.contains("TabView(selection:$selectedTabRaw)"))
+        XCTAssertTrue(normalized.contains(".tag(Tab.agent.rawValue)"))
+    }
+
     func testSettingsMoreTabRoutesToMemoriesAndAppWithSettingsChrome() throws {
         let normalized = try settingsMoreTabSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

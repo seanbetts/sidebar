@@ -101,10 +101,6 @@ public final class SettingsViewModel: LoadableViewModel {
         isLoadingSkills = false
     }
 
-    public var signedInOnboardingRecoveryState: OnboardingPresentation.SignedInRecoveryState {
-        OnboardingPresentation.signedInRecoveryState(for: onboardingState)
-    }
-
     public func loadOnboarding(force: Bool = false) async {
         _ = force
         guard let onboardingAPI else {

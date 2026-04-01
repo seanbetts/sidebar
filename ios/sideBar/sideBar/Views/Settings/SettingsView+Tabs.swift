@@ -17,22 +17,27 @@ struct SettingsTabsView: View {
     @ObservedObject var memoriesViewModel: MemoriesViewModel
     let savePillState: SettingsSavePillState?
     @State private var hasLoaded = false
+    @AppStorage(AppStorageKeys.settingsSelectedTab) private var selectedTabRaw = Tab.profile.rawValue
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTabRaw) {
             settingsTabContent(ProfileSettingsView(viewModel: viewModel))
+                .tag(Tab.profile.rawValue)
                 .tabItem {
                     Label("Profile", systemImage: "person.crop.circle")
                 }
             settingsTabContent(UserSettingsView(viewModel: viewModel))
+                .tag(Tab.user.rawValue)
                 .tabItem {
                     Label("User", systemImage: "person.line.dotted.person")
                 }
             settingsTabContent(AgentSettingsView(viewModel: viewModel))
+                .tag(Tab.agent.rawValue)
                 .tabItem {
                     Label(viewModel.assistantDisplayName, systemImage: "brain.fill")
                 }
             settingsTabContent(SkillsSettingsView(viewModel: viewModel))
+                .tag(Tab.skills.rawValue)
                 .tabItem {
                     Label("Skills", systemImage: "command.circle")
                 }
@@ -41,6 +46,7 @@ struct SettingsTabsView: View {
                     memoriesViewModel: memoriesViewModel
                 )
             )
+                .tag(Tab.more.rawValue)
                 .tabItem {
                     Label("More", systemImage: "ellipsis.circle")
                 }
@@ -77,5 +83,15 @@ struct SettingsTabsView: View {
                         .allowsHitTesting(false)
                 }
             }
+    }
+}
+
+private extension SettingsTabsView {
+    enum Tab: String {
+        case profile
+        case user
+        case agent
+        case skills
+        case more
     }
 }

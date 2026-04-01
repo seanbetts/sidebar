@@ -75,6 +75,34 @@ final class ErrorMappingTests: XCTestCase {
         XCTAssertEqual(presentation.category, .authOrPermission)
     }
 
+    func testMapsMissingProviderKeyToActionableChatPresentation() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: "No API key configured for provider 'anthropic'"
+        )
+
+        XCTAssertFalse(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .authOrPermission)
+        XCTAssertEqual(presentation.title, "API key required")
+        XCTAssertEqual(
+            presentation.userMessage,
+            "Add an API key in Settings to start using chat."
+        )
+    }
+
+    func testMapsMissingPrimaryProviderToActionableChatPresentation() {
+        let presentation = ErrorMapping.chatStreamPresentation(
+            from: "No primary AI provider configured for strict BYOK mode"
+        )
+
+        XCTAssertFalse(presentation.isRetryable)
+        XCTAssertEqual(presentation.category, .authOrPermission)
+        XCTAssertEqual(presentation.title, "AI provider required")
+        XCTAssertEqual(
+            presentation.userMessage,
+            "Choose an AI provider in Settings to start using chat."
+        )
+    }
+
     func testMapsContextTooLargeAsNonRetryable() {
         let presentation = ErrorMapping.chatStreamPresentation(
             from: "context length exceeded maximum allowed tokens"

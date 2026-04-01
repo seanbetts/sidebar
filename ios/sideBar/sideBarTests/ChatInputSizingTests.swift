@@ -32,8 +32,8 @@ final class ChatInputSizingTests: XCTestCase {
         XCTAssertEqual(ChatInputSizing.stateMeasuredHeight(for: 59, minHeight: 46), 59)
     }
 
-    func testTextViewStaysEditableWhileFocusedEvenWhenDisabled() {
-        XCTAssertTrue(
+    func testTextViewDisablesEvenWhenFocusedIfInputIsDisabled() {
+        XCTAssertFalse(
             ChatInputInteractivity.textViewIsEditable(
                 isEnabled: false,
                 isFirstResponder: true

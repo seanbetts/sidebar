@@ -3,41 +3,76 @@ import SwiftUI
 struct OnboardingAddKeyBanner: View {
     let onOpenSettings: () -> Void
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var bannerMaxWidth: CGFloat {
+        horizontalSizeClass == .compact ? 360 : 420
+    }
+
     var body: some View {
-        HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-            Image(systemName: "key.horizontal.fill")
-                .font(.system(size: DesignTokens.Icon.md, weight: .semibold))
-                .foregroundStyle(DesignTokens.Colors.textPrimary)
-                .frame(width: DesignTokens.Size.touchTarget, height: DesignTokens.Size.touchTarget)
-                .background(
-                    DesignTokens.Colors.muted.opacity(0.65),
-                    in: RoundedRectangle(
-                        cornerRadius: DesignTokens.Radius.sm,
-                        style: .continuous
-                    )
-                )
-                .accessibilityHidden(true)
+        GlassEffectContainer(spacing: DesignTokens.Spacing.xs) {
+            HStack(spacing: DesignTokens.Spacing.xsPlus) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                    HStack(spacing: DesignTokens.Spacing.xs) {
+                        Image(systemName: "key.horizontal.fill")
+                            .appFont(.captionSemibold)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 18, alignment: .leading)
+                            .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                Text("Add an API key to start using the assistant")
-                    .appFont(.headline)
-                    .foregroundStyle(DesignTokens.Colors.textPrimary)
+                        Text("Chat needs an API key")
+                            .appFont(.labelMd)
+                            .lineLimit(1)
+                    }
+                }
 
-                Text("Notes, tasks, websites, and files still work while chat stays unavailable.")
-                    .appFont(.subheadline)
-                    .foregroundStyle(DesignTokens.Colors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: DesignTokens.Spacing.sm)
+
+                Button(action: onOpenSettings) {
+                    Image(systemName: "gearshape")
+                        .appFont(.captionSemibold)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open Settings")
+                .modifier(AddKeyBannerButtonChrome())
             }
-
-            Spacer(minLength: DesignTokens.Spacing.sm)
-
-            Button("Open Settings", action: onOpenSettings)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.regular)
+            .padding(.leading, DesignTokens.Spacing.md)
+            .padding(.trailing, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .frame(maxWidth: bannerMaxWidth)
+            .modifier(OnboardingAddKeyBannerChromeModifier())
         }
-        .padding(DesignTokens.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardStyle()
         .accessibilityElement(children: .contain)
+    }
+}
+
+private struct OnboardingAddKeyBannerChromeModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                }
+        }
+    }
+}
+
+private struct AddKeyBannerButtonChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                }
+        }
     }
 }

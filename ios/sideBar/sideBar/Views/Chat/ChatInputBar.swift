@@ -33,6 +33,7 @@ struct ChatInputBar: View {
                 onSend: onSend,
                 onAttach: onAttach
             )
+            .allowsHitTesting(isEnabled)
             .frame(height: computedHeight)
             .modifier(GlassEffectModifier())
         }

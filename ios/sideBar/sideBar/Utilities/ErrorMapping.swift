@@ -360,6 +360,18 @@ public enum ErrorMapping {
                 userMessage: "I couldn't finish this response because it needed too many tool steps. Try a narrower follow-up."
             ),
             ChatStreamPresentationRule(
+                matches: sourceText.contains("no api key configured for provider"),
+                category: .authOrPermission,
+                title: "API key required",
+                userMessage: "Add an API key in Settings to start using chat."
+            ),
+            ChatStreamPresentationRule(
+                matches: sourceText.contains("no primary ai provider configured for strict byok mode"),
+                category: .authOrPermission,
+                title: "AI provider required",
+                userMessage: "Choose an AI provider in Settings to start using chat."
+            ),
+            ChatStreamPresentationRule(
                 matches: sourceText.contains("authentication_error")
                     || sourceText.contains("unauthorized")
                     || sourceText.contains("forbidden")

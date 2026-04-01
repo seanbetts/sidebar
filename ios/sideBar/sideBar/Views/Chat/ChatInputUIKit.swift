@@ -146,6 +146,9 @@ struct ChatInputUIKitView: UIViewRepresentable {
         attachButton.alpha = isEnabled ? 1.0 : 0.45
         attachButton.tintColor = isEnabled ? UIColor.secondaryLabel : UIColor.tertiaryLabel
         placeholderLabel.isHidden = !text.trimmed.isEmpty
+        if !isEnabled, textView.isFirstResponder {
+            textView.resignFirstResponder()
+        }
         context.coordinator.applyResetIfNeeded(token: resetToken, textView: textView)
         context.coordinator.applySizing(for: textView, deferStateMutation: true)
     }

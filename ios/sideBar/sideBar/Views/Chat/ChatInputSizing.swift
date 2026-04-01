@@ -44,6 +44,7 @@ enum ChatInputSizing {
 
 enum ChatInputInteractivity {
     static func textViewIsEditable(isEnabled: Bool, isFirstResponder: Bool) -> Bool {
-        isEnabled || isFirstResponder
+        _ = isFirstResponder
+        return isEnabled
     }
 }
