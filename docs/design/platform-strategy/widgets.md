@@ -232,7 +232,7 @@ When a user completes a task from the widget:
 4. After 1.25 seconds (the completion display duration), the smart timeline boundary fires and the task disappears from the list.
 5. The intent attempts a direct backend completion write from the widget extension using the existing task API.
 6. If the write succeeds, the pending completion is cleared and a timeline reload is requested.
-7. If the write fails, the pending completion stays in the store. When the main app becomes active, it reads pending operations and syncs them via `WriteQueue`.
+7. If the write fails, the pending completion stays in the store. When the main app becomes active, it reads pending operations and replays the completion through the normal task completion or direct apply path.
 
 The widget never waits for the network to update the UI. The optimistic local update is the user's confirmation. The direct backend write improves cross-device sync when the app is closed, with app-side recovery as fallback.
 
