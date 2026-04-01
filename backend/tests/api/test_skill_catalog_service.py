@@ -33,6 +33,7 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
         "audio-transcribe",
         "youtube-download",
         "youtube-transcribe",
+        "onboarding-coach",
         "prompt-preview",
         "settings-other-preferences",
         "assistant-identity",
@@ -86,6 +87,7 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
         "files",
         "memory",
         "notes",
+        "onboarding-coach",
         "prompt-preview",
         "settings-other-preferences",
         "tasks",
@@ -130,6 +132,16 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     )
     assert str(by_id["ui-theme"]["description"]) == "Allow {name} to switch between light and dark mode"
     assert str(by_id["memory"]["description"]) == "Store and manage persistent memories"
+    assert by_id["onboarding-coach"]["tier"] == "standard"
+    assert by_id["onboarding-coach"]["installable"] is False
+    assert by_id["onboarding-coach"]["default_enabled"] is True
+    assert (
+        str(by_id["onboarding-coach"]["name"]) == "Onboarding Coach"
+    )
+    assert (
+        str(by_id["onboarding-coach"]["description"])
+        == "Guide incomplete users through setup recovery and first outcomes"
+    )
 
     assert bool(by_id["assistant-identity"]["user_toggleable"]) is False
     assert bool(by_id["assistant-soul"]["user_toggleable"]) is False
@@ -155,6 +167,7 @@ def test_capability_registry_exposes_code_backed_contract() -> None:
     records = registry_loader.list_capabilities()
     by_skill_id = {record.skill_id: record for record in records}
     assert "audio-transcribe" in by_skill_id
+    assert "onboarding-coach" in by_skill_id
 
     audio_transcribe = by_skill_id["audio-transcribe"]
     assert audio_transcribe.required_toolsets
@@ -163,6 +176,10 @@ def test_capability_registry_exposes_code_backed_contract() -> None:
     assert audio_transcribe.token_estimate > 0
     assert isinstance(audio_transcribe.tags, tuple)
     assert isinstance(audio_transcribe.triggers, tuple)
+    onboarding_coach = by_skill_id["onboarding-coach"]
+    assert onboarding_coach.instruction_ref == "skills/onboarding-coach/SKILL.md"
+    assert isinstance(onboarding_coach.tags, tuple)
+    assert isinstance(onboarding_coach.triggers, tuple)
 
 
 def test_capability_registry_loads_without_db_access(monkeypatch) -> None:

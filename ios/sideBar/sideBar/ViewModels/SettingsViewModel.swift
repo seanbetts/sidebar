@@ -26,9 +26,12 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var settingsSaveCompletionCount: Int = 0
     @Published public private(set) var isSavingPrimaryProvider: Bool = false
     @Published public private(set) var primaryProviderError: String?
+    @Published public private(set) var onboardingState: OnboardingState?
+    @Published public private(set) var isLoadingOnboarding: Bool = false
 
     let settingsAPI: any SettingsProviding
     let skillsAPI: any SkillsProviding
+    let onboardingAPI: (any OnboardingProviding)?
     let cache: CacheClient
     let currentAuthUserIdProvider: () -> String?
     let currentAuthorizedUserIdProvider: (() -> String?)?
@@ -37,6 +40,7 @@ public final class SettingsViewModel: LoadableViewModel {
     public init(
         settingsAPI: any SettingsProviding,
         skillsAPI: any SkillsProviding,
+        onboardingAPI: (any OnboardingProviding)? = nil,
         cache: CacheClient,
         currentAuthUserIdProvider: @escaping () -> String? = { nil },
         currentAuthorizedUserIdProvider: (() -> String?)? = nil,
@@ -44,6 +48,7 @@ public final class SettingsViewModel: LoadableViewModel {
     ) {
         self.settingsAPI = settingsAPI
         self.skillsAPI = skillsAPI
+        self.onboardingAPI = onboardingAPI
         self.cache = cache
         self.currentAuthUserIdProvider = currentAuthUserIdProvider
         self.currentAuthorizedUserIdProvider = currentAuthorizedUserIdProvider
@@ -94,6 +99,27 @@ public final class SettingsViewModel: LoadableViewModel {
             skillsError = error.localizedDescription
         }
         isLoadingSkills = false
+    }
+
+    public var signedInOnboardingRecoveryState: OnboardingPresentation.SignedInRecoveryState {
+        OnboardingPresentation.signedInRecoveryState(for: onboardingState)
+    }
+
+    public func loadOnboarding(force: Bool = false) async {
+        _ = force
+        guard let onboardingAPI else {
+            onboardingState = nil
+            return
+        }
+
+        isLoadingOnboarding = true
+        defer { isLoadingOnboarding = false }
+
+        do {
+            onboardingState = try await onboardingAPI.getOnboarding()
+        } catch {
+            onboardingState = nil
+        }
     }
 
     public func loadShortcutsToken() async {
@@ -391,6 +417,8 @@ public final class SettingsViewModel: LoadableViewModel {
 
         isSavingPrimaryProvider = false
         primaryProviderError = nil
+        onboardingState = nil
+        isLoadingOnboarding = false
     }
 
     func applySettingsResponse(_ response: UserSettings) {

@@ -9,6 +9,10 @@ from typing import Any
 
 from api.constants import ChatConstants
 from api.schemas.tool_context import ToolExecutionContext
+from api.services.agent.orchestrator.event_emitter import (
+    build_onboarding_milestone_completed_event,
+    iter_initial_onboarding_events,
+)
 from api.services.web_search_builder import (
     build_web_search_location,
     serialize_web_search_result,
@@ -103,6 +107,15 @@ async def stream_with_tools(
 
     messages = conversation_history or []
     messages.append({"role": "user", "content": message})
+
+    onboarding_state = None
+    if isinstance(context_dict, dict):
+        raw_onboarding_state = context_dict.get("onboarding_state")
+        if isinstance(raw_onboarding_state, dict):
+            onboarding_state = raw_onboarding_state
+
+    for onboarding_event in iter_initial_onboarding_events(onboarding_state):
+        yield onboarding_event
 
     base_tools = tool_mapper.get_claude_tools(allowed_skills)
     user_location = None
@@ -547,6 +560,14 @@ async def stream_with_tools(
                                     )
                                     if assistant_settings_event:
                                         yield assistant_settings_event
+                                    onboarding_milestone_event = (
+                                        build_onboarding_milestone_completed_event(
+                                            onboarding_state,
+                                            result_data.get("onboarding_milestone"),
+                                        )
+                                    )
+                                    if onboarding_milestone_event:
+                                        yield onboarding_milestone_event
 
                                 content_value = json.dumps(result)
                                 if display_name == "Memory Tool":

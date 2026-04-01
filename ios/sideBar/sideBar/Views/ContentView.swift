@@ -183,6 +183,13 @@ public struct ContentView: View {
         )
     }
 
+    var signedInOnboardingRecoveryState: OnboardingPresentation.SignedInRecoveryState {
+        OnboardingPresentation.signedInRecoveryState(
+            authState: environment.authState,
+            onboardingState: environment.settingsViewModel.onboardingState
+        )
+    }
+
     private var onboardingPresentationStyle: OnboardingPresentation.Style {
 #if canImport(UIKit)
         OnboardingPresentation.style(for: UIDevice.current.userInterfaceIdiom)

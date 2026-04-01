@@ -197,3 +197,63 @@ def test_resolver_falls_back_to_search_when_fast_paths_are_weak():
     assert result["selected_skill_ids"] == ["files"]
     assert result["executable_skill_ids"] == ["files"]
     assert "tool_definitions" not in result
+
+
+def test_resolver_adds_onboarding_coach_for_incomplete_onboarding():
+    result = _resolver_service().resolve_for_turn(
+        user_message="Help me finish setup",
+        enabled_skill_ids=["onboarding-coach", "notes"],
+        runtime_capabilities=[
+            _runtime_capability(
+                "onboarding-coach",
+                description="Guide incomplete users through setup recovery.",
+                tags=["onboarding", "setup"],
+                triggers=["finish setup", "connect key"],
+            ),
+            _runtime_capability(
+                "notes",
+                description="Search and summarize notes.",
+                tags=["notes"],
+                triggers=["note", "summarize"],
+            ),
+        ],
+        onboarding_state={
+            "status": "dismissed",
+            "current_onboarding_step": "provider_recovery",
+            "is_onboarding_complete": False,
+            "provider_ready": False,
+        },
+    )
+
+    assert result["selected_skill_ids"] == ["onboarding-coach"]
+    assert result["executable_skill_ids"] == ["onboarding-coach"]
+
+
+def test_resolver_omits_onboarding_coach_for_completed_onboarding():
+    result = _resolver_service().resolve_for_turn(
+        user_message="Summarize my notes",
+        enabled_skill_ids=["onboarding-coach", "notes"],
+        runtime_capabilities=[
+            _runtime_capability(
+                "onboarding-coach",
+                description="Guide incomplete users through setup recovery.",
+                tags=["onboarding", "setup"],
+                triggers=["finish setup", "connect key"],
+            ),
+            _runtime_capability(
+                "notes",
+                description="Search and summarize notes.",
+                tags=["notes"],
+                triggers=["note", "summarize"],
+            ),
+        ],
+        onboarding_state={
+            "status": "completed",
+            "current_onboarding_step": "completed",
+            "is_onboarding_complete": True,
+            "provider_ready": True,
+        },
+    )
+
+    assert result["selected_skill_ids"] == ["notes"]
+    assert result["executable_skill_ids"] == ["notes"]

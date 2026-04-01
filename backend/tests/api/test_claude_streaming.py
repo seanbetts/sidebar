@@ -482,6 +482,144 @@ async def test_stream_with_tools_emits_other_preferences_event():
 
 
 @pytest.mark.asyncio
+async def test_stream_with_tools_emits_onboarding_provider_blocked_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start", content_block=SimpleNamespace(type="text")
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(type="text_delta", text="Let's finish setup."),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=DummyToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=["onboarding-coach"],
+        tool_context={
+            "onboarding_state": {
+                "status": "dismissed",
+                "provider_ready": False,
+                "current_onboarding_step": "provider_recovery",
+                "is_onboarding_complete": False,
+            }
+        },
+    ):
+        output.append(event)
+
+    assert {
+        "type": "onboarding_provider_blocked",
+        "data": {
+            "current_onboarding_step": "provider_recovery",
+            "provider_ready": False,
+        },
+    } in output
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_emits_onboarding_resume_suggested_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start", content_block=SimpleNamespace(type="text")
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(type="text_delta", text="Resume onboarding."),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=DummyToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=["onboarding-coach"],
+        tool_context={
+            "onboarding_state": {
+                "status": "in_progress",
+                "provider_ready": True,
+                "current_onboarding_step": "feature_discovery",
+                "is_onboarding_complete": False,
+            }
+        },
+    ):
+        output.append(event)
+
+    assert {
+        "type": "onboarding_resume_suggested",
+        "data": {
+            "current_onboarding_step": "feature_discovery",
+            "provider_ready": True,
+        },
+    } in output
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_emits_onboarding_milestone_completed_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="test_tool"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"step": "next"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class MilestoneToolMapper(DummyToolMapper):
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            return {
+                "success": True,
+                "data": {
+                    "onboarding_milestone": "provider_connected",
+                },
+            }
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=MilestoneToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=["onboarding-coach"],
+        tool_context={
+            "onboarding_state": {
+                "status": "in_progress",
+                "provider_ready": True,
+                "current_onboarding_step": "feature_discovery",
+                "is_onboarding_complete": False,
+            }
+        },
+    ):
+        output.append(event)
+
+    assert {
+        "type": "onboarding_milestone_completed",
+        "data": {
+            "current_onboarding_step": "feature_discovery",
+            "provider_ready": True,
+            "milestone": "provider_connected",
+        },
+    } in output
+
+
+@pytest.mark.asyncio
 async def test_stream_with_tools_emits_note_pinned_event():
     events = [
         SimpleNamespace(

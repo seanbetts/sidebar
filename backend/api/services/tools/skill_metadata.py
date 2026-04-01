@@ -72,6 +72,12 @@ SKILL_DISPLAY = {
         "name": "Assistant Soul",
         "description": "Read and update assistant-managed soul guidance settings",
     },
+    "onboarding-coach": {
+        "name": "Onboarding Coach",
+        "description": (
+            "Guide incomplete users through setup recovery and first outcomes"
+        ),
+    },
     "settings-profile-user": {
         "name": "Settings Profile/User",
         "description": "Read and update profile and user settings fields",
@@ -113,6 +119,7 @@ STANDARD_SKILLS = {
     "settings-profile-user",
     "ui-theme",
     "prompt-preview",
+    "onboarding-coach",
     "settings-other-preferences",
 }
 
@@ -184,6 +191,7 @@ SKILL_REQUIRED_TOOLSETS: dict[str, tuple[str, ...]] = {
     "assistant-identity": ("assistant_identity",),
     "assistant-soul": ("assistant_soul",),
     "product-feedback": ("product_feedback",),
+    "onboarding-coach": (),
 }
 
 SKILL_TAGS: dict[str, tuple[str, ...]] = {
@@ -199,6 +207,7 @@ SKILL_TAGS: dict[str, tuple[str, ...]] = {
     "youtube-transcribe": ("youtube", "transcription"),
     "subdomain-discover": ("web", "security"),
     "web-crawler-policy": ("web", "analysis"),
+    "onboarding-coach": ("onboarding", "setup", "recovery"),
 }
 
 SKILL_TRIGGERS: dict[str, tuple[str, ...]] = {
@@ -222,6 +231,7 @@ SKILL_TRIGGERS: dict[str, tuple[str, ...]] = {
     "youtube-transcribe": ("transcribe youtube", "youtube transcript"),
     "subdomain-discover": ("subdomain", "dns"),
     "web-crawler-policy": ("robots", "llms.txt"),
+    "onboarding-coach": ("finish setup", "connect api key", "continue onboarding"),
 }
 
 SKILL_TOKEN_ESTIMATES: dict[str, int] = {
@@ -244,6 +254,7 @@ SKILL_TOKEN_ESTIMATES: dict[str, int] = {
     "assistant-identity": 250,
     "assistant-soul": 250,
     "product-feedback": 220,
+    "onboarding-coach": 240,
 }
 
 SKILL_INSTRUCTION_REFS: dict[str, str] = {

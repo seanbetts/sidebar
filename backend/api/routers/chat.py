@@ -331,6 +331,7 @@ async def stream_chat(
         runtime_capabilities=runtime_capabilities,
         open_context=open_context,
         attachments=attachments,
+        onboarding_state=onboarding_state,
     )
     blocked_skill_summaries = list(
         resolver_result.get(
@@ -386,6 +387,7 @@ async def stream_chat(
         blocked_skill_summaries=blocked_skill_summaries,
         enabled_skill_ids=list(enabled_skills),
         runtime_capabilities=runtime_capabilities,
+        onboarding_state=onboarding_state,
     )
 
     stream_started_at = time.perf_counter()
@@ -595,6 +597,9 @@ async def stream_chat(
                     "assistant_soul_updated",
                     "profile_user_settings_updated",
                     "other_preferences_updated",
+                    "onboarding_provider_blocked",
+                    "onboarding_resume_suggested",
+                    "onboarding_milestone_completed",
                     "workspace_patch",
                 }:
                     data = json.dumps(event.get("data", {}))

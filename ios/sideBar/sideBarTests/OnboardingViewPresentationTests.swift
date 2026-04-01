@@ -230,6 +230,80 @@ final class OnboardingViewPresentationTests: OnboardingViewTestCase {
     }
 
     @MainActor
+    func testSignedOutAutoPresentationStillDependsOnLocalWizardStatus() {
+        XCTAssertTrue(
+            OnboardingPresentation.shouldPresent(
+                authState: .signedOut,
+                onboardingStatus: .notStarted,
+                isTestingOnboarding: false
+            )
+        )
+        XCTAssertFalse(
+            OnboardingPresentation.shouldPresent(
+                authState: .active,
+                onboardingStatus: .notStarted,
+                isTestingOnboarding: false
+            )
+        )
+    }
+
+    @MainActor
+    func testSignedInRecoveryStateUsesBackendDerivedProviderRecovery() {
+        let state = OnboardingState(
+            status: .dismissed,
+            providerReady: false,
+            currentOnboardingStep: .providerRecovery,
+            isOnboardingComplete: false,
+            intent: .notes,
+            milestones: .init(
+                providerConnected: nil,
+                firstOutcomeCompleted: nil,
+                profileBasicsSet: nil,
+                communicationStyleSet: nil,
+                secondaryTourSeen: nil
+            ),
+            permissions: .init(location: .notAsked, notifications: .notAsked),
+            lastPromptedAt: nil
+        )
+
+        XCTAssertEqual(
+            OnboardingPresentation.signedInRecoveryState(
+                authState: .active,
+                onboardingState: state
+            ),
+            .providerRecovery
+        )
+    }
+
+    @MainActor
+    func testSignedInRecoveryStateIgnoresIncompleteBackendStateWhenSignedOut() {
+        let state = OnboardingState(
+            status: .dismissed,
+            providerReady: false,
+            currentOnboardingStep: .providerRecovery,
+            isOnboardingComplete: false,
+            intent: .notes,
+            milestones: .init(
+                providerConnected: nil,
+                firstOutcomeCompleted: nil,
+                profileBasicsSet: nil,
+                communicationStyleSet: nil,
+                secondaryTourSeen: nil
+            ),
+            permissions: .init(location: .notAsked, notifications: .notAsked),
+            lastPromptedAt: nil
+        )
+
+        XCTAssertEqual(
+            OnboardingPresentation.signedInRecoveryState(
+                authState: .signedOut,
+                onboardingState: state
+            ),
+            .none
+        )
+    }
+
+    @MainActor
     func testOnboardingViewRoutesFinalStepThroughFinalStepView() {
         XCTAssertEqual(
             OnboardingView.contentKind(for: .finalStep),

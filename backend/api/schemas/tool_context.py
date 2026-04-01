@@ -33,6 +33,7 @@ class ToolExecutionContext:
     enabled_skill_ids: list[str] = field(default_factory=list)
     runtime_capabilities: list[dict[str, Any]] = field(default_factory=list)
     prompt_preview_payload: dict[str, Any] | None = None
+    onboarding_state: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the context to a legacy dict payload."""
@@ -63,4 +64,5 @@ class ToolExecutionContext:
             "enabled_skill_ids": self.enabled_skill_ids,
             "runtime_capabilities": self.runtime_capabilities,
             "prompt_preview_payload": self.prompt_preview_payload,
+            "onboarding_state": self.onboarding_state,
         }

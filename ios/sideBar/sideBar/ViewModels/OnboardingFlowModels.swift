@@ -77,6 +77,14 @@ public enum OnboardingPresentation {
         case onboardingBackdrop
     }
 
+    /// Signed-in recovery path derived from backend onboarding state.
+    public enum SignedInRecoveryState: Equatable {
+        case none
+        case providerRecovery
+        case permissionRecovery
+        case featureDiscovery
+    }
+
     /// Modal presentation style chosen for the current device family.
     public enum Style: Equatable {
         case fullScreenCover
@@ -127,6 +135,35 @@ public enum OnboardingPresentation {
 #else
         return isOnboardingPresented ? .onboardingBackdrop : .login
 #endif
+    }
+
+    public static func signedInRecoveryState(
+        authState: AuthState,
+        onboardingState: OnboardingState?
+    ) -> SignedInRecoveryState {
+        guard authState == .active else {
+            return .none
+        }
+        return signedInRecoveryState(for: onboardingState)
+    }
+
+    public static func signedInRecoveryState(
+        for onboardingState: OnboardingState?
+    ) -> SignedInRecoveryState {
+        guard let onboardingState, !onboardingState.isOnboardingComplete else {
+            return .none
+        }
+
+        switch onboardingState.currentOnboardingStep {
+        case .providerRecovery:
+            return .providerRecovery
+        case .permissionRecovery:
+            return .permissionRecovery
+        case .featureDiscovery:
+            return .featureDiscovery
+        case .phase1Wizard, .completed:
+            return .none
+        }
     }
 
 #if canImport(UIKit)

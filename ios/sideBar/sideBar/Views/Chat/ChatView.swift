@@ -105,6 +105,16 @@ private struct ChatDetailView: View {
                     ChatHeaderView(viewModel: viewModel)
                     Divider()
                 }
+                if environment.settingsViewModel.signedInOnboardingRecoveryState == .providerRecovery {
+                    OnboardingAddKeyBanner {
+                        environment.commandSelection = .settings
+                    }
+                    .padding(.horizontal, DesignTokens.Spacing.md)
+                    .padding(.top, DesignTokens.Spacing.md)
+                    .padding(.bottom, DesignTokens.Spacing.sm)
+                    .frame(maxWidth: contentMaxWidth)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
                 if viewModel.isLoadingMessages {
                     LoadingView(message: "Loading messages…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -10,6 +10,7 @@ from api.services.capabilities.search import CapabilitySearchService
 class CapabilityResolverService:
     """Resolve turn-relevant skills without loading instructions or tools."""
 
+    _ONBOARDING_COACH_SKILL_ID = "onboarding-coach"
     _NOTE_KEYWORDS = {"note", "notes", "summarize", "summary"}
     _FILE_KEYWORDS = {"file", "files", "folder", "project", "workspace", "config"}
     _WEBSITE_KEYWORDS = {
@@ -99,6 +100,34 @@ class CapabilityResolverService:
         }
 
     @classmethod
+    def _should_select_onboarding_coach(
+        cls,
+        *,
+        onboarding_state: dict[str, Any] | None,
+        catalog_skill_ids: list[str],
+    ) -> bool:
+        if cls._ONBOARDING_COACH_SKILL_ID not in catalog_skill_ids:
+            return False
+        if not isinstance(onboarding_state, dict):
+            return False
+        if bool(onboarding_state.get("is_onboarding_complete")):
+            return False
+
+        current_step = str(onboarding_state.get("current_onboarding_step", "")).strip()
+        if current_step in {
+            "provider_recovery",
+            "permission_recovery",
+            "feature_discovery",
+        }:
+            return True
+
+        return str(onboarding_state.get("status", "")).strip() in {
+            "not_started",
+            "in_progress",
+            "dismissed",
+        }
+
+    @classmethod
     def resolve_for_turn(
         cls,
         *,
@@ -107,6 +136,7 @@ class CapabilityResolverService:
         runtime_capabilities: list[dict[str, Any]],
         open_context: dict[str, Any] | None = None,
         attachments: list[dict[str, Any]] | None = None,
+        onboarding_state: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Return visible, selected, executable, and blocked skill IDs."""
         _ = attachments
@@ -118,23 +148,31 @@ class CapabilityResolverService:
             str(capability["skill_id"]) for capability in catalog_capabilities
         ]
 
-        selected_skill_ids = cls._deterministic_matches(
-            user_message=user_message,
-            open_context=open_context,
-            catalog_capabilities=catalog_capabilities,
-        )
-        if not selected_skill_ids:
-            selected_skill_ids = CapabilitySearchService.rank_visible_skills(
-                user_message=user_message,
-                visible_capabilities=catalog_capabilities,
-            )
-        if not selected_skill_ids:
-            selected_skill_ids = list(catalog_skill_ids)
+        if cls._should_select_onboarding_coach(
+            onboarding_state=onboarding_state,
+            catalog_skill_ids=catalog_skill_ids,
+        ):
+            selected_skill_ids = [cls._ONBOARDING_COACH_SKILL_ID]
         else:
-            selected_set = set(selected_skill_ids)
-            selected_skill_ids = [
-                skill_id for skill_id in catalog_skill_ids if skill_id in selected_set
-            ]
+            selected_skill_ids = cls._deterministic_matches(
+                user_message=user_message,
+                open_context=open_context,
+                catalog_capabilities=catalog_capabilities,
+            )
+            if not selected_skill_ids:
+                selected_skill_ids = CapabilitySearchService.rank_visible_skills(
+                    user_message=user_message,
+                    visible_capabilities=catalog_capabilities,
+                )
+            if not selected_skill_ids:
+                selected_skill_ids = list(catalog_skill_ids)
+            else:
+                selected_set = set(selected_skill_ids)
+                selected_skill_ids = [
+                    skill_id
+                    for skill_id in catalog_skill_ids
+                    if skill_id in selected_set
+                ]
 
         selected_set = set(selected_skill_ids)
         blocked_skills = [

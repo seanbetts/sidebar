@@ -58,6 +58,15 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["settings-other-preferences"]["name"] == "Settings"
     assert by_id["product-feedback"]["tier"] == "required"
     assert by_id["product-feedback"]["installable"] is False
+    assert "onboarding-coach" in by_id
+    assert by_id["onboarding-coach"]["tier"] == "standard"
+    assert by_id["onboarding-coach"]["installable"] is False
+    assert by_id["onboarding-coach"]["default_enabled"] is True
+    assert by_id["onboarding-coach"]["name"] == "Onboarding Coach"
+    assert (
+        by_id["onboarding-coach"]["description"]
+        == "Guide incomplete users through setup recovery and first outcomes"
+    )
     expected_ids = {
         "assistant-identity",
         "assistant-soul",
@@ -66,6 +75,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
         "files",
         "memory",
         "notes",
+        "onboarding-coach",
         "product-feedback",
         "prompt-preview",
         "settings-other-preferences",

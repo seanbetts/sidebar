@@ -289,6 +289,117 @@ def test_stream_chat_loads_onboarding_state_and_passes_it_to_request_assembly(
     assert captured["onboarding_state"] == onboarding_state
 
 
+def test_stream_chat_passes_onboarding_state_to_capability_resolver(
+    test_client, monkeypatch
+):
+    captured: dict[str, object] = {}
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **_kwargs):
+            yield {"type": "token", "content": "Hello"}
+
+    onboarding_state = {
+        "status": "dismissed",
+        "provider_ready": False,
+        "current_onboarding_step": "provider_recovery",
+        "is_onboarding_complete": False,
+        "intent": "notes",
+        "milestones": {},
+        "permissions": {"location": "not_asked", "notifications": "not_asked"},
+        "last_prompted_at": None,
+    }
+
+    class FakeResolverService:
+        @staticmethod
+        def resolve_for_turn(**kwargs):
+            captured["resolver_onboarding_state"] = kwargs.get("onboarding_state")
+            return {
+                "selected_skill_ids": ["onboarding-coach"],
+                "executable_skill_ids": ["onboarding-coach"],
+                "blocked_skill_summaries": [],
+            }
+
+    def _build_assembled_inputs(**_kwargs):
+        return AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Help me finish setup",
+            prompt_bundle={},
+        )
+
+    def _build_prepared_request(**_kwargs):
+        return PreparedChatRequest(
+            provider="anthropic",
+            model="claude-sonnet-4-6",
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Help me finish setup",
+            tool_definitions=[],
+            budget_report=RequestBudgetReport(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                context_window_chars=40000,
+                reserved_output_chars=4000,
+                available_input_chars=35000,
+                provider_framing_chars=100,
+                system_prompt_chars=6,
+                bootstrap_history_chars=0,
+                conversation_history_chars=0,
+                current_message_chars=20,
+                tool_schema_chars=0,
+                total_input_chars=26,
+                overflow_chars=0,
+                within_budget=True,
+                failure_reason=None,
+                trimming_applied=False,
+                compaction_applied=False,
+            ),
+        )
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.OnboardingService,
+        "get_onboarding_state",
+        staticmethod(lambda *_args, **_kwargs: onboarding_state),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_assembled_inputs",
+        staticmethod(_build_assembled_inputs),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_prepared_request",
+        staticmethod(_build_prepared_request),
+    )
+    monkeypatch.setattr(chat_router, "CapabilityResolverService", FakeResolverService)
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Help me finish setup"},
+    )
+    assert response.status_code == 200
+    assert captured["resolver_onboarding_state"] == onboarding_state
+
+
 def test_stream_chat_forwards_other_preferences_events(test_client, monkeypatch):
     _patch_stream_gateway(
         monkeypatch,
@@ -353,6 +464,54 @@ def test_stream_chat_forwards_workspace_patch_events(test_client, monkeypatch):
     assert '"version": 1' in body
     assert '"op": "swap_panes"' in body
     assert "event: complete" in body
+
+
+def test_stream_chat_forwards_onboarding_stream_events(test_client, monkeypatch):
+    _patch_stream_gateway(
+        monkeypatch,
+        [
+            {
+                "type": "onboarding_provider_blocked",
+                "data": {
+                    "current_onboarding_step": "provider_recovery",
+                    "provider_ready": False,
+                },
+            },
+            {
+                "type": "onboarding_resume_suggested",
+                "data": {
+                    "current_onboarding_step": "feature_discovery",
+                    "provider_ready": True,
+                },
+            },
+            {
+                "type": "onboarding_milestone_completed",
+                "data": {
+                    "current_onboarding_step": "feature_discovery",
+                    "provider_ready": True,
+                    "milestone": "provider_connected",
+                },
+            },
+        ],
+    )
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 200
+
+    body = response.text
+    assert "event: onboarding_provider_blocked" in body
+    assert "event: onboarding_resume_suggested" in body
+    assert "event: onboarding_milestone_completed" in body
+    assert '"milestone": "provider_connected"' in body
 
 
 def test_stream_chat_forwards_conversation_title_updated_events(

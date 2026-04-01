@@ -437,6 +437,7 @@ extension ContentView {
             guard environment.authState == .active, environment.isProtectedContentReady else { return }
             environment.currentLocationViewModel.startTrackingIfAuthorized()
             await environment.settingsViewModel.load(force: true)
+            await environment.settingsViewModel.loadOnboarding(force: true)
             await environment.settingsViewModel.loadProfileImage()
             await refreshWeatherIfPossible()
         }

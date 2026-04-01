@@ -27,6 +27,7 @@ extension AppEnvironment {
             SettingsViewModel(
                 settingsAPI: container.settingsAPI,
                 skillsAPI: container.skillsAPI,
+                onboardingAPI: container.onboardingAPI,
                 cache: container.cacheClient,
                 currentAuthUserIdProvider: {
                     settingsRequestUserId(
