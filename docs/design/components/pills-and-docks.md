@@ -55,7 +55,7 @@ A small capsule that communicates a transient or ongoing state. Always has an ic
 | `SiteHeaderBar` sync pill | `Views/Websites/` | syncing, pending | No |
 | `SiteHeaderBar` ingestion pill | `Views/Websites/` | multiple | Yes (opens sheet) |
 | `ToastBanner` | `Design/Components/ToastCenter.swift` | error, success | No |
-| Stale auth retry pill | Auth views | stale | Yes (retry) |
+| Stale auth retry pill | Auth views | persistent stale after 10s | Yes (retry) |
 
 ### Target
 

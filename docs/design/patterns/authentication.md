@@ -68,9 +68,11 @@ A 60-second cooldown prevents refresh thrashing if multiple failures occur in ra
 
 When in `.stale`, the app:
 - Continues to function with locally cached data
-- Surfaces a non-blocking banner or toast indicating sync is paused
-- Provides a manual "Retry" action so the user is not left waiting for the next background refresh
+- Surfaces a non-blocking retry pill if stale state persists for 10 continuous seconds
+- Provides a manual "Retry" action in that pill so the user is not left waiting for the next background refresh
 - Automatically transitions to `.active` on next successful token refresh
+
+Short-lived stale periods should not show visible chrome. If the session recovers before the 10-second threshold, show nothing.
 
 **Rule**: Do not block the UI in `.stale` state. The user can continue working. Surface the degraded state clearly but without demanding action.
 
@@ -247,14 +249,14 @@ Auth errors are surfaced non-modally in order of severity:
 
 | Error type | Surface |
 |---|---|
-| Token refresh failed (transient) | Toast: "Sync paused — retrying..." |
+| Token refresh failed (transient) | No immediate surface; if `.stale` persists for 10 seconds, show retry pill: "Sync paused" |
 | Token refresh failed (hard auth error) | Sign-out with full data clear; return to login |
 | Sign-in failed (wrong credentials) | Inline error below email/password fields |
 | Sign-in rate limited | Inline lockout message with countdown |
 | Biometric failure | Inline error on lock screen |
-| Session expired mid-session | Toast, then transition to `.stale` |
+| Session expired mid-session | Transition to `.stale`; if it persists for 10 seconds, show retry pill |
 
-Auth errors must be cleared automatically when auth state transitions successfully. A stale error toast should not persist after the session is recovered.
+Auth errors must be cleared automatically when auth state transitions successfully. A stale retry pill should not persist after the session is recovered.
 
 ---
 
