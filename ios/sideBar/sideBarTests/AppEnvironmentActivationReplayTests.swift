@@ -4,6 +4,58 @@ import sideBarShared
 
 @MainActor
 extension AppEnvironmentDeepLinkTests {
+    func testHandleSignedInActivationConsumesPendingWidgetCompletionFallbackWhenOffline() async {
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        let taskId = UUID().uuidString
+        let task = TaskItem(
+            id: taskId,
+            title: "Offline fallback task",
+            status: "todo",
+            updatedAt: "2026-04-01T12:00:00Z"
+        )
+        environment.container.cacheClient.set(
+            key: CacheKeys.tasksList(selectionKey: TaskSelection.today.cacheKey),
+            value: TaskListResponse(
+                scope: "today",
+                generatedAt: nil,
+                tasks: [task],
+                projects: nil,
+                groups: nil
+            ),
+            ttlSeconds: 60
+        )
+        environment.container.cacheClient.set(
+            key: CacheKeys.tasksCounts,
+            value: TaskCountsResponse(
+                generatedAt: nil,
+                counts: TaskCounts(today: 1, upcoming: 0, completed: 0),
+                projects: [],
+                groups: []
+            ),
+            ttlSeconds: 60
+        )
+
+        await forceTasksOffline(in: environment)
+        await environment.tasksViewModel.load(selection: .today)
+
+        storage.widgetDataManager.recordPendingOperation(
+            WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete),
+            for: .tasks
+        )
+
+        await environment.handleSignedInActivation(includeDeferredRefresh: false)
+
+        let remaining = storage.widgetDataManager.consumePendingOperations(
+            for: .tasks,
+            actionType: TaskWidgetAction.self
+        )
+
+        XCTAssertTrue(remaining.isEmpty)
+        XCTAssertFalse(environment.tasksStore.tasks.contains(where: { $0.id == taskId }))
+    }
+
     func testHandleSignedInActivationDoesNotWaitForQueuedWebsiteReplay() async {
         let url = "https://example.com/articles/\(UUID().uuidString)"
         let replayGate = AsyncReplayGate()

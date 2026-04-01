@@ -169,6 +169,27 @@ extension AppEnvironmentDeepLinkTests {
         return environment.websitesStore.hasCachedDetail(id: id)
     }
 
+    func forceTasksOffline(in environment: AppEnvironment, attempts: Int = 20) async {
+        let error = URLError(.notConnectedToInternet)
+        for _ in 0..<2 {
+            NotificationCenter.default.post(
+                name: .apiClientRequestFailed,
+                object: nil,
+                userInfo: ["error": error]
+            )
+        }
+
+        guard let monitor = environment.tasksViewModel.networkStatus as? ConnectivityMonitor else {
+            XCTFail("Expected connectivity monitor-backed task network status")
+            return
+        }
+
+        for _ in 0..<attempts where monitor.isNetworkAvailable || monitor.isServerReachable {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+    }
+
     func makeEnvironment(
         storage: AppEnvironmentStorage,
         websitesAPI: (any WebsitesProviding)? = nil
