@@ -10,6 +10,15 @@ import Foundation
 struct CompleteTaskIntent: AppIntent {
     static var title: LocalizedStringResource = "Complete Task"
     static var description = IntentDescription("Marks a task as complete")
+    nonisolated(unsafe) static var syncTaskCompletion: @Sendable (WidgetPendingOperation<TaskWidgetAction>) async -> Bool = { operation in
+        do {
+            let environment = try WidgetAPIEnvironment()
+            try await TaskWidgetCompletionSyncClient(environment: environment).completeTask(operation: operation)
+            return true
+        } catch {
+            return false
+        }
+    }
 
     @Parameter(title: "Task ID")
     var taskId: String
@@ -25,8 +34,9 @@ struct CompleteTaskIntent: AppIntent {
             return .result()
         }
 
-        // Record the completion for the main app to sync
-        WidgetDataManager.shared.recordTaskCompletion(taskId: taskId)
+        let operation = WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete)
+        WidgetDataManager.shared.recordPendingOperation(operation, for: .tasks)
+        WidgetTaskCompletionHandoffNotifier.post()
 
         // Update widget data optimistically (show checked state before disappearing)
         let data = WidgetDataManager.shared.loadTodayTasks()
@@ -61,6 +71,18 @@ struct CompleteTaskIntent: AppIntent {
             progressCompletedCount: nextProgressCompletedCount,
             progressTotalCount: baseProgressTotal
         )
+
+        let didSync = await Self.syncTaskCompletion(operation)
+        if didSync {
+            WidgetDataManager.shared.removePendingOperation(
+                withId: operation.id,
+                for: .tasks,
+                actionType: TaskWidgetAction.self
+            )
+            for kind in WidgetContentType.tasks.widgetKinds {
+                WidgetCenter.shared.reloadTimelines(ofKind: kind)
+            }
+        }
 
         return .result()
     }

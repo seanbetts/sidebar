@@ -9,9 +9,11 @@ final class WidgetExtensionCoverageTests: XCTestCase {
     override func setUp() {
         super.setUp()
         ExternalSurfaceDiagnosticsStore.shared.clear()
+        clearTaskWidgetStorage()
     }
 
     override func tearDown() {
+        clearTaskWidgetStorage()
         ExternalSurfaceDiagnosticsStore.shared.clear()
         super.tearDown()
     }
@@ -158,6 +160,113 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(updated.totalCount, 2)
         XCTAssertEqual(updated.progressCompletedCount, 1)
         XCTAssertEqual(updated.progressTotalCount, 3)
+    }
+
+    func testCompleteTaskIntentSuccessfulSyncClearsOnlyMatchingPendingCompletion() async throws {
+        let otherTaskId = "33333333-3333-3333-3333-333333333333"
+        WidgetDataManager.shared.recordPendingOperation(
+            WidgetPendingOperation(itemId: otherTaskId, action: TaskWidgetAction.complete),
+            for: .tasks
+        )
+        WidgetDataManager.shared.recordPendingOperation(
+            WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
+            for: .tasks
+        )
+
+        let syncProbe = TaskCompletionSyncProbe()
+        let originalSync = CompleteTaskIntent.syncTaskCompletion
+        CompleteTaskIntent.syncTaskCompletion = { operation in
+            await syncProbe.record(operation: operation)
+            return true
+        }
+        defer { CompleteTaskIntent.syncTaskCompletion = originalSync }
+
+        let taskId = "22222222-2222-2222-2222-222222222222"
+        WidgetDataManager.shared.updateTodayTasks(
+            [WidgetTask(id: taskId, title: "Task 2")],
+            totalCount: 1,
+            progressCompletedCount: 0,
+            progressTotalCount: 1
+        )
+
+        _ = try await CompleteTaskIntent(taskId: taskId).perform()
+
+        let synced = await syncProbe.recordedOperation
+        let pending = WidgetDataManager.shared.loadPendingOperations(
+            for: .tasks,
+            actionType: TaskWidgetAction.self
+        )
+
+        XCTAssertEqual(synced?.itemId, taskId)
+        XCTAssertFalse(pending.contains(where: { $0.itemId == taskId && $0.action == .complete }))
+        XCTAssertTrue(pending.contains(where: { $0.itemId == otherTaskId && $0.action == .complete }))
+        XCTAssertTrue(pending.contains(where: { $0.action == .addNew }))
+    }
+
+    func testCompleteTaskIntentFailedSyncLeavesPendingCompletionForAppFallback() async throws {
+        let taskId = "22222222-2222-2222-2222-222222222222"
+        WidgetDataManager.shared.updateTodayTasks(
+            [WidgetTask(id: taskId, title: "Task 2")],
+            totalCount: 1,
+            progressCompletedCount: 0,
+            progressTotalCount: 1
+        )
+
+        let originalSync = CompleteTaskIntent.syncTaskCompletion
+        CompleteTaskIntent.syncTaskCompletion = { _ in false }
+        defer { CompleteTaskIntent.syncTaskCompletion = originalSync }
+
+        _ = try await CompleteTaskIntent(taskId: taskId).perform()
+
+        let pending = WidgetDataManager.shared.loadPendingOperations(
+            for: .tasks,
+            actionType: TaskWidgetAction.self
+        )
+        XCTAssertTrue(pending.contains(where: { $0.itemId == taskId && $0.action == .complete }))
+    }
+
+    func testCompleteTaskIntentOptimisticallyUpdatesSnapshotBeforeSyncCompletes() async throws {
+        let taskId = "22222222-2222-2222-2222-222222222222"
+        WidgetDataManager.shared.updateTodayTasks(
+            [WidgetTask(id: taskId, title: "Task 2")],
+            totalCount: 1,
+            progressCompletedCount: 0,
+            progressTotalCount: 1
+        )
+
+        let gate = AsyncGate()
+        let syncStarted = expectation(description: "sync started")
+        let originalSync = CompleteTaskIntent.syncTaskCompletion
+        CompleteTaskIntent.syncTaskCompletion = { operation in
+            let snapshot = WidgetDataManager.shared.loadTodayTasks()
+            let pending = WidgetDataManager.shared.loadPendingOperations(
+                for: .tasks,
+                actionType: TaskWidgetAction.self
+            )
+            await gate.capture(snapshot: snapshot, pending: pending, operation: operation)
+            syncStarted.fulfill()
+            await gate.wait()
+            return false
+        }
+        defer { CompleteTaskIntent.syncTaskCompletion = originalSync }
+
+        let performTask = Task {
+            try await CompleteTaskIntent(taskId: taskId).perform()
+        }
+
+        await fulfillment(of: [syncStarted], timeout: 1.0)
+        let capturedSnapshot = await gate.snapshot
+        let capturedPending = await gate.pendingOperations
+        let capturedOperation = await gate.operation
+
+        XCTAssertEqual(capturedSnapshot?.tasks.first?.id, taskId)
+        XCTAssertEqual(capturedSnapshot?.tasks.first?.isCompleted, true)
+        XCTAssertEqual(capturedSnapshot?.totalCount, 0)
+        XCTAssertEqual(capturedSnapshot?.progressCompletedCount, 1)
+        XCTAssertTrue(capturedPending?.contains(where: { $0.id == capturedOperation?.id }) == true)
+
+        await gate.open()
+        _ = try await performTask.value
     }
 
     func testQuickSaveRoundTripAndConsumeClearsStoredValue() {
@@ -430,6 +539,43 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         assertOpensIntent(try await OpenFilesIntent().perform())
         assertOpensIntent(try await OpenScratchpadIntent().perform())
         assertOpensIntent(try await StartChatIntent().perform())
+    }
+}
+
+private actor TaskCompletionSyncProbe {
+    private(set) var recordedOperation: WidgetPendingOperation<TaskWidgetAction>?
+
+    func record(operation: WidgetPendingOperation<TaskWidgetAction>) {
+        recordedOperation = operation
+    }
+}
+
+private actor AsyncGate {
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    private(set) var snapshot: WidgetTaskData?
+    private(set) var pendingOperations: [WidgetPendingOperation<TaskWidgetAction>]?
+    private(set) var operation: WidgetPendingOperation<TaskWidgetAction>?
+
+    func capture(
+        snapshot: WidgetTaskData,
+        pending: [WidgetPendingOperation<TaskWidgetAction>],
+        operation: WidgetPendingOperation<TaskWidgetAction>
+    ) {
+        self.snapshot = snapshot
+        self.pendingOperations = pending
+        self.operation = operation
+    }
+
+    func wait() async {
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func open() {
+        continuation?.resume()
+        continuation = nil
     }
 }
 
