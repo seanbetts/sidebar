@@ -11,15 +11,15 @@ final class OnboardingModelsTests: XCTestCase {
     func testPrimaryProviderExposesAPIKeySetupURLs() {
         XCTAssertEqual(
             AIPrimaryProvider.anthropic.apiKeySetupURL?.absoluteString,
-            "https://platform.claude.com/docs/en/api/overview"
+            "https://docs.trysidebar.ai/manual/api-keys#anthropic"
         )
         XCTAssertEqual(
             AIPrimaryProvider.openai.apiKeySetupURL?.absoluteString,
-            "https://developers.openai.com/api/docs/quickstart"
+            "https://docs.trysidebar.ai/manual/api-keys#openai"
         )
         XCTAssertEqual(
             AIPrimaryProvider.google.apiKeySetupURL?.absoluteString,
-            "https://ai.google.dev/gemini-api/docs/quickstart"
+            "https://docs.trysidebar.ai/manual/api-keys#google"
         )
     }
 

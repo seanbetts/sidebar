@@ -58,11 +58,11 @@ extension OnboardingViewModel {
     public var apiKeyPlaceholder: String {
         switch selectedProvider {
         case .anthropic:
-            return "sk-ant-..."
+            return "sk-ant-api03-..."
         case .openai:
-            return "sk-..."
+            return "sk-proj-..."
         case .google:
-            return "AI..."
+            return "AIza..."
         case nil:
             return "Paste your API key"
         }

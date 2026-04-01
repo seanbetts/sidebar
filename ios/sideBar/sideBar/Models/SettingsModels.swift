@@ -68,11 +68,11 @@ public enum AIPrimaryProvider: String, Codable, CaseIterable, Identifiable {
     public var apiKeySetupURL: URL? {
         switch self {
         case .anthropic:
-            return URL(string: "https://platform.claude.com/docs/en/api/overview")
+            return URL(string: "https://docs.trysidebar.ai/manual/api-keys#anthropic")
         case .openai:
-            return URL(string: "https://developers.openai.com/api/docs/quickstart")
+            return URL(string: "https://docs.trysidebar.ai/manual/api-keys#openai")
         case .google:
-            return URL(string: "https://ai.google.dev/gemini-api/docs/quickstart")
+            return URL(string: "https://docs.trysidebar.ai/manual/api-keys#google")
         }
     }
 }
