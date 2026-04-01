@@ -3,10 +3,6 @@ import OSLog
 import sideBarShared
 
 extension AppEnvironment {
-    private var staleAuthToastMessage: String {
-        "Sync paused — trying to refresh your session."
-    }
-
     private var biometricGracePeriod: TimeInterval {
         300
     }
@@ -48,15 +44,18 @@ extension AppEnvironment {
         let becameStale = previousAuthState != .stale && authState == .stale
         let recoveredFromStale = previousAuthState == .stale && authState != .stale
         if requiresSignedOutReset {
+            cancelStaleAuthRetryBannerReveal()
+            shouldShowStaleAuthRetryBanner = false
             clearStoredCacheScopeUserId()
             resetSignedInData(clearNavigationState: true)
         }
         if becameStale && wasAuthenticated {
-            toastCenter.show(message: staleAuthToastMessage)
+            shouldShowStaleAuthRetryBanner = false
+            scheduleStaleAuthRetryBannerReveal()
         }
-        if recoveredFromStale,
-           toastCenter.toast?.message == staleAuthToastMessage {
-            toastCenter.dismiss()
+        if recoveredFromStale {
+            cancelStaleAuthRetryBannerReveal()
+            shouldShowStaleAuthRetryBanner = false
         }
         if isAuthenticated {
             reconcileCacheScopeForAuthenticatedUser()
@@ -289,6 +288,8 @@ extension AppEnvironment {
 
     public func beginSignOut() async {
         signOutEvent = UUID()
+        cancelStaleAuthRetryBannerReveal()
+        shouldShowStaleAuthRetryBanner = false
         #if os(iOS) || os(macOS)
         await disableDeviceTokenIfNeeded()
         #endif
@@ -348,6 +349,21 @@ extension AppEnvironment {
             message: "Finished signed-in activation.",
             metadata: ["auth_state": authState.rawValue]
         )
+    }
+
+    private func scheduleStaleAuthRetryBannerReveal() {
+        cancelStaleAuthRetryBannerReveal()
+        staleAuthRetryBannerRevealTask = Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: staleAuthRetryBannerDelayNanoseconds)
+            guard !Task.isCancelled, authState == .stale else { return }
+            shouldShowStaleAuthRetryBanner = true
+        }
+    }
+
+    private func cancelStaleAuthRetryBannerReveal() {
+        staleAuthRetryBannerRevealTask?.cancel()
+        staleAuthRetryBannerRevealTask = nil
     }
 
 }

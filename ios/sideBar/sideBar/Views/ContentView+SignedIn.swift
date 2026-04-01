@@ -35,7 +35,7 @@ extension ContentView {
         })
         content = AnyView(content.overlay(alignment: .top) {
             VStack(spacing: DesignTokens.Spacing.sm) {
-                if environment.authState == .stale {
+                if environment.shouldShowStaleAuthRetryBanner {
                     StaleAuthRetryBanner(isRefreshing: environment.isRetryingStaleAuth) {
                         Task {
                             await environment.retryStaleAuthSession()

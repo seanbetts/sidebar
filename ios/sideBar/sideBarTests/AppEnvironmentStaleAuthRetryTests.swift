@@ -4,6 +4,117 @@ import sideBarShared
 
 @MainActor
 final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
+    func testRefreshAuthStateDoesNotShowStaleAuthRetryBannerImmediately() {
+        let authSession = StaleRetryAuthSession(authState: .active)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(
+            container: container,
+            staleAuthRetryBannerDelayNanoseconds: 50_000_000
+        )
+
+        authSession.authState = .stale
+        environment.refreshAuthState()
+
+        XCTAssertEqual(environment.authState, .stale)
+        XCTAssertFalse(environment.shouldShowStaleAuthRetryBanner)
+    }
+
+    func testRefreshAuthStateShowsStaleAuthRetryBannerAfterDelay() async {
+        let authSession = StaleRetryAuthSession(authState: .active)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(
+            container: container,
+            staleAuthRetryBannerDelayNanoseconds: 50_000_000
+        )
+
+        authSession.authState = .stale
+        environment.refreshAuthState()
+
+        XCTAssertFalse(environment.shouldShowStaleAuthRetryBanner)
+
+        try? await Task.sleep(nanoseconds: 80_000_000)
+
+        XCTAssertTrue(environment.shouldShowStaleAuthRetryBanner)
+    }
+
+    func testRefreshAuthStateCancelsDelayedStaleAuthRetryBannerOnRecovery() async {
+        let authSession = StaleRetryAuthSession(authState: .active)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(
+            container: container,
+            staleAuthRetryBannerDelayNanoseconds: 80_000_000
+        )
+
+        authSession.authState = .stale
+        environment.refreshAuthState()
+        authSession.authState = .active
+        environment.refreshAuthState()
+
+        try? await Task.sleep(nanoseconds: 120_000_000)
+
+        XCTAssertEqual(environment.authState, .active)
+        XCTAssertFalse(environment.shouldShowStaleAuthRetryBanner)
+    }
+
+    func testRefreshAuthStateHidesVisibleStaleAuthRetryBannerOnRecovery() async {
+        let authSession = StaleRetryAuthSession(authState: .active)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(
+            container: container,
+            staleAuthRetryBannerDelayNanoseconds: 50_000_000
+        )
+
+        authSession.authState = .stale
+        environment.refreshAuthState()
+        try? await Task.sleep(nanoseconds: 80_000_000)
+        XCTAssertTrue(environment.shouldShowStaleAuthRetryBanner)
+
+        authSession.authState = .active
+        environment.refreshAuthState()
+
+        XCTAssertEqual(environment.authState, .active)
+        XCTAssertFalse(environment.shouldShowStaleAuthRetryBanner)
+    }
+
+    func testBeginSignOutClearsVisibleStaleAuthRetryBanner() async {
+        let authSession = StaleRetryAuthSession(authState: .active)
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+        let environment = AppEnvironment(
+            container: container,
+            staleAuthRetryBannerDelayNanoseconds: 50_000_000
+        )
+
+        authSession.authState = .stale
+        environment.refreshAuthState()
+        try? await Task.sleep(nanoseconds: 80_000_000)
+        XCTAssertTrue(environment.shouldShowStaleAuthRetryBanner)
+
+        await environment.beginSignOut()
+
+        XCTAssertEqual(environment.authState, .signedOut)
+        XCTAssertFalse(environment.shouldShowStaleAuthRetryBanner)
+    }
+
     func testRetryStaleAuthSessionRefreshesAndUpdatesAuthState() async {
         let authSession = StaleRetryAuthSession(authState: .stale)
         let container = ServiceContainer(
@@ -11,7 +122,10 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
             authSession: authSession,
             cacheClient: InMemoryCacheClient()
         )
-        let environment = AppEnvironment(container: container)
+        let environment = AppEnvironment(
+            container: container,
+            staleAuthRetryBannerDelayNanoseconds: 50_000_000
+        )
         environment.authState = .stale
 
         await environment.retryStaleAuthSession()
@@ -27,51 +141,15 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
             authSession: authSession,
             cacheClient: InMemoryCacheClient()
         )
-        let environment = AppEnvironment(container: container)
+        let environment = AppEnvironment(
+            container: container,
+            staleAuthRetryBannerDelayNanoseconds: 50_000_000
+        )
         environment.authState = .active
 
         await environment.retryStaleAuthSession()
 
         XCTAssertEqual(authSession.refreshSessionCallCount, 0)
-        XCTAssertEqual(environment.authState, .active)
-    }
-
-    func testRefreshAuthStateClearsStaleAuthToastOnRecovery() {
-        let authSession = StaleRetryAuthSession(authState: .stale)
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
-            authSession: authSession,
-            cacheClient: InMemoryCacheClient()
-        )
-        let environment = AppEnvironment(container: container)
-        environment.authState = .stale
-        environment.toastCenter.show(
-            message: "Sync paused — trying to refresh your session.",
-            duration: 30
-        )
-
-        authSession.authState = .active
-        environment.refreshAuthState()
-
-        XCTAssertNil(environment.toastCenter.toast)
-        XCTAssertEqual(environment.authState, .active)
-    }
-
-    func testRefreshAuthStateKeepsUnrelatedToastOnRecovery() {
-        let authSession = StaleRetryAuthSession(authState: .stale)
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
-            authSession: authSession,
-            cacheClient: InMemoryCacheClient()
-        )
-        let environment = AppEnvironment(container: container)
-        environment.authState = .stale
-        environment.toastCenter.show(message: "Different message", duration: 30)
-
-        authSession.authState = .active
-        environment.refreshAuthState()
-
-        XCTAssertEqual(environment.toastCenter.toast?.message, "Different message")
         XCTAssertEqual(environment.authState, .active)
     }
 }

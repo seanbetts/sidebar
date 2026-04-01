@@ -118,6 +118,8 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var isBiometricUnlocked: Bool = false
     /// Tracks whether a user-triggered stale-session refresh is currently running.
     @Published public internal(set) var isRetryingStaleAuth: Bool = false
+    /// Tracks whether the delayed stale-auth retry banner should currently be visible.
+    @Published public internal(set) var shouldShowStaleAuthRetryBanner: Bool = false
     /// Tracks whether a signed-out recovery flow is collecting a new password.
     @Published public internal(set) var passwordResetState: PasswordResetState?
     /// Tracks the login notice shown after a successful password reset.
@@ -133,6 +135,8 @@ public final class AppEnvironment: ObservableObject {
     var websiteSaveHandoffObserver: AnyObject?
     var widgetIntentObserver: AnyObject?
     var widgetTaskCompletionObserver: AnyObject?
+    var staleAuthRetryBannerRevealTask: Task<Void, Never>?
+    let staleAuthRetryBannerDelayNanoseconds: UInt64
     #if os(iOS) || os(macOS)
     var deviceToken: String?
     var lastRegisteredDeviceToken: String?
@@ -145,7 +149,8 @@ public final class AppEnvironment: ObservableObject {
         container: ServiceContainer,
         storage: AppEnvironmentStorage? = nil,
         configError: EnvironmentConfigLoadError? = nil,
-        initialPasswordResetState: PasswordResetState? = nil
+        initialPasswordResetState: PasswordResetState? = nil,
+        staleAuthRetryBannerDelayNanoseconds: UInt64 = 10_000_000_000
     ) {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
         #if DEBUG
@@ -201,6 +206,7 @@ public final class AppEnvironment: ObservableObject {
         self.spotlightIndexer = dependencies.spotlightIndexer
         self.configError = configError
         self.passwordResetState = initialPasswordResetState
+        self.staleAuthRetryBannerDelayNanoseconds = staleAuthRetryBannerDelayNanoseconds
         let chatViewModel = dependencies.chatViewModel
         let notesViewModel = dependencies.notesViewModel
         let websitesViewModel = dependencies.websitesViewModel

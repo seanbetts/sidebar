@@ -30,7 +30,7 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         let normalized = try signedInContentSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("ifenvironment.authState==.stale{"))
+        XCTAssertTrue(normalized.contains("ifenvironment.shouldShowStaleAuthRetryBanner{"))
         XCTAssertTrue(normalized.contains("StaleAuthRetryBanner("))
         XCTAssertTrue(normalized.contains("awaitenvironment.retryStaleAuthSession()"))
         XCTAssertTrue(normalized.contains(".padding(.horizontal,DesignTokens.Spacing.md)"))
