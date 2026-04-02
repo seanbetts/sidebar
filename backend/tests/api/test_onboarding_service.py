@@ -14,6 +14,13 @@ def test_resolve_state_returns_defaults_for_none() -> None:
     state = OnboardingService._resolve_state(None)
     assert state["status"] == "not_started"
     assert state["intent"] is None
+    assert state["calibration"]["status"] == "not_started"
+    assert state["calibration"]["current_prompt"] == "primary_goal"
+    assert state["calibration"]["answers"]["primary_goal"] is None
+    assert state["calibration"]["answers"]["working_relationship"] is None
+    assert state["calibration"]["answers"]["tone_preferences"] is None
+    assert state["calibration"]["proposed_name"] is None
+    assert state["calibration"]["completed_at"] is None
     assert state["milestones"]["provider_connected"] is None
     assert state["milestones"]["first_outcome_completed"] is None
     assert state["permissions"]["location"] == "not_asked"
@@ -25,6 +32,17 @@ def test_resolve_state_preserves_valid_values() -> None:
     raw = {
         "status": "in_progress",
         "intent": "notes",
+        "calibration": {
+            "status": "in_progress",
+            "current_prompt": "working_relationship",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": None,
+                "tone_preferences": "direct",
+            },
+            "proposed_name": "Navigator",
+            "completed_at": None,
+        },
         "milestones": {"provider_connected": "2026-03-13T10:00:00Z"},
         "permissions": {"location": "granted", "notifications": "denied"},
         "last_prompted_at": "2026-03-13T09:00:00Z",
@@ -32,6 +50,11 @@ def test_resolve_state_preserves_valid_values() -> None:
     state = OnboardingService._resolve_state(raw)
     assert state["status"] == "in_progress"
     assert state["intent"] == "notes"
+    assert state["calibration"]["status"] == "in_progress"
+    assert state["calibration"]["current_prompt"] == "working_relationship"
+    assert state["calibration"]["answers"]["primary_goal"] == "life_admin"
+    assert state["calibration"]["answers"]["tone_preferences"] == "direct"
+    assert state["calibration"]["proposed_name"] == "Navigator"
     assert state["milestones"]["provider_connected"] == "2026-03-13T10:00:00Z"
     assert state["milestones"]["first_outcome_completed"] is None
     assert state["permissions"]["location"] == "granted"
@@ -118,6 +141,11 @@ def test_validate_updates_accepts_valid_payload() -> None:
         {
             "status": "in_progress",
             "intent": "tasks",
+            "calibration": {
+                "status": "in_progress",
+                "current_prompt": "tone_preferences",
+                "answers": {"primary_goal": "life_admin"},
+            },
             "milestones": {"provider_connected": "2026-03-13T10:00:00Z"},
             "permissions": {"location": "granted"},
         }
@@ -142,6 +170,23 @@ def test_validate_updates_accepts_null_last_prompted_at() -> None:
     OnboardingService._validate_updates({"last_prompted_at": None})
 
 
+def test_validate_updates_accepts_calibration_payload() -> None:
+    OnboardingService._validate_updates(
+        {
+            "calibration": {
+                "status": "in_progress",
+                "current_prompt": "primary_goal",
+                "answers": {
+                    "primary_goal": "life_admin",
+                    "working_relationship": None,
+                },
+                "proposed_name": "Navigator",
+                "completed_at": None,
+            }
+        }
+    )
+
+
 # ---------------------------------------------------------------------------
 # derived onboarding helpers
 # ---------------------------------------------------------------------------
@@ -160,6 +205,19 @@ def test_is_onboarding_complete_false_for_completed_status_without_completion_mi
     assert OnboardingService.is_onboarding_complete(state) is False
 
 
+def test_is_onboarding_complete_false_when_calibration_is_incomplete() -> None:
+    state = OnboardingService._resolve_state(
+        {
+            "status": "completed",
+            "milestones": {"secondary_tour_seen": "2026-03-31T11:00:00Z"},
+            "calibration": {"status": "in_progress"},
+        }
+    )
+    state["provider_ready"] = True
+
+    assert OnboardingService.is_onboarding_complete(state) is False
+
+
 def test_current_onboarding_step_defaults_to_phase1_wizard() -> None:
     state = OnboardingService._resolve_state(None)
 
@@ -173,17 +231,50 @@ def test_current_onboarding_step_uses_provider_recovery_when_dismissed_without_k
     assert OnboardingService.current_onboarding_step(state) == "provider_recovery"
 
 
+def test_current_onboarding_step_uses_soul_calibration_when_provider_ready_and_status_is_not_started() -> None:
+    state = OnboardingService._resolve_state({"status": "not_started"})
+    state["provider_ready"] = True
+
+    assert OnboardingService.current_onboarding_step(state) == "soul_calibration"
+
+
+def test_current_onboarding_step_uses_soul_calibration_when_provider_ready_and_calibration_is_not_completed() -> None:
+    state = OnboardingService._resolve_state(
+        {
+            "status": "dismissed",
+            "calibration": {"status": "in_progress"},
+        }
+    )
+    state["provider_ready"] = True
+
+    assert OnboardingService.current_onboarding_step(state) == "soul_calibration"
+
+
 def test_current_onboarding_step_uses_feature_discovery_when_provider_ready_even_if_permissions_are_missing() -> None:
     state = OnboardingService._resolve_state(
         {
             "status": "dismissed",
             "milestones": {"provider_connected": "2026-03-31T10:00:00Z"},
+            "calibration": {"status": "completed"},
             "permissions": {"location": "denied", "notifications": "granted"},
         }
     )
     state["provider_ready"] = True
 
-    assert OnboardingService.current_onboarding_step(state) == "feature_discovery"
+    assert OnboardingService.current_onboarding_step(state) == "permission_recovery"
+
+
+def test_current_onboarding_step_uses_permission_recovery_when_provider_ready_and_permissions_are_missing() -> None:
+    state = OnboardingService._resolve_state(
+        {
+            "status": "dismissed",
+            "calibration": {"status": "completed"},
+            "permissions": {"location": "denied", "notifications": "granted"},
+        }
+    )
+    state["provider_ready"] = True
+
+    assert OnboardingService.current_onboarding_step(state) == "permission_recovery"
 
 
 def test_current_onboarding_step_uses_feature_discovery_when_provider_ready_and_tour_not_seen() -> None:
@@ -191,6 +282,7 @@ def test_current_onboarding_step_uses_feature_discovery_when_provider_ready_and_
         {
             "status": "in_progress",
             "milestones": {"provider_connected": "2026-03-31T10:00:00Z"},
+            "calibration": {"status": "completed"},
             "permissions": {"location": "granted", "notifications": "granted"},
         }
     )
@@ -207,6 +299,7 @@ def test_current_onboarding_step_uses_completed_when_tour_seen_after_provider_se
                 "provider_connected": "2026-03-31T10:00:00Z",
                 "secondary_tour_seen": "2026-03-31T11:00:00Z",
             },
+            "calibration": {"status": "completed"},
             "permissions": {"location": "granted", "notifications": "granted"},
         }
     )
@@ -224,6 +317,7 @@ def test_current_onboarding_step_uses_completed_when_first_outcome_is_finished_a
                 "provider_connected": "2026-03-31T10:00:00Z",
                 "first_outcome_completed": "2026-03-31T11:00:00Z",
             },
+            "calibration": {"status": "completed"},
             "permissions": {"location": "granted", "notifications": "granted"},
         }
     )
@@ -241,6 +335,7 @@ def test_is_onboarding_complete_true_when_tour_seen_even_if_permissions_are_stil
                 "provider_connected": "2026-03-31T10:00:00Z",
                 "secondary_tour_seen": "2026-03-31T11:00:00Z",
             },
+            "calibration": {"status": "completed"},
             "permissions": {"location": "not_asked", "notifications": "denied"},
         }
     )
@@ -257,6 +352,7 @@ def test_completed_status_without_completion_milestones_still_requires_signed_in
             "milestones": {
                 "provider_connected": "2026-03-31T10:00:00Z",
             },
+            "calibration": {"status": "completed"},
             "permissions": {"location": "granted", "notifications": "granted"},
         }
     )
@@ -274,6 +370,7 @@ def test_current_onboarding_step_uses_completed_for_completed_state() -> None:
                 "provider_connected": "2026-03-31T10:00:00Z",
                 "secondary_tour_seen": "2026-03-31T11:00:00Z",
             },
+            "calibration": {"status": "completed"},
             "permissions": {"location": "granted", "notifications": "granted"},
         }
     )

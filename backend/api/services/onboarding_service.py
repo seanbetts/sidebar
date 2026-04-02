@@ -12,6 +12,12 @@ from api.services.user_settings_service import UserSettingsService
 VALID_STATUSES = frozenset({"not_started", "in_progress", "completed", "dismissed"})
 VALID_INTENTS = frozenset({"notes", "tasks", "websites", "files", "chat"})
 VALID_PERMISSION_STATES = frozenset({"not_asked", "granted", "denied"})
+VALID_CALIBRATION_STATUSES = frozenset(
+    {"not_started", "in_progress", "awaiting_name_acceptance", "completed"}
+)
+VALID_CALIBRATION_PROMPTS = frozenset(
+    {"primary_goal", "working_relationship", "tone_preferences"}
+)
 MILESTONE_KEYS = frozenset(
     {
         "provider_connected",
@@ -22,8 +28,11 @@ MILESTONE_KEYS = frozenset(
     }
 )
 PERMISSION_KEYS = frozenset({"location", "notifications"})
+CALIBRATION_ANSWER_KEYS = frozenset(
+    {"primary_goal", "working_relationship", "tone_preferences"}
+)
 _ALLOWED_UPDATE_KEYS = frozenset(
-    {"status", "intent", "milestones", "permissions", "last_prompted_at"}
+    {"status", "intent", "milestones", "permissions", "last_prompted_at", "calibration"}
 )
 
 
@@ -34,12 +43,14 @@ class OnboardingService:
     def is_onboarding_complete(state: dict[str, Any]) -> bool:
         """Return whether onboarding is complete for the resolved state."""
         milestones = state.get("milestones") or {}
+        calibration = state.get("calibration") or {}
         has_completion_milestone = bool(
             milestones.get("secondary_tour_seen")
             or milestones.get("first_outcome_completed")
         )
         return (
             has_completion_milestone
+            and calibration.get("status") == "completed"
             and not OnboardingService.needs_provider_connection(state)
         )
 
@@ -62,9 +73,17 @@ class OnboardingService:
     @staticmethod
     def needs_feature_discovery(state: dict[str, Any]) -> bool:
         """Return whether the user should enter the signed-in feature tour."""
-        return not OnboardingService.is_onboarding_complete(
-            state
-        ) and not OnboardingService.needs_provider_connection(state)
+        return (
+            not OnboardingService.is_onboarding_complete(state)
+            and not OnboardingService.needs_provider_connection(state)
+            and OnboardingService._is_calibration_completed(state)
+        )
+
+    @staticmethod
+    def _is_calibration_completed(state: dict[str, Any]) -> bool:
+        """Return whether calibration has been completed."""
+        calibration = state.get("calibration") or {}
+        return calibration.get("status") == "completed"
 
     @staticmethod
     def current_onboarding_step(state: dict[str, Any]) -> str:
@@ -73,11 +92,22 @@ class OnboardingService:
             return "completed"
 
         status = state.get("status")
-        if status == "not_started":
+        if status == "not_started" and OnboardingService.needs_provider_connection(
+            state
+        ):
             return "phase1_wizard"
+
+        if status == "not_started":
+            return "soul_calibration"
 
         if OnboardingService.needs_provider_connection(state):
             return "provider_recovery"
+
+        if not OnboardingService._is_calibration_completed(state):
+            return "soul_calibration"
+
+        if OnboardingService.needs_permission_recovery(state):
+            return "permission_recovery"
 
         return "feature_discovery"
 
@@ -136,9 +166,44 @@ class OnboardingService:
         if not isinstance(last_prompted_at, str):
             last_prompted_at = None
 
+        raw_calibration = raw.get("calibration")
+        if not isinstance(raw_calibration, dict):
+            raw_calibration = {}
+
+        calibration_status = raw_calibration.get("status")
+        if calibration_status not in VALID_CALIBRATION_STATUSES:
+            calibration_status = "not_started"
+
+        calibration_prompt = raw_calibration.get("current_prompt")
+        if calibration_prompt not in VALID_CALIBRATION_PROMPTS:
+            calibration_prompt = "primary_goal"
+
+        raw_answers = raw_calibration.get("answers")
+        if not isinstance(raw_answers, dict):
+            raw_answers = {}
+        answers: dict[str, str | None] = {}
+        for key in CALIBRATION_ANSWER_KEYS:
+            value = raw_answers.get(key)
+            answers[key] = value if isinstance(value, str) else None
+
+        proposed_name = raw_calibration.get("proposed_name")
+        if not isinstance(proposed_name, str):
+            proposed_name = None
+
+        completed_at = raw_calibration.get("completed_at")
+        if not isinstance(completed_at, str):
+            completed_at = None
+
         return {
             "status": status,
             "intent": intent,
+            "calibration": {
+                "status": calibration_status,
+                "current_prompt": calibration_prompt,
+                "answers": answers,
+                "proposed_name": proposed_name,
+                "completed_at": completed_at,
+            },
             "milestones": milestones,
             "permissions": permissions,
             "last_prompted_at": last_prompted_at,
@@ -207,6 +272,83 @@ class OnboardingService:
                     raise HTTPException(
                         status_code=400,
                         detail=f"Invalid permission state for {key}",
+                    )
+
+        if "calibration" in updates:
+            calibration = updates["calibration"]
+            if not isinstance(calibration, dict):
+                raise HTTPException(
+                    status_code=400, detail="calibration must be an object"
+                )
+            unknown_calibration = sorted(
+                key
+                for key in calibration
+                if key
+                not in {
+                    "status",
+                    "current_prompt",
+                    "answers",
+                    "proposed_name",
+                    "completed_at",
+                }
+            )
+            if unknown_calibration:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Invalid calibration keys: {', '.join(unknown_calibration)}"
+                    ),
+                )
+            if (
+                "status" in calibration
+                and calibration["status"] not in VALID_CALIBRATION_STATUSES
+            ):
+                raise HTTPException(
+                    status_code=400, detail="Invalid calibration status"
+                )
+            if (
+                "current_prompt" in calibration
+                and calibration["current_prompt"] not in VALID_CALIBRATION_PROMPTS
+            ):
+                raise HTTPException(
+                    status_code=400, detail="Invalid calibration current_prompt"
+                )
+            if "answers" in calibration:
+                answers = calibration["answers"]
+                if not isinstance(answers, dict):
+                    raise HTTPException(
+                        status_code=400, detail="calibration.answers must be an object"
+                    )
+                unknown_answers = sorted(
+                    key for key in answers if key not in CALIBRATION_ANSWER_KEYS
+                )
+                if unknown_answers:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            "Invalid calibration answer keys: "
+                            f"{', '.join(unknown_answers)}"
+                        ),
+                    )
+                for key, value in answers.items():
+                    if value is not None and not isinstance(value, str):
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Calibration answer {key} must be a string or null",
+                        )
+            if "proposed_name" in calibration:
+                proposed_name = calibration["proposed_name"]
+                if proposed_name is not None and not isinstance(proposed_name, str):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="calibration.proposed_name must be a string or null",
+                    )
+            if "completed_at" in calibration:
+                completed_at = calibration["completed_at"]
+                if completed_at is not None and not isinstance(completed_at, str):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="calibration.completed_at must be a string or null",
                     )
 
         if "last_prompted_at" in updates:
@@ -306,6 +448,25 @@ class OnboardingService:
             current["milestones"].update(updates["milestones"])
         if "permissions" in updates:
             current["permissions"].update(updates["permissions"])
+        if "calibration" in updates:
+            calibration_updates = updates["calibration"]
+            current_calibration = current["calibration"]
+            if "status" in calibration_updates:
+                current_calibration["status"] = calibration_updates["status"]
+            if "current_prompt" in calibration_updates:
+                current_calibration["current_prompt"] = calibration_updates[
+                    "current_prompt"
+                ]
+            if "answers" in calibration_updates:
+                current_calibration["answers"].update(calibration_updates["answers"])
+            if "proposed_name" in calibration_updates:
+                current_calibration["proposed_name"] = calibration_updates[
+                    "proposed_name"
+                ]
+            if "completed_at" in calibration_updates:
+                current_calibration["completed_at"] = calibration_updates[
+                    "completed_at"
+                ]
 
         UserSettingsService.upsert_settings(db, user_id, onboarding=current)
         return OnboardingService.get_onboarding_state(db, user_id)

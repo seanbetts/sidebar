@@ -30,6 +30,24 @@ class PermissionsPayload(BaseModel):
     notifications: str = "not_asked"
 
 
+class CalibrationAnswersPayload(BaseModel):
+    """Calibration answers collected from the user."""
+
+    primary_goal: str | None = None
+    working_relationship: str | None = None
+    tone_preferences: str | None = None
+
+
+class CalibrationPayload(BaseModel):
+    """Calibration progress stored in onboarding state."""
+
+    status: str = "not_started"
+    current_prompt: str = "primary_goal"
+    answers: CalibrationAnswersPayload = CalibrationAnswersPayload()
+    proposed_name: str | None = None
+    completed_at: str | None = None
+
+
 class OnboardingStateResponse(BaseModel):
     """Response payload for onboarding state."""
 
@@ -38,6 +56,7 @@ class OnboardingStateResponse(BaseModel):
     current_onboarding_step: str
     is_onboarding_complete: bool
     intent: str | None
+    calibration: CalibrationPayload
     milestones: MilestonesPayload
     permissions: PermissionsPayload
     last_prompted_at: str | None
@@ -50,6 +69,7 @@ class OnboardingUpdate(BaseModel):
 
     status: str | None = None
     intent: str | None = None
+    calibration: dict[str, object] | None = None
     milestones: dict[str, str | None] | None = None
     permissions: dict[str, str] | None = None
     last_prompted_at: str | None = None
@@ -72,13 +92,7 @@ def get_onboarding(
         Current onboarding state payload.
     """
     state = OnboardingService.get_onboarding_state(db, user_id)
-    return OnboardingStateResponse(
-        **{
-            **state,
-            "milestones": state["milestones"],
-            "permissions": state["permissions"],
-        }
-    )
+    return OnboardingStateResponse(**state)
 
 
 @router.patch("", response_model=OnboardingStateResponse)
@@ -101,10 +115,4 @@ def update_onboarding(
     """
     updates = payload.model_dump(exclude_unset=True)
     state = OnboardingService.update_onboarding_state(db, user_id, updates)
-    return OnboardingStateResponse(
-        **{
-            **state,
-            "milestones": state["milestones"],
-            "permissions": state["permissions"],
-        }
-    )
+    return OnboardingStateResponse(**state)
