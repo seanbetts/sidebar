@@ -74,6 +74,41 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
     }
 
+    func testLoadOnboardingClearsRecoveryStateWhenBackendCompletesFromFirstOutcomeAlone() async {
+        let onboardingState = OnboardingState(
+            status: .completed,
+            providerReady: true,
+            currentOnboardingStep: .completed,
+            isOnboardingComplete: true,
+            intent: .notes,
+            milestones: OnboardingMilestones(
+                providerConnected: "2026-04-02T11:00:00Z",
+                firstOutcomeCompleted: "2026-04-02T11:05:00Z",
+                profileBasicsSet: nil,
+                communicationStyleSet: nil,
+                secondaryTourSeen: nil
+            ),
+            permissions: OnboardingPermissions(
+                location: .granted,
+                notifications: .granted
+            ),
+            lastPromptedAt: nil
+        )
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResult = .success(onboardingState)
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+
+        await viewModel.loadOnboarding()
+
+        XCTAssertEqual(viewModel.onboardingState, onboardingState)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
+    }
+
     func testPermissionRecoveryItemsIncludeMissingLocationAndNotifications() async {
         let onboardingState = OnboardingState(
             status: .dismissed,

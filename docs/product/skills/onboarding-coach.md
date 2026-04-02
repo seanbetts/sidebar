@@ -29,6 +29,9 @@ sideBar uses the Onboarding Coach when your onboarding state is still
 incomplete. It is designed for setup recovery and first-run guidance, not
 general day-to-day chat once onboarding is complete.
 
+That usually means the coach disappears after you either complete your first
+real outcome or finish the discovery follow-up after setup.
+
 ## Requirements
 
 - **Tier:** Standard (included, no installation needed)

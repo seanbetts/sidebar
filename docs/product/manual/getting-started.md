@@ -52,6 +52,13 @@ This isn't a demo, it's an actual piece of work, done in the app.
 You can move through this conversation at your own pace. Once it's done,
 sideBar remembers everything it learned and applies it going forward.
 
+If you stop partway through, sideBar resumes from the next missing step the
+next time you return. Provider recovery shows up in Chat, while permission
+follow-up lives in Settings.
+
+Onboarding is only complete after sideBar has helped you reach a real first
+outcome or you finish the discovery follow-up after setup.
+
 ## Finding Your Way Around
 
 After onboarding, you land in the main app. The navigation bar sits at the
