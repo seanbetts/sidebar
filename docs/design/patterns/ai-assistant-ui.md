@@ -246,6 +246,39 @@ In-app proactive surfaces (morning digest destination, future assistant inbox) a
 
 ---
 
+## Subscription-gated states
+
+The assistant UI adapts based on the user's subscription tier. These states are product boundaries, not errors. They use the upgrade prompt pattern from [Subscription](./subscription), not error presentation surfaces.
+
+### Free users
+
+Free users can view past conversations (cached, read-only) but cannot send new messages or trigger skills.
+
+- The chat input field is visible but disabled (greyed out)
+- Below the input, a compact subscription prompt card appears with "Subscribe to chat with sideBar" text and "See plans" / "Bring your own key" action buttons
+- The conversation list remains accessible. Existing conversations from a lapsed subscription are readable.
+- No assistant generation states (thinking, streaming) are shown since no messages can be sent
+
+### Message cap reached (Plus and Pro)
+
+When a bundled subscriber exhausts their daily message cap:
+
+- The input field is disabled with inline text: "You've used all [N] messages for today"
+- Reset time shown: "Resets at midnight" (user's local timezone)
+- For Plus users: an upgrade prompt appears below: "Upgrade to Pro for 150 messages a day" with "See plans"
+- For Pro users: only the reset time is shown (no upgrade prompt)
+- Existing conversation content remains fully interactive (copy, workspace actions, tool detail inspection)
+
+### Approaching cap (80%+ usage)
+
+When a Plus or Pro user reaches 80% of their daily cap, a subtle counter appears in the chat header: "6 messages left today". Below 80%, no subscription state is visible in the chat UI.
+
+### Skills unavailable due to tier
+
+If the assistant would use a skill the user's tier does not include (e.g., a flagship skill for a Plus user), the skill is not invoked. Instead, the assistant response includes a brief note: "This needs a Pro subscription" with a contextual "See plans" link. This is part of the assistant's response text, not a system error.
+
+---
+
 ## Configurability
 
 The assistant's display name is user-configurable via Settings. All UI references to the assistant — role pills, settings section titles, and copy — must use `assistantDisplayName` from `SettingsViewModel`, never a hardcoded string.
@@ -276,6 +309,7 @@ The user is always identified as "You". This is not configurable.
 
 ## Related docs
 
+- [Subscription](./subscription)
 - [Handoffs](./handoffs)
 - [Wait UX](./wait-ux)
 - [Feedback and Haptics](./feedback-and-haptics)

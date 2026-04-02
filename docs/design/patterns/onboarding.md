@@ -11,11 +11,11 @@ Define how sideBar onboards new users from first launch through to a completed f
 
 ## Design principles
 
-- **Assistant-first**: provider setup happens before normal chat generation so the assistant is ready on the user's first interaction
+- **Subscription-first**: the plan choice is presented before provider setup so the user understands what they are getting. Plus/Pro users never see API key entry. BYOK users see it as a natural next step.
 - **Outcome-oriented**: the first real outcome matters more than education screens
 - **One backend contract**: the backend owns all persistent onboarding state; Apple renders it today, and web can adopt it later without introducing a parallel state machine
 - **Permission timing**: Apple system permission prompts happen only after explicit user action, never at launch or sign-in
-- **Skippable, not blockable**: users who skip provider setup can still use all non-AI features
+- **Skippable, not blockable**: users who skip subscription setup land on the free tier with full access to non-AI features
 
 ---
 
@@ -66,23 +66,41 @@ A modal wizard with no navigation chrome. Progress shown via dots at the bottom 
 - Footnote pointing users to Settings for pronouns, location, and communication preferences
 - Location is not collected here
 
-### Step 5: Pick Your AI Brain
+### Step 5: Choose Your Plan
 
+- Presents the subscription options as a compact plan picker
+- Three plan cards: **Plus** ($8/mo), **Pro** ($15/mo), **BYOK** ($5/mo, "Bring your own key")
+- Each card shows: tier name, price, one-line value summary, and a selection circle
+- Annual/monthly toggle at the top, defaulting to annual
+- Tapping a card selects it and enables "Continue"
+- Plus and Pro selections route to Step 5a (payment). BYOK routes to Step 6 (provider and key entry).
+- "Skip for now" link at bottom — routes to the free tier. Sets status to `dismissed`, `subscription_active` milestone stays false.
+- A brief note below the cards: "You can always change your plan later in Settings"
+
+### Step 5a: Payment (Plus and Pro only)
+
+- Presented inline, not as a separate modal
+- **iOS/macOS**: triggers StoreKit 2 purchase sheet for the selected plan
+- **Web**: routes to Stripe checkout
+- Loading state during payment processing
+- Success: checkmark and brief "You're subscribed!" confirmation, then advances to Step 7 (skipping Step 6, since Plus/Pro users do not need an API key)
+- Failure: actionable error message with "Try again" and "Skip for now" options
+- "Skip for now" cancels the purchase and routes to the free tier
+
+### Step 6: Connect Your Provider (BYOK only)
+
+- Reached only when the user selected BYOK in Step 5
 - Three equal provider cards: Anthropic (Claude), OpenAI (GPT), Google (Gemini)
 - Each card shows: provider initial, name, model family, and a radio-style selection circle
 - Tapping selects the card (border highlight + filled checkmark) and enables "Continue"
-- "Skip for now" link at bottom — sets status to `dismissed`, `provider_connected` milestone stays false
-
-### Step 6: Connect Me
-
-- Secure text field for the API key (no autocorrect, no autocapitalize)
+- On "Continue", presents a secure text field for the API key (no autocorrect, no autocapitalize)
 - "Where do I find this?" help link opens the provider's dashboard in Safari
 - BYOK note: key is encrypted and never shared
 - "Verify & Continue" triggers a test API call to validate the key
 - Loading state during validation
 - Success: checkmark and brief "Connected!" confirmation
 - Error states for invalid key, network failure, and rate limiting, each with actionable messages
-- "Skip for now" link routes to the `dismissed` (no provider key) state
+- "Skip for now" link routes to the `dismissed` (no provider key) state — the BYOK subscription remains active but AI features are unavailable until a key is added
 
 ### Step 7: Share Your Location (Optional)
 
@@ -160,7 +178,7 @@ Tapping a tile starts a focused feature kickoff in a fresh chat. The goal is to 
 | Tasks | Projects, due dates, recurring tasks; AI creates tasks from conversation |
 | Websites | Save articles and links; AI can summarize and answer questions |
 | Files | Upload PDFs, documents, images; AI can search and reference after processing |
-| Skills Store | Extend capabilities; three tiers (Required, Standard, Store) |
+| Skills Store | Extend capabilities; skills included with your subscription, more available as you upgrade |
 | Memory | AI learns the user over time; user always in control |
 | Widgets + Extensions (optional) | Home screen widgets and Share Extension / Safari Extension |
 
@@ -184,14 +202,24 @@ If the AI fails during feature discovery (bad key, rate limit, network failure):
 
 The same static surface also serves as the baseline signed-in discovery experience before the richer AI-led tile flows are invoked.
 
-### Fallback: no API key
+### Fallback: no subscription (free tier)
 
-If the user skipped provider setup entirely:
+If the user skipped subscription setup entirely:
 
-- A persistent add-key banner is shown in Chat ("Chat needs an API key")
+- The chat input area shows a subscription prompt: "Subscribe to chat with sideBar" with "See plans" and "Bring your own key" actions (see [Subscription](./subscription#chat-free-users))
+- Notes, tasks, websites, and files remain fully functional
+- The Skills Store is browsable with tier badges on all skills
+- When a subscription is purchased from Settings, `subscription_active` is set
+- If the user is still incomplete, subscribing later routes into soul calibration first and then resumes discovery without relaunching
+
+### Fallback: BYOK without API key
+
+If a BYOK subscriber skipped provider key entry:
+
+- A persistent add-key banner is shown in Chat ("Add your API key to start chatting")
 - Banner links directly to the sideBar settings pane for provider key entry
 - Notes, tasks, websites, and files remain fully functional
-- Chat shows an explanation that a key is needed for AI features
+- Skills are available (the subscription is active) but cannot execute without AI access
 - Provider keys are verified live before they are saved, both in onboarding and in Settings
 - When a key is later added from Settings, `provider_connected` is set
 - If the user is still incomplete, adding a valid key later routes into soul calibration first and then resumes discovery without relaunching
@@ -218,6 +246,7 @@ The backend owns all persistent onboarding state, exposed via `GET` and `PATCH /
 |---|---|
 | `status` | `not_started`, `in_progress`, `completed`, `dismissed` |
 | `intent` | `notes`, `tasks`, `websites`, `files`, `chat`, `null` |
+| `milestones.subscription_active` | timestamp or `null` |
 | `milestones.provider_connected` | timestamp or `null` |
 | `milestones.first_outcome_completed` | timestamp or `null` |
 | `milestones.profile_basics_set` | timestamp or `null` |
@@ -229,11 +258,13 @@ The backend owns all persistent onboarding state, exposed via `GET` and `PATCH /
 
 ### Derived fields (computed, not stored)
 
-- `provider_ready` — derived from live provider settings
-- `current_onboarding_step` — derived from provider readiness, status, and completion milestones
-- `is_onboarding_complete` — derived from provider readiness plus completion milestones
+- `subscription_ready` — derived from live subscription state (true for Plus, Pro, or active BYOK)
+- `provider_ready` — derived from live provider settings (always true for Plus/Pro; requires key for BYOK)
+- `ai_ready` — derived from `subscription_ready AND provider_ready` (true when the user can chat)
+- `current_onboarding_step` — derived from subscription readiness, provider readiness, status, and completion milestones
+- `is_onboarding_complete` — derived from `ai_ready` plus completion milestones
 
-Apple reads derived fields from the API response; it does not recompute them locally. `selected_provider` is not part of onboarding state — it belongs to general settings via `ai_primary_provider`. Web onboarding remains deferred for now.
+Apple reads derived fields from the API response; it does not recompute them locally. `selected_provider` is not part of onboarding state — it belongs to general settings via `ai_primary_provider`. Subscription tier is not part of onboarding state — it belongs to the subscription model. Web onboarding remains deferred for now.
 
 ---
 
@@ -254,19 +285,21 @@ Apple reads derived fields from the API response; it does not recompute them loc
 ## Rules summary
 
 1. **Backend is the source of truth.** All onboarding state is persisted on the backend. iOS renders it; it does not maintain a parallel state machine.
-2. **Onboarding is assistant-first.** Provider setup is offered before any AI interaction. Chat generation is not available until a key is connected.
+2. **Onboarding is subscription-first.** The plan choice (Step 5) is presented before provider setup. Plus/Pro users skip API key entry entirely. BYOK users see key entry as a natural next step.
 3. **Permission prompts require explicit user action.** No location or notification prompts at launch or sign-in. All system prompts are triggered only by the "Enable" button in Steps 7 and 8 of the wizard.
-4. **Skipping is always available.** Provider selection, API key entry, and permission steps each have a "Skip for now" or "Not now" exit. Skipping never blocks access to non-AI features.
-5. **Provider-dismissed users get a Chat recovery path.** A persistent add-key banner is shown in Chat until a provider and key are configured. Chat must explain why AI features are unavailable.
-6. **Optional Apple permissions recover from Settings.** Location and notifications are managed from the sideBar settings pane with explicit user actions. They are not shown as persistent Chat nags.
-7. **Signed-in discovery begins with a compact Chat surface.** The compact expandable discovery surface is the baseline signed-in experience. The richer AI-led per-feature follow-up after tapping a tile extends that surface.
-8. **Presentation wrapper only.** Content is identical across iPhone, iPad, and Mac. Only the container (`.fullScreenCover` vs `.sheet`) differs.
-9. **Soul calibration precedes discovery.** If the user is provider-ready but soul calibration is incomplete, sideBar runs the mandatory calibration chat before discovery or normal AI chat begins.
+4. **Skipping is always available.** Subscription, provider selection, API key entry, and permission steps each have a "Skip for now" or "Not now" exit. Skipping never blocks access to non-AI features.
+5. **Free tier users get a Chat subscription prompt.** The chat input area shows a subscription prompt until a plan is active. See [Subscription](./subscription#chat-free-users).
+6. **BYOK users without a key get a Chat recovery banner.** A persistent add-key banner is shown in Chat until a provider key is configured.
+7. **Optional Apple permissions recover from Settings.** Location and notifications are managed from the sideBar settings pane with explicit user actions. They are not shown as persistent Chat nags.
+8. **Signed-in discovery begins with a compact Chat surface.** The compact expandable discovery surface is the baseline signed-in experience. The richer AI-led per-feature follow-up after tapping a tile extends that surface.
+9. **Presentation wrapper only.** Content is identical across iPhone, iPad, and Mac. Only the container (`.fullScreenCover` vs `.sheet`) differs.
+10. **Soul calibration precedes discovery.** If the user is AI-ready but soul calibration is incomplete, sideBar runs the mandatory calibration chat before discovery or normal AI chat begins.
 
 ---
 
 ## Related docs
 
+- [Subscription](./subscription)
 - [Authentication](./authentication)
 - [iOS Conventions](../platform-strategy/ios-conventions)
 - [Wait UX](./wait-ux)

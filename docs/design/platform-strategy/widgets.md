@@ -274,7 +274,8 @@ Favicons are fetched fresh on every timeline generation. There is no disk cache.
 
 ## Rules summary
 
-1. **Every element must be glanceable.** The user is not in the app. If it requires reading, it is probably too much.
+1. **Widgets are available to all users, including free tier.** Widgets surface notes, tasks, websites, and files, which are not subscription-gated. No subscription check is needed for widget rendering or interaction.
+2. **Every element must be glanceable.** The user is not in the app. If it requires reading, it is probably too much.
 2. **Show the most actionable content.** Tasks sort overdue first, then by earliest deadline. Pinned items appear because the user explicitly signalled they are important.
 3. **Cache-first, always.** Show cached data immediately. Best-effort provider refresh improves freshness when the app is closed, but never blocks rendering. Show stale data rather than a loading state.
 4. **Optimistic actions feel instant.** Task completion updates the widget immediately. No spinner, no delay, no waiting for the server.

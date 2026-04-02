@@ -199,6 +199,16 @@ Full shortcut documentation for web is incomplete. A web keyboard shortcut audit
 
 ---
 
+## Subscription and billing
+
+Web subscription checkout uses **Stripe**. The plan picker is presented as a modal overlay matching the native `.sheet` pattern. After checkout, the subscription status syncs to the backend and the UI updates immediately.
+
+The web Settings section includes a **Subscription** page at `/settings/subscription`. For billing management (payment method updates, invoice history, cancellation), web subscribers are routed to the **Stripe Customer Portal**. Apple subscribers who access the web app see their subscription status but are directed to manage billing through their Apple ID settings.
+
+The plan picker, tier badges, upgrade prompts, and message cap UX follow the same patterns as native. See [Subscription](../patterns/subscription) for full details.
+
+---
+
 ## Rules summary
 
 1. **Mirror the workspace model, not browser-native navigation.** The web layout is intentionally consistent with native — do not replace it with browser-native patterns.
@@ -208,6 +218,7 @@ Full shortcut documentation for web is incomplete. A web keyboard shortcut audit
 5. **Do not design for mobile browsers.** Web targets desktop. If mobile access is needed, the native iOS app is the answer.
 6. **Settings must be a dedicated `/settings` route.** Browser navigation and direct URL access are required.
 7. **Respect `prefers-reduced-motion` in all animations.**
+8. **Stripe handles web billing.** Do not build custom payment forms. Route billing management to the Stripe Customer Portal.
 
 ---
 
@@ -216,5 +227,6 @@ Full shortcut documentation for web is incomplete. A web keyboard shortcut audit
 - `platform-strategy/overview.md`
 - `platform-strategy/ios-conventions.md`
 - `platform-strategy/macos-conventions.md`
+- [Subscription](../patterns/subscription)
 - [Colour](../foundations/colour)
 - [Iconography](../foundations/iconography)

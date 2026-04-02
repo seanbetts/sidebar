@@ -158,6 +158,7 @@ Settings is presented as a `.sheet` from the profile avatar button. The sheet ro
 | User | Preferences, date of birth |
 | Agent | Agent behaviour, memory settings |
 | Skills | Installed skills list |
+| Subscription | Current plan, billing, upgrade/downgrade (see [Subscription](../patterns/subscription)) |
 | More | Memories browser, app settings, about |
 
 The More tab contains a `NavigationStack` with `NavigationLink` for sub-pages:
@@ -196,6 +197,7 @@ Settings is a dedicated `/settings` route. Section selection updates the URL (e.
 | User | User |
 | Agent | Agent |
 | Skills | Skills |
+| Subscription | Subscription |
 
 ---
 

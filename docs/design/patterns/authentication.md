@@ -15,6 +15,8 @@ This doc is the design system view: how auth should feel and behave.
 
 sideBar uses app-owned, password-primary accounts. Email and password is the canonical login path. Supabase provides auth infrastructure but is an adapter, not the product model — client code calls product-shaped interfaces, not Supabase-specific APIs.
 
+Subscription status is a separate concern from auth state. A user can be `.active` (authenticated) but on the free tier (no AI access). The auth pattern does not change based on subscription tier. Subscription gating is handled at the feature level, not the session level. See [Subscription](./subscription) for feature gating behaviour.
+
 Each account has one primary credential path: `email_password`. Passkeys and Sign in with Apple are not part of the current model. If either is added later:
 
 - Passkeys are an explicit security upgrade, not a silent alternate identity

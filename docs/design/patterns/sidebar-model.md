@@ -13,17 +13,38 @@ Define the behavioral model that governs what the sideBar AI assistant can do, w
 
 Every skill belongs to one of three tiers. The tier determines how the skill enters the user's session and whether it can be removed.
 
-| Tier | Description | Examples |
-|---|---|---|
-| Required | Always active. Cannot be disabled by the user. Core to sideBar functioning. | `assistant-identity`, `assistant-soul` |
-| Standard | Enabled by default. User can disable via Settings → Skills. | `notes`, `tasks`, `web-save`, `memory`, `conversations` |
-| Store | Not installed by default. User explicitly installs from the skills store. | Third-party integrations, API-key skills |
+| Tier | Description | Subscription required | Examples |
+|---|---|---|---|
+| Required | Always active. Cannot be disabled by the user. Core to sideBar functioning. | Any paid tier (Plus, Pro, or BYOK) | `assistant-identity`, `assistant-soul` |
+| Standard | Enabled by default. User can disable via Settings → Skills. | Any paid tier (Plus, Pro, or BYOK) | `notes`, `tasks`, `web-save`, `memory`, `conversations` |
+| Store (basic) | Not installed by default. User explicitly installs from the skills store. Lightweight integrations. | Any paid tier (Plus, Pro, or BYOK) | Google Apps, WhatsApp, web utilities |
+| Store (flagship) | Not installed by default. High-cost skills with significant per-use resource consumption. | Pro or BYOK only | Deep research, meeting recording, speech interface, audio transcription |
 
 **When to assign Required:** a skill is Required only if sideBar would be meaningfully broken without it — identity, soul, and core safety constraints. Do not assign Required to productivity skills.
 
 **When to assign Standard:** a skill is Standard if it covers a core use case that most users will want immediately, and it involves only the user's own data.
 
-**When to assign Store:** a skill is Store if it requires an API key, involves third-party services, or is too specialised to install by default.
+**When to assign Store (basic):** a skill is Store (basic) if it requires an API key or involves third-party services, but has minimal per-use cost.
+
+**When to assign Store (flagship):** a skill is Store (flagship) if it has significant per-use cost — many API calls, heavy compute, storage, or external service fees. Flagship skills are gated to Pro and BYOK subscribers.
+
+---
+
+## Subscription gating
+
+Skills require an active subscription to function. Free users have no AI access and therefore no skills. The subscription tier determines which skills are available:
+
+| Subscription tier | Skill access |
+|---|---|
+| Free | None (can browse the Skills Store but not install or use) |
+| Plus | Required + Standard + Store (basic) |
+| Pro | Required + Standard + Store (basic) + Store (flagship) |
+| BYOK | Same as Pro |
+| Beta / Admin | All skills, no gating |
+
+The action autonomy model (reads, creates, edits, deletes) applies only to users with an active AI subscription. Free users never reach the point where action autonomy is relevant.
+
+Subscription state is checked before skill availability. If a user's subscription lapses (e.g., payment failure, cancellation), installed skills are disabled but not uninstalled. Re-subscribing re-enables them without reinstallation. See [Subscription](./subscription) for full gating behaviour.
 
 ---
 
@@ -224,6 +245,7 @@ These rules are active in every conversation unless overridden by the user's con
 
 ## Related docs
 
+- [Subscription](./subscription)
 - [AI Assistant UI](../patterns/ai-assistant-ui)
 - [Handoffs](../patterns/handoffs)
 - [Feedback and Haptics](../patterns/feedback-and-haptics)

@@ -45,9 +45,32 @@ EmptyStateView(
 
 ---
 
+## Subscription-gated empty states
+
+Some empty states are caused by subscription gating rather than by missing content. These require different treatment: the user needs to understand what they would see with a subscription, not just that nothing is here yet.
+
+**Chat (free user, no conversations)**:
+
+Use the engaged register. The empty state should communicate the value of the assistant, not just "no messages":
+
+| Surface | Preferred copy |
+|---|---|
+| Chat (free user, empty) | "sideBar can help you with your notes, tasks, and more" with a "See plans" action below |
+
+Do not use `EmptyStateView` alone for this case. Pair it with the subscription prompt card from [Subscription](../patterns/subscription#chat-free-users), which provides the upgrade action.
+
+**Skills Store (free user browsing)**:
+
+Free users can browse the full Skills Store. Skill cards show tier badges indicating which plan unlocks them. This is not an empty state, it is a populated browsing experience with gated install actions.
+
+If no skills match a search or filter for a free user, use the standard empty state: "No matching skills". Do not add subscription messaging to search-no-results states.
+
+---
+
 ## Related
 
 - [`PlaceholderView`](./placeholder) — for load failures with an optional retry action
 - [`SidebarListSkeleton`](./list-skeleton) — for the loading state before empty is confirmed
 - [Error Presentation](../patterns/error-presentation) — when to show an error vs. an empty state
+- [Subscription](../patterns/subscription) — subscription boundary patterns
 - [Wait UX](../patterns/wait-ux) — loading state patterns

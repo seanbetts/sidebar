@@ -122,6 +122,34 @@ When an operation fails:
 
 ---
 
+## Subscription states vs errors
+
+Subscription-related states require careful classification. Some are product boundaries, others are genuine errors.
+
+### Not errors (do not use error surfaces)
+
+| State | Correct surface |
+|---|---|
+| Free user tries to chat | Subscription prompt in chat input area (see [Subscription](./subscription)) |
+| Message cap reached | Inline disabled state with reset time and optional upgrade prompt |
+| Plus user taps a flagship skill | Upgrade prompt in skill detail view |
+| Free user browses locked skills | Tier badge on skill card, upgrade prompt on tap |
+
+These are expected product boundaries. Using toasts, alerts, red text, or `PlaceholderView` for these states would misrepresent them as failures. Use the upgrade prompt pattern from [Subscription](./subscription).
+
+### Errors (use standard error surfaces)
+
+| State | Correct surface |
+|---|---|
+| Subscription payment failed | Banner (persistent, like `OfflineBanner`). "There's a problem with your subscription. Update your payment to continue." with an action linking to subscription management. |
+| Subscription expired (grace period ended) | Banner. "Your subscription has expired." with a "Resubscribe" action. |
+| StoreKit purchase failed mid-checkout | Inline error text in the plan picker or onboarding payment step. |
+| Stripe webhook failure (server-side) | Not user-facing unless it results in access loss, in which case treat as subscription expired. |
+
+Payment and subscription failures are real errors that block functionality the user expects to have. Use the standard error surfaces with actionable messages.
+
+---
+
 ## Accessibility notes
 
 - `ToastCenter` announces messages via VoiceOver accessibility notifications automatically.
@@ -147,6 +175,7 @@ When an operation fails:
 
 ## Related docs
 
+- [Subscription](./subscription) — subscription boundary patterns (not errors)
 - [Feedback and Haptics](./feedback-and-haptics) — success states, haptic feedback
 - [Wait UX](./wait-ux) — loading and in-progress states
 - [Components Overview](../components/overview) — ToastCenter, OfflineBanner, PlaceholderView, DeleteConfirmationAlert

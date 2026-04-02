@@ -224,6 +224,35 @@ These terms should be consistent across UI, docs, and marketing:
 | Skill | A specific capability | Tool, Feature, Integration (in UI) |
 | Tool use | Technical term — use sparingly in UI | Show only in developer-facing contexts |
 
+**Subscription terminology**:
+
+| Term | Use | Avoid |
+|---|---|---|
+| Free | The no-cost tier (productivity suite only) | Free plan, Free tier (in UI copy; "Free" alone is sufficient) |
+| Plus | The entry-level paid tier | Basic, Starter, Standard |
+| Pro | The full-featured paid tier | Premium, Ultimate, Max |
+| BYOK | The bring-your-own-key tier | Developer plan, API plan |
+| Subscribe | The action of starting a paid plan | Purchase, Buy, Pay for |
+| See plans | The universal upgrade CTA | Upgrade now, Go premium, Unlock |
+
+**Upgrade prompt copy**:
+
+Upgrade prompts use the engaged register. They should be warm, specific, and honest, never vague or punitive.
+
+| Register | Example |
+|---|---|
+| Ambient (settings, labels) | "Upgrade to continue" |
+| Engaged (chat, skill store) | "You've used all 30 messages for today. Upgrade to Pro for 150 a day, or check back tomorrow." |
+| Engaged (skill gating) | "Deep research needs a Pro subscription." |
+| Engaged (free user in chat) | "Subscribe to chat with sideBar" |
+
+Rules for upgrade copy:
+
+- Always name the specific tier required (Plus, Pro), never say "premium" or "paid"
+- Always explain what the user tried to do and what unlocks it
+- For cap-reached states, include the reset time so the user knows the alternative to upgrading
+- Never frame the boundary as a punishment ("You've hit your limit"). Frame it as information ("You've used all 30 messages for today").
+
 ---
 
 ## Language to avoid
