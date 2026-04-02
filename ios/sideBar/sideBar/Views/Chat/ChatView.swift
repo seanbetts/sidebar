@@ -123,11 +123,19 @@ private struct ChatDetailView: View {
                     .frame(maxWidth: contentMaxWidth)
                     .frame(maxWidth: .infinity, alignment: .center)
                 } else if environment.settingsViewModel.signedInOnboardingRecoveryState == .featureDiscovery {
-                    StaticFeatureCarousel {
-                        Task {
-                            await environment.settingsViewModel.markFeatureDiscoverySeen()
+                    StaticFeatureCarousel(
+                        onSelectFeature: { feature in
+                            Task {
+                                await environment.settingsViewModel.markFeatureDiscoverySeen()
+                                await viewModel.startFeatureDiscovery(for: feature)
+                            }
+                        },
+                        onDismiss: {
+                            Task {
+                                await environment.settingsViewModel.markFeatureDiscoverySeen()
+                            }
                         }
-                    }
+                    )
                     .padding(.horizontal, DesignTokens.Spacing.md)
                     .padding(.top, DesignTokens.Spacing.md)
                     .padding(.bottom, DesignTokens.Spacing.sm)

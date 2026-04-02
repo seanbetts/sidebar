@@ -1,50 +1,14 @@
 import SwiftUI
 
 struct StaticFeatureCarousel: View {
+    let onSelectFeature: (OnboardingDiscoveryFeature) -> Void
     let onDismiss: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var isExpanded = false
 
-    private let features: [FeatureIntroCard.Model] = [
-        .init(
-            id: "chat",
-            title: "Chat",
-            summary: "Ask questions, take action, and use skills across your workspace.",
-            systemImage: "bubble"
-        ),
-        .init(
-            id: "notes",
-            title: "Notes",
-            summary: "Capture ideas, keep scratch work close, and organize them later.",
-            systemImage: "text.document"
-        ),
-        .init(
-            id: "tasks",
-            title: "Tasks",
-            summary: "Track projects, due dates, and follow-up without leaving sideBar.",
-            systemImage: "checkmark.square"
-        ),
-        .init(
-            id: "websites",
-            title: "Websites",
-            summary: "Save articles and links so the assistant can reference them later.",
-            systemImage: "globe"
-        ),
-        .init(
-            id: "files",
-            title: "Files",
-            summary: "Upload PDFs and documents, then search or ask questions about them.",
-            systemImage: "folder"
-        ),
-        .init(
-            id: "skills",
-            title: "Skills",
-            summary: "Extend what the assistant can do with built-in and store skills.",
-            systemImage: "command.circle"
-        )
-    ]
+    private let features = OnboardingDiscoveryFeature.allCases
 
     private var panelMaxWidth: CGFloat {
         horizontalSizeClass == .compact ? 360 : 460
@@ -132,7 +96,9 @@ struct StaticFeatureCarousel: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     ForEach(features) { feature in
-                        FeatureIntroCard(feature: feature)
+                        FeatureIntroCard(feature: feature) {
+                            onSelectFeature(feature)
+                        }
                     }
                 }
                 .padding(.vertical, DesignTokens.Spacing.xxxs)

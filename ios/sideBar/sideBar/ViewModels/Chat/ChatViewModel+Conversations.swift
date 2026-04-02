@@ -5,6 +5,10 @@ import Foundation
 // MARK: - ChatViewModel+Conversations
 
 extension ChatViewModel {
+    public func startFeatureDiscovery(for feature: OnboardingDiscoveryFeature) async {
+        await sendMessage(text: feature.kickoffPrompt)
+    }
+
     public func searchConversations(query: String, limit: Int = 50) async throws -> [Conversation] {
         let trimmed = query.trimmed
         guard !trimmed.isEmpty else { return [] }

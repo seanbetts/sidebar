@@ -4,6 +4,7 @@ import sideBarShared
 
 final class PrimaryProviderSettingsAPI: SettingsProviding {
     var current: UserSettings
+    var upsertError: Error?
     var updateCallCount = 0
     var lastUpdate: SettingsUpdate?
     var upsertCallCount = 0
@@ -14,8 +15,9 @@ final class PrimaryProviderSettingsAPI: SettingsProviding {
     var lastDisconnectSource: ProviderKeyDisconnectSource?
     var lastDisconnectSkillId: String?
 
-    init(initial: UserSettings) {
+    init(initial: UserSettings, upsertError: Error? = nil) {
         current = initial
+        self.upsertError = upsertError
     }
 
     func getSettings() async throws -> UserSettings {
@@ -59,6 +61,9 @@ final class PrimaryProviderSettingsAPI: SettingsProviding {
     }
 
     func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
+        if let upsertError {
+            throw upsertError
+        }
         upsertCallCount += 1
         lastUpsertProvider = provider
         lastUpsertApiKey = apiKey

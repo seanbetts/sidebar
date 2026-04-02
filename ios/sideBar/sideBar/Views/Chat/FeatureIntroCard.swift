@@ -1,40 +1,38 @@
 import SwiftUI
 
 struct FeatureIntroCard: View {
-    struct Model: Identifiable, Equatable {
-        let id: String
-        let title: String
-        let summary: String
-        let systemImage: String
-    }
-
-    let feature: Model
+    let feature: OnboardingDiscoveryFeature
+    let action: () -> Void
 
     private let cardWidth: CGFloat = 228
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-                Image(systemName: feature.systemImage)
-                    .appFont(.labelMd)
-                    .foregroundStyle(DesignTokens.Colors.textPrimary)
-                    .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
-                    .accessibilityHidden(true)
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
+                    Image(systemName: feature.systemImage)
+                        .appFont(.labelMd)
+                        .foregroundStyle(DesignTokens.Colors.textPrimary)
+                        .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
+                        .accessibilityHidden(true)
 
-                Text(feature.title)
-                    .appFont(.bodySemibold)
-                    .foregroundStyle(DesignTokens.Colors.textPrimary)
+                    Text(feature.title)
+                        .appFont(.bodySemibold)
+                        .foregroundStyle(DesignTokens.Colors.textPrimary)
+                }
+
+                Text(feature.summary)
+                    .appFont(.caption)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Text(feature.summary)
-                .appFont(.caption)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+            .padding(DesignTokens.Spacing.md)
+            .frame(width: cardWidth, alignment: .leading)
+            .modifier(FeatureIntroCardChrome())
         }
-        .padding(DesignTokens.Spacing.md)
-        .frame(width: cardWidth, alignment: .leading)
-        .modifier(FeatureIntroCardChrome())
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
+        .accessibilityHint("Starts a guided intro in chat")
     }
 }
 
