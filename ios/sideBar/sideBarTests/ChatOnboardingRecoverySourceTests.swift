@@ -123,6 +123,18 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         )
     }
 
+    func testHandleSendDoesNotForceComposerResetState() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("privatefunchandleSend(){"))
+        XCTAssertTrue(normalized.contains("draftMessage=\"\""))
+        XCTAssertFalse(normalized.contains("inputMeasuredHeight=0"))
+        XCTAssertFalse(normalized.contains("inputResetToken=UUID()"))
+        XCTAssertFalse(normalized.contains("resetToken:"))
+        XCTAssertFalse(normalized.contains("applyResetIfNeeded("))
+    }
+
     private func combinedChatSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {
         let fileURL = URL(fileURLWithPath: "\(file)")
         let sideBarRoot = fileURL

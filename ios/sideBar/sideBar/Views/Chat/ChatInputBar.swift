@@ -12,7 +12,6 @@ func chatInputReturnIntent(shiftPressed: Bool) -> ChatInputReturnIntent {
 struct ChatInputBar: View {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
-    let resetToken: UUID
     let isEnabled: Bool
     let isSendEnabled: Bool
     let onSend: () -> Void
@@ -25,7 +24,6 @@ struct ChatInputBar: View {
             PlatformChatInputView(
                 text: $text,
                 measuredHeight: $measuredHeight,
-                resetToken: resetToken,
                 isEnabled: isEnabled,
                 isSendEnabled: isSendEnabled,
                 minHeight: minHeight,
@@ -99,7 +97,6 @@ private struct ChatInputContainer<Content: View>: View {
 private struct PlatformChatInputView: View {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
-    let resetToken: UUID
     let isEnabled: Bool
     let isSendEnabled: Bool
     let minHeight: CGFloat
@@ -112,7 +109,6 @@ private struct PlatformChatInputView: View {
         ChatInputUIKitView(
             text: $text,
             measuredHeight: $measuredHeight,
-            resetToken: resetToken,
             isEnabled: isEnabled,
             isSendEnabled: isSendEnabled,
             minHeight: minHeight,
@@ -124,7 +120,6 @@ private struct PlatformChatInputView: View {
         ChatInputAppKitView(
             text: $text,
             measuredHeight: $measuredHeight,
-            resetToken: resetToken,
             isEnabled: isEnabled,
             isSendEnabled: isSendEnabled,
             minHeight: minHeight,
