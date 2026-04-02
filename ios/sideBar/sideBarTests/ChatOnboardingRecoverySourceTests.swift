@@ -128,7 +128,18 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
 
         XCTAssertTrue(
             normalized.contains(
-                "privatevarisComposerEnabled:Bool{environment.isNetworkAvailable&&environment.settingsViewModel.signedInOnboardingRecoveryState!=.providerRecovery}"
+                "privatevarisComposerEnabled:Bool{environment.isNetworkAvailable&&environment.settingsViewModel.signedInOnboardingRecoveryState!=.providerRecovery&&environment.settingsViewModel.signedInOnboardingRecoveryState!=.soulCalibration}"
+            )
+        )
+    }
+
+    func testFeatureDiscoveryRemainsHiddenDuringSoulCalibration() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "privatevarcanShowFeatureDiscovery:Bool{environment.settingsViewModel.signedInOnboardingRecoveryState==.featureDiscovery&&viewModel.canShowFeatureDiscovery}"
             )
         )
     }

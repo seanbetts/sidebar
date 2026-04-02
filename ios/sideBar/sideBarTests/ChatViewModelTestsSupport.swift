@@ -172,6 +172,7 @@ class ChatViewModelTestCase: XCTestCase {
         api: API,
         cache: CacheClient,
         networkStatus: ChatViewModelTestsSupport.TestNetworkStatus? = nil,
+        onboardingAPI: (any OnboardingProviding)? = nil,
         scratchpadStore: ScratchpadStore? = nil,
         ingestionAPI: IngestionAPI? = nil,
         streamClient: ChatViewModelTestsSupport.MockChatStreamClient? = nil,
@@ -194,6 +195,7 @@ class ChatViewModelTestCase: XCTestCase {
             network: ChatNetworkCoordinator(
                 chatAPI: chatAPI,
                 conversationsAPI: api,
+                onboardingAPI: onboardingAPI,
                 ingestionAPI: resolvedIngestionAPI,
                 streamClient: resolvedStreamClient,
                 networkStatus: effectiveNetworkStatus

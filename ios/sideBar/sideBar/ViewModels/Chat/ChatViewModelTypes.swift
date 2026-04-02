@@ -12,9 +12,26 @@ struct ChatRequestContext {
 struct ChatNetworkCoordinator {
     let chatAPI: ChatAPI
     let conversationsAPI: ConversationsAPIProviding
+    let onboardingAPI: (any OnboardingProviding)?
     let ingestionAPI: IngestionAPI
     let streamClient: ChatStreamClient
     let networkStatus: any NetworkStatusProviding
+
+    init(
+        chatAPI: ChatAPI,
+        conversationsAPI: ConversationsAPIProviding,
+        onboardingAPI: (any OnboardingProviding)? = nil,
+        ingestionAPI: IngestionAPI,
+        streamClient: ChatStreamClient,
+        networkStatus: any NetworkStatusProviding
+    ) {
+        self.chatAPI = chatAPI
+        self.conversationsAPI = conversationsAPI
+        self.onboardingAPI = onboardingAPI
+        self.ingestionAPI = ingestionAPI
+        self.streamClient = streamClient
+        self.networkStatus = networkStatus
+    }
 }
 
 enum ContextRefreshTarget {

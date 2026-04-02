@@ -41,6 +41,9 @@ final class MockOnboardingAPI: OnboardingProviding {
         )
     )
     private(set) var updates: [RecordedUpdate] = []
+    private(set) var submittedCalibrationAnswers: [(prompt: OnboardingCalibrationPrompt, answer: OnboardingCalibrationAnswer)] = []
+    private(set) var regenerateCalibrationNameCallCount = 0
+    private(set) var acceptCalibrationNameCallCount = 0
 
     func getOnboarding() async throws -> OnboardingState {
         if !getResults.isEmpty {
@@ -64,17 +67,18 @@ final class MockOnboardingAPI: OnboardingProviding {
         _ prompt: OnboardingCalibrationPrompt,
         answer: OnboardingCalibrationAnswer
     ) async throws -> OnboardingCalibrationActionResponse {
-        _ = prompt
-        _ = answer
+        submittedCalibrationAnswers.append((prompt: prompt, answer: answer))
         return try submitCalibrationAnswerResult.get()
     }
 
     func regenerateCalibrationName() async throws -> OnboardingCalibrationActionResponse {
-        try regenerateCalibrationNameResult.get()
+        regenerateCalibrationNameCallCount += 1
+        return try regenerateCalibrationNameResult.get()
     }
 
     func acceptCalibrationName() async throws -> OnboardingCalibrationActionResponse {
-        try acceptCalibrationNameResult.get()
+        acceptCalibrationNameCallCount += 1
+        return try acceptCalibrationNameResult.get()
     }
 }
 
@@ -125,15 +129,15 @@ final class DelayedOnboardingAPI: OnboardingProviding {
         _ prompt: OnboardingCalibrationPrompt,
         answer: OnboardingCalibrationAnswer
     ) async throws -> OnboardingCalibrationActionResponse {
-        try await base.submitCalibrationAnswer(prompt, answer: answer)
+        return try await base.submitCalibrationAnswer(prompt, answer: answer)
     }
 
     func regenerateCalibrationName() async throws -> OnboardingCalibrationActionResponse {
-        try await base.regenerateCalibrationName()
+        return try await base.regenerateCalibrationName()
     }
 
     func acceptCalibrationName() async throws -> OnboardingCalibrationActionResponse {
-        try await base.acceptCalibrationName()
+        return try await base.acceptCalibrationName()
     }
 }
 

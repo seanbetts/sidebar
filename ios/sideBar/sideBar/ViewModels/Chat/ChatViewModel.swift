@@ -109,6 +109,10 @@ private final class ChatViewModelTeardownBag {
     @Published public var errorMessage: String?
     @Published public var activeTool: ChatActiveTool?
     @Published public var promptPreview: ChatPromptPreview?
+    @Published public var soulCalibrationState: OnboardingCalibrationState?
+    @Published public var soulCalibrationConfirmationText: String?
+    @Published public var soulCalibrationErrorMessage: String?
+    @Published public var isSubmittingSoulCalibration: Bool = false
 
     let network: ChatNetworkCoordinator
     let ui: ChatUICoordinator
@@ -119,6 +123,7 @@ private final class ChatViewModelTeardownBag {
 
     var chatAPI: ChatAPI { network.chatAPI }
     var conversationsAPI: ConversationsAPIProviding { network.conversationsAPI }
+    var onboardingAPI: (any OnboardingProviding)? { network.onboardingAPI }
     var ingestionAPI: IngestionAPI { network.ingestionAPI }
     var streamClient: ChatStreamClient { network.streamClient }
     var networkStatus: any NetworkStatusProviding { network.networkStatus }

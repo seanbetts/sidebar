@@ -322,6 +322,7 @@ extension AppEnvironment {
                 network: ChatNetworkCoordinator(
                     chatAPI: container.chatAPI,
                     conversationsAPI: container.conversationsAPI,
+                    onboardingAPI: container.onboardingAPI,
                     ingestionAPI: container.ingestionAPI,
                     streamClient: container.makeChatStreamClient(handler: nil),
                     networkStatus: core.connectivityMonitor

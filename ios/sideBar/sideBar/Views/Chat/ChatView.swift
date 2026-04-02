@@ -121,7 +121,49 @@ private struct ChatDetailView: View {
                     .padding(.bottom, DesignTokens.Spacing.sm)
                     .frame(maxWidth: contentMaxWidth)
                     .frame(maxWidth: .infinity, alignment: .center)
-                } else if environment.settingsViewModel.signedInOnboardingRecoveryState == .featureDiscovery {
+                } else if environment.settingsViewModel.signedInOnboardingRecoveryState == .soulCalibration,
+                          let soulCalibrationState = viewModel.soulCalibrationState {
+                    SoulCalibrationPromptView(
+                        state: soulCalibrationState,
+                        confirmationText: viewModel.soulCalibrationConfirmationText,
+                        errorMessage: viewModel.soulCalibrationErrorMessage,
+                        isBusy: viewModel.isSubmittingSoulCalibration,
+                        onSelectPrimaryGoal: { choice in
+                            Task {
+                                await viewModel.submitSoulCalibrationAnswer(
+                                    .singleChoice(normalizeCalibrationChoice(choice))
+                                )
+                            }
+                        },
+                        onSelectWorkingRelationship: { choice in
+                            Task {
+                                await viewModel.submitSoulCalibrationAnswer(
+                                    .singleChoice(normalizeCalibrationChoice(choice))
+                                )
+                            }
+                        },
+                        onSelectTonePreferences: { choices in
+                            Task {
+                                await viewModel.submitSoulCalibrationAnswer(.multipleChoice(choices))
+                            }
+                        },
+                        onAcceptName: {
+                            Task {
+                                await viewModel.acceptSoulCalibrationName()
+                            }
+                        },
+                        onRegenerateName: {
+                            Task {
+                                await viewModel.regenerateSoulCalibrationName()
+                            }
+                        }
+                    )
+                    .padding(.horizontal, DesignTokens.Spacing.md)
+                    .padding(.top, DesignTokens.Spacing.md)
+                    .padding(.bottom, DesignTokens.Spacing.sm)
+                    .frame(maxWidth: contentMaxWidth)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                } else if canShowFeatureDiscovery {
                     StaticFeatureCarousel(
                         onSelectFeature: { feature in
                             Task {
@@ -140,7 +182,10 @@ private struct ChatDetailView: View {
                     .frame(maxWidth: contentMaxWidth)
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
-                if viewModel.isLoadingMessages {
+                if environment.settingsViewModel.signedInOnboardingRecoveryState == .soulCalibration {
+                    Color.clear
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewModel.isLoadingMessages {
                     LoadingView(message: "Loading messages…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.selectedConversationId == nil {
@@ -223,6 +268,12 @@ private struct ChatDetailView: View {
                 break
             }
         }
+        .onAppear {
+            viewModel.syncSoulCalibration(from: environment.settingsViewModel.onboardingState)
+        }
+        .onChange(of: environment.settingsViewModel.onboardingState) { _, state in
+            viewModel.syncSoulCalibration(from: state)
+        }
     }
 
     private var messageListBottomInset: CGFloat {
@@ -240,6 +291,7 @@ private struct ChatDetailView: View {
     private var isComposerEnabled: Bool {
         environment.isNetworkAvailable
             && environment.settingsViewModel.signedInOnboardingRecoveryState != .providerRecovery
+            && environment.settingsViewModel.signedInOnboardingRecoveryState != .soulCalibration
     }
 
     private var canSendMessages: Bool {
@@ -252,6 +304,11 @@ private struct ChatDetailView: View {
 
     private var assistantDisplayName: String {
         environment.settingsViewModel.assistantDisplayName
+    }
+
+    private var canShowFeatureDiscovery: Bool {
+        environment.settingsViewModel.signedInOnboardingRecoveryState == .featureDiscovery
+            && viewModel.canShowFeatureDiscovery
     }
 
     private func handleSend() {
@@ -308,5 +365,11 @@ private struct ChatDetailView: View {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+
+    private func normalizeCalibrationChoice(_ value: String) -> String {
+        value
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
     }
 }
