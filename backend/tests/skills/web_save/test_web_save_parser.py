@@ -298,28 +298,42 @@ def _build_sidebar_docs_html() -> str:
         <nav>
           <a href="/manual/getting-started">Getting Started</a>
         </nav>
-        <main>
+        <main id="content-area">
           <aside>
             <a href="/manual/introduction">Introduction</a>
           </aside>
-          <article>
-            <div>
-              <p>Manual</p>
-              <h1>Introduction</h1>
-              <img
-                src="https://mintcdn.com/sidebar/assets/screenshots/overview.png"
-                alt="sideBar app overview"
-              />
-              <p>sideBar is an AI assistant available on iPhone, iPad, Mac, and in your web browser.</p>
-              <p>The core idea is that your content and sideBar live together.</p>
-              <h2>What’s in the App</h2>
-              <ul>
-                <li><a href="/manual/chat">Chat</a>: your main interface with sideBar.</li>
-                <li><a href="/manual/notes">Notes</a>: a full-featured editor.</li>
-              </ul>
-              <h2>Where to Start</h2>
-              <p>Head to <a href="/manual/getting-started">Getting Started</a> for a walkthrough of setup and first steps.</p>
-            </div>
+          <div id="header">
+            <p>Manual</p>
+            <h1 id="page-title">Introduction</h1>
+          </div>
+          <article id="content">
+            <img
+              src="https://mintcdn.com/sidebar/assets/screenshots/overview.png"
+              alt="sideBar app overview"
+            />
+            <p>sideBar is an AI assistant available on iPhone, iPad, Mac, and in your web browser.</p>
+            <p>The core idea is that your content and sideBar live together.</p>
+            <h2 class="flex whitespace-pre-wrap group font-semibold" id="whats-in-the-app">
+              <div class="absolute" tabindex="-1">
+                <a href="#whats-in-the-app" aria-label="Navigate to header">
+                  <div><svg xmlns="http://www.w3.org/2000/svg"></svg></div>
+                </a>
+              </div>
+              What’s in the App
+            </h2>
+            <ul>
+              <li><a href="/manual/chat">Chat</a>: your main interface with sideBar.</li>
+              <li><a href="/manual/notes">Notes</a>: a full-featured editor.</li>
+            </ul>
+            <h2 class="flex whitespace-pre-wrap group font-semibold" id="where-to-start">
+              <div class="absolute" tabindex="-1">
+                <a href="#where-to-start" aria-label="Navigate to header">
+                  <div><svg xmlns="http://www.w3.org/2000/svg"></svg></div>
+                </a>
+              </div>
+              Where to Start
+            </h2>
+            <p>Head to <a href="/manual/getting-started">Getting Started</a> for a walkthrough of setup and first steps.</p>
           </article>
         </main>
       </body>
@@ -400,6 +414,8 @@ def test_parse_url_local_sidebar_docs_preserves_heading_and_hero_image(monkeypat
     assert intro_index != -1
     assert app_index != -1
     assert heading_index < image_index < intro_index < app_index
+    assert "Navigate to header" not in markdown
+    assert "<svg" not in markdown
 
 
 def test_extract_steamcommunity_body_html_parses_event_store():

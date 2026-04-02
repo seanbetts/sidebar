@@ -7,9 +7,25 @@ from copy import deepcopy
 from lxml import html as lxml_html
 
 
-def _element_text_key(node: lxml_html.HtmlElement) -> str:
-    """Return a normalized text key for duplicate detection."""
-    return "".join(node.itertext()).strip().lower()
+def _strip_heading_permalink_controls(node: lxml_html.HtmlElement) -> None:
+    """Remove Mintlify's hidden permalink controls from heading nodes."""
+    heading_xpath = (
+        "self::h1 | self::h2 | self::h3 | self::h4 | self::h5 | self::h6 | "
+        ".//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]"
+    )
+    for heading in node.xpath(heading_xpath):
+        for child in list(heading):
+            if not isinstance(child.tag, str):
+                continue
+            child_class = child.get("class") or ""
+            if child.tag == "div" and "absolute" in child_class.split():
+                tail_text = child.tail or ""
+                previous_sibling = child.getprevious()
+                if previous_sibling is not None:
+                    previous_sibling.tail = (previous_sibling.tail or "") + tail_text
+                else:
+                    heading.text = (heading.text or "") + tail_text
+                heading.remove(child)
 
 
 def extract_sidebar_docs_body_html(raw_html: str) -> str | None:
@@ -21,71 +37,30 @@ def extract_sidebar_docs_body_html(raw_html: str) -> str | None:
     except ValueError:
         tree = lxml_html.fragment_fromstring(raw_html, create_parent="div")
 
-    article = None
-    for selector in (
-        "main",
-        "article",
-        '[class*="content"]',
-    ):
-        nodes = tree.cssselect(selector)
-        for node in nodes:
-            if node.cssselect("h1"):
-                article = node
-                break
-        if article is not None:
-            break
-    if article is None:
+    content_nodes = tree.cssselect("#content")
+    if not content_nodes:
         return None
+    content = content_nodes[0]
 
-    h1_nodes = article.cssselect("h1")
+    h1_nodes = tree.cssselect("#header h1") or content.cssselect("h1")
     if not h1_nodes:
         return None
     heading = deepcopy(h1_nodes[0])
 
-    hero_image = None
-    for img in article.cssselect("img"):
-        alt = (img.get("alt") or "").strip().lower()
-        src = (img.get("src") or "").strip()
-        if not src:
-            continue
-        if "sidebar app overview" in alt:
-            hero_image = deepcopy(img)
-            break
-    if hero_image is None:
-        article_images = article.cssselect("img")
-        if article_images:
-            hero_image = deepcopy(article_images[0])
-
     root = lxml_html.Element("html")
     body = lxml_html.Element("body")
     root.append(body)
+    _strip_heading_permalink_controls(heading)
     body.append(heading)
-    if hero_image is not None:
-        body.append(hero_image)
 
-    appended_keys: set[str] = set()
-    heading_key = _element_text_key(heading)
-    if heading_key:
-        appended_keys.add(heading_key)
-    if hero_image is not None:
-        hero_src = (hero_image.get("src") or "").strip()
-        if hero_src:
-            appended_keys.add(hero_src)
-
-    for child in article.iterchildren():
-        if not isinstance(child.tag, str):
-            continue
-        if child.tag == "h1":
-            continue
-        if child.tag == "img":
-            src = (child.get("src") or "").strip()
-            if src and src in appended_keys:
+    for child in content.iterchildren():
+        if isinstance(child.tag, str):
+            child_id = (child.get("id") or "").strip().lower()
+            if child.tag == "h1" or child_id == "page-title":
                 continue
-        text_key = _element_text_key(child)
-        if text_key and text_key in appended_keys:
-            continue
-        body.append(deepcopy(child))
-        if text_key:
-            appended_keys.add(text_key)
+        cloned_child = deepcopy(child)
+        if isinstance(cloned_child.tag, str):
+            _strip_heading_permalink_controls(cloned_child)
+        body.append(cloned_child)
 
     return lxml_html.tostring(root, encoding="unicode", method="html")
