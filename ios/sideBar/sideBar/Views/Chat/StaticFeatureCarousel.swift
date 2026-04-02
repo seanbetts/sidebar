@@ -96,10 +96,6 @@ struct StaticFeatureCarousel: View {
 
     private var expandedContent: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text("Start anywhere. The rest of the app is already live.")
-                .appFont(.body)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
-
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     ForEach(features) { feature in

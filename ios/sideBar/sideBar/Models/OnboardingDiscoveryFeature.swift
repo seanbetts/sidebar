@@ -43,7 +43,7 @@ public enum OnboardingDiscoveryFeature: String, Identifiable, Equatable, CaseIte
         case .files:
             "Upload PDFs and documents, then search or ask questions about them."
         case .skills:
-            "Extend what the assistant can do with built-in and store skills."
+            "Extend what sideBar can do with additional skill from the skills store"
         }
     }
 

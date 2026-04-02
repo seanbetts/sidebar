@@ -105,11 +105,21 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains(".appFont(.bodySemibold)"))
         XCTAssertTrue(normalized.contains(".offset(y:isTitleInExpandedPosition?DesignTokens.Spacing.xxxs:0)"))
         XCTAssertTrue(normalized.contains("Text(previewSummary)"))
-        XCTAssertTrue(normalized.contains("Text(\"Startanywhere.Therestoftheappisalreadylive.\")"))
+        XCTAssertFalse(normalized.contains("Text(\"Startanywhere.Therestoftheappisalreadylive.\")"))
         XCTAssertTrue(normalized.contains("Text(feature.title)"))
         XCTAssertTrue(normalized.contains(".appFont(.bodySemibold)"))
         XCTAssertTrue(normalized.contains("Text(feature.summary)"))
         XCTAssertTrue(normalized.contains(".appFont(.body)"))
+    }
+
+    func testSkillsFeatureUsesUpdatedStoreCopy() throws {
+        let source = try combinedChatSource()
+
+        XCTAssertTrue(
+            source.contains(
+                "Extend what sideBar can do with additional skill from the skills store"
+            )
+        )
     }
 
     func testChatComposerIsDisabledDuringProviderRecovery() throws {
@@ -179,6 +189,10 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
             .appendingPathComponent("sideBar")
             .appendingPathComponent("Views")
         let sourceURLs = [
+            sideBarRoot
+                .appendingPathComponent("sideBar")
+                .appendingPathComponent("Models")
+                .appendingPathComponent("OnboardingDiscoveryFeature.swift"),
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("ChatView.swift"),
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("ChatInputUIKit.swift"),
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("ChatInputAppKit.swift"),
