@@ -13,7 +13,7 @@ Define how sideBar onboards new users from first launch through to a completed f
 
 - **Assistant-first**: provider setup happens before normal chat generation so the assistant is ready on the user's first interaction
 - **Outcome-oriented**: the first real outcome matters more than education screens
-- **One backend contract**: the backend owns all persistent onboarding state; iOS and web render it, they do not maintain parallel state machines
+- **One backend contract**: the backend owns all persistent onboarding state; Apple renders it today, and web can adopt it later without introducing a parallel state machine
 - **Permission timing**: Apple system permission prompts happen only after explicit user action, never at launch or sign-in
 - **Skippable, not blockable**: users who skip provider setup can still use all non-AI features
 
@@ -115,6 +115,8 @@ Feature discovery starts from Chat after the account setup wizard completes. The
 - permission recovery in the sideBar settings pane
 - no persistent Chat nag surface for optional Apple permissions
 
+This design currently describes the Apple implementation. Web onboarding can adopt the same backend contract later, but it is not part of this phase.
+
 ### Soul calibration
 
 This remains part of the target discovery flow and is not shipped yet.
@@ -135,15 +137,9 @@ The discovery surface is a compact glass strip that can be expanded inline to re
 - tap to expand and browse the feature tiles
 - dismiss it permanently with "Not now"
 
-The richer AI-led follow-up after tapping a tile extends this baseline experience:
+Tapping a tile starts a focused feature kickoff in a fresh chat. The goal is to get the user to a real first outcome quickly, not to run a paced multi-step tour.
 
-- the AI greets the user by name (if provided in Step 4) and begins the tour
-- for each feature, a `FeatureIntroCard` appears inline in the chat view
-- the AI waits for acknowledgment before advancing
-- users can say "skip", "next", or "show me everything" to control pacing
-- a persistent "Skip Tour" option is always visible
-
-### Tour sequence
+### Discovery tiles
 
 | Feature | Card content |
 |---|---|
@@ -164,7 +160,7 @@ Dismissing the discovery surface with "Not now" marks `secondary_tour_seen` and 
 - Used inside the expandable discovery surface in Chat
 - Supports horizontal browsing inside the right pane without fighting the iPad left-sidebar swipe gesture
 - SF Symbols use the same semantic iconography as the main navigation surfaces
-- Supports a later AI-led tile follow-up without requiring a different visual treatment
+- Supports a focused feature kickoff without requiring a different visual treatment
 
 ### Fallback: AI unavailable
 
@@ -210,11 +206,11 @@ The backend owns all persistent onboarding state, exposed via `GET` and `PATCH /
 |---|---|
 | `status` | `not_started`, `in_progress`, `completed`, `dismissed` |
 | `intent` | `notes`, `tasks`, `websites`, `files`, `chat`, `null` |
-| `milestones.provider_connected` | boolean |
-| `milestones.first_outcome_completed` | boolean |
-| `milestones.profile_basics_set` | boolean |
-| `milestones.communication_style_set` | boolean |
-| `milestones.secondary_tour_seen` | boolean |
+| `milestones.provider_connected` | timestamp or `null` |
+| `milestones.first_outcome_completed` | timestamp or `null` |
+| `milestones.profile_basics_set` | timestamp or `null` |
+| `milestones.communication_style_set` | timestamp or `null` |
+| `milestones.secondary_tour_seen` | timestamp or `null` |
 | `permissions.location` | `not_asked`, `granted`, `denied` |
 | `permissions.notifications` | `not_asked`, `granted`, `denied` |
 | `last_prompted_at` | timestamp |
@@ -222,10 +218,10 @@ The backend owns all persistent onboarding state, exposed via `GET` and `PATCH /
 ### Derived fields (computed, not stored)
 
 - `provider_ready` — derived from live provider settings
-- `current_onboarding_step` — derived from milestones and status
-- `is_onboarding_complete` — derived from status and milestones
+- `current_onboarding_step` — derived from provider readiness, status, and completion milestones
+- `is_onboarding_complete` — derived from provider readiness plus completion milestones
 
-The iOS client reads derived fields from the API response; it does not recompute them locally. `selected_provider` is not part of onboarding state — it belongs to general settings via `ai_primary_provider`.
+Apple reads derived fields from the API response; it does not recompute them locally. `selected_provider` is not part of onboarding state — it belongs to general settings via `ai_primary_provider`. Web onboarding remains deferred for now.
 
 ---
 
