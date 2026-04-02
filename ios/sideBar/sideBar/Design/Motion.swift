@@ -8,4 +8,8 @@ enum Motion {
     static func standard(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : .easeInOut(duration: DesignTokens.Animation.standard)
     }
+
+    static func slow(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeInOut(duration: DesignTokens.Animation.slow)
+    }
 }

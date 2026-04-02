@@ -7,6 +7,9 @@ struct StaticFeatureCarousel: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var isExpanded = false
+    @State private var isPreviewSummaryVisible = true
+    @State private var previewSummaryRevealTask: Task<Void, Never>?
+    @State private var isTitleInExpandedPosition = false
 
     private let features = OnboardingDiscoveryFeature.allCases
 
@@ -25,18 +28,24 @@ struct StaticFeatureCarousel: View {
 
                 if isExpanded {
                     expandedContent
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .transition(
+                            .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
+                        )
                 }
             }
             .padding(DesignTokens.Spacing.md)
             .frame(maxWidth: panelMaxWidth, alignment: .leading)
+            .clipped()
             .modifier(FeatureDiscoveryPanelChrome())
         }
         .accessibilityElement(children: .contain)
+        .onDisappear {
+            previewSummaryRevealTask?.cancel()
+        }
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             Button(action: toggleExpanded) {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Image(systemName: "sparkles.rectangle.stack")
@@ -50,12 +59,14 @@ struct StaticFeatureCarousel: View {
                             .appFont(.labelMd)
                             .foregroundStyle(DesignTokens.Colors.textPrimary)
                             .lineLimit(1)
+                            .offset(y: isTitleInExpandedPosition ? DesignTokens.Spacing.xxxs : 0)
 
-                        if !isExpanded {
+                        if isPreviewSummaryVisible {
                             Text(previewSummary)
                                 .appFont(.caption)
                                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 .lineLimit(1)
+                                .transition(.identity)
                         }
                     }
                 }
@@ -108,8 +119,47 @@ struct StaticFeatureCarousel: View {
     }
 
     private func toggleExpanded() {
-        withAnimation(Motion.standard(reduceMotion: reduceMotion)) {
-            isExpanded.toggle()
+        previewSummaryRevealTask?.cancel()
+
+        if isExpanded {
+            withAnimation(Motion.slow(reduceMotion: reduceMotion)) {
+                isTitleInExpandedPosition = false
+            }
+
+            withAnimation(Motion.standard(reduceMotion: reduceMotion)) {
+                isExpanded = false
+            }
+
+            if reduceMotion {
+                setPreviewSummaryVisible(true)
+            } else {
+                previewSummaryRevealTask = Task {
+                    try? await Task.sleep(
+                        nanoseconds: UInt64(DesignTokens.Animation.slow * 1_000_000_000)
+                    )
+                    guard !Task.isCancelled else { return }
+                    await MainActor.run {
+                        setPreviewSummaryVisible(true)
+                    }
+                }
+            }
+        } else {
+            setPreviewSummaryVisible(false)
+            withAnimation(Motion.slow(reduceMotion: reduceMotion)) {
+                isTitleInExpandedPosition = true
+            }
+
+            withAnimation(Motion.standard(reduceMotion: reduceMotion)) {
+                isExpanded = true
+            }
+        }
+    }
+
+    private func setPreviewSummaryVisible(_ isVisible: Bool) {
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction) {
+            isPreviewSummaryVisible = isVisible
         }
     }
 }
