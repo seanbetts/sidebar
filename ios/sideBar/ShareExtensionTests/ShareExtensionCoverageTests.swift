@@ -28,6 +28,37 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(activationRule["NSExtensionActivationSupportsText"] as? Bool, true)
     }
 
+    func testShareExtensionUsesMacAppIconAssets() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let projectURL = repositoryRoot.appendingPathComponent("ios/sideBar/sideBar.xcodeproj/project.pbxproj")
+        let projectContents = try String(contentsOf: projectURL, encoding: .utf8)
+
+        let shareExtensionConfigurations = projectContents.components(
+            separatedBy: "INFOPLIST_FILE = ShareExtension/Info.plist;"
+        )
+        XCTAssertGreaterThanOrEqual(shareExtensionConfigurations.count, 3)
+        XCTAssertTrue(
+            shareExtensionConfigurations.dropFirst().dropLast().allSatisfy {
+                $0.contains("ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;")
+            }
+        )
+
+        let iconContentsURL = repositoryRoot.appendingPathComponent(
+            "ios/sideBar/sideBar/Assets.xcassets/AppIcon.appiconset/Contents.json"
+        )
+        let iconContentsData = try Data(contentsOf: iconContentsURL)
+        let iconContents = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: iconContentsData) as? [String: Any]
+        )
+        let images = try XCTUnwrap(iconContents["images"] as? [[String: Any]])
+
+        XCTAssertTrue(
+            images.contains {
+                ($0["idiom"] as? String) == "mac"
+            }
+        )
+    }
+
     func testErrorMessageUsesCatalogForNotAuthenticated() {
         let message = ShareExtensionMessageMapper.errorMessage(for: ShareExtensionError.notAuthenticated)
 
