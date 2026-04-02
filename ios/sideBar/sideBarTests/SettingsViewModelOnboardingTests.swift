@@ -340,4 +340,74 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         XCTAssertNotNil(onboardingAPI.updates.last?.secondaryTourSeen)
         XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
     }
+
+    func testMarkFeatureDiscoverySeenDismissesOptimisticallyBeforeAPICompletes() async {
+        let onboardingAPI = DelayedOnboardingAPI()
+        onboardingAPI.getResult = .success(
+            OnboardingState(
+                status: .dismissed,
+                providerReady: true,
+                currentOnboardingStep: .featureDiscovery,
+                isOnboardingComplete: false,
+                intent: .chat,
+                milestones: OnboardingMilestones(
+                    providerConnected: "2026-04-02T11:00:00Z",
+                    firstOutcomeCompleted: nil,
+                    profileBasicsSet: nil,
+                    communicationStyleSet: nil,
+                    secondaryTourSeen: nil
+                ),
+                permissions: OnboardingPermissions(
+                    location: .granted,
+                    notifications: .granted
+                ),
+                lastPromptedAt: nil
+            )
+        )
+        onboardingAPI.updateResult = .success(
+            OnboardingState(
+                status: .completed,
+                providerReady: true,
+                currentOnboardingStep: .completed,
+                isOnboardingComplete: true,
+                intent: .chat,
+                milestones: OnboardingMilestones(
+                    providerConnected: "2026-04-02T11:00:00Z",
+                    firstOutcomeCompleted: nil,
+                    profileBasicsSet: nil,
+                    communicationStyleSet: nil,
+                    secondaryTourSeen: "2026-04-02T11:05:00Z"
+                ),
+                permissions: OnboardingPermissions(
+                    location: .granted,
+                    notifications: .granted
+                ),
+                lastPromptedAt: nil
+            )
+        )
+        onboardingAPI.updateDelayNanoseconds = 200_000_000
+        let updateStarted = expectation(description: "onboarding update started")
+        onboardingAPI.onUpdateStarted = {
+            updateStarted.fulfill()
+        }
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+
+        await viewModel.loadOnboarding()
+        let task = Task {
+            await viewModel.markFeatureDiscoverySeen()
+        }
+
+        await fulfillment(of: [updateStarted], timeout: 1.0)
+
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
+        XCTAssertEqual(viewModel.onboardingState?.status, .completed)
+        XCTAssertNotNil(viewModel.onboardingState?.milestones.secondaryTourSeen)
+
+        await task.value
+    }
 }

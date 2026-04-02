@@ -13,6 +13,14 @@ extension SettingsViewModel {
 
     public func markFeatureDiscoverySeen() async {
         let timestamp = Self.onboardingTimestampFormatter.string(from: Date())
+        let optimisticState = onboardingState.map {
+            completedOnboardingState(from: $0, timestamp: timestamp)
+        }
+
+        if let optimisticState {
+            setOnboardingState(optimisticState)
+        }
+
         if let onboardingAPI {
             do {
                 let state = try await onboardingAPI.updateOnboarding(
@@ -26,32 +34,15 @@ extension SettingsViewModel {
                 setOnboardingState(state)
                 return
             } catch {
-                // Keep the existing state if the completion sync fails.
+                // Keep the optimistic completion state if the sync fails.
             }
         }
 
-        guard let onboardingState else {
+        guard optimisticState == nil, let onboardingState else {
             return
         }
 
-        setOnboardingState(
-            OnboardingState(
-                status: .completed,
-                providerReady: onboardingState.providerReady,
-                currentOnboardingStep: .completed,
-                isOnboardingComplete: true,
-                intent: onboardingState.intent,
-                milestones: OnboardingMilestones(
-                    providerConnected: onboardingState.milestones.providerConnected,
-                    firstOutcomeCompleted: onboardingState.milestones.firstOutcomeCompleted,
-                    profileBasicsSet: onboardingState.milestones.profileBasicsSet,
-                    communicationStyleSet: onboardingState.milestones.communicationStyleSet,
-                    secondaryTourSeen: timestamp
-                ),
-                permissions: onboardingState.permissions,
-                lastPromptedAt: onboardingState.lastPromptedAt
-            )
-        )
+        setOnboardingState(completedOnboardingState(from: onboardingState, timestamp: timestamp))
     }
 
     private var requiresPrimaryProviderRecovery: Bool {
@@ -66,5 +57,27 @@ extension SettingsViewModel {
             return true
         }
         return !settings.aiPrimaryProviderHasKey
+    }
+
+    private func completedOnboardingState(
+        from onboardingState: OnboardingState,
+        timestamp: String
+    ) -> OnboardingState {
+        OnboardingState(
+            status: .completed,
+            providerReady: onboardingState.providerReady,
+            currentOnboardingStep: .completed,
+            isOnboardingComplete: true,
+            intent: onboardingState.intent,
+            milestones: OnboardingMilestones(
+                providerConnected: onboardingState.milestones.providerConnected,
+                firstOutcomeCompleted: onboardingState.milestones.firstOutcomeCompleted,
+                profileBasicsSet: onboardingState.milestones.profileBasicsSet,
+                communicationStyleSet: onboardingState.milestones.communicationStyleSet,
+                secondaryTourSeen: timestamp
+            ),
+            permissions: onboardingState.permissions,
+            lastPromptedAt: onboardingState.lastPromptedAt
+        )
     }
 }
