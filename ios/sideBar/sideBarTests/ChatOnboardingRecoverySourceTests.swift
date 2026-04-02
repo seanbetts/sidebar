@@ -118,9 +118,20 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
 
         XCTAssertTrue(
             normalized.contains(
-                "environment.settingsViewModel.signedInOnboardingRecoveryState!=.providerRecovery"
+                "privatevarisComposerEnabled:Bool{environment.isNetworkAvailable&&environment.settingsViewModel.signedInOnboardingRecoveryState!=.providerRecovery}"
             )
         )
+    }
+
+    func testStreamingKeepsComposerEnabledWhileSendAndAttachRemainBlocked() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("isEnabled:isComposerEnabled"))
+        XCTAssertTrue(normalized.contains("isSendEnabled:canSendMessages&&!viewModel.hasPendingAttachments"))
+        XCTAssertTrue(normalized.contains("isAttachEnabled:canAttachFiles"))
+        XCTAssertTrue(normalized.contains("privatevarcanSendMessages:Bool{isComposerEnabled&&!viewModel.isStreaming}"))
+        XCTAssertTrue(normalized.contains("privatevarcanAttachFiles:Bool{isComposerEnabled&&!viewModel.isStreaming}"))
     }
 
     func testHandleSendDoesNotForceComposerResetState() throws {
@@ -135,6 +146,30 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         XCTAssertFalse(normalized.contains("applyResetIfNeeded("))
     }
 
+    func testChatInputWrappersDoNotForceResponderResignationWhenDisablingInput() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("textView.resignFirstResponder()"))
+        XCTAssertFalse(normalized.contains("textView.window?.makeFirstResponder(nil)"))
+    }
+
+    func testChatInputWrappersUseSeparateAttachmentInteractivity() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("letisAttachEnabled:Bool"))
+        XCTAssertTrue(normalized.contains("attachButton.isEnabled=isAttachEnabled"))
+    }
+
+    func testSelectedChatDoesNotSwapToEmptyViewWhenMessageListIsEmpty() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("elseifviewModel.messages.isEmpty{EmptyView()}"))
+        XCTAssertTrue(normalized.contains("else{ChatMessageListView("))
+    }
+
     private func combinedChatSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {
         let fileURL = URL(fileURLWithPath: "\(file)")
         let sideBarRoot = fileURL
@@ -145,6 +180,8 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
             .appendingPathComponent("Views")
         let sourceURLs = [
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("ChatView.swift"),
+            viewsRoot.appendingPathComponent("Chat").appendingPathComponent("ChatInputUIKit.swift"),
+            viewsRoot.appendingPathComponent("Chat").appendingPathComponent("ChatInputAppKit.swift"),
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("OnboardingAddKeyBanner.swift"),
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("StaticFeatureCarousel.swift"),
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("FeatureIntroCard.swift")

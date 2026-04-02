@@ -64,6 +64,15 @@ enum ChatMessageListScrollBehavior {
         ) {
             return .pinBottomWithoutAnimation
         }
+        if isInitialStreamingAssistantAppend(
+            previousMessageCount: previousMessageCount,
+            messageCount: messageCount,
+            previousLastMessage: previousLastMessage,
+            newPenultimateMessage: newPenultimateMessage,
+            newLastMessage: newLastMessage
+        ) {
+            return .pinBottomWithoutAnimation
+        }
         return .pinBottomWithAnimation
     }
 
@@ -146,6 +155,25 @@ enum ChatMessageListScrollBehavior {
             from: previousLastMessage.errorDetails,
             fallbackUserMessage: previousLastMessage.error
         ).isRetryable
+    }
+
+    private static func isInitialStreamingAssistantAppend(
+        previousMessageCount: Int,
+        messageCount: Int,
+        previousLastMessage: ChatMessageScrollSignature,
+        newPenultimateMessage: ChatMessageScrollSignature,
+        newLastMessage: ChatMessageScrollSignature
+    ) -> Bool {
+        guard messageCount == previousMessageCount + 1,
+              !previousLastMessage.id.isEmpty,
+              previousLastMessage == newPenultimateMessage else {
+            return false
+        }
+
+        return previousLastMessage.role == .user
+            && previousLastMessage.status == .complete
+            && newLastMessage.role == .assistant
+            && newLastMessage.status == .streaming
     }
 }
 

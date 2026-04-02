@@ -134,6 +134,27 @@ final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
         )
     }
 
+    func testInitialStreamingAssistantAppendPinsBottomWithoutAnimation() {
+        let current = [
+            makeMessage(id: "assistant-complete", role: .assistant, content: "Previous answer", status: .complete),
+            makeMessage(id: "user-latest", role: .user, content: "New prompt", status: .complete)
+        ]
+        let incoming = [
+            current[0],
+            current[1],
+            makeMessage(id: "assistant-streaming", role: .assistant, content: "", status: .streaming)
+        ]
+
+        XCTAssertEqual(
+            ChatMessageListScrollBehavior.scrollMode(
+                previousMessages: current,
+                messages: incoming,
+                activeToolChanged: false
+            ),
+            .pinBottomWithoutAnimation
+        )
+    }
+
     func testMessageScrollSignatureChangesWhenStatusChanges() {
         let message = makeMessage()
         let changedStatusMessage = Message(
@@ -219,14 +240,16 @@ final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
     }
 
     private func makeMessage(
+        id: String = "message-1",
+        role: MessageRole = .assistant,
         content: String = "Hello world",
         status: MessageStatus = .streaming,
         toolCalls: [ToolCall]? = nil,
         needsNewline: Bool? = false
     ) -> Message {
         Message(
-            id: "message-1",
-            role: .assistant,
+            id: id,
+            role: role,
             content: content,
             status: status,
             toolCalls: toolCalls,

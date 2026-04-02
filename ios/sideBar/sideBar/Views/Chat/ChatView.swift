@@ -168,8 +168,6 @@ private struct ChatDetailView: View {
                         guard let selectedId = viewModel.selectedConversationId else { return }
                         Task { await viewModel.loadConversation(id: selectedId) }
                     }
-                } else if viewModel.messages.isEmpty {
-                    EmptyView()
                 } else {
                     ChatMessageListView(
                         viewModel: viewModel,
@@ -185,11 +183,12 @@ private struct ChatDetailView: View {
                 ChatInputBar(
                     text: $draftMessage,
                     measuredHeight: $inputMeasuredHeight,
-                    isEnabled: canSendMessages,
+                    isEnabled: isComposerEnabled,
                     isSendEnabled: canSendMessages && !viewModel.hasPendingAttachments,
+                    isAttachEnabled: canAttachFiles,
                     onSend: handleSend,
                     onAttach: {
-                        guard canSendMessages else { return }
+                        guard canAttachFiles else { return }
                         isFileImporterPresented = true
                     }
                 )
@@ -218,7 +217,7 @@ private struct ChatDetailView: View {
                     handleSend()
                 }
             case .attachFile:
-                guard canSendMessages else { return }
+                guard canAttachFiles else { return }
                 isFileImporterPresented = true
             default:
                 break
@@ -238,10 +237,17 @@ private struct ChatDetailView: View {
         #endif
     }
 
-    private var canSendMessages: Bool {
-        !viewModel.isStreaming
-            && environment.isNetworkAvailable
+    private var isComposerEnabled: Bool {
+        environment.isNetworkAvailable
             && environment.settingsViewModel.signedInOnboardingRecoveryState != .providerRecovery
+    }
+
+    private var canSendMessages: Bool {
+        isComposerEnabled && !viewModel.isStreaming
+    }
+
+    private var canAttachFiles: Bool {
+        isComposerEnabled && !viewModel.isStreaming
     }
 
     private var assistantDisplayName: String {

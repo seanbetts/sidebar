@@ -14,6 +14,7 @@ struct ChatInputBar: View {
     @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
     let isSendEnabled: Bool
+    let isAttachEnabled: Bool
     let onSend: () -> Void
     let onAttach: () -> Void
 
@@ -26,6 +27,7 @@ struct ChatInputBar: View {
                 measuredHeight: $measuredHeight,
                 isEnabled: isEnabled,
                 isSendEnabled: isSendEnabled,
+                isAttachEnabled: isAttachEnabled,
                 minHeight: minHeight,
                 maxHeight: maxHeight,
                 onSend: onSend,
@@ -99,6 +101,7 @@ private struct PlatformChatInputView: View {
     @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
     let isSendEnabled: Bool
+    let isAttachEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
     let onSend: () -> Void
@@ -111,6 +114,7 @@ private struct PlatformChatInputView: View {
             measuredHeight: $measuredHeight,
             isEnabled: isEnabled,
             isSendEnabled: isSendEnabled,
+            isAttachEnabled: isAttachEnabled,
             minHeight: minHeight,
             maxHeight: maxHeight,
             onSend: onSend,
@@ -122,6 +126,7 @@ private struct PlatformChatInputView: View {
             measuredHeight: $measuredHeight,
             isEnabled: isEnabled,
             isSendEnabled: isSendEnabled,
+            isAttachEnabled: isAttachEnabled,
             minHeight: minHeight,
             maxHeight: maxHeight,
             onSend: onSend,

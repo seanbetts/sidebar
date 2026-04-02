@@ -63,6 +63,14 @@ struct ChatMessageListView: View {
                 }
 
                 if oldToken.messageCount != newToken.messageCount {
+                    let scrollMode = ChatMessageListScrollBehavior.scrollMode(
+                        previousMessageCount: oldToken.messageCount,
+                        messageCount: newToken.messageCount,
+                        previousLastMessage: oldToken.lastMessageSignature,
+                        newPenultimateMessage: newToken.penultimateMessageSignature,
+                        newLastMessage: newToken.lastMessageSignature,
+                        activeToolChanged: false
+                    )
                     let oldValue = oldToken.messageCount
                     let newValue = newToken.messageCount
                     if oldValue == 0 {
@@ -76,14 +84,7 @@ struct ChatMessageListView: View {
                     if !shouldJump {
                         scrollToBottom(
                             proxy: proxy,
-                            mode: ChatMessageListScrollBehavior.scrollMode(
-                                previousMessageCount: oldToken.messageCount,
-                                messageCount: newToken.messageCount,
-                                previousLastMessage: oldToken.lastMessageSignature,
-                                newPenultimateMessage: newToken.penultimateMessageSignature,
-                                newLastMessage: newToken.lastMessageSignature,
-                                activeToolChanged: false
-                            )
+                            mode: scrollMode
                         )
                     } else {
                         scrollToBottom(proxy: proxy, animated: false)

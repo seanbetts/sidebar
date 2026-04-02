@@ -19,6 +19,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
     @ScaledMetric(relativeTo: .body) private var placeholderTopInset: CGFloat = 8
     let isEnabled: Bool
     let isSendEnabled: Bool
+    let isAttachEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
     let onSend: () -> Void
@@ -141,13 +142,10 @@ struct ChatInputUIKitView: UIViewRepresentable {
         let tintColor: UIColor = .label
         button.backgroundColor = .clear
         button.tintColor = canSend ? tintColor : UIColor.secondaryLabel
-        attachButton.isEnabled = isEnabled
-        attachButton.alpha = isEnabled ? 1.0 : 0.45
-        attachButton.tintColor = isEnabled ? UIColor.secondaryLabel : UIColor.tertiaryLabel
+        attachButton.isEnabled = isAttachEnabled
+        attachButton.alpha = isAttachEnabled ? 1.0 : 0.45
+        attachButton.tintColor = isAttachEnabled ? UIColor.secondaryLabel : UIColor.tertiaryLabel
         placeholderLabel.isHidden = !text.trimmed.isEmpty
-        if !isEnabled, textView.isFirstResponder {
-            textView.resignFirstResponder()
-        }
         context.coordinator.applySizing(for: textView, deferStateMutation: true)
     }
 
