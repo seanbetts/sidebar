@@ -13,6 +13,33 @@ final class MockOnboardingAPI: OnboardingProviding {
     var getResult: Result<OnboardingState, Error> = .success(.default)
     var getResults: [Result<OnboardingState, Error>] = []
     var updateResult: Result<OnboardingState, Error> = .success(.default)
+    var submitCalibrationAnswerResult: Result<OnboardingCalibrationActionResponse, Error> = .success(
+        OnboardingCalibrationActionResponse(
+            state: .default,
+            calibration: .default,
+            assistantIdentity: nil,
+            assistantSoul: nil,
+            confirmationText: nil
+        )
+    )
+    var regenerateCalibrationNameResult: Result<OnboardingCalibrationActionResponse, Error> = .success(
+        OnboardingCalibrationActionResponse(
+            state: .default,
+            calibration: .default,
+            assistantIdentity: nil,
+            assistantSoul: nil,
+            confirmationText: nil
+        )
+    )
+    var acceptCalibrationNameResult: Result<OnboardingCalibrationActionResponse, Error> = .success(
+        OnboardingCalibrationActionResponse(
+            state: .default,
+            calibration: .default,
+            assistantIdentity: nil,
+            assistantSoul: nil,
+            confirmationText: nil
+        )
+    )
     private(set) var updates: [RecordedUpdate] = []
 
     func getOnboarding() async throws -> OnboardingState {
@@ -32,6 +59,23 @@ final class MockOnboardingAPI: OnboardingProviding {
         ))
         return try updateResult.get()
     }
+
+    func submitCalibrationAnswer(
+        _ prompt: OnboardingCalibrationPrompt,
+        answer: OnboardingCalibrationAnswer
+    ) async throws -> OnboardingCalibrationActionResponse {
+        _ = prompt
+        _ = answer
+        return try submitCalibrationAnswerResult.get()
+    }
+
+    func regenerateCalibrationName() async throws -> OnboardingCalibrationActionResponse {
+        try regenerateCalibrationNameResult.get()
+    }
+
+    func acceptCalibrationName() async throws -> OnboardingCalibrationActionResponse {
+        try acceptCalibrationNameResult.get()
+    }
 }
 
 final class DelayedOnboardingAPI: OnboardingProviding {
@@ -43,6 +87,18 @@ final class DelayedOnboardingAPI: OnboardingProviding {
     var updateResult: Result<OnboardingState, Error> {
         get { base.updateResult }
         set { base.updateResult = newValue }
+    }
+    var submitCalibrationAnswerResult: Result<OnboardingCalibrationActionResponse, Error> {
+        get { base.submitCalibrationAnswerResult }
+        set { base.submitCalibrationAnswerResult = newValue }
+    }
+    var regenerateCalibrationNameResult: Result<OnboardingCalibrationActionResponse, Error> {
+        get { base.regenerateCalibrationNameResult }
+        set { base.regenerateCalibrationNameResult = newValue }
+    }
+    var acceptCalibrationNameResult: Result<OnboardingCalibrationActionResponse, Error> {
+        get { base.acceptCalibrationNameResult }
+        set { base.acceptCalibrationNameResult = newValue }
     }
     var updateDelayNanoseconds: UInt64 = 0
     var onUpdateStarted: (() -> Void)?
@@ -63,6 +119,21 @@ final class DelayedOnboardingAPI: OnboardingProviding {
         updates = base.updates
         onUpdateCompleted?()
         return state
+    }
+
+    func submitCalibrationAnswer(
+        _ prompt: OnboardingCalibrationPrompt,
+        answer: OnboardingCalibrationAnswer
+    ) async throws -> OnboardingCalibrationActionResponse {
+        try await base.submitCalibrationAnswer(prompt, answer: answer)
+    }
+
+    func regenerateCalibrationName() async throws -> OnboardingCalibrationActionResponse {
+        try await base.regenerateCalibrationName()
+    }
+
+    func acceptCalibrationName() async throws -> OnboardingCalibrationActionResponse {
+        try await base.acceptCalibrationName()
     }
 }
 

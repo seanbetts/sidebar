@@ -22,6 +22,7 @@ public enum OnboardingCurrentStep: String, Codable, Equatable {
     case phase1Wizard = "phase1_wizard"
     case providerRecovery = "provider_recovery"
     case permissionRecovery = "permission_recovery"
+    case soulCalibration = "soul_calibration"
     case featureDiscovery = "feature_discovery"
     case completed
 }
@@ -101,6 +102,7 @@ public struct OnboardingState: Codable, Equatable {
     public let currentOnboardingStep: OnboardingCurrentStep
     public let isOnboardingComplete: Bool
     public let intent: OnboardingIntent?
+    public let calibration: OnboardingCalibrationState
     public let milestones: OnboardingMilestones
     public let permissions: OnboardingPermissions
     public let lastPromptedAt: String?
@@ -111,6 +113,7 @@ public struct OnboardingState: Codable, Equatable {
         currentOnboardingStep: OnboardingCurrentStep,
         isOnboardingComplete: Bool,
         intent: OnboardingIntent?,
+        calibration: OnboardingCalibrationState = .default,
         milestones: OnboardingMilestones,
         permissions: OnboardingPermissions,
         lastPromptedAt: String?
@@ -120,6 +123,7 @@ public struct OnboardingState: Codable, Equatable {
         self.currentOnboardingStep = currentOnboardingStep
         self.isOnboardingComplete = isOnboardingComplete
         self.intent = intent
+        self.calibration = calibration
         self.milestones = milestones
         self.permissions = permissions
         self.lastPromptedAt = lastPromptedAt
@@ -131,6 +135,7 @@ public struct OnboardingState: Codable, Equatable {
         case currentOnboardingStep = "current_onboarding_step"
         case isOnboardingComplete = "is_onboarding_complete"
         case intent
+        case calibration
         case milestones
         case permissions
         case lastPromptedAt = "last_prompted_at"
@@ -163,6 +168,11 @@ public struct OnboardingState: Codable, Equatable {
             snakeCase: "intent",
             camelCase: "intent"
         )
+        calibration = try container.decodeIfPresent(
+            OnboardingCalibrationState.self,
+            snakeCase: "calibration",
+            camelCase: "calibration"
+        ) ?? .default
         milestones = try container.decode(
             OnboardingMilestones.self,
             snakeCase: "milestones",
@@ -280,7 +290,7 @@ public struct OnboardingPermissionsUpdate: Encodable {
     }
 }
 
-private struct FlexibleCodingKey: CodingKey {
+struct FlexibleCodingKey: CodingKey {
     var stringValue: String
     var intValue: Int?
 
@@ -295,7 +305,7 @@ private struct FlexibleCodingKey: CodingKey {
     }
 }
 
-private extension KeyedDecodingContainer where Key == FlexibleCodingKey {
+extension KeyedDecodingContainer where Key == FlexibleCodingKey {
     func decode<T: Decodable>(
         _ type: T.Type,
         snakeCase: String,
