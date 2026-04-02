@@ -276,6 +276,35 @@ final class OnboardingViewPresentationTests: OnboardingViewTestCase {
     }
 
     @MainActor
+    func testSignedInRecoveryStateRoutesProviderReadyUsersIntoSoulCalibrationBeforeDiscovery() {
+        let state = OnboardingState(
+            status: .inProgress,
+            providerReady: true,
+            currentOnboardingStep: .soulCalibration,
+            isOnboardingComplete: false,
+            intent: .chat,
+            calibration: .default,
+            milestones: .init(
+                providerConnected: "2026-04-02T12:00:00Z",
+                firstOutcomeCompleted: nil,
+                profileBasicsSet: nil,
+                communicationStyleSet: nil,
+                secondaryTourSeen: nil
+            ),
+            permissions: .init(location: .granted, notifications: .granted),
+            lastPromptedAt: nil
+        )
+
+        XCTAssertEqual(
+            OnboardingPresentation.signedInRecoveryState(
+                authState: .active,
+                onboardingState: state
+            ),
+            .soulCalibration
+        )
+    }
+
+    @MainActor
     func testSignedInRecoveryStateIgnoresIncompleteBackendStateWhenSignedOut() {
         let state = OnboardingState(
             status: .dismissed,

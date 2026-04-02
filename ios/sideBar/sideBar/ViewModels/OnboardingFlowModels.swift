@@ -82,6 +82,7 @@ public enum OnboardingPresentation {
         case none
         case providerRecovery
         case permissionRecovery
+        case soulCalibration
         case featureDiscovery
     }
 
@@ -159,6 +160,8 @@ public enum OnboardingPresentation {
             return .providerRecovery
         case .permissionRecovery:
             return .permissionRecovery
+        case .soulCalibration:
+            return .soulCalibration
         case .featureDiscovery:
             return .featureDiscovery
         case .phase1Wizard, .completed:
