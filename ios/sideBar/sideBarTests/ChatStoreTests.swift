@@ -87,6 +87,58 @@ final class ChatStoreTests: XCTestCase {
         XCTAssertEqual(store.conversationDetails["c1"]?.title, "Fresh")
     }
 
+    func testLoadConversationRefreshesWhenCachedMessagesAreEmptyButMetadataMatches() async throws {
+        let cached = ConversationWithMessages(
+            id: "c1",
+            title: "Chat",
+            titleGenerated: false,
+            createdAt: "2024-01-01",
+            updatedAt: "2024-01-02",
+            messageCount: 1,
+            firstMessage: "Hello",
+            isArchived: false,
+            messages: []
+        )
+        let fresh = ConversationWithMessages(
+            id: "c1",
+            title: "Chat",
+            titleGenerated: false,
+            createdAt: "2024-01-01",
+            updatedAt: "2024-01-02",
+            messageCount: 1,
+            firstMessage: "Hello",
+            isArchived: false,
+            messages: [
+                Message(
+                    id: "m1",
+                    role: .assistant,
+                    content: "Hello from server",
+                    status: .complete,
+                    toolCalls: nil,
+                    needsNewline: nil,
+                    timestamp: "2024-01-02T00:00:00Z",
+                    error: nil
+                )
+            ]
+        )
+        let cache = TestCacheClient()
+        cache.set(key: CacheKeys.conversation(id: "c1"), value: cached, ttlSeconds: 60)
+        let api = MockConversationsAPI(listResult: .failure(MockError.forced), getResult: .success(fresh))
+        api.getDelay = 0.05
+        let getExpectation = expectation(description: "detail refresh")
+        api.onGet = {
+            getExpectation.fulfill()
+        }
+        let store = ChatStore(conversationsAPI: api, cache: cache)
+
+        try await store.loadConversation(id: "c1")
+
+        XCTAssertTrue(store.conversationDetails["c1"]?.messages.isEmpty == true)
+        await fulfillment(of: [getExpectation], timeout: 1.0)
+        XCTAssertEqual(store.conversationDetails["c1"]?.messages.count, 1)
+        XCTAssertEqual(store.conversationDetails["c1"]?.messages.first?.content, "Hello from server")
+    }
+
     func testUpdateConversationMessagesPersistsMessagesCache() async {
         let cache = TestCacheClient()
         let api = MockConversationsAPI(listResult: .success([]), getResult: .failure(MockError.forced))

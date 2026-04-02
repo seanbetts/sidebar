@@ -65,15 +65,20 @@ public enum OnboardingDiscoveryFeature: String, Identifiable, Equatable, CaseIte
     public var kickoffPrompt: String {
         switch self {
         case .notes:
-            "Help me get started with notes in sideBar. Write me a short guided intro as a note to demonstrate how notes work."
+            "Help me get started with notes in sideBar. "
+                + "Write me a short guided intro as a note to demonstrate how notes work, "
+                + "showing off and explaining all the features."
         case .tasks:
-            "Help me get started with Tasks in sideBar. Give me a short guided intro and one simple first win."
+            "Help me get started with Tasks in sideBar. Give me a short guided intro and create a simple task to show off all the features."
         case .websites:
-            "Help me get started with Websites in sideBar. Give me a short guided intro and one simple first win."
+            "Help me get started with Websites in sideBar. "
+                + "Give me a short guided intro and save "
+                + "https://docs.trysidebar.ai/manual/introduction "
+                + "to show off all the features."
         case .files:
-            "Help me get started with Files in sideBar. Give me a short guided intro and one simple first win."
+            "Help me get started with Files in sideBar. Give me a short guided intro that covers all of the features."
         case .skills:
-            "Help me get started with Skills in sideBar. Give me a short guided intro and one simple first win."
+            "Help me get started with Skills in sideBar. Give me a short guided intro and a summary of some of the best skills."
         }
     }
 }

@@ -308,7 +308,13 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
         guard let cached else {
             return true
         }
-        if response.updatedAt == cached.updatedAt && response.messageCount == cached.messageCount {
+        if response.updatedAt == cached.updatedAt
+            && response.messageCount == cached.messageCount
+            && response.title == cached.title
+            && response.titleGenerated == cached.titleGenerated
+            && response.firstMessage == cached.firstMessage
+            && response.isArchived == cached.isArchived
+            && messageSnapshotSignature(response.messages) == messageSnapshotSignature(cached.messages) {
             return false
         }
         return true
@@ -481,4 +487,12 @@ private struct ChatOfflineError: LocalizedError {
     let message: String
 
     var errorDescription: String? { message }
+}
+
+private extension ChatStore {
+    func messageSnapshotSignature(_ messages: [Message]) -> String {
+        messages.map {
+            "\($0.id)|\($0.role.rawValue)|\($0.status.rawValue)|\($0.timestamp)|\($0.content)"
+        }.joined(separator: "\u{241E}")
+    }
 }
