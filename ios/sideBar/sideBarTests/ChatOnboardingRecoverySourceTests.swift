@@ -46,6 +46,16 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("StaticFeatureCarousel"))
     }
 
+    func testFeatureDiscoveryUsesExpandableGlassPresentation() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("GlassEffectContainer"))
+        XCTAssertTrue(normalized.contains("ExploresideBar"))
+        XCTAssertTrue(normalized.contains("Expandfeaturediscovery"))
+        XCTAssertTrue(normalized.contains("Dismissfeaturediscovery"))
+    }
+
     func testChatComposerIsDisabledDuringProviderRecovery() throws {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -67,7 +77,9 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
             .appendingPathComponent("Views")
         let sourceURLs = [
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("ChatView.swift"),
-            viewsRoot.appendingPathComponent("Chat").appendingPathComponent("OnboardingAddKeyBanner.swift")
+            viewsRoot.appendingPathComponent("Chat").appendingPathComponent("OnboardingAddKeyBanner.swift"),
+            viewsRoot.appendingPathComponent("Chat").appendingPathComponent("StaticFeatureCarousel.swift"),
+            viewsRoot.appendingPathComponent("Chat").appendingPathComponent("FeatureIntroCard.swift")
         ]
 
         do {

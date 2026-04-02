@@ -37,11 +37,9 @@ class OnboardingService:
             return True
 
         milestones = state.get("milestones") or {}
-        return (
-            bool(milestones.get("secondary_tour_seen"))
-            and not OnboardingService.needs_provider_connection(state)
-            and not OnboardingService.needs_permission_recovery(state)
-        )
+        return bool(
+            milestones.get("secondary_tour_seen")
+        ) and not OnboardingService.needs_provider_connection(state)
 
     @staticmethod
     def needs_provider_connection(state: dict[str, Any]) -> bool:
@@ -62,11 +60,9 @@ class OnboardingService:
     @staticmethod
     def needs_feature_discovery(state: dict[str, Any]) -> bool:
         """Return whether the user should enter the signed-in feature tour."""
-        return (
-            not OnboardingService.is_onboarding_complete(state)
-            and not OnboardingService.needs_provider_connection(state)
-            and not OnboardingService.needs_permission_recovery(state)
-        )
+        return not OnboardingService.is_onboarding_complete(
+            state
+        ) and not OnboardingService.needs_provider_connection(state)
 
     @staticmethod
     def current_onboarding_step(state: dict[str, Any]) -> str:
@@ -80,9 +76,6 @@ class OnboardingService:
 
         if OnboardingService.needs_provider_connection(state):
             return "provider_recovery"
-
-        if OnboardingService.needs_permission_recovery(state):
-            return "permission_recovery"
 
         return "feature_discovery"
 

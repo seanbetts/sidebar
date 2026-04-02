@@ -172,13 +172,13 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         if isIPadSidebarSwipeEnabled {
                             WorkspaceSidebarSwipeCaptureView(
                                 isEnabled: true,
-                                regionWidth: widths.main + (isRightSidebarCollapsed ? 0 : widths.right + dividerWidth),
+                                regionWidth: widths.main,
                                 isLeftPanelExpanded: leftPanelVisible
                             ) { translation, startX in
                                 handleMainWorkspaceSwipe(
                                     translation: translation,
                                     startX: startX,
-                                    regionWidth: widths.main + (isRightSidebarCollapsed ? 0 : widths.right + dividerWidth)
+                                    regionWidth: widths.main
                                 )
                             }
                         }

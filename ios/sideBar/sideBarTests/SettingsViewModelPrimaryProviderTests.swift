@@ -74,6 +74,112 @@ final class SettingsViewModelPrimaryProviderTests: XCTestCase {
         XCTAssertEqual(api.lastUpsertApiKey, "test-google-key")
     }
 
+    func testSignedInRecoveryStateShowsProviderRecoveryWhenSelectedProviderHasNoKey() async {
+        let onboardingState = OnboardingState(
+            status: .completed,
+            providerReady: true,
+            currentOnboardingStep: .completed,
+            isOnboardingComplete: true,
+            intent: .chat,
+            milestones: OnboardingMilestones(
+                providerConnected: "2026-03-31T12:00:00Z",
+                firstOutcomeCompleted: "2026-03-31T12:30:00Z",
+                profileBasicsSet: nil,
+                communicationStyleSet: nil,
+                secondaryTourSeen: "2026-03-31T12:31:00Z"
+            ),
+            permissions: OnboardingPermissions(
+                location: .granted,
+                notifications: .granted
+            ),
+            lastPromptedAt: nil
+        )
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResult = .success(onboardingState)
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+        viewModel.applySettingsResponse(
+            UserSettings(
+                userId: "user-1",
+                communicationStyle: nil,
+                workingRelationship: nil,
+                name: nil,
+                jobTitle: nil,
+                employer: nil,
+                dateOfBirth: nil,
+                gender: nil,
+                pronouns: nil,
+                location: nil,
+                profileImageUrl: nil,
+                aiPrimaryProvider: "anthropic",
+                aiPrimaryProviderHasKey: false,
+                enabledSkills: []
+            )
+        )
+
+        await viewModel.loadOnboarding()
+
+        XCTAssertEqual(viewModel.onboardingState, onboardingState)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .providerRecovery)
+    }
+
+    func testSignedInRecoveryStateShowsProviderRecoveryWhenNoPrimaryProviderIsConfigured() async {
+        let onboardingState = OnboardingState(
+            status: .completed,
+            providerReady: false,
+            currentOnboardingStep: .completed,
+            isOnboardingComplete: true,
+            intent: .chat,
+            milestones: OnboardingMilestones(
+                providerConnected: nil,
+                firstOutcomeCompleted: nil,
+                profileBasicsSet: nil,
+                communicationStyleSet: nil,
+                secondaryTourSeen: "2026-03-31T12:31:00Z"
+            ),
+            permissions: OnboardingPermissions(
+                location: .granted,
+                notifications: .granted
+            ),
+            lastPromptedAt: nil
+        )
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResult = .success(onboardingState)
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+        viewModel.applySettingsResponse(
+            UserSettings(
+                userId: "user-1",
+                communicationStyle: nil,
+                workingRelationship: nil,
+                name: nil,
+                jobTitle: nil,
+                employer: nil,
+                dateOfBirth: nil,
+                gender: nil,
+                pronouns: nil,
+                location: nil,
+                profileImageUrl: nil,
+                aiPrimaryProvider: nil,
+                aiPrimaryProviderHasKey: false,
+                enabledSkills: []
+            )
+        )
+
+        await viewModel.loadOnboarding()
+
+        XCTAssertEqual(viewModel.onboardingState, onboardingState)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .providerRecovery)
+    }
+
     func testSavePrimaryProviderKeyAlsoSelectsProviderWhenMissing() async throws {
         let initial = UserSettings(
             userId: "user-1",
@@ -113,6 +219,168 @@ final class SettingsViewModelPrimaryProviderTests: XCTestCase {
         XCTAssertTrue(viewModel.settings?.aiPrimaryProviderHasKey == true)
     }
 
+    func testSavePrimaryProviderKeyRefreshesIntoFeatureDiscoveryEvenWhenPermissionsRemainUnset() async throws {
+        let refreshedSettings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            aiPrimaryProvider: "anthropic",
+            aiPrimaryProviderHasKey: true,
+            aiPrimaryProviderKeyLast4: "1234",
+            enabledSkills: []
+        )
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResults = [
+            .success(
+                OnboardingState(
+                    status: .dismissed,
+                    providerReady: false,
+                    currentOnboardingStep: .providerRecovery,
+                    isOnboardingComplete: false,
+                    intent: .chat,
+                    milestones: OnboardingMilestones(
+                        providerConnected: nil,
+                        firstOutcomeCompleted: nil,
+                        profileBasicsSet: nil,
+                        communicationStyleSet: nil,
+                        secondaryTourSeen: nil
+                    ),
+                    permissions: OnboardingPermissions(
+                        location: .notAsked,
+                        notifications: .denied
+                    ),
+                    lastPromptedAt: nil
+                )
+            ),
+            .success(
+                OnboardingState(
+                    status: .dismissed,
+                    providerReady: true,
+                    currentOnboardingStep: .featureDiscovery,
+                    isOnboardingComplete: false,
+                    intent: .chat,
+                    milestones: OnboardingMilestones(
+                        providerConnected: "2026-04-02T11:00:00Z",
+                        firstOutcomeCompleted: nil,
+                        profileBasicsSet: nil,
+                        communicationStyleSet: nil,
+                        secondaryTourSeen: nil
+                    ),
+                    permissions: OnboardingPermissions(
+                        location: .notAsked,
+                        notifications: .denied
+                    ),
+                    lastPromptedAt: nil
+                )
+            )
+        ]
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .success(refreshedSettings)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+
+        await viewModel.loadOnboarding()
+        let success = await viewModel.savePrimaryProviderKey(
+            provider: .anthropic,
+            apiKey: "sk-test"
+        )
+
+        XCTAssertTrue(success)
+        XCTAssertEqual(viewModel.onboardingState?.currentOnboardingStep, .featureDiscovery)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .featureDiscovery)
+    }
+
+    func testSavePrimaryProviderKeyRefreshesOnboardingStateIntoFeatureDiscovery() async throws {
+        let refreshedSettings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            aiPrimaryProvider: "anthropic",
+            aiPrimaryProviderHasKey: true,
+            aiPrimaryProviderKeyLast4: "1234",
+            enabledSkills: []
+        )
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResults = [
+            .success(
+                OnboardingState(
+                    status: .dismissed,
+                    providerReady: false,
+                    currentOnboardingStep: .providerRecovery,
+                    isOnboardingComplete: false,
+                    intent: .chat,
+                    milestones: OnboardingMilestones(
+                        providerConnected: nil,
+                        firstOutcomeCompleted: nil,
+                        profileBasicsSet: nil,
+                        communicationStyleSet: nil,
+                        secondaryTourSeen: nil
+                    ),
+                    permissions: OnboardingPermissions(
+                        location: .granted,
+                        notifications: .granted
+                    ),
+                    lastPromptedAt: nil
+                )
+            ),
+            .success(
+                OnboardingState(
+                    status: .dismissed,
+                    providerReady: true,
+                    currentOnboardingStep: .featureDiscovery,
+                    isOnboardingComplete: false,
+                    intent: .chat,
+                    milestones: OnboardingMilestones(
+                        providerConnected: "2026-04-02T11:00:00Z",
+                        firstOutcomeCompleted: nil,
+                        profileBasicsSet: nil,
+                        communicationStyleSet: nil,
+                        secondaryTourSeen: nil
+                    ),
+                    permissions: OnboardingPermissions(
+                        location: .granted,
+                        notifications: .granted
+                    ),
+                    lastPromptedAt: nil
+                )
+            )
+        ]
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .success(refreshedSettings)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+
+        await viewModel.loadOnboarding()
+        let success = await viewModel.savePrimaryProviderKey(
+            provider: .anthropic,
+            apiKey: "sk-test"
+        )
+
+        XCTAssertTrue(success)
+        XCTAssertEqual(viewModel.onboardingState?.currentOnboardingStep, .featureDiscovery)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .featureDiscovery)
+    }
+
     func testDeletePrimaryProviderKeyUsesDisconnectIntent() async throws {
         let initial = UserSettings(
             userId: "user-1",
@@ -149,197 +417,5 @@ final class SettingsViewModelPrimaryProviderTests: XCTestCase {
     private func encodedPayload(_ update: SettingsUpdate) throws -> [String: Any] {
         let data = try JSONEncoder().encode(update)
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-    }
-}
-
-private final class PrimaryProviderSettingsAPI: SettingsProviding {
-    var current: UserSettings
-    var updateCallCount = 0
-    var lastUpdate: SettingsUpdate?
-    var upsertCallCount = 0
-    var lastUpsertProvider: String?
-    var lastUpsertApiKey: String?
-    var disconnectCallCount = 0
-    var lastDisconnectProvider: String?
-    var lastDisconnectSource: ProviderKeyDisconnectSource?
-    var lastDisconnectSkillId: String?
-
-    init(initial: UserSettings) {
-        current = initial
-    }
-
-    func getSettings() async throws -> UserSettings {
-        current
-    }
-
-    func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
-        updateCallCount += 1
-        lastUpdate = update
-        let provider = update.aiPrimaryProvider ?? current.aiPrimaryProvider
-        current = UserSettings(
-            userId: current.userId,
-            communicationStyle: current.communicationStyle,
-            workingRelationship: current.workingRelationship,
-            name: current.name,
-            jobTitle: current.jobTitle,
-            employer: current.employer,
-            dateOfBirth: current.dateOfBirth,
-            gender: current.gender,
-            pronouns: current.pronouns,
-            location: current.location,
-            profileImageUrl: current.profileImageUrl,
-            assistantIdentity: current.assistantIdentity,
-            assistantIdentityMeta: current.assistantIdentityMeta,
-            assistantSoul: current.assistantSoul,
-            assistantSoulMeta: current.assistantSoulMeta,
-            aiPrimaryProvider: provider,
-            aiPrimaryProviderHasKey: current.aiPrimaryProviderHasKey,
-            aiPrimaryProviderKeyLast4: current.aiPrimaryProviderKeyLast4,
-            enabledSkills: current.enabledSkills
-        )
-        return current
-    }
-
-    func getProviderKeyStatus(provider: String?) async throws -> ProviderKeyStatusResponse {
-        ProviderKeyStatusResponse(
-            provider: provider,
-            hasKey: current.aiPrimaryProviderHasKey,
-            keyLast4: current.aiPrimaryProviderKeyLast4
-        )
-    }
-
-    func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
-        upsertCallCount += 1
-        lastUpsertProvider = provider
-        lastUpsertApiKey = apiKey
-        let suffix = String(apiKey.suffix(4))
-        current = UserSettings(
-            userId: current.userId,
-            communicationStyle: current.communicationStyle,
-            workingRelationship: current.workingRelationship,
-            name: current.name,
-            jobTitle: current.jobTitle,
-            employer: current.employer,
-            dateOfBirth: current.dateOfBirth,
-            gender: current.gender,
-            pronouns: current.pronouns,
-            location: current.location,
-            profileImageUrl: current.profileImageUrl,
-            assistantIdentity: current.assistantIdentity,
-            assistantIdentityMeta: current.assistantIdentityMeta,
-            assistantSoul: current.assistantSoul,
-            assistantSoulMeta: current.assistantSoulMeta,
-            aiPrimaryProvider: current.aiPrimaryProvider,
-            aiPrimaryProviderHasKey: true,
-            aiPrimaryProviderKeyLast4: suffix,
-            enabledSkills: current.enabledSkills
-        )
-        return ProviderKeyStatusResponse(provider: provider, hasKey: true, keyLast4: suffix)
-    }
-
-    func deleteProviderKey(provider: String?) async throws -> ProviderKeyStatusResponse {
-        current = UserSettings(
-            userId: current.userId,
-            communicationStyle: current.communicationStyle,
-            workingRelationship: current.workingRelationship,
-            name: current.name,
-            jobTitle: current.jobTitle,
-            employer: current.employer,
-            dateOfBirth: current.dateOfBirth,
-            gender: current.gender,
-            pronouns: current.pronouns,
-            location: current.location,
-            profileImageUrl: current.profileImageUrl,
-            assistantIdentity: current.assistantIdentity,
-            assistantIdentityMeta: current.assistantIdentityMeta,
-            assistantSoul: current.assistantSoul,
-            assistantSoulMeta: current.assistantSoulMeta,
-            aiPrimaryProvider: current.aiPrimaryProvider,
-            aiPrimaryProviderHasKey: false,
-            aiPrimaryProviderKeyLast4: nil,
-            enabledSkills: current.enabledSkills
-        )
-        return ProviderKeyStatusResponse(provider: provider, hasKey: false, keyLast4: nil)
-    }
-
-    func disconnectProviderConsumer(
-        provider: String,
-        source: ProviderKeyDisconnectSource,
-        skillId: String?
-    ) async throws -> ProviderKeyDisconnectResponse {
-        disconnectCallCount += 1
-        lastDisconnectProvider = provider
-        lastDisconnectSource = source
-        lastDisconnectSkillId = skillId
-
-        let shouldDetachAIProvider = source == .aiProvider && current.aiPrimaryProvider == provider
-        current = UserSettings(
-            userId: current.userId,
-            communicationStyle: current.communicationStyle,
-            workingRelationship: current.workingRelationship,
-            name: current.name,
-            jobTitle: current.jobTitle,
-            employer: current.employer,
-            dateOfBirth: current.dateOfBirth,
-            gender: current.gender,
-            pronouns: current.pronouns,
-            location: current.location,
-            profileImageUrl: current.profileImageUrl,
-            assistantIdentity: current.assistantIdentity,
-            assistantIdentityMeta: current.assistantIdentityMeta,
-            assistantSoul: current.assistantSoul,
-            assistantSoulMeta: current.assistantSoulMeta,
-            aiPrimaryProvider: shouldDetachAIProvider ? nil : current.aiPrimaryProvider,
-            aiPrimaryProviderHasKey: false,
-            aiPrimaryProviderKeyLast4: nil,
-            enabledSkills: current.enabledSkills,
-            installedStoreSkills: current.installedStoreSkills
-        )
-
-        return ProviderKeyDisconnectResponse(
-            provider: provider,
-            source: source,
-            actions: ProviderKeyDisconnectActions(
-                disabledSkillIds: source == .skill ? [skillId].compactMap { $0 } : [],
-                detachedAIProvider: shouldDetachAIProvider,
-                deletedProviderKey: true
-            ),
-            remainingConsumers: ProviderKeyDisconnectRemainingConsumers(
-                aiProvider: current.aiPrimaryProvider == provider,
-                skillIds: []
-            ),
-            settings: ProviderKeyDisconnectSettings(
-                enabledSkills: current.enabledSkills,
-                installedStoreSkills: current.installedStoreSkills,
-                aiPrimaryProvider: current.aiPrimaryProvider
-            )
-        )
-    }
-
-    func getShortcutsToken() async throws -> ShortcutsTokenResponse {
-        ShortcutsTokenResponse(token: "")
-    }
-
-    func rotateShortcutsToken() async throws -> ShortcutsTokenResponse {
-        ShortcutsTokenResponse(token: "")
-    }
-
-    func uploadProfileImage(data: Data, contentType: String, filename: String) async throws {
-        _ = data
-        _ = contentType
-        _ = filename
-    }
-
-    func getProfileImage() async throws -> Data {
-        Data()
-    }
-
-    func deleteProfileImage() async throws {
-    }
-}
-
-private struct PrimaryProviderEmptySkillsAPI: SkillsProviding {
-    func list() async throws -> SkillsResponse {
-        SkillsResponse(skills: [])
     }
 }

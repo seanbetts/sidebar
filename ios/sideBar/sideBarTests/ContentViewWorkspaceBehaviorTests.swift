@@ -78,18 +78,6 @@ final class ContentViewWorkspaceBehaviorTests: XCTestCase {
         XCTAssertEqual(action, .none)
     }
 
-    func testWorkspaceSidebarSwipePolicyCollapsesWhenSwipeStartsInSecondaryWorkspacePane() {
-        let action = WorkspaceSidebarSwipePolicy.resolveAction(
-            translation: CGSize(width: -120, height: 8),
-            startX: 920,
-            regionWidth: 1100,
-            isLeftPanelExpanded: true,
-            isIPad: true
-        )
-
-        XCTAssertEqual(action, .collapseLeftPanel)
-    }
-
     #if os(iOS)
     func testWorkspaceSidebarSwipeCaptureIgnoresTouchesInsideNoteFormattingHierarchy() {
         let anchorView = UIView(frame: CGRect(x: 0, y: 0, width: 1100, height: 900))

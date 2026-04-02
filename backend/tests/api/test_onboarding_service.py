@@ -172,7 +172,7 @@ def test_current_onboarding_step_uses_provider_recovery_when_dismissed_without_k
     assert OnboardingService.current_onboarding_step(state) == "provider_recovery"
 
 
-def test_current_onboarding_step_uses_permission_recovery_when_provider_ready_but_permissions_missing() -> None:
+def test_current_onboarding_step_uses_feature_discovery_when_provider_ready_even_if_permissions_are_missing() -> None:
     state = OnboardingService._resolve_state(
         {
             "status": "dismissed",
@@ -182,7 +182,7 @@ def test_current_onboarding_step_uses_permission_recovery_when_provider_ready_bu
     )
     state["provider_ready"] = True
 
-    assert OnboardingService.current_onboarding_step(state) == "permission_recovery"
+    assert OnboardingService.current_onboarding_step(state) == "feature_discovery"
 
 
 def test_current_onboarding_step_uses_feature_discovery_when_provider_ready_and_tour_not_seen() -> None:
@@ -207,6 +207,23 @@ def test_current_onboarding_step_uses_completed_when_tour_seen_after_provider_se
                 "secondary_tour_seen": "2026-03-31T11:00:00Z",
             },
             "permissions": {"location": "granted", "notifications": "granted"},
+        }
+    )
+    state["provider_ready"] = True
+
+    assert OnboardingService.current_onboarding_step(state) == "completed"
+    assert OnboardingService.is_onboarding_complete(state) is True
+
+
+def test_is_onboarding_complete_true_when_tour_seen_even_if_permissions_are_still_skipped() -> None:
+    state = OnboardingService._resolve_state(
+        {
+            "status": "dismissed",
+            "milestones": {
+                "provider_connected": "2026-03-31T10:00:00Z",
+                "secondary_tour_seen": "2026-03-31T11:00:00Z",
+            },
+            "permissions": {"location": "not_asked", "notifications": "denied"},
         }
     )
     state["provider_ready"] = True
