@@ -64,6 +64,7 @@ Use inline text when the error refers to a specific field the user is actively e
 - Invalid email format in login
 - Invalid URL when saving a website
 - API key validation failure in onboarding
+- API key validation failure in Settings
 - OTP code invalid
 
 Use `.appFont(.caption)` with `DesignTokens.Colors.error` foreground. Clear the error when the field value changes — do not leave stale validation errors on screen.

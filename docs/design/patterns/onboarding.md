@@ -108,9 +108,10 @@ A modal wizard with no navigation chrome. Progress shown via dots at the bottom 
 
 ## Feature discovery
 
-The intended end state is an AI-guided feature tour from Chat after the account setup wizard completes. The backend now detects incomplete onboarding and injects onboarding context into the system prompt, but the full Phase 2 discovery surface is still pending. Today, the shipped post-wizard recovery surfaces are:
+Feature discovery starts from Chat after the account setup wizard completes. The signed-in discovery experience uses a compact, dismissable surface that expands inline in the right chat pane and introduces sideBar's core features without blocking the rest of the app. The post-wizard recovery and discovery surfaces are:
 
 - a persistent provider-recovery banner in Chat when AI is blocked by missing provider setup
+- a compact glass discovery strip in Chat for provider-ready users who have not yet seen the tour
 - permission recovery in the sideBar settings pane
 - no persistent Chat nag surface for optional Apple permissions
 
@@ -128,7 +129,19 @@ Before the feature tour begins, the assistant checks whether `assistant_soul` ha
 
 Calibration must complete before the feature tour. The assistant does not proceed to the tour with an uninitialised soul.
 
-In the planned Phase 2 experience, the AI greets the user by name (if provided in Step 4) and begins the tour. For each feature, a `FeatureIntroCard` appears inline in the chat view. The AI waits for acknowledgment before advancing. Users can say "skip", "next", or "show me everything" to control pacing. A persistent "Skip Tour" option is always visible.
+The discovery surface is a compact glass strip that can be expanded inline to reveal a horizontally-scrollable set of `FeatureIntroCard` tiles. The user can:
+
+- leave it collapsed as a subtle prompt
+- tap to expand and browse the feature tiles
+- dismiss it permanently with "Not now"
+
+The richer AI-led follow-up after tapping a tile extends this baseline experience:
+
+- the AI greets the user by name (if provided in Step 4) and begins the tour
+- for each feature, a `FeatureIntroCard` appears inline in the chat view
+- the AI waits for acknowledgment before advancing
+- users can say "skip", "next", or "show me everything" to control pacing
+- a persistent "Skip Tour" option is always visible
 
 ### Tour sequence
 
@@ -143,25 +156,25 @@ In the planned Phase 2 experience, the AI greets the user by name (if provided i
 | Memory | AI learns the user over time; user always in control |
 | Widgets + Extensions (optional) | Home screen widgets and Share Extension / Safari Extension |
 
-In the planned Phase 2 experience, the closing message marks onboarding complete via the backend API. `first_outcome_completed` is set when the user completes one real action during or after the tour.
+Dismissing the discovery surface with "Not now" marks `secondary_tour_seen` and completes onboarding for that user. `first_outcome_completed` remains available for the stronger case where the user completes one real action during or after the tour.
 
 ### FeatureIntroCard design
 
-- Monochrome card with SF Symbol icon, title, one-line description
-- Dismiss (X) in top-right corner; optional "Try it" CTA button
-- Appears inline between chat messages
-- Slide-in / fade-out using `DesignTokens.Animation.standard` (0.25s)
-- SF Symbols use `.primary` / `.secondary` label colors
+- Compact glass tile with SF Symbol icon, title, and one-line description
+- Used inside the expandable discovery surface in Chat
+- Supports horizontal browsing inside the right pane without fighting the iPad left-sidebar swipe gesture
+- SF Symbols use the same semantic iconography as the main navigation surfaces
+- Supports a later AI-led tile follow-up without requiring a different visual treatment
 
 ### Fallback: AI unavailable
-
-This fallback is still part of the planned Phase 2 discovery work.
 
 If the AI fails during feature discovery (bad key, rate limit, network failure):
 
 - Show a `StaticFeatureCarousel`: a horizontally-scrollable set of `FeatureIntroCard` views covering the same 8 features
 - Shown once, dismissable
 - User can retry AI setup from Settings
+
+The same static surface also serves as the baseline signed-in discovery experience before the richer AI-led tile flows are invoked.
 
 ### Fallback: no API key
 
@@ -171,8 +184,9 @@ If the user skipped provider setup entirely:
 - Banner links directly to the sideBar settings pane for provider key entry
 - Notes, tasks, websites, and files remain fully functional
 - Chat shows an explanation that a key is needed for AI features
+- Provider keys are verified live before they are saved, both in onboarding and in Settings
 - When a key is later added from Settings, `provider_connected` is set
-- Resuming discovery after a key is later added remains part of the pending Phase 2 flow
+- If the user is still incomplete, adding a valid key later resumes discovery immediately without relaunching
 
 ### Signed-in permission recovery
 
@@ -237,7 +251,7 @@ The iOS client reads derived fields from the API response; it does not recompute
 4. **Skipping is always available.** Provider selection, API key entry, and permission steps each have a "Skip for now" or "Not now" exit. Skipping never blocks access to non-AI features.
 5. **Provider-dismissed users get a Chat recovery path.** A persistent add-key banner is shown in Chat until a provider and key are configured. Chat must explain why AI features are unavailable.
 6. **Optional Apple permissions recover from Settings.** Location and notifications are managed from the sideBar settings pane with explicit user actions. They are not shown as persistent Chat nags.
-7. **Feature discovery and its static fallback are still pending.** The eventual Phase 2 tour and `StaticFeatureCarousel` remain the target design, but they are not yet shipped.
+7. **Signed-in discovery begins with a compact Chat surface.** The compact expandable discovery surface is the baseline signed-in experience. The richer AI-led per-feature follow-up after tapping a tile extends that surface.
 8. **Presentation wrapper only.** Content is identical across iPhone, iPad, and Mac. Only the container (`.fullScreenCover` vs `.sheet`) differs.
 9. **Soul calibration precedes the feature tour.** If `assistant_soul` is uninitialised, the assistant runs calibration before the tour begins. The tour does not start with a blank soul.
 
