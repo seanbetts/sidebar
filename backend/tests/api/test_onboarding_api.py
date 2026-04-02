@@ -1,6 +1,7 @@
 """Integration tests for GET /api/v1/onboarding and PATCH /api/v1/onboarding."""
 
 import os
+from types import SimpleNamespace
 
 from api.config import settings
 
@@ -267,3 +268,182 @@ def test_patch_onboarding_requires_auth(test_client) -> None:
         json={"status": "in_progress"},
     )
     assert response.status_code == 401
+
+
+def test_post_calibration_respond_returns_updated_state(monkeypatch, test_client) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "submit_answer",
+        staticmethod(
+            lambda *_args, **_kwargs: SimpleNamespace(
+                state={
+                    "status": "in_progress",
+                    "provider_ready": False,
+                    "current_onboarding_step": "phase1_wizard",
+                    "is_onboarding_complete": False,
+                    "intent": None,
+                    "calibration": {
+                        "status": "in_progress",
+                        "current_prompt": "working_relationship",
+                        "answers": {
+                            "primary_goal": "life_admin",
+                            "working_relationship": None,
+                            "tone_preferences": None,
+                        },
+                        "proposed_name": None,
+                        "completed_at": None,
+                    },
+                    "milestones": {
+                        "provider_connected": None,
+                        "first_outcome_completed": None,
+                        "profile_basics_set": None,
+                        "communication_style_set": None,
+                        "secondary_tour_seen": None,
+                    },
+                    "permissions": {
+                        "location": "not_asked",
+                        "notifications": "not_asked",
+                    },
+                    "last_prompted_at": None,
+                },
+                assistant_identity=None,
+                assistant_soul=None,
+                confirmation_text="What kind of working relationship do you want?",
+            )
+        ),
+    )
+
+    response = test_client.post(
+        "/api/v1/onboarding/calibration/respond",
+        headers=_auth_headers(),
+        json={"prompt": "primary_goal", "answer": "life_admin"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["state"]["calibration"]["answers"]["primary_goal"] == "life_admin"
+    assert body["state"]["calibration"]["current_prompt"] == "working_relationship"
+    assert body["confirmation_text"] == "What kind of working relationship do you want?"
+    assert body["assistant_identity"] is None
+    assert body["assistant_soul"] is None
+
+
+def test_post_calibration_name_regenerate_returns_generated_name(
+    monkeypatch,
+    test_client,
+) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "regenerate_name",
+        staticmethod(
+            lambda *_args, **_kwargs: SimpleNamespace(
+                state={
+                    "status": "in_progress",
+                    "provider_ready": False,
+                    "current_onboarding_step": "phase1_wizard",
+                    "is_onboarding_complete": False,
+                    "intent": None,
+                    "calibration": {
+                        "status": "awaiting_name_acceptance",
+                        "current_prompt": "tone_preferences",
+                        "answers": {
+                            "primary_goal": "life_admin",
+                            "working_relationship": "collaborative",
+                            "tone_preferences": "direct_but_kind",
+                        },
+                        "proposed_name": "Compass",
+                        "completed_at": None,
+                    },
+                    "milestones": {
+                        "provider_connected": None,
+                        "first_outcome_completed": None,
+                        "profile_basics_set": None,
+                        "communication_style_set": None,
+                        "secondary_tour_seen": None,
+                    },
+                    "permissions": {
+                        "location": "not_asked",
+                        "notifications": "not_asked",
+                    },
+                    "last_prompted_at": None,
+                },
+                assistant_identity={"name": "Compass"},
+                assistant_soul=None,
+                confirmation_text="How about Compass?",
+            )
+        ),
+    )
+
+    response = test_client.post(
+        "/api/v1/onboarding/calibration/name/regenerate",
+        headers=_auth_headers(),
+        json={},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["state"]["calibration"]["proposed_name"] == "Compass"
+    assert body["assistant_identity"]["name"] == "Compass"
+    assert body["assistant_soul"] is None
+
+
+def test_post_calibration_name_accept_marks_completed(monkeypatch, test_client) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "accept_name",
+        staticmethod(
+            lambda *_args, **_kwargs: SimpleNamespace(
+                state={
+                    "status": "in_progress",
+                    "provider_ready": False,
+                    "current_onboarding_step": "phase1_wizard",
+                    "is_onboarding_complete": False,
+                    "intent": None,
+                    "calibration": {
+                        "status": "completed",
+                        "current_prompt": "tone_preferences",
+                        "answers": {
+                            "primary_goal": "life_admin",
+                            "working_relationship": "collaborative",
+                            "tone_preferences": "direct_but_kind",
+                        },
+                        "proposed_name": "Navigator",
+                        "completed_at": "2026-04-02T10:00:00Z",
+                    },
+                    "milestones": {
+                        "provider_connected": None,
+                        "first_outcome_completed": None,
+                        "profile_basics_set": None,
+                        "communication_style_set": None,
+                        "secondary_tour_seen": None,
+                    },
+                    "permissions": {
+                        "location": "not_asked",
+                        "notifications": "not_asked",
+                    },
+                    "last_prompted_at": None,
+                },
+                assistant_identity=None,
+                assistant_soul=None,
+                confirmation_text="Navigator is locked in.",
+            )
+        ),
+    )
+
+    response = test_client.post(
+        "/api/v1/onboarding/calibration/name/accept",
+        headers=_auth_headers(),
+        json={},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["state"]["calibration"]["status"] == "completed"
+    assert body["state"]["calibration"]["completed_at"] == "2026-04-02T10:00:00Z"
+    assert body["confirmation_text"] == "Navigator is locked in."

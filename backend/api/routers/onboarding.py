@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
+from api.services.onboarding_calibration_service import OnboardingCalibrationService
 from api.services.onboarding_service import OnboardingService
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
@@ -75,6 +76,49 @@ class OnboardingUpdate(BaseModel):
     last_prompted_at: str | None = None
 
 
+class AssistantIdentityPayload(BaseModel):
+    """Assistant identity payload for calibration responses."""
+
+    name: str | None = None
+    tone: str | None = None
+    boundaries: str | None = None
+    values: str | None = None
+
+
+class AssistantSoulPayload(BaseModel):
+    """Assistant soul payload for calibration responses."""
+
+    purpose: str | None = None
+    operating_principles: str | None = None
+    adaptation_policy: str | None = None
+    success_signals: str | None = None
+
+
+class CalibrationRespondRequest(BaseModel):
+    """Submit an answer for the current calibration prompt."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str
+    answer: str
+
+
+class CalibrationNameActionRequest(BaseModel):
+    """Empty request body for calibration name actions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CalibrationActionResponse(BaseModel):
+    """Structured response for calibration actions."""
+
+    state: OnboardingStateResponse
+    calibration: CalibrationPayload
+    assistant_identity: AssistantIdentityPayload | None = None
+    assistant_soul: AssistantSoulPayload | None = None
+    confirmation_text: str | None = None
+
+
 @router.get("", response_model=OnboardingStateResponse)
 def get_onboarding(
     db: Session = Depends(get_db),
@@ -116,3 +160,88 @@ def update_onboarding(
     updates = payload.model_dump(exclude_unset=True)
     state = OnboardingService.update_onboarding_state(db, user_id, updates)
     return OnboardingStateResponse(**state)
+
+
+@router.post("/calibration/respond", response_model=CalibrationActionResponse)
+def submit_calibration_answer(
+    payload: CalibrationRespondRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Submit the current calibration answer."""
+    result = OnboardingCalibrationService.submit_answer(
+        db,
+        user_id,
+        prompt=payload.prompt,
+        answer=payload.answer,
+    )
+    return CalibrationActionResponse(
+        state=OnboardingStateResponse(**result.state),
+        calibration=CalibrationPayload(**result.state["calibration"]),
+        assistant_identity=(
+            AssistantIdentityPayload(**result.assistant_identity)
+            if result.assistant_identity
+            else None
+        ),
+        assistant_soul=(
+            AssistantSoulPayload(**result.assistant_soul)
+            if result.assistant_soul
+            else None
+        ),
+        confirmation_text=result.confirmation_text,
+    )
+
+
+@router.post("/calibration/name/regenerate", response_model=CalibrationActionResponse)
+def regenerate_calibration_name(
+    payload: CalibrationNameActionRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Regenerate the proposed assistant name."""
+    del payload
+    result = OnboardingCalibrationService.regenerate_name(db, user_id)
+    return CalibrationActionResponse(
+        state=OnboardingStateResponse(**result.state),
+        calibration=CalibrationPayload(**result.state["calibration"]),
+        assistant_identity=(
+            AssistantIdentityPayload(**result.assistant_identity)
+            if result.assistant_identity
+            else None
+        ),
+        assistant_soul=(
+            AssistantSoulPayload(**result.assistant_soul)
+            if result.assistant_soul
+            else None
+        ),
+        confirmation_text=result.confirmation_text,
+    )
+
+
+@router.post("/calibration/name/accept", response_model=CalibrationActionResponse)
+def accept_calibration_name(
+    payload: CalibrationNameActionRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Accept the proposed assistant name and complete calibration."""
+    del payload
+    result = OnboardingCalibrationService.accept_name(db, user_id)
+    return CalibrationActionResponse(
+        state=OnboardingStateResponse(**result.state),
+        calibration=CalibrationPayload(**result.state["calibration"]),
+        assistant_identity=(
+            AssistantIdentityPayload(**result.assistant_identity)
+            if result.assistant_identity
+            else None
+        ),
+        assistant_soul=(
+            AssistantSoulPayload(**result.assistant_soul)
+            if result.assistant_soul
+            else None
+        ),
+        confirmation_text=result.confirmation_text,
+    )
