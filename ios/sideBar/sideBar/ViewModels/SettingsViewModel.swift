@@ -32,6 +32,8 @@ public final class SettingsViewModel: LoadableViewModel {
     let settingsAPI: any SettingsProviding
     let skillsAPI: any SkillsProviding
     let onboardingAPI: (any OnboardingProviding)?
+    let locationPermissionRequester: any LocationPermissionRequesting
+    let notificationPermissionRequester: any NotificationPermissionRequesting
     let cache: CacheClient
     let currentAuthUserIdProvider: () -> String?
     let currentAuthorizedUserIdProvider: (() -> String?)?
@@ -41,6 +43,8 @@ public final class SettingsViewModel: LoadableViewModel {
         settingsAPI: any SettingsProviding,
         skillsAPI: any SkillsProviding,
         onboardingAPI: (any OnboardingProviding)? = nil,
+        locationPermissionRequester: (any LocationPermissionRequesting)? = nil,
+        notificationPermissionRequester: (any NotificationPermissionRequesting)? = nil,
         cache: CacheClient,
         currentAuthUserIdProvider: @escaping () -> String? = { nil },
         currentAuthorizedUserIdProvider: (() -> String?)? = nil,
@@ -49,6 +53,8 @@ public final class SettingsViewModel: LoadableViewModel {
         self.settingsAPI = settingsAPI
         self.skillsAPI = skillsAPI
         self.onboardingAPI = onboardingAPI
+        self.locationPermissionRequester = locationPermissionRequester ?? LocationPermissionRequester()
+        self.notificationPermissionRequester = notificationPermissionRequester ?? NotificationPermissionRequester()
         self.cache = cache
         self.currentAuthUserIdProvider = currentAuthUserIdProvider
         self.currentAuthorizedUserIdProvider = currentAuthorizedUserIdProvider
@@ -116,6 +122,10 @@ public final class SettingsViewModel: LoadableViewModel {
         } catch {
             onboardingState = nil
         }
+    }
+
+    func setOnboardingState(_ state: OnboardingState?) {
+        onboardingState = state
     }
 
     public func loadShortcutsToken() async {

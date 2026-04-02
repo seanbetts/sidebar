@@ -25,6 +25,15 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains(".accessibilityLabel(\"OpenSettings\")"))
     }
 
+    func testChatViewDoesNotSurfacePermissionRecoveryCards() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("signedInOnboardingRecoveryState==.permissionRecovery"))
+        XCTAssertFalse(normalized.contains("permissionRecoveryItems"))
+        XCTAssertFalse(normalized.contains("OnboardingPermissionCard(item:item)"))
+    }
+
     func testChatComposerIsDisabledDuringProviderRecovery() throws {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

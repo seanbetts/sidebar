@@ -106,6 +106,21 @@ struct GeneralSettingsView: View {
 
     private var iosGeneralForm: some View {
         Form {
+            if !environment.settingsViewModel.permissionRecoveryItems.isEmpty {
+                Section("Permissions") {
+                    ForEach(environment.settingsViewModel.permissionRecoveryItems) { item in
+                        SettingsPermissionRecoveryRow(
+                            item: item,
+                            onEnable: {
+                                Task {
+                                    await environment.settingsViewModel.requestPermissionRecovery(for: item.kind)
+                                }
+                            },
+                            onOpenSettings: openSystemSettings
+                        )
+                    }
+                }
+            }
             Section("Text") {
                 textSizeControl
             }
@@ -136,6 +151,9 @@ struct GeneralSettingsView: View {
         .onAppear {
             appTextSizeRaw = AppTextSizeOption.resolved(from: appTextSizeRaw).rawValue
             evaluateBiometricSupport()
+            Task {
+                await environment.settingsViewModel.refreshPermissionRecoveryStates()
+            }
         }
         .sheet(isPresented: $isPasswordChangePresented) {
             SettingsPasswordChangeView()

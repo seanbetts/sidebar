@@ -30,6 +30,39 @@ final class OnboardingAPITests: XCTestCase {
         XCTAssertEqual(state.currentOnboardingStep, .featureDiscovery)
         XCTAssertFalse(state.isOnboardingComplete)
     }
+
+    func testOnboardingStateDecodesWithConvertFromSnakeCaseStrategy() throws {
+        let json = """
+        {
+            "status": "completed",
+            "provider_ready": false,
+            "current_onboarding_step": "completed",
+            "is_onboarding_complete": true,
+            "intent": null,
+            "milestones": {
+                "provider_connected": null,
+                "first_outcome_completed": null,
+                "profile_basics_set": "2026-03-30T12:56:27Z",
+                "communication_style_set": null,
+                "secondary_tour_seen": null
+            },
+            "permissions": {
+                "location": "not_asked",
+                "notifications": "not_asked"
+            },
+            "last_prompted_at": null
+        }
+        """.utf8Data
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let state = try decoder.decode(OnboardingState.self, from: json)
+
+        XCTAssertFalse(state.providerReady)
+        XCTAssertEqual(state.currentOnboardingStep, .completed)
+        XCTAssertTrue(state.isOnboardingComplete)
+        XCTAssertEqual(state.milestones.profileBasicsSet, "2026-03-30T12:56:27Z")
+    }
 }
 
 private extension String {

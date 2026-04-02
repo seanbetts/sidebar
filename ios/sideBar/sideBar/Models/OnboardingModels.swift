@@ -41,12 +41,50 @@ public struct OnboardingMilestones: Codable, Equatable {
     public let communicationStyleSet: String?
     public let secondaryTourSeen: String?
 
+    public init(
+        providerConnected: String?,
+        firstOutcomeCompleted: String?,
+        profileBasicsSet: String?,
+        communicationStyleSet: String?,
+        secondaryTourSeen: String?
+    ) {
+        self.providerConnected = providerConnected
+        self.firstOutcomeCompleted = firstOutcomeCompleted
+        self.profileBasicsSet = profileBasicsSet
+        self.communicationStyleSet = communicationStyleSet
+        self.secondaryTourSeen = secondaryTourSeen
+    }
+
     enum CodingKeys: String, CodingKey {
         case providerConnected = "provider_connected"
         case firstOutcomeCompleted = "first_outcome_completed"
         case profileBasicsSet = "profile_basics_set"
         case communicationStyleSet = "communication_style_set"
         case secondaryTourSeen = "secondary_tour_seen"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: FlexibleCodingKey.self)
+        providerConnected = container.decodeStringIfPresent(
+            snakeCase: "provider_connected",
+            camelCase: "providerConnected"
+        )
+        firstOutcomeCompleted = container.decodeStringIfPresent(
+            snakeCase: "first_outcome_completed",
+            camelCase: "firstOutcomeCompleted"
+        )
+        profileBasicsSet = container.decodeStringIfPresent(
+            snakeCase: "profile_basics_set",
+            camelCase: "profileBasicsSet"
+        )
+        communicationStyleSet = container.decodeStringIfPresent(
+            snakeCase: "communication_style_set",
+            camelCase: "communicationStyleSet"
+        )
+        secondaryTourSeen = container.decodeStringIfPresent(
+            snakeCase: "secondary_tour_seen",
+            camelCase: "secondaryTourSeen"
+        )
     }
 }
 
@@ -67,6 +105,26 @@ public struct OnboardingState: Codable, Equatable {
     public let permissions: OnboardingPermissions
     public let lastPromptedAt: String?
 
+    public init(
+        status: OnboardingStatus,
+        providerReady: Bool,
+        currentOnboardingStep: OnboardingCurrentStep,
+        isOnboardingComplete: Bool,
+        intent: OnboardingIntent?,
+        milestones: OnboardingMilestones,
+        permissions: OnboardingPermissions,
+        lastPromptedAt: String?
+    ) {
+        self.status = status
+        self.providerReady = providerReady
+        self.currentOnboardingStep = currentOnboardingStep
+        self.isOnboardingComplete = isOnboardingComplete
+        self.intent = intent
+        self.milestones = milestones
+        self.permissions = permissions
+        self.lastPromptedAt = lastPromptedAt
+    }
+
     enum CodingKeys: String, CodingKey {
         case status
         case providerReady = "provider_ready"
@@ -76,6 +134,49 @@ public struct OnboardingState: Codable, Equatable {
         case milestones
         case permissions
         case lastPromptedAt = "last_prompted_at"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: FlexibleCodingKey.self)
+        status = try container.decode(
+            OnboardingStatus.self,
+            snakeCase: "status",
+            camelCase: "status"
+        )
+        providerReady = try container.decode(
+            Bool.self,
+            snakeCase: "provider_ready",
+            camelCase: "providerReady"
+        )
+        currentOnboardingStep = try container.decode(
+            OnboardingCurrentStep.self,
+            snakeCase: "current_onboarding_step",
+            camelCase: "currentOnboardingStep"
+        )
+        isOnboardingComplete = try container.decode(
+            Bool.self,
+            snakeCase: "is_onboarding_complete",
+            camelCase: "isOnboardingComplete"
+        )
+        intent = try container.decodeIfPresent(
+            OnboardingIntent.self,
+            snakeCase: "intent",
+            camelCase: "intent"
+        )
+        milestones = try container.decode(
+            OnboardingMilestones.self,
+            snakeCase: "milestones",
+            camelCase: "milestones"
+        )
+        permissions = try container.decode(
+            OnboardingPermissions.self,
+            snakeCase: "permissions",
+            camelCase: "permissions"
+        )
+        lastPromptedAt = container.decodeStringIfPresent(
+            snakeCase: "last_prompted_at",
+            camelCase: "lastPromptedAt"
+        )
     }
 }
 
@@ -176,5 +277,60 @@ public struct OnboardingPermissionsUpdate: Encodable {
     enum CodingKeys: String, CodingKey {
         case location
         case notifications
+    }
+}
+
+private struct FlexibleCodingKey: CodingKey {
+    var stringValue: String
+    var intValue: Int?
+
+    init?(stringValue: String) {
+        self.stringValue = stringValue
+        intValue = nil
+    }
+
+    init?(intValue: Int) {
+        stringValue = "\(intValue)"
+        self.intValue = intValue
+    }
+}
+
+private extension KeyedDecodingContainer where Key == FlexibleCodingKey {
+    func decode<T: Decodable>(
+        _ type: T.Type,
+        snakeCase: String,
+        camelCase: String
+    ) throws -> T {
+        if let key = FlexibleCodingKey(stringValue: snakeCase),
+           contains(key) {
+            return try decode(T.self, forKey: key)
+        }
+        let key = FlexibleCodingKey(stringValue: camelCase)!
+        return try decode(T.self, forKey: key)
+    }
+
+    func decodeIfPresent<T: Decodable>(
+        _ type: T.Type,
+        snakeCase: String,
+        camelCase: String
+    ) throws -> T? {
+        if let key = FlexibleCodingKey(stringValue: snakeCase),
+           contains(key) {
+            return try decodeIfPresent(T.self, forKey: key)
+        }
+        let key = FlexibleCodingKey(stringValue: camelCase)!
+        return try decodeIfPresent(T.self, forKey: key)
+    }
+
+    func decodeStringIfPresent(
+        snakeCase: String,
+        camelCase: String
+    ) -> String? {
+        if let key = FlexibleCodingKey(stringValue: snakeCase),
+           contains(key) {
+            return try? decodeIfPresent(String.self, forKey: key)
+        }
+        let key = FlexibleCodingKey(stringValue: camelCase)!
+        return try? decodeIfPresent(String.self, forKey: key)
     }
 }

@@ -711,6 +711,22 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("startPasswordChangeFlow()"))
     }
 
+    func testGeneralSettingsSourceIncludesPermissionRecoveryRows() throws {
+        let normalized = try generalSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("if!environment.settingsViewModel.permissionRecoveryItems.isEmpty"))
+        XCTAssertTrue(normalized.contains("Section(\"Permissions\")"))
+        XCTAssertTrue(normalized.contains("ForEach(environment.settingsViewModel.permissionRecoveryItems)"))
+        XCTAssertTrue(normalized.contains("SettingsPermissionRecoveryRow(item:item"))
+        XCTAssertTrue(normalized.contains("awaitenvironment.settingsViewModel.requestPermissionRecovery(for:item.kind)"))
+        XCTAssertTrue(normalized.contains("awaitenvironment.settingsViewModel.refreshPermissionRecoveryStates()"))
+        XCTAssertFalse(normalized.contains("OnboardingPermissionCard(item:item)"))
+        XCTAssertFalse(normalized.contains("Toggle(isOn:enableBinding)"))
+        XCTAssertFalse(normalized.contains(".listRowBackground(Color.clear)"))
+        XCTAssertFalse(normalized.contains(".listRowInsets(EdgeInsets())"))
+    }
+
     func testSkillsSettingsMacSourceUsesInspectorIntroAndCardRows() throws {
         let normalized = try skillsSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
