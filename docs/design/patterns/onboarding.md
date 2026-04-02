@@ -108,9 +108,15 @@ A modal wizard with no navigation chrome. Progress shown via dots at the bottom 
 
 ## Feature discovery
 
-After permission setup, the AI assistant drives feature discovery from chat. The backend detects incomplete onboarding and injects onboarding context into the system prompt. The wizard is gone — the user is in the main app.
+The intended end state is an AI-guided feature tour from Chat after the account setup wizard completes. The backend now detects incomplete onboarding and injects onboarding context into the system prompt, but the full Phase 2 discovery surface is still pending. Today, the shipped post-wizard recovery surfaces are:
+
+- a persistent provider-recovery banner in Chat when AI is blocked by missing provider setup
+- permission recovery in the sideBar settings pane
+- no persistent Chat nag surface for optional Apple permissions
 
 ### Soul calibration
+
+This remains part of the target discovery flow and is not shipped yet.
 
 Before the feature tour begins, the assistant checks whether `assistant_soul` has been initialised. If it has not, the assistant runs a brief calibration before anything else.
 
@@ -122,7 +128,7 @@ Before the feature tour begins, the assistant checks whether `assistant_soul` ha
 
 Calibration must complete before the feature tour. The assistant does not proceed to the tour with an uninitialised soul.
 
-The AI greets the user by name (if provided in Step 4) and begins the tour. For each feature, a `FeatureIntroCard` appears inline in the chat view. The AI waits for acknowledgment before advancing. Users can say "skip", "next", or "show me everything" to control pacing. A persistent "Skip Tour" option is always visible.
+In the planned Phase 2 experience, the AI greets the user by name (if provided in Step 4) and begins the tour. For each feature, a `FeatureIntroCard` appears inline in the chat view. The AI waits for acknowledgment before advancing. Users can say "skip", "next", or "show me everything" to control pacing. A persistent "Skip Tour" option is always visible.
 
 ### Tour sequence
 
@@ -137,7 +143,7 @@ The AI greets the user by name (if provided in Step 4) and begins the tour. For 
 | Memory | AI learns the user over time; user always in control |
 | Widgets + Extensions (optional) | Home screen widgets and Share Extension / Safari Extension |
 
-The closing message marks onboarding complete via the backend API. `first_outcome_completed` is set when the user completes one real action during or after the tour.
+In the planned Phase 2 experience, the closing message marks onboarding complete via the backend API. `first_outcome_completed` is set when the user completes one real action during or after the tour.
 
 ### FeatureIntroCard design
 
@@ -149,6 +155,8 @@ The closing message marks onboarding complete via the backend API. `first_outcom
 
 ### Fallback: AI unavailable
 
+This fallback is still part of the planned Phase 2 discovery work.
+
 If the AI fails during feature discovery (bad key, rate limit, network failure):
 
 - Show a `StaticFeatureCarousel`: a horizontally-scrollable set of `FeatureIntroCard` views covering the same 8 features
@@ -159,11 +167,22 @@ If the AI fails during feature discovery (bad key, rate limit, network failure):
 
 If the user skipped provider setup entirely:
 
-- A persistent add-key banner is shown in the app ("Add an API key to start using the assistant")
-- Banner links to Settings for provider key entry
+- A persistent add-key banner is shown in Chat ("Chat needs an API key")
+- Banner links directly to the sideBar settings pane for provider key entry
 - Notes, tasks, websites, and files remain fully functional
 - Chat shows an explanation that a key is needed for AI features
-- When a key is later added from Settings, `provider_connected` is set and the feature tour triggers on the next chat open
+- When a key is later added from Settings, `provider_connected` is set
+- Resuming discovery after a key is later added remains part of the pending Phase 2 flow
+
+### Signed-in permission recovery
+
+Optional Apple permissions are recovered from the sideBar settings pane, not from Chat.
+
+- The `Permissions` section appears in sideBar settings when location or notifications are missing
+- `Enable` is shown only when the permission is still `not_asked`
+- `Open Settings` is shown when the permission was previously denied
+- Granted permissions disappear from the recovery section because they can only be revoked from system Settings
+- Permission recovery is independent of provider recovery in Settings, so users can manage optional permissions even while Chat is still blocked by missing BYOK setup
 
 ---
 
@@ -215,11 +234,12 @@ The iOS client reads derived fields from the API response; it does not recompute
 1. **Backend is the source of truth.** All onboarding state is persisted on the backend. iOS renders it; it does not maintain a parallel state machine.
 2. **Onboarding is assistant-first.** Provider setup is offered before any AI interaction. Chat generation is not available until a key is connected.
 3. **Permission prompts require explicit user action.** No location or notification prompts at launch or sign-in. All system prompts are triggered only by the "Enable" button in Steps 7 and 8 of the wizard.
-4. **Skipping is always available.** Provider selection, API key entry, and permission cards each have a "Skip for now" or "Not now" exit. Skipping never blocks access to non-AI features.
-5. **Provider-dismissed users get a recovery path.** An add-key banner and static feature carousel are shown until a key is added. Chat must explain why AI features are unavailable.
-6. **Feature discovery has a static fallback.** If the AI is unavailable, a `StaticFeatureCarousel` covers the same content.
-7. **Presentation wrapper only.** Content is identical across iPhone, iPad, and Mac. Only the container (`.fullScreenCover` vs `.sheet`) differs.
-8. **Soul calibration precedes the feature tour.** If `assistant_soul` is uninitialised, the assistant runs calibration before the tour begins. The tour does not start with a blank soul.
+4. **Skipping is always available.** Provider selection, API key entry, and permission steps each have a "Skip for now" or "Not now" exit. Skipping never blocks access to non-AI features.
+5. **Provider-dismissed users get a Chat recovery path.** A persistent add-key banner is shown in Chat until a provider and key are configured. Chat must explain why AI features are unavailable.
+6. **Optional Apple permissions recover from Settings.** Location and notifications are managed from the sideBar settings pane with explicit user actions. They are not shown as persistent Chat nags.
+7. **Feature discovery and its static fallback are still pending.** The eventual Phase 2 tour and `StaticFeatureCarousel` remain the target design, but they are not yet shipped.
+8. **Presentation wrapper only.** Content is identical across iPhone, iPad, and Mac. Only the container (`.fullScreenCover` vs `.sheet`) differs.
+9. **Soul calibration precedes the feature tour.** If `assistant_soul` is uninitialised, the assistant runs calibration before the tour begins. The tour does not start with a blank soul.
 
 ---
 
