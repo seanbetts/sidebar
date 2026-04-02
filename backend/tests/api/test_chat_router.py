@@ -400,6 +400,112 @@ def test_stream_chat_passes_onboarding_state_to_capability_resolver(
     assert captured["resolver_onboarding_state"] == onboarding_state
 
 
+def test_stream_chat_blocks_provider_ready_users_until_soul_calibration_completes(
+    test_client, monkeypatch
+):
+    onboarding_state = {
+        "status": "in_progress",
+        "provider_ready": True,
+        "current_onboarding_step": "soul_calibration",
+        "is_onboarding_complete": False,
+        "intent": "notes",
+        "milestones": {},
+        "permissions": {"location": "not_asked", "notifications": "not_asked"},
+        "last_prompted_at": None,
+        "calibration": {
+            "status": "in_progress",
+            "current_prompt": "working_relationship",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": None,
+                "tone_preferences": None,
+            },
+            "proposed_name": None,
+            "completed_at": None,
+        },
+    }
+
+    class BlockedGateway:
+        def __init__(self, *_args, **_kwargs):
+            pytest.fail("AI gateway should not be initialized during soul calibration")
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", BlockedGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.OnboardingService,
+        "get_onboarding_state",
+        staticmethod(lambda *_args, **_kwargs: onboarding_state),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "error": {
+            "code": "ONBOARDING_REQUIRED",
+            "message": "Soul calibration must complete before AI chat is available.",
+            "details": {
+                "onboarding_state": onboarding_state,
+            },
+        }
+    }
+
+
+def test_stream_chat_allows_provider_ready_users_after_soul_calibration(
+    test_client, monkeypatch
+):
+    onboarding_state = {
+        "status": "in_progress",
+        "provider_ready": True,
+        "current_onboarding_step": "feature_discovery",
+        "is_onboarding_complete": False,
+        "intent": "notes",
+        "milestones": {"provider_connected": "2026-04-02T09:00:00Z"},
+        "permissions": {"location": "not_asked", "notifications": "not_asked"},
+        "last_prompted_at": None,
+        "calibration": {
+            "status": "completed",
+            "current_prompt": "tone_preferences",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": "coach",
+                "tone_preferences": "warm,direct",
+            },
+            "proposed_name": "Navigator",
+            "completed_at": "2026-04-02T09:10:00Z",
+        },
+    }
+
+    _patch_stream_gateway(monkeypatch, [{"type": "token", "content": "Hello"}])
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.OnboardingService,
+        "get_onboarding_state",
+        staticmethod(lambda *_args, **_kwargs: onboarding_state),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+
+    assert response.status_code == 200
+    assert "event: token" in response.text
+
+
 def test_stream_chat_forwards_other_preferences_events(test_client, monkeypatch):
     _patch_stream_gateway(
         monkeypatch,

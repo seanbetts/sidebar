@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import TypedDict, cast
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from google import genai
 from sqlalchemy.orm import Session
@@ -130,6 +130,35 @@ def _select_title_messages(messages: list[dict[str, object]]) -> tuple[str, str]
             return first_user_message, content
 
     raise BadRequestError("Need a user message and assistant reply to generate title")
+
+
+def _require_completed_soul_calibration(
+    onboarding_state: dict[str, object] | None,
+) -> None:
+    """Block normal AI chat until provider-ready users finish calibration."""
+    if not isinstance(onboarding_state, dict):
+        return
+    if not bool(onboarding_state.get("provider_ready")):
+        return
+    if bool(onboarding_state.get("is_onboarding_complete")):
+        return
+    if str(onboarding_state.get("current_onboarding_step") or "") != "soul_calibration":
+        return
+
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "error": {
+                "code": "ONBOARDING_REQUIRED",
+                "message": (
+                    "Soul calibration must complete before AI chat is available."
+                ),
+                "details": {
+                    "onboarding_state": onboarding_state,
+                },
+            }
+        },
+    )
 
 
 def _new_user_scoped_session(user_id: str) -> Session:
@@ -286,6 +315,7 @@ async def stream_chat(
     app_version = request.headers.get("x-app-version")
     now = datetime.now(UTC)
     onboarding_state = OnboardingService.get_onboarding_state(db, user_id)
+    _require_completed_soul_calibration(onboarding_state)
 
     conversation_messages = None
     if conversation_id:
