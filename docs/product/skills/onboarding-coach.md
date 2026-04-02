@@ -11,8 +11,8 @@ skill_id: onboarding-coach
 
 The Onboarding Coach helps you finish setup when you are partway through
 onboarding. It focuses on the next action that matters most, whether that is
-adding an API key, recovering a permission you skipped earlier, or moving on
-to the first real outcome after setup.
+adding an API key, completing soul calibration, recovering a permission you
+skipped earlier, or moving on to the first real outcome after setup.
 
 ## Actions
 
@@ -20,6 +20,7 @@ to the first real outcome after setup.
 | --- | --- |
 | Guide setup recovery | Explains the next onboarding step for your current state |
 | Recover provider setup | Helps you reconnect or add an AI provider key |
+| Guide soul calibration | Explains or resumes the calibration chat before discovery begins |
 | Recover permissions | Points you to the explicit location or notification recovery path |
 | Explain next steps | Summarizes what is available now and what unlocks after setup |
 

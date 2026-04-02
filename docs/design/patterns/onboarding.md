@@ -121,15 +121,27 @@ This design currently describes the Apple implementation. Web onboarding can ado
 
 This remains part of the target discovery flow and is not shipped yet.
 
-Before the feature tour begins, the assistant checks whether `assistant_soul` has been initialised. If it has not, the assistant runs a brief calibration before anything else.
+Before feature discovery begins, sideBar checks whether soul calibration has completed for the current provider-ready user. If it has not, sideBar runs a short mandatory calibration in Chat before anything else.
 
-- The assistant asks up to three concise conversational questions to understand the user's context, goals, and working style
-- Questions are plain and natural — not a form
-- After the user answers, the assistant initialises both `assistant_soul` and `assistant_identity` from the answers and confirms briefly what it has set
-- The feature tour then begins immediately after calibration completes
-- If the user skips or declines to answer, the assistant initialises from defaults and proceeds
+- Calibration runs only for provider-ready users
+- It is one continuous chat conversation, not a modal or separate setup screen
+- It uses short prompts with chip-first replies wherever possible
+- It collects a compact profile rather than asking the user to define sideBar in prose
+- It initialises both `assistant_soul` and `assistant_identity`
+- It chooses sideBar's name last, after the rest of the profile has been generated
+- The user can accept the chosen name or ask sideBar to try another one
+- Discovery does not begin until calibration is accepted
 
-Calibration must complete before the feature tour. The assistant does not proceed to the tour with an uninitialised soul.
+Calibration flow:
+
+1. **Primary goal** — one chip from:
+   `Personal productivity`, `Work productivity`, `Planning and tasks`, `Notes and ideas`, `Life admin`, `Learning and research`, `AI companion`
+2. **Working relationship** — one chip from:
+   `Just help when I ask`, `Keep me on track`, `Take initiative with me`
+3. **Tone** — five quick either-or picks in one message:
+   `Warm` / `Direct`, `Playful` / `Serious`, `Concise` / `Expressive`, `Formal` / `Casual`, `Supportive` / `Challenging`
+
+After the user replies, sideBar generates the full soul and identity profile from those structured inputs, confirms briefly what it has set, proposes its chosen name, and then begins discovery once the user accepts the name.
 
 The discovery surface is a compact glass strip that can be expanded inline to reveal a horizontally-scrollable set of `FeatureIntroCard` tiles. The user can:
 
@@ -182,7 +194,7 @@ If the user skipped provider setup entirely:
 - Chat shows an explanation that a key is needed for AI features
 - Provider keys are verified live before they are saved, both in onboarding and in Settings
 - When a key is later added from Settings, `provider_connected` is set
-- If the user is still incomplete, adding a valid key later resumes discovery immediately without relaunching
+- If the user is still incomplete, adding a valid key later routes into soul calibration first and then resumes discovery without relaunching
 
 ### Signed-in permission recovery
 
@@ -249,7 +261,7 @@ Apple reads derived fields from the API response; it does not recompute them loc
 6. **Optional Apple permissions recover from Settings.** Location and notifications are managed from the sideBar settings pane with explicit user actions. They are not shown as persistent Chat nags.
 7. **Signed-in discovery begins with a compact Chat surface.** The compact expandable discovery surface is the baseline signed-in experience. The richer AI-led per-feature follow-up after tapping a tile extends that surface.
 8. **Presentation wrapper only.** Content is identical across iPhone, iPad, and Mac. Only the container (`.fullScreenCover` vs `.sheet`) differs.
-9. **Soul calibration precedes the feature tour.** If `assistant_soul` is uninitialised, the assistant runs calibration before the tour begins. The tour does not start with a blank soul.
+9. **Soul calibration precedes discovery.** If the user is provider-ready but soul calibration is incomplete, sideBar runs the mandatory calibration chat before discovery or normal AI chat begins.
 
 ---
 

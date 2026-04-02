@@ -35,29 +35,30 @@ take notes, keep track of tasks, save websites to read later and upload files.
 
 ## The Onboarding Conversation
 
-Once your chosen AI provider is connected, sideBar will start a conversation to
-get you set up. It'll ask a few questions:
+Once your chosen AI provider is connected, sideBar starts a short calibration
+conversation in Chat before feature discovery begins. This is where sideBar
+works out how it should collaborate with you.
 
-**What do you want to do first?**: choose from writing, research, tasks, files,
-or websites. This tells sideBar where to focus.
+The calibration is lightweight and mostly tap-based. sideBar asks:
 
-**A bit about you**: sideBar collects your name, preferred pronouns, location,
-communication style, and how you want it to work with you. This personalises
-every conversation from the start. See [Personality](/manual/personality) for
-more on how this works.
+- **What would you most like help with first?**
+- **How would you like it to work with you?**
+- **How should it show up?**
 
-**Your first outcome**: sideBar completes a real task in the area you chose.
-This isn't a demo, it's an actual piece of work, done in the app.
+From those answers, sideBar sets its initial identity and soul, chooses its own
+name, and confirms it with you. You can accept the name or ask it to try
+another one.
 
-You can move through this conversation at your own pace. Once it's done,
-sideBar remembers everything it learned and applies it going forward.
+After that, sideBar moves straight into discovery so you can explore the app
+and get to your first real outcome quickly.
 
-If you stop partway through, sideBar resumes from the next missing step the
-next time you return. Provider recovery shows up in Chat, while permission
-follow-up lives in Settings.
+If you stop partway through, sideBar resumes from the next missing calibration
+step the next time you return to Chat. Provider recovery still shows up in
+Chat, while permission follow-up lives in Settings.
 
-Onboarding is only complete after sideBar has helped you reach a real first
-outcome or you finish the discovery follow-up after setup.
+Onboarding is only complete after calibration is finished and sideBar has
+either helped you reach a real first outcome or you finish the discovery
+follow-up after setup.
 
 ## Finding Your Way Around
 
