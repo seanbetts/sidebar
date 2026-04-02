@@ -146,11 +146,14 @@ public enum ErrorMapping {
         "Failed to \(operation): \(message(for: error))"
     }
 
-    private static func mapAPIError(_ apiError: APIClientError) -> String {
+    static func mapAPIError(_ apiError: APIClientError) -> String {
         switch apiError {
         case .apiError(let message):
             if isAuthenticationErrorMessage(message) {
                 return "Session expired. Please sign in again."
+            }
+            if isInvalidProviderAPIKeyMessage(message) {
+                return "That API key doesn't look valid for this provider."
             }
             if isPromptTooLargeMessage(message) {
                 return "Attachment and context are too large for one message. Remove some attachments or close open items and try again."
@@ -230,6 +233,10 @@ public enum ErrorMapping {
             "message context is too large"
         ]
         return signals.contains(where: lowered.contains)
+    }
+
+    static func isInvalidProviderAPIKeyMessage(_ message: String) -> Bool {
+        message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "invalid provider api key"
     }
 
     public static func chatStreamPresentation(

@@ -238,16 +238,10 @@ public final class OnboardingViewModel: ObservableObject {
         }
 
         do {
-            if isTestingOnboarding {
-                persistOnboardingStatus(.inProgress)
-                advance(from: .addApiKey)
-                return
-            }
-
+            _ = try await settingsAPI.upsertProviderKey(provider: provider.rawValue, apiKey: key)
             _ = try await settingsAPI.updateSettings(
                 SettingsUpdate(aiPrimaryProvider: provider.rawValue)
             )
-            _ = try await settingsAPI.upsertProviderKey(provider: provider.rawValue, apiKey: key)
             skippedProviderSetup = false
             let state = try? await onboardingAPI.updateOnboarding(
                 OnboardingUpdate(
@@ -263,7 +257,7 @@ public final class OnboardingViewModel: ObservableObject {
             }
             advance(from: .addApiKey)
         } catch {
-            errorMessage = "Could not validate your API key. Please check it and try again."
+            errorMessage = ErrorMapping.providerKeyMessage(for: error)
         }
     }
 

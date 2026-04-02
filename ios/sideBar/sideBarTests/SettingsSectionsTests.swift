@@ -456,7 +456,7 @@ final class SettingsSectionsTests: XCTestCase {
             didCompleteSaveSinceLastObservation: false
         )
 
-        XCTAssertEqual(timeline.immediateState, .error)
+        XCTAssertEqual(timeline.immediateState, .error("boom"))
     }
 
     func testSettingsSaveStatusLogicContinuesSavingWhenStillInFlight() {
@@ -548,7 +548,7 @@ final class SettingsSectionsTests: XCTestCase {
             didCompleteSaveSinceLastObservation: false
         )
 
-        XCTAssertEqual(timeline.immediateState, .error)
+        XCTAssertEqual(timeline.immediateState, .error("boom"))
     }
 
     func testSettingsSaveErrorPresentationReturnsProfileErrorForPill() {
@@ -774,10 +774,10 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(dateOfBirthNormalized.contains("ProfileIOSFieldRow(\"DateofBirth\")"))
     }
 
-    func testSettingsSaveStatusPillChromeUsesMaterialOnIOS() {
+    func testSettingsSaveStatusPillChromeUsesGlassOnIOS() {
         let chrome = SettingsSaveStatusPill.chrome(for: .iOS)
 
-        XCTAssertEqual(chrome, .material)
+        XCTAssertEqual(chrome, .glass)
     }
 
     func testSettingsSaveStatusPillChromeUsesGlassOnMacOS() {

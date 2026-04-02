@@ -169,10 +169,10 @@ public struct SettingsView: View {
         )
 
         switch timeline.immediateState {
-        case .error:
+        case .error(let message):
             savingDelayTask?.cancel()
             hideSavedTask?.cancel()
-            withAnimation { savePillState = .error }
+            withAnimation { savePillState = .error(message) }
         case .saving:
             startSavingDelay()
         case .saved:
@@ -236,7 +236,7 @@ struct SettingsSaveStatusLogic {
     ) -> Timeline {
         let trimmedError = saveError?.trimmingCharacters(in: .whitespacesAndNewlines)
         if let trimmedError, !trimmedError.isEmpty {
-            return .init(immediateState: .error)
+            return .init(immediateState: .error(trimmedError))
         }
         if isSaving {
             return .init(immediateState: .saving)

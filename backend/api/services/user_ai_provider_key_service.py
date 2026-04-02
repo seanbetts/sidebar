@@ -14,6 +14,26 @@ from api.services.ai.registry import AIProvider
 class UserAIProviderKeyService:
     """Manage encrypted BYOK provider keys per user."""
 
+    _MIN_PROVIDER_KEY_LENGTH = 12
+
+    @staticmethod
+    def _is_valid_provider_key(provider: AIProvider, api_key: str) -> bool:
+        """Return True when an API key matches the provider's expected shape."""
+        normalized = api_key.strip()
+        if len(normalized) < UserAIProviderKeyService._MIN_PROVIDER_KEY_LENGTH:
+            return False
+
+        if provider == "anthropic":
+            return normalized.startswith("sk-ant-")
+
+        if provider == "openai":
+            return normalized.startswith("sk-")
+
+        if provider == "google":
+            return normalized.startswith("AIza")
+
+        return False
+
     @staticmethod
     def get_active_record(
         db: Session, user_id: str, provider: AIProvider
@@ -54,7 +74,7 @@ class UserAIProviderKeyService:
     ) -> UserAIProviderKey:
         """Create or update an encrypted key for a user/provider."""
         normalized = api_key.strip()
-        if len(normalized) < 8:
+        if not UserAIProviderKeyService._is_valid_provider_key(provider, normalized):
             raise ValueError("Invalid provider API key")
 
         now = datetime.now(UTC)

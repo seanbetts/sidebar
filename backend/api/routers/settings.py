@@ -13,6 +13,10 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError
+from api.services.ai.registry import AIProvider
+from api.services.provider_key_verification_service import (
+    ProviderKeyVerificationService,
+)
 from api.services.settings_service import SettingsService
 from api.services.user_ai_provider_settings_service import (
     UserAIProviderSettingsService,
@@ -101,7 +105,7 @@ class ProviderKeyUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    provider: str
+    provider: AIProvider
     api_key: str
 
 
@@ -226,13 +230,21 @@ def get_provider_key_status(
 
 
 @router.put("/ai/provider-key", response_model=ProviderKeyStatusResponse)
-def upsert_provider_key(
+async def upsert_provider_key(
     payload: ProviderKeyUpdate,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
     """Create or update a BYOK provider API key."""
+    try:
+        await ProviderKeyVerificationService.verify_provider_key(
+            payload.provider,
+            payload.api_key,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise BadRequestError(str(exc)) from exc
+
     response_payload = UserAIProviderSettingsService.upsert_provider_key(
         db,
         user_id,

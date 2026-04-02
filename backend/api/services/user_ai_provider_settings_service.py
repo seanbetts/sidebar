@@ -154,12 +154,15 @@ class UserAIProviderSettingsService:
         if not normalized_key:
             raise HTTPException(status_code=400, detail="api_key required")
 
-        record = UserAIProviderKeyService.upsert_key(
-            db,
-            user_id=user_id,
-            provider=selected_provider,
-            api_key=normalized_key,
-        )
+        try:
+            record = UserAIProviderKeyService.upsert_key(
+                db,
+                user_id=user_id,
+                provider=selected_provider,
+                api_key=normalized_key,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         return {
             "provider": selected_provider,
             "has_key": True,

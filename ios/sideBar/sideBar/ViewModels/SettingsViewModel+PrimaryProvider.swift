@@ -53,12 +53,12 @@ extension SettingsViewModel {
             setPrimaryProviderSaving(false)
             return true
         } catch {
-            setPrimaryProviderError(
-                recordSettingsSaveFailure(
-                    error,
-                    operation: "primary_provider_key"
-                )
+            let message = ErrorMapping.providerKeyMessage(for: error)
+            _ = recordSettingsSaveFailure(
+                error,
+                operation: "primary_provider_key"
             )
+            setPrimaryProviderError(message)
             setPrimaryProviderSaving(false)
             return false
         }

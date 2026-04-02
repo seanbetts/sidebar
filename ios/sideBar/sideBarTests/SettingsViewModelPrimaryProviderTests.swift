@@ -65,13 +65,13 @@ final class SettingsViewModelPrimaryProviderTests: XCTestCase {
         await viewModel.load()
         let success = await viewModel.savePrimaryProviderKey(
             provider: .google,
-            apiKey: "test-google-key"
+            apiKey: "AIzaSyValidGoogleKey12345"
         )
 
         XCTAssertTrue(success)
         XCTAssertEqual(api.upsertCallCount, 1)
         XCTAssertEqual(api.lastUpsertProvider, "google")
-        XCTAssertEqual(api.lastUpsertApiKey, "test-google-key")
+        XCTAssertEqual(api.lastUpsertApiKey, "AIzaSyValidGoogleKey12345")
     }
 
     func testSignedInRecoveryStateShowsProviderRecoveryWhenSelectedProviderHasNoKey() async {

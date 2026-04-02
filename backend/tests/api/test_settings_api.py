@@ -12,6 +12,14 @@ def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.bearer_token}"}
 
 
+async def _accept_provider_key(*_args, **_kwargs) -> None:
+    return None
+
+
+async def _reject_provider_key(*_args, **_kwargs) -> None:
+    raise ValueError("Invalid provider API key")
+
+
 def test_update_settings_trims_fields(test_client):
     response = test_client.patch(
         "/api/settings",
@@ -83,7 +91,11 @@ def test_update_settings_accepts_ai_provider_preferences(test_client):
     assert body["ai_primary_provider"] == "anthropic"
 
 
-def test_provider_key_crud_flow(test_client):
+def test_provider_key_crud_flow(test_client, monkeypatch):
+    monkeypatch.setattr(
+        "api.routers.settings.ProviderKeyVerificationService.verify_provider_key",
+        _accept_provider_key,
+    )
     update_response = test_client.patch(
         "/api/settings",
         headers=_auth_headers(),
@@ -137,7 +149,42 @@ def test_provider_key_crud_flow(test_client):
     }
 
 
-def test_provider_key_disconnect_flow_skill_then_ai_provider(test_client):
+def test_provider_key_rejects_invalid_format(test_client, monkeypatch):
+    monkeypatch.setattr(
+        "api.routers.settings.ProviderKeyVerificationService.verify_provider_key",
+        _reject_provider_key,
+    )
+    save_status = test_client.put(
+        "/api/settings/ai/provider-key",
+        headers=_auth_headers(),
+        json={"provider": "openai", "api_key": "not-a-real-openai-key"},
+    )
+    assert save_status.status_code == 400
+    assert error_message(save_status) == "Invalid provider API key"
+
+
+def test_provider_key_rejects_invalid_openai_key_even_with_valid_prefix(
+    test_client,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "api.routers.settings.ProviderKeyVerificationService.verify_provider_key",
+        _reject_provider_key,
+    )
+    save_status = test_client.put(
+        "/api/settings/ai/provider-key",
+        headers=_auth_headers(),
+        json={"provider": "openai", "api_key": "sk-proj-definitely-not-real-1234"},
+    )
+    assert save_status.status_code == 400
+    assert error_message(save_status) == "Invalid provider API key"
+
+
+def test_provider_key_disconnect_flow_skill_then_ai_provider(test_client, monkeypatch):
+    monkeypatch.setattr(
+        "api.routers.settings.ProviderKeyVerificationService.verify_provider_key",
+        _accept_provider_key,
+    )
     save_status = test_client.put(
         "/api/settings/ai/provider-key",
         headers=_auth_headers(),
@@ -278,7 +325,12 @@ def test_update_settings_preserves_skill_toggle_ux_without_legacy_columns(
 def test_store_install_preserves_installed_skill_payload_without_legacy_columns(
     test_client,
     test_db,
+    monkeypatch,
 ):
+    monkeypatch.setattr(
+        "api.routers.settings.ProviderKeyVerificationService.verify_provider_key",
+        _accept_provider_key,
+    )
     save_key = test_client.put(
         "/api/settings/ai/provider-key",
         headers=_auth_headers(),

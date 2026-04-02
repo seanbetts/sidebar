@@ -431,25 +431,6 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentStep, .verifyEmail)
     }
 
-    func testTestingModeAcceptsAnyApiKey() async {
-        let viewModel = retain(OnboardingViewModel(
-            authSession: MockAuthSessionForOnboarding(),
-            onboardingAPI: MockOnboardingAPI(),
-            settingsAPI: OnboardingMockSettingsAPI(),
-            isTestingOnboarding: true,
-            userDefaults: makeUserDefaults()
-        ))
-        viewModel.selectedProvider = .anthropic
-        viewModel.apiKey = "literally-anything"
-        viewModel.currentStep = .addApiKey
-
-        await viewModel.validateAndSaveApiKey()
-
-        XCTAssertEqual(viewModel.currentStep, .locationPermission)
-        XCTAssertEqual(viewModel.transitionVariant, .providerConnected)
-        XCTAssertNil(viewModel.errorMessage)
-    }
-
     func testTestingModeSkipsRealVerification() async {
         let viewModel = retain(OnboardingViewModel(
             authSession: MockAuthSessionForOnboarding(),

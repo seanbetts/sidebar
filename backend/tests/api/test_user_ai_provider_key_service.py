@@ -22,6 +22,24 @@ def test_upsert_and_get_active_key_round_trip(test_db):
     assert resolved == "sk-openai-abcdef1234"
 
 
+@pytest.mark.parametrize(
+    ("provider", "api_key"),
+    [
+        ("anthropic", "not-a-real-anthropic-key"),
+        ("openai", "AIza-not-an-openai-key"),
+        ("google", "sk-not-a-google-key"),
+    ],
+)
+def test_upsert_key_rejects_invalid_provider_key_shape(test_db, provider, api_key):
+    with pytest.raises(ValueError, match="Invalid provider API key"):
+        UserAIProviderKeyService.upsert_key(
+            test_db,
+            user_id="user-invalid-shape",
+            provider=provider,
+            api_key=api_key,
+        )
+
+
 def test_soft_delete_key_marks_record_deleted(test_db):
     UserAIProviderKeyService.upsert_key(
         test_db,

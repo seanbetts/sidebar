@@ -1,14 +1,13 @@
 import SwiftUI
 
-enum SettingsSavePillState {
+enum SettingsSavePillState: Equatable {
     case saving
     case saved
-    case error
+    case error(String)
 }
 
 enum SettingsSaveStatusPillChrome: Equatable {
     case glass
-    case material
 }
 
 enum SettingsSaveStatusPillPlatform {
@@ -36,7 +35,7 @@ struct SettingsSaveStatusPill: View {
             Text(title)
                 .appFont(.labelMd)
                 .foregroundStyle(.primary)
-                .lineLimit(1)
+                .lineLimit(2)
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.xsPlus)
@@ -48,7 +47,7 @@ struct SettingsSaveStatusPill: View {
     static func chrome(for platform: SettingsSaveStatusPillPlatform) -> SettingsSaveStatusPillChrome {
         switch platform {
         case .iOS:
-            return .material
+            return .glass
         case .macOS:
             return .glass
         }
@@ -60,8 +59,9 @@ struct SettingsSaveStatusPill: View {
             return "Saving settings..."
         case .saved:
             return "Saved"
-        case .error:
-            return "Couldn't save settings"
+        case .error(let message):
+            let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? "Couldn't save settings" : trimmed
         }
     }
 
@@ -80,14 +80,16 @@ private struct SettingsSaveStatusPillBackgroundModifier: ViewModifier {
     func body(content: Content) -> some View {
         switch chrome {
         case .glass:
-            content.glassEffect(.regular.interactive(), in: Capsule())
-        case .material:
-            content
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                }
+            if #available(iOS 26.0, macOS 26.0, *) {
+                content.glassEffect(.regular.interactive(), in: Capsule())
+            } else {
+                content
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    }
+            }
         }
     }
 }
