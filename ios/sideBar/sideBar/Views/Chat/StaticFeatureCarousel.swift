@@ -5,17 +5,12 @@ struct StaticFeatureCarousel: View {
     let onDismiss: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var isExpanded = false
     @State private var isPreviewSummaryVisible = true
     @State private var previewSummaryRevealTask: Task<Void, Never>?
     @State private var isTitleInExpandedPosition = false
 
     private let features = OnboardingDiscoveryFeature.allCases
-
-    private var panelMaxWidth: CGFloat {
-        horizontalSizeClass == .compact ? 360 : 460
-    }
 
     private var previewSummary: String {
         "Notes, tasks, websites, and more"
@@ -34,7 +29,7 @@ struct StaticFeatureCarousel: View {
                 }
             }
             .padding(DesignTokens.Spacing.md)
-            .frame(maxWidth: panelMaxWidth, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .clipped()
             .modifier(FeatureDiscoveryPanelChrome())
         }
@@ -56,14 +51,14 @@ struct StaticFeatureCarousel: View {
 
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
                         Text("Explore sideBar")
-                            .appFont(.labelMd)
+                            .appFont(.title3Semibold)
                             .foregroundStyle(DesignTokens.Colors.textPrimary)
                             .lineLimit(1)
                             .offset(y: isTitleInExpandedPosition ? DesignTokens.Spacing.xxxs : 0)
 
                         if isPreviewSummaryVisible {
                             Text(previewSummary)
-                                .appFont(.caption)
+                                .appFont(.body)
                                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 .lineLimit(1)
                                 .transition(.identity)
@@ -101,7 +96,7 @@ struct StaticFeatureCarousel: View {
     private var expandedContent: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text("Start anywhere. The rest of the app is already live.")
-                .appFont(.caption)
+                .appFont(.body)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
 
             ScrollView(.horizontal, showsIndicators: false) {

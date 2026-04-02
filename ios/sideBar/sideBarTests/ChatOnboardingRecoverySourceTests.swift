@@ -79,6 +79,36 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("Dismissfeaturediscovery"))
     }
 
+    func testFeatureDiscoveryUsesAppTextSizeForLayout() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("scaleMultiplier"))
+    }
+
+    func testFeatureDiscoveryExpandsToChatContentWidth() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("StaticFeatureCarousel("))
+        XCTAssertTrue(normalized.contains(".frame(maxWidth:contentMaxWidth)"))
+        XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity,alignment:.leading)"))
+    }
+
+    func testFeatureDiscoveryUsesProminentTypography() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Text(\"ExploresideBar\")"))
+        XCTAssertTrue(normalized.contains(".appFont(.title3Semibold)"))
+        XCTAssertTrue(normalized.contains("Text(previewSummary)"))
+        XCTAssertTrue(normalized.contains("Text(\"Startanywhere.Therestoftheappisalreadylive.\")"))
+        XCTAssertTrue(normalized.contains("Text(feature.title)"))
+        XCTAssertTrue(normalized.contains(".appFont(.bodySemibold)"))
+        XCTAssertTrue(normalized.contains("Text(feature.summary)"))
+        XCTAssertTrue(normalized.contains(".appFont(.body)"))
+    }
+
     func testChatComposerIsDisabledDuringProviderRecovery() throws {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

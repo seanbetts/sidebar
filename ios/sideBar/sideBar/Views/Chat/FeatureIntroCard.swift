@@ -4,15 +4,26 @@ struct FeatureIntroCard: View {
     let feature: OnboardingDiscoveryFeature
     let action: () -> Void
 
-    private let cardWidth: CGFloat = 228
-    private let cardHeight: CGFloat = 122
+    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
+
+    private var textSizeOption: AppTextSizeOption {
+        AppTextSizeOption.resolved(from: appTextSizeRaw)
+    }
+
+    private var cardWidth: CGFloat {
+        244 * textSizeOption.scaleMultiplier
+    }
+
+    private var cardHeight: CGFloat {
+        152 * textSizeOption.scaleMultiplier
+    }
 
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
                     Image(systemName: feature.systemImage)
-                        .appFont(.labelMd)
+                        .appFont(.bodySemibold)
                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                         .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
                         .accessibilityHidden(true)
@@ -23,7 +34,7 @@ struct FeatureIntroCard: View {
                 }
 
                 Text(feature.summary)
-                    .appFont(.caption)
+                    .appFont(.body)
                     .foregroundStyle(DesignTokens.Colors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
