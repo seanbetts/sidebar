@@ -1,6 +1,34 @@
 from api.services.ai.tool_event_mapper import tool_side_effect_events
 
 
+def test_tool_side_effect_events_maps_create_note_with_workspace_opening() -> None:
+    events = tool_side_effect_events(
+        "Create Note",
+        {
+            "success": True,
+            "data": {
+                "id": "note-1",
+                "title": "Test",
+                "folder": "",
+                "path": "note-1",
+            },
+        },
+    )
+
+    assert events == [
+        {
+            "type": "note_created",
+            "data": {
+                "id": "note-1",
+                "title": "Test",
+                "folder": "",
+                "path": "note-1",
+                "open_in_workspace": True,
+            },
+        }
+    ]
+
+
 def test_tool_side_effect_events_emits_workspace_patch_event() -> None:
     events = tool_side_effect_events(
         "Unknown Tool",

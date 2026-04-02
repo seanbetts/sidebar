@@ -176,6 +176,7 @@ class ChatViewModelTestCase: XCTestCase {
         ingestionAPI: IngestionAPI? = nil,
         streamClient: ChatViewModelTestsSupport.MockChatStreamClient? = nil,
         onOnboardingStateRefreshRequested: (() -> Void)? = nil,
+        onOpenNoteRequested: ((String) -> Void)? = nil,
         requestContextProvider: (() -> ChatRequestContext?)? = nil,
         workspaceActionDispatcher: ((WorkspaceAction) -> Void)? = nil,
         attachmentPollingInitialDelayNanoseconds: UInt64 = 1_500_000_000,
@@ -210,6 +211,7 @@ class ChatViewModelTestCase: XCTestCase {
                 userDefaults: defaults,
                 clock: { Date(timeIntervalSince1970: 0) },
                 onOnboardingStateRefreshRequested: onOnboardingStateRefreshRequested,
+                onOpenNoteRequested: onOpenNoteRequested,
                 requestContextProvider: requestContextProvider,
                 attachmentPollingInitialDelayNanoseconds: attachmentPollingInitialDelayNanoseconds,
                 attachmentPollingIntervalNanoseconds: attachmentPollingIntervalNanoseconds

@@ -229,6 +229,67 @@ def test_resolver_adds_onboarding_coach_for_incomplete_onboarding():
     assert result["executable_skill_ids"] == ["onboarding-coach"]
 
 
+def test_resolver_augments_feature_discovery_with_onboarding_coach():
+    user_message = (
+        "Help me get started with Notes in sideBar. "
+        "Give me a short guided intro and one simple first win."
+    )
+    enabled_skill_ids = ["onboarding-coach", "notes", "files"]
+    runtime_capabilities = [
+        _runtime_capability(
+            "onboarding-coach",
+            description="Guide incomplete users through setup recovery.",
+            tags=["onboarding", "setup"],
+            triggers=["finish setup", "connect key"],
+        ),
+        _runtime_capability(
+            "notes",
+            description="Search and summarize notes.",
+            tags=["notes"],
+            triggers=["note", "notes"],
+        ),
+        _runtime_capability(
+            "files",
+            description="Search and inspect files in the workspace.",
+            tags=["files", "workspace"],
+            triggers=["file", "project", "config"],
+        ),
+    ]
+
+    baseline = _resolver_service().resolve_for_turn(
+        user_message=user_message,
+        enabled_skill_ids=enabled_skill_ids,
+        runtime_capabilities=runtime_capabilities,
+        onboarding_state={
+            "status": "completed",
+            "current_onboarding_step": "completed",
+            "is_onboarding_complete": True,
+            "provider_ready": True,
+        },
+    )
+
+    result = _resolver_service().resolve_for_turn(
+        user_message=user_message,
+        enabled_skill_ids=enabled_skill_ids,
+        runtime_capabilities=runtime_capabilities,
+        onboarding_state={
+            "status": "dismissed",
+            "current_onboarding_step": "feature_discovery",
+            "is_onboarding_complete": False,
+            "provider_ready": True,
+        },
+    )
+
+    assert result["selected_skill_ids"] == [
+        "onboarding-coach",
+        *baseline["selected_skill_ids"],
+    ]
+    assert result["executable_skill_ids"] == [
+        "onboarding-coach",
+        *baseline["executable_skill_ids"],
+    ]
+
+
 def test_resolver_omits_onboarding_coach_for_completed_onboarding():
     result = _resolver_service().resolve_for_turn(
         user_message="Summarize my notes",

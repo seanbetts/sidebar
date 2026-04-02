@@ -118,6 +118,28 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         XCTAssertEqual(toolCall?.iconKey, "notes")
     }
 
+    func testNoteCreatedEventRequestsOpeningCreatedNoteInWorkspace() async {
+        let cache = TestCacheClient()
+        let api = ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([]))
+        var requestedNoteID: String?
+        let viewModel = makeViewModel(
+            api: api,
+            cache: cache,
+            onOpenNoteRequested: { requestedNoteID = $0 }
+        )
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .noteCreated,
+            data: AnyCodable([
+                "id": "note-1",
+                "path": "Folder/Test.md",
+                "open_in_workspace": true
+            ])
+        ))
+
+        XCTAssertEqual(requestedNoteID, "note-1")
+    }
+
     func testHandleToolEndMarksNeedsNewlineAfterSuccessfulToolCompletion() async {
         let cache = TestCacheClient()
         let conversation = ConversationWithMessages(
@@ -311,6 +333,7 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         ))
         XCTAssertTrue(dispatchedActions.isEmpty)
     }
+
     func testLoadConversationSortsMessagesByTimestamp() async {
         let cache = TestCacheClient()
         let messages = [

@@ -387,6 +387,8 @@ async def stream_with_tools(
                                                 "id": result_data.get("id"),
                                                 "title": result_data.get("title"),
                                                 "folder": result_data.get("folder"),
+                                                "path": result_data.get("path"),
+                                                "open_in_workspace": True,
                                             },
                                         }
                                     elif display_name == "Edit Note":

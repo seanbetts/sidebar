@@ -659,6 +659,62 @@ async def test_stream_with_tools_emits_note_pinned_event():
 
 
 @pytest.mark.asyncio
+async def test_stream_with_tools_emits_note_created_workspace_open_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="test_tool"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"title": "Created from chat"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class CreateNoteToolMapper(DummyToolMapper):
+        def get_tool_display_name(self, name):
+            return "Create Note"
+
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            return {
+                "success": True,
+                "data": {
+                    "id": "note-1",
+                    "title": "Created from chat",
+                    "folder": "",
+                    "path": "note-1",
+                },
+            }
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=CreateNoteToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert {
+        "type": "note_created",
+        "data": {
+            "id": "note-1",
+            "title": "Created from chat",
+            "folder": "",
+            "path": "note-1",
+            "open_in_workspace": True,
+        },
+    } in output
+
+
+@pytest.mark.asyncio
 async def test_stream_with_tools_emits_ingestion_updated_event():
     events = [
         SimpleNamespace(

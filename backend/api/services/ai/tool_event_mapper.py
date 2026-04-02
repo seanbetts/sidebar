@@ -93,6 +93,8 @@ def tool_side_effect_events(
                     "id": result_data.get("id"),
                     "title": result_data.get("title"),
                     "folder": result_data.get("folder"),
+                    "path": result_data.get("path"),
+                    "open_in_workspace": True,
                 },
             }
         )

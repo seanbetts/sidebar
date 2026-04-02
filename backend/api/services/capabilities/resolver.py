@@ -32,6 +32,8 @@ class CapabilityResolverService:
         "explain",
         "analyze",
     }
+    _EXCLUSIVE_ONBOARDING_STEPS = {"provider_recovery", "permission_recovery"}
+    _AUGMENTED_ONBOARDING_STEPS = {"feature_discovery"}
 
     @staticmethod
     def _catalog_capabilities(
@@ -100,32 +102,33 @@ class CapabilityResolverService:
         }
 
     @classmethod
-    def _should_select_onboarding_coach(
+    def _onboarding_coach_mode(
         cls,
         *,
         onboarding_state: dict[str, Any] | None,
         catalog_skill_ids: list[str],
-    ) -> bool:
+    ) -> str | None:
         if cls._ONBOARDING_COACH_SKILL_ID not in catalog_skill_ids:
-            return False
+            return None
         if not isinstance(onboarding_state, dict):
-            return False
+            return None
         if bool(onboarding_state.get("is_onboarding_complete")):
-            return False
+            return None
 
         current_step = str(onboarding_state.get("current_onboarding_step", "")).strip()
-        if current_step in {
-            "provider_recovery",
-            "permission_recovery",
-            "feature_discovery",
-        }:
-            return True
+        if current_step in cls._EXCLUSIVE_ONBOARDING_STEPS:
+            return "exclusive"
+        if current_step in cls._AUGMENTED_ONBOARDING_STEPS:
+            return "augment"
 
-        return str(onboarding_state.get("status", "")).strip() in {
+        if str(onboarding_state.get("status", "")).strip() in {
             "not_started",
             "in_progress",
             "dismissed",
-        }
+        }:
+            return "exclusive"
+
+        return None
 
     @classmethod
     def resolve_for_turn(
@@ -148,10 +151,11 @@ class CapabilityResolverService:
             str(capability["skill_id"]) for capability in catalog_capabilities
         ]
 
-        if cls._should_select_onboarding_coach(
+        onboarding_coach_mode = cls._onboarding_coach_mode(
             onboarding_state=onboarding_state,
             catalog_skill_ids=catalog_skill_ids,
-        ):
+        )
+        if onboarding_coach_mode == "exclusive":
             selected_skill_ids = [cls._ONBOARDING_COACH_SKILL_ID]
         else:
             selected_skill_ids = cls._deterministic_matches(
@@ -172,6 +176,14 @@ class CapabilityResolverService:
                     skill_id
                     for skill_id in catalog_skill_ids
                     if skill_id in selected_set
+                ]
+            if onboarding_coach_mode == "augment":
+                selected_set = set(selected_skill_ids)
+                selected_skill_ids = [
+                    skill_id
+                    for skill_id in catalog_skill_ids
+                    if skill_id == cls._ONBOARDING_COACH_SKILL_ID
+                    or skill_id in selected_set
                 ]
 
         selected_set = set(selected_skill_ids)

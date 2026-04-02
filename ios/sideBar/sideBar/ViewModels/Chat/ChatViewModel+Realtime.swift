@@ -115,6 +115,9 @@ extension ChatViewModel {
         guard let id = stringValue(from: event.data, key: "id") else {
             return
         }
+        if boolValue(from: event.data, key: "open_in_workspace") == true {
+            onOpenNoteRequested?(id)
+        }
         refreshContext(for: .notes(noteId: id))
     }
 

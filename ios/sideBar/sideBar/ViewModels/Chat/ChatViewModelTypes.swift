@@ -149,6 +149,7 @@ struct ChatUICoordinator {
     let clock: () -> Date
     let onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)?
     let onOnboardingStateRefreshRequested: (() -> Void)?
+    let onOpenNoteRequested: ((String) -> Void)?
     let requestContextProvider: (() -> ChatRequestContext?)?
     let attachmentPollingInitialDelayNanoseconds: UInt64
     let attachmentPollingIntervalNanoseconds: UInt64
@@ -164,6 +165,7 @@ struct ChatUICoordinator {
         clock: @escaping () -> Date = Date.init,
         onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? = nil,
         onOnboardingStateRefreshRequested: (() -> Void)? = nil,
+        onOpenNoteRequested: ((String) -> Void)? = nil,
         requestContextProvider: (() -> ChatRequestContext?)? = nil,
         attachmentPollingInitialDelayNanoseconds: UInt64 = 1_500_000_000,
         attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000,
@@ -178,6 +180,7 @@ struct ChatUICoordinator {
         self.clock = clock
         self.onAssistantSettingsUpdated = onAssistantSettingsUpdated
         self.onOnboardingStateRefreshRequested = onOnboardingStateRefreshRequested
+        self.onOpenNoteRequested = onOpenNoteRequested
         self.requestContextProvider = requestContextProvider
         self.attachmentPollingInitialDelayNanoseconds = attachmentPollingInitialDelayNanoseconds
         self.attachmentPollingIntervalNanoseconds = attachmentPollingIntervalNanoseconds
