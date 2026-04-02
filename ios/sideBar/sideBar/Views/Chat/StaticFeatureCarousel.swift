@@ -44,9 +44,10 @@ struct StaticFeatureCarousel: View {
             Button(action: toggleExpanded) {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Image(systemName: "sparkles.rectangle.stack")
-                        .appFont(.captionSemibold)
+                        .appFont(.bodySemibold)
                         .foregroundStyle(.secondary)
                         .frame(width: DesignTokens.Icon.md, height: DesignTokens.Icon.md)
+                        .offset(y: isTitleInExpandedPosition ? DesignTokens.Spacing.xxxs : 0)
                         .accessibilityHidden(true)
 
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
