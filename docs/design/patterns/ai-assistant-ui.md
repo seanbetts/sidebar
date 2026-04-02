@@ -270,6 +270,7 @@ The user is always identified as "You". This is not configurable.
 12. **`assistantDisplayName` must be used for all references to the assistant.** Never hardcode a name.
 13. **Reduce motion must be respected for all assistant animations.** Thinking dismissal, streaming reveal, and any other assistant-driven motion must have instant fallbacks.
 14. **Skill detail leads with a human-readable summary.** Parameters, result payloads, and prompt preview are secondary — collapsible, never the primary disclosure.
+15. **Content-bearing skill results present through the coordinated dispatch.** Domain objects auto-present with a left panel section switch on iPad/Mac. Dynamic surfaces auto-present without a panel switch. On iPhone, an inline action button is the sole trigger. No skill should implement its own navigation logic for content presentation. See [Content Presentation](./content-presentation).
 
 ---
 
@@ -278,6 +279,7 @@ The user is always identified as "You". This is not configurable.
 - [Handoffs](./handoffs)
 - [Wait UX](./wait-ux)
 - [Feedback and Haptics](./feedback-and-haptics)
+- [Content Presentation](./content-presentation)
 - [Navigation](./navigation)
 - [Voice and Content](../voice-and-content)
 - [Implementation Gaps](../implementation-gaps)

@@ -18,6 +18,7 @@ Document the repeated interaction patterns that sit above individual components 
 | [Onboarding](./onboarding) | partial |
 | [Handoffs](./handoffs) | approved |
 | [AI Assistant UI](./ai-assistant-ui) | approved |
+| [Content Presentation](./content-presentation) | approved |
 
 ## Related docs
 
