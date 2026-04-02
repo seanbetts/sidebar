@@ -2,6 +2,7 @@
 
 import re
 import time
+from datetime import UTC, datetime
 from typing import Any
 
 from api.config import settings
@@ -17,6 +18,7 @@ from api.services.agent.tools.execution import (
 )
 from api.services.agent.tools.registry import get_tool_definitions
 from api.services.ai.gateway import AIProviderGateway
+from api.services.onboarding_service import OnboardingService
 from api.services.tools.skill_metadata import canonicalize_skill_id
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
 from api.services.user_settings_service import UserSettingsService
@@ -38,6 +40,15 @@ SKILLS_REQUIRING_USER_ID = {
 }
 
 TRANSCRIPTION_TOOL_NAMES = {"Transcribe Audio", "Transcribe YouTube"}
+FIRST_OUTCOME_TOOL_NAMES = {
+    "Add Website",
+    "Create Note",
+    "Create Task",
+    "Save Website",
+    "Transcribe Audio",
+    "Transcribe YouTube",
+    "Write File",
+}
 SKILL_CONTEXT_FIELDS: dict[str, tuple[str, ...]] = {
     "product-feedback": (
         "user_agent",
@@ -212,6 +223,68 @@ class ToolMapper:
             return UserAIProviderKeyService.get_active_key(db, str(user_id), provider)
 
         return _lookup
+
+    @staticmethod
+    def _should_mark_first_outcome_completed(
+        display_name: str,
+        context: dict[str, Any] | None,
+    ) -> bool:
+        """Return whether a successful tool result should complete the first outcome."""
+        if display_name not in FIRST_OUTCOME_TOOL_NAMES or not context:
+            return False
+
+        onboarding_state = context.get("onboarding_state")
+        if not isinstance(onboarding_state, dict):
+            return False
+        if onboarding_state.get("is_onboarding_complete") is True:
+            return False
+
+        milestones = onboarding_state.get("milestones")
+        return not (
+            isinstance(milestones, dict) and milestones.get("first_outcome_completed")
+        )
+
+    @staticmethod
+    def _apply_first_outcome_completed_milestone(
+        display_name: str,
+        normalized: dict[str, Any],
+        context: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Persist and annotate the first completed outcome milestone."""
+        if not normalized.get("success"):
+            return normalized
+        if not ToolMapper._should_mark_first_outcome_completed(display_name, context):
+            return normalized
+
+        if context is None:
+            return normalized
+
+        db = context.get("db")
+        user_id = context.get("user_id")
+        if db is None or not user_id:
+            return normalized
+
+        timestamp = datetime.now(UTC).isoformat()
+        updated_state = OnboardingService.update_onboarding_state(
+            db,
+            str(user_id),
+            {"milestones": {"first_outcome_completed": timestamp}},
+        )
+
+        result_data = normalized.get("data")
+        if not isinstance(result_data, dict):
+            result_data = {}
+        result_data = {
+            **result_data,
+            "onboarding_milestone": "first_outcome_completed",
+            "onboarding_state": updated_state,
+        }
+        normalized["data"] = result_data
+
+        if isinstance(context.get("onboarding_state"), dict):
+            context["onboarding_state"] = updated_state
+
+        return normalized
 
     def get_claude_tools(
         self, allowed_skills: list[str] | None = None
@@ -416,6 +489,11 @@ class ToolMapper:
                 log_params.pop("content", None)
 
             normalized = self._normalize_result(result)
+            normalized = self._apply_first_outcome_completed_milestone(
+                display_name,
+                normalized,
+                context,
+            )
             if normalized.get("success"):
                 AuditLogger.log_tool_call(
                     tool_name=display_name,

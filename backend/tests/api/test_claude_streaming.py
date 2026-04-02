@@ -620,6 +620,74 @@ async def test_stream_with_tools_emits_onboarding_milestone_completed_event():
 
 
 @pytest.mark.asyncio
+async def test_stream_with_tools_uses_updated_onboarding_state_for_first_outcome_milestone():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="test_tool"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"title": "Test"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class MilestoneToolMapper(DummyToolMapper):
+        def get_tool_display_name(self, name):
+            _ = name
+            return "Create Note"
+
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            return {
+                "success": True,
+                "data": {
+                    "id": "note-1",
+                    "title": "Test",
+                    "onboarding_milestone": "first_outcome_completed",
+                    "onboarding_state": {
+                        "status": "in_progress",
+                        "provider_ready": True,
+                        "current_onboarding_step": "completed",
+                        "is_onboarding_complete": True,
+                    },
+                },
+            }
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=MilestoneToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=["notes"],
+        tool_context={
+            "onboarding_state": {
+                "status": "in_progress",
+                "provider_ready": True,
+                "current_onboarding_step": "feature_discovery",
+                "is_onboarding_complete": False,
+            }
+        },
+    ):
+        output.append(event)
+
+    assert {
+        "type": "onboarding_milestone_completed",
+        "data": {
+            "current_onboarding_step": "completed",
+            "provider_ready": True,
+            "milestone": "first_outcome_completed",
+        },
+    } in output
+
+
+@pytest.mark.asyncio
 async def test_stream_with_tools_emits_note_pinned_event():
     events = [
         SimpleNamespace(

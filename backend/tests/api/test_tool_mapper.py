@@ -505,3 +505,107 @@ async def test_execute_tool_returns_error_when_transcription_unavailable(monkeyp
     )
     assert result["success"] is False
     assert "Capability unavailable" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_marks_first_outcome_completed_for_create_note(monkeypatch):
+    tools = {
+        "Create Note": {
+            "description": "create note",
+            "input_schema": {},
+            "skill": "notes",
+            "script": "create_note.py",
+            "build_args": lambda _params: ["--title", "Test"],
+        }
+    }
+    mapper = _build_mapper(tools)
+    db = object()
+    updated_states: list[dict[str, object]] = []
+
+    def fake_update_onboarding_state(db_arg, user_id_arg, updates):
+        assert db_arg is db
+        assert user_id_arg == "user-1"
+        updated_states.append(updates)
+        return {
+            "status": "in_progress",
+            "provider_ready": True,
+            "current_onboarding_step": "completed",
+            "is_onboarding_complete": True,
+            "milestones": {
+                "first_outcome_completed": "2026-04-02T12:00:00Z",
+            },
+        }
+
+    monkeypatch.setattr(
+        tool_mapper_module.OnboardingService,
+        "update_onboarding_state",
+        staticmethod(fake_update_onboarding_state),
+    )
+
+    result = await mapper.execute_tool(
+        "Create Note",
+        {"title": "Test"},
+        context={
+            "db": db,
+            "user_id": "user-1",
+            "onboarding_state": {
+                "provider_ready": True,
+                "is_onboarding_complete": False,
+                "current_onboarding_step": "feature_discovery",
+                "milestones": {
+                    "first_outcome_completed": None,
+                },
+            },
+        },
+    )
+
+    assert result["success"] is True
+    assert len(updated_states) == 1
+    milestone_timestamp = updated_states[0]["milestones"]["first_outcome_completed"]
+    assert isinstance(milestone_timestamp, str)
+    assert milestone_timestamp.endswith("+00:00")
+    assert result["data"]["onboarding_milestone"] == "first_outcome_completed"
+    assert result["data"]["onboarding_state"]["current_onboarding_step"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_skips_first_outcome_update_when_already_completed(monkeypatch):
+    tools = {
+        "Create Note": {
+            "description": "create note",
+            "input_schema": {},
+            "skill": "notes",
+            "script": "create_note.py",
+            "build_args": lambda _params: ["--title", "Test"],
+        }
+    }
+    mapper = _build_mapper(tools)
+
+    def fail_update_onboarding_state(*_args, **_kwargs):
+        raise AssertionError("should not update onboarding")
+
+    monkeypatch.setattr(
+        tool_mapper_module.OnboardingService,
+        "update_onboarding_state",
+        staticmethod(fail_update_onboarding_state),
+    )
+
+    result = await mapper.execute_tool(
+        "Create Note",
+        {"title": "Test"},
+        context={
+            "db": object(),
+            "user_id": "user-1",
+            "onboarding_state": {
+                "provider_ready": True,
+                "is_onboarding_complete": True,
+                "current_onboarding_step": "completed",
+                "milestones": {
+                    "first_outcome_completed": "2026-04-02T12:00:00Z",
+                },
+            },
+        },
+    )
+
+    assert result["success"] is True
+    assert "onboarding_milestone" not in result["data"]

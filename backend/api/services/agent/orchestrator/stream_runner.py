@@ -562,6 +562,11 @@ async def stream_with_tools(
                                     )
                                     if assistant_settings_event:
                                         yield assistant_settings_event
+                                    updated_onboarding_state = result_data.get(
+                                        "onboarding_state"
+                                    )
+                                    if isinstance(updated_onboarding_state, dict):
+                                        onboarding_state = updated_onboarding_state
                                     onboarding_milestone_event = (
                                         build_onboarding_milestone_completed_event(
                                             onboarding_state,
