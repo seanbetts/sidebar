@@ -46,6 +46,29 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("StaticFeatureCarousel"))
     }
 
+    func testSelectingFeatureDiscoveryTileDoesNotDismissCarousel() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("awaitviewModel.startFeatureDiscovery(for:feature)"))
+        XCTAssertFalse(
+            normalized.contains(
+                "onSelectFeature:{featureinTask{awaitenvironment.settingsViewModel.markFeatureDiscoverySeen()"
+            )
+        )
+    }
+
+    func testSelectingFeatureDiscoveryTileCollapsesCarousel() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "FeatureIntroCard(feature:feature){collapseExpandedContent()onSelectFeature(feature)}"
+            )
+        )
+    }
+
     func testFeatureDiscoveryUsesExpandableGlassPresentation() throws {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

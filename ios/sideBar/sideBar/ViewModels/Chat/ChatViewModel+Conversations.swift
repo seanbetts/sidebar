@@ -6,6 +6,14 @@ import Foundation
 
 extension ChatViewModel {
     public func startFeatureDiscovery(for feature: OnboardingDiscoveryFeature) async {
+        let previousConversationId = selectedConversationId
+        await startNewConversation()
+        guard let conversationId = selectedConversationId else {
+            return
+        }
+        guard previousConversationId == nil || conversationId != previousConversationId else {
+            return
+        }
         await sendMessage(text: feature.kickoffPrompt)
     }
 

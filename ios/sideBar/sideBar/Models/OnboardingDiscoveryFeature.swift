@@ -1,19 +1,24 @@
 import Foundation
 
-public enum OnboardingDiscoveryFeature: String, CaseIterable, Identifiable, Equatable {
-    case chat
+public enum OnboardingDiscoveryFeature: String, Identifiable, Equatable, CaseIterable {
     case notes
     case tasks
     case websites
     case files
     case skills
 
+    public static let allCases: [OnboardingDiscoveryFeature] = [
+        .notes,
+        .tasks,
+        .websites,
+        .files,
+        .skills
+    ]
+
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
-        case .chat:
-            "Chat"
         case .notes:
             "Notes"
         case .tasks:
@@ -29,8 +34,6 @@ public enum OnboardingDiscoveryFeature: String, CaseIterable, Identifiable, Equa
 
     public var summary: String {
         switch self {
-        case .chat:
-            "Ask questions, take action, and use skills across your workspace."
         case .notes:
             "Capture ideas, keep scratch work close, and organize them later."
         case .tasks:
@@ -46,8 +49,6 @@ public enum OnboardingDiscoveryFeature: String, CaseIterable, Identifiable, Equa
 
     public var systemImage: String {
         switch self {
-        case .chat:
-            "bubble"
         case .notes:
             "text.document"
         case .tasks:
@@ -63,10 +64,8 @@ public enum OnboardingDiscoveryFeature: String, CaseIterable, Identifiable, Equa
 
     public var kickoffPrompt: String {
         switch self {
-        case .chat:
-            "Help me get started with Chat in sideBar. Give me a short guided intro and one simple first win."
         case .notes:
-            "Help me get started with Notes in sideBar. Give me a short guided intro and one simple first win."
+            "Help me get started with notes in sideBar. Write me a short guided intro as a note to demonstrate how notes work."
         case .tasks:
             "Help me get started with Tasks in sideBar. Give me a short guided intro and one simple first win."
         case .websites:

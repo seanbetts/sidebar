@@ -5,6 +5,7 @@ struct FeatureIntroCard: View {
     let action: () -> Void
 
     private let cardWidth: CGFloat = 228
+    private let cardHeight: CGFloat = 122
 
     var body: some View {
         Button(action: action) {
@@ -27,7 +28,7 @@ struct FeatureIntroCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(DesignTokens.Spacing.md)
-            .frame(width: cardWidth, alignment: .leading)
+            .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
             .modifier(FeatureIntroCardChrome())
         }
         .buttonStyle(.plain)

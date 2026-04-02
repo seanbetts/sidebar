@@ -18,7 +18,7 @@ struct StaticFeatureCarousel: View {
     }
 
     private var previewSummary: String {
-        "Chat, notes, tasks, and more"
+        "Notes, tasks, websites, and more"
     }
 
     var body: some View {
@@ -108,6 +108,7 @@ struct StaticFeatureCarousel: View {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     ForEach(features) { feature in
                         FeatureIntroCard(feature: feature) {
+                            collapseExpandedContent()
                             onSelectFeature(feature)
                         }
                     }
@@ -122,27 +123,7 @@ struct StaticFeatureCarousel: View {
         previewSummaryRevealTask?.cancel()
 
         if isExpanded {
-            withAnimation(Motion.slow(reduceMotion: reduceMotion)) {
-                isTitleInExpandedPosition = false
-            }
-
-            withAnimation(Motion.standard(reduceMotion: reduceMotion)) {
-                isExpanded = false
-            }
-
-            if reduceMotion {
-                setPreviewSummaryVisible(true)
-            } else {
-                previewSummaryRevealTask = Task {
-                    try? await Task.sleep(
-                        nanoseconds: UInt64(DesignTokens.Animation.slow * 1_000_000_000)
-                    )
-                    guard !Task.isCancelled else { return }
-                    await MainActor.run {
-                        setPreviewSummaryVisible(true)
-                    }
-                }
-            }
+            collapseExpandedContent()
         } else {
             setPreviewSummaryVisible(false)
             withAnimation(Motion.slow(reduceMotion: reduceMotion)) {
@@ -151,6 +132,32 @@ struct StaticFeatureCarousel: View {
 
             withAnimation(Motion.standard(reduceMotion: reduceMotion)) {
                 isExpanded = true
+            }
+        }
+    }
+
+    private func collapseExpandedContent() {
+        previewSummaryRevealTask?.cancel()
+
+        withAnimation(Motion.slow(reduceMotion: reduceMotion)) {
+            isTitleInExpandedPosition = false
+        }
+
+        withAnimation(Motion.standard(reduceMotion: reduceMotion)) {
+            isExpanded = false
+        }
+
+        if reduceMotion {
+            setPreviewSummaryVisible(true)
+        } else {
+            previewSummaryRevealTask = Task {
+                try? await Task.sleep(
+                    nanoseconds: UInt64(DesignTokens.Animation.slow * 1_000_000_000)
+                )
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    setPreviewSummaryVisible(true)
+                }
             }
         }
     }

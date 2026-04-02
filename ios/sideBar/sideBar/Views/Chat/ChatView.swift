@@ -126,7 +126,6 @@ private struct ChatDetailView: View {
                     StaticFeatureCarousel(
                         onSelectFeature: { feature in
                             Task {
-                                await environment.settingsViewModel.markFeatureDiscoverySeen()
                                 await viewModel.startFeatureDiscovery(for: feature)
                             }
                         },
