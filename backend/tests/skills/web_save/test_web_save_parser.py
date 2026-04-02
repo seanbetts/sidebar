@@ -282,6 +282,51 @@ def _build_patreon_post_html() -> str:
     """
 
 
+def _build_sidebar_docs_html() -> str:
+    return """
+    <html>
+      <head>
+        <title>Introduction - sideBar</title>
+        <meta property="og:title" content="Introduction - sideBar"/>
+        <meta
+          property="og:image"
+          content="https://mintcdn.com/sidebar/assets/screenshots/overview.png"
+        />
+        <link rel="canonical" href="https://docs.trysidebar.ai/manual/introduction"/>
+      </head>
+      <body>
+        <nav>
+          <a href="/manual/getting-started">Getting Started</a>
+        </nav>
+        <main>
+          <aside>
+            <a href="/manual/introduction">Introduction</a>
+          </aside>
+          <article>
+            <div>
+              <p>Manual</p>
+              <h1>Introduction</h1>
+              <img
+                src="https://mintcdn.com/sidebar/assets/screenshots/overview.png"
+                alt="sideBar app overview"
+              />
+              <p>sideBar is an AI assistant available on iPhone, iPad, Mac, and in your web browser.</p>
+              <p>The core idea is that your content and sideBar live together.</p>
+              <h2>What’s in the App</h2>
+              <ul>
+                <li><a href="/manual/chat">Chat</a>: your main interface with sideBar.</li>
+                <li><a href="/manual/notes">Notes</a>: a full-featured editor.</li>
+              </ul>
+              <h2>Where to Start</h2>
+              <p>Head to <a href="/manual/getting-started">Getting Started</a> for a walkthrough of setup and first steps.</p>
+            </div>
+          </article>
+        </main>
+      </body>
+    </html>
+    """
+
+
 def test_parse_url_local_builds_frontmatter(monkeypatch):
     html = """
     <html>
@@ -324,6 +369,37 @@ def test_parse_url_local_builds_frontmatter(monkeypatch):
     assert data["domain"] == "example.com"
     assert data["reading_time"]
     assert "svelte" in data["tags"]
+
+
+def test_parse_url_local_sidebar_docs_preserves_heading_and_hero_image(monkeypatch):
+    html = _build_sidebar_docs_html()
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://docs.trysidebar.ai/manual/introduction", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://docs.trysidebar.ai/manual/introduction"
+    )
+
+    assert parsed.title == "Introduction - sideBar"
+    assert parsed.source == "https://docs.trysidebar.ai/manual/introduction"
+
+    markdown = parsed.content.split("---\n", 2)[2]
+    heading_index = markdown.find("# Introduction")
+    image_index = markdown.find("![sideBar app overview]")
+    intro_index = markdown.find("sideBar is an AI assistant available")
+    app_index = markdown.find("## What’s in the App")
+
+    assert heading_index != -1
+    assert image_index != -1
+    assert intro_index != -1
+    assert app_index != -1
+    assert heading_index < image_index < intro_index < app_index
 
 
 def test_extract_steamcommunity_body_html_parses_event_store():
