@@ -114,4 +114,39 @@ final class ChatStreamParserTests: XCTestCase {
             .first(where: { $0.label == "buffer" })?.value as? Data
         XCTAssertEqual(mirroredBuffer?.count, 65_536)
     }
+
+    func testIngestParsesOnboardingResumeSuggestedEvent() {
+        var parser = ChatStreamParser()
+        let chunk = """
+        event: onboarding_resume_suggested
+        data: {"current_onboarding_step":"feature_discovery","provider_ready":true}
+
+
+        """
+
+        let events = parser.ingest(Data(chunk.utf8))
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first?.type, .onboardingResumeSuggested)
+        let payload = events.first?.data?.value as? [String: Any]
+        XCTAssertEqual(payload?["current_onboarding_step"] as? String, "feature_discovery")
+        XCTAssertEqual(payload?["provider_ready"] as? Bool, true)
+    }
+
+    func testIngestParsesOnboardingMilestoneCompletedEvent() {
+        var parser = ChatStreamParser()
+        let chunk = """
+        event: onboarding_milestone_completed
+        data: {"current_onboarding_step":"completed","provider_ready":true,"milestone":"secondary_tour_seen"}
+
+
+        """
+
+        let events = parser.ingest(Data(chunk.utf8))
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first?.type, .onboardingMilestoneCompleted)
+        let payload = events.first?.data?.value as? [String: Any]
+        XCTAssertEqual(payload?["milestone"] as? String, "secondary_tour_seen")
+    }
 }

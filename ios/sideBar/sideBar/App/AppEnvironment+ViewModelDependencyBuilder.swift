@@ -338,6 +338,11 @@ extension AppEnvironment {
                     themeManager: core.themeManager,
                     toastCenter: core.toastCenter,
                     onAssistantSettingsUpdated: { settingsViewModel.applyAssistantSettingsUpdate($0) },
+                    onOnboardingStateRefreshRequested: {
+                        Task {
+                            await settingsViewModel.loadOnboarding(force: true)
+                        }
+                    },
                     requestContextProvider: {
                         makeChatRequestContext(
                             notesRuntime: notesRuntime,

@@ -220,6 +220,29 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         XCTAssertEqual(viewModel.streamEventHandlersBuildCountForTesting, 1)
     }
 
+    func testOnboardingStreamEventRequestsOnboardingRefresh() {
+        let cache = TestCacheClient()
+        var refreshRequestCount = 0
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            onOnboardingStateRefreshRequested: {
+                refreshRequestCount += 1
+            }
+        )
+
+        viewModel.handle(event: ChatStreamEvent(
+            type: .onboardingMilestoneCompleted,
+            data: AnyCodable([
+                "current_onboarding_step": "completed",
+                "provider_ready": true,
+                "milestone": "secondary_tour_seen"
+            ])
+        ))
+
+        XCTAssertEqual(refreshRequestCount, 1)
+    }
+
     func testWorkspacePatchEventDispatchesValidatedWorkspaceActions() {
         let cache = TestCacheClient()
         var dispatchedActions: [WorkspaceAction] = []

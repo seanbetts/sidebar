@@ -43,6 +43,13 @@ extension SettingsViewModel {
         setPrimaryProviderError(nil)
         do {
             _ = try await saveProviderKey(provider: provider.rawValue, apiKey: apiKey)
+            if settings?.aiPrimaryProvider != provider.rawValue {
+                let response = try await settingsAPI.updateSettings(
+                    SettingsUpdate(aiPrimaryProvider: provider.rawValue)
+                )
+                applySettingsResponse(response)
+                await loadOnboarding(force: true)
+            }
             setPrimaryProviderSaving(false)
             return true
         } catch {

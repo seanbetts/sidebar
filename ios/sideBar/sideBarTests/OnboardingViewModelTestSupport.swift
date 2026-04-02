@@ -5,22 +5,28 @@ final class MockOnboardingAPI: OnboardingProviding {
     struct RecordedUpdate: Equatable {
         let status: OnboardingStatus?
         let profileBasicsSet: String?
+        let secondaryTourSeen: String?
         let locationPermission: OnboardingPermissionState?
         let notificationsPermission: OnboardingPermissionState?
     }
 
     var getResult: Result<OnboardingState, Error> = .success(.default)
+    var getResults: [Result<OnboardingState, Error>] = []
     var updateResult: Result<OnboardingState, Error> = .success(.default)
     private(set) var updates: [RecordedUpdate] = []
 
     func getOnboarding() async throws -> OnboardingState {
-        try getResult.get()
+        if !getResults.isEmpty {
+            return try getResults.removeFirst().get()
+        }
+        return try getResult.get()
     }
 
     func updateOnboarding(_ update: OnboardingUpdate) async throws -> OnboardingState {
         updates.append(RecordedUpdate(
             status: update.status,
             profileBasicsSet: update.milestones?.profileBasicsSet,
+            secondaryTourSeen: update.milestones?.secondaryTourSeen,
             locationPermission: update.permissions?.location,
             notificationsPermission: update.permissions?.notifications
         ))

@@ -74,6 +74,45 @@ final class SettingsViewModelPrimaryProviderTests: XCTestCase {
         XCTAssertEqual(api.lastUpsertApiKey, "test-google-key")
     }
 
+    func testSavePrimaryProviderKeyAlsoSelectsProviderWhenMissing() async throws {
+        let initial = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            aiPrimaryProvider: nil,
+            aiPrimaryProviderHasKey: false,
+            aiPrimaryProviderKeyLast4: nil,
+            enabledSkills: []
+        )
+        let api = PrimaryProviderSettingsAPI(initial: initial)
+        let viewModel = SettingsViewModel(
+            settingsAPI: api,
+            skillsAPI: PrimaryProviderEmptySkillsAPI(),
+            cache: TestCacheClient()
+        )
+
+        await viewModel.load()
+        let success = await viewModel.savePrimaryProviderKey(
+            provider: .anthropic,
+            apiKey: "test-anthropic-key"
+        )
+
+        XCTAssertTrue(success)
+        XCTAssertEqual(api.upsertCallCount, 1)
+        XCTAssertEqual(api.updateCallCount, 1)
+        XCTAssertEqual(api.lastUpdate?.aiPrimaryProvider, "anthropic")
+        XCTAssertEqual(viewModel.settings?.aiPrimaryProvider, "anthropic")
+        XCTAssertTrue(viewModel.settings?.aiPrimaryProviderHasKey == true)
+    }
+
     func testDeletePrimaryProviderKeyUsesDisconnectIntent() async throws {
         let initial = UserSettings(
             userId: "user-1",

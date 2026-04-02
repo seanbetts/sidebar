@@ -122,6 +122,17 @@ private struct ChatDetailView: View {
                     .padding(.bottom, DesignTokens.Spacing.sm)
                     .frame(maxWidth: contentMaxWidth)
                     .frame(maxWidth: .infinity, alignment: .center)
+                } else if environment.settingsViewModel.signedInOnboardingRecoveryState == .featureDiscovery {
+                    StaticFeatureCarousel {
+                        Task {
+                            await environment.settingsViewModel.markFeatureDiscoverySeen()
+                        }
+                    }
+                    .padding(.horizontal, DesignTokens.Spacing.md)
+                    .padding(.top, DesignTokens.Spacing.md)
+                    .padding(.bottom, DesignTokens.Spacing.sm)
+                    .frame(maxWidth: contentMaxWidth)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
                 if viewModel.isLoadingMessages {
                     LoadingView(message: "Loading messages…")

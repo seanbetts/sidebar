@@ -175,6 +175,7 @@ class ChatViewModelTestCase: XCTestCase {
         scratchpadStore: ScratchpadStore? = nil,
         ingestionAPI: IngestionAPI? = nil,
         streamClient: ChatViewModelTestsSupport.MockChatStreamClient? = nil,
+        onOnboardingStateRefreshRequested: (() -> Void)? = nil,
         requestContextProvider: (() -> ChatRequestContext?)? = nil,
         workspaceActionDispatcher: ((WorkspaceAction) -> Void)? = nil,
         attachmentPollingInitialDelayNanoseconds: UInt64 = 1_500_000_000,
@@ -208,6 +209,7 @@ class ChatViewModelTestCase: XCTestCase {
                 themeManager: themeManager,
                 userDefaults: defaults,
                 clock: { Date(timeIntervalSince1970: 0) },
+                onOnboardingStateRefreshRequested: onOnboardingStateRefreshRequested,
                 requestContextProvider: requestContextProvider,
                 attachmentPollingInitialDelayNanoseconds: attachmentPollingInitialDelayNanoseconds,
                 attachmentPollingIntervalNanoseconds: attachmentPollingIntervalNanoseconds

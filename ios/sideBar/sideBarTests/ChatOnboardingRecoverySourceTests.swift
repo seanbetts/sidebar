@@ -34,6 +34,18 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         XCTAssertFalse(normalized.contains("OnboardingPermissionCard(item:item)"))
     }
 
+    func testChatViewSurfacesFeatureDiscoveryCarousel() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "environment.settingsViewModel.signedInOnboardingRecoveryState==.featureDiscovery"
+            )
+        )
+        XCTAssertTrue(normalized.contains("StaticFeatureCarousel"))
+    }
+
     func testChatComposerIsDisabledDuringProviderRecovery() throws {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

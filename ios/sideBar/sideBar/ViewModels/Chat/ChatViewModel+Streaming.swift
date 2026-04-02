@@ -22,7 +22,7 @@ extension ChatViewModel {
         #if DEBUG
         streamEventHandlersBuildCountForTesting += 1
         #endif
-        let handlers: [ChatStreamEventType: (ChatStreamEvent) -> Void] = [
+        var handlers: [ChatStreamEventType: (ChatStreamEvent) -> Void] = [
             .token: { [weak self] (event: ChatStreamEvent) in
                 self?.appendToken(from: event)
             },
@@ -97,7 +97,17 @@ extension ChatViewModel {
             .otherPreferencesUpdated: makeEventHandler(ChatViewModel.handleOtherPreferencesUpdated),
             .workspacePatch: makeEventHandler(ChatViewModel.handleWorkspacePatch)
         ]
+        handlers.merge(onboardingStateRefreshEventHandlers()) { current, _ in current }
         return handlers
+    }
+
+    private func onboardingStateRefreshEventHandlers() -> [ChatStreamEventType: (ChatStreamEvent) -> Void] {
+        let refreshHandler = makeVoidEventHandler(ChatViewModel.requestOnboardingStateRefresh)
+        return [
+            .onboardingProviderBlocked: refreshHandler,
+            .onboardingResumeSuggested: refreshHandler,
+            .onboardingMilestoneCompleted: refreshHandler
+        ]
     }
 
     func cleanupEmptyConversationIfNeeded() async {

@@ -387,4 +387,142 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         XCTAssertEqual(onboardingAPI.updates.last?.notificationsPermission, .granted)
         XCTAssertEqual(viewModel.onboardingState?.permissions.notifications, .granted)
     }
+
+    func testSaveProviderKeyRefreshesOnboardingStateIntoFeatureDiscovery() async throws {
+        let refreshedSettings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            aiPrimaryProvider: "anthropic",
+            aiPrimaryProviderHasKey: true,
+            aiPrimaryProviderKeyLast4: "1234",
+            enabledSkills: []
+        )
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResults = [
+            .success(
+                OnboardingState(
+                    status: .dismissed,
+                    providerReady: false,
+                    currentOnboardingStep: .providerRecovery,
+                    isOnboardingComplete: false,
+                    intent: .chat,
+                    milestones: OnboardingMilestones(
+                        providerConnected: nil,
+                        firstOutcomeCompleted: nil,
+                        profileBasicsSet: nil,
+                        communicationStyleSet: nil,
+                        secondaryTourSeen: nil
+                    ),
+                    permissions: OnboardingPermissions(
+                        location: .granted,
+                        notifications: .granted
+                    ),
+                    lastPromptedAt: nil
+                )
+            ),
+            .success(
+                OnboardingState(
+                    status: .dismissed,
+                    providerReady: true,
+                    currentOnboardingStep: .featureDiscovery,
+                    isOnboardingComplete: false,
+                    intent: .chat,
+                    milestones: OnboardingMilestones(
+                        providerConnected: "2026-04-02T11:00:00Z",
+                        firstOutcomeCompleted: nil,
+                        profileBasicsSet: nil,
+                        communicationStyleSet: nil,
+                        secondaryTourSeen: nil
+                    ),
+                    permissions: OnboardingPermissions(
+                        location: .granted,
+                        notifications: .granted
+                    ),
+                    lastPromptedAt: nil
+                )
+            )
+        ]
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(refreshedSettings)
+            ),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+
+        await viewModel.loadOnboarding()
+        try await viewModel.saveProviderKey(provider: "anthropic", apiKey: "sk-test")
+
+        XCTAssertEqual(viewModel.onboardingState?.currentOnboardingStep, .featureDiscovery)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .featureDiscovery)
+    }
+
+    func testMarkFeatureDiscoverySeenPersistsCompletionMilestone() async {
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResult = .success(
+            OnboardingState(
+                status: .dismissed,
+                providerReady: true,
+                currentOnboardingStep: .featureDiscovery,
+                isOnboardingComplete: false,
+                intent: .chat,
+                milestones: OnboardingMilestones(
+                    providerConnected: "2026-04-02T11:00:00Z",
+                    firstOutcomeCompleted: nil,
+                    profileBasicsSet: nil,
+                    communicationStyleSet: nil,
+                    secondaryTourSeen: nil
+                ),
+                permissions: OnboardingPermissions(
+                    location: .granted,
+                    notifications: .granted
+                ),
+                lastPromptedAt: nil
+            )
+        )
+        onboardingAPI.updateResult = .success(
+            OnboardingState(
+                status: .completed,
+                providerReady: true,
+                currentOnboardingStep: .completed,
+                isOnboardingComplete: true,
+                intent: .chat,
+                milestones: OnboardingMilestones(
+                    providerConnected: "2026-04-02T11:00:00Z",
+                    firstOutcomeCompleted: nil,
+                    profileBasicsSet: nil,
+                    communicationStyleSet: nil,
+                    secondaryTourSeen: "2026-04-02T11:05:00Z"
+                ),
+                permissions: OnboardingPermissions(
+                    location: .granted,
+                    notifications: .granted
+                ),
+                lastPromptedAt: nil
+            )
+        )
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+
+        await viewModel.loadOnboarding()
+        await viewModel.markFeatureDiscoverySeen()
+
+        XCTAssertEqual(onboardingAPI.updates.last?.status, .completed)
+        XCTAssertNotNil(onboardingAPI.updates.last?.secondaryTourSeen)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
+    }
 }

@@ -39,6 +39,10 @@ extension ChatViewModel {
         cache.remove(key: CacheKeys.memoriesList)
     }
 
+    func requestOnboardingStateRefresh() {
+        onOnboardingStateRefreshRequested?()
+    }
+
     func handleAssistantIdentityUpdated(_ event: ChatStreamEvent) {
         guard let payload = dictionaryValue(from: event.data) else {
             onAssistantSettingsUpdated?(
