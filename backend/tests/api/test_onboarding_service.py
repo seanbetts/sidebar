@@ -153,10 +153,11 @@ def test_is_onboarding_complete_false_for_default_state() -> None:
     assert OnboardingService.is_onboarding_complete(state) is False
 
 
-def test_is_onboarding_complete_true_for_completed_state() -> None:
+def test_is_onboarding_complete_false_for_completed_status_without_completion_milestones() -> None:
     state = OnboardingService._resolve_state({"status": "completed"})
+    state["provider_ready"] = True
 
-    assert OnboardingService.is_onboarding_complete(state) is True
+    assert OnboardingService.is_onboarding_complete(state) is False
 
 
 def test_current_onboarding_step_defaults_to_phase1_wizard() -> None:
@@ -215,6 +216,23 @@ def test_current_onboarding_step_uses_completed_when_tour_seen_after_provider_se
     assert OnboardingService.is_onboarding_complete(state) is True
 
 
+def test_current_onboarding_step_uses_completed_when_first_outcome_is_finished_after_provider_setup() -> None:
+    state = OnboardingService._resolve_state(
+        {
+            "status": "in_progress",
+            "milestones": {
+                "provider_connected": "2026-03-31T10:00:00Z",
+                "first_outcome_completed": "2026-03-31T11:00:00Z",
+            },
+            "permissions": {"location": "granted", "notifications": "granted"},
+        }
+    )
+    state["provider_ready"] = True
+
+    assert OnboardingService.current_onboarding_step(state) == "completed"
+    assert OnboardingService.is_onboarding_complete(state) is True
+
+
 def test_is_onboarding_complete_true_when_tour_seen_even_if_permissions_are_still_skipped() -> None:
     state = OnboardingService._resolve_state(
         {
@@ -230,6 +248,22 @@ def test_is_onboarding_complete_true_when_tour_seen_even_if_permissions_are_stil
 
     assert OnboardingService.current_onboarding_step(state) == "completed"
     assert OnboardingService.is_onboarding_complete(state) is True
+
+
+def test_completed_status_without_completion_milestones_still_requires_signed_in_discovery() -> None:
+    state = OnboardingService._resolve_state(
+        {
+            "status": "completed",
+            "milestones": {
+                "provider_connected": "2026-03-31T10:00:00Z",
+            },
+            "permissions": {"location": "granted", "notifications": "granted"},
+        }
+    )
+    state["provider_ready"] = True
+
+    assert OnboardingService.current_onboarding_step(state) == "feature_discovery"
+    assert OnboardingService.is_onboarding_complete(state) is False
 
 
 def test_current_onboarding_step_uses_completed_for_completed_state() -> None:

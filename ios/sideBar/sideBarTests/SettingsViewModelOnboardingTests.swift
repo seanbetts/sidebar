@@ -282,7 +282,7 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         XCTAssertEqual(viewModel.onboardingState?.permissions.notifications, .granted)
     }
 
-    func testMarkFeatureDiscoverySeenPersistsCompletionMilestone() async {
+    func testMarkFeatureDiscoverySeenPersistsOnlyCompletionMilestoneAndLetsBackendDeriveCompletion() async {
         let onboardingAPI = MockOnboardingAPI()
         onboardingAPI.getResult = .success(
             OnboardingState(
@@ -336,7 +336,7 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         await viewModel.loadOnboarding()
         await viewModel.markFeatureDiscoverySeen()
 
-        XCTAssertEqual(onboardingAPI.updates.last?.status, .completed)
+        XCTAssertNil(onboardingAPI.updates.last?.status)
         XCTAssertNotNil(onboardingAPI.updates.last?.secondaryTourSeen)
         XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
     }
@@ -405,7 +405,7 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         await fulfillment(of: [updateStarted], timeout: 1.0)
 
         XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
-        XCTAssertEqual(viewModel.onboardingState?.status, .completed)
+        XCTAssertEqual(viewModel.onboardingState?.status, .dismissed)
         XCTAssertNotNil(viewModel.onboardingState?.milestones.secondaryTourSeen)
 
         await task.value

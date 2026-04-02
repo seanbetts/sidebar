@@ -304,6 +304,34 @@ final class OnboardingViewPresentationTests: OnboardingViewTestCase {
     }
 
     @MainActor
+    func testSignedInRecoveryStateHidesRecoveryUIForCompletedBackendState() {
+        let state = OnboardingState(
+            status: .inProgress,
+            providerReady: true,
+            currentOnboardingStep: .completed,
+            isOnboardingComplete: true,
+            intent: .notes,
+            milestones: .init(
+                providerConnected: "2026-03-31T10:00:00Z",
+                firstOutcomeCompleted: "2026-03-31T11:00:00Z",
+                profileBasicsSet: nil,
+                communicationStyleSet: nil,
+                secondaryTourSeen: nil
+            ),
+            permissions: .init(location: .granted, notifications: .granted),
+            lastPromptedAt: nil
+        )
+
+        XCTAssertEqual(
+            OnboardingPresentation.signedInRecoveryState(
+                authState: .active,
+                onboardingState: state
+            ),
+            .none
+        )
+    }
+
+    @MainActor
     func testOnboardingViewRoutesFinalStepThroughFinalStepView() {
         XCTAssertEqual(
             OnboardingView.contentKind(for: .finalStep),

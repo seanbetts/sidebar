@@ -25,7 +25,6 @@ extension SettingsViewModel {
             do {
                 let state = try await onboardingAPI.updateOnboarding(
                     OnboardingUpdate(
-                        status: .completed,
                         milestones: OnboardingMilestonesUpdate(
                             secondaryTourSeen: timestamp
                         )
@@ -64,7 +63,7 @@ extension SettingsViewModel {
         timestamp: String
     ) -> OnboardingState {
         OnboardingState(
-            status: .completed,
+            status: onboardingState.status,
             providerReady: onboardingState.providerReady,
             currentOnboardingStep: .completed,
             isOnboardingComplete: true,

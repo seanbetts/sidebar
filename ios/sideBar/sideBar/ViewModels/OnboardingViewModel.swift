@@ -298,18 +298,6 @@ public final class OnboardingViewModel: ObservableObject {
     public func completeOnboarding() async {
         guard !isLoading else { return }
         persistOnboardingStatus(.completed)
-        if isTestingOnboarding {
-            return
-        }
-        isLoading = true
-        let onboardingAPI = onboardingAPI
-        let userDefaults = userDefaults
-        Task { @MainActor in
-            let state = try? await onboardingAPI.updateOnboarding(OnboardingUpdate(status: .completed))
-            let status = state?.status ?? .completed
-            userDefaults.set(status.rawValue, forKey: Self.onboardingStatusKey)
-            isLoading = false
-        }
     }
 
     private func persistOnboardingStatus(_ status: OnboardingStatus) {

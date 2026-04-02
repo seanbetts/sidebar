@@ -33,13 +33,15 @@ class OnboardingService:
     @staticmethod
     def is_onboarding_complete(state: dict[str, Any]) -> bool:
         """Return whether onboarding is complete for the resolved state."""
-        if state.get("status") == "completed":
-            return True
-
         milestones = state.get("milestones") or {}
-        return bool(
+        has_completion_milestone = bool(
             milestones.get("secondary_tour_seen")
-        ) and not OnboardingService.needs_provider_connection(state)
+            or milestones.get("first_outcome_completed")
+        )
+        return (
+            has_completion_milestone
+            and not OnboardingService.needs_provider_connection(state)
+        )
 
     @staticmethod
     def needs_provider_connection(state: dict[str, Any]) -> bool:

@@ -95,7 +95,7 @@ def test_patch_onboarding_persists_across_requests(test_client) -> None:
     assert body["intent"] == "tasks"
 
 
-def test_get_onboarding_returns_derived_completion_fields(test_client) -> None:
+def test_get_onboarding_does_not_treat_completed_status_as_finished_without_completion_milestones(test_client) -> None:
     response = test_client.patch(
         "/api/v1/onboarding",
         headers=_auth_headers(),
@@ -104,8 +104,8 @@ def test_get_onboarding_returns_derived_completion_fields(test_client) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["current_onboarding_step"] == "completed"
-    assert body["is_onboarding_complete"] is True
+    assert body["current_onboarding_step"] == "provider_recovery"
+    assert body["is_onboarding_complete"] is False
 
 
 def test_patch_onboarding_merges_milestones(test_client) -> None:
