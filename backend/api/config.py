@@ -127,7 +127,7 @@ class Settings(BaseSettings):
         "ANTHROPIC_TITLE_MODEL",
         "claude-haiku-4-5",
     )
-    openai_chat_model: str = os.getenv("OPENAI_CHAT_MODEL", "gpt-5.2")
+    openai_chat_model: str = os.getenv("OPENAI_CHAT_MODEL", "gpt-5.3-chat-latest")
     openai_title_model: str = os.getenv("OPENAI_TITLE_MODEL", "gpt-5-nano")
     openai_transcription_model: str = os.getenv(
         "OPENAI_TRANSCRIPTION_MODEL",

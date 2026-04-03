@@ -52,7 +52,7 @@ def test_policy_raises_when_primary_unsupported() -> None:
 def test_default_model_matrix_matches_locked_policy() -> None:
     assert get_default_model("anthropic", "chat", settings) == "claude-sonnet-4-6"
     assert get_default_model("anthropic", "title", settings) == "claude-haiku-4-5"
-    assert get_default_model("openai", "chat", settings) == "gpt-5.2"
+    assert get_default_model("openai", "chat", settings) == "gpt-5.3-chat-latest"
     assert get_default_model("openai", "title", settings) == "gpt-5-nano"
     assert get_default_model("google", "chat", settings) == "gemini-3.1-pro-preview"
     assert get_default_model("google", "title", settings) == "gemini-3-flash-preview"
@@ -88,7 +88,7 @@ def test_gateway_resolve_chat_returns_provider_model_and_key() -> None:
             settings_record=SimpleNamespace(ai_primary_provider="openai"),
             provider_key_lookup=lambda _provider: "sk-openai-test",
         ).model
-        == "gpt-5.2"
+        == "gpt-5.3-chat-latest"
     )
     assert (
         gateway.resolve_chat(
@@ -190,7 +190,7 @@ async def test_gateway_stream_chat_openai_emits_tokens_and_uses_model(monkeypatc
         )
     ]
     assert [event["content"] for event in events] == ["Hello world"]
-    assert call_kwargs[0]["model"] == "gpt-5.2"
+    assert call_kwargs[0]["model"] == "gpt-5.3-chat-latest"
     captured["kwargs"] = call_kwargs[0]
 
 
@@ -233,7 +233,7 @@ async def test_gateway_generate_text_openai_uses_chat_model_and_system_prompt() 
 
     assert result.raw_text == '{"assistant_identity":{"name":"Navigator"}}'
     assert result.provider == "openai"
-    assert call_kwargs[0]["model"] == "gpt-5.2"
+    assert call_kwargs[0]["model"] == "gpt-5.3-chat-latest"
     assert call_kwargs[0]["messages"][0] == {
         "role": "system",
         "content": "You are writing assistant settings.",

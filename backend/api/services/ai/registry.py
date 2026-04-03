@@ -23,7 +23,7 @@ _DEFAULT_MODELS: dict[tuple[AIProvider, AICapability], str] = {
     ("anthropic", "title"): "claude-haiku-4-5",
     ("google", "chat"): "gemini-3.1-pro-preview",
     ("google", "title"): "gemini-3-flash-preview",
-    ("openai", "chat"): "gpt-5.2",
+    ("openai", "chat"): "gpt-5.3-chat-latest",
     ("openai", "title"): "gpt-5-nano",
     ("openai", "audio_transcription"): "gpt-4o-transcribe",
 }
