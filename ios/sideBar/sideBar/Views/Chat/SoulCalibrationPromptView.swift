@@ -5,30 +5,64 @@ struct SoulCalibrationPromptView: View {
     let confirmationText: String?
     let errorMessage: String?
     let isBusy: Bool
-    let onSelectPrimaryGoal: (String) -> Void
-    let onSelectWorkingRelationship: (String) -> Void
-    let onSelectTonePreferences: ([String]) -> Void
+    let onSubmitPrimaryGoals: ([String]) -> Void
+    let onSubmitWorkingRelationship: (String) -> Void
+    let onSubmitTonePreferences: ([String]) -> Void
     let onAcceptName: () -> Void
     let onRegenerateName: () -> Void
 
+    @State private var selectedPrimaryGoals: Set<String> = []
+    @State private var selectedWorkingRelationship: String?
     @State private var selectedToneChoices: [Int: String] = [:]
+    @State private var displayStepOverride: CalibrationDisplayStep?
+
+    private let primaryGoalOptions: [CalibrationChoice] = [
+        .init(label: "Personal productivity", value: "personal_productivity"),
+        .init(label: "Work productivity", value: "work_productivity"),
+        .init(label: "Planning and tasks", value: "planning_and_tasks"),
+        .init(label: "Notes and ideas", value: "notes_and_ideas"),
+        .init(label: "Life admin", value: "life_admin"),
+        .init(label: "Learning and research", value: "learning_and_research")
+    ]
+
+    private let workingRelationshipOptions: [CalibrationChoice] = [
+        .init(label: "Just help when I ask", value: "just_help_when_i_ask"),
+        .init(label: "Keep me on track", value: "keep_me_on_track"),
+        .init(label: "Take initiative with me", value: "take_initiative_with_me")
+    ]
+
+    private let tonePairs: [(left: CalibrationChoice, right: CalibrationChoice)] = [
+        (.init(label: "Warm", value: "warm"), .init(label: "Direct", value: "direct")),
+        (.init(label: "Playful", value: "playful"), .init(label: "Serious", value: "serious")),
+        (.init(label: "Concise", value: "concise"), .init(label: "Expressive", value: "expressive")),
+        (.init(label: "Formal", value: "formal"), .init(label: "Casual", value: "casual")),
+        (.init(label: "Supportive", value: "supportive"), .init(label: "Challenging", value: "challenging"))
+    ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            Text(titleText)
-                .appFont(.title3Semibold)
-                .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            setupLabel
+            headline
 
-            if let bodyText {
-                Text(bodyText)
+            if let supportingCopy {
+                Text(supportingCopy)
                     .appFont(.body)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let helperCopy {
+                Text(helperCopy)
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, DesignTokens.Spacing.xxxs)
             }
 
             if state.status == .awaitingNameAcceptance, let confirmationText {
                 Text(confirmationText)
                     .appFont(.body)
                     .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             promptContent
@@ -37,9 +71,10 @@ struct SoulCalibrationPromptView: View {
                 Text(errorMessage)
                     .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
+                    .padding(.top, DesignTokens.Spacing.xxxs)
             }
         }
-        .padding(DesignTokens.Spacing.lg)
+        .padding(DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
@@ -49,96 +84,177 @@ struct SoulCalibrationPromptView: View {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
         )
-    }
-
-    private var titleText: String {
-        switch state.status {
-        case .awaitingNameAcceptance:
-            return "I think I know who I am now."
-        case .notStarted, .inProgress, .completed:
-            switch state.currentPrompt {
-            case .primaryGoal:
-                return "What would you most like me to help with first?"
-            case .workingRelationship:
-                return "How would you like me to work with you?"
-            case .tonePreferences:
-                return "How should I show up?"
-            }
+        .onAppear(perform: syncSelectionsFromState)
+        .onChange(of: state, initial: false) { _, _ in
+            syncSelectionsFromState()
         }
     }
 
-    private var bodyText: String? {
-        guard state.status == .awaitingNameAcceptance,
-              let proposedName = state.proposedName else {
+    private var setupLabel: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            Image(systemName: "person.crop.circle")
+                .appFont(.captionSemibold)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+
+            Text("SIDEBAR SETUP")
+                .appFont(.captionSemibold)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.bottom, DesignTokens.Spacing.xxxs)
+    }
+
+    private var headline: some View {
+        Text(headlineText)
+            .appFont(.title3Semibold)
+            .foregroundStyle(.primary)
+    }
+
+    private var headlineText: String {
+        switch displayedStep {
+        case .nameConfirmation:
+            if let proposedName = state.proposedName {
+                return "Hello, I'm \(proposedName)"
+            }
+            return "Hello"
+        case .primaryGoal:
+            return "What should I help you with?"
+        case .workingRelationship:
+            return "How should I work with you?"
+        case .tonePreferences:
+            return "How should I sound?"
+        }
+    }
+
+    private var supportingCopy: String? {
+        switch displayedStep {
+        case .nameConfirmation:
+            return state.proposedName.map { "I'd like to go by \($0)." }
+        case .primaryGoal:
+            return "Choose one or more areas you want me to focus on."
+        case .workingRelationship:
+            return "Choose the way you want me to work with you."
+        case .tonePreferences:
+            return "Choose the tone that feels more like what you want from me."
+        }
+    }
+
+    private var helperCopy: String? {
+        guard displayedStep == .tonePreferences else {
             return nil
         }
-        return "I'd like to go by \(proposedName)."
+        return "Pick one option in each row."
     }
 
     @ViewBuilder
     private var promptContent: some View {
-        switch state.status {
-        case .awaitingNameAcceptance:
-            nameActions
-        case .notStarted, .inProgress, .completed:
-            switch state.currentPrompt {
-            case .primaryGoal:
-                chipWrap(primaryGoalOptions, action: onSelectPrimaryGoal)
-            case .workingRelationship:
-                chipWrap(workingRelationshipOptions, action: onSelectWorkingRelationship)
-            case .tonePreferences:
-                tonePreferencesContent
-            }
+        switch displayedStep {
+        case .nameConfirmation:
+            nameConfirmationContent
+        case .primaryGoal:
+            primaryGoalContent
+        case .workingRelationship:
+            workingRelationshipContent
+        case .tonePreferences:
+            tonePreferencesContent
         }
     }
 
-    private func chipWrap(_ options: [String], action: @escaping (String) -> Void) -> some View {
-        FlexibleChipLayout(spacing: DesignTokens.Spacing.sm, lineSpacing: DesignTokens.Spacing.sm) {
-            ForEach(options, id: \.self) { option in
-                SoulCalibrationChoiceChip(
-                    title: option,
-                    isSelected: false,
-                    isEnabled: !isBusy
-                ) {
-                    action(option)
+    private var primaryGoalContent: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            FlexibleChipLayout(spacing: DesignTokens.Spacing.sm, lineSpacing: DesignTokens.Spacing.sm) {
+                ForEach(primaryGoalOptions) { option in
+                    let isSelected = selectedPrimaryGoals.contains(option.value)
+                    let hasReachedSelectionLimit = selectedPrimaryGoals.count >= 3
+                    let isEnabled = !isBusy && (isSelected || !hasReachedSelectionLimit)
+
+                    SoulCalibrationChoiceChip(
+                        title: option.label,
+                        isSelected: isSelected,
+                        isEnabled: isEnabled
+                    ) {
+                        togglePrimaryGoal(option.value)
+                    }
                 }
             }
+
+            continueButton(
+                isEnabled: !selectedPrimaryGoals.isEmpty,
+                action: submitPrimaryGoals
+            )
+        }
+    }
+
+    private var workingRelationshipContent: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            FlexibleChipLayout(spacing: DesignTokens.Spacing.sm, lineSpacing: DesignTokens.Spacing.sm) {
+                ForEach(workingRelationshipOptions) { option in
+                    SoulCalibrationChoiceChip(
+                        title: option.label,
+                        isSelected: selectedWorkingRelationship == option.value,
+                        isEnabled: !isBusy
+                    ) {
+                        selectedWorkingRelationship = option.value
+                    }
+                }
+            }
+
+            continueButton(
+                isEnabled: selectedWorkingRelationship != nil,
+                action: submitWorkingRelationship
+            )
         }
     }
 
     private var tonePreferencesContent: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            ForEach(Array(tonePairs.enumerated()), id: \.offset) { index, pair in
-                HStack(spacing: DesignTokens.Spacing.sm) {
-                    SoulCalibrationChoiceChip(
-                        title: pair.left,
-                        isSelected: selectedToneChoices[index] == pair.left.lowercased(),
-                        isEnabled: !isBusy
-                    ) {
-                        chooseTone(pair.left.lowercased(), at: index)
-                    }
-                    SoulCalibrationChoiceChip(
-                        title: pair.right,
-                        isSelected: selectedToneChoices[index] == pair.right.lowercased(),
-                        isEnabled: !isBusy
-                    ) {
-                        chooseTone(pair.right.lowercased(), at: index)
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                ForEach(Array(tonePairs.enumerated()), id: \.offset) { index, pair in
+                    HStack(spacing: DesignTokens.Spacing.sm) {
+                        SoulCalibrationChoiceChip(
+                            title: pair.left.label,
+                            isSelected: selectedToneChoices[index] == pair.left.value,
+                            isEnabled: !isBusy
+                        ) {
+                            selectedToneChoices[index] = pair.left.value
+                        }
+
+                        Text("vs")
+                            .appFont(.captionSemibold)
+                            .foregroundStyle(.secondary)
+
+                        SoulCalibrationChoiceChip(
+                            title: pair.right.label,
+                            isSelected: selectedToneChoices[index] == pair.right.value,
+                            isEnabled: !isBusy
+                        ) {
+                            selectedToneChoices[index] = pair.right.value
+                        }
                     }
                 }
             }
+
+            continueButton(
+                isEnabled: selectedToneChoices.count == tonePairs.count,
+                action: submitTonePreferences
+            )
         }
     }
 
-    private var nameActions: some View {
+    private var nameConfirmationContent: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            SoulCalibrationChoiceChip(
-                title: "Looks good",
-                isSelected: false,
-                isEnabled: !isBusy,
-                emphasis: .primary
-            ) {
-                onAcceptName()
+            if canGoBack {
+                Button("Back") {
+                    goBack()
+                }
+                .buttonStyle(.plain)
+                .appFont(.bodySemibold)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Back")
             }
+
+            Spacer()
+
             SoulCalibrationChoiceChip(
                 title: "Try another",
                 isSelected: false,
@@ -146,129 +262,125 @@ struct SoulCalibrationPromptView: View {
             ) {
                 onRegenerateName()
             }
+
+            ContinueButton(
+                title: "Hello!",
+                isEnabled: !isBusy,
+                action: onAcceptName
+            )
         }
     }
 
-    private func chooseTone(_ value: String, at index: Int) {
-        selectedToneChoices[index] = value
+    private func continueButton(isEnabled: Bool, action: @escaping () -> Void) -> some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            if canGoBack {
+                Button("Back") {
+                    goBack()
+                }
+                .buttonStyle(.plain)
+                .appFont(.bodySemibold)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Back")
+            }
+
+            Spacer()
+
+            ContinueButton(
+                title: "Continue",
+                isEnabled: isEnabled && !isBusy,
+                action: action
+            )
+        }
+    }
+
+    private func togglePrimaryGoal(_ value: String) {
+        if selectedPrimaryGoals.contains(value) {
+            selectedPrimaryGoals.remove(value)
+            return
+        }
+
+        guard selectedPrimaryGoals.count < 3 else {
+            return
+        }
+        selectedPrimaryGoals.insert(value)
+    }
+
+    private func submitPrimaryGoals() {
+        guard !selectedPrimaryGoals.isEmpty else {
+            return
+        }
+
+        displayStepOverride = .workingRelationship
+        let ordered = primaryGoalOptions
+            .map(\.value)
+            .filter { selectedPrimaryGoals.contains($0) }
+        onSubmitPrimaryGoals(ordered)
+    }
+
+    private func submitWorkingRelationship() {
+        guard let selectedWorkingRelationship else {
+            return
+        }
+        displayStepOverride = .tonePreferences
+        onSubmitWorkingRelationship(selectedWorkingRelationship)
+    }
+
+    private func submitTonePreferences() {
         guard selectedToneChoices.count == tonePairs.count else {
             return
         }
+
         let ordered = tonePairs.indices.compactMap { selectedToneChoices[$0] }
-        onSelectTonePreferences(ordered)
+        onSubmitTonePreferences(ordered)
     }
 
-    private var primaryGoalOptions: [String] {
-        [
-            "Personal productivity",
-            "Work productivity",
-            "Planning and tasks",
-            "Notes and ideas",
-            "Life admin",
-            "Learning and research",
-            "AI companion"
-        ]
-    }
-
-    private var workingRelationshipOptions: [String] {
-        [
-            "Just help when I ask",
-            "Keep me on track",
-            "Take initiative with me"
-        ]
-    }
-
-    private var tonePairs: [(left: String, right: String)] {
-        [
-            ("Warm", "Direct"),
-            ("Playful", "Serious"),
-            ("Concise", "Expressive"),
-            ("Formal", "Casual"),
-            ("Supportive", "Challenging")
-        ]
-    }
-}
-
-private struct SoulCalibrationChoiceChip: View {
-    enum Emphasis {
-        case standard
-        case primary
-    }
-
-    let title: String
-    let isSelected: Bool
-    let isEnabled: Bool
-    let emphasis: Emphasis
-    let action: () -> Void
-
-    init(
-        title: String,
-        isSelected: Bool,
-        isEnabled: Bool,
-        emphasis: Emphasis = .standard,
-        action: @escaping () -> Void
-    ) {
-        self.title = title
-        self.isSelected = isSelected
-        self.isEnabled = isEnabled
-        self.emphasis = emphasis
-        self.action = action
-    }
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .appFont(.bodySemibold)
-                .foregroundStyle(foregroundColor)
-                .padding(.horizontal, DesignTokens.Spacing.md)
-                .padding(.vertical, DesignTokens.Spacing.sm)
-                .background(
-                    Capsule()
-                        .fill(backgroundColor)
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(borderColor, lineWidth: 1)
-                )
+    private func syncSelectionsFromState() {
+        let resolvedStep = resolvedDisplayStep
+        if let displayStepOverride {
+            if displayStepOverride == resolvedStep {
+                self.displayStepOverride = nil
+            } else if displayStepOverride.progressIndex > resolvedStep.progressIndex, !isBusy {
+                self.displayStepOverride = nil
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .accessibilityLabel(title)
+
+        selectedPrimaryGoals = Set(
+            (state.answers.primaryGoal ?? "")
+                .split(separator: ",")
+                .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
+
+        selectedWorkingRelationship = state.answers.workingRelationship
+
+        let storedTones = (state.answers.tonePreferences ?? "")
+            .split(separator: ",")
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        selectedToneChoices = Dictionary(
+            uniqueKeysWithValues: storedTones.enumerated().map { ($0.offset, $0.element) }
+        )
     }
 
-    private var backgroundColor: Color {
-        if emphasis == .primary {
-            return Color.accentColor.opacity(isEnabled ? 0.18 : 0.1)
-        }
-        if isSelected {
-            return Color.accentColor.opacity(0.18)
-        }
-        return DesignTokens.Colors.surface
+    private var displayedStep: CalibrationDisplayStep {
+        displayStepOverride ?? resolvedDisplayStep
     }
 
-    private var borderColor: Color {
-        if emphasis == .primary || isSelected {
-            return Color.accentColor.opacity(0.4)
+    private var resolvedDisplayStep: CalibrationDisplayStep {
+        if state.status == .awaitingNameAcceptance {
+            return .nameConfirmation
         }
-        return DesignTokens.Colors.border
+        return CalibrationDisplayStep(prompt: state.currentPrompt)
     }
 
-    private var foregroundColor: Color {
-        if emphasis == .primary || isSelected {
-            return Color.accentColor
-        }
-        return .primary
+    private var canGoBack: Bool {
+        displayedStep.previous != nil
     }
-}
 
-private struct FlexibleChipLayout<Content: View>: View {
-    let spacing: CGFloat
-    let lineSpacing: CGFloat
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: lineSpacing) {
-            content()
+    private func goBack() {
+        guard let previous = displayedStep.previous else {
+            return
         }
+        displayStepOverride = previous
     }
 }

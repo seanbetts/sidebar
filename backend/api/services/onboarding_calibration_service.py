@@ -17,6 +17,7 @@ NEXT_PROMPT = {
     "primary_goal": "working_relationship",
     "working_relationship": "tone_preferences",
 }
+PROMPT_INDEX = {prompt: index for index, prompt in enumerate(PROMPT_SEQUENCE)}
 GENERATION_RETRY_LIMIT = 2
 
 
@@ -53,6 +54,10 @@ class OnboardingCalibrationService:
 
         next_onboarding = OnboardingService._resolve_state(state)
         next_calibration = next_onboarding["calibration"]
+        OnboardingCalibrationService._reset_dependent_state(
+            next_calibration,
+            answered_prompt=normalized_prompt,
+        )
         next_calibration["answers"][normalized_prompt] = normalized_answer
         next_onboarding["status"] = "in_progress"
 
@@ -222,19 +227,58 @@ class OnboardingCalibrationService:
         *,
         expected_prompt: str,
     ) -> None:
-        """Ensure the requested prompt matches the current calibration step."""
+        """Ensure the requested prompt is current or earlier in the calibration flow."""
         status = calibration.get("status")
-        if status in {"awaiting_name_acceptance", "completed"}:
+        if status == "completed":
             raise HTTPException(
                 status_code=409,
                 detail="Calibration is not accepting prompt answers",
             )
         current_prompt = calibration.get("current_prompt") or PROMPT_SEQUENCE[0]
-        if current_prompt != expected_prompt:
+        if status == "awaiting_name_acceptance":
+            if expected_prompt not in PROMPT_INDEX:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Calibration is not accepting prompt answers",
+                )
+            return
+        if PROMPT_INDEX[expected_prompt] > PROMPT_INDEX[current_prompt]:
             raise HTTPException(
                 status_code=409,
                 detail=f"Expected prompt {current_prompt}",
             )
+
+    @staticmethod
+    def _reset_dependent_state(
+        calibration: dict[str, Any],
+        *,
+        answered_prompt: str,
+    ) -> None:
+        """Clear any downstream answers that must be regenerated after an edit."""
+        answers = calibration.get("answers") or {}
+        calibration["answers"] = answers
+
+        if answered_prompt == "primary_goal":
+            answers["working_relationship"] = None
+            answers["tone_preferences"] = None
+            calibration["current_prompt"] = "working_relationship"
+            calibration["status"] = "in_progress"
+            calibration["proposed_name"] = None
+            calibration["completed_at"] = None
+            return
+
+        if answered_prompt == "working_relationship":
+            answers["tone_preferences"] = None
+            calibration["current_prompt"] = "tone_preferences"
+            calibration["status"] = "in_progress"
+            calibration["proposed_name"] = None
+            calibration["completed_at"] = None
+            return
+
+        calibration["current_prompt"] = "tone_preferences"
+        calibration["status"] = "in_progress"
+        calibration["proposed_name"] = None
+        calibration["completed_at"] = None
 
     @staticmethod
     def _prompt_confirmation(next_prompt: str) -> str:

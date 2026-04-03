@@ -5,31 +5,37 @@ final class ChatSoulCalibrationSourceTests: XCTestCase {
         let normalized = try combinedCalibrationSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("Whatwouldyoumostlikemetohelpwithfirst?"))
+        XCTAssertTrue(normalized.contains("SIDEBARSETUP"))
+        XCTAssertTrue(normalized.contains("WhatshouldIhelpyouwith?"))
+        XCTAssertTrue(normalized.contains("Chooseoneormoreareasyouwantmetofocuson."))
         XCTAssertTrue(normalized.contains("Personalproductivity"))
         XCTAssertTrue(normalized.contains("Workproductivity"))
         XCTAssertTrue(normalized.contains("Planningandtasks"))
         XCTAssertTrue(normalized.contains("Notesandideas"))
         XCTAssertTrue(normalized.contains("Lifeadmin"))
         XCTAssertTrue(normalized.contains("Learningandresearch"))
-        XCTAssertTrue(normalized.contains("AIcompanion"))
+        XCTAssertFalse(normalized.contains("AIcompanion"))
+        XCTAssertFalse(normalized.contains("AIassistant"))
+        XCTAssertTrue(normalized.contains("Continue"))
     }
 
     func testSoulCalibrationPromptViewIncludesWorkingRelationshipChoices() throws {
         let normalized = try combinedCalibrationSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("Howwouldyoulikemetoworkwithyou?"))
+        XCTAssertTrue(normalized.contains("HowshouldIworkwithyou?"))
         XCTAssertTrue(normalized.contains("JusthelpwhenIask"))
         XCTAssertTrue(normalized.contains("Keepmeontrack"))
         XCTAssertTrue(normalized.contains("Takeinitiativewithme"))
+        XCTAssertTrue(normalized.contains("Back"))
     }
 
     func testSoulCalibrationPromptViewIncludesTonePairsAndNameActions() throws {
         let normalized = try combinedCalibrationSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("HowshouldIshowup?"))
+        XCTAssertTrue(normalized.contains("HowshouldIsound?"))
+        XCTAssertTrue(normalized.contains("Pickoneoptionineachrow."))
         XCTAssertTrue(normalized.contains("Warm"))
         XCTAssertTrue(normalized.contains("Direct"))
         XCTAssertTrue(normalized.contains("Playful"))
@@ -40,8 +46,10 @@ final class ChatSoulCalibrationSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("Casual"))
         XCTAssertTrue(normalized.contains("Supportive"))
         XCTAssertTrue(normalized.contains("Challenging"))
-        XCTAssertTrue(normalized.contains("Looksgood"))
+        XCTAssertTrue(normalized.contains("vs"))
+        XCTAssertTrue(normalized.contains("Hello!"))
         XCTAssertTrue(normalized.contains("Tryanother"))
+        XCTAssertFalse(normalized.contains("Looksgood"))
     }
 
     func testChatViewEmbedsSoulCalibrationPromptView() throws {

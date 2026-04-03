@@ -67,6 +67,88 @@ def test_submit_answer_persists_answer_and_advances_prompt(test_db, monkeypatch)
     assert result.assistant_soul is None
 
 
+def test_submit_answer_allows_revisiting_primary_goal_and_clears_downstream_answers(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    user_id = "calibration-revisit-primary"
+    provider_ready_state = _provider_ready_state(
+        test_db,
+        user_id=user_id,
+        calibration={
+            "status": "in_progress",
+            "current_prompt": "tone_preferences",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": "keep_me_on_track",
+                "tone_preferences": "warm,serious,concise,casual,supportive",
+            },
+            "proposed_name": "Navigator",
+        },
+    )
+    _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+
+    result = OnboardingCalibrationService.submit_answer(
+        test_db,
+        user_id,
+        prompt="primary_goal",
+        answer="personal_productivity,notes_and_ideas",
+    )
+
+    assert (
+        result.state["calibration"]["answers"]["primary_goal"]
+        == "personal_productivity,notes_and_ideas"
+    )
+    assert result.state["calibration"]["answers"]["working_relationship"] is None
+    assert result.state["calibration"]["answers"]["tone_preferences"] is None
+    assert result.state["calibration"]["proposed_name"] is None
+    assert result.state["calibration"]["status"] == "in_progress"
+    assert result.state["calibration"]["current_prompt"] == "working_relationship"
+
+
+def test_submit_answer_allows_revisiting_working_relationship_and_clears_tone(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    user_id = "calibration-revisit-relationship"
+    provider_ready_state = _provider_ready_state(
+        test_db,
+        user_id=user_id,
+        calibration={
+            "status": "awaiting_name_acceptance",
+            "current_prompt": "tone_preferences",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": "keep_me_on_track",
+                "tone_preferences": "warm,serious,concise,casual,supportive",
+            },
+            "proposed_name": "Navigator",
+        },
+    )
+    _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+
+    result = OnboardingCalibrationService.submit_answer(
+        test_db,
+        user_id,
+        prompt="working_relationship",
+        answer="take_initiative_with_me",
+    )
+
+    assert result.state["calibration"]["answers"]["primary_goal"] == "life_admin"
+    assert (
+        result.state["calibration"]["answers"]["working_relationship"]
+        == "take_initiative_with_me"
+    )
+    assert result.state["calibration"]["answers"]["tone_preferences"] is None
+    assert result.state["calibration"]["proposed_name"] is None
+    assert result.state["calibration"]["status"] == "in_progress"
+    assert result.state["calibration"]["current_prompt"] == "tone_preferences"
+
+
 def test_submit_answer_requires_provider_ready(test_db, monkeypatch) -> None:
     from api.services.onboarding_calibration_service import OnboardingCalibrationService
 
@@ -146,6 +228,67 @@ def test_submit_answer_generates_assistant_configuration_after_tone(
     settings_payload = SettingsService.get_settings(test_db, user_id)
     assert settings_payload["assistant_identity"]["name"] == "Navigator"
     assert settings_payload["assistant_soul"]["purpose"] == "Help with steady life admin."
+
+
+def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    user_id = "calibration-revisit-tone"
+    provider_ready_state = _provider_ready_state(
+        test_db,
+        user_id=user_id,
+        calibration={
+            "status": "awaiting_name_acceptance",
+            "current_prompt": "tone_preferences",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": "take_initiative_with_me",
+                "tone_preferences": "warm,serious,concise,casual,supportive",
+            },
+            "proposed_name": "Navigator",
+        },
+    )
+    _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_calibration_payload",
+        staticmethod(
+            lambda *, answers, previous_name=None, repair_mode=False, validation_error=None: {
+                "assistant_identity": {
+                    "name": "Compass",
+                    "tone": "Direct and calm.",
+                    "values": "Clarity and momentum.",
+                    "boundaries": "Do not invent facts.",
+                },
+                "assistant_soul": {
+                    "purpose": "Help with steady life admin.",
+                    "operating_principles": "Take initiative and reduce friction.",
+                    "adaptation_policy": "Adapt to durable preferences.",
+                    "success_signals": "Less friction and more follow-through.",
+                },
+                "confirmation_text": "Compass is ready for review.",
+            }
+        ),
+    )
+
+    result = OnboardingCalibrationService.submit_answer(
+        test_db,
+        user_id,
+        prompt="tone_preferences",
+        answer="direct,serious,concise,casual,challenging",
+    )
+
+    assert result.state["calibration"]["status"] == "awaiting_name_acceptance"
+    assert (
+        result.state["calibration"]["answers"]["tone_preferences"]
+        == "direct,serious,concise,casual,challenging"
+    )
+    assert result.state["calibration"]["proposed_name"] == "Compass"
+    assert result.assistant_identity["name"] == "Compass"
 
 
 def test_regenerate_name_only_updates_proposed_name(test_db, monkeypatch) -> None:

@@ -500,6 +500,64 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         XCTAssertEqual(viewModel.soulCalibrationState?.proposedName, "Navigator")
     }
 
+    func testSubmitSoulCalibrationAnswerUsesExplicitPromptWhenRevisitingEarlierStep() async throws {
+        let cache = TestCacheClient()
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.submitCalibrationAnswerResult = .success(
+            OnboardingCalibrationActionResponse(
+                state: soulCalibrationOnboardingState(
+                    currentPrompt: .tonePreferences,
+                    status: .inProgress,
+                    primaryGoal: "life_admin",
+                    workingRelationship: "take_initiative_with_me"
+                ),
+                calibration: OnboardingCalibrationState(
+                    status: .inProgress,
+                    currentPrompt: .tonePreferences,
+                    answers: OnboardingCalibrationAnswers(
+                        primaryGoal: "life_admin",
+                        workingRelationship: "take_initiative_with_me",
+                        tonePreferences: nil
+                    ),
+                    proposedName: nil,
+                    completedAt: nil
+                ),
+                assistantIdentity: nil,
+                assistantSoul: nil,
+                confirmationText: "How should I sound when we work together?"
+            )
+        )
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            onboardingAPI: onboardingAPI
+        )
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .inProgress,
+                primaryGoal: "life_admin",
+                workingRelationship: "keep_me_on_track",
+                tonePreferences: "warm,serious,concise,casual,supportive"
+            )
+        )
+
+        await viewModel.submitSoulCalibrationAnswer(
+            prompt: .workingRelationship,
+            .singleChoice("take_initiative_with_me")
+        )
+
+        XCTAssertEqual(onboardingAPI.submittedCalibrationAnswers.count, 1)
+        XCTAssertEqual(
+            onboardingAPI.submittedCalibrationAnswers.first?.prompt,
+            .workingRelationship
+        )
+        XCTAssertEqual(
+            onboardingAPI.submittedCalibrationAnswers.first?.answer,
+            .singleChoice("take_initiative_with_me")
+        )
+    }
+
     func testAcceptSoulCalibrationNameClearsStateAndAllowsDiscovery() async throws {
         let cache = TestCacheClient()
         let onboardingAPI = MockOnboardingAPI()

@@ -28,13 +28,28 @@ extension ChatViewModel {
             return
         }
 
+        await submitSoulCalibrationAnswer(
+            prompt: currentState.currentPrompt,
+            answer
+        )
+    }
+
+    func submitSoulCalibrationAnswer(
+        prompt: OnboardingCalibrationPrompt,
+        _ answer: OnboardingCalibrationAnswer
+    ) async {
+        guard let onboardingAPI else {
+            soulCalibrationErrorMessage = "Soul calibration is unavailable right now."
+            return
+        }
+
         isSubmittingSoulCalibration = true
         soulCalibrationErrorMessage = nil
         defer { isSubmittingSoulCalibration = false }
 
         do {
             let response = try await onboardingAPI.submitCalibrationAnswer(
-                currentState.currentPrompt,
+                prompt,
                 answer: answer
             )
             applySoulCalibration(response: response)

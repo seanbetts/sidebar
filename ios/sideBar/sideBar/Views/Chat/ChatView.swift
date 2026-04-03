@@ -128,23 +128,28 @@ private struct ChatDetailView: View {
                         confirmationText: viewModel.soulCalibrationConfirmationText,
                         errorMessage: viewModel.soulCalibrationErrorMessage,
                         isBusy: viewModel.isSubmittingSoulCalibration,
-                        onSelectPrimaryGoal: { choice in
+                        onSubmitPrimaryGoals: { choices in
                             Task {
                                 await viewModel.submitSoulCalibrationAnswer(
-                                    .singleChoice(normalizeCalibrationChoice(choice))
+                                    prompt: .primaryGoal,
+                                    .multipleChoice(choices)
                                 )
                             }
                         },
-                        onSelectWorkingRelationship: { choice in
+                        onSubmitWorkingRelationship: { choice in
                             Task {
                                 await viewModel.submitSoulCalibrationAnswer(
-                                    .singleChoice(normalizeCalibrationChoice(choice))
+                                    prompt: .workingRelationship,
+                                    .singleChoice(choice)
                                 )
                             }
                         },
-                        onSelectTonePreferences: { choices in
+                        onSubmitTonePreferences: { choices in
                             Task {
-                                await viewModel.submitSoulCalibrationAnswer(.multipleChoice(choices))
+                                await viewModel.submitSoulCalibrationAnswer(
+                                    prompt: .tonePreferences,
+                                    .multipleChoice(choices)
+                                )
                             }
                         },
                         onAcceptName: {
@@ -365,11 +370,5 @@ private struct ChatDetailView: View {
         #else
         return horizontalSizeClass == .compact
         #endif
-    }
-
-    private func normalizeCalibrationChoice(_ value: String) -> String {
-        value
-            .lowercased()
-            .replacingOccurrences(of: " ", with: "_")
     }
 }
