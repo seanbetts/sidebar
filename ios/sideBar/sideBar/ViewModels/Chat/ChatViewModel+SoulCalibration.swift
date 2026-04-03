@@ -23,8 +23,7 @@ extension ChatViewModel {
     }
 
     func submitSoulCalibrationAnswer(_ answer: OnboardingCalibrationAnswer) async {
-        guard let currentState = soulCalibrationState,
-              let onboardingAPI else {
+        guard let currentState = soulCalibrationState else {
             soulCalibrationErrorMessage = "Soul calibration is unavailable right now."
             return
         }
