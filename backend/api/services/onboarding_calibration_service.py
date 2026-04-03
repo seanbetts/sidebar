@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -9,8 +11,28 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from api.config import settings
+from api.services.agent.prompt.sections import resolve_template
+from api.services.agent.prompt.templates import (
+    CALIBRATION_AUTHORING_PRINCIPLES,
+    CALIBRATION_CORE_SIDEBAR_CHARACTER,
+    CALIBRATION_OUTPUT_RULES,
+    CALIBRATION_PROMPT_ASSISTANT_IDENTITY_BOUNDARIES,
+    CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME,
+    CALIBRATION_PROMPT_ASSISTANT_IDENTITY_TONE,
+    CALIBRATION_PROMPT_ASSISTANT_IDENTITY_VALUES,
+    CALIBRATION_PROMPT_ASSISTANT_SOUL_ADAPTATION_POLICY,
+    CALIBRATION_PROMPT_ASSISTANT_SOUL_OPERATING_PRINCIPLES,
+    CALIBRATION_PROMPT_ASSISTANT_SOUL_PURPOSE,
+    CALIBRATION_PROMPT_ASSISTANT_SOUL_SUCCESS_SIGNALS,
+)
 from api.services.agent_settings_service import AgentSettingsService
+from api.services.ai.gateway import AIProviderGateway
+from api.services.ai.registry import AIProvider
 from api.services.onboarding_service import VALID_CALIBRATION_PROMPTS, OnboardingService
+from api.services.settings_service import SettingsService
+from api.services.user_ai_provider_key_service import UserAIProviderKeyService
+from api.services.user_settings_service import UserSettingsService
 
 PROMPT_SEQUENCE = ("primary_goal", "working_relationship", "tone_preferences")
 NEXT_PROMPT = {
@@ -19,6 +41,46 @@ NEXT_PROMPT = {
 }
 PROMPT_INDEX = {prompt: index for index, prompt in enumerate(PROMPT_SEQUENCE)}
 GENERATION_RETRY_LIMIT = 2
+GENERATION_REASON = "Authored during soul calibration."
+NAME_REGENERATION_REASON = "Regenerated during soul calibration."
+
+STAGE_FIELDS: dict[str, tuple[tuple[str, str], ...]] = {
+    "primary_goal": (("assistant_soul", "purpose"),),
+    "working_relationship": (
+        ("assistant_soul", "success_signals"),
+        ("assistant_soul", "operating_principles"),
+        ("assistant_soul", "adaptation_policy"),
+    ),
+    "tone_preferences": (
+        ("assistant_identity", "tone"),
+        ("assistant_identity", "values"),
+        ("assistant_identity", "boundaries"),
+    ),
+}
+NAME_FIELD = ("assistant_identity", "name")
+
+FIELD_PROMPT_TEMPLATES: dict[tuple[str, str], str] = {
+    ("assistant_soul", "purpose"): CALIBRATION_PROMPT_ASSISTANT_SOUL_PURPOSE,
+    (
+        "assistant_soul",
+        "success_signals",
+    ): CALIBRATION_PROMPT_ASSISTANT_SOUL_SUCCESS_SIGNALS,
+    (
+        "assistant_soul",
+        "operating_principles",
+    ): CALIBRATION_PROMPT_ASSISTANT_SOUL_OPERATING_PRINCIPLES,
+    (
+        "assistant_soul",
+        "adaptation_policy",
+    ): CALIBRATION_PROMPT_ASSISTANT_SOUL_ADAPTATION_POLICY,
+    ("assistant_identity", "tone"): CALIBRATION_PROMPT_ASSISTANT_IDENTITY_TONE,
+    ("assistant_identity", "values"): CALIBRATION_PROMPT_ASSISTANT_IDENTITY_VALUES,
+    (
+        "assistant_identity",
+        "boundaries",
+    ): CALIBRATION_PROMPT_ASSISTANT_IDENTITY_BOUNDARIES,
+    ("assistant_identity", "name"): CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME,
+}
 
 
 @dataclass(slots=True)
@@ -41,12 +103,13 @@ class OnboardingCalibrationService:
         prompt: str,
         answer: str,
     ) -> CalibrationActionResult:
-        """Persist a prompt answer and advance the calibration state."""
+        """Persist a prompt answer, generate authored settings, and advance state."""
         normalized_prompt = OnboardingCalibrationService._normalize_prompt(prompt)
         normalized_answer = OnboardingCalibrationService._normalize_answer(answer)
         state = OnboardingService.get_onboarding_state(db, user_id)
         OnboardingCalibrationService._require_provider_ready(state)
         calibration = state["calibration"]
+        prior_proposed_name = calibration.get("proposed_name")
         OnboardingCalibrationService._assert_prompt_is_actionable(
             calibration,
             expected_prompt=normalized_prompt,
@@ -61,30 +124,7 @@ class OnboardingCalibrationService:
         next_calibration["answers"][normalized_prompt] = normalized_answer
         next_onboarding["status"] = "in_progress"
 
-        if normalized_prompt != "tone_preferences":
-            next_calibration["status"] = "in_progress"
-            next_calibration["current_prompt"] = NEXT_PROMPT[normalized_prompt]
-            OnboardingService.update_onboarding_state(
-                db,
-                user_id,
-                {
-                    "status": next_onboarding["status"],
-                    "calibration": next_calibration,
-                },
-            )
-            return CalibrationActionResult(
-                state=OnboardingCalibrationService._build_state_response(
-                    next_onboarding,
-                    provider_ready=bool(state.get("provider_ready")),
-                ),
-                confirmation_text=OnboardingCalibrationService._prompt_confirmation(
-                    next_calibration["current_prompt"]
-                ),
-            )
-
-        # Persist the final answer before generation so resume can retry from tone.
-        next_calibration["status"] = "in_progress"
-        next_calibration["current_prompt"] = "tone_preferences"
+        # Persist the latest answer before generation so retries can resume cleanly.
         OnboardingService.update_onboarding_state(
             db,
             user_id,
@@ -93,33 +133,55 @@ class OnboardingCalibrationService:
                 "calibration": next_calibration,
             },
         )
-        generated = OnboardingCalibrationService._generate_validated_payload(
+
+        stage_updates = OnboardingCalibrationService._generate_stage_updates(
             db,
             user_id,
+            answered_prompt=normalized_prompt,
             answers=next_calibration["answers"],
-            previous_name=next_calibration.get("proposed_name"),
+            previous_name=prior_proposed_name,
         )
-        next_calibration["status"] = "awaiting_name_acceptance"
-        next_calibration["proposed_name"] = generated["assistant_identity"]["name"]
+
+        if normalized_prompt == "tone_preferences":
+            proposed_name = (
+                ((stage_updates.get("assistant_identity") or {}).get("name")) or ""
+            ).strip()
+            next_calibration["status"] = "awaiting_name_acceptance"
+            next_calibration["proposed_name"] = proposed_name or None
+            next_calibration["current_prompt"] = "tone_preferences"
+        else:
+            next_calibration["status"] = "in_progress"
+            next_calibration["current_prompt"] = NEXT_PROMPT[normalized_prompt]
 
         settings_payload = AgentSettingsService.update_with_onboarding(
             db,
             user_id,
-            {
-                "assistant_identity": generated["assistant_identity"],
-                "assistant_soul": generated["assistant_soul"],
-            },
+            stage_updates,
             onboarding=next_onboarding,
-            reason="Initial soul calibration bootstrap.",
+            reason=GENERATION_REASON,
         )
         return CalibrationActionResult(
             state=OnboardingCalibrationService._build_state_response(
                 next_onboarding,
                 provider_ready=bool(state.get("provider_ready")),
             ),
-            assistant_identity=settings_payload["assistant_identity"],
-            assistant_soul=settings_payload["assistant_soul"],
-            confirmation_text=generated["confirmation_text"],
+            assistant_identity=(
+                settings_payload["assistant_identity"]
+                if "assistant_identity" in stage_updates
+                else None
+            ),
+            assistant_soul=(
+                settings_payload["assistant_soul"]
+                if "assistant_soul" in stage_updates
+                else None
+            ),
+            confirmation_text=(
+                f"{next_calibration['proposed_name']} is ready for review."
+                if normalized_prompt == "tone_preferences"
+                else OnboardingCalibrationService._prompt_confirmation(
+                    next_calibration["current_prompt"]
+                )
+            ),
         )
 
     @staticmethod
@@ -136,21 +198,28 @@ class OnboardingCalibrationService:
 
         answers = calibration.get("answers") or {}
         previous_name = calibration.get("proposed_name")
-        next_name = OnboardingCalibrationService._generate_validated_name(
-            db,
-            user_id,
-            answers=answers,
-            previous_name=previous_name,
+        next_name_update = (
+            OnboardingCalibrationService._generate_validated_field_update(
+                db,
+                user_id,
+                scope="assistant_identity",
+                field_name="name",
+                answers=answers,
+                previous_name=previous_name,
+            )
         )
+        next_name = (
+            (next_name_update.get("assistant_identity") or {}).get("name")
+        ) or ""
 
         next_onboarding = OnboardingService._resolve_state(state)
         next_onboarding["calibration"]["proposed_name"] = next_name
         settings_payload = AgentSettingsService.update_with_onboarding(
             db,
             user_id,
-            {"assistant_identity": {"name": next_name}},
+            next_name_update,
             onboarding=next_onboarding,
-            reason="Regenerated calibration assistant name.",
+            reason=NAME_REGENERATION_REASON,
         )
         return CalibrationActionResult(
             state=OnboardingCalibrationService._build_state_response(
@@ -284,174 +353,311 @@ class OnboardingCalibrationService:
     def _prompt_confirmation(next_prompt: str) -> str:
         """Return a stable assistant confirmation string for the next prompt."""
         if next_prompt == "working_relationship":
-            return "What kind of working relationship do you want?"
+            return "How should I work with you?"
         if next_prompt == "tone_preferences":
-            return "How should I sound when we work together?"
+            return "How should I sound?"
         return "Tell me more about what you need."
 
     @staticmethod
-    def _generate_validated_payload(
+    def _generate_stage_updates(
         db: Session,
         user_id: str,
         *,
+        answered_prompt: str,
         answers: dict[str, Any],
         previous_name: str | None,
     ) -> dict[str, Any]:
-        """Generate assistant soul and identity, retrying once on validation errors."""
+        """Generate and merge all assistant settings owned by this stage."""
+        combined: dict[str, Any] = {}
+        for scope, field_name in STAGE_FIELDS.get(answered_prompt, ()):
+            update = OnboardingCalibrationService._generate_validated_field_update(
+                db,
+                user_id,
+                scope=scope,
+                field_name=field_name,
+                answers=answers,
+                previous_name=None,
+            )
+            OnboardingCalibrationService._merge_generated_updates(combined, update)
+
+        if answered_prompt == "tone_preferences":
+            name_update = OnboardingCalibrationService._generate_validated_field_update(
+                db,
+                user_id,
+                scope="assistant_identity",
+                field_name="name",
+                answers=answers,
+                previous_name=previous_name,
+            )
+            OnboardingCalibrationService._merge_generated_updates(combined, name_update)
+
+        return combined
+
+    @staticmethod
+    def _generate_validated_field_update(
+        db: Session,
+        user_id: str,
+        *,
+        scope: str,
+        field_name: str,
+        answers: dict[str, Any],
+        previous_name: str | None,
+    ) -> dict[str, dict[str, str]]:
+        """Generate, validate, and normalize a single assistant settings field."""
         last_error: HTTPException | None = None
         for attempt in range(GENERATION_RETRY_LIMIT):
-            generated = OnboardingCalibrationService._generate_calibration_payload(
+            repair_feedback = str(last_error.detail) if last_error is not None else None
+            generated = OnboardingCalibrationService._generate_model_field_update(
+                db,
+                user_id,
+                scope=scope,
+                field_name=field_name,
                 answers=answers,
                 previous_name=previous_name,
-                repair_mode=attempt > 0,
-                validation_error=last_error,
+                repair_feedback=repair_feedback,
             )
             try:
-                prepared = AgentSettingsService.prepare_agent_updates(
-                    db,
-                    user_id,
-                    {
-                        "assistant_identity": generated["assistant_identity"],
-                        "assistant_soul": generated["assistant_soul"],
-                    },
-                    reason="Initial soul calibration bootstrap.",
+                OnboardingCalibrationService._assert_generated_field_shape(
+                    generated,
+                    scope=scope,
+                    field_name=field_name,
                 )
+                cleaned = SettingsService.clean_agent_updates(dict(generated))
+                cleaned_scope = cleaned.get(scope) or {}
+                value = cleaned_scope.get(field_name)
+                if not isinstance(value, str) or not value.strip():
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"{scope}.{field_name} must be a non-empty string",
+                    )
+                if (
+                    scope == "assistant_identity"
+                    and field_name == "name"
+                    and previous_name
+                    and value.strip() == previous_name.strip()
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            "assistant_identity.name must differ from the previous "
+                            "rejected name"
+                        ),
+                    )
+                return {scope: {field_name: value}}
             except HTTPException as exc:
-                if exc.status_code != 400:
+                if exc.status_code != 400 or attempt == GENERATION_RETRY_LIMIT - 1:
+                    if exc.status_code == 400:
+                        raise HTTPException(
+                            status_code=503,
+                            detail=(
+                                f"Calibration generation for {scope}.{field_name} "
+                                "failed validation twice. Please retry."
+                            ),
+                        ) from exc
                     raise
                 last_error = exc
-                previous_name = OnboardingCalibrationService._repair_previous_name(
-                    generated,
-                    previous_name=previous_name,
-                )
-                continue
-
-            identity = prepared.get("assistant_identity") or {}
-            soul = prepared.get("assistant_soul") or {}
-            identity.pop("_meta", None)
-            soul.pop("_meta", None)
-            return {
-                "assistant_identity": identity,
-                "assistant_soul": soul,
-                "confirmation_text": generated.get("confirmation_text")
-                or f'{identity.get("name", "sideBar")} is ready for review.',
-            }
 
         raise HTTPException(
             status_code=503,
-            detail=("Calibration generation failed validation twice. " "Please retry."),
-        ) from last_error
+            detail=(
+                f"Calibration generation for {scope}.{field_name} "
+                "failed validation twice. Please retry."
+            ),
+        )
 
     @staticmethod
-    def _generate_validated_name(
+    def _generate_model_field_update(
         db: Session,
         user_id: str,
         *,
+        scope: str,
+        field_name: str,
         answers: dict[str, Any],
         previous_name: str | None,
-    ) -> str:
-        """Generate a name candidate and validate it through the agent update path."""
-        last_error: HTTPException | None = None
-        for _ in range(GENERATION_RETRY_LIMIT):
-            candidate = OnboardingCalibrationService._generate_name_candidate(
-                answers=answers,
-                previous_name=previous_name,
+        repair_feedback: str | None,
+    ) -> dict[str, Any]:
+        """Call the model for one field and parse the JSON response."""
+        settings_record = UserSettingsService.get_settings(db, user_id)
+        if settings_record is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Calibration cannot continue without user settings",
             )
-            try:
-                prepared = AgentSettingsService.prepare_agent_updates(
-                    db,
-                    user_id,
-                    {"assistant_identity": {"name": candidate}},
-                    reason="Regenerated calibration assistant name.",
-                )
-            except HTTPException as exc:
-                if exc.status_code != 400:
-                    raise
-                last_error = exc
-                previous_name = candidate
-                continue
 
-            assistant_identity = prepared.get("assistant_identity") or {}
-            assistant_identity.pop("_meta", None)
-            return str(assistant_identity.get("name") or candidate)
+        prompt = OnboardingCalibrationService._render_field_prompt(
+            scope=scope,
+            field_name=field_name,
+            answers=answers,
+            current_identity=OnboardingCalibrationService._raw_agent_payload(
+                getattr(settings_record, "assistant_identity", None)
+            ),
+            current_soul=OnboardingCalibrationService._raw_agent_payload(
+                getattr(settings_record, "assistant_soul", None)
+            ),
+            previous_name=previous_name,
+            repair_feedback=repair_feedback,
+        )
 
-        raise HTTPException(
-            status_code=503,
-            detail="Calibration name generation failed validation twice. Please retry.",
-        ) from last_error
+        gateway = AIProviderGateway(settings)
+
+        def provider_key_lookup(provider: AIProvider) -> str | None:
+            return UserAIProviderKeyService.get_active_key(db, user_id, provider)
+
+        result = asyncio.run(
+            gateway.generate_text(
+                prompt=prompt,
+                system_prompt=(
+                    "You are sideBar authoring one assistant settings field. "
+                    "Output valid JSON only."
+                ),
+                settings_record=settings_record,
+                provider_key_lookup=provider_key_lookup,
+                max_output_tokens=(96 if (scope, field_name) == NAME_FIELD else 900),
+                temperature=(0.5 if (scope, field_name) == NAME_FIELD else 0.3),
+            )
+        )
+        return OnboardingCalibrationService._parse_generated_json_object(
+            result.raw_text,
+            scope=scope,
+            field_name=field_name,
+        )
 
     @staticmethod
-    def _generate_calibration_payload(
+    def _render_field_prompt(
         *,
+        scope: str,
+        field_name: str,
         answers: dict[str, Any],
-        previous_name: str | None = None,
-        repair_mode: bool = False,
-        validation_error: HTTPException | None = None,
-    ) -> dict[str, Any]:
-        """Build a constrained assistant identity and soul from calibration answers."""
-        primary_goal = str(answers.get("primary_goal") or "meaningful progress").strip()
-        working_relationship = str(
-            answers.get("working_relationship") or "a collaborative working style"
-        ).strip()
-        tone_preferences = str(
-            answers.get("tone_preferences") or "direct and calm"
-        ).strip()
-        name = OnboardingCalibrationService._generate_name_candidate(
-            answers=answers,
-            previous_name=previous_name,
-        )
-        if repair_mode:
-            name = OnboardingCalibrationService._repair_name_candidate(
-                name,
-                validation_error=validation_error,
+        current_identity: dict[str, Any],
+        current_soul: dict[str, Any],
+        previous_name: str | None,
+        repair_feedback: str | None,
+    ) -> str:
+        """Render a field-specific calibration prompt."""
+        template = FIELD_PROMPT_TEMPLATES[(scope, field_name)]
+        variables = {
+            "calibration_authoring_principles": CALIBRATION_AUTHORING_PRINCIPLES,
+            "calibration_core_sidebar_character": CALIBRATION_CORE_SIDEBAR_CHARACTER,
+            "calibration_output_rules": CALIBRATION_OUTPUT_RULES,
+            "primary_goal": str(answers.get("primary_goal") or "").strip() or "None",
+            "working_relationship": (
+                str(answers.get("working_relationship") or "").strip() or "None"
+            ),
+            "tone_preferences": (
+                str(answers.get("tone_preferences") or "").strip() or "None"
+            ),
+            "assistant_soul_json": json.dumps(
+                current_soul,
+                ensure_ascii=True,
+                indent=2,
+                sort_keys=True,
+            ),
+            "assistant_identity_json": json.dumps(
+                current_identity,
+                ensure_ascii=True,
+                indent=2,
+                sort_keys=True,
+            ),
+            "previous_name": (previous_name or "None"),
+        }
+        rendered = resolve_template(template, variables, keep_unknown=False).strip()
+        if repair_feedback:
+            rendered += (
+                "\n\nRetry guidance:\n"
+                "The previous attempt failed validation. Correct it.\n"
+                f"Validation feedback: {repair_feedback}"
             )
+        return rendered
+
+    @staticmethod
+    def _parse_generated_json_object(
+        raw_text: str,
+        *,
+        scope: str,
+        field_name: str,
+    ) -> dict[str, Any]:
+        """Parse a model response into a JSON object."""
+        candidate = raw_text.strip()
+        if candidate.startswith("```"):
+            lines = candidate.splitlines()
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            candidate = "\n".join(lines).strip()
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            start = candidate.find("{")
+            end = candidate.rfind("}")
+            if start == -1 or end == -1 or end <= start:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Generated invalid JSON for {scope}.{field_name}",
+                ) from None
+            try:
+                parsed = json.loads(candidate[start : end + 1])
+            except json.JSONDecodeError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Generated invalid JSON for {scope}.{field_name}",
+                ) from exc
+        if not isinstance(parsed, dict):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Generated invalid JSON object for {scope}.{field_name}",
+            )
+        return parsed
+
+    @staticmethod
+    def _assert_generated_field_shape(
+        generated: dict[str, Any],
+        *,
+        scope: str,
+        field_name: str,
+    ) -> None:
+        """Ensure the model returned only the requested field."""
+        if set(generated.keys()) != {scope}:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{scope}.{field_name} returned unexpected top-level keys",
+            )
+        scoped = generated.get(scope)
+        if not isinstance(scoped, dict):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{scope}.{field_name} must return an object payload",
+            )
+        if set(scoped.keys()) != {field_name}:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{scope}.{field_name} returned unexpected nested keys",
+            )
+
+    @staticmethod
+    def _raw_agent_payload(raw_value: Any) -> dict[str, Any]:
+        """Return the stored assistant payload without metadata."""
+        if not isinstance(raw_value, dict):
+            return {}
         return {
-            "assistant_identity": {
-                "name": name,
-                "tone": f"{tone_preferences.capitalize()}.",
-                "values": "Clarity, pragmatism, and steady follow-through.",
-                "boundaries": (
-                    "Never invent facts, keep user agency intact, and stay grounded "
-                    "in the user's stated goals."
-                ),
-            },
-            "assistant_soul": {
-                "purpose": (f"Help the user make durable progress on {primary_goal}."),
-                "operating_principles": (
-                    f"Work like {working_relationship}, keep momentum visible, "
-                    "and reduce cognitive load."
-                ),
-                "adaptation_policy": (
-                    "Adapt to durable preferences captured during calibration, "
-                    "not one-off wording."
-                ),
-                "success_signals": (
-                    "The user feels understood, needs fewer clarifications, "
-                    "and finishes more of the work they intended to do."
-                ),
-            },
-            "confirmation_text": f"{name} is ready for review.",
+            key: value
+            for key, value in raw_value.items()
+            if key != "_meta" and isinstance(value, str) and value.strip()
         }
 
     @staticmethod
-    def _generate_name_candidate(
-        *,
-        answers: dict[str, Any],
-        previous_name: str | None = None,
-    ) -> str:
-        """Select a constrained assistant name candidate from a small fixed pool."""
-        primary_goal = str(answers.get("primary_goal") or "").strip().lower()
-        if "admin" in primary_goal or "life" in primary_goal:
-            candidates = ("Navigator", "Compass", "Harbor", "Anchor")
-        elif "creative" in primary_goal or "write" in primary_goal:
-            candidates = ("Ink", "Studio", "Signal", "Draft")
-        else:
-            candidates = ("Navigator", "Compass", "Harbor", "Signal")
-
-        if previous_name in candidates:
-            index = candidates.index(previous_name)
-            return candidates[(index + 1) % len(candidates)]
-        return candidates[0]
+    def _merge_generated_updates(
+        target: dict[str, Any],
+        incoming: dict[str, Any],
+    ) -> None:
+        """Merge a single generated field payload into a combined update payload."""
+        for scope, scope_payload in incoming.items():
+            existing_scope = target.setdefault(scope, {})
+            if not isinstance(existing_scope, dict):
+                existing_scope = {}
+                target[scope] = existing_scope
+            if isinstance(scope_payload, dict):
+                existing_scope.update(scope_payload)
 
     @staticmethod
     def _require_provider_ready(state: dict[str, Any]) -> None:
@@ -460,7 +666,7 @@ class OnboardingCalibrationService:
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    "Provider connection is required before calibration " "can continue"
+                    "Provider connection is required before calibration can continue"
                 ),
             )
 
@@ -474,32 +680,3 @@ class OnboardingCalibrationService:
         resolved = OnboardingService._resolve_state(onboarding_state)
         resolved["provider_ready"] = provider_ready
         return OnboardingService._add_derived_fields(resolved)
-
-    @staticmethod
-    def _repair_previous_name(
-        generated: dict[str, Any],
-        *,
-        previous_name: str | None,
-    ) -> str | None:
-        """Extract the last attempted generated name for a stricter retry."""
-        assistant_identity = generated.get("assistant_identity")
-        if not isinstance(assistant_identity, dict):
-            return previous_name
-        candidate = assistant_identity.get("name")
-        if isinstance(candidate, str) and candidate.strip():
-            return candidate.strip()
-        return previous_name
-
-    @staticmethod
-    def _repair_name_candidate(
-        candidate: str,
-        *,
-        validation_error: HTTPException | None,
-    ) -> str:
-        """Return a stricter repaired name candidate after validation fails."""
-        if validation_error and "assistant_identity.name exceeds" in str(
-            validation_error.detail
-        ):
-            trimmed = candidate.strip()[:120]
-            return trimmed or "Navigator"
-        return candidate.strip() or "Navigator"

@@ -35,6 +35,14 @@ class TitleGenerationResult:
 
 
 @dataclass(frozen=True)
+class PromptGenerationResult:
+    """Structured single-shot prompt generation result."""
+
+    raw_text: str
+    provider: AIProvider
+
+
+@dataclass(frozen=True)
 class ChatResolution:
     """Resolved provider/model/key tuple for assistant chat."""
 
@@ -242,6 +250,48 @@ class AIProviderGateway:
             provider=selected_provider,
         )
 
+    async def generate_text(
+        self,
+        *,
+        prompt: str,
+        settings_record: Any,
+        system_prompt: str | None = None,
+        preferred_provider: AIProvider | None = None,
+        provider_key_lookup: ProviderKeyLookup | None = None,
+        max_output_tokens: int = 800,
+        temperature: float = 0.3,
+    ) -> PromptGenerationResult:
+        """Generate a single non-streaming text response using the chat provider."""
+        policy = AIPolicyService.resolve_from_settings(settings_record)
+        if preferred_provider is not None:
+            if not is_provider_supported_for_capability(preferred_provider, "chat"):
+                raise AICapabilityUnavailableError(
+                    "Provider "
+                    f"'{preferred_provider}' is not supported for text generation"
+                )
+            selected_provider = preferred_provider
+        else:
+            selection = AIPolicyService.select_provider("chat", policy)
+            selected_provider = selection.provider
+
+        api_key = self._resolve_provider_api_key(
+            provider=selected_provider,
+            provider_key_lookup=provider_key_lookup,
+        )
+        raw_text = await self._generate_text_with_provider(
+            provider=selected_provider,
+            prompt=prompt,
+            api_key=api_key,
+            model=get_default_model(selected_provider, "chat", self._settings),
+            system_prompt=system_prompt,
+            max_output_tokens=max_output_tokens,
+            temperature=temperature,
+        )
+        return PromptGenerationResult(
+            raw_text=raw_text,
+            provider=selected_provider,
+        )
+
     def resolve_transcription(
         self,
         *,
@@ -312,6 +362,69 @@ class AIProviderGateway:
             raise last_error
         raise ValueError("Title generation failed without provider error")
 
+    async def _generate_text_with_provider(
+        self,
+        *,
+        provider: AIProvider,
+        prompt: str,
+        api_key: str,
+        model: str,
+        system_prompt: str | None,
+        max_output_tokens: int,
+        temperature: float,
+    ) -> str:
+        """Generate plain text with retries for a specific provider."""
+        last_error: Exception | None = None
+        for attempt in range(3):
+            try:
+                if provider == "google":
+                    raw_text = await self._generate_text_google(
+                        prompt,
+                        api_key=api_key,
+                        model=model,
+                        system_prompt=system_prompt,
+                        max_output_tokens=max_output_tokens,
+                        temperature=temperature,
+                    )
+                elif provider == "anthropic":
+                    raw_text = await self._generate_text_anthropic(
+                        prompt,
+                        api_key=api_key,
+                        model=model,
+                        system_prompt=system_prompt,
+                        max_output_tokens=max_output_tokens,
+                        temperature=temperature,
+                    )
+                elif provider == "openai":
+                    raw_text = await self._generate_text_openai(
+                        prompt,
+                        api_key=api_key,
+                        model=model,
+                        system_prompt=system_prompt,
+                        max_output_tokens=max_output_tokens,
+                        temperature=temperature,
+                    )
+                else:
+                    raise ValueError(
+                        f"Unsupported provider for text generation: {provider}"
+                    )
+
+                cleaned_text = raw_text.strip()
+                if cleaned_text:
+                    return cleaned_text
+                raise RuntimeError(
+                    f"Empty text generation response from provider '{provider}'"
+                )
+            except Exception as error:
+                last_error = error
+                if not self._is_retryable_error(error) or attempt == 2:
+                    raise
+                await asyncio.sleep(0.5 * (2**attempt))
+
+        if last_error:
+            raise last_error
+        raise ValueError("Text generation failed without provider error")
+
     async def _generate_title_google(self, prompt: str, *, api_key: str) -> str:
         """Generate title with Google Gemini."""
         client = self._google_client_factory(api_key=api_key)
@@ -321,6 +434,45 @@ class AIProviderGateway:
             config=types.GenerateContentConfig(
                 temperature=0,
                 max_output_tokens=64,
+                response_mime_type="text/plain",
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
+        text = getattr(response, "text", None)
+        if text:
+            return text.strip()
+
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                part_text = getattr(part, "text", None)
+                if part_text:
+                    return part_text.strip()
+        return ""
+
+    async def _generate_text_google(
+        self,
+        prompt: str,
+        *,
+        api_key: str,
+        model: str,
+        system_prompt: str | None,
+        max_output_tokens: int,
+        temperature: float,
+    ) -> str:
+        """Generate plain text with Google Gemini."""
+        client = self._google_client_factory(api_key=api_key)
+        contents = prompt
+        if isinstance(system_prompt, str) and system_prompt.strip():
+            contents = f"{system_prompt.strip()}\n\n{prompt}"
+        response = client.models.generate_content(
+            model=model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_output_tokens,
                 response_mime_type="text/plain",
                 thinking_config=types.ThinkingConfig(thinking_budget=0),
             ),
@@ -365,6 +517,44 @@ class AIProviderGateway:
             await self._close_async_client_if_possible(client)
         return ""
 
+    async def _generate_text_anthropic(
+        self,
+        prompt: str,
+        *,
+        api_key: str,
+        model: str,
+        system_prompt: str | None,
+        max_output_tokens: int,
+        temperature: float,
+    ) -> str:
+        """Generate plain text with Anthropic."""
+        from api.services.claude_client import ClaudeClient
+
+        claude_client = ClaudeClient(
+            self._settings,
+            api_key=api_key,
+            model=model,
+        )
+        client = claude_client.client
+        request_kwargs: dict[str, Any] = {
+            "model": model,
+            "max_tokens": max_output_tokens,
+            "temperature": temperature,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if isinstance(system_prompt, str) and system_prompt.strip():
+            request_kwargs["system"] = system_prompt.strip()
+        try:
+            response = await client.messages.create(**request_kwargs)
+            for block in response.content:
+                if getattr(block, "type", None) == "text":
+                    text_value = getattr(block, "text", "")
+                    if text_value:
+                        return text_value
+        finally:
+            await self._close_async_client_if_possible(client)
+        return ""
+
     async def _generate_title_openai(self, prompt: str, *, api_key: str) -> str:
         """Generate title with OpenAI."""
         client = self._openai_client_factory(api_key=api_key)
@@ -393,6 +583,43 @@ class AIProviderGateway:
             response = await client.chat.completions.create(
                 **request_kwargs,
             )
+            choice = response.choices[0] if response.choices else None
+            if not choice:
+                return ""
+            return (choice.message.content or "").strip()
+        finally:
+            await self._close_async_client_if_possible(client)
+
+    async def _generate_text_openai(
+        self,
+        prompt: str,
+        *,
+        api_key: str,
+        model: str,
+        system_prompt: str | None,
+        max_output_tokens: int,
+        temperature: float,
+    ) -> str:
+        """Generate plain text with OpenAI."""
+        client = self._openai_client_factory(api_key=api_key)
+        request_kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": [],
+        }
+        if isinstance(system_prompt, str) and system_prompt.strip():
+            request_kwargs["messages"].append(
+                {"role": "system", "content": system_prompt.strip()}
+            )
+        request_kwargs["messages"].append({"role": "user", "content": prompt})
+        if model.startswith("gpt-5"):
+            request_kwargs["max_completion_tokens"] = max_output_tokens
+            request_kwargs["reasoning_effort"] = "minimal"
+        else:
+            request_kwargs["temperature"] = temperature
+            request_kwargs["max_tokens"] = max_output_tokens
+
+        try:
+            response = await client.chat.completions.create(**request_kwargs)
             choice = response.choices[0] if response.choices else None
             if not choice:
                 return ""

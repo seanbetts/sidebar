@@ -24,6 +24,35 @@ _PROMPT_CONFIG = load_prompt_config()
 
 DEFAULT_COMMUNICATION_STYLE = _PROMPT_CONFIG["default_communication_style"]
 DEFAULT_WORKING_RELATIONSHIP = _PROMPT_CONFIG["default_working_relationship"]
+CALIBRATION_AUTHORING_PRINCIPLES = _PROMPT_CONFIG["calibration_authoring_principles"]
+CALIBRATION_CORE_SIDEBAR_CHARACTER = _PROMPT_CONFIG[
+    "calibration_core_sidebar_character"
+]
+CALIBRATION_OUTPUT_RULES = _PROMPT_CONFIG["calibration_output_rules"]
+CALIBRATION_PROMPT_ASSISTANT_SOUL_PURPOSE = _PROMPT_CONFIG[
+    "calibration_prompt_assistant_soul_purpose"
+]
+CALIBRATION_PROMPT_ASSISTANT_SOUL_SUCCESS_SIGNALS = _PROMPT_CONFIG[
+    "calibration_prompt_assistant_soul_success_signals"
+]
+CALIBRATION_PROMPT_ASSISTANT_SOUL_OPERATING_PRINCIPLES = _PROMPT_CONFIG[
+    "calibration_prompt_assistant_soul_operating_principles"
+]
+CALIBRATION_PROMPT_ASSISTANT_SOUL_ADAPTATION_POLICY = _PROMPT_CONFIG[
+    "calibration_prompt_assistant_soul_adaptation_policy"
+]
+CALIBRATION_PROMPT_ASSISTANT_IDENTITY_TONE = _PROMPT_CONFIG[
+    "calibration_prompt_assistant_identity_tone"
+]
+CALIBRATION_PROMPT_ASSISTANT_IDENTITY_VALUES = _PROMPT_CONFIG[
+    "calibration_prompt_assistant_identity_values"
+]
+CALIBRATION_PROMPT_ASSISTANT_IDENTITY_BOUNDARIES = _PROMPT_CONFIG[
+    "calibration_prompt_assistant_identity_boundaries"
+]
+CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME = _PROMPT_CONFIG[
+    "calibration_prompt_assistant_identity_name"
+]
 SYSTEM_PROMPT_TEMPLATE = _PROMPT_CONFIG["system_prompt_template"]
 CONTEXT_GUIDANCE_TEMPLATE = _PROMPT_CONFIG["context_guidance_template"]
 FIRST_MESSAGE_TEMPLATE = _PROMPT_CONFIG["first_message_template"]

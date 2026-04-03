@@ -195,6 +195,58 @@ async def test_gateway_stream_chat_openai_emits_tokens_and_uses_model(monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_gateway_generate_text_openai_uses_chat_model_and_system_prompt() -> None:
+    call_kwargs: list[dict[str, Any]] = []
+
+    class FakeCompletions:
+        async def create(self, **kwargs):
+            call_kwargs.append(kwargs)
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(
+                            content='{"assistant_identity":{"name":"Navigator"}}'
+                        )
+                    )
+                ]
+            )
+
+    class FakeChat:
+        def __init__(self):
+            self.completions = FakeCompletions()
+
+    class FakeOpenAIClient:
+        def __init__(self):
+            self.chat = FakeChat()
+
+    gateway = AIProviderGateway(
+        settings,
+        openai_client_factory=lambda **_kwargs: FakeOpenAIClient(),
+    )
+    result = await gateway.generate_text(
+        prompt="Return JSON only.",
+        system_prompt="You are writing assistant settings.",
+        settings_record=SimpleNamespace(ai_primary_provider="openai"),
+        provider_key_lookup=lambda _provider: "sk-openai-test",
+        max_output_tokens=128,
+    )
+
+    assert result.raw_text == '{"assistant_identity":{"name":"Navigator"}}'
+    assert result.provider == "openai"
+    assert call_kwargs[0]["model"] == "gpt-5.2"
+    assert call_kwargs[0]["messages"][0] == {
+        "role": "system",
+        "content": "You are writing assistant settings.",
+    }
+    assert call_kwargs[0]["messages"][1] == {
+        "role": "user",
+        "content": "Return JSON only.",
+    }
+    assert call_kwargs[0]["max_completion_tokens"] == 128
+    assert call_kwargs[0]["reasoning_effort"] == "minimal"
+
+
+@pytest.mark.asyncio
 async def test_gateway_stream_chat_openai_executes_tools(monkeypatch) -> None:
     class FakeCompletions:
         def __init__(self):

@@ -53,6 +53,18 @@ def test_submit_answer_persists_answer_and_advances_prompt(test_db, monkeypatch)
     user_id = "calibration-submit"
     provider_ready_state = _provider_ready_state(test_db, user_id=user_id)
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+    calls: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_validated_field_update",
+        staticmethod(
+            lambda db, user_id, *, scope, field_name, answers, previous_name=None: (
+                calls.append((scope, field_name))
+                or {"assistant_soul": {"purpose": "Help the user make steady progress."}}
+            )
+        ),
+    )
 
     result = OnboardingCalibrationService.submit_answer(
         test_db,
@@ -64,7 +76,8 @@ def test_submit_answer_persists_answer_and_advances_prompt(test_db, monkeypatch)
     assert result.state["calibration"]["answers"]["primary_goal"] == "life_admin"
     assert result.state["calibration"]["current_prompt"] == "working_relationship"
     assert result.assistant_identity is None
-    assert result.assistant_soul is None
+    assert result.assistant_soul["purpose"] == "Help the user make steady progress."
+    assert calls == [("assistant_soul", "purpose")]
 
 
 def test_submit_answer_allows_revisiting_primary_goal_and_clears_downstream_answers(
@@ -89,6 +102,15 @@ def test_submit_answer_allows_revisiting_primary_goal_and_clears_downstream_answ
         },
     )
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_validated_field_update",
+        staticmethod(
+            lambda db, user_id, *, scope, field_name, answers, previous_name=None: {
+                "assistant_soul": {"purpose": "Help the user make steady progress."}
+            }
+        ),
+    )
 
     result = OnboardingCalibrationService.submit_answer(
         test_db,
@@ -131,6 +153,43 @@ def test_submit_answer_allows_revisiting_working_relationship_and_clears_tone(
     )
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
 
+    generated_fields: list[tuple[str, str]] = []
+
+    def _generate_field(
+        db,
+        user_id,
+        *,
+        scope,
+        field_name,
+        answers,
+        previous_name=None,
+    ):
+        generated_fields.append((scope, field_name))
+        mapping = {
+            ("assistant_soul", "success_signals"): {
+                "assistant_soul": {
+                    "success_signals": "Less friction and more consistent follow-through."
+                }
+            },
+            ("assistant_soul", "operating_principles"): {
+                "assistant_soul": {
+                    "operating_principles": "Take initiative, reduce friction, and keep momentum visible."
+                }
+            },
+            ("assistant_soul", "adaptation_policy"): {
+                "assistant_soul": {
+                    "adaptation_policy": "Adapt to durable preferences, not one-off wording."
+                }
+            },
+        }
+        return mapping[(scope, field_name)]
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_validated_field_update",
+        staticmethod(_generate_field),
+    )
+
     result = OnboardingCalibrationService.submit_answer(
         test_db,
         user_id,
@@ -147,6 +206,15 @@ def test_submit_answer_allows_revisiting_working_relationship_and_clears_tone(
     assert result.state["calibration"]["proposed_name"] is None
     assert result.state["calibration"]["status"] == "in_progress"
     assert result.state["calibration"]["current_prompt"] == "tone_preferences"
+    assert generated_fields == [
+        ("assistant_soul", "success_signals"),
+        ("assistant_soul", "operating_principles"),
+        ("assistant_soul", "adaptation_policy"),
+    ]
+    assert (
+        result.assistant_soul["operating_principles"]
+        == "Take initiative, reduce friction, and keep momentum visible."
+    )
 
 
 def test_submit_answer_requires_provider_ready(test_db, monkeypatch) -> None:
@@ -191,27 +259,44 @@ def test_submit_answer_generates_assistant_configuration_after_tone(
         },
     )
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+    generated_fields: list[tuple[str, str, str | None]] = []
+
+    def _generate_field(
+        db,
+        user_id,
+        *,
+        scope,
+        field_name,
+        answers,
+        previous_name=None,
+    ):
+        generated_fields.append((scope, field_name, previous_name))
+        mapping = {
+            ("assistant_identity", "tone"): {
+                "assistant_identity": {
+                    "tone": "Pragmatic, direct, and collaborative. Warm but not effusive."
+                }
+            },
+            ("assistant_identity", "values"): {
+                "assistant_identity": {
+                    "values": "Clarity, pragmatism, rigor, and durable progress."
+                }
+            },
+            ("assistant_identity", "boundaries"): {
+                "assistant_identity": {
+                    "boundaries": "Never invent facts, never compromise security, and preserve the user's agency."
+                }
+            },
+            ("assistant_identity", "name"): {
+                "assistant_identity": {"name": "Navigator"}
+            },
+        }
+        return mapping[(scope, field_name)]
 
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_calibration_payload",
-        staticmethod(
-            lambda *, answers, previous_name=None, repair_mode=False, validation_error=None: {
-                "assistant_identity": {
-                    "name": "Navigator",
-                    "tone": "Direct and warm.",
-                    "values": "Clarity and momentum.",
-                    "boundaries": "Do not invent facts.",
-                },
-                "assistant_soul": {
-                    "purpose": "Help with steady life admin.",
-                    "operating_principles": "Be practical and calm.",
-                    "adaptation_policy": "Adapt to durable preferences.",
-                    "success_signals": "Less friction and more follow-through.",
-                },
-                "confirmation_text": "Navigator is ready for review.",
-            }
-        ),
+        "_generate_validated_field_update",
+        staticmethod(_generate_field),
     )
 
     result = OnboardingCalibrationService.submit_answer(
@@ -224,10 +309,22 @@ def test_submit_answer_generates_assistant_configuration_after_tone(
     assert result.state["calibration"]["status"] == "awaiting_name_acceptance"
     assert result.state["calibration"]["proposed_name"] == "Navigator"
     assert result.assistant_identity["name"] == "Navigator"
-    assert result.assistant_soul["purpose"] == "Help with steady life admin."
+    assert (
+        result.assistant_identity["tone"]
+        == "Pragmatic, direct, and collaborative. Warm but not effusive."
+    )
+    assert generated_fields == [
+        ("assistant_identity", "tone", None),
+        ("assistant_identity", "values", None),
+        ("assistant_identity", "boundaries", None),
+        ("assistant_identity", "name", None),
+    ]
     settings_payload = SettingsService.get_settings(test_db, user_id)
     assert settings_payload["assistant_identity"]["name"] == "Navigator"
-    assert settings_payload["assistant_soul"]["purpose"] == "Help with steady life admin."
+    assert (
+        settings_payload["assistant_identity"]["values"]
+        == "Clarity, pragmatism, rigor, and durable progress."
+    )
 
 
 def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
@@ -252,27 +349,38 @@ def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
         },
     )
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+    generated_fields: list[tuple[str, str, str | None]] = []
+
+    def _generate_field(
+        db,
+        user_id,
+        *,
+        scope,
+        field_name,
+        answers,
+        previous_name=None,
+    ):
+        generated_fields.append((scope, field_name, previous_name))
+        mapping = {
+            ("assistant_identity", "tone"): {
+                "assistant_identity": {"tone": "Direct, serious, and concise."}
+            },
+            ("assistant_identity", "values"): {
+                "assistant_identity": {"values": "Clarity and momentum."}
+            },
+            ("assistant_identity", "boundaries"): {
+                "assistant_identity": {"boundaries": "Do not invent facts."}
+            },
+            ("assistant_identity", "name"): {
+                "assistant_identity": {"name": "Compass"}
+            },
+        }
+        return mapping[(scope, field_name)]
 
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_calibration_payload",
-        staticmethod(
-            lambda *, answers, previous_name=None, repair_mode=False, validation_error=None: {
-                "assistant_identity": {
-                    "name": "Compass",
-                    "tone": "Direct and calm.",
-                    "values": "Clarity and momentum.",
-                    "boundaries": "Do not invent facts.",
-                },
-                "assistant_soul": {
-                    "purpose": "Help with steady life admin.",
-                    "operating_principles": "Take initiative and reduce friction.",
-                    "adaptation_policy": "Adapt to durable preferences.",
-                    "success_signals": "Less friction and more follow-through.",
-                },
-                "confirmation_text": "Compass is ready for review.",
-            }
-        ),
+        "_generate_validated_field_update",
+        staticmethod(_generate_field),
     )
 
     result = OnboardingCalibrationService.submit_answer(
@@ -289,6 +397,7 @@ def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
     )
     assert result.state["calibration"]["proposed_name"] == "Compass"
     assert result.assistant_identity["name"] == "Compass"
+    assert generated_fields[-1] == ("assistant_identity", "name", "Navigator")
 
 
 def test_regenerate_name_only_updates_proposed_name(test_db, monkeypatch) -> None:
@@ -327,8 +436,12 @@ def test_regenerate_name_only_updates_proposed_name(test_db, monkeypatch) -> Non
 
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_name_candidate",
-        staticmethod(lambda *, answers, previous_name=None: "Compass"),
+        "_generate_validated_field_update",
+        staticmethod(
+            lambda db, user_id, *, scope, field_name, answers, previous_name=None: {
+                "assistant_identity": {"name": "Compass"}
+            }
+        ),
     )
 
     result = OnboardingCalibrationService.regenerate_name(test_db, user_id)
@@ -466,48 +579,36 @@ def test_submit_answer_retries_generation_after_validation_failure(
     )
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
 
-    calls: list[tuple[bool, str | None]] = []
+    calls: list[str | None] = []
 
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_calibration_payload",
+        "_generate_model_field_update",
         staticmethod(
-            lambda *, answers, previous_name=None, repair_mode=False, validation_error=None: (
-                calls.append(
-                    (
-                        repair_mode,
-                        str(validation_error.detail) if validation_error else None,
-                    )
-                )
+            lambda db, user_id, *, scope, field_name, answers, previous_name=None, repair_feedback=None: (
+                calls.append(repair_feedback)
                 or (
-                    {
-                        "assistant_identity": {"name": "x" * 121},
-                        "assistant_soul": {"purpose": "Help clearly."},
-                        "confirmation_text": "try one",
-                    }
-                    if not repair_mode
-                    else {
-                        "assistant_identity": {"name": "Navigator"},
-                        "assistant_soul": {"purpose": "Help clearly."},
-                        "confirmation_text": "try two",
-                    }
+                    {"assistant_identity": {"name": "x" * 121}}
+                    if repair_feedback is None
+                    else {"assistant_identity": {"name": "Navigator"}}
                 )
             )
         ),
     )
 
-    result = OnboardingCalibrationService.submit_answer(
+    result = OnboardingCalibrationService._generate_validated_field_update(
         test_db,
         user_id,
-        prompt="tone_preferences",
-        answer="direct_but_kind",
+        scope="assistant_identity",
+        field_name="name",
+        answers={"primary_goal": "life_admin"},
+        previous_name=None,
     )
 
-    assert result.assistant_identity["name"] == "Navigator"
-    assert result.state["calibration"]["status"] == "awaiting_name_acceptance"
+    assert result == {"assistant_identity": {"name": "Navigator"}}
     assert calls == [
-        (False, None),
-        (True, "assistant_identity.name exceeds max length (120 characters)"),
+        None,
+        "assistant_identity.name exceeds max length (120 characters)",
     ]
 
 
@@ -534,22 +635,22 @@ def test_submit_answer_surfaces_retryable_error_after_second_validation_failure(
 
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_calibration_payload",
+        "_generate_model_field_update",
         staticmethod(
-            lambda *, answers, previous_name=None, repair_mode=False, validation_error=None: {
+            lambda db, user_id, *, scope, field_name, answers, previous_name=None, repair_feedback=None: {
                 "assistant_identity": {"name": "x" * 121},
-                "assistant_soul": {"purpose": "Help clearly."},
-                "confirmation_text": "still invalid",
             }
         ),
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        OnboardingCalibrationService.submit_answer(
+        OnboardingCalibrationService._generate_validated_field_update(
             test_db,
             user_id,
-            prompt="tone_preferences",
-            answer="direct_but_kind",
+            scope="assistant_identity",
+            field_name="name",
+            answers={"primary_goal": "life_admin"},
+            previous_name=None,
         )
 
     assert "retry" in str(exc_info.value).lower()
@@ -577,13 +678,11 @@ def test_submit_answer_persists_tone_answer_when_generation_fails(
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_calibration_payload",
+        "_generate_validated_field_update",
         staticmethod(
-            lambda *, answers, previous_name=None, repair_mode=False, validation_error=None: {
-                "assistant_identity": {"name": "x" * 121},
-                "assistant_soul": {"purpose": "Help clearly."},
-                "confirmation_text": "invalid",
-            }
+            lambda db, user_id, *, scope, field_name, answers, previous_name=None: (_ for _ in ()).throw(
+                HTTPException(status_code=503, detail="Calibration generation failed")
+            )
         ),
     )
 
