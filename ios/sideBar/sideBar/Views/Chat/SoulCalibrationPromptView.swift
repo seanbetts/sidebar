@@ -42,7 +42,10 @@ struct SoulCalibrationPromptView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             setupLabel
-            headline
+
+            if shouldShowHeadline {
+                headline
+            }
 
             if let supportingCopy {
                 Text(supportingCopy)
@@ -58,7 +61,7 @@ struct SoulCalibrationPromptView: View {
                     .padding(.top, DesignTokens.Spacing.xxxs)
             }
 
-            if state.status == .awaitingNameAcceptance, let confirmationText {
+            if shouldShowConfirmationText, let confirmationText, !confirmationText.isEmpty {
                 Text(confirmationText)
                     .appFont(.body)
                     .foregroundStyle(.primary)
@@ -92,7 +95,7 @@ struct SoulCalibrationPromptView: View {
 
     private var setupLabel: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: "person.crop.circle")
+            Image(systemName: "brain.fill")
                 .appFont(.captionSemibold)
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
@@ -113,10 +116,10 @@ struct SoulCalibrationPromptView: View {
     private var headlineText: String {
         switch displayedStep {
         case .nameConfirmation:
-            if let proposedName = state.proposedName {
-                return "Hello, I'm \(proposedName)"
+            if let proposedName = state.proposedName, isShowingResolvedName {
+                return proposedName
             }
-            return "Hello"
+            return "Choosing a name for myself..."
         case .primaryGoal:
             return "What should I help you with?"
         case .workingRelationship:
@@ -129,7 +132,7 @@ struct SoulCalibrationPromptView: View {
     private var supportingCopy: String? {
         switch displayedStep {
         case .nameConfirmation:
-            return state.proposedName.map { "I'd like to go by \($0)." }
+            return nil
         case .primaryGoal:
             return "Choose one or more areas you want me to focus on."
         case .workingRelationship:
@@ -166,7 +169,7 @@ struct SoulCalibrationPromptView: View {
                 ForEach(primaryGoalOptions) { option in
                     let isSelected = selectedPrimaryGoals.contains(option.value)
                     let hasReachedSelectionLimit = selectedPrimaryGoals.count >= 3
-                    let isEnabled = !isBusy && (isSelected || !hasReachedSelectionLimit)
+                    let isEnabled = isSelected || !hasReachedSelectionLimit
 
                     SoulCalibrationChoiceChip(
                         title: option.label,
@@ -192,7 +195,7 @@ struct SoulCalibrationPromptView: View {
                     SoulCalibrationChoiceChip(
                         title: option.label,
                         isSelected: selectedWorkingRelationship == option.value,
-                        isEnabled: !isBusy
+                        isEnabled: true
                     ) {
                         selectedWorkingRelationship = option.value
                     }
@@ -211,25 +214,36 @@ struct SoulCalibrationPromptView: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                 ForEach(Array(tonePairs.enumerated()), id: \.offset) { index, pair in
                     HStack(spacing: DesignTokens.Spacing.sm) {
-                        SoulCalibrationChoiceChip(
-                            title: pair.left.label,
-                            isSelected: selectedToneChoices[index] == pair.left.value,
-                            isEnabled: !isBusy
-                        ) {
-                            selectedToneChoices[index] = pair.left.value
+                        HStack {
+                            Spacer(minLength: 0)
+
+                            SoulCalibrationChoiceChip(
+                                title: pair.left.label,
+                                isSelected: selectedToneChoices[index] == pair.left.value,
+                                isEnabled: true
+                            ) {
+                                selectedToneChoices[index] = pair.left.value
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
 
                         Text("vs")
                             .appFont(.captionSemibold)
                             .foregroundStyle(.secondary)
+                            .frame(width: 24)
 
-                        SoulCalibrationChoiceChip(
-                            title: pair.right.label,
-                            isSelected: selectedToneChoices[index] == pair.right.value,
-                            isEnabled: !isBusy
-                        ) {
-                            selectedToneChoices[index] = pair.right.value
+                        HStack {
+                            SoulCalibrationChoiceChip(
+                                title: pair.right.label,
+                                isSelected: selectedToneChoices[index] == pair.right.value,
+                                isEnabled: true
+                            ) {
+                                selectedToneChoices[index] = pair.right.value
+                            }
+
+                            Spacer(minLength: 0)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
@@ -237,58 +251,6 @@ struct SoulCalibrationPromptView: View {
             continueButton(
                 isEnabled: selectedToneChoices.count == tonePairs.count,
                 action: submitTonePreferences
-            )
-        }
-    }
-
-    private var nameConfirmationContent: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            if canGoBack {
-                Button("Back") {
-                    goBack()
-                }
-                .buttonStyle(.plain)
-                .appFont(.bodySemibold)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Back")
-            }
-
-            Spacer()
-
-            SoulCalibrationChoiceChip(
-                title: "Try another",
-                isSelected: false,
-                isEnabled: !isBusy
-            ) {
-                onRegenerateName()
-            }
-
-            ContinueButton(
-                title: "Hello!",
-                isEnabled: !isBusy,
-                action: onAcceptName
-            )
-        }
-    }
-
-    private func continueButton(isEnabled: Bool, action: @escaping () -> Void) -> some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            if canGoBack {
-                Button("Back") {
-                    goBack()
-                }
-                .buttonStyle(.plain)
-                .appFont(.bodySemibold)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Back")
-            }
-
-            Spacer()
-
-            ContinueButton(
-                title: "Continue",
-                isEnabled: isEnabled && !isBusy,
-                action: action
             )
         }
     }
@@ -331,6 +293,7 @@ struct SoulCalibrationPromptView: View {
         }
 
         let ordered = tonePairs.indices.compactMap { selectedToneChoices[$0] }
+        displayStepOverride = .nameConfirmation
         onSubmitTonePreferences(ordered)
     }
 
@@ -344,22 +307,22 @@ struct SoulCalibrationPromptView: View {
             }
         }
 
-        selectedPrimaryGoals = Set(
-            (state.answers.primaryGoal ?? "")
-                .split(separator: ",")
-                .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-        )
+        let storedPrimaryGoals = parsedCommaSeparatedValues(from: state.answers.primaryGoal)
+        if !storedPrimaryGoals.isEmpty {
+            selectedPrimaryGoals = Set(storedPrimaryGoals)
+        }
 
-        selectedWorkingRelationship = state.answers.workingRelationship
+        if let storedWorkingRelationship = state.answers.workingRelationship,
+           !storedWorkingRelationship.isEmpty {
+            selectedWorkingRelationship = storedWorkingRelationship
+        }
 
-        let storedTones = (state.answers.tonePreferences ?? "")
-            .split(separator: ",")
-            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        selectedToneChoices = Dictionary(
-            uniqueKeysWithValues: storedTones.enumerated().map { ($0.offset, $0.element) }
-        )
+        let storedTones = parsedCommaSeparatedValues(from: state.answers.tonePreferences)
+        if !storedTones.isEmpty {
+            selectedToneChoices = Dictionary(
+                uniqueKeysWithValues: storedTones.enumerated().map { ($0.offset, $0.element) }
+            )
+        }
     }
 
     private var displayedStep: CalibrationDisplayStep {
@@ -373,6 +336,18 @@ struct SoulCalibrationPromptView: View {
         return CalibrationDisplayStep(prompt: state.currentPrompt)
     }
 
+    private var isShowingResolvedName: Bool {
+        state.status == .awaitingNameAcceptance && !(state.proposedName?.isEmpty ?? true)
+    }
+
+    private var shouldShowConfirmationText: Bool {
+        false
+    }
+
+    private var shouldShowHeadline: Bool {
+        displayedStep != .nameConfirmation
+    }
+
     private var canGoBack: Bool {
         displayedStep.previous != nil
     }
@@ -382,5 +357,116 @@ struct SoulCalibrationPromptView: View {
             return
         }
         displayStepOverride = previous
+    }
+
+    private func parsedCommaSeparatedValues(from value: String?) -> [String] {
+        (value ?? "")
+            .split(separator: ",")
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+}
+
+private extension SoulCalibrationPromptView {
+    var nameConfirmationContent: some View {
+        if !isShowingResolvedName {
+            return AnyView(nameLoadingContent)
+        }
+
+        return AnyView(nameResolvedContent)
+    }
+
+    var nameLoadingContent: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            SoulCalibrationNameBadge {
+                VStack(spacing: DesignTokens.Spacing.sm) {
+                    LoadingIndicatorView(size: LoadingIndicatorSize.panel)
+
+                    Text("Choosing a name for myself...")
+                        .appFont(.body)
+                        .foregroundColor(.black.opacity(0.72))
+                }
+                .frame(maxWidth: .infinity)
+            }
+
+            standardBackOnlyRow
+        }
+    }
+
+    var nameResolvedContent: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            SoulCalibrationNameBadge {
+                VStack(spacing: DesignTokens.Spacing.xxxs) {
+                    if let proposedName = state.proposedName {
+                        Text(proposedName)
+                            .appScaledFont(size: 58, weight: .bold)
+                            .foregroundColor(.black)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.35)
+                            .allowsTightening(true)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                    }
+
+                    Text("This feels like me.")
+                        .appFont(.body)
+                        .foregroundColor(.black.opacity(0.64))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+            }
+
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                standardBackButton
+
+                Spacer()
+
+                ContinueButton(
+                    title: "Try another",
+                    isEnabled: !isBusy,
+                    action: onRegenerateName
+                )
+
+                ContinueButton(
+                    title: "Hello!",
+                    isEnabled: !isBusy,
+                    action: onAcceptName
+                )
+            }
+        }
+    }
+
+    func continueButton(isEnabled: Bool, action: @escaping () -> Void) -> some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            standardBackButton
+
+            Spacer()
+
+            ContinueButton(
+                title: "Continue",
+                isEnabled: isEnabled && !isBusy,
+                action: action
+            )
+        }
+    }
+
+    var standardBackOnlyRow: some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            standardBackButton
+            Spacer()
+        }
+    }
+
+    @ViewBuilder
+    var standardBackButton: some View {
+        if canGoBack {
+            Button("Back") {
+                goBack()
+            }
+            .buttonStyle(.plain)
+            .appFont(.bodySemibold)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("Back")
+        }
     }
 }

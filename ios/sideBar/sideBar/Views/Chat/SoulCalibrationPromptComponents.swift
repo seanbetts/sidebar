@@ -185,6 +185,38 @@ struct FlexibleChipLayout<Content: View>: View {
     }
 }
 
+struct SoulCalibrationNameBadge<CenterContent: View>: View {
+    @ViewBuilder let centerContent: () -> CenterContent
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text("HELLO, I'M")
+                .appFont(.captionSemibold)
+                .foregroundColor(.white)
+                .tracking(1.2)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.vertical, DesignTokens.Spacing.md)
+                .background(Color.black)
+
+            centerContent()
+                .frame(maxWidth: .infinity, minHeight: 80)
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.vertical, DesignTokens.Spacing.sm)
+                .background(Color.white)
+
+            Rectangle()
+                .fill(Color.black)
+                .frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.xl, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xl, style: .continuous)
+                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        )
+    }
+}
+
 struct ChipFlowLayout: Layout {
     let itemSpacing: CGFloat
     let lineSpacing: CGFloat
