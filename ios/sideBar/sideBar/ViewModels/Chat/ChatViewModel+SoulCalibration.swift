@@ -63,9 +63,9 @@ extension ChatViewModel {
                 answer: answer,
                 using: onboardingAPI
             )
-            applySoulCalibration(response: response)
             if shouldGenerateInitialSoulCalibrationName(after: response) {
                 do {
+                    applyAssistantSettingsUpdate(from: response)
                     let nameResponse = try await regenerateSoulCalibrationNameWithRecovery(
                         using: onboardingAPI
                     )
@@ -73,6 +73,8 @@ extension ChatViewModel {
                 } catch {
                     soulCalibrationErrorMessage = ErrorMapping.message(for: error)
                 }
+            } else {
+                applySoulCalibration(response: response)
             }
             isSubmittingSoulCalibration = false
             await submitPendingSoulCalibrationSubmissionIfNeeded()
@@ -130,6 +132,12 @@ extension ChatViewModel {
             soulCalibrationConfirmationText = nil
         }
 
+        applyAssistantSettingsUpdate(from: response)
+
+        requestOnboardingStateRefresh()
+    }
+
+    private func applyAssistantSettingsUpdate(from response: OnboardingCalibrationActionResponse) {
         if response.assistantIdentity != nil || response.assistantSoul != nil {
             onAssistantSettingsUpdated?(
                 AssistantSettingsRealtimeUpdate(
@@ -141,8 +149,6 @@ extension ChatViewModel {
                 )
             )
         }
-
-        requestOnboardingStateRefresh()
     }
 
     private func shouldGenerateInitialSoulCalibrationName(
@@ -331,7 +337,7 @@ extension ChatViewModel {
         after error: Error,
         currentState: OnboardingState
     ) -> Bool {
-        isRetryableSoulCalibrationError(error)
+        (isRetryableSoulCalibrationError(error) || isSoulCalibrationConflictError(error))
             && currentState.currentOnboardingStep == .soulCalibration
             && currentState.calibration.status == .awaitingNameAcceptance
             && !hasNonEmptySoulCalibrationText(currentState.calibration.proposedName)
@@ -365,8 +371,9 @@ extension ChatViewModel {
         }
 
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.hasPrefix("Expected prompt ")
-            && trimmed.split(separator: " ").count >= 3
+        return (trimmed.hasPrefix("Expected prompt ")
+            && trimmed.split(separator: " ").count >= 3)
+            || trimmed == "Calibration is not awaiting name acceptance"
     }
 
     private func calibrationPromptIndex(_ prompt: OnboardingCalibrationPrompt) -> Int {

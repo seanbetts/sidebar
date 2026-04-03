@@ -32,6 +32,7 @@ final class MockOnboardingAPI: OnboardingProviding {
             confirmationText: nil
         )
     )
+    var regenerateCalibrationNameResults: [Result<OnboardingCalibrationActionResponse, Error>] = []
     var acceptCalibrationNameResult: Result<OnboardingCalibrationActionResponse, Error> = .success(
         OnboardingCalibrationActionResponse(
             state: .default,
@@ -79,107 +80,15 @@ final class MockOnboardingAPI: OnboardingProviding {
 
     func regenerateCalibrationName() async throws -> OnboardingCalibrationActionResponse {
         regenerateCalibrationNameCallCount += 1
+        if !regenerateCalibrationNameResults.isEmpty {
+            return try regenerateCalibrationNameResults.removeFirst().get()
+        }
         return try regenerateCalibrationNameResult.get()
     }
 
     func acceptCalibrationName() async throws -> OnboardingCalibrationActionResponse {
         acceptCalibrationNameCallCount += 1
         return try acceptCalibrationNameResult.get()
-    }
-}
-
-final class DelayedOnboardingAPI: OnboardingProviding {
-    private let base = MockOnboardingAPI()
-    var getResult: Result<OnboardingState, Error> {
-        get { base.getResult }
-        set { base.getResult = newValue }
-    }
-    var updateResult: Result<OnboardingState, Error> {
-        get { base.updateResult }
-        set { base.updateResult = newValue }
-    }
-    var submitCalibrationAnswerResult: Result<OnboardingCalibrationActionResponse, Error> {
-        get { base.submitCalibrationAnswerResult }
-        set { base.submitCalibrationAnswerResult = newValue }
-    }
-    var submitCalibrationAnswerResults: [Result<OnboardingCalibrationActionResponse, Error>] {
-        get { base.submitCalibrationAnswerResults }
-        set { base.submitCalibrationAnswerResults = newValue }
-    }
-    var regenerateCalibrationNameResult: Result<OnboardingCalibrationActionResponse, Error> {
-        get { base.regenerateCalibrationNameResult }
-        set { base.regenerateCalibrationNameResult = newValue }
-    }
-    var acceptCalibrationNameResult: Result<OnboardingCalibrationActionResponse, Error> {
-        get { base.acceptCalibrationNameResult }
-        set { base.acceptCalibrationNameResult = newValue }
-    }
-    var updateDelayNanoseconds: UInt64 = 0
-    var submitDelayNanoseconds: UInt64 = 0
-    var shouldSuspendSubmitUntilResumed: Bool = false
-    var onUpdateStarted: (() -> Void)?
-    var onUpdateCompleted: (() -> Void)?
-    var onSubmitStarted: (() -> Void)?
-    var onSubmitCompleted: (() -> Void)?
-    private var submitContinuation: CheckedContinuation<Void, Never>?
-    private var submitResumeRequested = false
-
-    private(set) var updates: [MockOnboardingAPI.RecordedUpdate] = []
-    var submittedCalibrationAnswers: [(prompt: OnboardingCalibrationPrompt, answer: OnboardingCalibrationAnswer)] {
-        base.submittedCalibrationAnswers
-    }
-
-    func resumeSubmit() {
-        if let submitContinuation {
-            self.submitContinuation = nil
-            submitContinuation.resume()
-            return
-        }
-        submitResumeRequested = true
-    }
-
-    func getOnboarding() async throws -> OnboardingState {
-        try await base.getOnboarding()
-    }
-
-    func updateOnboarding(_ update: OnboardingUpdate) async throws -> OnboardingState {
-        onUpdateStarted?()
-        if updateDelayNanoseconds > 0 {
-            try await Task.sleep(nanoseconds: updateDelayNanoseconds)
-        }
-        let state = try await base.updateOnboarding(update)
-        updates = base.updates
-        onUpdateCompleted?()
-        return state
-    }
-
-    func submitCalibrationAnswer(
-        _ prompt: OnboardingCalibrationPrompt,
-        answer: OnboardingCalibrationAnswer
-    ) async throws -> OnboardingCalibrationActionResponse {
-        onSubmitStarted?()
-        if submitDelayNanoseconds > 0 {
-            try await Task.sleep(nanoseconds: submitDelayNanoseconds)
-        }
-        if shouldSuspendSubmitUntilResumed {
-            if submitResumeRequested {
-                submitResumeRequested = false
-            } else {
-                await withCheckedContinuation { continuation in
-                    submitContinuation = continuation
-                }
-            }
-        }
-        defer { onSubmitCompleted?() }
-        return try await base.submitCalibrationAnswer(prompt, answer: answer)
-    }
-
-    func regenerateCalibrationName() async throws -> OnboardingCalibrationActionResponse {
-        return try await base.regenerateCalibrationName()
-    }
-
-    func acceptCalibrationName() async throws -> OnboardingCalibrationActionResponse {
-        return try await base.acceptCalibrationName()
     }
 }
 
