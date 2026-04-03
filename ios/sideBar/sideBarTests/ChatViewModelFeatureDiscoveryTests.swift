@@ -77,7 +77,7 @@ extension ChatViewModelTests {
         let sentRequest = try XCTUnwrap(streamClient.requests.first)
         XCTAssertEqual(
             sentRequest.message,
-            "Help me get started with notes in sideBar. Write me a short guided intro as a note to demonstrate how notes work, showing off and explaining all the features."
+            OnboardingDiscoveryFeature.notes.kickoffPrompt
         )
         XCTAssertEqual(viewModel.selectedConversationId, created.id)
         XCTAssertEqual(viewModel.messages.first?.role, .user)
@@ -127,7 +127,7 @@ extension ChatViewModelTests {
         XCTAssertEqual(sentRequest.conversationId, created.id)
         XCTAssertEqual(
             sentRequest.message,
-            "Help me get started with notes in sideBar. Write me a short guided intro as a note to demonstrate how notes work, showing off and explaining all the features."
+            OnboardingDiscoveryFeature.notes.kickoffPrompt
         )
         XCTAssertEqual(viewModel.messages.first?.role, .user)
         XCTAssertEqual(viewModel.messages.first?.content, sentRequest.message)

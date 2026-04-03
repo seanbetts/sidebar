@@ -376,6 +376,9 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
     }
 
+}
+
+extension SettingsViewModelOnboardingTests {
     func testMarkFeatureDiscoverySeenDismissesOptimisticallyBeforeAPICompletes() async {
         let onboardingAPI = DelayedOnboardingAPI()
         onboardingAPI.getResult = .success(

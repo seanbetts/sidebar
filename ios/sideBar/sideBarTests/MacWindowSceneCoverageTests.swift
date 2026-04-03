@@ -478,7 +478,6 @@ private func onboardingSheetCanvasSource(
         throw error
     }
 }
-
 private func macMainWindowSceneBridgeSource(
     file: StaticString = #filePath,
     line: UInt = #line

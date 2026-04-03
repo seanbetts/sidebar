@@ -125,22 +125,29 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
     func testChatComposerIsDisabledDuringProviderRecovery() throws {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let expectedComposerGate =
+            "privatevarisComposerEnabled:Bool{" +
+            "environment.isNetworkAvailable&&" +
+            "environment.settingsViewModel.signedInOnboardingRecoveryState!=.providerRecovery&&" +
+            "environment.settingsViewModel.signedInOnboardingRecoveryState!=.soulCalibration" +
+            "}"
 
         XCTAssertTrue(
-            normalized.contains(
-                "privatevarisComposerEnabled:Bool{environment.isNetworkAvailable&&environment.settingsViewModel.signedInOnboardingRecoveryState!=.providerRecovery&&environment.settingsViewModel.signedInOnboardingRecoveryState!=.soulCalibration}"
-            )
+            normalized.contains(expectedComposerGate)
         )
     }
 
     func testFeatureDiscoveryRemainsHiddenDuringSoulCalibration() throws {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let expectedVisibilityGate =
+            "privatevarcanShowFeatureDiscovery:Bool{" +
+            "environment.settingsViewModel.signedInOnboardingRecoveryState==.featureDiscovery&&" +
+            "viewModel.canShowFeatureDiscovery" +
+            "}"
 
         XCTAssertTrue(
-            normalized.contains(
-                "privatevarcanShowFeatureDiscovery:Bool{environment.settingsViewModel.signedInOnboardingRecoveryState==.featureDiscovery&&viewModel.canShowFeatureDiscovery}"
-            )
+            normalized.contains(expectedVisibilityGate)
         )
     }
 
