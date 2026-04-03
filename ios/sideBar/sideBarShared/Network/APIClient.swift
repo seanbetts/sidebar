@@ -49,9 +49,16 @@ public final class APIClient {
         _ path: String,
         method: String = "GET",
         body: Encodable? = nil,
-        headers: [String: String] = [:]
+        headers: [String: String] = [:],
+        timeoutInterval: TimeInterval? = nil
     ) async throws -> T {
-        let request = try buildRequest(path, method: method, body: body, headers: headers)
+        let request = try buildRequest(
+            path,
+            method: method,
+            body: body,
+            headers: headers,
+            timeoutInterval: timeoutInterval
+        )
         let (data, _) = try await performRequest(request)
         do {
             let decoder = Self.makeDecoder()
@@ -66,86 +73,38 @@ public final class APIClient {
         _ path: String,
         method: String = "POST",
         body: Encodable? = nil,
-        headers: [String: String] = [:]
+        headers: [String: String] = [:],
+        timeoutInterval: TimeInterval? = nil
     ) async throws {
-        let request = try buildRequest(path, method: method, body: body, headers: headers)
+        let request = try buildRequest(
+            path,
+            method: method,
+            body: body,
+            headers: headers,
+            timeoutInterval: timeoutInterval
+        )
         _ = try await performRequest(request)
     }
 
     public func requestData(
         _ path: String,
         method: String = "GET",
-        headers: [String: String] = [:]
+        headers: [String: String] = [:],
+        timeoutInterval: TimeInterval? = nil
     ) async throws -> Data {
         var requestHeaders = headers
         if requestHeaders["Accept"] == nil {
             requestHeaders["Accept"] = "*/*"
         }
-        let request = try buildRequest(path, method: method, body: nil, headers: requestHeaders)
+        let request = try buildRequest(
+            path,
+            method: method,
+            body: nil,
+            headers: requestHeaders,
+            timeoutInterval: timeoutInterval
+        )
         let (data, _) = try await performRequest(request)
         return data
-    }
-
-    private func buildRequest(
-        _ path: String,
-        method: String,
-        body: Encodable?,
-        headers: [String: String]
-    ) throws -> URLRequest {
-        let url: URL
-        if let queryIndex = path.firstIndex(of: "?") {
-            let pathPart = String(path[..<queryIndex])
-            let queryPart = String(path[path.index(after: queryIndex)...])
-            guard var components = URLComponents(url: config.baseUrl, resolvingAgainstBaseURL: false) else {
-                throw APIClientError.invalidUrl
-            }
-            let trimmedPath = pathPart.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            let basePath = components.path
-            if basePath.isEmpty {
-                components.path = "/\(trimmedPath)"
-            } else if basePath.hasSuffix("/") {
-                components.path = "\(basePath)\(trimmedPath)"
-            } else {
-                components.path = "\(basePath)/\(trimmedPath)"
-            }
-            if let existingQuery = components.percentEncodedQuery, !existingQuery.isEmpty {
-                components.percentEncodedQuery = "\(existingQuery)&\(queryPart)"
-            } else {
-                components.percentEncodedQuery = queryPart
-            }
-            guard let composedUrl = components.url else {
-                throw APIClientError.invalidUrl
-            }
-            url = composedUrl
-        } else {
-            url = config.baseUrl.appendingPathComponent(path)
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = method
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        applyAppVersionHeader(to: &request)
-        if let token = config.accessTokenProvider() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        for (key, value) in headers {
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-        if let body {
-            if request.value(forHTTPHeaderField: "Content-Type") == nil {
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            }
-            let encoder = Self.makeEncoder()
-            request.httpBody = try encoder.encode(AnyEncodable(body))
-        }
-        return request
-    }
-
-    private func applyAppVersionHeader(to request: inout URLRequest) {
-        guard request.value(forHTTPHeaderField: AppVersionHeader.fieldName) == nil,
-              let appVersion = AppVersionHeader.currentValue() else {
-            return
-        }
-        request.setValue(appVersion, forHTTPHeaderField: AppVersionHeader.fieldName)
     }
 
     private func performRequest(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {

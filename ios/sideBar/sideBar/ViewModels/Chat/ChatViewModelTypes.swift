@@ -170,6 +170,7 @@ struct ChatUICoordinator {
     let requestContextProvider: (() -> ChatRequestContext?)?
     let attachmentPollingInitialDelayNanoseconds: UInt64
     let attachmentPollingIntervalNanoseconds: UInt64
+    let soulCalibrationRetryBackoffNanoseconds: UInt64
     let typingRevealEnabled: Bool
     let typingRevealFrameIntervalNanoseconds: UInt64
     let typingRevealMinimumStep: Int
@@ -186,6 +187,7 @@ struct ChatUICoordinator {
         requestContextProvider: (() -> ChatRequestContext?)? = nil,
         attachmentPollingInitialDelayNanoseconds: UInt64 = 1_500_000_000,
         attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000,
+        soulCalibrationRetryBackoffNanoseconds: UInt64 = 1_000_000_000,
         typingRevealEnabled: Bool = true,
         typingRevealFrameIntervalNanoseconds: UInt64 = 33_000_000,
         typingRevealMinimumStep: Int = 1,
@@ -201,6 +203,7 @@ struct ChatUICoordinator {
         self.requestContextProvider = requestContextProvider
         self.attachmentPollingInitialDelayNanoseconds = attachmentPollingInitialDelayNanoseconds
         self.attachmentPollingIntervalNanoseconds = attachmentPollingIntervalNanoseconds
+        self.soulCalibrationRetryBackoffNanoseconds = soulCalibrationRetryBackoffNanoseconds
         self.typingRevealEnabled = typingRevealEnabled
         self.typingRevealFrameIntervalNanoseconds = typingRevealFrameIntervalNanoseconds
         self.typingRevealMinimumStep = typingRevealMinimumStep

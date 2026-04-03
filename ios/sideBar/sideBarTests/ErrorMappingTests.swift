@@ -235,6 +235,11 @@ final class ErrorMappingTests: XCTestCase {
         XCTAssertEqual(message, "Network connection failed. Please check your internet.")
     }
 
+    func testMapsServiceUnavailableStatusToBusyServerMessage() {
+        let message = ErrorMapping.message(for: APIClientError.requestFailed(503))
+        XCTAssertEqual(message, "Server is busy right now. Please try again.")
+    }
+
     func testMapsBadRequestStatusToAttachmentGuidance() {
         let message = ErrorMapping.message(for: APIClientError.requestFailed(400))
         XCTAssertEqual(
@@ -266,5 +271,12 @@ final class ErrorMappingTests: XCTestCase {
             message,
             "I got out of sync with your setup. Please go back and try again."
         )
+    }
+
+    func testMapsDatabaseRequestTimeoutToBusyServerMessage() {
+        let message = ErrorMapping.message(
+            for: APIClientError.apiError("Database request timed out")
+        )
+        XCTAssertEqual(message, "Server is busy right now. Please try again.")
     }
 }

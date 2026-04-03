@@ -168,6 +168,7 @@ public enum ErrorMapping {
     private static func messageForAPIErrorMessage(_ message: String) -> String {
         if isAuthenticationErrorMessage(message) { return "Session expired. Please sign in again." }
         if isInvalidProviderAPIKeyMessage(message) { return "That API key doesn't look valid for this provider." }
+        if isDatabaseTimeoutMessage(message) { return "Server is busy right now. Please try again." }
         if isCalibrationPromptConflictMessage(message) { return "I got out of sync with your setup. Please go back and try again." }
         if isPromptTooLargeMessage(message) {
             return "Attachment and context are too large for one message. Remove some attachments or close open items and try again."
@@ -179,6 +180,8 @@ public enum ErrorMapping {
         switch status {
         case 408, 504:
             return "Network connection failed. Please check your internet."
+        case 503:
+            return "Server is busy right now. Please try again."
         case 400:
             return "Request was rejected by the server. If this includes attachments, remove one and try again."
         case 401:
@@ -231,6 +234,10 @@ public enum ErrorMapping {
 
     static func isInvalidProviderAPIKeyMessage(_ message: String) -> Bool {
         message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "invalid provider api key"
+    }
+
+    private static func isDatabaseTimeoutMessage(_ message: String) -> Bool {
+        message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "database request timed out"
     }
 
     private static func isCalibrationPromptConflictMessage(_ message: String) -> Bool {

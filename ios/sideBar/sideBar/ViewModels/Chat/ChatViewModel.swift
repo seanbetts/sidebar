@@ -154,6 +154,7 @@ private final class ChatViewModelTeardownBag {
     var onOpenNoteRequested: ((String) -> Void)? { ui.onOpenNoteRequested }
     var requestContextProvider: (() -> ChatRequestContext?)? { ui.requestContextProvider }
     var workspaceActionDispatcher: ((WorkspaceAction) -> Void)?
+    var soulCalibrationRetryBackoffNanoseconds: UInt64 { ui.soulCalibrationRetryBackoffNanoseconds }
     private let teardownBag = ChatViewModelTeardownBag()
 
     var currentStreamMessageId: String?

@@ -15,6 +15,8 @@ public protocol OnboardingProviding {
 
 /// API client for backend onboarding endpoints.
 public struct OnboardingAPI {
+    static let calibrationRequestTimeoutInterval: TimeInterval = 90
+
     private let client: APIClient
 
     public init(client: APIClient) {
@@ -38,7 +40,8 @@ extension OnboardingAPI: OnboardingProviding {
         try await client.request(
             "onboarding/calibration/respond",
             method: "POST",
-            body: CalibrationRespondRequest(prompt: prompt, answer: answer.requestValue)
+            body: CalibrationRespondRequest(prompt: prompt, answer: answer.requestValue),
+            timeoutInterval: Self.calibrationRequestTimeoutInterval
         )
     }
 
@@ -46,7 +49,8 @@ extension OnboardingAPI: OnboardingProviding {
         try await client.request(
             "onboarding/calibration/name/regenerate",
             method: "POST",
-            body: CalibrationNameActionRequest()
+            body: CalibrationNameActionRequest(),
+            timeoutInterval: Self.calibrationRequestTimeoutInterval
         )
     }
 
@@ -54,7 +58,8 @@ extension OnboardingAPI: OnboardingProviding {
         try await client.request(
             "onboarding/calibration/name/accept",
             method: "POST",
-            body: CalibrationNameActionRequest()
+            body: CalibrationNameActionRequest(),
+            timeoutInterval: Self.calibrationRequestTimeoutInterval
         )
     }
 }

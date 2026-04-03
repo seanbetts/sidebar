@@ -42,11 +42,13 @@ final class MockOnboardingAPI: OnboardingProviding {
         )
     )
     private(set) var updates: [RecordedUpdate] = []
+    private(set) var getOnboardingCallCount = 0
     private(set) var submittedCalibrationAnswers: [(prompt: OnboardingCalibrationPrompt, answer: OnboardingCalibrationAnswer)] = []
     private(set) var regenerateCalibrationNameCallCount = 0
     private(set) var acceptCalibrationNameCallCount = 0
 
     func getOnboarding() async throws -> OnboardingState {
+        getOnboardingCallCount += 1
         if !getResults.isEmpty {
             return try getResults.removeFirst().get()
         }

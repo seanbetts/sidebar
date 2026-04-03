@@ -111,6 +111,7 @@ final class OnboardingAPITests: XCTestCase {
             XCTAssertTrue(
                 request.url?.absoluteString.contains("onboarding/calibration/respond") == true
             )
+            XCTAssertEqual(request.timeoutInterval, OnboardingAPI.calibrationRequestTimeoutInterval)
             let bodyData = try XCTUnwrap(request.httpBodyData())
             let body = try XCTUnwrap(
                 JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
@@ -144,6 +145,7 @@ final class OnboardingAPITests: XCTestCase {
             XCTAssertTrue(
                 request.url?.absoluteString.contains("onboarding/calibration/name/regenerate") == true
             )
+            XCTAssertEqual(request.timeoutInterval, OnboardingAPI.calibrationRequestTimeoutInterval)
             let bodyData = try XCTUnwrap(request.httpBodyData())
             let body = try XCTUnwrap(
                 JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
@@ -171,6 +173,7 @@ final class OnboardingAPITests: XCTestCase {
             XCTAssertTrue(
                 request.url?.absoluteString.contains("onboarding/calibration/name/accept") == true
             )
+            XCTAssertEqual(request.timeoutInterval, OnboardingAPI.calibrationRequestTimeoutInterval)
             let bodyData = try XCTUnwrap(request.httpBodyData())
             let body = try XCTUnwrap(
                 JSONSerialization.jsonObject(with: bodyData) as? [String: Any]

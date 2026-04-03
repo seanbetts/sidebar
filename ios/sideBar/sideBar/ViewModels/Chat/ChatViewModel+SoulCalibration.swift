@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 extension ChatViewModel {
     public var canShowFeatureDiscovery: Bool {
@@ -57,14 +58,17 @@ extension ChatViewModel {
         soulCalibrationErrorMessage = nil
 
         do {
-            let response = try await onboardingAPI.submitCalibrationAnswer(
+            let response = try await submitSoulCalibrationAnswerWithRecovery(
                 prompt,
-                answer: answer
+                answer: answer,
+                using: onboardingAPI
             )
             applySoulCalibration(response: response)
             if shouldGenerateInitialSoulCalibrationName(after: response) {
                 do {
-                    let nameResponse = try await onboardingAPI.regenerateCalibrationName()
+                    let nameResponse = try await regenerateSoulCalibrationNameWithRecovery(
+                        using: onboardingAPI
+                    )
                     applySoulCalibration(response: nameResponse)
                 } catch {
                     soulCalibrationErrorMessage = ErrorMapping.message(for: error)
@@ -90,7 +94,9 @@ extension ChatViewModel {
         defer { isSubmittingSoulCalibration = false }
 
         do {
-            let response = try await onboardingAPI.regenerateCalibrationName()
+            let response = try await regenerateSoulCalibrationNameWithRecovery(
+                using: onboardingAPI
+            )
             applySoulCalibration(response: response)
         } catch {
             soulCalibrationErrorMessage = ErrorMapping.message(for: error)
@@ -144,6 +150,248 @@ extension ChatViewModel {
     ) -> Bool {
         response.calibration.status == .awaitingNameAcceptance
             && (response.calibration.proposedName?.isEmpty ?? true)
+    }
+
+    private func submitSoulCalibrationAnswerWithRecovery(
+        _ prompt: OnboardingCalibrationPrompt,
+        answer: OnboardingCalibrationAnswer,
+        using onboardingAPI: any OnboardingProviding
+    ) async throws -> OnboardingCalibrationActionResponse {
+        do {
+            return try await onboardingAPI.submitCalibrationAnswer(prompt, answer: answer)
+        } catch {
+            if let onboardingState = try await recoverCalibrationState(
+                after: error,
+                using: onboardingAPI
+            ) {
+                if let recovered = recoveredSubmitResponse(
+                    from: onboardingState,
+                    prompt: prompt
+                ) {
+                    return recovered
+                }
+
+                if shouldRetrySoulCalibrationSubmit(
+                    after: error,
+                    currentState: onboardingState,
+                    prompt: prompt
+                ) {
+                    try await sleepBeforeSoulCalibrationRetry()
+                    do {
+                        return try await onboardingAPI.submitCalibrationAnswer(prompt, answer: answer)
+                    } catch {
+                        if let retryState = try await recoverCalibrationState(
+                            after: error,
+                            using: onboardingAPI
+                        ),
+                           let recovered = recoveredSubmitResponse(
+                               from: retryState,
+                               prompt: prompt
+                           ) {
+                            return recovered
+                        }
+                        throw error
+                    }
+                }
+            }
+            throw error
+        }
+    }
+
+    private func regenerateSoulCalibrationNameWithRecovery(
+        using onboardingAPI: any OnboardingProviding
+    ) async throws -> OnboardingCalibrationActionResponse {
+        do {
+            return try await onboardingAPI.regenerateCalibrationName()
+        } catch {
+            if let onboardingState = try await recoverCalibrationState(
+                after: error,
+                using: onboardingAPI
+            ) {
+                if let recovered = recoveredNameRegenerationResponse(from: onboardingState) {
+                    return recovered
+                }
+
+                if shouldRetrySoulCalibrationNameRegeneration(
+                    after: error,
+                    currentState: onboardingState
+                ) {
+                    try await sleepBeforeSoulCalibrationRetry()
+                    do {
+                        return try await onboardingAPI.regenerateCalibrationName()
+                    } catch {
+                        if let retryState = try await recoverCalibrationState(
+                            after: error,
+                            using: onboardingAPI
+                        ),
+                           let recovered = recoveredNameRegenerationResponse(from: retryState) {
+                            return recovered
+                        }
+                        throw error
+                    }
+                }
+            }
+            throw error
+        }
+    }
+
+    private func recoverCalibrationState(
+        after error: Error,
+        using onboardingAPI: any OnboardingProviding
+    ) async throws -> OnboardingState? {
+        guard shouldCheckCalibrationStateAfterError(error) else {
+            return nil
+        }
+        return try await onboardingAPI.getOnboarding()
+    }
+
+    private func recoveredSubmitResponse(
+        from onboardingState: OnboardingState,
+        prompt: OnboardingCalibrationPrompt
+    ) -> OnboardingCalibrationActionResponse? {
+        if onboardingState.currentOnboardingStep != .soulCalibration {
+            guard onboardingState.currentOnboardingStep == .featureDiscovery
+                || onboardingState.currentOnboardingStep == .completed
+                || onboardingState.calibration.status == .completed else {
+                return nil
+            }
+            return synthesizedCalibrationResponse(from: onboardingState)
+        }
+
+        switch onboardingState.calibration.status {
+        case .awaitingNameAcceptance, .completed:
+            return synthesizedCalibrationResponse(from: onboardingState)
+        case .inProgress:
+            guard calibrationPromptIndex(onboardingState.calibration.currentPrompt)
+                > calibrationPromptIndex(prompt) else {
+                return nil
+            }
+            return synthesizedCalibrationResponse(from: onboardingState)
+        case .notStarted:
+            return nil
+        }
+    }
+
+    private func recoveredNameRegenerationResponse(
+        from onboardingState: OnboardingState
+    ) -> OnboardingCalibrationActionResponse? {
+        if onboardingState.currentOnboardingStep != .soulCalibration {
+            guard onboardingState.currentOnboardingStep == .featureDiscovery
+                || onboardingState.currentOnboardingStep == .completed
+                || onboardingState.calibration.status == .completed else {
+                return nil
+            }
+            return synthesizedCalibrationResponse(from: onboardingState)
+        }
+
+        if onboardingState.calibration.status == .completed {
+            return synthesizedCalibrationResponse(from: onboardingState)
+        }
+
+        guard onboardingState.calibration.status == .awaitingNameAcceptance,
+              hasNonEmptySoulCalibrationText(onboardingState.calibration.proposedName) else {
+            return nil
+        }
+
+        return synthesizedCalibrationResponse(
+            from: onboardingState,
+            confirmationText: "How about \(onboardingState.calibration.proposedName ?? "")?"
+        )
+    }
+
+    private func synthesizedCalibrationResponse(
+        from onboardingState: OnboardingState,
+        confirmationText: String? = nil
+    ) -> OnboardingCalibrationActionResponse {
+        OnboardingCalibrationActionResponse(
+            state: onboardingState,
+            calibration: onboardingState.calibration,
+            assistantIdentity: nil,
+            assistantSoul: nil,
+            confirmationText: confirmationText
+        )
+    }
+
+    private func shouldCheckCalibrationStateAfterError(_ error: Error) -> Bool {
+        isSoulCalibrationConflictError(error) || isRetryableSoulCalibrationError(error)
+    }
+
+    private func shouldRetrySoulCalibrationSubmit(
+        after error: Error,
+        currentState: OnboardingState,
+        prompt: OnboardingCalibrationPrompt
+    ) -> Bool {
+        isRetryableSoulCalibrationError(error)
+            && currentState.currentOnboardingStep == .soulCalibration
+            && currentState.calibration.status == .inProgress
+            && currentState.calibration.currentPrompt == prompt
+    }
+
+    private func shouldRetrySoulCalibrationNameRegeneration(
+        after error: Error,
+        currentState: OnboardingState
+    ) -> Bool {
+        isRetryableSoulCalibrationError(error)
+            && currentState.currentOnboardingStep == .soulCalibration
+            && currentState.calibration.status == .awaitingNameAcceptance
+            && !hasNonEmptySoulCalibrationText(currentState.calibration.proposedName)
+    }
+
+    private func isRetryableSoulCalibrationError(_ error: Error) -> Bool {
+        if URLRequestErrorClassifier.category(for: error) == .timeout {
+            return true
+        }
+
+        guard let apiError = error as? APIClientError else {
+            return false
+        }
+
+        switch apiError {
+        case .apiError(let message):
+            let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return trimmed == "database request timed out"
+        case .requestFailed(let status):
+            return [408, 429, 502, 503, 504].contains(status)
+        case .missingToken, .decodingFailed, .invalidUrl, .unknown:
+            return false
+        @unknown default:
+            return false
+        }
+    }
+
+    private func isSoulCalibrationConflictError(_ error: Error) -> Bool {
+        guard case .apiError(let message) = error as? APIClientError else {
+            return false
+        }
+
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("Expected prompt ")
+            && trimmed.split(separator: " ").count >= 3
+    }
+
+    private func calibrationPromptIndex(_ prompt: OnboardingCalibrationPrompt) -> Int {
+        switch prompt {
+        case .primaryGoal:
+            return 0
+        case .workingRelationship:
+            return 1
+        case .tonePreferences:
+            return 2
+        }
+    }
+
+    private func hasNonEmptySoulCalibrationText(_ value: String?) -> Bool {
+        guard let value else {
+            return false
+        }
+        return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func sleepBeforeSoulCalibrationRetry() async throws {
+        guard soulCalibrationRetryBackoffNanoseconds > 0 else {
+            return
+        }
+        try await Task.sleep(nanoseconds: soulCalibrationRetryBackoffNanoseconds)
     }
 
     private func submitPendingSoulCalibrationSubmissionIfNeeded() async {

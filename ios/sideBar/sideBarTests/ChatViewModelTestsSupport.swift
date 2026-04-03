@@ -181,7 +181,8 @@ class ChatViewModelTestCase: XCTestCase {
         requestContextProvider: (() -> ChatRequestContext?)? = nil,
         workspaceActionDispatcher: ((WorkspaceAction) -> Void)? = nil,
         attachmentPollingInitialDelayNanoseconds: UInt64 = 1_500_000_000,
-        attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000
+        attachmentPollingIntervalNanoseconds: UInt64 = 5_000_000_000,
+        soulCalibrationRetryBackoffNanoseconds: UInt64 = 1_000_000_000
     ) -> ChatViewModel {
         let chatAPI = ChatAPI(client: Self.sharedAPIClient)
         let themeManager = Self.sharedThemeManager
@@ -216,7 +217,8 @@ class ChatViewModelTestCase: XCTestCase {
                 onOpenNoteRequested: onOpenNoteRequested,
                 requestContextProvider: requestContextProvider,
                 attachmentPollingInitialDelayNanoseconds: attachmentPollingInitialDelayNanoseconds,
-                attachmentPollingIntervalNanoseconds: attachmentPollingIntervalNanoseconds
+                attachmentPollingIntervalNanoseconds: attachmentPollingIntervalNanoseconds,
+                soulCalibrationRetryBackoffNanoseconds: soulCalibrationRetryBackoffNanoseconds
             )
         )
         viewModel.workspaceActionDispatcher = workspaceActionDispatcher

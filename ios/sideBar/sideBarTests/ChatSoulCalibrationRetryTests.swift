@@ -109,6 +109,143 @@ final class ChatSoulCalibrationRetryTests: ChatViewModelTestCase {
         )
     }
 
+    func testSubmitSoulCalibrationToneChoicesRecoversFromTimeoutWhenServerAlreadyAdvanced() async throws {
+        let cache = TestCacheClient()
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.submitCalibrationAnswerResult = .failure(URLError(.timedOut))
+        onboardingAPI.getResult = .success(
+            soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .awaitingNameAcceptance,
+                primaryGoal: "life_admin",
+                workingRelationship: "take_initiative_with_me",
+                tonePreferences: "warm,serious,concise,casual,supportive"
+            )
+        )
+        onboardingAPI.regenerateCalibrationNameResult = .success(
+            awaitingNameResponse(
+                proposedName: "Navigator",
+                name: "Navigator",
+                confirmationText: "How about Navigator?"
+            )
+        )
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            onboardingAPI: onboardingAPI,
+            soulCalibrationRetryBackoffNanoseconds: 0
+        )
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .inProgress,
+                primaryGoal: "life_admin",
+                workingRelationship: "take_initiative_with_me"
+            )
+        )
+
+        await viewModel.submitSoulCalibrationAnswer(
+            prompt: .tonePreferences,
+            .multipleChoice(["warm", "serious", "concise", "casual", "supportive"])
+        )
+
+        XCTAssertEqual(onboardingAPI.submittedCalibrationAnswers.count, 1)
+        XCTAssertEqual(onboardingAPI.getOnboardingCallCount, 1)
+        XCTAssertEqual(onboardingAPI.regenerateCalibrationNameCallCount, 1)
+        XCTAssertNil(viewModel.soulCalibrationErrorMessage)
+        XCTAssertEqual(viewModel.soulCalibrationState?.status, .awaitingNameAcceptance)
+        XCTAssertEqual(viewModel.soulCalibrationState?.proposedName, "Navigator")
+    }
+
+    func testSubmitSoulCalibrationToneChoicesRetriesOnceAfterTimeoutWhenServerStateDidNotAdvance() async throws {
+        let cache = TestCacheClient()
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.submitCalibrationAnswerResults = [
+            .failure(URLError(.timedOut)),
+            .success(awaitingNameResponse())
+        ]
+        onboardingAPI.getResult = .success(
+            soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .inProgress,
+                primaryGoal: "life_admin",
+                workingRelationship: "take_initiative_with_me"
+            )
+        )
+        onboardingAPI.regenerateCalibrationNameResult = .success(
+            awaitingNameResponse(
+                proposedName: "Navigator",
+                name: "Navigator",
+                confirmationText: "How about Navigator?"
+            )
+        )
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            onboardingAPI: onboardingAPI,
+            soulCalibrationRetryBackoffNanoseconds: 0
+        )
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .inProgress,
+                primaryGoal: "life_admin",
+                workingRelationship: "take_initiative_with_me"
+            )
+        )
+
+        await viewModel.submitSoulCalibrationAnswer(
+            prompt: .tonePreferences,
+            .multipleChoice(["warm", "serious", "concise", "casual", "supportive"])
+        )
+
+        XCTAssertEqual(onboardingAPI.submittedCalibrationAnswers.count, 2)
+        XCTAssertEqual(onboardingAPI.getOnboardingCallCount, 1)
+        XCTAssertEqual(onboardingAPI.regenerateCalibrationNameCallCount, 1)
+        XCTAssertNil(viewModel.soulCalibrationErrorMessage)
+        XCTAssertEqual(viewModel.soulCalibrationState?.status, .awaitingNameAcceptance)
+        XCTAssertEqual(viewModel.soulCalibrationState?.proposedName, "Navigator")
+    }
+
+    func testRegenerateSoulCalibrationNameRecoversFromTimeoutWhenServerAlreadyProducedName() async throws {
+        let cache = TestCacheClient()
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.regenerateCalibrationNameResult = .failure(URLError(.timedOut))
+        onboardingAPI.getResult = .success(
+            soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .awaitingNameAcceptance,
+                primaryGoal: "life_admin",
+                workingRelationship: "take_initiative_with_me",
+                tonePreferences: "warm,serious,concise,casual,supportive",
+                proposedName: "Navigator"
+            )
+        )
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            onboardingAPI: onboardingAPI,
+            soulCalibrationRetryBackoffNanoseconds: 0
+        )
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .awaitingNameAcceptance,
+                primaryGoal: "life_admin",
+                workingRelationship: "take_initiative_with_me",
+                tonePreferences: "warm,serious,concise,casual,supportive"
+            )
+        )
+
+        await viewModel.regenerateSoulCalibrationName()
+
+        XCTAssertEqual(onboardingAPI.regenerateCalibrationNameCallCount, 1)
+        XCTAssertEqual(onboardingAPI.getOnboardingCallCount, 1)
+        XCTAssertNil(viewModel.soulCalibrationErrorMessage)
+        XCTAssertEqual(viewModel.soulCalibrationState?.status, .awaitingNameAcceptance)
+        XCTAssertEqual(viewModel.soulCalibrationState?.proposedName, "Navigator")
+    }
+
     private func soulCalibrationOnboardingState(
         currentPrompt: OnboardingCalibrationPrompt,
         status: OnboardingCalibrationStatus,
