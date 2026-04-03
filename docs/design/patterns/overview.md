@@ -20,6 +20,7 @@ Document the repeated interaction patterns that sit above individual components 
 | [AI Assistant UI](./ai-assistant-ui) | approved |
 | [Subscription](./subscription) | approved |
 | [Content Presentation](./content-presentation) | approved |
+| [Prompt System](./prompt-system) | approved |
 
 ## Related docs
 
