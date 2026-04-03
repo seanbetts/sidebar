@@ -12,6 +12,7 @@ extension ChatViewModel {
             soulCalibrationConfirmationText = nil
             soulCalibrationErrorMessage = nil
             isSubmittingSoulCalibration = false
+            pendingSoulCalibrationSubmission = nil
             return
         }
 
@@ -43,9 +44,18 @@ extension ChatViewModel {
             return
         }
 
+        if isSubmittingSoulCalibration {
+            pendingSoulCalibrationSubmission = PendingSoulCalibrationSubmission(
+                prompt: prompt,
+                answer: answer
+            )
+            soulCalibrationErrorMessage = nil
+            return
+        }
+
         isSubmittingSoulCalibration = true
+        pendingSoulCalibrationSubmission = nil
         soulCalibrationErrorMessage = nil
-        defer { isSubmittingSoulCalibration = false }
 
         do {
             let response = try await onboardingAPI.submitCalibrationAnswer(
@@ -53,7 +63,11 @@ extension ChatViewModel {
                 answer: answer
             )
             applySoulCalibration(response: response)
+            isSubmittingSoulCalibration = false
+            await submitPendingSoulCalibrationSubmissionIfNeeded()
         } catch {
+            isSubmittingSoulCalibration = false
+            pendingSoulCalibrationSubmission = nil
             soulCalibrationErrorMessage = ErrorMapping.message(for: error)
         }
     }
@@ -116,5 +130,16 @@ extension ChatViewModel {
         }
 
         requestOnboardingStateRefresh()
+    }
+
+    private func submitPendingSoulCalibrationSubmissionIfNeeded() async {
+        guard let pending = pendingSoulCalibrationSubmission else {
+            return
+        }
+        pendingSoulCalibrationSubmission = nil
+        await submitSoulCalibrationAnswer(
+            prompt: pending.prompt,
+            pending.answer
+        )
     }
 }

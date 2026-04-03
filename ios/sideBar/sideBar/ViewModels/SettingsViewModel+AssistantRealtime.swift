@@ -38,9 +38,15 @@ extension SettingsViewModel {
                 pronouns: current.pronouns,
                 location: current.location,
                 profileImageUrl: current.profileImageUrl,
-                assistantIdentity: update.assistantIdentity ?? current.assistantIdentity,
+                assistantIdentity: mergedIdentity(
+                    current: current.assistantIdentity,
+                    incoming: update.assistantIdentity
+                ),
                 assistantIdentityMeta: update.assistantIdentityMeta ?? current.assistantIdentityMeta,
-                assistantSoul: update.assistantSoul ?? current.assistantSoul,
+                assistantSoul: mergedSoul(
+                    current: current.assistantSoul,
+                    incoming: update.assistantSoul
+                ),
                 assistantSoulMeta: update.assistantSoulMeta ?? current.assistantSoulMeta,
                 aiPrimaryProvider: current.aiPrimaryProvider,
                 aiPrimaryProviderHasKey: current.aiPrimaryProviderHasKey,
@@ -48,6 +54,36 @@ extension SettingsViewModel {
                 enabledSkills: current.enabledSkills,
                 installedStoreSkills: current.installedStoreSkills
             )
+        )
+    }
+
+    private func mergedIdentity(
+        current: AssistantIdentitySettings?,
+        incoming: AssistantIdentitySettings?
+    ) -> AssistantIdentitySettings? {
+        guard let incoming else {
+            return current
+        }
+        return AssistantIdentitySettings(
+            name: incoming.name ?? current?.name,
+            tone: incoming.tone ?? current?.tone,
+            values: incoming.values ?? current?.values,
+            boundaries: incoming.boundaries ?? current?.boundaries
+        )
+    }
+
+    private func mergedSoul(
+        current: AssistantSoulSettings?,
+        incoming: AssistantSoulSettings?
+    ) -> AssistantSoulSettings? {
+        guard let incoming else {
+            return current
+        }
+        return AssistantSoulSettings(
+            purpose: incoming.purpose ?? current?.purpose,
+            operatingPrinciples: incoming.operatingPrinciples ?? current?.operatingPrinciples,
+            adaptationPolicy: incoming.adaptationPolicy ?? current?.adaptationPolicy,
+            successSignals: incoming.successSignals ?? current?.successSignals
         )
     }
 }

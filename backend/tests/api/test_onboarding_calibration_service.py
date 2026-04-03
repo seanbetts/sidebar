@@ -352,7 +352,6 @@ def test_submit_answer_generates_assistant_configuration_after_tone(
                 "tone": "Pragmatic, direct, and collaborative. Warm but not effusive.",
                 "values": "Clarity, pragmatism, rigor, and durable progress.",
                 "boundaries": "Never invent facts, never compromise security, and preserve the user's agency.",
-                "name": "Navigator",
             }
         }
 
@@ -360,6 +359,15 @@ def test_submit_answer_generates_assistant_configuration_after_tone(
         OnboardingCalibrationService,
         "_generate_stage_updates",
         staticmethod(_generate_stage),
+    )
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_validated_field_update",
+        staticmethod(
+            lambda db, user_id, *, scope, field_name, answers, previous_name: {
+                "assistant_identity": {"name": "Navigator"}
+            }
+        ),
     )
 
     result = OnboardingCalibrationService.submit_answer(
@@ -423,7 +431,6 @@ def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
                 "tone": "Direct, serious, and concise.",
                 "values": "Clarity and momentum.",
                 "boundaries": "Do not invent facts.",
-                "name": "Compass",
             }
         }
 
@@ -431,6 +438,15 @@ def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
         OnboardingCalibrationService,
         "_generate_stage_updates",
         staticmethod(_generate_stage),
+    )
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_validated_field_update",
+        staticmethod(
+            lambda db, user_id, *, scope, field_name, answers, previous_name: {
+                "assistant_identity": {"name": "Compass"}
+            }
+        ),
     )
 
     result = OnboardingCalibrationService.submit_answer(
@@ -703,7 +719,7 @@ def test_submit_answer_surfaces_retryable_error_after_second_validation_failure(
             previous_name=None,
         )
 
-    assert "retry" in str(exc_info.value).lower()
+    assert "choose a name" in str(exc_info.value.detail).lower()
 
 
 def test_submit_answer_persists_tone_answer_when_generation_fails(
@@ -755,3 +771,184 @@ def test_submit_answer_persists_tone_answer_when_generation_fails(
     settings_payload = SettingsService.get_settings(test_db, user_id)
     assert settings_payload["assistant_identity"]["name"] == "sideBar"
     assert settings_payload["assistant_soul"]["purpose"] is None
+
+
+def test_submit_answer_persists_identity_fields_when_name_generation_fails(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import (
+        GenerationContext,
+        OnboardingCalibrationService,
+    )
+
+    user_id = "calibration-name-failure-persists-identity"
+    provider_ready_state = _provider_ready_state(
+        test_db,
+        user_id=user_id,
+        calibration={
+            "status": "in_progress",
+            "current_prompt": "tone_preferences",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": "collaborative",
+            },
+        },
+    )
+    _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+
+    async def fake_generate_parallel_stage_fields(
+        *,
+        generation_context,
+        stage_fields,
+        answers,
+    ) -> list[dict[str, dict[str, str]]]:
+        del generation_context, stage_fields, answers
+        return [
+            {"assistant_identity": {"tone": "Pragmatic, direct, and collaborative."}},
+            {"assistant_identity": {"values": "Clarity, rigor, and honesty."}},
+            {
+                "assistant_identity": {
+                    "boundaries": "Never mislead or manipulate."
+                }
+            },
+        ]
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_build_generation_context",
+        staticmethod(
+            lambda db, requested_user_id: GenerationContext(
+                settings_snapshot=SimpleNamespace(ai_primary_provider="anthropic"),
+                current_identity={},
+                current_soul={},
+                provider_keys={"anthropic": "test-key", "openai": None, "google": None},
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_parallel_stage_fields",
+        staticmethod(fake_generate_parallel_stage_fields),
+    )
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_validated_field_update_for_context",
+        staticmethod(
+            lambda db, user_id, *, scope, field_name, answers, previous_name, generation_context, current_identity, current_soul: (_ for _ in ()).throw(
+                HTTPException(
+                    status_code=503,
+                    detail=(
+                        "I couldn't choose a name just yet. "
+                        "Your setup is saved, please try again."
+                    ),
+                )
+            )
+            if (scope, field_name) == ("assistant_identity", "name")
+            else {scope: {field_name: "unexpected"}}
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        OnboardingCalibrationService.submit_answer(
+            test_db,
+            user_id,
+            prompt="tone_preferences",
+            answer="warm,serious,concise,casual,supportive",
+        )
+
+    assert exc_info.value.status_code == 503
+    assert "choose a name" in str(exc_info.value.detail).lower()
+
+    settings_payload = SettingsService.get_settings(test_db, user_id)
+    assert (
+        settings_payload["assistant_identity"]["tone"]
+        == "Pragmatic, direct, and collaborative."
+    )
+    assert (
+        settings_payload["assistant_identity"]["values"]
+        == "Clarity, rigor, and honesty."
+    )
+    assert (
+        settings_payload["assistant_identity"]["boundaries"]
+        == "Never mislead or manipulate."
+    )
+    persisted_state = OnboardingService._resolve_state(
+        UserSettingsService.get_settings(test_db, user_id).onboarding
+    )
+    assert (
+        persisted_state["calibration"]["answers"]["tone_preferences"]
+        == "warm,serious,concise,casual,supportive"
+    )
+    assert persisted_state["calibration"]["status"] == "in_progress"
+    assert persisted_state["calibration"]["current_prompt"] == "tone_preferences"
+
+
+def test_generate_validated_field_update_maps_name_provider_failure_to_retryable_message(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import (
+        GenerationContext,
+        OnboardingCalibrationService,
+    )
+
+    user_id = "calibration-name-provider-failure"
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_build_generation_context",
+        staticmethod(
+            lambda db, requested_user_id: GenerationContext(
+                settings_snapshot=SimpleNamespace(ai_primary_provider="anthropic"),
+                current_identity={},
+                current_soul={},
+                provider_keys={"anthropic": "test-key", "openai": None, "google": None},
+            )
+        ),
+    )
+
+    async def fake_generate_text(
+        self,
+        *,
+        prompt,
+        settings_record,
+        system_prompt=None,
+        preferred_provider=None,
+        provider_key_lookup=None,
+        max_output_tokens=800,
+        temperature=0.3,
+    ) -> PromptGenerationResult:
+        del (
+            self,
+            prompt,
+            settings_record,
+            system_prompt,
+            preferred_provider,
+            provider_key_lookup,
+            max_output_tokens,
+            temperature,
+        )
+        raise RuntimeError("provider internal error")
+
+    monkeypatch.setattr(
+        "api.services.ai.gateway.AIProviderGateway.generate_text",
+        fake_generate_text,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        OnboardingCalibrationService._generate_validated_field_update(
+            test_db,
+            user_id,
+            scope="assistant_identity",
+            field_name="name",
+            answers={
+                "primary_goal": "life_admin",
+                "working_relationship": "collaborative",
+                "tone_preferences": "warm,serious,concise,casual,supportive",
+            },
+            previous_name=None,
+        )
+
+    assert exc_info.value.status_code == 503
+    assert "choose a name" in str(exc_info.value.detail).lower()

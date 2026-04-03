@@ -558,6 +558,119 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         )
     }
 
+    func testSubmitSoulCalibrationAnswerQueuesOptimisticNextStepWhilePreviousStepIsInFlight() async throws {
+        let cache = TestCacheClient()
+        let onboardingAPI = DelayedOnboardingAPI()
+        onboardingAPI.shouldSuspendSubmitUntilResumed = true
+        onboardingAPI.submitCalibrationAnswerResults = [
+            .success(
+                OnboardingCalibrationActionResponse(
+                    state: soulCalibrationOnboardingState(
+                        currentPrompt: .workingRelationship,
+                        status: .inProgress,
+                        primaryGoal: "life_admin"
+                    ),
+                    calibration: OnboardingCalibrationState(
+                        status: .inProgress,
+                        currentPrompt: .workingRelationship,
+                        answers: OnboardingCalibrationAnswers(
+                            primaryGoal: "life_admin",
+                            workingRelationship: nil,
+                            tonePreferences: nil
+                        ),
+                        proposedName: nil,
+                        completedAt: nil
+                    ),
+                    assistantIdentity: nil,
+                    assistantSoul: AssistantSoulSettings(
+                        purpose: "Help with life admin",
+                        operatingPrinciples: nil,
+                        adaptationPolicy: nil,
+                        successSignals: nil
+                    ),
+                    confirmationText: nil
+                )
+            ),
+            .success(
+                OnboardingCalibrationActionResponse(
+                    state: soulCalibrationOnboardingState(
+                        currentPrompt: .tonePreferences,
+                        status: .inProgress,
+                        primaryGoal: "life_admin",
+                        workingRelationship: "keep_me_on_track"
+                    ),
+                    calibration: OnboardingCalibrationState(
+                        status: .inProgress,
+                        currentPrompt: .tonePreferences,
+                        answers: OnboardingCalibrationAnswers(
+                            primaryGoal: "life_admin",
+                            workingRelationship: "keep_me_on_track",
+                            tonePreferences: nil
+                        ),
+                        proposedName: nil,
+                        completedAt: nil
+                    ),
+                    assistantIdentity: nil,
+                    assistantSoul: AssistantSoulSettings(
+                        purpose: "Help with life admin",
+                        operatingPrinciples: "Keep momentum visible.",
+                        adaptationPolicy: "Adapt to durable preferences.",
+                        successSignals: "More follow-through."
+                    ),
+                    confirmationText: nil
+                )
+            )
+        ]
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            onboardingAPI: onboardingAPI
+        )
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .primaryGoal,
+                status: .inProgress
+            )
+        )
+
+        let firstSubmitStarted = expectation(description: "first calibration submit started")
+        var didObserveFirstSubmitStart = false
+        onboardingAPI.onSubmitStarted = {
+            guard !didObserveFirstSubmitStart else {
+                return
+            }
+            didObserveFirstSubmitStart = true
+            firstSubmitStarted.fulfill()
+        }
+
+        let firstSubmit = Task {
+            await viewModel.submitSoulCalibrationAnswer(
+                prompt: .primaryGoal,
+                .singleChoice("life_admin")
+            )
+        }
+        await fulfillment(of: [firstSubmitStarted], timeout: 1.0)
+
+        let secondSubmit = Task {
+            await viewModel.submitSoulCalibrationAnswer(
+                prompt: .workingRelationship,
+                .singleChoice("keep_me_on_track")
+            )
+        }
+        await Task.yield()
+        onboardingAPI.shouldSuspendSubmitUntilResumed = false
+        onboardingAPI.resumeSubmit()
+
+        _ = await firstSubmit.value
+        _ = await secondSubmit.value
+
+        XCTAssertEqual(
+            onboardingAPI.submittedCalibrationAnswers.map(\.prompt),
+            [.primaryGoal, .workingRelationship]
+        )
+        XCTAssertEqual(viewModel.soulCalibrationState?.currentPrompt, .tonePreferences)
+    }
+
     func testAcceptSoulCalibrationNameClearsStateAndAllowsDiscovery() async throws {
         let cache = TestCacheClient()
         let onboardingAPI = MockOnboardingAPI()

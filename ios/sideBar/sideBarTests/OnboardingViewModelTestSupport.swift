@@ -22,6 +22,7 @@ final class MockOnboardingAPI: OnboardingProviding {
             confirmationText: nil
         )
     )
+    var submitCalibrationAnswerResults: [Result<OnboardingCalibrationActionResponse, Error>] = []
     var regenerateCalibrationNameResult: Result<OnboardingCalibrationActionResponse, Error> = .success(
         OnboardingCalibrationActionResponse(
             state: .default,
@@ -68,6 +69,9 @@ final class MockOnboardingAPI: OnboardingProviding {
         answer: OnboardingCalibrationAnswer
     ) async throws -> OnboardingCalibrationActionResponse {
         submittedCalibrationAnswers.append((prompt: prompt, answer: answer))
+        if !submitCalibrationAnswerResults.isEmpty {
+            return try submitCalibrationAnswerResults.removeFirst().get()
+        }
         return try submitCalibrationAnswerResult.get()
     }
 
@@ -96,6 +100,10 @@ final class DelayedOnboardingAPI: OnboardingProviding {
         get { base.submitCalibrationAnswerResult }
         set { base.submitCalibrationAnswerResult = newValue }
     }
+    var submitCalibrationAnswerResults: [Result<OnboardingCalibrationActionResponse, Error>] {
+        get { base.submitCalibrationAnswerResults }
+        set { base.submitCalibrationAnswerResults = newValue }
+    }
     var regenerateCalibrationNameResult: Result<OnboardingCalibrationActionResponse, Error> {
         get { base.regenerateCalibrationNameResult }
         set { base.regenerateCalibrationNameResult = newValue }
@@ -105,10 +113,28 @@ final class DelayedOnboardingAPI: OnboardingProviding {
         set { base.acceptCalibrationNameResult = newValue }
     }
     var updateDelayNanoseconds: UInt64 = 0
+    var submitDelayNanoseconds: UInt64 = 0
+    var shouldSuspendSubmitUntilResumed: Bool = false
     var onUpdateStarted: (() -> Void)?
     var onUpdateCompleted: (() -> Void)?
+    var onSubmitStarted: (() -> Void)?
+    var onSubmitCompleted: (() -> Void)?
+    private var submitContinuation: CheckedContinuation<Void, Never>?
+    private var submitResumeRequested = false
 
     private(set) var updates: [MockOnboardingAPI.RecordedUpdate] = []
+    var submittedCalibrationAnswers: [(prompt: OnboardingCalibrationPrompt, answer: OnboardingCalibrationAnswer)] {
+        base.submittedCalibrationAnswers
+    }
+
+    func resumeSubmit() {
+        if let submitContinuation {
+            self.submitContinuation = nil
+            submitContinuation.resume()
+            return
+        }
+        submitResumeRequested = true
+    }
 
     func getOnboarding() async throws -> OnboardingState {
         try await base.getOnboarding()
@@ -129,6 +155,20 @@ final class DelayedOnboardingAPI: OnboardingProviding {
         _ prompt: OnboardingCalibrationPrompt,
         answer: OnboardingCalibrationAnswer
     ) async throws -> OnboardingCalibrationActionResponse {
+        onSubmitStarted?()
+        if submitDelayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: submitDelayNanoseconds)
+        }
+        if shouldSuspendSubmitUntilResumed {
+            if submitResumeRequested {
+                submitResumeRequested = false
+            } else {
+                await withCheckedContinuation { continuation in
+                    submitContinuation = continuation
+                }
+            }
+        }
+        defer { onSubmitCompleted?() }
         return try await base.submitCalibrationAnswer(prompt, answer: answer)
     }
 

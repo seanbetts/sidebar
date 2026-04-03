@@ -152,40 +152,61 @@ class OnboardingCalibrationService:
             answers=next_calibration["answers"],
             previous_name=prior_proposed_name,
         )
+        settings_payload: dict[str, Any] | None = None
+        if stage_updates:
+            settings_payload = AgentSettingsService.update_with_onboarding(
+                db,
+                user_id,
+                stage_updates,
+                onboarding=next_onboarding,
+                reason=GENERATION_REASON,
+            )
+
+        assistant_identity_payload = (
+            settings_payload["assistant_identity"]
+            if settings_payload and "assistant_identity" in stage_updates
+            else None
+        )
+        assistant_soul_payload = (
+            settings_payload["assistant_soul"]
+            if settings_payload and "assistant_soul" in stage_updates
+            else None
+        )
 
         if normalized_prompt == "tone_preferences":
+            name_update = OnboardingCalibrationService._generate_validated_field_update(
+                db,
+                user_id,
+                scope="assistant_identity",
+                field_name="name",
+                answers=next_calibration["answers"],
+                previous_name=prior_proposed_name,
+            )
             proposed_name = (
-                ((stage_updates.get("assistant_identity") or {}).get("name")) or ""
+                ((name_update.get("assistant_identity") or {}).get("name")) or ""
             ).strip()
             next_calibration["status"] = "awaiting_name_acceptance"
             next_calibration["proposed_name"] = proposed_name or None
             next_calibration["current_prompt"] = "tone_preferences"
+            settings_payload = AgentSettingsService.update_with_onboarding(
+                db,
+                user_id,
+                name_update,
+                onboarding=next_onboarding,
+                reason=GENERATION_REASON,
+            )
+            assistant_identity_payload = settings_payload["assistant_identity"]
         else:
             next_calibration["status"] = "in_progress"
             next_calibration["current_prompt"] = NEXT_PROMPT[normalized_prompt]
 
-        settings_payload = AgentSettingsService.update_with_onboarding(
-            db,
-            user_id,
-            stage_updates,
-            onboarding=next_onboarding,
-            reason=GENERATION_REASON,
-        )
         return CalibrationActionResult(
             state=OnboardingCalibrationService._build_state_response(
                 next_onboarding,
                 provider_ready=bool(state.get("provider_ready")),
             ),
-            assistant_identity=(
-                settings_payload["assistant_identity"]
-                if "assistant_identity" in stage_updates
-                else None
-            ),
-            assistant_soul=(
-                settings_payload["assistant_soul"]
-                if "assistant_soul" in stage_updates
-                else None
-            ),
+            assistant_identity=assistant_identity_payload,
+            assistant_soul=assistant_soul_payload,
             confirmation_text=(
                 f"{next_calibration['proposed_name']} is ready for review."
                 if normalized_prompt == "tone_preferences"
@@ -379,6 +400,7 @@ class OnboardingCalibrationService:
         previous_name: str | None,
     ) -> dict[str, Any]:
         """Generate and merge all assistant settings owned by this stage."""
+        del previous_name
         generation_context = OnboardingCalibrationService._build_generation_context(
             db,
             user_id,
@@ -396,26 +418,6 @@ class OnboardingCalibrationService:
             )
             for update in stage_updates:
                 OnboardingCalibrationService._merge_generated_updates(combined, update)
-
-        if answered_prompt == "tone_preferences":
-            next_identity = dict(generation_context.current_identity)
-            next_identity.update(combined.get("assistant_identity") or {})
-            next_soul = dict(generation_context.current_soul)
-            next_soul.update(combined.get("assistant_soul") or {})
-            service_cls = OnboardingCalibrationService
-            generate_field = service_cls._generate_validated_field_update_for_context
-            name_update = generate_field(
-                db,
-                user_id,
-                scope="assistant_identity",
-                field_name="name",
-                answers=answers,
-                previous_name=previous_name,
-                generation_context=generation_context,
-                current_identity=next_identity,
-                current_soul=next_soul,
-            )
-            OnboardingCalibrationService._merge_generated_updates(combined, name_update)
 
         return combined
 
@@ -540,9 +542,9 @@ class OnboardingCalibrationService:
                     if exc.status_code == 400:
                         raise HTTPException(
                             status_code=503,
-                            detail=(
-                                f"Calibration generation for {scope}.{field_name} "
-                                "failed validation twice. Please retry."
+                            detail=OnboardingCalibrationService._generation_failure_detail(
+                                scope=scope,
+                                field_name=field_name,
                             ),
                         ) from exc
                     raise
@@ -550,9 +552,9 @@ class OnboardingCalibrationService:
 
         raise HTTPException(
             status_code=503,
-            detail=(
-                f"Calibration generation for {scope}.{field_name} "
-                "failed validation twice. Please retry."
+            detail=OnboardingCalibrationService._generation_failure_detail(
+                scope=scope,
+                field_name=field_name,
             ),
         )
 
@@ -601,19 +603,32 @@ class OnboardingCalibrationService:
         def provider_key_lookup(provider: AIProvider) -> str | None:
             return context.provider_keys.get(provider)
 
-        result = asyncio.run(
-            gateway.generate_text(
-                prompt=prompt,
-                system_prompt=(
-                    "You are sideBar authoring one assistant settings field. "
-                    "Output valid JSON only."
-                ),
-                settings_record=context.settings_snapshot,
-                provider_key_lookup=provider_key_lookup,
-                max_output_tokens=(96 if (scope, field_name) == NAME_FIELD else 900),
-                temperature=(0.5 if (scope, field_name) == NAME_FIELD else 0.3),
+        try:
+            result = asyncio.run(
+                gateway.generate_text(
+                    prompt=prompt,
+                    system_prompt=(
+                        "You are sideBar authoring one assistant settings field. "
+                        "Output valid JSON only."
+                    ),
+                    settings_record=context.settings_snapshot,
+                    provider_key_lookup=provider_key_lookup,
+                    max_output_tokens=(
+                        96 if (scope, field_name) == NAME_FIELD else 900
+                    ),
+                    temperature=(0.5 if (scope, field_name) == NAME_FIELD else 0.3),
+                )
             )
-        )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=OnboardingCalibrationService._generation_failure_detail(
+                    scope=scope,
+                    field_name=field_name,
+                ),
+            ) from exc
         return OnboardingCalibrationService._parse_generated_json_object(
             result.raw_text,
             scope=scope,
@@ -756,6 +771,19 @@ class OnboardingCalibrationService:
                 target[scope] = existing_scope
             if isinstance(scope_payload, dict):
                 existing_scope.update(scope_payload)
+
+    @staticmethod
+    def _generation_failure_detail(*, scope: str, field_name: str) -> str:
+        """Return a user-facing retry message for calibration generation failures."""
+        if (scope, field_name) == NAME_FIELD:
+            return (
+                "I couldn't choose a name just yet. "
+                "Your setup is saved, please try again."
+            )
+        return (
+            "I couldn't finish updating my setup just yet. "
+            "Your answer is saved, please try again."
+        )
 
     @staticmethod
     def _build_generation_context(db: Session, user_id: str) -> GenerationContext:

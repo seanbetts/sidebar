@@ -62,6 +62,14 @@ final class ChatSoulCalibrationSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SoulCalibrationPromptView("))
     }
 
+    func testContinueButtonIsNotGloballyDisabledByBusyState() throws {
+        let normalized = try combinedCalibrationSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("isEnabled:isEnabled,action:action"))
+        XCTAssertFalse(normalized.contains("isEnabled:isEnabled&&!isBusy,action:action"))
+    }
+
     private func combinedCalibrationSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {
         let fileURL = URL(fileURLWithPath: "\(file)")
         let sideBarRoot = fileURL
@@ -72,7 +80,8 @@ final class ChatSoulCalibrationSourceTests: XCTestCase {
             .appendingPathComponent("Views")
         let sourceURLs = [
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("ChatView.swift"),
-            viewsRoot.appendingPathComponent("Chat").appendingPathComponent("SoulCalibrationPromptView.swift")
+            viewsRoot.appendingPathComponent("Chat").appendingPathComponent("SoulCalibrationPromptView.swift"),
+            viewsRoot.appendingPathComponent("Chat").appendingPathComponent("SoulCalibrationPromptComponents.swift")
         ]
 
         do {
