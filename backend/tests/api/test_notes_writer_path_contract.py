@@ -137,13 +137,17 @@ def test_tool_mapper_failure_logging_happens_in_executor_only() -> None:
         API_ROOT / "services" / "agent" / "tools" / "mapper.py"
     ).read_text(encoding="utf-8")
 
-    execution_block = (
-        "normalized = self._normalize_result(result)\n"
-        "            if normalized.get(\"success\"):\n"
-        "                AuditLogger.log_tool_call("
+    normalize_index = mapper_source.index("normalized = self._normalize_result(result)")
+    success_guard_index = mapper_source.index(
+        'if normalized.get("success"):',
+        normalize_index,
+    )
+    success_log_index = mapper_source.index(
+        "AuditLogger.log_tool_call(",
+        success_guard_index,
     )
 
-    assert execution_block in mapper_source
+    assert normalize_index < success_guard_index < success_log_index
     assert (
         "tool_name=display_name,\n"
         "                parameters=log_params,\n"

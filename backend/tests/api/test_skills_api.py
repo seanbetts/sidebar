@@ -8,9 +8,19 @@ def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.bearer_token}"}
 
 
+async def _accept_provider_key(*_args, **_kwargs) -> None:
+    return None
+
+
 def _seed_openai_provider_key(
-    test_client, api_key: str = "sk-test-openai-1234"
+    test_client,
+    monkeypatch,
+    api_key: str = "sk-test-openai-1234",
 ) -> None:
+    monkeypatch.setattr(
+        "api.routers.settings.ProviderKeyVerificationService.verify_provider_key",
+        _accept_provider_key,
+    )
     response = test_client.put(
         "/api/settings/ai/provider-key",
         headers=_auth_headers(),
@@ -123,6 +133,7 @@ def test_list_skills_exposes_capability_availability_contract(test_client) -> No
 
 def test_list_skills_derives_runtime_availability_from_provider_state(
     test_client,
+    monkeypatch,
 ) -> None:
     without_key = test_client.get("/api/skills", headers=_auth_headers())
     assert without_key.status_code == 200
@@ -136,7 +147,11 @@ def test_list_skills_derives_runtime_availability_from_provider_state(
         "provider": "openai",
     }
 
-    _seed_openai_provider_key(test_client, api_key="sk-test-openai-runtime-5555")
+    _seed_openai_provider_key(
+        test_client,
+        monkeypatch,
+        api_key="sk-test-openai-runtime-5555",
+    )
 
     with_key = test_client.get("/api/skills", headers=_auth_headers())
     assert with_key.status_code == 200
@@ -148,8 +163,11 @@ def test_list_skills_derives_runtime_availability_from_provider_state(
     assert ready_skill["availability_remediation"] is None
 
 
-def test_install_store_skill_auto_enables_and_persists(test_client) -> None:
-    _seed_openai_provider_key(test_client)
+def test_install_store_skill_auto_enables_and_persists(
+    test_client,
+    monkeypatch,
+) -> None:
+    _seed_openai_provider_key(test_client, monkeypatch)
 
     install_response = test_client.post(
         "/api/skills/store/install",
@@ -166,8 +184,8 @@ def test_install_store_skill_auto_enables_and_persists(test_client) -> None:
     assert "audio-transcribe" in body["installed_store_skills"]
 
 
-def test_install_store_skill_is_idempotent(test_client) -> None:
-    _seed_openai_provider_key(test_client)
+def test_install_store_skill_is_idempotent(test_client, monkeypatch) -> None:
+    _seed_openai_provider_key(test_client, monkeypatch)
 
     first = test_client.post(
         "/api/skills/store/install",
@@ -282,8 +300,11 @@ def test_install_store_skill_rejects_unknown_skill_id(test_client) -> None:
     assert "Invalid skill ID" in error_message(response)
 
 
-def test_uninstall_store_skill_removes_install_and_enabled_state(test_client) -> None:
-    _seed_openai_provider_key(test_client)
+def test_uninstall_store_skill_removes_install_and_enabled_state(
+    test_client,
+    monkeypatch,
+) -> None:
+    _seed_openai_provider_key(test_client, monkeypatch)
     install_response = test_client.post(
         "/api/skills/store/install",
         headers=_auth_headers(),
@@ -305,8 +326,8 @@ def test_uninstall_store_skill_removes_install_and_enabled_state(test_client) ->
     assert "audio-transcribe" not in body["enabled_skills"]
 
 
-def test_uninstall_store_skill_is_idempotent(test_client) -> None:
-    _seed_openai_provider_key(test_client)
+def test_uninstall_store_skill_is_idempotent(test_client, monkeypatch) -> None:
+    _seed_openai_provider_key(test_client, monkeypatch)
     install_response = test_client.post(
         "/api/skills/store/install",
         headers=_auth_headers(),
