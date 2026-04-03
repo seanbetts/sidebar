@@ -257,4 +257,14 @@ final class ErrorMappingTests: XCTestCase {
             "Attachment and context are too large for one message. Remove some attachments or close open items and try again."
         )
     }
+
+    func testMapsCalibrationPromptConflictToFriendlyMessage() {
+        let message = ErrorMapping.message(
+            for: APIClientError.apiError("Expected prompt working_relationship")
+        )
+        XCTAssertEqual(
+            message,
+            "I got out of sync with your setup. Please go back and try again."
+        )
+    }
 }

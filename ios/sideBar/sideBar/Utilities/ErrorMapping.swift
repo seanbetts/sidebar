@@ -149,16 +149,7 @@ public enum ErrorMapping {
     static func mapAPIError(_ apiError: APIClientError) -> String {
         switch apiError {
         case .apiError(let message):
-            if isAuthenticationErrorMessage(message) {
-                return "Session expired. Please sign in again."
-            }
-            if isInvalidProviderAPIKeyMessage(message) {
-                return "That API key doesn't look valid for this provider."
-            }
-            if isPromptTooLargeMessage(message) {
-                return "Attachment and context are too large for one message. Remove some attachments or close open items and try again."
-            }
-            return message
+            return messageForAPIErrorMessage(message)
         case .missingToken:
             return "Authentication required. Please sign in."
         case .requestFailed(let status):
@@ -172,6 +163,16 @@ public enum ErrorMapping {
         @unknown default:
             return "Unexpected error."
         }
+    }
+
+    private static func messageForAPIErrorMessage(_ message: String) -> String {
+        if isAuthenticationErrorMessage(message) { return "Session expired. Please sign in again." }
+        if isInvalidProviderAPIKeyMessage(message) { return "That API key doesn't look valid for this provider." }
+        if isCalibrationPromptConflictMessage(message) { return "I got out of sync with your setup. Please go back and try again." }
+        if isPromptTooLargeMessage(message) {
+            return "Attachment and context are too large for one message. Remove some attachments or close open items and try again."
+        }
+        return message
     }
 
     private static func messageForStatus(_ status: Int) -> String {
@@ -214,14 +215,7 @@ public enum ErrorMapping {
 
     private static func isAuthenticationErrorMessage(_ message: String) -> Bool {
         let lowered = message.lowercased()
-        let signals = [
-            "unauthorized",
-            "forbidden",
-            "not authenticated",
-            "invalid token",
-            "token expired",
-            "session expired"
-        ]
+        let signals = ["unauthorized", "forbidden", "not authenticated", "invalid token", "token expired", "session expired"]
         return signals.contains(where: lowered.contains)
     }
 
@@ -237,6 +231,11 @@ public enum ErrorMapping {
 
     static func isInvalidProviderAPIKeyMessage(_ message: String) -> Bool {
         message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "invalid provider api key"
+    }
+
+    private static func isCalibrationPromptConflictMessage(_ message: String) -> Bool {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("Expected prompt ") && trimmed.split(separator: " ").count >= 3
     }
 
     public static func chatStreamPresentation(
@@ -465,10 +464,7 @@ public enum ErrorMapping {
         guard let rawError = rawError?.trimmedOrNil else {
             return nil
         }
-        let patterns = [
-            "request_id['\\\"]?\\s*[:=]\\s*['\\\"]([^'\\\"]+)['\\\"]",
-            "requestId['\\\"]?\\s*[:=]\\s*['\\\"]([^'\\\"]+)['\\\"]"
-        ]
+        let patterns = ["request_id['\\\"]?\\s*[:=]\\s*['\\\"]([^'\\\"]+)['\\\"]", "requestId['\\\"]?\\s*[:=]\\s*['\\\"]([^'\\\"]+)['\\\"]"]
         for pattern in patterns {
             guard let regex = try? NSRegularExpression(pattern: pattern) else {
                 continue
@@ -488,12 +484,8 @@ public enum ErrorMapping {
 
     private static func fallbackTitle(for message: String) -> String {
         let lowered = message.lowercased()
-        if lowered.contains("unexpectedly") || lowered.contains("interrupted") {
-            return "Response interrupted"
-        }
-        if lowered.contains("empty response") {
-            return "Empty response"
-        }
+        if lowered.contains("unexpectedly") || lowered.contains("interrupted") { return "Response interrupted" }
+        if lowered.contains("empty response") { return "Empty response" }
         return "Response error"
     }
 }
