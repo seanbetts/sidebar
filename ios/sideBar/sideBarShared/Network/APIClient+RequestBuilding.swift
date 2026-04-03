@@ -1,7 +1,7 @@
 import Foundation
 
 extension APIClient {
-    fileprivate func buildRequest(
+    func buildRequest(
         _ path: String,
         method: String,
         body: Encodable?,

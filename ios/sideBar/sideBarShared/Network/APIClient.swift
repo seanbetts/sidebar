@@ -369,7 +369,7 @@ public final class APIClient {
         return decoder
     }
 
-    private static func makeEncoder() -> JSONEncoder {
+    static func makeEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .useDefaultKeys
         return encoder
