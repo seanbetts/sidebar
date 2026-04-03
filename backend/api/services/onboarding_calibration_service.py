@@ -6,7 +6,8 @@ import asyncio
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -91,6 +92,16 @@ class CalibrationActionResult:
     assistant_identity: dict[str, Any] | None = None
     assistant_soul: dict[str, Any] | None = None
     confirmation_text: str | None = None
+
+
+@dataclass(slots=True)
+class GenerationContext:
+    """Immutable context required for stage field generation."""
+
+    settings_snapshot: Any
+    current_identity: dict[str, Any]
+    current_soul: dict[str, Any]
+    provider_keys: dict[AIProvider, str | None]
 
 
 class OnboardingCalibrationService:
@@ -368,26 +379,41 @@ class OnboardingCalibrationService:
         previous_name: str | None,
     ) -> dict[str, Any]:
         """Generate and merge all assistant settings owned by this stage."""
+        generation_context = OnboardingCalibrationService._build_generation_context(
+            db,
+            user_id,
+        )
         combined: dict[str, Any] = {}
-        for scope, field_name in STAGE_FIELDS.get(answered_prompt, ()):
-            update = OnboardingCalibrationService._generate_validated_field_update(
-                db,
-                user_id,
-                scope=scope,
-                field_name=field_name,
-                answers=answers,
-                previous_name=None,
+
+        stage_fields = STAGE_FIELDS.get(answered_prompt, ())
+        if stage_fields:
+            stage_updates = asyncio.run(
+                OnboardingCalibrationService._generate_parallel_stage_fields(
+                    generation_context=generation_context,
+                    stage_fields=stage_fields,
+                    answers=answers,
+                )
             )
-            OnboardingCalibrationService._merge_generated_updates(combined, update)
+            for update in stage_updates:
+                OnboardingCalibrationService._merge_generated_updates(combined, update)
 
         if answered_prompt == "tone_preferences":
-            name_update = OnboardingCalibrationService._generate_validated_field_update(
+            next_identity = dict(generation_context.current_identity)
+            next_identity.update(combined.get("assistant_identity") or {})
+            next_soul = dict(generation_context.current_soul)
+            next_soul.update(combined.get("assistant_soul") or {})
+            service_cls = OnboardingCalibrationService
+            generate_field = service_cls._generate_validated_field_update_for_context
+            name_update = generate_field(
                 db,
                 user_id,
                 scope="assistant_identity",
                 field_name="name",
                 answers=answers,
                 previous_name=previous_name,
+                generation_context=generation_context,
+                current_identity=next_identity,
+                current_soul=next_soul,
             )
             OnboardingCalibrationService._merge_generated_updates(combined, name_update)
 
@@ -404,17 +430,82 @@ class OnboardingCalibrationService:
         previous_name: str | None,
     ) -> dict[str, dict[str, str]]:
         """Generate, validate, and normalize a single assistant settings field."""
-        last_error: HTTPException | None = None
-        for attempt in range(GENERATION_RETRY_LIMIT):
-            repair_feedback = str(last_error.detail) if last_error is not None else None
-            generated = OnboardingCalibrationService._generate_model_field_update(
+        generation_context = OnboardingCalibrationService._build_generation_context(
+            db,
+            user_id,
+        )
+        return (
+            OnboardingCalibrationService._generate_validated_field_update_for_context(
                 db,
                 user_id,
                 scope=scope,
                 field_name=field_name,
                 answers=answers,
                 previous_name=previous_name,
+                generation_context=generation_context,
+                current_identity=generation_context.current_identity,
+                current_soul=generation_context.current_soul,
+            )
+        )
+
+    @staticmethod
+    async def _generate_parallel_stage_fields(
+        *,
+        generation_context: GenerationContext,
+        stage_fields: tuple[tuple[str, str], ...],
+        answers: dict[str, Any],
+    ) -> list[dict[str, dict[str, str]]]:
+        """Generate independent stage-owned fields concurrently."""
+        tasks = [
+            asyncio.to_thread(
+                OnboardingCalibrationService._generate_validated_field_update_for_context,
+                None,
+                None,
+                scope=scope,
+                field_name=field_name,
+                answers=answers,
+                previous_name=None,
+                generation_context=generation_context,
+                current_identity=generation_context.current_identity,
+                current_soul=generation_context.current_soul,
+            )
+            for scope, field_name in stage_fields
+        ]
+        return list(await asyncio.gather(*tasks))
+
+    @staticmethod
+    def _generate_validated_field_update_for_context(
+        db: Session | None,
+        user_id: str | None,
+        *,
+        scope: str,
+        field_name: str,
+        answers: dict[str, Any],
+        previous_name: str | None,
+        generation_context: GenerationContext,
+        current_identity: dict[str, Any],
+        current_soul: dict[str, Any],
+    ) -> dict[str, dict[str, str]]:
+        """Generate, validate, and normalize a field from a frozen snapshot."""
+        request_db = db
+        request_user_id = user_id
+        if request_db is None or request_user_id is None:
+            request_db = cast(Session, object())
+            request_user_id = "__parallel_generation__"
+        last_error: HTTPException | None = None
+        for attempt in range(GENERATION_RETRY_LIMIT):
+            repair_feedback = str(last_error.detail) if last_error is not None else None
+            generated = OnboardingCalibrationService._generate_model_field_update(
+                request_db,
+                request_user_id,
+                scope=scope,
+                field_name=field_name,
+                answers=answers,
+                previous_name=previous_name,
                 repair_feedback=repair_feedback,
+                generation_context=generation_context,
+                current_identity=current_identity,
+                current_soul=current_soul,
             )
             try:
                 OnboardingCalibrationService._assert_generated_field_shape(
@@ -475,25 +566,32 @@ class OnboardingCalibrationService:
         answers: dict[str, Any],
         previous_name: str | None,
         repair_feedback: str | None,
+        generation_context: GenerationContext | None = None,
+        current_identity: dict[str, Any] | None = None,
+        current_soul: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Call the model for one field and parse the JSON response."""
-        settings_record = UserSettingsService.get_settings(db, user_id)
-        if settings_record is None:
-            raise HTTPException(
-                status_code=409,
-                detail="Calibration cannot continue without user settings",
+        context = generation_context
+        if context is None:
+            if db is None or user_id is None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Calibration cannot continue without user settings",
+                )
+            context = OnboardingCalibrationService._build_generation_context(
+                db,
+                user_id,
             )
+
+        identity_payload = current_identity or context.current_identity
+        soul_payload = current_soul or context.current_soul
 
         prompt = OnboardingCalibrationService._render_field_prompt(
             scope=scope,
             field_name=field_name,
             answers=answers,
-            current_identity=OnboardingCalibrationService._raw_agent_payload(
-                getattr(settings_record, "assistant_identity", None)
-            ),
-            current_soul=OnboardingCalibrationService._raw_agent_payload(
-                getattr(settings_record, "assistant_soul", None)
-            ),
+            current_identity=identity_payload,
+            current_soul=soul_payload,
             previous_name=previous_name,
             repair_feedback=repair_feedback,
         )
@@ -501,7 +599,7 @@ class OnboardingCalibrationService:
         gateway = AIProviderGateway(settings)
 
         def provider_key_lookup(provider: AIProvider) -> str | None:
-            return UserAIProviderKeyService.get_active_key(db, user_id, provider)
+            return context.provider_keys.get(provider)
 
         result = asyncio.run(
             gateway.generate_text(
@@ -510,7 +608,7 @@ class OnboardingCalibrationService:
                     "You are sideBar authoring one assistant settings field. "
                     "Output valid JSON only."
                 ),
-                settings_record=settings_record,
+                settings_record=context.settings_snapshot,
                 provider_key_lookup=provider_key_lookup,
                 max_output_tokens=(96 if (scope, field_name) == NAME_FIELD else 900),
                 temperature=(0.5 if (scope, field_name) == NAME_FIELD else 0.3),
@@ -658,6 +756,39 @@ class OnboardingCalibrationService:
                 target[scope] = existing_scope
             if isinstance(scope_payload, dict):
                 existing_scope.update(scope_payload)
+
+    @staticmethod
+    def _build_generation_context(db: Session, user_id: str) -> GenerationContext:
+        """Capture the immutable inputs required for concurrent field generation."""
+        settings_record = UserSettingsService.get_settings(db, user_id)
+        if settings_record is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Calibration cannot continue without user settings",
+            )
+
+        providers: tuple[AIProvider, AIProvider, AIProvider] = (
+            "anthropic",
+            "openai",
+            "google",
+        )
+        provider_keys: dict[AIProvider, str | None] = {
+            provider: UserAIProviderKeyService.get_active_key(db, user_id, provider)
+            for provider in providers
+        }
+        settings_snapshot = SimpleNamespace(
+            ai_primary_provider=getattr(settings_record, "ai_primary_provider", None)
+        )
+        return GenerationContext(
+            settings_snapshot=settings_snapshot,
+            current_identity=OnboardingCalibrationService._raw_agent_payload(
+                getattr(settings_record, "assistant_identity", None)
+            ),
+            current_soul=OnboardingCalibrationService._raw_agent_payload(
+                getattr(settings_record, "assistant_soul", None)
+            ),
+            provider_keys=provider_keys,
+        )
 
     @staticmethod
     def _require_provider_ready(state: dict[str, Any]) -> None:

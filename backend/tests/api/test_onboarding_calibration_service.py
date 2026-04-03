@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+import threading
+from types import SimpleNamespace
+
 import pytest
 from fastapi import HTTPException
 
+from api.services.ai.gateway import PromptGenerationResult
 from api.services.onboarding_service import OnboardingService
 from api.services.settings_service import SettingsService
 from api.services.user_settings_service import UserSettingsService
@@ -53,14 +59,14 @@ def test_submit_answer_persists_answer_and_advances_prompt(test_db, monkeypatch)
     user_id = "calibration-submit"
     provider_ready_state = _provider_ready_state(test_db, user_id=user_id)
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
-    calls: list[tuple[str, str]] = []
+    calls: list[str] = []
 
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_validated_field_update",
+        "_generate_stage_updates",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name=None: (
-                calls.append((scope, field_name))
+            lambda db, user_id, *, answered_prompt, answers, previous_name: (
+                calls.append(answered_prompt)
                 or {"assistant_soul": {"purpose": "Help the user make steady progress."}}
             )
         ),
@@ -77,7 +83,7 @@ def test_submit_answer_persists_answer_and_advances_prompt(test_db, monkeypatch)
     assert result.state["calibration"]["current_prompt"] == "working_relationship"
     assert result.assistant_identity is None
     assert result.assistant_soul["purpose"] == "Help the user make steady progress."
-    assert calls == [("assistant_soul", "purpose")]
+    assert calls == ["primary_goal"]
 
 
 def test_submit_answer_allows_revisiting_primary_goal_and_clears_downstream_answers(
@@ -104,9 +110,9 @@ def test_submit_answer_allows_revisiting_primary_goal_and_clears_downstream_answ
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_validated_field_update",
+        "_generate_stage_updates",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name=None: {
+            lambda db, user_id, *, answered_prompt, answers, previous_name: {
                 "assistant_soul": {"purpose": "Help the user make steady progress."}
             }
         ),
@@ -153,41 +159,29 @@ def test_submit_answer_allows_revisiting_working_relationship_and_clears_tone(
     )
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
 
-    generated_fields: list[tuple[str, str]] = []
+    generated_stages: list[str] = []
 
-    def _generate_field(
+    def _generate_stage(
         db,
         user_id,
         *,
-        scope,
-        field_name,
+        answered_prompt,
         answers,
-        previous_name=None,
+        previous_name,
     ):
-        generated_fields.append((scope, field_name))
-        mapping = {
-            ("assistant_soul", "success_signals"): {
-                "assistant_soul": {
-                    "success_signals": "Less friction and more consistent follow-through."
-                }
-            },
-            ("assistant_soul", "operating_principles"): {
-                "assistant_soul": {
-                    "operating_principles": "Take initiative, reduce friction, and keep momentum visible."
-                }
-            },
-            ("assistant_soul", "adaptation_policy"): {
-                "assistant_soul": {
-                    "adaptation_policy": "Adapt to durable preferences, not one-off wording."
-                }
-            },
+        generated_stages.append(answered_prompt)
+        return {
+            "assistant_soul": {
+                "success_signals": "Less friction and more consistent follow-through.",
+                "operating_principles": "Take initiative, reduce friction, and keep momentum visible.",
+                "adaptation_policy": "Adapt to durable preferences, not one-off wording.",
+            }
         }
-        return mapping[(scope, field_name)]
 
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_validated_field_update",
-        staticmethod(_generate_field),
+        "_generate_stage_updates",
+        staticmethod(_generate_stage),
     )
 
     result = OnboardingCalibrationService.submit_answer(
@@ -206,15 +200,98 @@ def test_submit_answer_allows_revisiting_working_relationship_and_clears_tone(
     assert result.state["calibration"]["proposed_name"] is None
     assert result.state["calibration"]["status"] == "in_progress"
     assert result.state["calibration"]["current_prompt"] == "tone_preferences"
-    assert generated_fields == [
-        ("assistant_soul", "success_signals"),
-        ("assistant_soul", "operating_principles"),
-        ("assistant_soul", "adaptation_policy"),
-    ]
+    assert generated_stages == ["working_relationship"]
     assert (
         result.assistant_soul["operating_principles"]
         == "Take initiative, reduce friction, and keep momentum visible."
     )
+
+
+def test_generate_stage_updates_parallelizes_independent_working_relationship_fields(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    user_id = "calibration-stage-parallel"
+    active_calls = 0
+    max_active_calls = 0
+    lock = threading.Lock()
+
+    monkeypatch.setattr(
+        UserSettingsService,
+        "get_settings",
+        staticmethod(
+            lambda db, requested_user_id: SimpleNamespace(
+                assistant_identity={},
+                assistant_soul={},
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_render_field_prompt",
+        staticmethod(
+            lambda *,
+            scope,
+            field_name,
+            answers,
+            current_identity,
+            current_soul,
+            previous_name,
+            repair_feedback: f"{scope}.{field_name}"
+        ),
+    )
+
+    async def fake_generate_text(
+        self,
+        *,
+        prompt,
+        settings_record,
+        system_prompt=None,
+        preferred_provider=None,
+        provider_key_lookup=None,
+        max_output_tokens=800,
+        temperature=0.3,
+    ) -> PromptGenerationResult:
+        nonlocal active_calls, max_active_calls
+        with lock:
+            active_calls += 1
+            max_active_calls = max(max_active_calls, active_calls)
+        await asyncio.sleep(0.05)
+        with lock:
+            active_calls -= 1
+        scope, field_name = prompt.split(".", 1)
+        return PromptGenerationResult(
+            raw_text=json.dumps({scope: {field_name: f"{field_name} prose"}}),
+            provider="openai",
+        )
+
+    monkeypatch.setattr(
+        "api.services.ai.gateway.AIProviderGateway.generate_text",
+        fake_generate_text,
+    )
+
+    updates = OnboardingCalibrationService._generate_stage_updates(
+        test_db,
+        user_id,
+        answered_prompt="working_relationship",
+        answers={
+            "primary_goal": "life_admin",
+            "working_relationship": "collaborative",
+            "tone_preferences": None,
+        },
+        previous_name=None,
+    )
+
+    assert max_active_calls >= 2
+    assert updates == {
+        "assistant_soul": {
+            "success_signals": "success_signals prose",
+            "operating_principles": "operating_principles prose",
+            "adaptation_policy": "adaptation_policy prose",
+        }
+    }
 
 
 def test_submit_answer_requires_provider_ready(test_db, monkeypatch) -> None:
@@ -259,44 +336,30 @@ def test_submit_answer_generates_assistant_configuration_after_tone(
         },
     )
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
-    generated_fields: list[tuple[str, str, str | None]] = []
+    generated_stages: list[tuple[str, str | None]] = []
 
-    def _generate_field(
+    def _generate_stage(
         db,
         user_id,
         *,
-        scope,
-        field_name,
+        answered_prompt,
         answers,
-        previous_name=None,
+        previous_name,
     ):
-        generated_fields.append((scope, field_name, previous_name))
-        mapping = {
-            ("assistant_identity", "tone"): {
-                "assistant_identity": {
-                    "tone": "Pragmatic, direct, and collaborative. Warm but not effusive."
-                }
-            },
-            ("assistant_identity", "values"): {
-                "assistant_identity": {
-                    "values": "Clarity, pragmatism, rigor, and durable progress."
-                }
-            },
-            ("assistant_identity", "boundaries"): {
-                "assistant_identity": {
-                    "boundaries": "Never invent facts, never compromise security, and preserve the user's agency."
-                }
-            },
-            ("assistant_identity", "name"): {
-                "assistant_identity": {"name": "Navigator"}
-            },
+        generated_stages.append((answered_prompt, previous_name))
+        return {
+            "assistant_identity": {
+                "tone": "Pragmatic, direct, and collaborative. Warm but not effusive.",
+                "values": "Clarity, pragmatism, rigor, and durable progress.",
+                "boundaries": "Never invent facts, never compromise security, and preserve the user's agency.",
+                "name": "Navigator",
+            }
         }
-        return mapping[(scope, field_name)]
 
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_validated_field_update",
-        staticmethod(_generate_field),
+        "_generate_stage_updates",
+        staticmethod(_generate_stage),
     )
 
     result = OnboardingCalibrationService.submit_answer(
@@ -313,12 +376,7 @@ def test_submit_answer_generates_assistant_configuration_after_tone(
         result.assistant_identity["tone"]
         == "Pragmatic, direct, and collaborative. Warm but not effusive."
     )
-    assert generated_fields == [
-        ("assistant_identity", "tone", None),
-        ("assistant_identity", "values", None),
-        ("assistant_identity", "boundaries", None),
-        ("assistant_identity", "name", None),
-    ]
+    assert generated_stages == [("tone_preferences", None)]
     settings_payload = SettingsService.get_settings(test_db, user_id)
     assert settings_payload["assistant_identity"]["name"] == "Navigator"
     assert (
@@ -349,38 +407,30 @@ def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
         },
     )
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
-    generated_fields: list[tuple[str, str, str | None]] = []
+    generated_stages: list[tuple[str, str | None]] = []
 
-    def _generate_field(
+    def _generate_stage(
         db,
         user_id,
         *,
-        scope,
-        field_name,
+        answered_prompt,
         answers,
-        previous_name=None,
+        previous_name,
     ):
-        generated_fields.append((scope, field_name, previous_name))
-        mapping = {
-            ("assistant_identity", "tone"): {
-                "assistant_identity": {"tone": "Direct, serious, and concise."}
-            },
-            ("assistant_identity", "values"): {
-                "assistant_identity": {"values": "Clarity and momentum."}
-            },
-            ("assistant_identity", "boundaries"): {
-                "assistant_identity": {"boundaries": "Do not invent facts."}
-            },
-            ("assistant_identity", "name"): {
-                "assistant_identity": {"name": "Compass"}
-            },
+        generated_stages.append((answered_prompt, previous_name))
+        return {
+            "assistant_identity": {
+                "tone": "Direct, serious, and concise.",
+                "values": "Clarity and momentum.",
+                "boundaries": "Do not invent facts.",
+                "name": "Compass",
+            }
         }
-        return mapping[(scope, field_name)]
 
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_validated_field_update",
-        staticmethod(_generate_field),
+        "_generate_stage_updates",
+        staticmethod(_generate_stage),
     )
 
     result = OnboardingCalibrationService.submit_answer(
@@ -397,7 +447,7 @@ def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
     )
     assert result.state["calibration"]["proposed_name"] == "Compass"
     assert result.assistant_identity["name"] == "Compass"
-    assert generated_fields[-1] == ("assistant_identity", "name", "Navigator")
+    assert generated_stages == [("tone_preferences", "Navigator")]
 
 
 def test_regenerate_name_only_updates_proposed_name(test_db, monkeypatch) -> None:
@@ -585,7 +635,7 @@ def test_submit_answer_retries_generation_after_validation_failure(
         OnboardingCalibrationService,
         "_generate_model_field_update",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name=None, repair_feedback=None: (
+            lambda db, user_id, *, scope, field_name, answers, previous_name=None, repair_feedback=None, generation_context=None, current_identity=None, current_soul=None: (
                 calls.append(repair_feedback)
                 or (
                     {"assistant_identity": {"name": "x" * 121}}
@@ -637,7 +687,7 @@ def test_submit_answer_surfaces_retryable_error_after_second_validation_failure(
         OnboardingCalibrationService,
         "_generate_model_field_update",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name=None, repair_feedback=None: {
+            lambda db, user_id, *, scope, field_name, answers, previous_name=None, repair_feedback=None, generation_context=None, current_identity=None, current_soul=None: {
                 "assistant_identity": {"name": "x" * 121},
             }
         ),
@@ -678,9 +728,9 @@ def test_submit_answer_persists_tone_answer_when_generation_fails(
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
     monkeypatch.setattr(
         OnboardingCalibrationService,
-        "_generate_validated_field_update",
+        "_generate_stage_updates",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name=None: (_ for _ in ()).throw(
+            lambda db, user_id, *, answered_prompt, answers, previous_name: (_ for _ in ()).throw(
                 HTTPException(status_code=503, detail="Calibration generation failed")
             )
         ),
