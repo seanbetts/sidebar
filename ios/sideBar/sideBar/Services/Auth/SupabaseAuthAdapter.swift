@@ -307,8 +307,21 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         if let authError = error as? AuthAdapterError {
             return authError
         }
+        if let category = URLRequestErrorClassifier.category(for: error) {
+            switch category {
+            case .offline:
+                return .networkUnavailable
+            case .timeout,
+                 .serverUnreachable,
+                 .secureConnection,
+                 .authRequired,
+                 .cancelled,
+                 .other:
+                return .unknown(ErrorMapping.message(for: error))
+            }
+        }
         if error is URLError {
-            return .networkUnavailable
+            return .unknown(ErrorMapping.message(for: error))
         }
 
         let description = error.localizedDescription.lowercased()

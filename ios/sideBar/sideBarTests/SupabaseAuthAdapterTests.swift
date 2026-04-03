@@ -225,6 +225,27 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertEqual(adapter.userId, "user")
     }
 
+    func testMapAuthErrorUsesSecureConnectionMessageForTLSFailures() async {
+        let adapter = SupabaseAuthAdapter(
+            authClient: FakeSupabaseAuthClient(),
+            stateStore: InMemoryAuthStateStore(),
+            startAuthStateTask: false,
+            userDefaults: makeUserDefaults()
+        )
+
+        let mapped = adapter.mapAuthError(URLError(.secureConnectionFailed))
+
+        guard case .unknown(let message) = mapped else {
+            XCTFail("Expected TLS failures to avoid the offline bucket")
+            return
+        }
+
+        XCTAssertEqual(
+            message,
+            "Unable to verify a secure connection to the server. Please try again shortly. [SEC-CONN]"
+        )
+    }
+
     func testRestoreOfflineSessionFailsOutsideWindow() async {
         let store = InMemoryAuthStateStore()
         try? store.saveAccessToken("token")
