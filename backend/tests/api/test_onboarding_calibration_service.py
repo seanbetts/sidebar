@@ -969,3 +969,161 @@ def test_generate_validated_field_update_maps_name_provider_failure_to_retryable
 
     assert exc_info.value.status_code == 503
     assert "choose a name" in str(exc_info.value.detail).lower()
+
+
+def test_build_generation_context_only_loads_primary_provider_key(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    user_id = "calibration-primary-provider-only"
+    requested_providers: list[str] = []
+
+    monkeypatch.setattr(
+        UserSettingsService,
+        "get_settings",
+        staticmethod(
+            lambda db, requested_user_id: SimpleNamespace(
+                ai_primary_provider="openai",
+                assistant_identity={},
+                assistant_soul={},
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        "api.services.onboarding_calibration_service.UserAIProviderKeyService.get_active_key",
+        staticmethod(
+            lambda db, requested_user_id, provider: (
+                requested_providers.append(provider) or f"{provider}-key"
+            )
+        ),
+    )
+
+    context = OnboardingCalibrationService._build_generation_context(test_db, user_id)
+
+    assert requested_providers == ["openai"]
+    assert context.provider_keys == {"openai": "openai-key"}
+
+
+def test_render_field_prompt_uses_compact_json_snapshots() -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    prompt = OnboardingCalibrationService._render_field_prompt(
+        scope="assistant_soul",
+        field_name="purpose",
+        answers={
+            "primary_goal": "notes_and_ideas",
+            "working_relationship": "collaborative",
+            "tone_preferences": "direct_but_kind",
+        },
+        current_identity={
+            "tone": "Direct and warm.",
+            "values": "Clarity and rigor.",
+        },
+        current_soul={
+            "purpose": "Help the user make progress.",
+        },
+        previous_name=None,
+        repair_feedback=None,
+    )
+
+    assert '{"purpose":"Help the user make progress."}' in prompt
+    assert (
+        '{"tone":"Direct and warm.","values":"Clarity and rigor."}' in prompt
+    )
+    assert '\n    "purpose"' not in prompt
+
+
+def test_generate_model_field_update_uses_calibration_token_budgets(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    user_id = "calibration-token-budgets"
+    budgets: list[tuple[str, int]] = []
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_build_generation_context",
+        staticmethod(
+            lambda db, requested_user_id: SimpleNamespace(
+                settings_snapshot=SimpleNamespace(ai_primary_provider="openai"),
+                current_identity={},
+                current_soul={},
+                provider_keys={"openai": "test-key"},
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_render_field_prompt",
+        staticmethod(
+            lambda *,
+            scope,
+            field_name,
+            answers,
+            current_identity,
+            current_soul,
+            previous_name,
+            repair_feedback: f"{scope}.{field_name}"
+        ),
+    )
+
+    async def fake_generate_text(
+        self,
+        *,
+        prompt,
+        settings_record,
+        system_prompt=None,
+        preferred_provider=None,
+        provider_key_lookup=None,
+        max_output_tokens=800,
+        temperature=0.3,
+    ) -> PromptGenerationResult:
+        budgets.append((prompt, max_output_tokens))
+        scope, field_name = prompt.split(".", 1)
+        return PromptGenerationResult(
+            raw_text=json.dumps({scope: {field_name: "generated"}}),
+            provider="openai",
+        )
+
+    monkeypatch.setattr(
+        "api.services.ai.gateway.AIProviderGateway.generate_text",
+        fake_generate_text,
+    )
+
+    OnboardingCalibrationService._generate_model_field_update(
+        test_db,
+        user_id,
+        scope="assistant_identity",
+        field_name="name",
+        answers={"primary_goal": "life_admin"},
+        previous_name=None,
+        repair_feedback=None,
+    )
+    OnboardingCalibrationService._generate_model_field_update(
+        test_db,
+        user_id,
+        scope="assistant_identity",
+        field_name="tone",
+        answers={"primary_goal": "life_admin"},
+        previous_name=None,
+        repair_feedback=None,
+    )
+    OnboardingCalibrationService._generate_model_field_update(
+        test_db,
+        user_id,
+        scope="assistant_soul",
+        field_name="operating_principles",
+        answers={"primary_goal": "life_admin"},
+        previous_name=None,
+        repair_feedback=None,
+    )
+
+    assert budgets == [
+        ("assistant_identity.name", 48),
+        ("assistant_identity.tone", 220),
+        ("assistant_soul.operating_principles", 320),
+    ]

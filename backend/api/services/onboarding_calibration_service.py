@@ -29,6 +29,7 @@ from api.services.agent.prompt.templates import (
 )
 from api.services.agent_settings_service import AgentSettingsService
 from api.services.ai.gateway import AIProviderGateway
+from api.services.ai.policy import AIPolicyService
 from api.services.ai.registry import AIProvider
 from api.services.onboarding_service import VALID_CALIBRATION_PROMPTS, OnboardingService
 from api.services.settings_service import SettingsService
@@ -59,6 +60,16 @@ STAGE_FIELDS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
 }
 NAME_FIELD = ("assistant_identity", "name")
+FIELD_MAX_OUTPUT_TOKENS: dict[tuple[str, str], int] = {
+    ("assistant_identity", "name"): 48,
+    ("assistant_identity", "tone"): 220,
+    ("assistant_identity", "values"): 260,
+    ("assistant_identity", "boundaries"): 280,
+    ("assistant_soul", "purpose"): 220,
+    ("assistant_soul", "success_signals"): 320,
+    ("assistant_soul", "operating_principles"): 320,
+    ("assistant_soul", "adaptation_policy"): 280,
+}
 
 FIELD_PROMPT_TEMPLATES: dict[tuple[str, str], str] = {
     ("assistant_soul", "purpose"): CALIBRATION_PROMPT_ASSISTANT_SOUL_PURPOSE,
@@ -594,8 +605,9 @@ class OnboardingCalibrationService:
                     ),
                     settings_record=context.settings_snapshot,
                     provider_key_lookup=provider_key_lookup,
-                    max_output_tokens=(
-                        96 if (scope, field_name) == NAME_FIELD else 900
+                    max_output_tokens=OnboardingCalibrationService._field_token_budget(
+                        scope=scope,
+                        field_name=field_name,
                     ),
                     temperature=(0.5 if (scope, field_name) == NAME_FIELD else 0.3),
                 )
@@ -643,14 +655,14 @@ class OnboardingCalibrationService:
             "assistant_soul_json": json.dumps(
                 current_soul,
                 ensure_ascii=True,
-                indent=2,
                 sort_keys=True,
+                separators=(",", ":"),
             ),
             "assistant_identity_json": json.dumps(
                 current_identity,
                 ensure_ascii=True,
-                indent=2,
                 sort_keys=True,
+                separators=(",", ":"),
             ),
             "previous_name": (previous_name or "None"),
         }
@@ -767,6 +779,11 @@ class OnboardingCalibrationService:
         )
 
     @staticmethod
+    def _field_token_budget(*, scope: str, field_name: str) -> int:
+        """Return the max output token budget for a calibration field."""
+        return FIELD_MAX_OUTPUT_TOKENS.get((scope, field_name), 320)
+
+    @staticmethod
     def _build_generation_context(db: Session, user_id: str) -> GenerationContext:
         """Capture the immutable inputs required for concurrent field generation."""
         settings_record = UserSettingsService.get_settings(db, user_id)
@@ -776,15 +793,16 @@ class OnboardingCalibrationService:
                 detail="Calibration cannot continue without user settings",
             )
 
-        providers: tuple[AIProvider, AIProvider, AIProvider] = (
-            "anthropic",
-            "openai",
-            "google",
-        )
-        provider_keys: dict[AIProvider, str | None] = {
-            provider: UserAIProviderKeyService.get_active_key(db, user_id, provider)
-            for provider in providers
-        }
+        primary_provider = AIPolicyService.resolve_from_settings(
+            settings_record
+        ).primary_provider
+        provider_keys: dict[AIProvider, str | None] = {}
+        if primary_provider is not None:
+            provider_keys[primary_provider] = UserAIProviderKeyService.get_active_key(
+                db,
+                user_id,
+                primary_provider,
+            )
         settings_snapshot = SimpleNamespace(
             ai_primary_provider=getattr(settings_record, "ai_primary_provider", None)
         )
