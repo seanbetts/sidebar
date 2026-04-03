@@ -11,6 +11,12 @@ struct ContinueButton: View {
     let title: String
     let isEnabled: Bool
     let action: () -> Void
+    var style: ContinueButtonStyle = .primary
+
+    enum ContinueButtonStyle {
+        case primary
+        case secondary
+    }
 
     var body: some View {
         Button(action: action) {
@@ -43,15 +49,34 @@ struct ContinueButton: View {
     }
 
     private var borderColor: Color {
-        isEnabled ? selectedBackgroundColor : DesignTokens.Colors.border
+        isEnabled ? selectedBorderColor : DesignTokens.Colors.border
     }
 
     private var selectedForegroundColor: Color {
-        .white
+        switch style {
+        case .primary:
+            return .white
+        case .secondary:
+            return DesignTokens.Colors.textPrimary
+        }
     }
 
     private var selectedBackgroundColor: Color {
-        .black
+        switch style {
+        case .primary:
+            return .black
+        case .secondary:
+            return DesignTokens.Colors.surface
+        }
+    }
+
+    private var selectedBorderColor: Color {
+        switch style {
+        case .primary:
+            return .black
+        case .secondary:
+            return DesignTokens.Colors.border
+        }
     }
 }
 

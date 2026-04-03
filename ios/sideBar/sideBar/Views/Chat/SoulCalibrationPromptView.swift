@@ -424,7 +424,8 @@ private extension SoulCalibrationPromptView {
                 ContinueButton(
                     title: "Try another",
                     isEnabled: !isBusy,
-                    action: onRegenerateName
+                    action: onRegenerateName,
+                    style: .secondary
                 )
 
                 ContinueButton(
