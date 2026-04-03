@@ -11,6 +11,17 @@ from api.services.agent.prompt.sections import (
     build_system_prompt,
     resolve_template,
 )
+from api.services.agent.prompt.templates import (
+    CALIBRATION_AUTHORING_PRINCIPLES,
+    CALIBRATION_PROMPT_ASSISTANT_IDENTITY_BOUNDARIES,
+    CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME,
+    CALIBRATION_PROMPT_ASSISTANT_IDENTITY_TONE,
+    CALIBRATION_PROMPT_ASSISTANT_IDENTITY_VALUES,
+    CALIBRATION_PROMPT_ASSISTANT_SOUL_ADAPTATION_POLICY,
+    CALIBRATION_PROMPT_ASSISTANT_SOUL_OPERATING_PRINCIPLES,
+    CALIBRATION_PROMPT_ASSISTANT_SOUL_PURPOSE,
+    CALIBRATION_PROMPT_ASSISTANT_SOUL_SUCCESS_SIGNALS,
+)
 
 
 class DummySettings:
@@ -181,6 +192,40 @@ def test_build_assistant_soul_block_uses_overrides() -> None:
     assert "Adaptation policy: Adapt on repeated feedback." in block
     assert "Success signals: Less rework." in block
     assert "Bootstrap guidance:" not in block
+
+
+def test_calibration_prompts_frame_identity_and_soul_as_self_authored() -> None:
+    assert "inform your own self-definition" in CALIBRATION_AUTHORING_PRINCIPLES
+    assert "who you want to be for this user" not in CALIBRATION_AUTHORING_PRINCIPLES
+    assert "single compact paragraph" in CALIBRATION_AUTHORING_PRINCIPLES
+    assert "2 to 5 sentences" in CALIBRATION_AUTHORING_PRINCIPLES
+    assert "efficient enough to carry in the system prompt" in (
+        CALIBRATION_AUTHORING_PRINCIPLES
+    )
+
+    prompts = (
+        CALIBRATION_PROMPT_ASSISTANT_SOUL_PURPOSE,
+        CALIBRATION_PROMPT_ASSISTANT_SOUL_SUCCESS_SIGNALS,
+        CALIBRATION_PROMPT_ASSISTANT_SOUL_OPERATING_PRINCIPLES,
+        CALIBRATION_PROMPT_ASSISTANT_SOUL_ADAPTATION_POLICY,
+        CALIBRATION_PROMPT_ASSISTANT_IDENTITY_TONE,
+        CALIBRATION_PROMPT_ASSISTANT_IDENTITY_VALUES,
+        CALIBRATION_PROMPT_ASSISTANT_IDENTITY_BOUNDARIES,
+    )
+    for prompt in prompts:
+        assert "for this user." not in prompt
+
+    assert (
+        "help the user make progress."
+        in CALIBRATION_PROMPT_ASSISTANT_SOUL_OPERATING_PRINCIPLES
+    )
+    assert (
+        "help them make progress."
+        not in CALIBRATION_PROMPT_ASSISTANT_SOUL_OPERATING_PRINCIPLES
+    )
+
+    assert "Set your own name." in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+    assert "Choose your name for this user." not in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
 
 
 def test_build_recent_activity_block() -> None:

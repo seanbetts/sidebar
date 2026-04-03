@@ -52,8 +52,24 @@ say you do not know."""
 MAX_STYLE_CHARS = 4000
 MAX_PROFILE_FIELD_CHARS = 200
 MAX_ASSISTANT_IDENTITY_NAME_CHARS = 120
-MAX_ASSISTANT_IDENTITY_TEXT_CHARS = 2000
-MAX_ASSISTANT_SOUL_TEXT_CHARS = 3000
+MAX_ASSISTANT_IDENTITY_TONE_CHARS = 600
+MAX_ASSISTANT_IDENTITY_VALUES_CHARS = 800
+MAX_ASSISTANT_IDENTITY_BOUNDARIES_CHARS = 900
+MAX_ASSISTANT_SOUL_PURPOSE_CHARS = 700
+MAX_ASSISTANT_SOUL_OPERATING_PRINCIPLES_CHARS = 1000
+MAX_ASSISTANT_SOUL_ADAPTATION_POLICY_CHARS = 900
+MAX_ASSISTANT_SOUL_SUCCESS_SIGNALS_CHARS = 1000
+MAX_ASSISTANT_IDENTITY_TEXT_CHARS = max(
+    MAX_ASSISTANT_IDENTITY_TONE_CHARS,
+    MAX_ASSISTANT_IDENTITY_VALUES_CHARS,
+    MAX_ASSISTANT_IDENTITY_BOUNDARIES_CHARS,
+)
+MAX_ASSISTANT_SOUL_TEXT_CHARS = max(
+    MAX_ASSISTANT_SOUL_PURPOSE_CHARS,
+    MAX_ASSISTANT_SOUL_OPERATING_PRINCIPLES_CHARS,
+    MAX_ASSISTANT_SOUL_ADAPTATION_POLICY_CHARS,
+    MAX_ASSISTANT_SOUL_SUCCESS_SIGNALS_CHARS,
+)
 
 DEFAULT_ASSISTANT_IDENTITY = {
     "name": "sideBar",
@@ -407,17 +423,17 @@ class SettingsService:
             "tone": SettingsService._clean_text_field(
                 value.get("tone"),
                 "assistant_identity.tone",
-                MAX_ASSISTANT_IDENTITY_TEXT_CHARS,
+                MAX_ASSISTANT_IDENTITY_TONE_CHARS,
             ),
             "boundaries": SettingsService._clean_text_field(
                 value.get("boundaries"),
                 "assistant_identity.boundaries",
-                MAX_ASSISTANT_IDENTITY_TEXT_CHARS,
+                MAX_ASSISTANT_IDENTITY_BOUNDARIES_CHARS,
             ),
             "values": SettingsService._clean_text_field(
                 value.get("values"),
                 "assistant_identity.values",
-                MAX_ASSISTANT_IDENTITY_TEXT_CHARS,
+                MAX_ASSISTANT_IDENTITY_VALUES_CHARS,
             ),
         }
         compact = {key: item for key, item in cleaned.items() if item is not None}
@@ -487,22 +503,22 @@ class SettingsService:
             "purpose": SettingsService._clean_text_field(
                 value.get("purpose"),
                 "assistant_soul.purpose",
-                MAX_ASSISTANT_SOUL_TEXT_CHARS,
+                MAX_ASSISTANT_SOUL_PURPOSE_CHARS,
             ),
             "operating_principles": SettingsService._clean_text_field(
                 value.get("operating_principles"),
                 "assistant_soul.operating_principles",
-                MAX_ASSISTANT_SOUL_TEXT_CHARS,
+                MAX_ASSISTANT_SOUL_OPERATING_PRINCIPLES_CHARS,
             ),
             "adaptation_policy": SettingsService._clean_text_field(
                 value.get("adaptation_policy"),
                 "assistant_soul.adaptation_policy",
-                MAX_ASSISTANT_SOUL_TEXT_CHARS,
+                MAX_ASSISTANT_SOUL_ADAPTATION_POLICY_CHARS,
             ),
             "success_signals": SettingsService._clean_text_field(
                 value.get("success_signals"),
                 "assistant_soul.success_signals",
-                MAX_ASSISTANT_SOUL_TEXT_CHARS,
+                MAX_ASSISTANT_SOUL_SUCCESS_SIGNALS_CHARS,
             ),
         }
         compact = {key: item for key, item in cleaned.items() if item is not None}

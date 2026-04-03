@@ -6,8 +6,14 @@ from fastapi import HTTPException
 
 from api.services.agent.skills.catalog import SkillCatalogService
 from api.services.settings_service import (
+    MAX_ASSISTANT_IDENTITY_BOUNDARIES_CHARS,
     MAX_ASSISTANT_IDENTITY_NAME_CHARS,
-    MAX_ASSISTANT_SOUL_TEXT_CHARS,
+    MAX_ASSISTANT_IDENTITY_TONE_CHARS,
+    MAX_ASSISTANT_IDENTITY_VALUES_CHARS,
+    MAX_ASSISTANT_SOUL_ADAPTATION_POLICY_CHARS,
+    MAX_ASSISTANT_SOUL_OPERATING_PRINCIPLES_CHARS,
+    MAX_ASSISTANT_SOUL_PURPOSE_CHARS,
+    MAX_ASSISTANT_SOUL_SUCCESS_SIGNALS_CHARS,
     SettingsService,
 )
 from api.services.user_ai_provider_settings_service import (
@@ -71,6 +77,58 @@ def test_clean_agent_updates_rejects_long_assistant_identity_name() -> None:
     assert "assistant_identity.name exceeds" in str(exc_info.value.detail)
 
 
+def test_clean_agent_updates_rejects_long_assistant_identity_tone() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_agent_updates(
+            {
+                "assistant_identity": {
+                    "tone": "a" * (MAX_ASSISTANT_IDENTITY_TONE_CHARS + 1)
+                }
+            }
+        )
+
+    assert exc_info.value.status_code == 400
+    assert (
+        f"assistant_identity.tone exceeds max length ({MAX_ASSISTANT_IDENTITY_TONE_CHARS} characters)"
+        in str(exc_info.value.detail)
+    )
+
+
+def test_clean_agent_updates_rejects_long_assistant_identity_values() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_agent_updates(
+            {
+                "assistant_identity": {
+                    "values": "a" * (MAX_ASSISTANT_IDENTITY_VALUES_CHARS + 1)
+                }
+            }
+        )
+
+    assert exc_info.value.status_code == 400
+    assert (
+        f"assistant_identity.values exceeds max length ({MAX_ASSISTANT_IDENTITY_VALUES_CHARS} characters)"
+        in str(exc_info.value.detail)
+    )
+
+
+def test_clean_agent_updates_rejects_long_assistant_identity_boundaries() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_agent_updates(
+            {
+                "assistant_identity": {
+                    "boundaries": "a"
+                    * (MAX_ASSISTANT_IDENTITY_BOUNDARIES_CHARS + 1)
+                }
+            }
+        )
+
+    assert exc_info.value.status_code == 400
+    assert (
+        f"assistant_identity.boundaries exceeds max length ({MAX_ASSISTANT_IDENTITY_BOUNDARIES_CHARS} characters)"
+        in str(exc_info.value.detail)
+    )
+
+
 def test_clean_agent_updates_rejects_user_owned_fields() -> None:
     with pytest.raises(HTTPException) as exc_info:
         SettingsService.clean_agent_updates({"communication_style": "brief"})
@@ -112,10 +170,62 @@ def test_clean_agent_updates_rejects_unknown_assistant_soul_fields() -> None:
 def test_clean_agent_updates_rejects_long_assistant_soul_field() -> None:
     with pytest.raises(HTTPException) as exc_info:
         SettingsService.clean_agent_updates(
-            {"assistant_soul": {"purpose": "a" * (MAX_ASSISTANT_SOUL_TEXT_CHARS + 1)}}
+            {
+                "assistant_soul": {
+                    "purpose": "a" * (MAX_ASSISTANT_SOUL_PURPOSE_CHARS + 1)
+                }
+            }
         )
     assert exc_info.value.status_code == 400
     assert "assistant_soul.purpose exceeds" in str(exc_info.value.detail)
+
+
+def test_clean_agent_updates_rejects_long_assistant_soul_operating_principles() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_agent_updates(
+            {
+                "assistant_soul": {
+                    "operating_principles": "a"
+                    * (MAX_ASSISTANT_SOUL_OPERATING_PRINCIPLES_CHARS + 1)
+                }
+            }
+        )
+
+    assert exc_info.value.status_code == 400
+    assert (
+        "assistant_soul.operating_principles exceeds"
+        in str(exc_info.value.detail)
+    )
+
+
+def test_clean_agent_updates_rejects_long_assistant_soul_adaptation_policy() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_agent_updates(
+            {
+                "assistant_soul": {
+                    "adaptation_policy": "a"
+                    * (MAX_ASSISTANT_SOUL_ADAPTATION_POLICY_CHARS + 1)
+                }
+            }
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "assistant_soul.adaptation_policy exceeds" in str(exc_info.value.detail)
+
+
+def test_clean_agent_updates_rejects_long_assistant_soul_success_signals() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_agent_updates(
+            {
+                "assistant_soul": {
+                    "success_signals": "a"
+                    * (MAX_ASSISTANT_SOUL_SUCCESS_SIGNALS_CHARS + 1)
+                }
+            }
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "assistant_soul.success_signals exceeds" in str(exc_info.value.detail)
 
 
 def test_build_response_returns_blank_new_user_defaults_except_assistant_name() -> None:

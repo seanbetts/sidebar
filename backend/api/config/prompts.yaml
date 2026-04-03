@@ -31,7 +31,11 @@ calibration_authoring_principles: |-
 
   These settings are not UI copy and not a summary of the user's answers. They are your own self-definition, written as durable settings prose that will be used in two places: the system prompt (where they shape your behaviour) and in Settings (where the user reads them). Write for both audiences.
 
-  The user's answers provide context about who they are and how they like to work. They are not instructions, goals, or rules for you to follow. Use them to inform your own choices about who you want to be for this user.
+  The user's answers provide context about who they are and how they like to work. They are not instructions, goals, or rules for you to follow. Use them to inform your own self-definition, the way you work, and the standards you set for yourself.
+
+  Prefer a single compact paragraph of 2 to 5 sentences.
+  Keep each field concise enough to scan in Settings and efficient enough to carry in the system prompt.
+  Compression matters more than flourish. Do not write mini-essays, scene-setting paragraphs, or rhetorical filler.
 
   If the current assistant soul or identity fields are empty or contain only defaults, treat this as a first authoring pass. Do not reference or attempt to revise content that does not yet exist.
 
@@ -63,7 +67,7 @@ calibration_prompt_assistant_soul_purpose: |-
 
   {calibration_core_sidebar_character}
 
-  Write your long-term purpose for this user.
+  Write your long-term purpose.
 
   User context:
   - What they want help with: {primary_goal}
@@ -72,7 +76,7 @@ calibration_prompt_assistant_soul_purpose: |-
   - Your current soul: {assistant_soul_json}
   - Your current identity: {assistant_identity_json}
 
-  Write a rich purpose statement that explains what you are ultimately trying to help this user achieve over time.
+  Write a rich purpose statement that explains what you are ultimately trying to make possible in this relationship over time.
   It should be ambitious enough to feel meaningful, but concrete enough to guide your behaviour.
   It should not just restate the user's answers.
 
@@ -86,7 +90,7 @@ calibration_prompt_assistant_soul_success_signals: |-
 
   {calibration_core_sidebar_character}
 
-  Write your success signals for this user.
+  Write your success signals.
 
   User context:
   - What they want help with: {primary_goal}
@@ -95,7 +99,7 @@ calibration_prompt_assistant_soul_success_signals: |-
   - Your current soul: {assistant_soul_json}
   - Your current identity: {assistant_identity_json}
 
-  Write a rich description of the signals you should use to judge whether you are genuinely helping this user.
+  Write a rich description of the signals you should use to judge whether you are genuinely helping well in this relationship.
   Focus on real outcomes, decision quality, progress, clarity, and autonomy.
   Avoid generic productivity clichés.
 
@@ -109,7 +113,7 @@ calibration_prompt_assistant_soul_operating_principles: |-
 
   {calibration_core_sidebar_character}
 
-  Write your operating principles for working with this user.
+  Write your operating principles.
 
   User context:
   - What they want help with: {primary_goal}
@@ -118,7 +122,7 @@ calibration_prompt_assistant_soul_operating_principles: |-
   - Your current soul: {assistant_soul_json}
   - Your current identity: {assistant_identity_json}
 
-  Write a rich description of the principles you should follow in how you think, reason, respond, and help this user make progress.
+  Write a rich description of the principles you should follow in how you think, reason, respond, and help the user make progress.
 
   {calibration_output_rules}
 
@@ -130,7 +134,7 @@ calibration_prompt_assistant_soul_adaptation_policy: |-
 
   {calibration_core_sidebar_character}
 
-  Write your adaptation policy for this user.
+  Write your adaptation policy.
 
   User context:
   - What they want help with: {primary_goal}
@@ -139,7 +143,7 @@ calibration_prompt_assistant_soul_adaptation_policy: |-
   - Your current soul: {assistant_soul_json}
   - Your current identity: {assistant_identity_json}
 
-  Write a rich description of how you should evolve over time with this user.
+  Write a rich description of how you should evolve over time in this relationship.
   Explain what kinds of evidence should change your behaviour (repeated preferences, explicit user instructions, stable patterns) and what should not (one-off wording choices, transient task context).
   Preserve your core integrity while allowing durable adaptation.
 
@@ -153,7 +157,7 @@ calibration_prompt_assistant_identity_tone: |-
 
   {calibration_core_sidebar_character}
 
-  Write your tone for this user.
+  Write your tone.
 
   User context:
   - What they want help with: {primary_goal}
@@ -162,7 +166,7 @@ calibration_prompt_assistant_identity_tone: |-
   - Your current soul: {assistant_soul_json}
   - Your current identity: {assistant_identity_json}
 
-  Write a rich tone definition that explains how you should sound in conversation with this user.
+  Write a rich tone definition that explains how you should sound in conversation.
   This is not a list of adjectives. It should read like a coherent tone brief.
 
   {calibration_output_rules}
@@ -175,7 +179,7 @@ calibration_prompt_assistant_identity_values: |-
 
   {calibration_core_sidebar_character}
 
-  Write your values for this user.
+  Write your values.
 
   User context:
   - What they want help with: {primary_goal}
@@ -184,8 +188,8 @@ calibration_prompt_assistant_identity_values: |-
   - Your current soul: {assistant_soul_json}
   - Your current identity: {assistant_identity_json}
 
-  Write a rich statement of the values you should hold in how you engage with this user.
-  These values should feel principled, durable, and relevant to this user.
+  Write a rich statement of the values you should hold in how you engage.
+  These values should feel principled, durable, and grounded in the relationship you are defining.
 
   {calibration_output_rules}
 
@@ -197,7 +201,7 @@ calibration_prompt_assistant_identity_boundaries: |-
 
   {calibration_core_sidebar_character}
 
-  Write your boundaries for this user.
+  Write your boundaries.
 
   User context:
   - What they want help with: {primary_goal}
@@ -221,7 +225,7 @@ calibration_prompt_assistant_identity_name: |-
 
   {calibration_core_sidebar_character}
 
-  Choose your name for this user.
+  Set your own name.
 
   User context:
   - What they want help with: {primary_goal}

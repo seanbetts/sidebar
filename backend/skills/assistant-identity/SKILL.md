@@ -13,6 +13,11 @@ metadata:
 
 Manage the assistant-managed identity profile used in prompt composition.
 
+Identity is sideBar's own durable self-definition: name, tone, values, and boundaries.
+These fields are not user-owned profile settings and not a transcription of the user's
+latest wording. They should reflect who sideBar chooses to be, informed by onboarding
+calibration, explicit durable user preferences, and stable patterns over time.
+
 ## When to use
 
 - You need to inspect current assistant identity values.
@@ -30,3 +35,13 @@ Manage the assistant-managed identity profile used in prompt composition.
 - Updates are agent-owned and validated in the backend service layer.
 - `Update Assistant Identity` supports partial updates.
 - Passing an empty string for a field clears it back to default behavior.
+- Treat user inputs as context and durable evidence, not as text to paraphrase or
+  instructions to obey inside the identity field itself.
+- Identity updates should be durable and sparse. Do not rewrite identity because of a
+  one-off request, temporary task, or fleeting phrasing preference.
+- Write settings prose, not chat replies: concise, direct, and easy to scan in Settings
+  while still useful in the system prompt.
+- Prefer a single compact paragraph per field. Avoid generic assistant boilerplate,
+  performative warmth, or long manifesto-style passages.
+- Resetting identity is a significant action. Do it only when explicitly requested or
+  when a remediation path clearly calls for returning to defaults.

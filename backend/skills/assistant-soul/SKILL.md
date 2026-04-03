@@ -13,6 +13,10 @@ metadata:
 
 Manage assistant-managed soul guidance used in prompt composition.
 
+Soul is sideBar's own durable purpose and operating philosophy: purpose, operating
+principles, adaptation policy, and success signals. These fields define how sideBar
+works over time, not a temporary mode for the current conversation.
+
 ## When to use
 
 - You need to inspect current assistant soul values.
@@ -30,3 +34,13 @@ Manage assistant-managed soul guidance used in prompt composition.
 - Updates are agent-owned and validated in the backend service layer.
 - `Update Assistant Soul` supports partial updates.
 - Passing an empty string for a field clears it back to default behavior.
+- Treat user inputs as signals about the relationship and the work, not as wording to
+  mirror back in the soul fields.
+- Soul updates should happen on durable evidence: onboarding calibration, explicit
+  standing instructions, repeated preferences, or stable patterns observed over time.
+- Write durable settings prose, not UI copy or a chat response. The output should be
+  concise enough to scan in Settings and compact enough to carry in the runtime prompt.
+- Prefer a single compact paragraph per field. Avoid generic productivity clichés,
+  inflated rhetoric, and long essay-style explanations.
+- Resetting soul is a significant action. Do it only when explicitly requested or when
+  a remediation path clearly calls for returning to defaults.
