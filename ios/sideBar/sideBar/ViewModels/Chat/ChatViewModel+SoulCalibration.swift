@@ -63,6 +63,14 @@ extension ChatViewModel {
                 answer: answer
             )
             applySoulCalibration(response: response)
+            if shouldGenerateInitialSoulCalibrationName(after: response) {
+                do {
+                    let nameResponse = try await onboardingAPI.regenerateCalibrationName()
+                    applySoulCalibration(response: nameResponse)
+                } catch {
+                    soulCalibrationErrorMessage = ErrorMapping.message(for: error)
+                }
+            }
             isSubmittingSoulCalibration = false
             await submitPendingSoulCalibrationSubmissionIfNeeded()
         } catch {
@@ -130,6 +138,13 @@ extension ChatViewModel {
         }
 
         requestOnboardingStateRefresh()
+    }
+
+    private func shouldGenerateInitialSoulCalibrationName(
+        after response: OnboardingCalibrationActionResponse
+    ) -> Bool {
+        response.calibration.status == .awaitingNameAcceptance
+            && (response.calibration.proposedName?.isEmpty ?? true)
     }
 
     private func submitPendingSoulCalibrationSubmissionIfNeeded() async {

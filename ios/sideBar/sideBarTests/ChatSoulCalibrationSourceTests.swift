@@ -51,6 +51,7 @@ final class ChatSoulCalibrationSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("Choosinganameformyself..."))
         XCTAssertTrue(normalized.contains("Thisfeelslikeme."))
         XCTAssertTrue(normalized.contains("Hello!"))
+        XCTAssertTrue(normalized.contains("Retry"))
         XCTAssertTrue(normalized.contains("Tryanother"))
         XCTAssertFalse(normalized.contains("Looksgood"))
     }
@@ -62,12 +63,15 @@ final class ChatSoulCalibrationSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SoulCalibrationPromptView("))
     }
 
-    func testContinueButtonIsNotGloballyDisabledByBusyState() throws {
+    func testProgressActionsRespectBusyStateWithoutDisablingChoiceChips() throws {
         let normalized = try combinedCalibrationSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("isEnabled:isEnabled,action:action"))
-        XCTAssertFalse(normalized.contains("isEnabled:isEnabled&&!isBusy,action:action"))
+        XCTAssertTrue(normalized.contains("SoulCalibrationFooterProgressIndicator()"))
+        XCTAssertTrue(normalized.contains("Rectangle().fill(DesignTokens.Colors.border).frame(height:1)"))
+        XCTAssertTrue(normalized.contains("isEnabled:isEnabled&&!isBusy,action:action"))
+        XCTAssertTrue(normalized.contains("isEnabled:true"))
+        XCTAssertFalse(normalized.contains("Saving..."))
     }
 
     private func combinedCalibrationSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {

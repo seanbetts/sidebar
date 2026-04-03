@@ -98,6 +98,11 @@ private final class ChatViewModelTeardownBag {
 /// await viewModel.sendMessage(text: "Hello")
 /// ```
 @MainActor public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
+    struct PendingSoulCalibrationSubmission {
+        let prompt: OnboardingCalibrationPrompt
+        let answer: OnboardingCalibrationAnswer
+    }
+
     @Published public var conversations: [Conversation] = []
     @Published public var selectedConversationId: String?
     @Published public var isDraftConversationActive: Bool = false
@@ -113,6 +118,7 @@ private final class ChatViewModelTeardownBag {
     @Published public var soulCalibrationConfirmationText: String?
     @Published public var soulCalibrationErrorMessage: String?
     @Published public var isSubmittingSoulCalibration: Bool = false
+    var pendingSoulCalibrationSubmission: PendingSoulCalibrationSubmission?
 
     let network: ChatNetworkCoordinator
     let ui: ChatUICoordinator

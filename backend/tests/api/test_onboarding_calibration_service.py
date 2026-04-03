@@ -360,16 +360,6 @@ def test_submit_answer_generates_assistant_configuration_after_tone(
         "_generate_stage_updates",
         staticmethod(_generate_stage),
     )
-    monkeypatch.setattr(
-        OnboardingCalibrationService,
-        "_generate_validated_field_update",
-        staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name: {
-                "assistant_identity": {"name": "Navigator"}
-            }
-        ),
-    )
-
     result = OnboardingCalibrationService.submit_answer(
         test_db,
         user_id,
@@ -378,15 +368,15 @@ def test_submit_answer_generates_assistant_configuration_after_tone(
     )
 
     assert result.state["calibration"]["status"] == "awaiting_name_acceptance"
-    assert result.state["calibration"]["proposed_name"] == "Navigator"
-    assert result.assistant_identity["name"] == "Navigator"
+    assert result.state["calibration"]["proposed_name"] is None
+    assert result.assistant_identity["name"] == "sideBar"
     assert (
         result.assistant_identity["tone"]
         == "Pragmatic, direct, and collaborative. Warm but not effusive."
     )
     assert generated_stages == [("tone_preferences", None)]
     settings_payload = SettingsService.get_settings(test_db, user_id)
-    assert settings_payload["assistant_identity"]["name"] == "Navigator"
+    assert settings_payload["assistant_identity"]["name"] == "sideBar"
     assert (
         settings_payload["assistant_identity"]["values"]
         == "Clarity, pragmatism, rigor, and durable progress."
@@ -439,16 +429,6 @@ def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
         "_generate_stage_updates",
         staticmethod(_generate_stage),
     )
-    monkeypatch.setattr(
-        OnboardingCalibrationService,
-        "_generate_validated_field_update",
-        staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name: {
-                "assistant_identity": {"name": "Compass"}
-            }
-        ),
-    )
-
     result = OnboardingCalibrationService.submit_answer(
         test_db,
         user_id,
@@ -461,9 +441,61 @@ def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
         result.state["calibration"]["answers"]["tone_preferences"]
         == "direct,serious,concise,casual,challenging"
     )
-    assert result.state["calibration"]["proposed_name"] == "Compass"
-    assert result.assistant_identity["name"] == "Compass"
+    assert result.state["calibration"]["proposed_name"] is None
+    assert result.assistant_identity["name"] == "sideBar"
     assert generated_stages == [("tone_preferences", "Navigator")]
+
+
+def test_regenerate_name_can_generate_initial_name_when_missing(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    user_id = "calibration-regenerate-initial"
+    provider_ready_state = _provider_ready_state(
+        test_db,
+        user_id=user_id,
+        calibration={
+            "status": "awaiting_name_acceptance",
+            "current_prompt": "tone_preferences",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": "collaborative",
+                "tone_preferences": "direct_but_kind",
+            },
+            "proposed_name": None,
+        },
+    )
+    _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+    SettingsService.update_agent_settings(
+        test_db,
+        user_id,
+        {
+            "assistant_identity": {
+                "tone": "Direct and warm.",
+            },
+            "assistant_soul": {
+                "purpose": "Help with steady life admin.",
+            },
+        },
+        reason="Seed calibration state",
+    )
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_validated_field_update",
+        staticmethod(
+            lambda db, user_id, *, scope, field_name, answers, previous_name=None: {
+                "assistant_identity": {"name": "Navigator"}
+            }
+        ),
+    )
+
+    result = OnboardingCalibrationService.regenerate_name(test_db, user_id)
+
+    assert result.state["calibration"]["proposed_name"] == "Navigator"
+    assert result.assistant_identity["name"] == "Navigator"
 
 
 def test_regenerate_name_only_updates_proposed_name(test_db, monkeypatch) -> None:
@@ -773,7 +805,7 @@ def test_submit_answer_persists_tone_answer_when_generation_fails(
     assert settings_payload["assistant_soul"]["purpose"] is None
 
 
-def test_submit_answer_persists_identity_fields_when_name_generation_fails(
+def test_regenerate_name_failure_preserves_existing_identity_fields(
     test_db,
     monkeypatch,
 ) -> None:
@@ -787,49 +819,44 @@ def test_submit_answer_persists_identity_fields_when_name_generation_fails(
         test_db,
         user_id=user_id,
         calibration={
-            "status": "in_progress",
+            "status": "awaiting_name_acceptance",
             "current_prompt": "tone_preferences",
             "answers": {
                 "primary_goal": "life_admin",
                 "working_relationship": "collaborative",
+                "tone_preferences": "warm,serious,concise,casual,supportive",
             },
+            "proposed_name": None,
         },
     )
     _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
-
-    async def fake_generate_parallel_stage_fields(
-        *,
-        generation_context,
-        stage_fields,
-        answers,
-    ) -> list[dict[str, dict[str, str]]]:
-        del generation_context, stage_fields, answers
-        return [
-            {"assistant_identity": {"tone": "Pragmatic, direct, and collaborative."}},
-            {"assistant_identity": {"values": "Clarity, rigor, and honesty."}},
-            {
-                "assistant_identity": {
-                    "boundaries": "Never mislead or manipulate."
-                }
-            },
-        ]
-
+    SettingsService.update_agent_settings(
+        test_db,
+        user_id,
+        {
+            "assistant_identity": {
+                "tone": "Pragmatic, direct, and collaborative.",
+                "values": "Clarity, rigor, and honesty.",
+                "boundaries": "Never mislead or manipulate.",
+            }
+        },
+        reason="Seed calibration identity",
+    )
     monkeypatch.setattr(
         OnboardingCalibrationService,
         "_build_generation_context",
         staticmethod(
             lambda db, requested_user_id: GenerationContext(
                 settings_snapshot=SimpleNamespace(ai_primary_provider="anthropic"),
-                current_identity={},
+                current_identity={
+                    "tone": "Pragmatic, direct, and collaborative.",
+                    "values": "Clarity, rigor, and honesty.",
+                    "boundaries": "Never mislead or manipulate.",
+                },
                 current_soul={},
                 provider_keys={"anthropic": "test-key", "openai": None, "google": None},
             )
         ),
-    )
-    monkeypatch.setattr(
-        OnboardingCalibrationService,
-        "_generate_parallel_stage_fields",
-        staticmethod(fake_generate_parallel_stage_fields),
     )
     monkeypatch.setattr(
         OnboardingCalibrationService,
@@ -844,18 +871,11 @@ def test_submit_answer_persists_identity_fields_when_name_generation_fails(
                     ),
                 )
             )
-            if (scope, field_name) == ("assistant_identity", "name")
-            else {scope: {field_name: "unexpected"}}
         ),
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        OnboardingCalibrationService.submit_answer(
-            test_db,
-            user_id,
-            prompt="tone_preferences",
-            answer="warm,serious,concise,casual,supportive",
-        )
+        OnboardingCalibrationService.regenerate_name(test_db, user_id)
 
     assert exc_info.value.status_code == 503
     assert "choose a name" in str(exc_info.value.detail).lower()
@@ -876,12 +896,9 @@ def test_submit_answer_persists_identity_fields_when_name_generation_fails(
     persisted_state = OnboardingService._resolve_state(
         UserSettingsService.get_settings(test_db, user_id).onboarding
     )
-    assert (
-        persisted_state["calibration"]["answers"]["tone_preferences"]
-        == "warm,serious,concise,casual,supportive"
-    )
-    assert persisted_state["calibration"]["status"] == "in_progress"
+    assert persisted_state["calibration"]["status"] == "awaiting_name_acceptance"
     assert persisted_state["calibration"]["current_prompt"] == "tone_preferences"
+    assert persisted_state["calibration"]["proposed_name"] is None
 
 
 def test_generate_validated_field_update_maps_name_provider_failure_to_retryable_message(

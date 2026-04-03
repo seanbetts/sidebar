@@ -174,28 +174,9 @@ class OnboardingCalibrationService:
         )
 
         if normalized_prompt == "tone_preferences":
-            name_update = OnboardingCalibrationService._generate_validated_field_update(
-                db,
-                user_id,
-                scope="assistant_identity",
-                field_name="name",
-                answers=next_calibration["answers"],
-                previous_name=prior_proposed_name,
-            )
-            proposed_name = (
-                ((name_update.get("assistant_identity") or {}).get("name")) or ""
-            ).strip()
             next_calibration["status"] = "awaiting_name_acceptance"
-            next_calibration["proposed_name"] = proposed_name or None
+            next_calibration["proposed_name"] = None
             next_calibration["current_prompt"] = "tone_preferences"
-            settings_payload = AgentSettingsService.update_with_onboarding(
-                db,
-                user_id,
-                name_update,
-                onboarding=next_onboarding,
-                reason=GENERATION_REASON,
-            )
-            assistant_identity_payload = settings_payload["assistant_identity"]
         else:
             next_calibration["status"] = "in_progress"
             next_calibration["current_prompt"] = NEXT_PROMPT[normalized_prompt]
@@ -208,7 +189,7 @@ class OnboardingCalibrationService:
             assistant_identity=assistant_identity_payload,
             assistant_soul=assistant_soul_payload,
             confirmation_text=(
-                f"{next_calibration['proposed_name']} is ready for review."
+                "Choosing a name."
                 if normalized_prompt == "tone_preferences"
                 else OnboardingCalibrationService._prompt_confirmation(
                     next_calibration["current_prompt"]

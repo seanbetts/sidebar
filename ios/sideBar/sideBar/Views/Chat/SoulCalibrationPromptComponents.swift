@@ -242,6 +242,31 @@ struct SoulCalibrationNameBadge<CenterContent: View>: View {
     }
 }
 
+struct SoulCalibrationFooter<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            Rectangle()
+                .fill(DesignTokens.Colors.border)
+                .frame(height: 1)
+
+            content()
+        }
+        .padding(.top, DesignTokens.Spacing.xs)
+    }
+}
+
+struct SoulCalibrationFooterProgressIndicator: View {
+    var body: some View {
+        LoadingIndicatorView(size: LoadingIndicatorSize.control)
+            .frame(
+                width: LoadingIndicatorSize.control,
+                height: LoadingIndicatorSize.control
+            )
+    }
+}
+
 struct ChipFlowLayout: Layout {
     let itemSpacing: CGFloat
     let lineSpacing: CGFloat

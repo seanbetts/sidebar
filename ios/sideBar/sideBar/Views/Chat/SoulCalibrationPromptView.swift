@@ -293,7 +293,6 @@ struct SoulCalibrationPromptView: View {
         }
 
         let ordered = tonePairs.indices.compactMap { selectedToneChoices[$0] }
-        displayStepOverride = .nameConfirmation
         onSubmitTonePreferences(ordered)
     }
 
@@ -389,7 +388,21 @@ private extension SoulCalibrationPromptView {
                 .frame(maxWidth: .infinity)
             }
 
-            standardBackOnlyRow
+            SoulCalibrationFooter {
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    standardBackButton
+
+                    Spacer()
+
+                    if let errorMessage, !errorMessage.isEmpty {
+                        ContinueButton(
+                            title: "Retry",
+                            isEnabled: !isBusy,
+                            action: onRegenerateName
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -416,46 +429,54 @@ private extension SoulCalibrationPromptView {
                 .frame(maxWidth: .infinity)
             }
 
+            SoulCalibrationFooter {
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    standardBackButton
+
+                    Spacer()
+
+                    ContinueButton(
+                        title: "Try another",
+                        isEnabled: !isBusy,
+                        action: onRegenerateName,
+                        style: .secondary
+                    )
+
+                    ContinueButton(
+                        title: "Hello!",
+                        isEnabled: !isBusy,
+                        action: onAcceptName
+                    )
+                }
+            }
+        }
+    }
+
+    func continueButton(
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        SoulCalibrationFooter {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 standardBackButton
 
                 Spacer()
 
-                ContinueButton(
-                    title: "Try another",
-                    isEnabled: !isBusy,
-                    action: onRegenerateName,
-                    style: .secondary
-                )
+                if showsFooterLoadingIndicator {
+                    SoulCalibrationFooterProgressIndicator()
+                }
 
                 ContinueButton(
-                    title: "Hello!",
-                    isEnabled: !isBusy,
-                    action: onAcceptName
+                    title: "Continue",
+                    isEnabled: isEnabled && !isBusy,
+                    action: action
                 )
             }
         }
     }
 
-    func continueButton(isEnabled: Bool, action: @escaping () -> Void) -> some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            standardBackButton
-
-            Spacer()
-
-            ContinueButton(
-                title: "Continue",
-                isEnabled: isEnabled && !isBusy,
-                action: action
-            )
-        }
-    }
-
-    var standardBackOnlyRow: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            standardBackButton
-            Spacer()
-        }
+    var showsFooterLoadingIndicator: Bool {
+        isBusy && (displayedStep == .workingRelationship || displayedStep == .tonePreferences)
     }
 
     @ViewBuilder
