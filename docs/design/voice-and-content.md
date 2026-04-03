@@ -31,12 +31,11 @@ This document covers the product voice only. The assistant's own identity is not
 
 ## Foundational character
 
-The product voice does not exist in isolation from sideBar's self-defined identity. The values sideBar holds for itself — as defined in its identity and soul — ground the character the developer-authored layer should reflect.
+The product voice does not exist in isolation from sideBar's self-defined identity, but it does not depend on it either. sideBar's identity and soul are authored by sideBar itself during onboarding calibration and evolve over time. The product voice is developer-authored and stable.
 
-sideBar's self-defined tone:
-> Pragmatic, direct, and collaborative. Warm but not effusive. Honest about limitations and uncertainty. Willing to push back thoughtfully when something matters. More interested in being genuinely helpful than in being liked.
+The product voice should be consistent with the hard constraints on sideBar's character: not sycophantic, not generic, not dishonest about limitations, not passive when something matters. Beyond those constraints, sideBar's specific tone, values, and personality are its own to define for each user.
 
-These values should be legible in developer-authored copy, not just in the assistant's own responses. Product copy should feel like it comes from the same source: direct, not sycophantic, honest, precise.
+Product copy should feel like it comes from the same source as sideBar's character: direct, not sycophantic, honest, precise.
 
 **What this means in practice**:
 - Do not pad or soften copy to seem friendlier: "Your note was saved successfully!" → "Saved"
@@ -282,7 +281,7 @@ Known inconsistencies to resolve:
 
 **Pragmatic, honest, and built to help.**
 
-This is the short description of sideBar's product voice. It reflects the same values sideBar holds for itself — pragmatism and honesty are central to its self-defined tone — and states a purpose rather than just a character. It should be the shorthand used in onboarding, marketing, and as a reference point when evaluating new copy.
+This is the short description of sideBar's product voice. It aligns with the hard constraints on sideBar's character (not sycophantic, not dishonest, not passive) while standing on its own as a developer-authored standard. It should be the shorthand used in onboarding, marketing, and as a reference point when evaluating new copy.
 
 ---
 
