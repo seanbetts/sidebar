@@ -1035,6 +1035,35 @@ def test_render_field_prompt_uses_compact_json_snapshots() -> None:
     assert '\n    "purpose"' not in prompt
 
 
+def test_render_field_prompt_includes_exact_json_shape_in_retry_guidance() -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    prompt = OnboardingCalibrationService._render_field_prompt(
+        scope="assistant_identity",
+        field_name="boundaries",
+        answers={
+            "primary_goal": "notes_and_ideas",
+            "working_relationship": "collaborative",
+            "tone_preferences": "direct_but_kind",
+        },
+        current_identity={
+            "tone": "Direct and warm.",
+        },
+        current_soul={
+            "purpose": "Help the user make progress.",
+        },
+        previous_name=None,
+        repair_feedback="Generated invalid JSON for assistant_identity.boundaries",
+    )
+
+    assert "Retry guidance:" in prompt
+    assert (
+        '{"assistant_identity":{"boundaries":"<write the field value here>"}}'
+        in prompt
+    )
+    assert "No markdown, no explanation, and no extra keys." in prompt
+
+
 def test_generate_model_field_update_uses_calibration_token_budgets(
     test_db,
     monkeypatch,
@@ -1127,3 +1156,75 @@ def test_generate_model_field_update_uses_calibration_token_budgets(
         ("assistant_identity.tone", 220),
         ("assistant_soul.operating_principles", 320),
     ]
+
+
+def test_parse_generated_json_object_wraps_plain_text_response() -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    parsed = OnboardingCalibrationService._parse_generated_json_object(
+        "Never fabricate facts or credentials.",
+        scope="assistant_identity",
+        field_name="boundaries",
+    )
+
+    assert parsed == {
+        "assistant_identity": {
+            "boundaries": "Never fabricate facts or credentials."
+        }
+    }
+
+
+def test_parse_generated_json_object_wraps_top_level_field_payload() -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    parsed = OnboardingCalibrationService._parse_generated_json_object(
+        json.dumps({"boundaries": "Never fabricate facts or credentials."}),
+        scope="assistant_identity",
+        field_name="boundaries",
+    )
+
+    assert parsed == {
+        "assistant_identity": {
+            "boundaries": "Never fabricate facts or credentials."
+        }
+    }
+
+
+def test_parse_generated_json_object_wraps_scope_string_payload() -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    parsed = OnboardingCalibrationService._parse_generated_json_object(
+        json.dumps({"assistant_identity": "Never fabricate facts or credentials."}),
+        scope="assistant_identity",
+        field_name="boundaries",
+    )
+
+    assert parsed == {
+        "assistant_identity": {
+            "boundaries": "Never fabricate facts or credentials."
+        }
+    }
+
+
+def test_parse_generated_json_object_extracts_requested_field_from_extra_keys() -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    parsed = OnboardingCalibrationService._parse_generated_json_object(
+        json.dumps(
+            {
+                "assistant_identity": {
+                    "boundaries": "Never fabricate facts or credentials.",
+                    "_meta": {"reason": "extra"},
+                },
+                "note": "extra top-level commentary",
+            }
+        ),
+        scope="assistant_identity",
+        field_name="boundaries",
+    )
+
+    assert parsed == {
+        "assistant_identity": {
+            "boundaries": "Never fabricate facts or credentials."
+        }
+    }

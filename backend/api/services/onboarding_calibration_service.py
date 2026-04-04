@@ -668,9 +668,16 @@ class OnboardingCalibrationService:
         }
         rendered = resolve_template(template, variables, keep_unknown=False).strip()
         if repair_feedback:
+            expected_json = json.dumps(
+                {scope: {field_name: "<write the field value here>"}},
+                ensure_ascii=True,
+                separators=(",", ":"),
+            )
             rendered += (
                 "\n\nRetry guidance:\n"
                 "The previous attempt failed validation. Correct it.\n"
+                f"Return exactly this JSON shape: {expected_json}\n"
+                "No markdown, no explanation, and no extra keys.\n"
                 f"Validation feedback: {repair_feedback}"
             )
         return rendered
@@ -697,6 +704,13 @@ class OnboardingCalibrationService:
             start = candidate.find("{")
             end = candidate.rfind("}")
             if start == -1 or end == -1 or end <= start:
+                normalized = OnboardingCalibrationService._normalize_generated_payload(
+                    candidate,
+                    scope=scope,
+                    field_name=field_name,
+                )
+                if normalized is not None:
+                    return normalized
                 raise HTTPException(
                     status_code=400,
                     detail=f"Generated invalid JSON for {scope}.{field_name}",
@@ -708,12 +722,56 @@ class OnboardingCalibrationService:
                     status_code=400,
                     detail=f"Generated invalid JSON for {scope}.{field_name}",
                 ) from exc
+        normalized = OnboardingCalibrationService._normalize_generated_payload(
+            parsed,
+            scope=scope,
+            field_name=field_name,
+        )
+        if normalized is not None:
+            return normalized
         if not isinstance(parsed, dict):
             raise HTTPException(
                 status_code=400,
                 detail=f"Generated invalid JSON object for {scope}.{field_name}",
             )
         return parsed
+
+    @staticmethod
+    def _normalize_generated_payload(
+        parsed: Any,
+        *,
+        scope: str,
+        field_name: str,
+    ) -> dict[str, Any] | None:
+        """Normalize common near-miss model outputs into the expected field payload."""
+        if isinstance(parsed, str):
+            value = parsed.strip()
+            if not value:
+                return None
+            return {scope: {field_name: value}}
+
+        if not isinstance(parsed, dict):
+            return None
+
+        direct_value = parsed.get(field_name)
+        if isinstance(direct_value, str):
+            value = direct_value.strip()
+            if value:
+                return {scope: {field_name: value}}
+
+        scoped_value = parsed.get(scope)
+        if isinstance(scoped_value, str):
+            value = scoped_value.strip()
+            if value:
+                return {scope: {field_name: value}}
+
+        if isinstance(scoped_value, dict):
+            nested_value = scoped_value.get(field_name)
+            if isinstance(nested_value, str):
+                value = nested_value.strip()
+                if value:
+                    return {scope: {field_name: value}}
+        return None
 
     @staticmethod
     def _assert_generated_field_shape(

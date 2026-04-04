@@ -279,4 +279,24 @@ final class ErrorMappingTests: XCTestCase {
         )
         XCTAssertEqual(message, "Server is busy right now. Please try again.")
     }
+
+    func testMapsCalibrationGeneratedInvalidJSONToFriendlyMessage() {
+        let message = ErrorMapping.message(
+            for: APIClientError.apiError("Generated invalid JSON for assistant_identity.boundaries")
+        )
+        XCTAssertEqual(
+            message,
+            "I couldn't finish updating my setup just yet. Your answer is saved, please try again."
+        )
+    }
+
+    func testMapsCalibrationGeneratedInvalidJSONObjectToFriendlyMessage() {
+        let message = ErrorMapping.message(
+            for: APIClientError.apiError("Generated invalid JSON object for assistant_soul.purpose")
+        )
+        XCTAssertEqual(
+            message,
+            "I couldn't finish updating my setup just yet. Your answer is saved, please try again."
+        )
+    }
 }

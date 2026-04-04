@@ -170,6 +170,9 @@ public enum ErrorMapping {
         if isInvalidProviderAPIKeyMessage(message) { return "That API key doesn't look valid for this provider." }
         if isDatabaseTimeoutMessage(message) { return "Server is busy right now. Please try again." }
         if isCalibrationPromptConflictMessage(message) { return "I got out of sync with your setup. Please go back and try again." }
+        if isCalibrationGenerationValidationMessage(message) {
+            return "I couldn't finish updating my setup just yet. Your answer is saved, please try again."
+        }
         if isPromptTooLargeMessage(message) {
             return "Attachment and context are too large for one message. Remove some attachments or close open items and try again."
         }
@@ -178,50 +181,33 @@ public enum ErrorMapping {
 
     private static func messageForStatus(_ status: Int) -> String {
         switch status {
-        case 408, 504:
-            return "Network connection failed. Please check your internet."
-        case 503:
-            return "Server is busy right now. Please try again."
-        case 400:
-            return "Request was rejected by the server. If this includes attachments, remove one and try again."
-        case 401:
-            return "Session expired. Please sign in again."
-        case 403:
-            return "You do not have permission to perform this action."
-        case 413:
-            return "File too large. Max size is 100MB."
-        case 500...:
-            return "Server error. Please try again soon."
-        default:
-            return "Request failed (HTTP \(status))."
+        case 408, 504: return "Network connection failed. Please check your internet."
+        case 503: return "Server is busy right now. Please try again."
+        case 400: return "Request was rejected by the server. If this includes attachments, remove one and try again."
+        case 401: return "Session expired. Please sign in again."
+        case 403: return "You do not have permission to perform this action."
+        case 413: return "File too large. Max size is 100MB."
+        case 500...: return "Server error. Please try again soon."
+        default: return "Request failed (HTTP \(status))."
         }
     }
-
     private static func messageForURLRequestErrorCategory(_ category: URLRequestErrorCategory) -> String {
         switch category {
-        case .offline:
-            return "Network connection failed. Please check your internet."
-        case .timeout:
-            return "Server took too long to respond. Please try again."
-        case .serverUnreachable:
-            return "Could not reach the server. Please try again."
+        case .offline: return "Network connection failed. Please check your internet."
+        case .timeout: return "Server took too long to respond. Please try again."
+        case .serverUnreachable: return "Could not reach the server. Please try again."
         case .secureConnection:
             return "Unable to verify a secure connection to the server. Please try again shortly. [SEC-CONN]"
-        case .authRequired:
-            return "Session expired. Please sign in again."
-        case .cancelled:
-            return "Request was interrupted. Please try again."
-        case .other:
-            return "Network request failed. Please try again."
+        case .authRequired: return "Session expired. Please sign in again."
+        case .cancelled: return "Request was interrupted. Please try again."
+        case .other: return "Network request failed. Please try again."
         }
     }
-
     private static func isAuthenticationErrorMessage(_ message: String) -> Bool {
         let lowered = message.lowercased()
         let signals = ["unauthorized", "forbidden", "not authenticated", "invalid token", "token expired", "session expired"]
         return signals.contains(where: lowered.contains)
     }
-
     private static func isPromptTooLargeMessage(_ message: String) -> Bool {
         let lowered = message.lowercased()
         let signals = [
@@ -231,11 +217,9 @@ public enum ErrorMapping {
         ]
         return signals.contains(where: lowered.contains)
     }
-
     static func isInvalidProviderAPIKeyMessage(_ message: String) -> Bool {
         message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "invalid provider api key"
     }
-
     private static func isDatabaseTimeoutMessage(_ message: String) -> Bool {
         message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "database request timed out"
     }
@@ -243,6 +227,24 @@ public enum ErrorMapping {
     private static func isCalibrationPromptConflictMessage(_ message: String) -> Bool {
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.hasPrefix("Expected prompt ") && trimmed.split(separator: " ").count >= 3
+    }
+
+    private static func isCalibrationGenerationValidationMessage(_ message: String) -> Bool {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        let calibrationSignals = [
+            "I couldn't finish updating my setup just yet. Your answer is saved, please try again.",
+            "I couldn't choose a name just yet. Your setup is saved, please try again.",
+            "Generated invalid JSON",
+            "Generated invalid JSON object",
+            "must be a non-empty string",
+            "must differ from the previous rejected name",
+            "returned unexpected top-level keys",
+            "must return an object payload",
+            "returned unexpected nested keys"
+        ]
+        return calibrationSignals.contains(where: trimmed.contains)
+            || trimmed.hasPrefix("assistant_identity.")
+            || trimmed.hasPrefix("assistant_soul.")
     }
 
     public static func chatStreamPresentation(
