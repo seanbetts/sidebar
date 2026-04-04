@@ -107,17 +107,19 @@ extension NativeNoteEditorViewModel {
         guard !isReadOnly else { return false }
         guard listType == .unorderedList
                 || listType == .orderedList
-                || listType == .checklist else { return false }
+                || listType == .checklist
+                || listType == .blockquote else { return false }
         let document = currentPersistenceSnapshot().document
         let touchedBlocks = touchedBlockInfos(in: document)
         guard !touchedBlocks.isEmpty else { return false }
-        return touchedBlocks.allSatisfy(canConvertBlockForListToggle(for:))
+        return touchedBlocks.allSatisfy { canConvertBlockForListToggle(for: $0, targetListType: listType) }
     }
 
     func isListActive(_ listType: NotesSemanticDocument.BlockType) -> Bool {
         guard listType == .unorderedList
                 || listType == .orderedList
-                || listType == .checklist else { return false }
+                || listType == .checklist
+                || listType == .blockquote else { return false }
         let document = currentPersistenceSnapshot().document
         let touchedBlocks = touchedBlockInfos(in: document)
         guard !touchedBlocks.isEmpty else { return false }
@@ -228,17 +230,22 @@ extension NativeNoteEditorViewModel {
         let selectionSnapshot = selectionSnapshot(in: attributedContent)
         let replacementBlocks: [NotesSemanticDocument.Block]
         if isListActive(listType) {
-            replacementBlocks = touchedBlocks.flatMap { blockInfo in
-                (blockInfo.block.children ?? []).map { child in
-                    NotesSemanticDocument.Block(
-                        type: .paragraph,
-                        content: child.content
-                    )
-                }
-            }
+            replacementBlocks = paragraphBlocksForListToggle(
+                from: touchedBlocks,
+                activeContainerType: listType
+            )
         } else {
-            let listItems = listItemsForListToggle(from: touchedBlocks, targetListType: listType)
-            replacementBlocks = [.init(type: listType, children: listItems)]
+            if listType == .blockquote {
+                replacementBlocks = [
+                    .init(
+                        type: .blockquote,
+                        children: blockquoteChildrenForToggle(from: touchedBlocks)
+                    )
+                ]
+            } else {
+                let listItems = listItemsForListToggle(from: touchedBlocks, targetListType: listType)
+                replacementBlocks = [.init(type: listType, children: listItems)]
+            }
         }
 
         var updatedBlocks = document.blocks
@@ -346,13 +353,44 @@ extension NativeNoteEditorViewModel {
         return runSnapshots.allSatisfy { $0.state.contains(formatting) }
     }
 
-    private func canConvertBlockForListToggle(for blockInfo: DocumentBlockInfo) -> Bool {
+    private func canConvertBlockForListToggle(
+        for blockInfo: DocumentBlockInfo,
+        targetListType: NotesSemanticDocument.BlockType
+    ) -> Bool {
         guard blockInfo.index != 0 else { return false }
+        if targetListType == .blockquote {
+            switch blockInfo.block.type {
+            case .paragraph, .blockquote:
+                return true
+            default:
+                return false
+            }
+        }
+
         switch blockInfo.block.type {
         case .paragraph, .orderedList, .unorderedList, .checklist:
             return true
         default:
             return false
+        }
+    }
+
+    private func paragraphBlocksForListToggle(
+        from touchedBlocks: [DocumentBlockInfo],
+        activeContainerType: NotesSemanticDocument.BlockType
+    ) -> [NotesSemanticDocument.Block] {
+        touchedBlocks.flatMap { blockInfo in
+            switch activeContainerType {
+            case .unorderedList, .orderedList, .checklist, .blockquote:
+                return (blockInfo.block.children ?? []).map { child in
+                    NotesSemanticDocument.Block(
+                        type: .paragraph,
+                        content: child.content
+                    )
+                }
+            default:
+                return []
+            }
         }
     }
 
@@ -380,6 +418,31 @@ extension NativeNoteEditorViewModel {
                 ]
             default:
                 return [NotesSemanticDocument.Block]()
+            }
+        }
+    }
+
+    private func blockquoteChildrenForToggle(
+        from touchedBlocks: [DocumentBlockInfo]
+    ) -> [NotesSemanticDocument.Block] {
+        touchedBlocks.flatMap { blockInfo in
+            switch blockInfo.block.type {
+            case .paragraph:
+                return [
+                    NotesSemanticDocument.Block(
+                        type: .paragraph,
+                        content: blockInfo.block.content
+                    )
+                ]
+            case .blockquote:
+                return (blockInfo.block.children ?? []).map { child in
+                    NotesSemanticDocument.Block(
+                        type: .paragraph,
+                        content: child.content
+                    )
+                }
+            default:
+                return []
             }
         }
     }

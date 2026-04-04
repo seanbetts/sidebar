@@ -129,11 +129,15 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         let codeBlockButton: UIButton = try XCTUnwrap(
             findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-code-block")
         )
+        let blockquoteButton: UIButton = try XCTUnwrap(
+            findDescendant(in: popoverView, accessibilityIdentifier: "note-formatting-blockquote")
+        )
 
         XCTAssertTrue(shell.effect is UIGlassEffect)
         XCTAssertTrue(inlineGroup.effect is UIGlassEffect)
         XCTAssertTrue(codeGroup.effect is UIGlassEffect)
         XCTAssertTrue(codeBlockButton.isEnabled)
+        XCTAssertTrue(blockquoteButton.isEnabled)
     }
 
     func testPopoverTextStylesUseCanonicalOrderAndTypographyTokens() throws {
@@ -507,6 +511,7 @@ private extension UIKitNoteFormattingBarTests {
             isStrikethroughActive: false,
             isInlineCodeActive: false,
             isCodeBlockEnabled: true,
+            isBlockquoteEnabled: true,
             isEnabled: true,
             onTextStyleSelection: { _ in },
             onBoldTap: {},
@@ -514,7 +519,8 @@ private extension UIKitNoteFormattingBarTests {
             onUnderlineTap: {},
             onStrikethroughTap: {},
             onInlineCodeTap: {},
-            onCodeBlockTap: {}
+            onCodeBlockTap: {},
+            onBlockquoteTap: {}
         )
     }
 

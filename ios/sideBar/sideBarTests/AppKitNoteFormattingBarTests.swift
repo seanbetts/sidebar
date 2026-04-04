@@ -45,6 +45,10 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
             (findDescendantView(in: popover, identifier: "note-formatting-code-block") as? NSButton)?.isEnabled,
             true
         )
+        XCTAssertEqual(
+            (findDescendantView(in: popover, identifier: "note-formatting-blockquote") as? NSButton)?.isEnabled,
+            true
+        )
         XCTAssertEqual(findTextStyleButtonIdentifiers(in: popover), [
             "note-formatting-text-style-title",
             "note-formatting-text-style-heading",
@@ -430,6 +434,7 @@ private func makeEnabledFormattingConfiguration() -> NoteFormattingBarConfigurat
         isStrikethroughActive: false,
         isInlineCodeActive: false,
         isCodeBlockEnabled: true,
+        isBlockquoteEnabled: true,
         isEnabled: true,
         onTextStyleSelection: { _ in },
         onBoldTap: {},
@@ -437,7 +442,8 @@ private func makeEnabledFormattingConfiguration() -> NoteFormattingBarConfigurat
         onUnderlineTap: {},
         onStrikethroughTap: {},
         onInlineCodeTap: {},
-        onCodeBlockTap: {}
+        onCodeBlockTap: {},
+        onBlockquoteTap: {}
     )
 }
 

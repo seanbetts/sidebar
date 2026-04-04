@@ -148,6 +148,16 @@ private extension UIKitNoteFormattingPopoverView {
             checklistAction = nil
         }
 
+        let blockquoteAction: (@MainActor @Sendable () -> Void)?
+        if currentConfiguration.isBlockquoteEnabled {
+            blockquoteAction = { [weak self] in
+                self?.currentConfiguration.onBlockquoteTap()
+                self?.onDismissRequested()
+            }
+        } else {
+            blockquoteAction = nil
+        }
+
         return [
             (
                 "note-formatting-future-list-group",
@@ -171,7 +181,13 @@ private extension UIKitNoteFormattingPopoverView {
             ),
             (
                 "note-formatting-future-blockquote-group",
-                [InlineActionItem(identifier: "note-formatting-blockquote", symbol: "text.quote", action: nil)]
+                [
+                    InlineActionItem(
+                        identifier: "note-formatting-blockquote",
+                        symbol: "text.quote",
+                        action: blockquoteAction
+                    )
+                ]
             )
         ]
     }
@@ -403,6 +419,12 @@ private extension UIKitNoteFormattingPopoverView {
                 currentConfiguration.isChecklistActive,
                 currentConfiguration.isChecklistEnabled,
                 "checklist"
+            ),
+            (
+                "note-formatting-blockquote",
+                currentConfiguration.isBlockquoteActive,
+                currentConfiguration.isBlockquoteEnabled,
+                "text.quote"
             )
         ]
 

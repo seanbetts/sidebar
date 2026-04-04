@@ -90,6 +90,12 @@ extension NativeNoteEditorViewModel {
                 blockInfo: blockInfo,
                 selectionOffset: selectionOffset
             )
+        case .blockquote:
+            return mutateBlockquoteDeleteBackward(
+                in: document,
+                blockInfo: blockInfo,
+                selectionOffset: selectionOffset
+            )
         default:
             return nil
         }

@@ -73,6 +73,40 @@ final class NativeNoteEditorListTransitionTests: XCTestCase {
         XCTAssertEqual(snapshot.plainText, "Title\n1. Alpha\n2. Beta")
     }
 
+    func testToggleBlockquoteConvertsSelectedParagraphBlocksIntoSingleContainer() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .paragraph([.init(text: "First", marks: [.bold])]),
+                .paragraph([.init(text: "Second", marks: [.italic])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let selectionStart = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
+        let selectionEnd = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
+
+        viewModel.toggleList(.blockquote)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .blockquote])
+        XCTAssertEqual(
+            snapshot.document.blocks[1],
+            .init(
+                type: .blockquote,
+                children: [
+                    .paragraph([.init(text: "First", marks: [.bold])]),
+                    .paragraph([.init(text: "Second", marks: [.italic])])
+                ]
+            )
+        )
+        XCTAssertEqual(snapshot.plainText, "Title\n> First\n> Second")
+    }
+
     func testToggleUnorderedListPreservesSelectionAcrossInsertedPrefixes() async throws {
         let document = NotesSemanticDocument(
             blocks: [
@@ -178,6 +212,44 @@ final class NativeNoteEditorListTransitionTests: XCTestCase {
         XCTAssertEqual(snapshot.plainText, "Title\n- First\n- Second")
     }
 
+    func testHandleReturnKeyAtEndOfBlockquoteContinuesWithNewQuotedParagraph() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "First", marks: [])])
+                    ]
+                )
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleReturnKey())
+        noteAppendTypedText("Second", to: viewModel)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .blockquote])
+        XCTAssertEqual(
+            snapshot.document.blocks[1],
+            .init(
+                type: .blockquote,
+                children: [
+                    .paragraph([.init(text: "First", marks: [])]),
+                    .paragraph([.init(text: "Second", marks: [])])
+                ]
+            )
+        )
+        XCTAssertEqual(snapshot.plainText, "Title\n> First\n> Second")
+    }
+
     func testHandleReturnKeyOnEmptyTrailingUnorderedListItemExitsIntoParagraph() async throws {
         let document = NotesSemanticDocument(
             blocks: [
@@ -217,6 +289,45 @@ final class NativeNoteEditorListTransitionTests: XCTestCase {
         XCTAssertEqual(snapshot.plainText, "Title\n- First\nBody")
     }
 
+    func testHandleReturnKeyOnEmptyTrailingBlockquoteParagraphExitsIntoParagraph() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "First", marks: [])]),
+                        .paragraph([.init(text: "", marks: [])])
+                    ]
+                )
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        XCTAssertTrue(viewModel.handleReturnKey())
+        noteAppendTypedText("Body", to: viewModel)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .blockquote, .paragraph])
+        XCTAssertEqual(
+            snapshot.document.blocks[1],
+            .init(
+                type: .blockquote,
+                children: [
+                    .paragraph([.init(text: "First", marks: [])])
+                ]
+            )
+        )
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "Body", marks: [])])
+        XCTAssertEqual(snapshot.plainText, "Title\n> First\nBody")
+    }
+
     func testToggleUnorderedListConvertsActiveListBackIntoParagraphBlocks() async throws {
         let document = NotesSemanticDocument(
             blocks: [
@@ -240,6 +351,37 @@ final class NativeNoteEditorListTransitionTests: XCTestCase {
         viewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
 
         viewModel.toggleList(.unorderedList)
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .paragraph, .paragraph])
+        XCTAssertEqual(snapshot.document.blocks[1].content, [.init(text: "First", marks: [.bold])])
+        XCTAssertEqual(snapshot.document.blocks[2].content, [.init(text: "Second", marks: [.italic])])
+        XCTAssertEqual(snapshot.plainText, "Title\nFirst\nSecond")
+    }
+
+    func testToggleBlockquoteConvertsActiveBlockquoteBackIntoParagraphBlocks() async throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "First", marks: [.bold])]),
+                        .paragraph([.init(text: "Second", marks: [.italic])])
+                    ]
+                )
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let selectionStart = viewModel.index(forCharacterOffset: 6, in: viewModel.attributedContent)
+        let selectionEnd = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: selectionStart..<selectionEnd)
+
+        viewModel.toggleList(.blockquote)
 
         let snapshot = viewModel.currentPersistenceSnapshot()
         XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .paragraph, .paragraph])

@@ -135,6 +135,12 @@ extension NativeNoteEditorViewModel {
                 selectionOffset: selectionOffset,
                 blockText: blockText
             )
+        case .blockquote:
+            mutation = mutateBlockquoteReturn(
+                in: document,
+                blockInfo: blockInfo,
+                selectionOffset: selectionOffset
+            )
         default:
             mutation = nil
         }

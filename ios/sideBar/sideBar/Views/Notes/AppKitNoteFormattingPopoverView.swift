@@ -128,6 +128,17 @@ private extension AppKitNoteFormattingPopoverView {
         [.title, .heading, .subheading, .body]
     }
 
+    private func dismissingAction(
+        isEnabled: Bool,
+        action: @escaping @MainActor @Sendable () -> Void
+    ) -> (@MainActor @Sendable () -> Void)? {
+        guard isEnabled else { return nil }
+        return { [weak self] in
+            action()
+            self?.onDismissRequested()
+        }
+    }
+
     private var inlineGroupDefinitions: [(String, [InlineActionItem])] {
         let codeBlockAction: (@MainActor @Sendable () -> Void)?
         if currentConfiguration.isCodeBlockEnabled {
@@ -178,34 +189,17 @@ private extension AppKitNoteFormattingPopoverView {
     }
 
     private var blockGroupDefinitions: [(String, [InlineActionItem])] {
-        let unorderedListAction: (@MainActor @Sendable () -> Void)?
-        if currentConfiguration.isUnorderedListEnabled {
-            unorderedListAction = { [weak self] in
-                self?.currentConfiguration.onUnorderedListTap()
-                self?.onDismissRequested()
-            }
-        } else {
-            unorderedListAction = nil
+        let unorderedListAction = dismissingAction(isEnabled: currentConfiguration.isUnorderedListEnabled) {
+            currentConfiguration.onUnorderedListTap()
         }
-
-        let orderedListAction: (@MainActor @Sendable () -> Void)?
-        if currentConfiguration.isOrderedListEnabled {
-            orderedListAction = { [weak self] in
-                self?.currentConfiguration.onOrderedListTap()
-                self?.onDismissRequested()
-            }
-        } else {
-            orderedListAction = nil
+        let orderedListAction = dismissingAction(isEnabled: currentConfiguration.isOrderedListEnabled) {
+            currentConfiguration.onOrderedListTap()
         }
-
-        let checklistAction: (@MainActor @Sendable () -> Void)?
-        if currentConfiguration.isChecklistEnabled {
-            checklistAction = { [weak self] in
-                self?.currentConfiguration.onChecklistTap()
-                self?.onDismissRequested()
-            }
-        } else {
-            checklistAction = nil
+        let checklistAction = dismissingAction(isEnabled: currentConfiguration.isChecklistEnabled) {
+            currentConfiguration.onChecklistTap()
+        }
+        let blockquoteAction = dismissingAction(isEnabled: currentConfiguration.isBlockquoteEnabled) {
+            currentConfiguration.onBlockquoteTap()
         }
 
         return [
@@ -227,7 +221,11 @@ private extension AppKitNoteFormattingPopoverView {
                 )
             ]),
             ("note-formatting-future-blockquote-group", [
-                InlineActionItem(identifier: "note-formatting-blockquote", symbol: "text.quote", action: nil)
+                InlineActionItem(
+                    identifier: "note-formatting-blockquote",
+                    symbol: "text.quote",
+                    action: blockquoteAction
+                )
             ])
         ]
     }
@@ -471,6 +469,11 @@ private extension AppKitNoteFormattingPopoverView {
                 "note-formatting-checklist",
                 currentConfiguration.isChecklistActive,
                 currentConfiguration.isChecklistEnabled
+            ),
+            (
+                "note-formatting-blockquote",
+                currentConfiguration.isBlockquoteActive,
+                currentConfiguration.isBlockquoteEnabled
             )
         ]
 
