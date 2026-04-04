@@ -217,8 +217,11 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertEqual(panel.listSectionLayout, [.sparseState, .archive])
     }
 
-    func testSectionOrderShowsPinnedAndMainWithoutArchiveWhenNothingIsArchived() async {
-        let tree = FileTree(children: [makeFile(path: "note-1", name: "Note.md", created: 100)])
+    func testSectionOrderShowsPinnedAndMainWhenPinnedNotesExist() async {
+        let tree = FileTree(children: [
+            makeFile(path: "note-pinned", name: "Pinned.md", created: 100, pinned: true, pinnedOrder: 0),
+            makeFile(path: "note-1", name: "Note.md", created: 90)
+        ])
         let viewModel = makeViewModel(tree: tree, archivedTree: FileTree(children: []))
 
         await viewModel.loadTree()
@@ -226,6 +229,17 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         let panel = NotesPanelView(viewModel: viewModel)
 
         XCTAssertEqual(panel.listSectionLayout, [.pinned, .mainNotes])
+    }
+
+    func testSectionOrderOmitsPinnedWhenNoPinnedNotesExist() async {
+        let tree = FileTree(children: [makeFile(path: "note-1", name: "Note.md", created: 100)])
+        let viewModel = makeViewModel(tree: tree)
+
+        await viewModel.loadTree()
+        let panel = NotesPanelView(viewModel: viewModel)
+
+        XCTAssertEqual(panel.pinnedItems.map(\.id), [])
+        XCTAssertEqual(panel.listSectionLayout, [.mainNotes])
     }
 
     func testNoteContextMenuIncludesShareTextForFileItems() {

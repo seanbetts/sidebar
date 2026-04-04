@@ -59,7 +59,11 @@ extension NotesPanelView {
         case .sparse:
             return [.sparseState, .archive]
         case .content:
-            var sections: [ListSectionLayout] = [.pinned, .mainNotes]
+            var sections: [ListSectionLayout] = []
+            if !pinnedItems.isEmpty {
+                sections.append(.pinned)
+            }
+            sections.append(.mainNotes)
             if hasArchivedContent {
                 sections.append(.archive)
             }

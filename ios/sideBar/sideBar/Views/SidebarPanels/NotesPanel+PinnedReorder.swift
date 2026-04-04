@@ -137,23 +137,16 @@ extension NotesPanelView {
 
     @ViewBuilder
     func pinnedNotesSection() -> some View {
-        if pinnedItems.isEmpty {
-            Text("No pinned notes")
-                .appFont(.caption)
-                .foregroundStyle(.secondary)
-                .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
-        } else {
-            #if os(iOS)
-            ForEach(pinnedItems) { item in
-                pinnedNoteRow(item: item)
-            }
-            .onMove(perform: movePinnedNotes)
-            #else
-            ForEach(pinnedItems) { item in
-                pinnedNoteRow(item: item)
-            }
-            #endif
+        #if os(iOS)
+        ForEach(pinnedItems) { item in
+            pinnedNoteRow(item: item)
         }
+        .onMove(perform: movePinnedNotes)
+        #else
+        ForEach(pinnedItems) { item in
+            pinnedNoteRow(item: item)
+        }
+        #endif
     }
 
     @ViewBuilder

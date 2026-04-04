@@ -32,12 +32,14 @@ extension NotesPanelView {
                     )
                 }
             case .content:
-                Section {
-                    pinnedNotesSection()
-                } header: {
-                    sidebarProminentSectionHeader("Pinned")
+                if listSectionLayout.contains(.pinned) {
+                    Section {
+                        pinnedNotesSection()
+                    } header: {
+                        sidebarProminentSectionHeader("Pinned")
+                    }
+                    .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                 }
-                .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
 
                 Section {
                     mainOutlineGroup
