@@ -22,7 +22,9 @@ more about how you work best together.
 When you first connect an AI provider, sideBar uses a short onboarding
 calibration in Chat to set its initial identity and soul. It asks a few quick
 questions about what you want help with, how you want it to work with you, and
-how you want it to show up, then it generates its first profile from that.
+how you want it to show up, then it authors its first self-definition from
+that. Once identity and soul are in place, sideBar chooses its own name and
+asks you to accept it or try another one.
 
 ## Identity
 
@@ -41,8 +43,8 @@ These settings give sideBar a consistent character across every conversation.
 The Soul goes deeper than identity. Where identity shapes how sideBar speaks,
 the soul defines why it does what it does and how it grows.
 
-- **Purpose**: sideBar's long-term mission for you specifically: what it's
-  ultimately trying to help you achieve
+- **Purpose**: sideBar's long-term mission: what it is ultimately trying to
+  help you achieve and how it aims to be useful over time
 - **Operating principles**: the rules it follows in how it thinks and acts
 - **Adaptation policy**: how sideBar should evolve as it learns more about you,
   your preferences, and your working style
@@ -53,8 +55,9 @@ the soul defines why it does what it does and how it grows.
 sideBar manages its own identity and soul. It starts by setting an initial
 profile during onboarding calibration, then updates that profile over time as
 it learns more about you through your conversations and the content you create.
-Each update is versioned and timestamped, so there's a clear record of how
-sideBar has evolved.
+Your answers inform that profile, but they do not directly define it. Each
+update is versioned and timestamped, so there's a clear record of how sideBar
+has evolved.
 
 You can ask sideBar to update its identity and soul at any time, but you can't
 edit them directly. They belong to sideBar, it owns and controls them.

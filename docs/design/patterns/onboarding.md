@@ -137,8 +137,6 @@ This design currently describes the Apple implementation. Web onboarding can ado
 
 ### Soul calibration
 
-This remains part of the target discovery flow and is not shipped yet.
-
 Before feature discovery begins, sideBar checks whether soul calibration has completed for the current provider-ready user. If it has not, sideBar runs a short mandatory calibration in Chat before anything else.
 
 - Calibration runs only for provider-ready users
@@ -159,7 +157,7 @@ Calibration flow:
 3. **Tone** — five quick either-or picks in one message:
    `Warm` / `Direct`, `Playful` / `Serious`, `Concise` / `Expressive`, `Formal` / `Casual`, `Supportive` / `Challenging`
 
-After the user replies, sideBar generates the full soul and identity profile from those structured inputs, confirms briefly what it has set, proposes its chosen name, and then begins discovery once the user accepts the name.
+After the user replies, sideBar authors its initial soul and identity from those structured inputs, confirms briefly what it has set, proposes its chosen name, and then begins discovery once the user accepts the name.
 
 The discovery surface is a compact glass strip that can be expanded inline to reveal a horizontally-scrollable set of `FeatureIntroCard` tiles. The user can:
 

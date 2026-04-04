@@ -46,7 +46,8 @@ The calibration is lightweight and mostly tap-based. sideBar asks:
 - **How should it show up?**
 
 From those answers, sideBar sets its initial identity and soul, chooses its own
-name, and confirms it with you. You can accept the name or ask it to try
+name, and confirms it with you. The name is chosen to fit the identity and soul
+it has already authored for itself. You can accept the name or ask it to try
 another one.
 
 After that, sideBar moves straight into discovery so you can explore the app
