@@ -6,6 +6,7 @@ import secrets
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import inspect as sqlalchemy_inspect
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -256,6 +257,15 @@ class UserSettingsService:
                 )
         if commit:
             db.commit()
+            if sqlalchemy_inspect(settings).session is db:
+                db.expunge(settings)
+            fresh_settings = (
+                db.query(UserSettings)
+                .execution_options(populate_existing=True)
+                .filter(UserSettings.user_id == user_id)
+                .first()
+            )
+            return fresh_settings or settings
         return settings
 
     @staticmethod
