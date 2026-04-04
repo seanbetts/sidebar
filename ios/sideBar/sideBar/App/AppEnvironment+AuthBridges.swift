@@ -45,12 +45,13 @@ extension AppEnvironment {
 
         guard !awaitPendingShareReplay else { return }
         guard hasQueuedWebsiteItems || enqueuedWebsiteEvents else { return }
+        let replayStartSignal = PendingShareReplayStartSignal()
         let replayTask = Task { [weak self] in
-            await self?.consumePendingShares()
+            await self?.consumePendingShares(replayStartSignal: replayStartSignal)
         }
-        // Give the replay task a chance to begin on the main actor before
-        // callers trigger a foreground list refresh that expects replay to be in flight.
-        await Task.yield()
+        // Wait until replay has entered the queued-save path before letting
+        // foreground refresh work observe the list.
+        await replayStartSignal.wait()
         _ = replayTask
     }
 

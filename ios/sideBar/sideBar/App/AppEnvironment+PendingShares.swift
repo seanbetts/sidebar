@@ -3,6 +3,26 @@ import sideBarShared
 
 let pendingWebsiteQueueMaxRetryCount = 5
 
+@MainActor
+final class PendingShareReplayStartSignal {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var hasStarted = false
+
+    func wait() async {
+        guard !hasStarted else { return }
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func markStarted() {
+        guard !hasStarted else { return }
+        hasStarted = true
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
 enum PendingWebsiteFailureKind {
     case retryable
     case terminal
@@ -176,9 +196,17 @@ extension AppEnvironment {
         )
     }
 
-    public func consumePendingShares() async {
-        guard authState == .active, isProtectedContentReady else { return }
-        guard !isConsumingPendingShares else { return }
+    func consumePendingShares(
+        replayStartSignal: PendingShareReplayStartSignal? = nil
+    ) async {
+        guard authState == .active, isProtectedContentReady else {
+            replayStartSignal?.markStarted()
+            return
+        }
+        guard !isConsumingPendingShares else {
+            replayStartSignal?.markStarted()
+            return
+        }
         isConsumingPendingShares = true
         defer { isConsumingPendingShares = false }
 
@@ -190,14 +218,21 @@ extension AppEnvironment {
 
         guard !connectivityMonitor.isOffline else {
             websitesViewModel.syncPendingWebsitesFromQueuedShares(initialPending)
+            replayStartSignal?.markStarted()
             return
         }
 
         let pending = initialPending
         websitesViewModel.syncPendingWebsitesFromQueuedShares(pending)
-        guard !pending.isEmpty else { return }
+        guard !pending.isEmpty else {
+            replayStartSignal?.markStarted()
+            return
+        }
 
-        let retainedItems = await processPendingShares(pending)
+        let retainedItems = await processPendingShares(
+            pending,
+            replayStartSignal: replayStartSignal
+        )
         let reconciled = reconcilePendingShareResults(
             processedSnapshot: pending,
             retainedItems: retainedItems
@@ -205,6 +240,7 @@ extension AppEnvironment {
         let prunedItems = prunedQueuedWebsiteItems(reconciled.items)
         storage.pendingShareStore.replaceAll(prunedItems)
         websitesViewModel.syncPendingWebsitesFromQueuedShares(prunedItems)
+        replayStartSignal?.markStarted()
     }
 
     public func retryPendingQueuedWebsite(_ queueItemId: UUID) async {
@@ -262,7 +298,10 @@ extension AppEnvironment {
         websitesViewModel.syncPendingWebsitesFromQueuedShares(storage.pendingShareStore.loadAll())
     }
 
-    private func processPendingShares(_ pending: [PendingShareItem]) async -> [PendingShareItem] {
+    private func processPendingShares(
+        _ pending: [PendingShareItem],
+        replayStartSignal: PendingShareReplayStartSignal? = nil
+    ) async -> [PendingShareItem] {
         let now = Date()
         var retainedItems: [PendingShareItem] = []
 
@@ -274,7 +313,11 @@ extension AppEnvironment {
                     readingQueueItemId: item.id
                 )
             }
-            if let retainedItem = await processPendingShare(item, now: now) {
+            if let retainedItem = await processPendingShare(
+                item,
+                now: now,
+                replayStartSignal: replayStartSignal
+            ) {
                 retainedItems.append(retainedItem)
             }
         }
@@ -284,10 +327,15 @@ extension AppEnvironment {
 
     private func processPendingShare(
         _ item: PendingShareItem,
-        now: Date
+        now: Date,
+        replayStartSignal: PendingShareReplayStartSignal? = nil
     ) async -> PendingShareItem? {
         if item.kind == .website {
-            return await processPendingWebsite(item, now: now)
+            return await processPendingWebsite(
+                item,
+                now: now,
+                replayStartSignal: replayStartSignal
+            )
         }
         let shouldKeep = await shouldKeepPendingShare(item)
         return shouldKeep ? item : nil
@@ -324,7 +372,8 @@ extension AppEnvironment {
         _ item: PendingShareItem,
         now: Date,
         selectAfterSave: Bool = false,
-        forceAttempt: Bool = false
+        forceAttempt: Bool = false,
+        replayStartSignal: PendingShareReplayStartSignal? = nil
     ) async -> PendingShareItem? {
         if isPendingWebsiteFailed(item) && !forceAttempt {
             return item
@@ -336,6 +385,7 @@ extension AppEnvironment {
             return nil
         }
         websitesViewModel.saveErrorMessage = nil
+        replayStartSignal?.markStarted()
         let saved = await websitesViewModel.saveWebsite(
             url: url,
             selectAfterSave: selectAfterSave
