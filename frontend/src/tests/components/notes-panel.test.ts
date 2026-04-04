@@ -111,4 +111,23 @@ describe('NotesPanel', () => {
 		expect(screen.getByText('Archive')).toBeInTheDocument();
 		expect(screen.queryByText('No notes found')).not.toBeInTheDocument();
 	});
+
+	it('hides the pinned section when there are no pinned notes', () => {
+		setTreeState({
+			trees: {
+				notes: createNotesTree([
+					{
+						name: 'Inbox.md',
+						path: 'notes/inbox.md',
+						type: 'file'
+					}
+				])
+			}
+		});
+
+		render(NotesPanel);
+
+		expect(screen.queryByText('Pinned')).not.toBeInTheDocument();
+		expect(screen.getByText('Notes')).toBeInTheDocument();
+	});
 });

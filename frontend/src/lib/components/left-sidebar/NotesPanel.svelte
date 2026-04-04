@@ -203,9 +203,9 @@
 		{/if}
 
 		{#if !showArchivedOnlyState}
-			<div class="notes-block">
-				<div class="notes-block-title">Pinned</div>
-				{#if pinnedNodes.length > 0}
+			{#if pinnedNodes.length > 0}
+				<div class="notes-block">
+					<div class="notes-block-title">Pinned</div>
 					<div class="notes-block-content">
 						{#each pinnedNodes as node (node.path)}
 							<FileTreeNode
@@ -233,10 +233,8 @@
 							ondrop={handlePinnedDropEnd}
 						></div>
 					</div>
-				{:else}
-					<div class="notes-empty">No pinned notes</div>
-				{/if}
-			</div>
+				</div>
+			{/if}
 
 			<div class="notes-block">
 				<div class="notes-block-title">Notes</div>
