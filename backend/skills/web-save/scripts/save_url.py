@@ -30,7 +30,10 @@ try:
         capture_script_exception,
         initialize_script_sentry,
     )
-    from api.services.url_normalization_service import is_youtube_host
+    from api.services.url_normalization_service import (
+        is_youtube_host,
+        normalize_youtube_url,
+    )
     from api.services.web_save_antibot import AntibotDetection, detect_antibot_html
     from api.services.web_save_error_service import classify_web_save_failure
     from api.services.web_save_parser import (
@@ -63,6 +66,7 @@ except Exception:
     JinaService = None
     apply_wsj_content_guards = None
     is_youtube_host = None
+    normalize_youtube_url = None
     fetch_youtube_duration_seconds = None
     normalize_reading_time = None
     reading_time_from_duration_seconds = None
@@ -342,6 +346,57 @@ def _resolve_jina_reading_time(
     return calculate_reading_time(word_count)
 
 
+def _build_direct_youtube_page(url: str) -> ParsedPage | None:
+    """Return a minimal embed-backed page for direct YouTube URLs."""
+    if not _is_youtube_url(url):
+        return None
+
+    canonical_url = url
+    if normalize_youtube_url is not None:
+        try:
+            canonical_url = normalize_youtube_url(url)
+        except ValueError:
+            canonical_url = url
+
+    title = (
+        resolve_website_title(None, url=canonical_url)
+        if resolve_website_title is not None
+        else None
+    )
+    if not title:
+        title = "YouTube"
+
+    reading_time = None
+    if (
+        fetch_youtube_duration_seconds is not None
+        and reading_time_from_duration_seconds is not None
+    ):
+        seconds = fetch_youtube_duration_seconds(canonical_url)
+        reading_time = reading_time_from_duration_seconds(seconds)
+
+    markdown = f"[YouTube]({canonical_url})"
+    domain = urlparse(canonical_url).netloc
+    tags = extract_tags(markdown, domain, title)
+    content = build_frontmatter(
+        markdown,
+        meta={
+            "source": canonical_url,
+            "title": title,
+            "domain": domain,
+            "word_count": 0,
+            "reading_time": reading_time,
+            "tags": tags,
+            "saved_at": datetime.now(UTC).isoformat(),
+        },
+    )
+    return ParsedPage(
+        title=title,
+        content=content,
+        source=canonical_url,
+        published_at=None,
+    )
+
+
 def _count_noise_markers(content: str) -> int:
     lowered = content.lower()
     return sum(lowered.count(marker) for marker in _JINA_NOISE_MARKERS)
@@ -590,13 +645,23 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         target_url,
         web_save_mode,
     )
-    parsed = None
+    direct_youtube_page = _build_direct_youtube_page(target_url)
+    if direct_youtube_page is not None:
+        parsed = direct_youtube_page
+        title = parsed.title
+        source = parsed.source
+        published_at = parsed.published_at
+    else:
+        parsed = None
+        title = None
+        source = None
+        published_at = None
     local_parse_error: str | None = None
     local_parse_error_type: str | None = None
     local_antibot_detection: AntibotDetection | None = None
     local_antibot_stage: str | None = None
     local_antibot_rule_id: str | None = None
-    if web_save_mode in {"local", "compare"}:
+    if parsed is None and web_save_mode in {"local", "compare"}:
         local_parse_started_at = time.monotonic()
         try:
             parsed = parse_url_local(target_url)
@@ -648,7 +713,9 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
             )
 
     local_parsed = parsed
-    if parsed is None or web_save_mode in {"jina", "compare"}:
+    if parsed is None or (
+        direct_youtube_page is None and web_save_mode in {"jina", "compare"}
+    ):
         fallback_started_at = time.monotonic()
         fallback_reason = (
             "forced_mode"
@@ -899,7 +966,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                         ),
                     ) from exc
                 raise
-    else:
+    elif parsed is not None:
         title = parsed.title
         source = parsed.source
         published_at = parsed.published_at

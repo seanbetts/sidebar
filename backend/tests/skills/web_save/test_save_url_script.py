@@ -112,6 +112,70 @@ def test_save_url_database_local_uses_resolved_target(monkeypatch):
     assert captured["upsert_kwargs"]["source"] == "https://www.wsj.com/tech/ai/story-id"
 
 
+def test_save_url_database_direct_youtube_url_skips_parsers(monkeypatch):
+    module = _load_save_url_module()
+    captured = _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    module.resolve_apple_news_source_url = lambda url: url
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        AssertionError("direct YouTube save should not use local parser")
+    )
+    module.get_markdown_content = lambda _url, _key: (_ for _ in ()).throw(
+        AssertionError("direct YouTube save should not use Jina fallback")
+    )
+    module.resolve_website_title = lambda title, url, **_kwargs: (
+        "Test Video Title" if "youtube.com/watch?v=abc123xyzAA" in url else title
+    )
+    module.fetch_youtube_duration_seconds = lambda _url: 214
+    module.reading_time_from_duration_seconds = (
+        lambda seconds: "4 mins" if seconds == 214 else None
+    )
+    module.compute_word_count = lambda _content: (_ for _ in ()).throw(
+        AssertionError("text word count should not be required for direct YouTube saves")
+    )
+    module.calculate_reading_time = lambda _count: (_ for _ in ()).throw(
+        AssertionError("text reading time should not be required for direct YouTube saves")
+    )
+    module.extract_tags = lambda *_args, **_kwargs: ["youtube", "video"]
+
+    result = module.save_url_database(
+        "https://www.youtube.com/watch?v=abc123xyzAA&list=PL123",
+        "user-1",
+    )
+
+    assert result["title"] == "Test Video Title"
+    assert captured["upsert_kwargs"]["source"] == "https://www.youtube.com/watch?v=abc123xyzAA"
+    assert "[YouTube](https://www.youtube.com/watch?v=abc123xyzAA)" in captured["upsert_kwargs"]["content"]
+    assert "reading_time: 4 mins" in captured["upsert_kwargs"]["content"]
+    assert "title: Test Video Title" in captured["upsert_kwargs"]["content"]
+
+
+def test_save_url_database_direct_youtube_url_saves_without_duration(monkeypatch):
+    module = _load_save_url_module()
+    captured = _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    module.resolve_apple_news_source_url = lambda url: url
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        AssertionError("direct YouTube save should not use local parser")
+    )
+    module.get_markdown_content = lambda _url, _key: (_ for _ in ()).throw(
+        AssertionError("direct YouTube save should not use Jina fallback")
+    )
+    module.resolve_website_title = lambda title, url, **_kwargs: None
+    module.fetch_youtube_duration_seconds = lambda _url: None
+    module.reading_time_from_duration_seconds = lambda _seconds: None
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    module.save_url_database("https://youtu.be/abc123xyzAA", "user-1")
+
+    saved_content = captured["upsert_kwargs"]["content"]
+    assert "[YouTube](https://www.youtube.com/watch?v=abc123xyzAA)" in saved_content
+    assert "reading_time:" not in saved_content
+    assert "title: YouTube" in saved_content
+
+
 def test_save_url_database_reports_local_and_jina_failure(monkeypatch):
     module = _load_save_url_module()
     _stub_db_dependencies(module)
@@ -308,7 +372,7 @@ def test_save_url_database_google_unusual_traffic_page_is_rejected(monkeypatch):
     module.parse_jina_metadata = lambda _content: (
         {
             "title": "Google Search",
-            "url_source": "https://www.youtube.com/watch?v=abc123xyzAA",
+            "url_source": "https://example.com/story",
             "published_time": None,
         },
         "Ignored content",
@@ -319,7 +383,7 @@ def test_save_url_database_google_unusual_traffic_page_is_rejected(monkeypatch):
     module.extract_tags = lambda *_args, **_kwargs: []
 
     with pytest.raises(module.WebSaveScriptError) as exc_info:
-        module.save_url_database("https://www.youtube.com/watch?v=abc123xyzAA", "user-1")
+        module.save_url_database("https://example.com/story", "user-1")
 
     err = exc_info.value
     assert err.payload["code"] == "WEB_SAVE_BLOCKED_SITE"
