@@ -25,28 +25,26 @@ final class WebsiteSaveHandoffNotifierTests: XCTestCase {
     }
 
     func testNotifierDeliversCallbackAfterWebsiteHandoffPost() {
-        let expectation = expectation(description: "handoff notification received")
-        let observer = WebsiteSaveHandoffNotifier.observe {
-            expectation.fulfill()
-        }
-
-        WebsiteSaveHandoffNotifier.post()
-
-        wait(for: [expectation], timeout: 1.0)
-        WebsiteSaveHandoffNotifier.removeObserver(observer)
+        assertSingleHandoffDelivery(
+            in: self,
+            description: "handoff notification received",
+            observe: WebsiteSaveHandoffNotifier.observe,
+            post: WebsiteSaveHandoffNotifier.post,
+            removeObserver: WebsiteSaveHandoffNotifier.removeObserver
+        )
     }
 
     func testPendingShareStoreEnqueueWebsitePostsHandoffNotification() {
         let store = makePendingShareStore()
-        let expectation = expectation(description: "queue handoff notification received")
-        let observer = WebsiteSaveHandoffNotifier.observe {
-            expectation.fulfill()
-        }
-
-        _ = store.enqueueWebsite(url: "https://example.com/article")
-
-        wait(for: [expectation], timeout: 1.0)
-        WebsiteSaveHandoffNotifier.removeObserver(observer)
+        assertSingleHandoffDelivery(
+            in: self,
+            description: "queue handoff notification received",
+            observe: WebsiteSaveHandoffNotifier.observe,
+            post: {
+                _ = store.enqueueWebsite(url: "https://example.com/article")
+            },
+            removeObserver: WebsiteSaveHandoffNotifier.removeObserver
+        )
     }
 
     func testExtensionEventStoreRecordWebsiteSavedPostsHandoffNotification() {
@@ -71,15 +69,15 @@ final class WebsiteSaveHandoffNotifierTests: XCTestCase {
             updatedAt: nil,
             lastOpenedAt: nil
         )
-        let expectation = expectation(description: "saved event notification received")
-        let observer = WebsiteSaveHandoffNotifier.observe {
-            expectation.fulfill()
-        }
-
-        eventStore.recordWebsiteSaved(website: website)
-
-        wait(for: [expectation], timeout: 1.0)
-        WebsiteSaveHandoffNotifier.removeObserver(observer)
+        assertSingleHandoffDelivery(
+            in: self,
+            description: "saved event notification received",
+            observe: WebsiteSaveHandoffNotifier.observe,
+            post: {
+                eventStore.recordWebsiteSaved(website: website)
+            },
+            removeObserver: WebsiteSaveHandoffNotifier.removeObserver
+        )
     }
 
     private func makePendingShareStore() -> PendingShareStore {

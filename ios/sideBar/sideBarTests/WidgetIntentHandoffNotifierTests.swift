@@ -3,14 +3,12 @@ import XCTest
 
 final class WidgetIntentHandoffNotifierTests: XCTestCase {
     func testNotifierDeliversCallbackAfterPost() {
-        let expectation = expectation(description: "widget intent handoff received")
-        let observer = WidgetIntentHandoffNotifier.observe {
-            expectation.fulfill()
-        }
-
-        WidgetIntentHandoffNotifier.post()
-
-        wait(for: [expectation], timeout: 1.0)
-        WidgetIntentHandoffNotifier.removeObserver(observer)
+        assertSingleHandoffDelivery(
+            in: self,
+            description: "widget intent handoff received",
+            observe: WidgetIntentHandoffNotifier.observe,
+            post: WidgetIntentHandoffNotifier.post,
+            removeObserver: WidgetIntentHandoffNotifier.removeObserver
+        )
     }
 }

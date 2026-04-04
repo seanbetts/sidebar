@@ -20,14 +20,12 @@ final class WidgetTaskCompletionHandoffNotifierTests: XCTestCase {
     }
 
     func testNotifierDeliversCallbackAfterTaskCompletionPost() {
-        let expectation = expectation(description: "task completion handoff notification received")
-        let observer = WidgetTaskCompletionHandoffNotifier.observe {
-            expectation.fulfill()
-        }
-
-        WidgetTaskCompletionHandoffNotifier.post()
-
-        wait(for: [expectation], timeout: 1.0)
-        WidgetTaskCompletionHandoffNotifier.removeObserver(observer)
+        assertSingleHandoffDelivery(
+            in: self,
+            description: "task completion handoff notification received",
+            observe: WidgetTaskCompletionHandoffNotifier.observe,
+            post: WidgetTaskCompletionHandoffNotifier.post,
+            removeObserver: WidgetTaskCompletionHandoffNotifier.removeObserver
+        )
     }
 }
