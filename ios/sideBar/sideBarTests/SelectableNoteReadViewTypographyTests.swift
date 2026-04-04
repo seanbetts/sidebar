@@ -95,8 +95,8 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         let bodyStyle = NoteTextParagraphMetrics.paragraphStyle(for: .paragraph, baseFontSize: baseFontSize)
 
         XCTAssertEqual(titleStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
-        XCTAssertEqual(headingStyle.paragraphSpacingBefore, baseFontSize * 0.5, accuracy: 0.001)
-        XCTAssertEqual(subheadingStyle.paragraphSpacingBefore, baseFontSize * 0.375, accuracy: 0.001)
+        XCTAssertEqual(headingStyle.paragraphSpacingBefore, baseFontSize * 0.75, accuracy: 0.001)
+        XCTAssertEqual(subheadingStyle.paragraphSpacingBefore, baseFontSize * 0.5, accuracy: 0.001)
         XCTAssertEqual(bodyStyle.paragraphSpacingBefore, 0, accuracy: 0.001)
 
         XCTAssertEqual(titleStyle.paragraphSpacing, 4, accuracy: 0.001)

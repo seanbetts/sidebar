@@ -158,13 +158,13 @@ enum NoteTextParagraphMetrics {
             case .heading:
                 return StyleMetrics(
                     lineSpacing: 0,
-                    spacingBefore: baseFontSize * 0.5,
+                    spacingBefore: baseFontSize * 0.75,
                     spacingAfter: baseFontSize * 0.1875
                 )
             case .subheading:
                 return StyleMetrics(
                     lineSpacing: 0,
-                    spacingBefore: baseFontSize * 0.375,
+                    spacingBefore: baseFontSize * 0.5,
                     spacingAfter: baseFontSize * 0.125
                 )
             case .body:
