@@ -106,9 +106,6 @@ class OnboardingService:
         if not OnboardingService._is_calibration_completed(state):
             return "soul_calibration"
 
-        if OnboardingService.needs_permission_recovery(state):
-            return "permission_recovery"
-
         return "feature_discovery"
 
     @staticmethod

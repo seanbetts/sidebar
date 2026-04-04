@@ -261,20 +261,7 @@ def test_current_onboarding_step_uses_feature_discovery_when_provider_ready_even
     )
     state["provider_ready"] = True
 
-    assert OnboardingService.current_onboarding_step(state) == "permission_recovery"
-
-
-def test_current_onboarding_step_uses_permission_recovery_when_provider_ready_and_permissions_are_missing() -> None:
-    state = OnboardingService._resolve_state(
-        {
-            "status": "dismissed",
-            "calibration": {"status": "completed"},
-            "permissions": {"location": "denied", "notifications": "granted"},
-        }
-    )
-    state["provider_ready"] = True
-
-    assert OnboardingService.current_onboarding_step(state) == "permission_recovery"
+    assert OnboardingService.current_onboarding_step(state) == "feature_discovery"
 
 
 def test_current_onboarding_step_uses_feature_discovery_when_provider_ready_and_tour_not_seen() -> None:
