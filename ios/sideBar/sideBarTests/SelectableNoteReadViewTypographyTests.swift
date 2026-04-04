@@ -136,7 +136,189 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(style.defaultTabInterval, expectedIndent, accuracy: 0.001)
     }
 
+    #if os(macOS)
+    func testMakePlatformAttributedContentUsesSecondaryLabelColorForBlockquotesOnMacOS() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Quoted", marks: [])])
+                    ]
+                )
+            ]
+        )
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+        let prefixColor = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
+        )
+        let contentColor = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 2, effectiveRange: nil) as? NSColor
+        )
+
+        XCTAssertEqual(prefixColor, .secondaryLabelColor)
+        XCTAssertEqual(contentColor, .secondaryLabelColor)
+    }
+
+    func testMountedReadViewBlockquoteRuleRectsAlignWithPrefixOnMacOS() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Quoted text", marks: [])])
+                    ]
+                )
+            ]
+        )
+        let textView = try makeReadTextView(
+            document: document,
+            frame: NSRect(x: 0, y: 0, width: 320, height: 180)
+        )
+        let prefixGlyphRect = try glyphRect(in: textView, characterIndex: 0)
+        let prefixRect = prefixGlyphRect.offsetBy(
+            dx: textView.textContainerInset.width,
+            dy: textView.textContainerInset.height
+        )
+        let ruleRect = try XCTUnwrap(
+            NoteTextBlockquoteDecorationLayout.ruleRects(
+                in: try XCTUnwrap(textView.textStorage),
+                layoutManager: try XCTUnwrap(textView.layoutManager),
+                textContainer: try XCTUnwrap(textView.textContainer),
+                textContainerInset: textView.textContainerInset
+            ).first
+        )
+
+        XCTAssertLessThan(
+            ruleRect.maxX,
+            prefixRect.minX,
+            "Expected rule rect \(ruleRect.debugDescription) to sit left of prefix rect \(prefixRect.debugDescription)"
+        )
+        XCTAssertGreaterThan(
+            ruleRect.maxX,
+            prefixRect.minX - 16,
+            "Expected rule rect \(ruleRect.debugDescription) to remain visually adjacent to prefix rect \(prefixRect.debugDescription)"
+        )
+        XCTAssertEqual(
+            ruleRect.midY,
+            prefixRect.midY,
+            accuracy: 2,
+            "Expected rule rect \(ruleRect.debugDescription) to align vertically with prefix rect \(prefixRect.debugDescription)"
+        )
+    }
+    #endif
+
     #if os(iOS)
+    func testMakePlatformAttributedContentUsesSecondaryLabelColorForBlockquotesOnIOS() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Quoted", marks: [])])
+                    ]
+                )
+            ]
+        )
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+        let prefixColor = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor
+        )
+        let contentColor = try XCTUnwrap(
+            attributed.attribute(.foregroundColor, at: 2, effectiveRange: nil) as? UIColor
+        )
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+
+        XCTAssertEqual(
+            prefixColor.resolvedColor(with: darkTraits),
+            UIColor.secondaryLabel.resolvedColor(with: darkTraits)
+        )
+        XCTAssertEqual(
+            contentColor.resolvedColor(with: darkTraits),
+            UIColor.secondaryLabel.resolvedColor(with: darkTraits)
+        )
+    }
+
+    func testMountedReadViewDrawsBlockquoteRuleOnIOS() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Quoted text", marks: [])])
+                    ]
+                )
+            ]
+        )
+        let textView = try makeReadTextView(
+            document: document,
+            frame: CGRect(x: 0, y: 0, width: 320, height: 180)
+        )
+        let prefixRect = try characterRect(in: textView, characterIndex: 0)
+        let samplePoint = CGPoint(
+            x: max(1, prefixRect.minX - 7),
+            y: prefixRect.midY
+        )
+        let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
+
+        assertColorsApproximatelyEqual(
+            sampledColor.resolvedColor(with: textView.traitCollection),
+            UIColor.separator.resolvedColor(with: textView.traitCollection),
+            tolerance: 0.08
+        )
+    }
+
+    func testDetachedBlockquoteRuleRectsAlignWithMountedPrefixOnIOS() throws {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Quoted text", marks: [])])
+                    ]
+                )
+            ]
+        )
+        let textView = try makeReadTextView(
+            document: document,
+            frame: CGRect(x: 0, y: 0, width: 320, height: 180)
+        )
+        let prefixRect = try characterRect(in: textView, characterIndex: 0)
+        let ruleRect = try XCTUnwrap(
+            NoteTextBlockquoteDecorationLayout.detachedRuleRects(
+                in: textView.attributedText,
+                containerWidth: textView.bounds.width,
+                textContainerInset: CGSize(
+                    width: textView.textContainerInset.left,
+                    height: textView.textContainerInset.top
+                )
+            ).first
+        )
+
+        XCTAssertLessThan(
+            ruleRect.maxX,
+            prefixRect.minX,
+            "Expected rule rect \(ruleRect.debugDescription) to sit left of prefix rect \(prefixRect.debugDescription)"
+        )
+        XCTAssertGreaterThan(
+            ruleRect.maxX,
+            prefixRect.minX - 16,
+            "Expected rule rect \(ruleRect.debugDescription) to remain visually adjacent to prefix rect \(prefixRect.debugDescription)"
+        )
+        XCTAssertEqual(
+            ruleRect.midY,
+            prefixRect.midY,
+            accuracy: 2,
+            "Expected rule rect \(ruleRect.debugDescription) to align vertically with prefix rect \(prefixRect.debugDescription)"
+        )
+    }
+
     func testMakePlatformAttributedContentUsesInlineCodeBackgroundOnIOS() throws {
         let document = NotesSemanticDocument(
             blocks: [

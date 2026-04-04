@@ -4,6 +4,8 @@ import Foundation
 extension SelectableNoteReadView {
     private static let checklistReadPrefixLength = 2
     private static let checklistEditorPrefixLength = 6
+    private static let blockquoteReadPrefixLength = 0
+    private static let blockquoteEditorPrefixLength = 2
 
     struct ChecklistToggleTarget: Equatable {
         let blockIndex: Int
@@ -41,7 +43,8 @@ extension SelectableNoteReadView {
             offset = advancedOffset(
                 for: block,
                 startingAt: offset,
-                checklistPrefixLength: checklistReadPrefixLength
+                checklistPrefixLength: checklistReadPrefixLength,
+                blockquotePrefixLength: blockquoteReadPrefixLength
             )
         }
         return targets
@@ -106,12 +109,14 @@ extension SelectableNoteReadView {
             readOffset = advancedOffset(
                 for: block,
                 startingAt: readOffset,
-                checklistPrefixLength: checklistReadPrefixLength
+                checklistPrefixLength: checklistReadPrefixLength,
+                blockquotePrefixLength: blockquoteReadPrefixLength
             )
             editorOffset = advancedOffset(
                 for: block,
                 startingAt: editorOffset,
-                checklistPrefixLength: checklistEditorPrefixLength
+                checklistPrefixLength: checklistEditorPrefixLength,
+                blockquotePrefixLength: blockquoteEditorPrefixLength
             )
         }
 
@@ -124,11 +129,22 @@ extension SelectableNoteReadView {
         readOffset: Int,
         editorOffset: Int
     ) -> Int? {
-        guard block.type == .checklist else {
+        switch block.type {
+        case .checklist:
+            break
+        case .blockquote:
+            return editingActivationCharacterOffsetInBlockquote(
+                block.children ?? [],
+                readCharacterOffset: readCharacterOffset,
+                readOffset: readOffset,
+                editorOffset: editorOffset
+            )
+        default:
             let blockLength = advancedOffset(
                 for: block,
                 startingAt: readOffset,
-                checklistPrefixLength: checklistReadPrefixLength
+                checklistPrefixLength: checklistReadPrefixLength,
+                blockquotePrefixLength: blockquoteReadPrefixLength
             ) - readOffset
             guard readCharacterOffset <= readOffset + blockLength else { return nil }
             return editorOffset + max(0, readCharacterOffset - readOffset)
@@ -169,7 +185,8 @@ extension SelectableNoteReadView {
     private static func advancedOffset(
         for block: NotesSemanticDocument.Block,
         startingAt offset: Int,
-        checklistPrefixLength: Int
+        checklistPrefixLength: Int,
+        blockquotePrefixLength: Int
     ) -> Int {
         switch block.type {
         case .title, .paragraph, .heading, .subheading, .listItem, .codeBlock:
@@ -201,10 +218,51 @@ extension SelectableNoteReadView {
             }
             return runningOffset
         case .blockquote:
-            return offset + blockquotePlainTextLength(for: block.children ?? [])
+            return advancedOffsetForListChildren(
+                block.children ?? [],
+                prefixLength: blockquotePrefixLength,
+                startingAt: offset
+            )
         case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
             return offset
         }
+    }
+
+    private static func editingActivationCharacterOffsetInBlockquote(
+        _ children: [NotesSemanticDocument.Block],
+        readCharacterOffset: Int,
+        readOffset: Int,
+        editorOffset: Int
+    ) -> Int? {
+        var currentReadOffset = readOffset
+        var currentEditorOffset = editorOffset
+
+        for (itemIndex, child) in children.enumerated() {
+            if itemIndex > 0 {
+                if readCharacterOffset == currentReadOffset {
+                    return currentEditorOffset
+                }
+                currentReadOffset += 1
+                currentEditorOffset += 1
+            }
+
+            let textLength = inlineTextLength(for: child.content)
+            let textStart = currentReadOffset + blockquoteReadPrefixLength
+            let itemEnd = textStart + textLength
+
+            if readCharacterOffset <= textStart {
+                return currentEditorOffset + blockquoteEditorPrefixLength
+            }
+            if readCharacterOffset <= itemEnd {
+                let logicalOffset = readCharacterOffset - textStart
+                return currentEditorOffset + blockquoteEditorPrefixLength + logicalOffset
+            }
+
+            currentReadOffset = itemEnd
+            currentEditorOffset += blockquoteEditorPrefixLength + textLength
+        }
+
+        return nil
     }
 
     private static func advancedOffsetForListChildren(
@@ -221,21 +279,6 @@ extension SelectableNoteReadView {
         }
         return runningOffset
     }
-
-    private static func blockquotePlainTextLength(
-        for blocks: [NotesSemanticDocument.Block]
-    ) -> Int {
-        let plainText = NotesSemanticDocumentProjection.plainText(
-            from: NotesSemanticDocument(
-                version: NotesSemanticDocument.currentVersion,
-                blocks: [
-                    .init(type: .blockquote, children: blocks)
-                ]
-            )
-        )
-        return NSString(string: plainText).length
-    }
-
     private static func inlineTextLength(
         for content: [NotesSemanticDocument.InlineSegment]
     ) -> Int {

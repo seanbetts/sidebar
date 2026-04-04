@@ -121,6 +121,7 @@ struct SelectableNoteReadView: View {
             document: document,
             baseFontSize: baseFontSize
         )
+        removeBlockquotePrefixes(in: mutable)
         return mutable
     }
 
@@ -159,10 +160,16 @@ struct SelectableNoteReadView: View {
     private static var checklistCompletedPlatformTextColor: UIColor {
         NoteTextAppearance.checklistCompletedTextColor
     }
+    private static var blockquotePlatformTextColor: UIColor {
+        NoteTextAppearance.blockquoteTextColor
+    }
     #elseif os(macOS)
     private static var defaultPlatformTextColor: NSColor { .labelColor }
     private static var checklistCompletedPlatformTextColor: NSColor {
         NoteTextAppearance.checklistCompletedTextColor
+    }
+    private static var blockquotePlatformTextColor: NSColor {
+        NoteTextAppearance.blockquoteTextColor
     }
     #endif
 
@@ -187,6 +194,32 @@ struct SelectableNoteReadView: View {
                 baseFontSize: baseFontSize
             )
             mutable.replaceCharacters(in: replacement.range, with: replacementString)
+        }
+    }
+
+    private static func removeBlockquotePrefixes(in mutable: NSMutableAttributedString) {
+        let blockKey = NSAttributedString.Key(NoteTextBlockAttribute.name)
+        let boundaryKey = NSAttributedString.Key(NoteTextStructuralBoundaryAttribute.name)
+        let plainText = mutable.string as NSString
+        guard plainText.length > 0 else { return }
+
+        var replacementRanges: [NSRange] = []
+        var location = 0
+
+        while location < plainText.length {
+            let paragraphRange = plainText.paragraphRange(for: NSRange(location: location, length: 0))
+            if paragraphRange.length >= 2,
+               plainText.substring(with: NSRange(location: paragraphRange.location, length: 2)) == "> ",
+               (mutable.attribute(blockKey, at: paragraphRange.location, effectiveRange: nil) as? NSString) as String? ==
+                NotesSemanticDocument.BlockType.blockquote.rawValue,
+               (mutable.attribute(boundaryKey, at: paragraphRange.location, effectiveRange: nil) as? NSNumber)?.boolValue != true {
+                replacementRanges.append(NSRange(location: paragraphRange.location, length: 2))
+            }
+            location = NSMaxRange(paragraphRange)
+        }
+
+        for range in replacementRanges.reversed() {
+            mutable.deleteCharacters(in: range)
         }
     }
 
@@ -439,6 +472,12 @@ struct SelectableNoteReadView: View {
             mutable.addAttribute(
                 .foregroundColor,
                 value: checklistCompletedPlatformTextColor,
+                range: nsRange
+            )
+        } else if blockType == .blockquote {
+            mutable.addAttribute(
+                .foregroundColor,
+                value: blockquotePlatformTextColor,
                 range: nsRange
             )
         }
@@ -762,6 +801,7 @@ private final class SelectableNoteReadTextView: NSTextView {
 
     override func draw(_ dirtyRect: NSRect) {
         drawCodeBlockBackgrounds(in: dirtyRect)
+        drawBlockquoteRules(in: dirtyRect)
         super.draw(dirtyRect)
     }
 
@@ -863,7 +903,25 @@ private final class SelectableNoteReadTextView: NSTextView {
                 roundedRect: backgroundRect,
                 xRadius: NoteTextAppearance.codeBlockCornerRadius,
                 yRadius: NoteTextAppearance.codeBlockCornerRadius
-            ).fill()
+                ).fill()
+        }
+    }
+
+    private func drawBlockquoteRules(in dirtyRect: NSRect) {
+        guard let textStorage,
+              let layoutManager,
+              let textContainer else { return }
+        let ruleRects = NoteTextBlockquoteDecorationLayout.ruleRects(
+            in: textStorage,
+            layoutManager: layoutManager,
+            textContainer: textContainer,
+            textContainerInset: textContainerInset
+        )
+        guard ruleRects.isEmpty == false else { return }
+
+        NoteTextAppearance.blockquoteRuleColor.setFill()
+        for ruleRect in ruleRects where ruleRect.intersects(dirtyRect) {
+            NSBezierPath(roundedRect: ruleRect, xRadius: 1.5, yRadius: 1.5).fill()
         }
     }
 
@@ -1119,6 +1177,7 @@ private final class SelectableNoteReadTextView: UITextView {
 
     override func draw(_ rect: CGRect) {
         drawCodeBlockBackgrounds(in: rect)
+        drawBlockquoteRules(in: rect)
         super.draw(rect)
     }
 
@@ -1159,7 +1218,25 @@ private final class SelectableNoteReadTextView: UITextView {
             UIBezierPath(
                 roundedRect: backgroundRect,
                 cornerRadius: NoteTextAppearance.codeBlockCornerRadius
-            ).fill()
+                ).fill()
+        }
+    }
+
+    private func drawBlockquoteRules(in rect: CGRect) {
+        guard attributedText.length > 0 else { return }
+        let ruleRects = NoteTextBlockquoteDecorationLayout.detachedRuleRects(
+            in: attributedText,
+            containerWidth: bounds.width,
+            textContainerInset: CGSize(
+                width: textContainerInset.left,
+                height: textContainerInset.top
+            )
+        )
+        guard ruleRects.isEmpty == false else { return }
+
+        NoteTextAppearance.blockquoteRuleColor.setFill()
+        for ruleRect in ruleRects where ruleRect.intersects(rect) {
+            UIBezierPath(roundedRect: ruleRect, cornerRadius: 1.5).fill()
         }
     }
 

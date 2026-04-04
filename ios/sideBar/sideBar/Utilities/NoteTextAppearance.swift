@@ -10,6 +10,8 @@ enum NoteTextAppearance {
     #if canImport(UIKit)
     static var caretTintColor: UIColor { .secondaryLabel }
     static var checklistCompletedTextColor: UIColor { .secondaryLabel }
+    static var blockquoteTextColor: UIColor { .secondaryLabel }
+    static var blockquoteRuleColor: UIColor { .separator }
     static var inlineCodeBackgroundColor: UIColor { .secondarySystemFill }
     static var codeBlockBackgroundColor: UIColor { .secondarySystemBackground }
     static var codeBlockCornerRadius: CGFloat { 10 }
@@ -25,6 +27,8 @@ enum NoteTextAppearance {
     #elseif canImport(AppKit)
     static var caretTintColor: NSColor { .secondaryLabelColor }
     static var checklistCompletedTextColor: NSColor { .secondaryLabelColor }
+    static var blockquoteTextColor: NSColor { .secondaryLabelColor }
+    static var blockquoteRuleColor: NSColor { .separatorColor }
     static var inlineCodeBackgroundColor: NSColor { .quaternaryLabelColor.withAlphaComponent(0.18) }
     static var codeBlockBackgroundColor: NSColor {
         NSColor(name: NSColor.Name("notesCodeBlockBackground")) { appearance in

@@ -189,17 +189,17 @@ private extension AppKitNoteFormattingPopoverView {
     }
 
     private var blockGroupDefinitions: [(String, [InlineActionItem])] {
-        let unorderedListAction = dismissingAction(isEnabled: currentConfiguration.isUnorderedListEnabled) {
-            currentConfiguration.onUnorderedListTap()
+        let unorderedListAction = dismissingAction(isEnabled: currentConfiguration.isUnorderedListEnabled) { [weak self] in
+            self?.currentConfiguration.onUnorderedListTap()
         }
-        let orderedListAction = dismissingAction(isEnabled: currentConfiguration.isOrderedListEnabled) {
-            currentConfiguration.onOrderedListTap()
+        let orderedListAction = dismissingAction(isEnabled: currentConfiguration.isOrderedListEnabled) { [weak self] in
+            self?.currentConfiguration.onOrderedListTap()
         }
-        let checklistAction = dismissingAction(isEnabled: currentConfiguration.isChecklistEnabled) {
-            currentConfiguration.onChecklistTap()
+        let checklistAction = dismissingAction(isEnabled: currentConfiguration.isChecklistEnabled) { [weak self] in
+            self?.currentConfiguration.onChecklistTap()
         }
-        let blockquoteAction = dismissingAction(isEnabled: currentConfiguration.isBlockquoteEnabled) {
-            currentConfiguration.onBlockquoteTap()
+        let blockquoteAction = dismissingAction(isEnabled: currentConfiguration.isBlockquoteEnabled) { [weak self] in
+            self?.currentConfiguration.onBlockquoteTap()
         }
 
         return [

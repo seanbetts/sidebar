@@ -135,6 +135,58 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(logicalRange, NSRange(location: 6, length: 0))
     }
 
+    func testMakePlatformAttributedContentOmitsVisibleBlockquotePrefixInReadMode() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Quoted", marks: [])]),
+                        .paragraph([.init(text: "Again", marks: [])])
+                    ]
+                )
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: document,
+            baseFontSize: 16
+        )
+
+        XCTAssertEqual(attributed.string, "Quoted\nAgain")
+    }
+
+    func testEditingActivationCharacterOffsetMapsReadBlockquoteOffsetsToLogicalOffsets() {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Quoted", marks: [])]),
+                        .paragraph([.init(text: "Again", marks: [])])
+                    ]
+                )
+            ]
+        )
+
+        XCTAssertEqual(
+            SelectableNoteReadView.editingActivationCharacterOffset(
+                in: document,
+                readCharacterOffset: 0
+            ),
+            2
+        )
+        XCTAssertEqual(
+            SelectableNoteReadView.editingActivationCharacterOffset(
+                in: document,
+                readCharacterOffset: 7
+            ),
+            11
+        )
+    }
+
     #if os(macOS)
     func testMakePlatformTextViewIsSelectableAndNonEditable() throws {
         let document = NotesSemanticDocument(
