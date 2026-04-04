@@ -273,6 +273,16 @@ final class ErrorMappingTests: XCTestCase {
         )
     }
 
+    func testMapsAwaitingNameConflictToFriendlyMessage() {
+        let message = ErrorMapping.message(
+            for: APIClientError.apiError("Calibration is not awaiting name acceptance")
+        )
+        XCTAssertEqual(
+            message,
+            "I got out of sync with your setup. Please go back and try again."
+        )
+    }
+
     func testMapsDatabaseRequestTimeoutToBusyServerMessage() {
         let message = ErrorMapping.message(
             for: APIClientError.apiError("Database request timed out")

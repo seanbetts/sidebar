@@ -357,6 +357,103 @@ final class ChatSoulCalibrationRetryTests: ChatViewModelTestCase {
         XCTAssertEqual(viewModel.soulCalibrationState?.proposedName, "Navigator")
     }
 
+    func testSubmitSoulCalibrationToneChoicesRecoversFromAwaitingNameStatusConflictBeforeAdvancing() async throws {
+        let cache = TestCacheClient()
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.submitCalibrationAnswerResult = .success(awaitingNameResponse())
+        onboardingAPI.regenerateCalibrationNameResults = [
+            .failure(APIClientError.requestFailed(409)),
+            .success(
+                awaitingNameResponse(
+                    proposedName: "Navigator",
+                    name: "Navigator",
+                    confirmationText: "How about Navigator?"
+                )
+            )
+        ]
+        onboardingAPI.getResult = .success(
+            soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .awaitingNameAcceptance,
+                primaryGoal: "life_admin",
+                workingRelationship: "take_initiative_with_me",
+                tonePreferences: "warm,serious,concise,casual,supportive"
+            )
+        )
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            onboardingAPI: onboardingAPI,
+            soulCalibrationRetryBackoffNanoseconds: 0
+        )
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .inProgress,
+                primaryGoal: "life_admin",
+                workingRelationship: "take_initiative_with_me"
+            )
+        )
+
+        await viewModel.submitSoulCalibrationAnswer(
+            prompt: .tonePreferences,
+            .multipleChoice(["warm", "serious", "concise", "casual", "supportive"])
+        )
+
+        XCTAssertEqual(onboardingAPI.submittedCalibrationAnswers.count, 1)
+        XCTAssertEqual(onboardingAPI.regenerateCalibrationNameCallCount, 2)
+        XCTAssertEqual(onboardingAPI.getOnboardingCallCount, 1)
+        XCTAssertNil(viewModel.soulCalibrationErrorMessage)
+        XCTAssertEqual(viewModel.soulCalibrationState?.status, .awaitingNameAcceptance)
+        XCTAssertEqual(viewModel.soulCalibrationState?.proposedName, "Navigator")
+    }
+
+    func testSubmitSoulCalibrationToneChoicesShowsFriendlyMessageForAwaitingNameStatusConflict() async throws {
+        let cache = TestCacheClient()
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.submitCalibrationAnswerResult = .success(awaitingNameResponse())
+        onboardingAPI.regenerateCalibrationNameResults = [
+            .failure(APIClientError.requestFailed(409)),
+            .failure(APIClientError.requestFailed(409))
+        ]
+        onboardingAPI.getResult = .success(
+            soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .awaitingNameAcceptance,
+                primaryGoal: "life_admin",
+                workingRelationship: "take_initiative_with_me",
+                tonePreferences: "warm,serious,concise,casual,supportive"
+            )
+        )
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            onboardingAPI: onboardingAPI,
+            soulCalibrationRetryBackoffNanoseconds: 0
+        )
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .tonePreferences,
+                status: .inProgress,
+                primaryGoal: "life_admin",
+                workingRelationship: "take_initiative_with_me"
+            )
+        )
+
+        await viewModel.submitSoulCalibrationAnswer(
+            prompt: .tonePreferences,
+            .multipleChoice(["warm", "serious", "concise", "casual", "supportive"])
+        )
+
+        XCTAssertEqual(
+            viewModel.soulCalibrationErrorMessage,
+            "I got out of sync with your setup. Please go back and try again."
+        )
+        XCTAssertEqual(viewModel.soulCalibrationState?.status, .inProgress)
+        XCTAssertEqual(viewModel.soulCalibrationState?.currentPrompt, .tonePreferences)
+        XCTAssertNil(viewModel.soulCalibrationState?.proposedName)
+    }
+
 }
 
 private func soulCalibrationOnboardingState(

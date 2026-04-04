@@ -71,7 +71,7 @@ extension ChatViewModel {
                     )
                     applySoulCalibration(response: nameResponse)
                 } catch {
-                    soulCalibrationErrorMessage = ErrorMapping.message(for: error)
+                    soulCalibrationErrorMessage = soulCalibrationMessage(for: error)
                 }
             } else {
                 applySoulCalibration(response: response)
@@ -81,7 +81,7 @@ extension ChatViewModel {
         } catch {
             isSubmittingSoulCalibration = false
             pendingSoulCalibrationSubmission = nil
-            soulCalibrationErrorMessage = ErrorMapping.message(for: error)
+            soulCalibrationErrorMessage = soulCalibrationMessage(for: error)
         }
     }
 
@@ -101,7 +101,7 @@ extension ChatViewModel {
             )
             applySoulCalibration(response: response)
         } catch {
-            soulCalibrationErrorMessage = ErrorMapping.message(for: error)
+            soulCalibrationErrorMessage = soulCalibrationMessage(for: error)
         }
     }
 
@@ -119,7 +119,7 @@ extension ChatViewModel {
             let response = try await onboardingAPI.acceptCalibrationName()
             applySoulCalibration(response: response)
         } catch {
-            soulCalibrationErrorMessage = ErrorMapping.message(for: error)
+            soulCalibrationErrorMessage = soulCalibrationMessage(for: error)
         }
     }
 
@@ -366,14 +366,30 @@ extension ChatViewModel {
     }
 
     private func isSoulCalibrationConflictError(_ error: Error) -> Bool {
-        guard case .apiError(let message) = error as? APIClientError else {
+        guard let apiError = error as? APIClientError else {
             return false
         }
 
-        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        return (trimmed.hasPrefix("Expected prompt ")
-            && trimmed.split(separator: " ").count >= 3)
-            || trimmed == "Calibration is not awaiting name acceptance"
+        switch apiError {
+        case .apiError(let message):
+            let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            return (trimmed.hasPrefix("Expected prompt ")
+                && trimmed.split(separator: " ").count >= 3)
+                || trimmed == "Calibration is not awaiting name acceptance"
+        case .requestFailed(let status):
+            return status == 409
+        case .missingToken, .decodingFailed, .invalidUrl, .unknown:
+            return false
+        @unknown default:
+            return false
+        }
+    }
+
+    private func soulCalibrationMessage(for error: Error) -> String {
+        if isSoulCalibrationConflictError(error) {
+            return "I got out of sync with your setup. Please go back and try again."
+        }
+        return ErrorMapping.message(for: error)
     }
 
     private func calibrationPromptIndex(_ prompt: OnboardingCalibrationPrompt) -> Int {

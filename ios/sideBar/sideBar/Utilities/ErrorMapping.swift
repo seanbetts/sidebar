@@ -91,7 +91,6 @@ enum URLRequestErrorClassifier {
         return signals.contains(where: description.contains)
     }
 }
-
 public struct ChatStreamErrorPresentation: Equatable {
     public let category: ChatStreamErrorCategory
     public let isRetryable: Bool
@@ -101,7 +100,6 @@ public struct ChatStreamErrorPresentation: Equatable {
     public let details: String?
     public let requestID: String?
 }
-
 public enum ChatStreamErrorCategory: Equatable {
     case providerOverloaded
     case providerRateLimited
@@ -226,7 +224,9 @@ public enum ErrorMapping {
 
     private static func isCalibrationPromptConflictMessage(_ message: String) -> Bool {
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.hasPrefix("Expected prompt ") && trimmed.split(separator: " ").count >= 3
+        return (trimmed.hasPrefix("Expected prompt ")
+            && trimmed.split(separator: " ").count >= 3)
+            || trimmed == "Calibration is not awaiting name acceptance"
     }
 
     private static func isCalibrationGenerationValidationMessage(_ message: String) -> Bool {
