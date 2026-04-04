@@ -232,6 +232,8 @@ class ToolMapper:
         """Return whether a successful tool result should complete the first outcome."""
         if display_name not in FIRST_OUTCOME_TOOL_NAMES or not context:
             return False
+        if context.get("message_visibility") == "hidden":
+            return False
 
         onboarding_state = context.get("onboarding_state")
         if not isinstance(onboarding_state, dict):

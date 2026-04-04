@@ -180,6 +180,60 @@ final class SettingsViewModelPrimaryProviderTests: XCTestCase {
         XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .providerRecovery)
     }
 
+    func testSignedInRecoveryStatePrefersBackendSoulCalibrationWhenProviderReadyDespiteStaleLocalKeyState() async {
+        let onboardingState = OnboardingState(
+            status: .inProgress,
+            providerReady: true,
+            currentOnboardingStep: .soulCalibration,
+            isOnboardingComplete: false,
+            intent: .chat,
+            calibration: .default,
+            milestones: OnboardingMilestones(
+                providerConnected: "2026-04-04T08:00:00Z",
+                firstOutcomeCompleted: nil,
+                profileBasicsSet: nil,
+                communicationStyleSet: nil,
+                secondaryTourSeen: nil
+            ),
+            permissions: OnboardingPermissions(
+                location: .granted,
+                notifications: .granted
+            ),
+            lastPromptedAt: nil
+        )
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResult = .success(onboardingState)
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+        viewModel.applySettingsResponse(
+            UserSettings(
+                userId: "user-1",
+                communicationStyle: nil,
+                workingRelationship: nil,
+                name: nil,
+                jobTitle: nil,
+                employer: nil,
+                dateOfBirth: nil,
+                gender: nil,
+                pronouns: nil,
+                location: nil,
+                profileImageUrl: nil,
+                aiPrimaryProvider: "anthropic",
+                aiPrimaryProviderHasKey: false,
+                enabledSkills: []
+            )
+        )
+
+        await viewModel.loadOnboarding()
+
+        XCTAssertEqual(viewModel.onboardingState, onboardingState)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .soulCalibration)
+    }
+
     func testSavePrimaryProviderKeyAlsoSelectsProviderWhenMissing() async throws {
         let initial = UserSettings(
             userId: "user-1",

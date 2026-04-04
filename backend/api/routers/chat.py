@@ -415,6 +415,7 @@ async def stream_chat(
         attachments=attachments,
         conversation_id=conversation_uuid,
         user_message_id=user_message_id,
+        message_visibility=normalized_message_visibility,
         user_agent=user_agent,
         app_version=app_version,
         current_location=current_location,

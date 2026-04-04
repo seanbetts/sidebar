@@ -609,3 +609,47 @@ async def test_execute_tool_skips_first_outcome_update_when_already_completed(mo
 
     assert result["success"] is True
     assert "onboarding_milestone" not in result["data"]
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_skips_first_outcome_update_for_hidden_message(monkeypatch):
+    tools = {
+        "Create Note": {
+            "description": "create note",
+            "input_schema": {},
+            "skill": "notes",
+            "script": "create_note.py",
+            "build_args": lambda _params: ["--title", "Test"],
+        }
+    }
+    mapper = _build_mapper(tools)
+
+    def fail_update_onboarding_state(*_args, **_kwargs):
+        raise AssertionError("hidden assistant-initiated turns should not update onboarding")
+
+    monkeypatch.setattr(
+        tool_mapper_module.OnboardingService,
+        "update_onboarding_state",
+        staticmethod(fail_update_onboarding_state),
+    )
+
+    result = await mapper.execute_tool(
+        "Create Note",
+        {"title": "Test"},
+        context={
+            "db": object(),
+            "user_id": "user-1",
+            "message_visibility": "hidden",
+            "onboarding_state": {
+                "provider_ready": True,
+                "is_onboarding_complete": False,
+                "current_onboarding_step": "feature_discovery",
+                "milestones": {
+                    "first_outcome_completed": None,
+                },
+            },
+        },
+    )
+
+    assert result["success"] is True
+    assert "onboarding_milestone" not in result["data"]

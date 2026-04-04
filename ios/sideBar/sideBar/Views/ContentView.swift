@@ -154,6 +154,9 @@ public struct ContentView: View {
             onSettingsUpdated: { settings in
                 environment.settingsViewModel.applySettingsResponse(settings)
             },
+            onOnboardingUpdated: { state in
+                environment.settingsViewModel.setOnboardingState(state)
+            },
             onRouteToSignIn: {
                 suppressAutomaticOnboarding = true
             },
@@ -221,6 +224,12 @@ public struct ContentView: View {
             suppressAutomaticOnboarding = true
         }
         showOnboarding = false
+        Task {
+            guard environment.authState == .active else { return }
+            await environment.settingsViewModel.load(force: true)
+            await environment.settingsViewModel.loadOnboarding(force: true)
+            await environment.settingsViewModel.loadProfileImage()
+        }
     }
 
     private func presentOnboardingFromLogin() {

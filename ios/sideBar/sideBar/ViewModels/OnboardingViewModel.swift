@@ -29,6 +29,7 @@ public final class OnboardingViewModel: ObservableObject {
     private let onboardingAPI: OnboardingProviding
     private let settingsAPI: SettingsProviding
     private let onSettingsUpdated: ((UserSettings) -> Void)?
+    private let onOnboardingUpdated: ((OnboardingState) -> Void)?
     private var locationPermissionRequesterStorage: (any LocationPermissionRequesting)?
     private var notificationsPermissionRequesterStorage: (any NotificationPermissionRequesting)?
     private let userDefaults: UserDefaults
@@ -70,6 +71,7 @@ public final class OnboardingViewModel: ObservableObject {
         onboardingAPI: OnboardingProviding,
         settingsAPI: SettingsProviding,
         onSettingsUpdated: ((UserSettings) -> Void)? = nil,
+        onOnboardingUpdated: ((OnboardingState) -> Void)? = nil,
         locationPermissionRequester: (any LocationPermissionRequesting)? = nil,
         notificationsPermissionRequester: (any NotificationPermissionRequesting)? = nil,
         isTestingOnboarding: Bool? = nil,
@@ -79,6 +81,7 @@ public final class OnboardingViewModel: ObservableObject {
         self.onboardingAPI = onboardingAPI
         self.settingsAPI = settingsAPI
         self.onSettingsUpdated = onSettingsUpdated
+        self.onOnboardingUpdated = onOnboardingUpdated
         self.locationPermissionRequesterStorage = locationPermissionRequester
         self.notificationsPermissionRequesterStorage = notificationsPermissionRequester
         self.isTestingOnboarding = isTestingOnboarding ?? OnboardingPresentation.isTestingOnboardingEnabled()
@@ -242,6 +245,8 @@ public final class OnboardingViewModel: ObservableObject {
             _ = try await settingsAPI.updateSettings(
                 SettingsUpdate(aiPrimaryProvider: provider.rawValue)
             )
+            let refreshedSettings = try await settingsAPI.getSettings()
+            onSettingsUpdated?(refreshedSettings)
             skippedProviderSetup = false
             let state = try? await onboardingAPI.updateOnboarding(
                 OnboardingUpdate(
@@ -250,6 +255,9 @@ public final class OnboardingViewModel: ObservableObject {
                     )
                 )
             )
+            if let state {
+                onOnboardingUpdated?(state)
+            }
             if let status = state?.status {
                 persistOnboardingStatus(status)
             } else {

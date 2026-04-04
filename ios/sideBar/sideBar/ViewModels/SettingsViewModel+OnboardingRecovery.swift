@@ -48,6 +48,13 @@ extension SettingsViewModel {
         if onboardingState?.providerReady == false {
             return true
         }
+        if onboardingState?.providerReady == true,
+           onboardingState?.isOnboardingComplete == false {
+            // During onboarding handoff, backend onboarding state is the
+            // authoritative source for provider readiness and can momentarily
+            // lead a stale local settings snapshot.
+            return false
+        }
         guard let settings else {
             return false
         }

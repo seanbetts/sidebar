@@ -189,8 +189,33 @@ final class OnboardingMockSettingsAPI: SettingsProviding {
     }
 
     func upsertProviderKey(provider: String, apiKey: String) async throws -> ProviderKeyStatusResponse {
-        _ = provider
-        _ = apiKey
+        settings = UserSettings(
+            userId: settings.userId,
+            communicationStyle: settings.communicationStyle,
+            workingRelationship: settings.workingRelationship,
+            name: settings.name,
+            jobTitle: settings.jobTitle,
+            employer: settings.employer,
+            dateOfBirth: settings.dateOfBirth,
+            gender: settings.gender,
+            pronouns: settings.pronouns,
+            location: settings.location,
+            profileImageUrl: settings.profileImageUrl,
+            assistantIdentity: settings.assistantIdentity,
+            assistantIdentityMeta: settings.assistantIdentityMeta,
+            assistantSoul: settings.assistantSoul,
+            assistantSoulMeta: settings.assistantSoulMeta,
+            aiPrimaryProvider: provider,
+            aiPrimaryProviderHasKey: true,
+            aiPrimaryProviderKeyLast4: String(apiKey.suffix(4)),
+            enabledSkills: settings.enabledSkills,
+            installedStoreSkills: settings.installedStoreSkills
+        )
+        providerKeyStatus = ProviderKeyStatusResponse(
+            provider: provider,
+            hasKey: true,
+            keyLast4: String(apiKey.suffix(4))
+        )
         if let upsertProviderKeyResult {
             return try upsertProviderKeyResult.get()
         }

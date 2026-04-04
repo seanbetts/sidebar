@@ -20,6 +20,7 @@ class ToolExecutionContext:
     conversation_id: UUID | None = None
     user_message_id: UUID | None = None
     assistant_message_id: UUID | None = None
+    message_visibility: str | None = None
     notes_context: str | None = None
     user_agent: str | None = None
     app_version: str | None = None
@@ -51,6 +52,7 @@ class ToolExecutionContext:
             "assistant_message_id": str(self.assistant_message_id)
             if self.assistant_message_id
             else None,
+            "message_visibility": self.message_visibility,
             "notes_context": self.notes_context,
             "user_agent": self.user_agent,
             "app_version": self.app_version,

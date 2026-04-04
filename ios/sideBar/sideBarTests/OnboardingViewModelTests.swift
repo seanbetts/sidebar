@@ -295,6 +295,32 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.transitionVariant, .providerConnected)
     }
 
+    func testValidateApiKeyPublishesUpdatedSettingsResponse() async {
+        let settingsAPI = OnboardingMockSettingsAPI()
+        let publishedSettings = expectation(description: "Published settings response")
+        var capturedSettings: UserSettings?
+        let viewModel = retain(OnboardingViewModel(
+            authSession: MockAuthSessionForOnboarding(),
+            onboardingAPI: MockOnboardingAPI(),
+            settingsAPI: settingsAPI,
+            onSettingsUpdated: { settings in
+                capturedSettings = settings
+                publishedSettings.fulfill()
+            },
+            userDefaults: makeUserDefaults()
+        ))
+        viewModel.selectedProvider = .anthropic
+        viewModel.apiKey = "sk-ant-1234567890"
+        viewModel.currentStep = .addApiKey
+
+        await viewModel.validateAndSaveApiKey()
+
+        await fulfillment(of: [publishedSettings], timeout: 1.0)
+        XCTAssertEqual(capturedSettings?.aiPrimaryProvider, "anthropic")
+        XCTAssertEqual(capturedSettings?.aiPrimaryProviderHasKey, true)
+        XCTAssertEqual(capturedSettings?.aiPrimaryProviderKeyLast4, "7890")
+    }
+
     func testValidateApiKeyShowsErrorOnEmpty() async {
         let viewModel = retain(OnboardingViewModel(
             authSession: MockAuthSessionForOnboarding(),
