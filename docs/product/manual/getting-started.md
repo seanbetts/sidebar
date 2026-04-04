@@ -39,6 +39,9 @@ Once your chosen AI provider is connected, sideBar starts a short calibration
 conversation in Chat before feature discovery begins. This is where sideBar
 works out how it should collaborate with you.
 
+Before the first question, sideBar shows a short intro card that explains what
+this final setup step is for and why it matters.
+
 The calibration is lightweight and mostly tap-based. sideBar asks:
 
 - **What would you most like help with first?**
@@ -49,6 +52,11 @@ From those answers, sideBar sets its initial identity and soul, chooses its own
 name, and confirms it with you. The name is chosen to fit the identity and soul
 it has already authored for itself. You can accept the name or ask it to try
 another one.
+
+When you tap **Hello!**, sideBar sends its first message in Chat, introduces
+itself, and points you to the **Explore sideBar** surface at the top of the
+conversation. That surface is there to help you discover what sideBar can do,
+and you can dismiss it whenever you want.
 
 After that, sideBar moves straight into discovery so you can explore the app
 and get to your first real outcome quickly.

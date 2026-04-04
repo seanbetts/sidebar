@@ -148,16 +148,27 @@ Before feature discovery begins, sideBar checks whether soul calibration has com
 - The user can accept the chosen name or ask sideBar to try another one
 - Discovery does not begin until calibration is accepted
 
-Calibration flow:
+Signed-in phase 2 flow:
 
-1. **Primary goal** — one chip from:
+1. **Intro card** — a short informational bridge appears before the first calibration prompt
+   - Explains that this final setup helps sideBar decide how to work with the user
+   - Explains that sideBar will shape its initial personality and choose the name it will use
+   - Uses plain English rather than introducing internal terms like identity or soul
+   - Single action: `Continue`
+2. **Primary goal** — one chip from:
    `Personal productivity`, `Work productivity`, `Planning and tasks`, `Notes and ideas`, `Life admin`, `Learning and research`, `AI companion`
-2. **Working relationship** — one chip from:
+3. **Working relationship** — one chip from:
    `Just help when I ask`, `Keep me on track`, `Take initiative with me`
-3. **Tone** — five quick either-or picks in one message:
+4. **Tone** — five quick either-or picks in one message:
    `Warm` / `Direct`, `Playful` / `Serious`, `Concise` / `Expressive`, `Formal` / `Casual`, `Supportive` / `Challenging`
+5. **Name reveal** — after the tone reply, sideBar authors its initial soul and identity, proposes its chosen name, and asks the user to either accept it or try another one
+6. **First assistant turn** — once the user taps `Hello!`, sideBar sends the first real assistant message in Chat using its newly authored soul and identity
+   - Introduces itself by its chosen name
+   - Mentions the `Explore sideBar` surface
+   - Explains that the discovery surface can be dismissed
+7. **Feature discovery** — the `Explore sideBar` surface remains available in Chat until the user dismisses it or reaches a first real outcome
 
-After the user replies, sideBar authors its initial soul and identity from those structured inputs, confirms briefly what it has set, proposes its chosen name, and then begins discovery once the user accepts the name.
+The calibration prompts are compact and mostly tap-based. The authored identity and soul are generated from the structured answers, then the chosen name is generated from that authored self rather than directly from the raw answers. The user does not name sideBar directly.
 
 The discovery surface is a compact glass strip that can be expanded inline to reveal a horizontally-scrollable set of `FeatureIntroCard` tiles. The user can:
 
