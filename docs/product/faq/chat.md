@@ -114,5 +114,5 @@ capability varies.
 
 Yes. For temporary issues like provider overload or timeouts, the latest
 eligible failed assistant bubble shows a retry icon next to the error pill.
-Retry replays your latest message and keeps the failed attempt visible in the
+Retry replays your latest message and removes the failed attempt from the
 conversation.

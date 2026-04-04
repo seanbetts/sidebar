@@ -4,6 +4,8 @@ import sideBarShared
 struct ChatRetryStateSnapshot {
     let latestRetrySource: ChatRetrySource?
     let latestRetryableAssistantMessageID: String?
+    let removedAssistantMessage: Message?
+    let removedAssistantMessageIndex: Int?
 }
 
 struct ChatRetrySource {
@@ -110,10 +112,21 @@ extension ChatViewModel {
 
         retryStateBeforeReplay = ChatRetryStateSnapshot(
             latestRetrySource: latestRetrySource,
-            latestRetryableAssistantMessageID: latestRetryableAssistantMessageID
+            latestRetryableAssistantMessageID: latestRetryableAssistantMessageID,
+            removedAssistantMessage: nil,
+            removedAssistantMessageIndex: nil
         )
         retryInFlightAssistantMessageID = retrySource.assistantMessageID
         latestRetryableAssistantMessageID = nil
+        let removedAssistantSnapshot = removeRetrySourceAssistantMessage(
+            id: retrySource.assistantMessageID
+        )
+        retryStateBeforeReplay = ChatRetryStateSnapshot(
+            latestRetrySource: latestRetrySource,
+            latestRetryableAssistantMessageID: retryStateBeforeReplay?.latestRetryableAssistantMessageID,
+            removedAssistantMessage: removedAssistantSnapshot?.message,
+            removedAssistantMessageIndex: removedAssistantSnapshot?.index
+        )
 
         let retryAssistantMessageID = UUID().uuidString
         let retryMessage = Message(
@@ -137,7 +150,9 @@ extension ChatViewModel {
     func currentRetryStateSnapshot() -> ChatRetryStateSnapshot {
         retryStateBeforeReplay ?? ChatRetryStateSnapshot(
             latestRetrySource: latestRetrySource,
-            latestRetryableAssistantMessageID: latestRetryableAssistantMessageID
+            latestRetryableAssistantMessageID: latestRetryableAssistantMessageID,
+            removedAssistantMessage: nil,
+            removedAssistantMessageIndex: nil
         )
     }
 
@@ -145,14 +160,24 @@ extension ChatViewModel {
         _ snapshot: ChatRetryStateSnapshot,
         removingInterruptedAssistantMessageID interruptedAssistantMessageID: String? = nil
     ) {
-        removeInterruptedRetryReplayMessage(
-            interruptedAssistantMessageID,
-            conversationID: snapshot.latestRetrySource?.conversationID
+        let removedInterruptedMessage = removeInterruptedRetryReplayMessage(
+            interruptedAssistantMessageID
         )
+        let restoredRetrySourceMessage = restoreRemovedRetrySourceAssistantMessage(from: snapshot)
         latestRetrySource = snapshot.latestRetrySource
         latestRetryableAssistantMessageID = snapshot.latestRetryableAssistantMessageID
         retryInFlightAssistantMessageID = nil
         retryStateBeforeReplay = nil
+        if removedInterruptedMessage || restoredRetrySourceMessage {
+            clearTypingRevealState(flushDisplayedContent: false)
+            currentStreamMessageId = nil
+            streamingConversationId = nil
+            didReceiveTerminalStreamEvent = false
+            syncMessagesToStore(
+                conversationId: snapshot.latestRetrySource?.conversationID ?? selectedConversationId,
+                persist: true
+            )
+        }
     }
 
     func restoreRetryStateAfterInterruptedReplayIfNeeded() {
@@ -178,24 +203,39 @@ extension ChatViewModel {
     }
 
     private func removeInterruptedRetryReplayMessage(
-        _ assistantMessageID: String?,
-        conversationID: String?
-    ) {
+        _ assistantMessageID: String?
+    ) -> Bool {
         guard let assistantMessageID else {
-            return
+            return false
         }
         let messageCount = messages.count
         messages.removeAll { $0.id == assistantMessageID }
-        guard messages.count != messageCount else {
-            return
+        return messages.count != messageCount
+    }
+
+    private func removeRetrySourceAssistantMessage(id: String) -> (message: Message, index: Int)? {
+        guard let index = messages.firstIndex(where: { $0.id == id }) else {
+            return nil
         }
-        clearTypingRevealState(flushDisplayedContent: false)
-        currentStreamMessageId = nil
-        streamingConversationId = nil
-        didReceiveTerminalStreamEvent = false
-        syncMessagesToStore(
-            conversationId: conversationID ?? selectedConversationId,
-            persist: true
+        let message = messages.remove(at: index)
+        return (message, index)
+    }
+
+    @discardableResult
+    private func restoreRemovedRetrySourceAssistantMessage(
+        from snapshot: ChatRetryStateSnapshot
+    ) -> Bool {
+        guard let message = snapshot.removedAssistantMessage else {
+            return false
+        }
+        guard messages.contains(where: { $0.id == message.id }) == false else {
+            return false
+        }
+        let insertionIndex = min(
+            max(snapshot.removedAssistantMessageIndex ?? messages.count, 0),
+            messages.count
         )
+        messages.insert(message, at: insertionIndex)
+        return true
     }
 }

@@ -38,8 +38,8 @@ see words appear progressively rather than waiting for the whole response. A
 request.
 
 If the latest eligible failed assistant response can be retried, that bubble
-shows a retry icon next to the error pill. Retry keeps the failed response in
-the conversation and starts a fresh assistant attempt below it.
+shows a retry icon next to the error pill. Retry removes the failed response
+from the conversation and starts a fresh assistant attempt in its place.
 
 You can attach files to any message. Attachments move through three states
 before the message is ready to send:

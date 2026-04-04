@@ -17,7 +17,7 @@ final class ChatRetryBehaviorTests: XCTestCase {
         XCTAssertTrue(viewModel.canRetryMessage(id: "assistant-failed"))
     }
 
-    func testRetryLatestFailedTurnAppendsNewAssistantStreamingMessage() async {
+    func testRetryLatestFailedTurnReplacesFailedAssistantWithNewStreamingMessage() async {
         let streamClient = BlockingChatStreamClient()
         let viewModel = makeStreamingFailureViewModel(
             api: StubConversationsAPI(),
@@ -30,11 +30,45 @@ final class ChatRetryBehaviorTests: XCTestCase {
         async let retryTask = viewModel.retryLatestFailedTurn()
 
         let appended = await waitForStreamingFailureCondition {
-            viewModel.messages.map(\.role) == [.user, .assistant, .assistant]
+            viewModel.messages.map(\.role) == [.user, .assistant]
                 && viewModel.messages.last?.status == .streaming
+                && viewModel.messages.last?.id != "assistant-failed"
         }
 
         XCTAssertTrue(appended)
+        streamClient.release()
+        await retryTask
+    }
+
+    func testRetryPersistsConversationSnapshotWithoutOriginalFailedAssistantMessage() async {
+        let cache = TestCacheClient()
+        let streamClient = BlockingChatStreamClient()
+        let viewModel = makeStreamingFailureViewModel(
+            api: StubConversationsAPI(),
+            cache: cache,
+            streamClient: streamClient
+        )
+
+        seedRetryableFailure(on: viewModel)
+
+        async let retryTask = viewModel.retryLatestFailedTurn()
+
+        let updated = await waitForStreamingFailureCondition {
+            guard let detail = viewModel.chatStore.conversationDetails["conv-1"] else {
+                return false
+            }
+            return detail.messages.count == 2
+                && detail.messages.last?.status == .streaming
+                && detail.messages.contains(where: { $0.id == "assistant-failed" }) == false
+        }
+
+        XCTAssertTrue(updated)
+        let cached: [Message]? = cache.get(key: CacheKeys.conversationMessages(id: "conv-1"))
+        XCTAssertEqual(cached?.count, 2)
+        XCTAssertEqual(cached?.first?.id, "user-1")
+        XCTAssertNotEqual(cached?.last?.id, "assistant-failed")
+        XCTAssertEqual(cached?.last?.status, .streaming)
+
         streamClient.release()
         await retryTask
     }
@@ -221,7 +255,7 @@ final class ChatRetryBehaviorTests: XCTestCase {
 
         await viewModel.retryLatestFailedTurn()
 
-        XCTAssertEqual(viewModel.messages.count, 3)
+        XCTAssertEqual(viewModel.messages.count, 2)
         let latestAssistantMessage = try XCTUnwrap(viewModel.messages.last)
         XCTAssertEqual(latestAssistantMessage.role, .assistant)
         XCTAssertEqual(latestAssistantMessage.status, .error)
