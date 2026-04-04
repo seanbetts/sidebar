@@ -67,6 +67,8 @@
           "patterns/navigation",
           "patterns/feedback-and-haptics",
           "patterns/wait-ux",
+          "patterns/request-lifecycle",
+          "patterns/error-handling",
           "patterns/ai-assistant-ui",
           "patterns/sidebar-model",
           "patterns/menus-and-shortcuts",

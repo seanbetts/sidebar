@@ -297,6 +297,8 @@ The web app has no biometric lock (no API equivalent in browsers), no offline ac
 
 ## Related docs
 
+- [Request Lifecycle](./request-lifecycle)
+- [Error Handling](./error-handling)
 - [iOS Conventions](../platform-strategy/ios-conventions)
 - [Wait UX](./wait-ux)
 - [Feedback and Haptics](./feedback-and-haptics)

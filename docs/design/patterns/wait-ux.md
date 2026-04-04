@@ -403,6 +403,8 @@ Show a skeleton first. Transition to the empty state only when the load complete
 
 ## Related docs
 
+- [Request Lifecycle](./request-lifecycle)
+- [Error Handling](./error-handling)
 - [Feedback and Haptics](./feedback-and-haptics)
 - [iOS Conventions](../platform-strategy/ios-conventions)
 - [Web Conventions](../platform-strategy/web-conventions)

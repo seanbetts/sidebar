@@ -175,6 +175,7 @@ Payment and subscription failures are real errors that block functionality the u
 
 ## Related docs
 
+- [Error Handling](./error-handling) — classification, mapping, logging, diagnostics
 - [Subscription](./subscription) — subscription boundary patterns (not errors)
 - [Feedback and Haptics](./feedback-and-haptics) — success states, haptic feedback
 - [Wait UX](./wait-ux) — loading and in-progress states

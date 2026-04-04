@@ -15,6 +15,8 @@ Document the repeated interaction patterns that sit above individual components 
 | [Navigation](./navigation) | approved |
 | [Feedback and Haptics](./feedback-and-haptics) | approved |
 | [Wait UX](./wait-ux) | approved |
+| [Request Lifecycle](./request-lifecycle) | approved |
+| [Error Handling](./error-handling) | approved |
 | [Onboarding](./onboarding) | partial |
 | [Handoffs](./handoffs) | approved |
 | [AI Assistant UI](./ai-assistant-ui) | approved |
