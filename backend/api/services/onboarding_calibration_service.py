@@ -163,6 +163,14 @@ class OnboardingCalibrationService:
             answers=next_calibration["answers"],
             previous_name=prior_proposed_name,
         )
+        if normalized_prompt == "tone_preferences":
+            next_calibration["status"] = "awaiting_name_acceptance"
+            next_calibration["proposed_name"] = None
+            next_calibration["current_prompt"] = "tone_preferences"
+        else:
+            next_calibration["status"] = "in_progress"
+            next_calibration["current_prompt"] = NEXT_PROMPT[normalized_prompt]
+
         settings_payload: dict[str, Any] | None = None
         if stage_updates:
             settings_payload = AgentSettingsService.update_with_onboarding(
@@ -171,6 +179,15 @@ class OnboardingCalibrationService:
                 stage_updates,
                 onboarding=next_onboarding,
                 reason=GENERATION_REASON,
+            )
+        elif normalized_prompt == "tone_preferences":
+            OnboardingService.update_onboarding_state(
+                db,
+                user_id,
+                {
+                    "status": next_onboarding["status"],
+                    "calibration": next_calibration,
+                },
             )
 
         assistant_identity_payload = (
@@ -183,14 +200,6 @@ class OnboardingCalibrationService:
             if settings_payload and "assistant_soul" in stage_updates
             else None
         )
-
-        if normalized_prompt == "tone_preferences":
-            next_calibration["status"] = "awaiting_name_acceptance"
-            next_calibration["proposed_name"] = None
-            next_calibration["current_prompt"] = "tone_preferences"
-        else:
-            next_calibration["status"] = "in_progress"
-            next_calibration["current_prompt"] = NEXT_PROMPT[normalized_prompt]
 
         return CalibrationActionResult(
             state=OnboardingCalibrationService._build_state_response(

@@ -381,6 +381,12 @@ def test_submit_answer_generates_assistant_configuration_after_tone(
         settings_payload["assistant_identity"]["values"]
         == "Clarity, pragmatism, rigor, and durable progress."
     )
+    persisted_state = OnboardingService._resolve_state(
+        UserSettingsService.get_settings(test_db, user_id).onboarding
+    )
+    assert persisted_state["calibration"]["status"] == "awaiting_name_acceptance"
+    assert persisted_state["calibration"]["current_prompt"] == "tone_preferences"
+    assert persisted_state["calibration"]["proposed_name"] is None
 
 
 def test_submit_answer_allows_revisiting_tone_while_awaiting_name_acceptance(
@@ -494,6 +500,80 @@ def test_regenerate_name_can_generate_initial_name_when_missing(
 
     result = OnboardingCalibrationService.regenerate_name(test_db, user_id)
 
+    assert result.state["calibration"]["proposed_name"] == "Navigator"
+    assert result.assistant_identity["name"] == "Navigator"
+
+
+def test_submit_answer_then_regenerate_name_succeeds_with_persisted_state(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    user_id = "calibration-tone-then-name"
+    _provider_ready_state(
+        test_db,
+        user_id=user_id,
+        calibration={
+            "status": "in_progress",
+            "current_prompt": "tone_preferences",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": "collaborative",
+            },
+        },
+    )
+    original_get_onboarding_state = OnboardingService.get_onboarding_state
+
+    monkeypatch.setattr(
+        OnboardingService,
+        "get_onboarding_state",
+        staticmethod(
+            lambda db, requested_user_id: (
+                {
+                    **original_get_onboarding_state(db, requested_user_id),
+                    "provider_ready": True,
+                }
+                if requested_user_id == user_id
+                else original_get_onboarding_state(db, requested_user_id)
+            )
+        ),
+    )
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_stage_updates",
+        staticmethod(
+            lambda db, user_id, *, answered_prompt, answers, previous_name: {
+                "assistant_identity": {
+                    "tone": "Pragmatic, direct, and collaborative.",
+                    "values": "Clarity, rigor, and durable progress.",
+                    "boundaries": "Never invent facts or compromise security.",
+                }
+            }
+        ),
+    )
+
+    OnboardingCalibrationService.submit_answer(
+        test_db,
+        user_id,
+        prompt="tone_preferences",
+        answer="direct_but_kind",
+    )
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_validated_field_update",
+        staticmethod(
+            lambda db, user_id, *, scope, field_name, answers, previous_name=None: {
+                "assistant_identity": {"name": "Navigator"}
+            }
+        ),
+    )
+
+    result = OnboardingCalibrationService.regenerate_name(test_db, user_id)
+
+    assert result.state["calibration"]["status"] == "awaiting_name_acceptance"
     assert result.state["calibration"]["proposed_name"] == "Navigator"
     assert result.assistant_identity["name"] == "Navigator"
 
