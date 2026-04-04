@@ -109,6 +109,44 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
     }
 
+    func testLoadOnboardingPreservesExistingFeatureDiscoveryStateWhenRefreshFails() async {
+        let onboardingState = OnboardingState(
+            status: .inProgress,
+            providerReady: true,
+            currentOnboardingStep: .featureDiscovery,
+            isOnboardingComplete: false,
+            intent: .chat,
+            milestones: OnboardingMilestones(
+                providerConnected: "2026-04-04T18:00:00Z",
+                firstOutcomeCompleted: nil,
+                profileBasicsSet: "2026-04-04T17:50:00Z",
+                communicationStyleSet: nil,
+                secondaryTourSeen: nil
+            ),
+            permissions: OnboardingPermissions(
+                location: .notAsked,
+                notifications: .notAsked
+            ),
+            lastPromptedAt: nil
+        )
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResult = .success(onboardingState)
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+
+        await viewModel.loadOnboarding()
+        onboardingAPI.getResult = .failure(SettingsViewModelMockError.forced)
+
+        await viewModel.loadOnboarding(force: true)
+
+        XCTAssertEqual(viewModel.onboardingState, onboardingState)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .featureDiscovery)
+    }
+
     func testPermissionRecoveryItemsIncludeMissingLocationAndNotifications() async {
         let onboardingState = OnboardingState(
             status: .dismissed,

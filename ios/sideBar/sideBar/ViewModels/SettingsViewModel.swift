@@ -119,9 +119,7 @@ public final class SettingsViewModel: LoadableViewModel {
 
         do {
             onboardingState = try await onboardingAPI.getOnboarding()
-        } catch {
-            onboardingState = nil
-        }
+        } catch {}
     }
 
     func setOnboardingState(_ state: OnboardingState?) {
