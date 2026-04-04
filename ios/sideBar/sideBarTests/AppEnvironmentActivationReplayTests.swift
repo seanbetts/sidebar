@@ -100,6 +100,109 @@ extension AppEnvironmentDeepLinkTests {
         XCTAssertTrue(websiteEventIsSurfaced(url, in: environment))
         XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
     }
+
+    func testHandleSignedInActivationLoadsWebsiteListWhileQueuedReplayIsInFlight() async {
+        let queuedURL = "https://example.com/articles/\(UUID().uuidString)"
+        let replayGate = AsyncReplayGate()
+        let existingItem = WebsiteItem(
+            id: "website-existing",
+            title: "Existing Website",
+            url: "https://example.com/already-saved",
+            domain: "example.com",
+            savedAt: "2026-03-17T00:00:00Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2026-03-17T00:00:00Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
+            ),
+            listResult: .success(WebsitesResponse(items: [existingItem], archivedCount: 0)),
+            onSave: { _ in
+                await replayGate.wait()
+            }
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        storage.extensionEventStore.recordWebsiteSaved(url: queuedURL)
+
+        let activationTask = Task {
+            await environment.handleSignedInActivation(includeDeferredRefresh: false)
+        }
+
+        for _ in 0..<40 where environment.websitesViewModel.items.first?.url != existingItem.url {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        XCTAssertEqual(environment.websitesViewModel.items.first?.url, existingItem.url)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, queuedURL)
+        XCTAssertEqual(websitesAPI.saveCallCount, 1)
+        XCTAssertGreaterThan(websitesAPI.listCallCount, 0)
+
+        await replayGate.open()
+        _ = await activationTask.value
+        await waitForWebsiteEventSurface(queuedURL, in: environment)
+    }
+
+    func testConsumeExtensionEventsStartsQueuedReplayBeforeImmediateWebsiteRefresh() async {
+        let queuedURL = "https://example.com/articles/\(UUID().uuidString)"
+        let replayGate = AsyncReplayGate()
+        let existingItem = WebsiteItem(
+            id: "website-existing",
+            title: "Existing Website",
+            url: "https://example.com/already-saved",
+            domain: "example.com",
+            savedAt: "2026-03-17T00:00:00Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2026-03-17T00:00:00Z",
+            lastOpenedAt: nil,
+            deletedAt: nil
+        )
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
+            ),
+            listResult: .success(WebsitesResponse(items: [existingItem], archivedCount: 0)),
+            onSave: { _ in
+                await replayGate.wait()
+            }
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        storage.extensionEventStore.recordWebsiteSaved(url: queuedURL)
+
+        await environment.consumeExtensionEvents(awaitPendingShareReplay: false)
+        await environment.websitesViewModel.refreshFromExtension()
+
+        XCTAssertEqual(environment.websitesViewModel.items.first?.url, existingItem.url)
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, queuedURL)
+        XCTAssertEqual(websitesAPI.saveCallCount, 1)
+        XCTAssertGreaterThan(websitesAPI.listCallCount, 0)
+
+        await replayGate.open()
+        await waitForWebsiteEventSurface(queuedURL, in: environment)
+    }
 }
 
 actor AsyncReplayGate {

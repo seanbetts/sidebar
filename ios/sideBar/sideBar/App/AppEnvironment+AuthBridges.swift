@@ -45,9 +45,13 @@ extension AppEnvironment {
 
         guard !awaitPendingShareReplay else { return }
         guard hasQueuedWebsiteItems || enqueuedWebsiteEvents else { return }
-        Task { [weak self] in
+        let replayTask = Task { [weak self] in
             await self?.consumePendingShares()
         }
+        // Give the replay task a chance to begin on the main actor before
+        // callers trigger a foreground list refresh that expects replay to be in flight.
+        await Task.yield()
+        _ = replayTask
     }
 
     private func applySavedWebsiteEvent(_ website: ExtensionSavedWebsite) async {
