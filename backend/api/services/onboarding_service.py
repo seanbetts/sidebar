@@ -190,6 +190,22 @@ class OnboardingService:
         if not isinstance(proposed_name, str):
             proposed_name = None
 
+        raw_rejected_names = raw_calibration.get("rejected_names")
+        rejected_names: list[str] = []
+        if isinstance(raw_rejected_names, list):
+            seen_rejected_names: set[str] = set()
+            for value in raw_rejected_names:
+                if not isinstance(value, str):
+                    continue
+                normalized = value.strip()
+                if not normalized:
+                    continue
+                dedupe_key = normalized.casefold()
+                if dedupe_key in seen_rejected_names:
+                    continue
+                seen_rejected_names.add(dedupe_key)
+                rejected_names.append(normalized)
+
         completed_at = raw_calibration.get("completed_at")
         if not isinstance(completed_at, str):
             completed_at = None
@@ -202,6 +218,7 @@ class OnboardingService:
                 "current_prompt": calibration_prompt,
                 "answers": answers,
                 "proposed_name": proposed_name,
+                "rejected_names": rejected_names,
                 "completed_at": completed_at,
             },
             "milestones": milestones,
@@ -289,6 +306,7 @@ class OnboardingService:
                     "current_prompt",
                     "answers",
                     "proposed_name",
+                    "rejected_names",
                     "completed_at",
                 }
             )
@@ -343,6 +361,21 @@ class OnboardingService:
                         status_code=400,
                         detail="calibration.proposed_name must be a string or null",
                     )
+            if "rejected_names" in calibration:
+                rejected_names = calibration["rejected_names"]
+                if not isinstance(rejected_names, list):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="calibration.rejected_names must be an array",
+                    )
+                for value in rejected_names:
+                    if not isinstance(value, str):
+                        raise HTTPException(
+                            status_code=400,
+                            detail=(
+                                "calibration.rejected_names must contain only strings"
+                            ),
+                        )
             if "completed_at" in calibration:
                 completed_at = calibration["completed_at"]
                 if completed_at is not None and not isinstance(completed_at, str):

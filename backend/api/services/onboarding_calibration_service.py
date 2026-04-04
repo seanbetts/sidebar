@@ -13,11 +13,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from api.config import settings
-from api.services.agent.prompt.sections import resolve_template
 from api.services.agent.prompt.templates import (
-    CALIBRATION_AUTHORING_PRINCIPLES,
-    CALIBRATION_CORE_SIDEBAR_CHARACTER,
-    CALIBRATION_OUTPUT_RULES,
     CALIBRATION_PROMPT_ASSISTANT_IDENTITY_BOUNDARIES,
     CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME,
     CALIBRATION_PROMPT_ASSISTANT_IDENTITY_TONE,
@@ -31,6 +27,11 @@ from api.services.agent_settings_service import AgentSettingsService
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.policy import AIPolicyService
 from api.services.ai.registry import AIProvider
+from api.services.onboarding_calibration_prompting import (
+    is_rejected_name,
+    normalized_rejected_names,
+    render_calibration_field_prompt,
+)
 from api.services.onboarding_service import VALID_CALIBRATION_PROMPTS, OnboardingService
 from api.services.settings_service import SettingsService
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
@@ -231,6 +232,10 @@ class OnboardingCalibrationService:
 
         answers = calibration.get("answers") or {}
         previous_name = calibration.get("proposed_name")
+        rejected_names = normalized_rejected_names(
+            rejected_names=calibration.get("rejected_names"),
+            previous_name=previous_name,
+        )
         next_name_update = (
             OnboardingCalibrationService._generate_validated_field_update(
                 db,
@@ -239,6 +244,7 @@ class OnboardingCalibrationService:
                 field_name="name",
                 answers=answers,
                 previous_name=previous_name,
+                rejected_names=rejected_names,
             )
         )
         next_name = (
@@ -246,6 +252,7 @@ class OnboardingCalibrationService:
         ) or ""
 
         next_onboarding = OnboardingService._resolve_state(state)
+        next_onboarding["calibration"]["rejected_names"] = rejected_names
         next_onboarding["calibration"]["proposed_name"] = next_name
         settings_payload = AgentSettingsService.update_with_onboarding(
             db,
@@ -366,6 +373,7 @@ class OnboardingCalibrationService:
             calibration["current_prompt"] = "working_relationship"
             calibration["status"] = "in_progress"
             calibration["proposed_name"] = None
+            calibration["rejected_names"] = []
             calibration["completed_at"] = None
             return
 
@@ -374,12 +382,14 @@ class OnboardingCalibrationService:
             calibration["current_prompt"] = "tone_preferences"
             calibration["status"] = "in_progress"
             calibration["proposed_name"] = None
+            calibration["rejected_names"] = []
             calibration["completed_at"] = None
             return
 
         calibration["current_prompt"] = "tone_preferences"
         calibration["status"] = "in_progress"
         calibration["proposed_name"] = None
+        calibration["rejected_names"] = []
         calibration["completed_at"] = None
 
     @staticmethod
@@ -431,6 +441,7 @@ class OnboardingCalibrationService:
         field_name: str,
         answers: dict[str, Any],
         previous_name: str | None,
+        rejected_names: list[str] | None = None,
     ) -> dict[str, dict[str, str]]:
         """Generate, validate, and normalize a single assistant settings field."""
         generation_context = OnboardingCalibrationService._build_generation_context(
@@ -445,6 +456,7 @@ class OnboardingCalibrationService:
                 field_name=field_name,
                 answers=answers,
                 previous_name=previous_name,
+                rejected_names=rejected_names,
                 generation_context=generation_context,
                 current_identity=generation_context.current_identity,
                 current_soul=generation_context.current_soul,
@@ -468,6 +480,7 @@ class OnboardingCalibrationService:
                 field_name=field_name,
                 answers=answers,
                 previous_name=None,
+                rejected_names=None,
                 generation_context=generation_context,
                 current_identity=generation_context.current_identity,
                 current_soul=generation_context.current_soul,
@@ -485,6 +498,7 @@ class OnboardingCalibrationService:
         field_name: str,
         answers: dict[str, Any],
         previous_name: str | None,
+        rejected_names: list[str] | None,
         generation_context: GenerationContext,
         current_identity: dict[str, Any],
         current_soul: dict[str, Any],
@@ -505,6 +519,7 @@ class OnboardingCalibrationService:
                 field_name=field_name,
                 answers=answers,
                 previous_name=previous_name,
+                rejected_names=rejected_names,
                 repair_feedback=repair_feedback,
                 generation_context=generation_context,
                 current_identity=current_identity,
@@ -527,14 +542,17 @@ class OnboardingCalibrationService:
                 if (
                     scope == "assistant_identity"
                     and field_name == "name"
-                    and previous_name
-                    and value.strip() == previous_name.strip()
+                    and is_rejected_name(
+                        value,
+                        rejected_names=rejected_names,
+                        previous_name=previous_name,
+                    )
                 ):
                     raise HTTPException(
                         status_code=400,
                         detail=(
-                            "assistant_identity.name must differ from the previous "
-                            "rejected name"
+                            "assistant_identity.name must differ from every rejected "
+                            "name in this calibration session"
                         ),
                     )
                 return {scope: {field_name: value}}
@@ -568,6 +586,7 @@ class OnboardingCalibrationService:
         field_name: str,
         answers: dict[str, Any],
         previous_name: str | None,
+        rejected_names: list[str] | None,
         repair_feedback: str | None,
         generation_context: GenerationContext | None = None,
         current_identity: dict[str, Any] | None = None,
@@ -596,6 +615,7 @@ class OnboardingCalibrationService:
             current_identity=identity_payload,
             current_soul=soul_payload,
             previous_name=previous_name,
+            rejected_names=rejected_names,
             repair_feedback=repair_feedback,
         )
 
@@ -646,50 +666,22 @@ class OnboardingCalibrationService:
         current_identity: dict[str, Any],
         current_soul: dict[str, Any],
         previous_name: str | None,
+        rejected_names: list[str] | None,
         repair_feedback: str | None,
     ) -> str:
         """Render a field-specific calibration prompt."""
         template = FIELD_PROMPT_TEMPLATES[(scope, field_name)]
-        variables = {
-            "calibration_authoring_principles": CALIBRATION_AUTHORING_PRINCIPLES,
-            "calibration_core_sidebar_character": CALIBRATION_CORE_SIDEBAR_CHARACTER,
-            "calibration_output_rules": CALIBRATION_OUTPUT_RULES,
-            "primary_goal": str(answers.get("primary_goal") or "").strip() or "None",
-            "working_relationship": (
-                str(answers.get("working_relationship") or "").strip() or "None"
-            ),
-            "tone_preferences": (
-                str(answers.get("tone_preferences") or "").strip() or "None"
-            ),
-            "assistant_soul_json": json.dumps(
-                current_soul,
-                ensure_ascii=True,
-                sort_keys=True,
-                separators=(",", ":"),
-            ),
-            "assistant_identity_json": json.dumps(
-                current_identity,
-                ensure_ascii=True,
-                sort_keys=True,
-                separators=(",", ":"),
-            ),
-            "previous_name": (previous_name or "None"),
-        }
-        rendered = resolve_template(template, variables, keep_unknown=False).strip()
-        if repair_feedback:
-            expected_json = json.dumps(
-                {scope: {field_name: "<write the field value here>"}},
-                ensure_ascii=True,
-                separators=(",", ":"),
-            )
-            rendered += (
-                "\n\nRetry guidance:\n"
-                "The previous attempt failed validation. Correct it.\n"
-                f"Return exactly this JSON shape: {expected_json}\n"
-                "No markdown, no explanation, and no extra keys.\n"
-                f"Validation feedback: {repair_feedback}"
-            )
-        return rendered
+        return render_calibration_field_prompt(
+            template=template,
+            scope=scope,
+            field_name=field_name,
+            answers=answers,
+            current_identity=current_identity,
+            current_soul=current_soul,
+            previous_name=previous_name,
+            rejected_names=rejected_names,
+            repair_feedback=repair_feedback,
+        )
 
     @staticmethod
     def _parse_generated_json_object(

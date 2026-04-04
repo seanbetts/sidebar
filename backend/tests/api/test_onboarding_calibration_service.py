@@ -239,6 +239,7 @@ def test_generate_stage_updates_parallelizes_independent_working_relationship_fi
             current_identity,
             current_soul,
             previous_name,
+            rejected_names,
             repair_feedback: f"{scope}.{field_name}"
         ),
     )
@@ -492,7 +493,14 @@ def test_regenerate_name_can_generate_initial_name_when_missing(
         OnboardingCalibrationService,
         "_generate_validated_field_update",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name=None: {
+            lambda db,
+            user_id,
+            *,
+            scope,
+            field_name,
+            answers,
+            previous_name=None,
+            rejected_names=None: {
                 "assistant_identity": {"name": "Navigator"}
             }
         ),
@@ -565,7 +573,14 @@ def test_submit_answer_then_regenerate_name_succeeds_with_persisted_state(
         OnboardingCalibrationService,
         "_generate_validated_field_update",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name=None: {
+            lambda db,
+            user_id,
+            *,
+            scope,
+            field_name,
+            answers,
+            previous_name=None,
+            rejected_names=None: {
                 "assistant_identity": {"name": "Navigator"}
             }
         ),
@@ -616,7 +631,14 @@ def test_regenerate_name_only_updates_proposed_name(test_db, monkeypatch) -> Non
         OnboardingCalibrationService,
         "_generate_validated_field_update",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name=None: {
+            lambda db,
+            user_id,
+            *,
+            scope,
+            field_name,
+            answers,
+            previous_name=None,
+            rejected_names=None: {
                 "assistant_identity": {"name": "Compass"}
             }
         ),
@@ -631,6 +653,53 @@ def test_regenerate_name_only_updates_proposed_name(test_db, monkeypatch) -> Non
     settings_payload = SettingsService.get_settings(test_db, user_id)
     assert settings_payload["assistant_identity"]["name"] == "Compass"
     assert settings_payload["assistant_soul"]["purpose"] == "Help with steady life admin."
+
+
+def test_regenerate_name_tracks_rejected_name_history(test_db, monkeypatch) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    user_id = "calibration-regenerate-history"
+    provider_ready_state = _provider_ready_state(
+        test_db,
+        user_id=user_id,
+        calibration={
+            "status": "awaiting_name_acceptance",
+            "current_prompt": "tone_preferences",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": "collaborative",
+                "tone_preferences": "direct_but_kind",
+            },
+            "proposed_name": "Flint",
+            "rejected_names": ["Atlas"],
+        },
+    )
+    _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+    seen_rejected_names: list[str] = []
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_validated_field_update",
+        staticmethod(
+            lambda db,
+            requested_user_id,
+            *,
+            scope,
+            field_name,
+            answers,
+            previous_name=None,
+            rejected_names=None: (
+                seen_rejected_names.extend(rejected_names or [])
+                or {"assistant_identity": {"name": "Beacon"}}
+            )
+        ),
+    )
+
+    result = OnboardingCalibrationService.regenerate_name(test_db, user_id)
+
+    assert seen_rejected_names == ["Atlas", "Flint"]
+    assert result.state["calibration"]["rejected_names"] == ["Atlas", "Flint"]
+    assert result.state["calibration"]["proposed_name"] == "Beacon"
 
 
 def test_regenerate_name_requires_provider_ready(test_db) -> None:
@@ -763,7 +832,18 @@ def test_submit_answer_retries_generation_after_validation_failure(
         OnboardingCalibrationService,
         "_generate_model_field_update",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name=None, repair_feedback=None, generation_context=None, current_identity=None, current_soul=None: (
+            lambda db,
+            user_id,
+            *,
+            scope,
+            field_name,
+            answers,
+            previous_name=None,
+            rejected_names=None,
+            repair_feedback=None,
+            generation_context=None,
+            current_identity=None,
+            current_soul=None: (
                 calls.append(repair_feedback)
                 or (
                     {"assistant_identity": {"name": "x" * 121}}
@@ -781,6 +861,7 @@ def test_submit_answer_retries_generation_after_validation_failure(
         field_name="name",
         answers={"primary_goal": "life_admin"},
         previous_name=None,
+        rejected_names=None,
     )
 
     assert result == {"assistant_identity": {"name": "Navigator"}}
@@ -815,7 +896,18 @@ def test_submit_answer_surfaces_retryable_error_after_second_validation_failure(
         OnboardingCalibrationService,
         "_generate_model_field_update",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name=None, repair_feedback=None, generation_context=None, current_identity=None, current_soul=None: {
+            lambda db,
+            user_id,
+            *,
+            scope,
+            field_name,
+            answers,
+            previous_name=None,
+            rejected_names=None,
+            repair_feedback=None,
+            generation_context=None,
+            current_identity=None,
+            current_soul=None: {
                 "assistant_identity": {"name": "x" * 121},
             }
         ),
@@ -829,9 +921,76 @@ def test_submit_answer_surfaces_retryable_error_after_second_validation_failure(
             field_name="name",
             answers={"primary_goal": "life_admin"},
             previous_name=None,
+            rejected_names=None,
         )
 
     assert "choose a name" in str(exc_info.value.detail).lower()
+
+
+def test_name_generation_retries_until_name_is_not_in_rejected_history(
+    test_db,
+    monkeypatch,
+) -> None:
+    from api.services.onboarding_calibration_service import OnboardingCalibrationService
+
+    user_id = "calibration-rejected-name-retry"
+    provider_ready_state = _provider_ready_state(
+        test_db,
+        user_id=user_id,
+        calibration={
+            "status": "awaiting_name_acceptance",
+            "current_prompt": "tone_preferences",
+            "answers": {
+                "primary_goal": "life_admin",
+                "working_relationship": "collaborative",
+                "tone_preferences": "direct_but_kind",
+            },
+        },
+    )
+    _force_provider_ready(monkeypatch, provider_ready_state, user_id=user_id)
+    calls: list[str | None] = []
+
+    monkeypatch.setattr(
+        OnboardingCalibrationService,
+        "_generate_model_field_update",
+        staticmethod(
+            lambda db,
+            requested_user_id,
+            *,
+            scope,
+            field_name,
+            answers,
+            previous_name=None,
+            rejected_names=None,
+            repair_feedback=None,
+            generation_context=None,
+            current_identity=None,
+            current_soul=None: (
+                calls.append(repair_feedback)
+                or (
+                    {"assistant_identity": {"name": "Flint"}}
+                    if repair_feedback is None
+                    else {"assistant_identity": {"name": "Beacon"}}
+                )
+            )
+        ),
+    )
+
+    result = OnboardingCalibrationService._generate_validated_field_update(
+        test_db,
+        user_id,
+        scope="assistant_identity",
+        field_name="name",
+        answers={"primary_goal": "life_admin"},
+        previous_name="Atlas",
+        rejected_names=["Flint", "Atlas"],
+    )
+
+    assert result == {"assistant_identity": {"name": "Beacon"}}
+    assert calls == [
+        None,
+        "assistant_identity.name must differ from every rejected name in this calibration session",
+    ]
 
 
 def test_submit_answer_persists_tone_answer_when_generation_fails(
@@ -942,7 +1101,17 @@ def test_regenerate_name_failure_preserves_existing_identity_fields(
         OnboardingCalibrationService,
         "_generate_validated_field_update_for_context",
         staticmethod(
-            lambda db, user_id, *, scope, field_name, answers, previous_name, generation_context, current_identity, current_soul: (_ for _ in ()).throw(
+            lambda db,
+            user_id,
+            *,
+            scope,
+            field_name,
+            answers,
+            previous_name,
+            rejected_names,
+            generation_context,
+            current_identity,
+            current_soul: (_ for _ in ()).throw(
                 HTTPException(
                     status_code=503,
                     detail=(
@@ -1045,6 +1214,7 @@ def test_generate_validated_field_update_maps_name_provider_failure_to_retryable
                 "tone_preferences": "warm,serious,concise,casual,supportive",
             },
             previous_name=None,
+            rejected_names=None,
         )
 
     assert exc_info.value.status_code == 503
@@ -1105,6 +1275,7 @@ def test_render_field_prompt_uses_compact_json_snapshots() -> None:
             "purpose": "Help the user make progress.",
         },
         previous_name=None,
+        rejected_names=None,
         repair_feedback=None,
     )
 
@@ -1133,6 +1304,7 @@ def test_render_field_prompt_includes_exact_json_shape_in_retry_guidance() -> No
             "purpose": "Help the user make progress.",
         },
         previous_name=None,
+        rejected_names=None,
         repair_feedback="Generated invalid JSON for assistant_identity.boundaries",
     )
 
@@ -1176,6 +1348,7 @@ def test_generate_model_field_update_uses_calibration_token_budgets(
             current_identity,
             current_soul,
             previous_name,
+            rejected_names,
             repair_feedback: f"{scope}.{field_name}"
         ),
     )
@@ -1210,6 +1383,7 @@ def test_generate_model_field_update_uses_calibration_token_budgets(
         field_name="name",
         answers={"primary_goal": "life_admin"},
         previous_name=None,
+        rejected_names=None,
         repair_feedback=None,
     )
     OnboardingCalibrationService._generate_model_field_update(
@@ -1219,6 +1393,7 @@ def test_generate_model_field_update_uses_calibration_token_budgets(
         field_name="tone",
         answers={"primary_goal": "life_admin"},
         previous_name=None,
+        rejected_names=None,
         repair_feedback=None,
     )
     OnboardingCalibrationService._generate_model_field_update(
@@ -1228,6 +1403,7 @@ def test_generate_model_field_update_uses_calibration_token_budgets(
         field_name="operating_principles",
         answers={"primary_goal": "life_admin"},
         previous_name=None,
+        rejected_names=None,
         repair_feedback=None,
     )
 
