@@ -13,7 +13,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlparse
 
 import requests
@@ -22,55 +22,122 @@ import urllib3
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
+SessionLocal: Callable[[], Any] | None = None
+set_session_user_id: Callable[[Any, str], None]
+WebsitesService: Any = None
+FaviconService: Any = None
+initialize_script_sentry: Callable[..., bool]
+capture_script_exception: Callable[..., None]
+resolve_website_title: Callable[..., str | None] | None = None
+resolve_apple_news_source_url: Callable[..., str] | None = None
+JinaService: Any = None
+apply_wsj_content_guards: Callable[..., tuple[str, Any]] | None = None
+is_youtube_host: Callable[[str], bool] | None = None
+normalize_youtube_url: Callable[[str], str] | None = None
+fetch_youtube_duration_seconds: Callable[..., int | None] | None = None
+calculate_reading_time: Callable[[int], str]
+compute_word_count: Callable[[str], int]
+extract_tags: Callable[..., list[str]]
+normalize_reading_time: Callable[[str], str | None] | None = None
+reading_time_from_duration_seconds: Callable[[int | None], str | None] | None = None
+classify_web_save_failure: Callable[..., dict[str, Any]]
+detect_antibot_html: Callable[[str | None], Any]
+build_frontmatter: Callable[..., str]
+extract_favicon_url: Callable[..., str | None]
+parse_url_local: Callable[..., Any]
+
+
+class _FallbackLocalParseFallbackError(Exception):
+    """Fallback placeholder for missing parser dependencies."""
+
+
+class _FallbackAntibotDetection:
+    """Placeholder detection payload."""
+
+    def __init__(self, challenge_kind: str, reason: str):
+        self.challenge_kind = challenge_kind
+        self.reason = reason
+
+
+LocalParseFallbackError: Any = _FallbackLocalParseFallbackError
+AntibotDetection: Any = _FallbackAntibotDetection
+
 try:
-    from api.db.session import SessionLocal, set_session_user_id
-    from api.services.favicon_service import FaviconService
-    from api.services.jina_service import JinaService
+    from api.db.session import SessionLocal as _session_local
+    from api.db.session import set_session_user_id as _set_session_user_id
+    from api.services.favicon_service import FaviconService as _favicon_service
+    from api.services.jina_service import JinaService as _jina_service
     from api.services.script_sentry import (
-        capture_script_exception,
-        initialize_script_sentry,
+        capture_script_exception as _capture_script_exception,
+        initialize_script_sentry as _initialize_script_sentry,
     )
     from api.services.url_normalization_service import (
-        is_youtube_host,
-        normalize_youtube_url,
+        is_youtube_host as _is_youtube_host,
+        normalize_youtube_url as _normalize_youtube_url,
     )
-    from api.services.web_save_antibot import AntibotDetection, detect_antibot_html
-    from api.services.web_save_error_service import classify_web_save_failure
+    from api.services.web_save_antibot import (
+        AntibotDetection as _antibot_detection,
+        detect_antibot_html as _detect_antibot_html,
+    )
+    from api.services.web_save_error_service import (
+        classify_web_save_failure as _classify_web_save_failure,
+    )
     from api.services.web_save_parser import (
-        LocalParseFallbackError,
+        LocalParseFallbackError as _local_parse_fallback_error,
         ParsedPage,
-        build_frontmatter,
-        extract_favicon_url,
-        parse_url_local,
+        build_frontmatter as _build_frontmatter,
+        extract_favicon_url as _extract_favicon_url,
+        parse_url_local as _parse_url_local,
     )
-    from api.services.web_save_parser_apple_news import resolve_apple_news_source_url
-    from api.services.web_save_parser_wsj import apply_wsj_content_guards
-    from api.services.web_save_parser_youtube import fetch_youtube_duration_seconds
+    from api.services.web_save_parser_apple_news import (
+        resolve_apple_news_source_url as _resolve_apple_news_source_url,
+    )
+    from api.services.web_save_parser_wsj import (
+        apply_wsj_content_guards as _apply_wsj_content_guards,
+    )
+    from api.services.web_save_parser_youtube import (
+        fetch_youtube_duration_seconds as _fetch_youtube_duration_seconds,
+    )
     from api.services.web_save_tagger import (
-        calculate_reading_time,
-        compute_word_count,
-        extract_tags,
+        calculate_reading_time as _calculate_reading_time,
+        compute_word_count as _compute_word_count,
+        extract_tags as _extract_tags,
     )
     from api.services.website_reading_time import (
-        normalize_reading_time,
-        reading_time_from_duration_seconds,
+        normalize_reading_time as _normalize_reading_time,
+        reading_time_from_duration_seconds as _reading_time_from_duration_seconds,
     )
-    from api.services.website_title_service import resolve_website_title
-    from api.services.websites_service import WebsitesService
-except Exception:
-    SessionLocal = None
-    WebsitesService = None
-    FaviconService = None
-    resolve_website_title = None
-    resolve_apple_news_source_url = None
-    JinaService = None
-    apply_wsj_content_guards = None
-    is_youtube_host = None
-    normalize_youtube_url = None
-    fetch_youtube_duration_seconds = None
-    normalize_reading_time = None
-    reading_time_from_duration_seconds = None
+    from api.services.website_title_service import (
+        resolve_website_title as _resolve_website_title,
+    )
+    from api.services.websites_service import WebsitesService as _websites_service
 
+    SessionLocal = _session_local
+    set_session_user_id = _set_session_user_id
+    WebsitesService = _websites_service
+    FaviconService = _favicon_service
+    JinaService = _jina_service
+    initialize_script_sentry = _initialize_script_sentry
+    capture_script_exception = _capture_script_exception
+    is_youtube_host = _is_youtube_host
+    normalize_youtube_url = _normalize_youtube_url
+    AntibotDetection = _antibot_detection
+    detect_antibot_html = _detect_antibot_html
+    classify_web_save_failure = _classify_web_save_failure
+    LocalParseFallbackError = _local_parse_fallback_error
+    build_frontmatter = _build_frontmatter
+    extract_favicon_url = _extract_favicon_url
+    parse_url_local = _parse_url_local
+    resolve_apple_news_source_url = _resolve_apple_news_source_url
+    apply_wsj_content_guards = _apply_wsj_content_guards
+    fetch_youtube_duration_seconds = _fetch_youtube_duration_seconds
+    calculate_reading_time = _calculate_reading_time
+    compute_word_count = _compute_word_count
+    extract_tags = _extract_tags
+    normalize_reading_time = _normalize_reading_time
+    reading_time_from_duration_seconds = _reading_time_from_duration_seconds
+    resolve_website_title = _resolve_website_title
+except Exception:
     def _noop_initialize_script_sentry(script_name: str) -> bool:
         return False
 
@@ -79,10 +146,7 @@ except Exception:
     ) -> None:
         return None
 
-    initialize_script_sentry = _noop_initialize_script_sentry
-    capture_script_exception = _noop_capture_script_exception
-
-    def classify_web_save_failure(
+    def _fallback_classify_web_save_failure(
         *,
         upstream_error_type: str | None,
         upstream_message: str | None,
@@ -109,18 +173,39 @@ except Exception:
             ],
         }
 
-    class LocalParseFallbackError(Exception):
-        """Fallback placeholder for missing parser dependencies."""
-
-    class AntibotDetection:
-        """Placeholder detection payload."""
-
-        def __init__(self, challenge_kind: str, reason: str):
-            self.challenge_kind = challenge_kind
-            self.reason = reason
-
-    def detect_antibot_html(_html: str | None):
+    def _fallback_detect_antibot_html(_html: str | None) -> None:
         return None
+
+    def _fallback_build_frontmatter(markdown_text: str, *, meta: dict[str, Any]) -> str:
+        payload = {key: value for key, value in meta.items() if value is not None}
+        frontmatter = json.dumps(payload, indent=2)
+        return f"---\n{frontmatter}\n---\n\n{markdown_text.strip()}\n"
+
+    def _fallback_extract_favicon_url(_url: str) -> None:
+        return None
+
+    def _fallback_parse_url_local(_url: str) -> Any:
+        raise RuntimeError("Local parser dependencies are unavailable")
+
+    def _fallback_calculate_reading_time(count: int) -> str:
+        return f"{max(count, 1)} min"
+
+    def _fallback_compute_word_count(content: str) -> int:
+        return len(content.split())
+
+    def _fallback_extract_tags(*_args: Any, **_kwargs: Any) -> list[str]:
+        return []
+
+    initialize_script_sentry = _noop_initialize_script_sentry
+    capture_script_exception = _noop_capture_script_exception
+    classify_web_save_failure = _fallback_classify_web_save_failure
+    detect_antibot_html = _fallback_detect_antibot_html
+    build_frontmatter = _fallback_build_frontmatter
+    extract_favicon_url = _fallback_extract_favicon_url
+    parse_url_local = _fallback_parse_url_local
+    calculate_reading_time = _fallback_calculate_reading_time
+    compute_word_count = _fallback_compute_word_count
+    extract_tags = _fallback_extract_tags
 
 
 if not logging.getLogger().handlers:
@@ -196,6 +281,7 @@ class WebSaveScriptError(Exception):
         self.payload = payload
 
     def as_error(self) -> dict[str, Any]:
+        """Return a structured error payload for CLI/worker callers."""
         return {
             "type": self.error_type,
             "code": self.payload.get("code"),
@@ -216,7 +302,7 @@ def _clean_metadata_value(value: str | None) -> str | None:
     return cleaned
 
 
-def extract_title(content: str) -> str:
+def extract_title(content: str) -> str | None:
     """Extract title from markdown content.
 
     Args:
@@ -247,6 +333,7 @@ def extract_title(content: str) -> str:
 
 
 def parse_published_at(value: str | None) -> datetime | None:
+    """Parse an ISO-like published timestamp when present."""
     if not value:
         return None
     try:
@@ -256,13 +343,14 @@ def parse_published_at(value: str | None) -> datetime | None:
 
 
 def parse_jina_metadata(content: str) -> tuple[dict[str, str | None], str]:
+    """Split Jina markdown into structured metadata and cleaned body text."""
     if JinaService is not None:
-        metadata, cleaned = JinaService.parse_metadata(content)
+        parsed_metadata, cleaned = JinaService.parse_metadata(content)
         return {
-            "title": metadata.get("title"),
-            "url_source": metadata.get("url_source"),
-            "published_time": metadata.get("published_time"),
-            "reading_time": metadata.get("reading_time"),
+            "title": parsed_metadata.get("title"),
+            "url_source": parsed_metadata.get("url_source"),
+            "published_time": parsed_metadata.get("published_time"),
+            "reading_time": parsed_metadata.get("reading_time"),
         }, cleaned
 
     metadata: dict[str, str | None] = {
@@ -624,6 +712,7 @@ def get_markdown_content(url: str, api_key: str) -> str:
 
 
 def save_url_database(url: str, user_id: str) -> dict[str, Any]:
+    """Save a URL into the websites table and return a compact result payload."""
     if SessionLocal is None or WebsitesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
@@ -772,7 +861,7 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
                 )
             parsed_metadata, cleaned_content = parse_jina_metadata(content)
             source = parsed_metadata.get("url_source") or target_url
-            wsj_flags = {"paywalled": False, "truncated": False}
+            wsj_flags: Any = {"paywalled": False, "truncated": False}
             raw_summary = _summarize_markdown(content)
             if JinaService is not None:
                 cleaned_content = JinaService.clean_markdown_for_source(
@@ -993,6 +1082,10 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
 
     set_session_user_id(db, user_id)
     try:
+        if title is None:
+            title = urlparse(source or url).netloc or "Untitled"
+        if source is None:
+            source = target_url
         upsert_started_at = time.monotonic()
         website = WebsitesService.upsert_website(
             db,
