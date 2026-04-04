@@ -151,6 +151,17 @@ extension AppEnvironmentDeepLinkTests {
         }
     }
 
+    func waitForWebsiteSaveCallCount(
+        _ expectedCount: Int,
+        in websitesAPI: DeepLinkWebsitesAPI,
+        attempts: Int = 40
+    ) async {
+        for _ in 0..<attempts where websitesAPI.saveCallCount < expectedCount {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+    }
+
     func waitForSavedWebsite(
         id: String,
         url: String,

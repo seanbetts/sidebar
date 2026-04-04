@@ -62,6 +62,7 @@ extension AppEnvironmentDeepLinkTests {
         XCTAssertEqual(environment.authState, .active)
         XCTAssertEqual(environment.websitesViewModel.items.first?.url, existingItem.url)
         XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, queuedURL)
+        await waitForWebsiteSaveCallCount(1, in: websitesAPI)
         XCTAssertEqual(websitesAPI.saveCallCount, 1)
 
         await replayGate.open()
