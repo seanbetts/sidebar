@@ -60,7 +60,6 @@ STAGE_FIELDS: dict[str, tuple[tuple[str, str], ...]] = {
         ("assistant_identity", "boundaries"),
     ),
 }
-NAME_FIELD = ("assistant_identity", "name")
 FIELD_MAX_OUTPUT_TOKENS: dict[tuple[str, str], int] = {
     ("assistant_identity", "name"): 48,
     ("assistant_identity", "tone"): 220,
@@ -71,7 +70,16 @@ FIELD_MAX_OUTPUT_TOKENS: dict[tuple[str, str], int] = {
     ("assistant_soul", "operating_principles"): 320,
     ("assistant_soul", "adaptation_policy"): 280,
 }
-
+FIELD_TEMPERATURES: dict[tuple[str, str], float] = {
+    ("assistant_identity", "name"): 0.8,
+    ("assistant_identity", "tone"): 0.65,
+    ("assistant_identity", "values"): 0.65,
+    ("assistant_identity", "boundaries"): 0.65,
+    ("assistant_soul", "purpose"): 0.65,
+    ("assistant_soul", "success_signals"): 0.65,
+    ("assistant_soul", "operating_principles"): 0.65,
+    ("assistant_soul", "adaptation_policy"): 0.65,
+}
 FIELD_PROMPT_TEMPLATES: dict[tuple[str, str], str] = {
     ("assistant_soul", "purpose"): CALIBRATION_PROMPT_ASSISTANT_SOUL_PURPOSE,
     (
@@ -411,7 +419,6 @@ class OnboardingCalibrationService:
         previous_name: str | None,
     ) -> dict[str, Any]:
         """Generate and merge all assistant settings owned by this stage."""
-        del previous_name
         generation_context = OnboardingCalibrationService._build_generation_context(
             db,
             user_id,
@@ -638,7 +645,10 @@ class OnboardingCalibrationService:
                         scope=scope,
                         field_name=field_name,
                     ),
-                    temperature=(0.5 if (scope, field_name) == NAME_FIELD else 0.3),
+                    temperature=OnboardingCalibrationService._field_temperature(
+                        scope=scope,
+                        field_name=field_name,
+                    ),
                 )
             )
         except HTTPException:
@@ -827,7 +837,7 @@ class OnboardingCalibrationService:
     @staticmethod
     def _generation_failure_detail(*, scope: str, field_name: str) -> str:
         """Return a user-facing retry message for calibration generation failures."""
-        if (scope, field_name) == NAME_FIELD:
+        if (scope, field_name) == ("assistant_identity", "name"):
             return (
                 "I couldn't choose a name just yet. "
                 "Your setup is saved, please try again."
@@ -841,6 +851,11 @@ class OnboardingCalibrationService:
     def _field_token_budget(*, scope: str, field_name: str) -> int:
         """Return the max output token budget for a calibration field."""
         return FIELD_MAX_OUTPUT_TOKENS.get((scope, field_name), 320)
+
+    @staticmethod
+    def _field_temperature(*, scope: str, field_name: str) -> float:
+        """Return the sampling temperature for a calibration field."""
+        return FIELD_TEMPERATURES.get((scope, field_name), 0.65)
 
     @staticmethod
     def _build_generation_context(db: Session, user_id: str) -> GenerationContext:

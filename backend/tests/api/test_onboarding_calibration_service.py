@@ -1316,14 +1316,14 @@ def test_render_field_prompt_includes_exact_json_shape_in_retry_guidance() -> No
     assert "No markdown, no explanation, and no extra keys." in prompt
 
 
-def test_generate_model_field_update_uses_calibration_token_budgets(
+def test_generate_model_field_update_uses_calibration_generation_policy(
     test_db,
     monkeypatch,
 ) -> None:
     from api.services.onboarding_calibration_service import OnboardingCalibrationService
 
     user_id = "calibration-token-budgets"
-    budgets: list[tuple[str, int]] = []
+    generation_policy: list[tuple[str, int, float]] = []
 
     monkeypatch.setattr(
         OnboardingCalibrationService,
@@ -1364,7 +1364,7 @@ def test_generate_model_field_update_uses_calibration_token_budgets(
         max_output_tokens=800,
         temperature=0.3,
     ) -> PromptGenerationResult:
-        budgets.append((prompt, max_output_tokens))
+        generation_policy.append((prompt, max_output_tokens, temperature))
         scope, field_name = prompt.split(".", 1)
         return PromptGenerationResult(
             raw_text=json.dumps({scope: {field_name: "generated"}}),
@@ -1407,10 +1407,10 @@ def test_generate_model_field_update_uses_calibration_token_budgets(
         repair_feedback=None,
     )
 
-    assert budgets == [
-        ("assistant_identity.name", 48),
-        ("assistant_identity.tone", 220),
-        ("assistant_soul.operating_principles", 320),
+    assert generation_policy == [
+        ("assistant_identity.name", 48, 0.8),
+        ("assistant_identity.tone", 220, 0.65),
+        ("assistant_soul.operating_principles", 320, 0.65),
     ]
 
 
