@@ -1,3 +1,4 @@
+import SwiftUI
 import XCTest
 @testable import sideBar
 
@@ -138,6 +139,94 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
         let editorTextView = try XCTUnwrap(findDescendantTextView(in: harness.mountedView))
         XCTAssertEqual(editorTextView.selectedRange(), NSRange(location: targetOffset, length: 0))
         harness.dispose()
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    func testMountedEscapeAfterTypedBlockquoteLeavesEditModeOnMacOS() async throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+        let note = NotePayload(
+            id: "typed-blockquote-note",
+            name: "Title",
+            document: document,
+            plainText: NotesSemanticDocumentProjection.plainText(from: document),
+            path: "/typed-blockquote-note.md",
+            modified: nil,
+            created: nil
+        )
+        let harness = await MountedNotesDetailHarness(note: note)
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        let nativeViewModel = harness.activateReadSurfaceEditing(at: .characterOffset(6))
+
+        await waitUntil(timeout: .seconds(2)) {
+            guard let editorTextView = findDescendantTextView(in: harness.mountedView) else { return false }
+            return harness.context.editorViewModel.presentationMode == .edit
+                && editorTextView.isEditable
+                && harness.mountedWindow.firstResponder === editorTextView
+        }
+
+        noteAppendTypedText(">", to: nativeViewModel)
+        XCTAssertTrue(nativeViewModel.handleTextReplacement(" "))
+        drainNotesHostingRunLoop()
+
+        let editorTextView = try XCTUnwrap(findDescendantTextView(in: harness.mountedView))
+        XCTAssertTrue(editorTextView.string.contains("> "))
+
+        editorTextView.cancelOperation(nil)
+
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .read
+                && harness.mountedWindow.firstResponder !== editorTextView
+        }
+
+        XCTAssertEqual(harness.context.editorViewModel.presentationMode, .read)
+        XCTAssertFalse(harness.mountedWindow.firstResponder === editorTextView)
+        XCTAssertTrue(harness.context.makeView().isShowingReadSurface)
+        XCTAssertFalse(harness.context.makeView().isShowingEditorSurface)
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    func testMountedContainerEscapeClearsFirstResponderOnMacOS() async throws {
+        let harness = await MountedNotesDetailHarness(note: makeTestNote(plainText: "Title\n\nBody"))
+        defer { harness.dispose() }
+        harness.mount()
+        await harness.settle()
+
+        let nativeViewModel = harness.activateReadSurfaceEditing(at: .characterOffset(0))
+
+        await waitUntil(timeout: .seconds(2)) {
+            guard let editorTextView = findDescendantTextView(in: harness.mountedView) else { return false }
+            return harness.context.editorViewModel.presentationMode == .edit
+                && harness.mountedWindow.firstResponder === editorTextView
+        }
+
+        let editorTextView = try XCTUnwrap(findDescendantTextView(in: harness.mountedView))
+        let container = AttributedNoteEditorContainer(
+            editorViewModel: harness.context.editorViewModel,
+            maxContentWidth: NoteTextLayout.maxContentWidth,
+            onEscape: harness.context.makeView().handleEscapeKey
+        )
+
+        XCTAssertEqual(
+            container.handleEscapeKey(document: nativeViewModel.currentPersistenceSnapshot().document),
+            .handled
+        )
+
+        await waitUntil(timeout: .seconds(2)) {
+            harness.context.editorViewModel.presentationMode == .read
+                && harness.mountedWindow.firstResponder !== editorTextView
+        }
+
+        XCTAssertEqual(harness.context.editorViewModel.presentationMode, .read)
+        XCTAssertFalse(harness.mountedWindow.firstResponder === editorTextView)
     }
 
 }

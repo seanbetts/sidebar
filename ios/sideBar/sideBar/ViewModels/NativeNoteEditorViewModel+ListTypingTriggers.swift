@@ -50,6 +50,16 @@ extension NativeNoteEditorViewModel {
                 ]
             ),
             typingBlockType: .checklist
+        ),
+        .init(
+            text: "> ",
+            replacementBlock: .init(
+                type: .blockquote,
+                children: [
+                    .paragraph([.init(text: "", marks: [])])
+                ]
+            ),
+            typingBlockType: .blockquote
         )
     ]
 
@@ -78,9 +88,10 @@ extension NativeNoteEditorViewModel {
 
         var updatedBlocks = document.blocks
         updatedBlocks[blockInfo.index] = trigger.replacementBlock
+        let updatedDocument = NotesSemanticDocument(version: document.version, blocks: updatedBlocks)
 
         return StructuralReplacementMutation(
-            document: NotesSemanticDocument(version: document.version, blocks: updatedBlocks),
+            document: updatedDocument,
             insertionOffset: blockInfo.range.lowerBound + blockPlainText(trigger.replacementBlock).count,
             typingBlockType: trigger.typingBlockType
         )

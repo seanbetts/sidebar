@@ -2,6 +2,8 @@ import SwiftUI
 #if os(iOS)
 import Combine
 import UIKit
+#elseif os(macOS)
+import AppKit
 #endif
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -161,6 +163,10 @@ struct AttributedNoteEditorContainer: View {
         guard editorViewModel.currentNoteId != nil else { return .ignored }
         let resolvedDocument = document ?? nativeViewModel.currentPersistenceSnapshot().document
         #if os(macOS)
+        if let keyWindow = NSApp.keyWindow,
+           keyWindow.firstResponder != nil {
+            keyWindow.makeFirstResponder(nil)
+        }
         DispatchQueue.main.async {
             onEscape?(resolvedDocument)
         }

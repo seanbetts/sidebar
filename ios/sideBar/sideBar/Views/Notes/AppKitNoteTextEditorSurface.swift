@@ -46,6 +46,9 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
 
         override func cancelOperation(_ sender: Any?) {
             if let onEscapeCommand {
+                if window?.firstResponder === self {
+                    window?.makeFirstResponder(nil)
+                }
                 onEscapeCommand()
                 return
             }

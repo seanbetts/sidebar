@@ -153,12 +153,16 @@ extension NotesEditorViewModel {
            #available(iOS 26.0, *),
            let textView = nativeEditorTextView as? UIKitNoteTextEditorSurface.AccessoryTextView,
            let nativeEditorViewModel {
+            let snapshot = nativeEditorViewModel.currentPersistenceSnapshot()
             liveEditorViewportOffset = textView.contentOffset
             let selectedUTF16Range = nativeEditorViewModel.utf16SelectedRange(
                 in: nativeEditorViewModel.attributedContent
             )
             if selectedUTF16Range.location != NSNotFound {
-                liveEditorSelectionTarget = .characterOffset(selectedUTF16Range.location)
+                liveEditorSelectionTarget = SelectableNoteReadView.readViewportAnchorTarget(
+                    in: snapshot.document,
+                    editorTarget: .characterOffset(selectedUTF16Range.location)
+                )
                 liveEditorSelectionViewportAnchorY = textView.viewportAnchorY(
                     forSelectedRange: selectedUTF16Range
                 )

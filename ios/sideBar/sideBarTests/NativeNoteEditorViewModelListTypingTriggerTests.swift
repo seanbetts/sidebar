@@ -73,6 +73,30 @@ final class NativeNoteEditorListTypingTriggerTests: XCTestCase {
         )
     }
 
+    func testTypingSpaceAfterGreaterThanAtParagraphStartConvertsToBlockquote() async throws {
+        let viewModel = try makeViewModelForEmptyBodyParagraph()
+        noteAppendTypedText(">", to: viewModel)
+
+        XCTAssertTrue(viewModel.handleTextReplacement(" "))
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        XCTAssertEqual(snapshot.document.blocks.map(\.type), [.title, .blockquote])
+        XCTAssertEqual(
+            snapshot.document.blocks[1],
+            .init(
+                type: .blockquote,
+                children: [
+                    .paragraph([.init(text: "", marks: [])])
+                ]
+            )
+        )
+        XCTAssertEqual(snapshot.plainText, "Title\n> ")
+        XCTAssertEqual(
+            selectionInsertionOffset(in: viewModel),
+            viewModel.attributedContent.characters.count
+        )
+    }
+
     func testTypingSpaceDoesNotTriggerListConversionAwayFromParagraphStart() async throws {
         let viewModel = try makeViewModelForBodyParagraph("Alpha-")
 

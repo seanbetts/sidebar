@@ -157,6 +157,46 @@ final class SelectableNoteReadViewTests: XCTestCase {
         XCTAssertEqual(attributed.string, "Quoted\nAgain")
     }
 
+    func testMakePlatformAttributedContentOmitsVisibleBlockquotePrefixAfterTypingTriggerRoundTrip() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let insertion = viewModel.attributedContent.endIndex
+        viewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+
+        noteAppendTypedText(">", to: viewModel)
+        XCTAssertTrue(viewModel.handleTextReplacement(" "))
+
+        let snapshot = viewModel.currentPersistenceSnapshot()
+        let mixedDocument = NotesSemanticDocument(
+            version: snapshot.document.version,
+            blocks: snapshot.document.blocks + [
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Existing", marks: [])])
+                    ]
+                )
+            ]
+        )
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: mixedDocument,
+            baseFontSize: 16
+        )
+
+        XCTAssertEqual(attributed.string, "Title\n\nExisting")
+        XCTAssertFalse(attributed.string.contains("> "))
+    }
+
     func testEditingActivationCharacterOffsetMapsReadBlockquoteOffsetsToLogicalOffsets() {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,

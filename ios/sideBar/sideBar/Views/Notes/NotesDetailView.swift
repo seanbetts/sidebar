@@ -108,8 +108,8 @@ struct NotesDetailView: View {
             pendingReadExitHoldTargetOffset = nil
             #endif
         }
-        #if os(iOS)
         .onChange(of: editorViewModel.presentationMode) { _, newMode in
+            #if os(iOS)
             if newMode != .edit {
                 activeFormattingBarPresentation = nil
             }
@@ -122,7 +122,9 @@ struct NotesDetailView: View {
                 isHoldingEditorSurfaceDuringReadExit = false
                 pendingReadExitHoldTargetOffset = nil
             }
+            #endif
         }
+        #if os(iOS)
         .onChange(of: editorViewModel.pendingReadSurfaceViewportOffset) { _, newOffset in
             if let newOffset {
                 pendingReadExitHoldTargetOffset = newOffset

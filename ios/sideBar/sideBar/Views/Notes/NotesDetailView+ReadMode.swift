@@ -145,13 +145,7 @@ extension NotesDetailView {
 
     func handleCloseShortcut(editedDocument: NotesSemanticDocument? = nil) {
         guard viewModel.activeNote != nil else { return }
-        let hasAttachedNativeEditor: Bool
-        if #available(iOS 26.0, macOS 26.0, *) {
-            hasAttachedNativeEditor = editorViewModel.attachedNativeEditorViewModel != nil
-        } else {
-            hasAttachedNativeEditor = false
-        }
-        guard editedDocument != nil || editorViewModel.isEditingNote || hasAttachedNativeEditor else {
+        guard editedDocument != nil || editorViewModel.isEditingNote else {
             requestCloseNote()
             return
         }
@@ -196,6 +190,10 @@ extension NotesDetailView {
     }
 
     func handleEscapeKey(_ document: NotesSemanticDocument) {
+        guard editorViewModel.presentationMode == .edit else {
+            handleCloseShortcut()
+            return
+        }
         handleCloseShortcut(editedDocument: document)
     }
 

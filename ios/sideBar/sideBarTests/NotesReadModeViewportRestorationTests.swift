@@ -301,6 +301,79 @@ final class NotesReadModeViewportRestorationTests: NotesDetailViewHostingTestCas
         }
     }
 
+    func testTypedBlockquoteEscapeReleasesExitHoldAndShowsReadProjectionOnIOS() async throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Blockquotes", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+        let note = NotePayload(
+            id: "typed-blockquote-note",
+            name: "Blockquotes",
+            document: document,
+            plainText: NotesSemanticDocumentProjection.plainText(from: document),
+            path: "/typed-blockquote-note.md",
+            modified: nil,
+            created: nil
+        )
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+
+        let editorTextView = try await enterEditModeAndFindEditorTextView(
+            context: context,
+            controller: controller
+        )
+        let nativeViewModel = try XCTUnwrap(context.editorViewModel.attachedNativeEditorViewModel)
+
+        noteAppendTypedText(">", to: nativeViewModel)
+        XCTAssertTrue(nativeViewModel.handleTextReplacement(" "))
+        drainNotesHostingRunLoop()
+
+        XCTAssertTrue(editorTextView.attributedText.string.contains("> "))
+
+        editorTextView.handleEscapeCommand()
+
+        await waitUntil(timeout: .seconds(2)) {
+            context.editorViewModel.presentationMode == .read &&
+                findTextView(
+                    in: controller.view,
+                    accessibilityIdentifier: "notes-read-text-view"
+                ) != nil
+        }
+
+        let readTextView = try XCTUnwrap(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-read-text-view"
+            )
+        )
+
+        await waitUntil(timeout: .seconds(2)) {
+            context.makeView().isHoldingEditorSurfaceDuringReadExit == false &&
+                findTextView(
+                    in: controller.view,
+                    accessibilityIdentifier: "notes-editor-text-view"
+                ) == nil
+        }
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertFalse(
+            context.makeView().isHoldingEditorSurfaceDuringReadExit,
+            "Expected read-exit hold to clear; pendingOffset=\(String(describing: context.editorViewModel.pendingReadSurfaceViewportOffset)) pendingTarget=\(String(describing: context.editorViewModel.pendingReadSurfaceViewportAnchorTarget)) pendingAnchorY=\(String(describing: context.editorViewModel.pendingReadSurfaceViewportAnchorY))"
+        )
+        XCTAssertFalse(readTextView.attributedText.string.contains("> "))
+        XCTAssertEqual(readTextView.attributedText.string, "Blockquotes\n")
+        XCTAssertNil(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            )
+        )
+    }
+
     private func moveEditorViewportToTargetLine(
         _ editorTextView: UIKitNoteTextEditorSurface.AccessoryTextView,
         context: NotesDetailViewTestContext,

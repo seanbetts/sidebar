@@ -123,6 +123,65 @@ extension SelectableNoteReadView {
         return editorOffset
     }
 
+    static func readViewportAnchorTarget(
+        in document: NotesSemanticDocument,
+        editorTarget: ReadActivationTarget
+    ) -> ReadActivationTarget {
+        switch editorTarget {
+        case .start:
+            return .start
+        case .characterOffset(let offset):
+            return .characterOffset(
+                readViewportCharacterOffset(
+                    in: document,
+                    editorCharacterOffset: offset
+                )
+            )
+        }
+    }
+
+    static func readViewportCharacterOffset(
+        in document: NotesSemanticDocument,
+        editorCharacterOffset: Int
+    ) -> Int {
+        var readOffset = 0
+        var editorOffset = 0
+
+        for (blockIndex, block) in document.blocks.enumerated() {
+            if blockIndex > 0 {
+                if editorCharacterOffset == editorOffset {
+                    return readOffset
+                }
+                readOffset += 1
+                editorOffset += 1
+            }
+
+            if let mappedOffset = readViewportCharacterOffsetInCurrentBlock(
+                block,
+                editorCharacterOffset: editorCharacterOffset,
+                readOffset: readOffset,
+                editorOffset: editorOffset
+            ) {
+                return mappedOffset
+            }
+
+            readOffset = advancedOffset(
+                for: block,
+                startingAt: readOffset,
+                checklistPrefixLength: checklistReadPrefixLength,
+                blockquotePrefixLength: blockquoteReadPrefixLength
+            )
+            editorOffset = advancedOffset(
+                for: block,
+                startingAt: editorOffset,
+                checklistPrefixLength: checklistEditorPrefixLength,
+                blockquotePrefixLength: blockquoteEditorPrefixLength
+            )
+        }
+
+        return readOffset
+    }
+
     private static func editingActivationCharacterOffsetInCurrentBlock(
         _ block: NotesSemanticDocument.Block,
         readCharacterOffset: Int,
@@ -180,6 +239,39 @@ extension SelectableNoteReadView {
         }
 
         return nil
+    }
+
+    private static func readViewportCharacterOffsetInCurrentBlock(
+        _ block: NotesSemanticDocument.Block,
+        editorCharacterOffset: Int,
+        readOffset: Int,
+        editorOffset: Int
+    ) -> Int? {
+        switch block.type {
+        case .checklist:
+            return readViewportCharacterOffsetInChecklist(
+                block.children ?? [],
+                editorCharacterOffset: editorCharacterOffset,
+                readOffset: readOffset,
+                editorOffset: editorOffset
+            )
+        case .blockquote:
+            return readViewportCharacterOffsetInBlockquote(
+                block.children ?? [],
+                editorCharacterOffset: editorCharacterOffset,
+                readOffset: readOffset,
+                editorOffset: editorOffset
+            )
+        default:
+            let blockLength = advancedOffset(
+                for: block,
+                startingAt: editorOffset,
+                checklistPrefixLength: checklistEditorPrefixLength,
+                blockquotePrefixLength: blockquoteEditorPrefixLength
+            ) - editorOffset
+            guard editorCharacterOffset <= editorOffset + blockLength else { return nil }
+            return readOffset + max(0, min(editorCharacterOffset - editorOffset, blockLength))
+        }
     }
 
     private static func advancedOffset(
@@ -260,6 +352,81 @@ extension SelectableNoteReadView {
 
             currentReadOffset = itemEnd
             currentEditorOffset += blockquoteEditorPrefixLength + textLength
+        }
+
+        return nil
+    }
+
+    private static func readViewportCharacterOffsetInChecklist(
+        _ children: [NotesSemanticDocument.Block],
+        editorCharacterOffset: Int,
+        readOffset: Int,
+        editorOffset: Int
+    ) -> Int? {
+        var currentReadOffset = readOffset
+        var currentEditorOffset = editorOffset
+
+        for (itemIndex, child) in children.enumerated() {
+            if itemIndex > 0 {
+                if editorCharacterOffset == currentEditorOffset {
+                    return currentReadOffset
+                }
+                currentReadOffset += 1
+                currentEditorOffset += 1
+            }
+
+            let textLength = inlineTextLength(for: child.content)
+            let editorTextStart = currentEditorOffset + checklistEditorPrefixLength
+            let editorItemEnd = editorTextStart + textLength
+
+            if editorCharacterOffset <= editorTextStart {
+                let prefixOffset = max(0, editorCharacterOffset - currentEditorOffset)
+                return currentReadOffset + min(prefixOffset, checklistReadPrefixLength)
+            }
+            if editorCharacterOffset <= editorItemEnd {
+                let logicalOffset = editorCharacterOffset - editorTextStart
+                return currentReadOffset + checklistReadPrefixLength + logicalOffset
+            }
+
+            currentReadOffset += checklistReadPrefixLength + textLength
+            currentEditorOffset = editorItemEnd
+        }
+
+        return nil
+    }
+
+    private static func readViewportCharacterOffsetInBlockquote(
+        _ children: [NotesSemanticDocument.Block],
+        editorCharacterOffset: Int,
+        readOffset: Int,
+        editorOffset: Int
+    ) -> Int? {
+        var currentReadOffset = readOffset
+        var currentEditorOffset = editorOffset
+
+        for (itemIndex, child) in children.enumerated() {
+            if itemIndex > 0 {
+                if editorCharacterOffset == currentEditorOffset {
+                    return currentReadOffset
+                }
+                currentReadOffset += 1
+                currentEditorOffset += 1
+            }
+
+            let textLength = inlineTextLength(for: child.content)
+            let editorTextStart = currentEditorOffset + blockquoteEditorPrefixLength
+            let editorItemEnd = editorTextStart + textLength
+
+            if editorCharacterOffset <= editorTextStart {
+                return currentReadOffset
+            }
+            if editorCharacterOffset <= editorItemEnd {
+                let logicalOffset = editorCharacterOffset - editorTextStart
+                return currentReadOffset + logicalOffset
+            }
+
+            currentReadOffset += textLength
+            currentEditorOffset = editorItemEnd
         }
 
         return nil

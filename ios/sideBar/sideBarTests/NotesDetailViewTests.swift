@@ -258,6 +258,121 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(api.updateCallCount, 1)
     }
 
+    func testEscapeFromEditorAfterBlockquoteTypingTriggerTransitionsToReadWithSemanticBlockquoteSnapshot() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
+                .paragraph([.init(text: "", marks: [])])
+            ]
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Title",
+            document: document,
+            plainText: NotesSemanticDocumentProjection.plainText(from: document),
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+        let view = context.makeView()
+        let container = AttributedNoteEditorContainer(
+            editorViewModel: context.editorViewModel,
+            maxContentWidth: 640,
+            onEscape: view.handleEscapeKey
+        )
+
+        let insertion = nativeViewModel.attributedContent.endIndex
+        nativeViewModel.selection = AttributedTextSelection(range: insertion..<insertion)
+        noteAppendTypedText(">", to: nativeViewModel)
+        XCTAssertTrue(nativeViewModel.handleTextReplacement(" "))
+
+        XCTAssertEqual(
+            container.handleEscapeKey(
+                document: nativeViewModel.currentPersistenceSnapshot().document
+            ),
+            .handled
+        )
+        await waitUntil {
+            context.editorViewModel.presentationMode == .read &&
+                context.notesViewModel.activeNote?.plainText == "Title\n> "
+        }
+
+        XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        let activeNote = try XCTUnwrap(context.notesViewModel.activeNote)
+        XCTAssertEqual(activeNote.document.blocks.map(\.type), [.title, .blockquote])
+
+        let mixedDocument = NotesSemanticDocument(
+            version: activeNote.document.version,
+            blocks: activeNote.document.blocks + [
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([.init(text: "Existing", marks: [])])
+                    ]
+                )
+            ]
+        )
+
+        let attributed = SelectableNoteReadView.makePlatformAttributedContent(
+            from: mixedDocument,
+            baseFontSize: 16
+        )
+        XCTAssertEqual(attributed.string, "Title\n\nExisting")
+        XCTAssertFalse(attributed.string.contains("> "))
+    }
+
+    func testHandleCloseShortcutClosesNoteFromReadModeEvenWhenNativeEditorRemainsAttached() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+
+        let context = await makeNotesDetailViewTestContext()
+        let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
+        context.editorViewModel.attachNativeEditor(nativeViewModel)
+        context.editorViewModel.enterEditMode()
+        context.editorViewModel.exitEditModeToRead()
+
+        await waitUntil(timeout: .milliseconds(150)) {
+            context.editorViewModel.presentationMode == .read
+        }
+        XCTAssertNotNil(context.editorViewModel.attachedNativeEditorViewModel)
+
+        context.makeView().handleCloseShortcut()
+        await waitUntil(timeout: .milliseconds(150)) {
+            context.editorViewModel.currentNoteId == nil &&
+                context.notesViewModel.activeNote == nil
+        }
+
+        XCTAssertNil(context.editorViewModel.currentNoteId)
+        XCTAssertNil(context.notesViewModel.activeNote)
+    }
+
+    func testHandleEscapeKeyClosesNoteWhenPresentationAlreadyRead() async throws {
+        let context = await makeNotesDetailViewTestContext()
+        let view = context.makeView()
+        let document = try XCTUnwrap(context.notesViewModel.activeNote?.document)
+
+        context.editorViewModel.presentationMode = .read
+
+        view.handleEscapeKey(document)
+        await waitUntil(timeout: .milliseconds(150)) {
+            context.editorViewModel.currentNoteId == nil &&
+                context.notesViewModel.activeNote == nil
+        }
+
+        XCTAssertNil(context.editorViewModel.currentNoteId)
+        XCTAssertNil(context.notesViewModel.activeNote)
+    }
+
     func testReadInitialViewportRestorationAppliedDefersPendingRestorationCleanup() async {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.setPendingReadSurfaceViewportRestoration(
