@@ -242,16 +242,24 @@ def test_calibration_prompt_assistant_identity_name_expands_name_range() -> None
         in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
     )
     assert (
+        "The name should feel like a real chosen name, not just an interesting or distinctive word."
+        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+    )
+    assert (
+        'It should fit comfortably in an introduction like "Hi, I\'m ___."'
+        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+    )
+    assert (
+        "Avoid names that feel more like objects, materials, tools, raw common nouns, or clipped fragments than names."
+        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+    )
+    assert (
+        "choose a genuinely different name that still fits the same authored identity"
+        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+    )
+    assert (
         "Suitable names may come from uncommon human names"
-        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
-    )
-    assert (
-        'Avoid default "cool AI assistant" naming patterns'
-        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
-    )
-    assert (
-        "choose a meaningfully different naming mode"
-        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+        not in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
     )
 
 

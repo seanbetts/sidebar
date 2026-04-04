@@ -6,6 +6,15 @@ final class ChatSoulCalibrationSourceTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("SIDEBARSETUP"))
+        XCTAssertTrue(normalized.contains("Onelaststepbeforeyoustart"))
+        XCTAssertTrue(normalized.contains("ThisshortsetuphelpssideBardecidehowtoworkwithyou."))
+        XCTAssertTrue(
+            normalized.contains(
+                "Itusesyouranswerstoshapeitsinitialpersonality,choosethenameitwilluse,"
+            )
+        )
+        XCTAssertTrue(normalized.contains("andmakeitshelpfeelmoreusefulfromthestart."))
+        XCTAssertTrue(normalized.contains("You'llanswerafewquickquestions,mostlybytappingoptions."))
         XCTAssertTrue(normalized.contains("WhatshouldIhelpyouwith?"))
         XCTAssertTrue(normalized.contains("Chooseoneormoreareasyouwantmetofocuson."))
         XCTAssertTrue(normalized.contains("Personalproductivity"))
@@ -85,6 +94,7 @@ final class ChatSoulCalibrationSourceTests: XCTestCase {
         let sourceURLs = [
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("ChatView.swift"),
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("SoulCalibrationPromptView.swift"),
+            viewsRoot.appendingPathComponent("Chat").appendingPathComponent("SoulCalibrationPromptView+Footer.swift"),
             viewsRoot.appendingPathComponent("Chat").appendingPathComponent("SoulCalibrationPromptComponents.swift")
         ]
 

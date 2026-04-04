@@ -118,6 +118,7 @@ private final class ChatViewModelTeardownBag {
     @Published public var soulCalibrationConfirmationText: String?
     @Published public var soulCalibrationErrorMessage: String?
     @Published public var isSubmittingSoulCalibration: Bool = false
+    @Published public var hasAcknowledgedSoulCalibrationIntro: Bool = false
     var pendingSoulCalibrationSubmission: PendingSoulCalibrationSubmission?
 
     let network: ChatNetworkCoordinator

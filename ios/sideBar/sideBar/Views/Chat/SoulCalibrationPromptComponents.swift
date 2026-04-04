@@ -81,6 +81,7 @@ struct ContinueButton: View {
 }
 
 enum CalibrationDisplayStep: Equatable {
+    case intro
     case primaryGoal
     case workingRelationship
     case tonePreferences
@@ -99,6 +100,8 @@ enum CalibrationDisplayStep: Equatable {
 
     var previous: CalibrationDisplayStep? {
         switch self {
+        case .intro:
+            return nil
         case .primaryGoal:
             return nil
         case .workingRelationship:
@@ -112,6 +115,8 @@ enum CalibrationDisplayStep: Equatable {
 
     var progressIndex: Int {
         switch self {
+        case .intro:
+            return -1
         case .primaryGoal:
             return 0
         case .workingRelationship:

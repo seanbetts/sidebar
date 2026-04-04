@@ -6,6 +6,20 @@ extension ChatViewModel {
         soulCalibrationState == nil
     }
 
+    public var shouldShowSoulCalibrationIntro: Bool {
+        guard let soulCalibrationState else {
+            return false
+        }
+        guard !hasAcknowledgedSoulCalibrationIntro else {
+            return false
+        }
+        guard soulCalibrationState.status != .awaitingNameAcceptance,
+              soulCalibrationState.currentPrompt == .primaryGoal else {
+            return false
+        }
+        return !hasStartedSoulCalibrationQuestions(soulCalibrationState)
+    }
+
     func syncSoulCalibration(from onboardingState: OnboardingState?) {
         guard let onboardingState,
               onboardingState.currentOnboardingStep == .soulCalibration else {
@@ -13,14 +27,25 @@ extension ChatViewModel {
             soulCalibrationConfirmationText = nil
             soulCalibrationErrorMessage = nil
             isSubmittingSoulCalibration = false
+            hasAcknowledgedSoulCalibrationIntro = false
             pendingSoulCalibrationSubmission = nil
             return
         }
 
         soulCalibrationState = onboardingState.calibration
+        if shouldAutoAcknowledgeSoulCalibrationIntro(
+            for: onboardingState.calibration
+        ) {
+            hasAcknowledgedSoulCalibrationIntro = true
+        }
         if onboardingState.calibration.status != .awaitingNameAcceptance {
             soulCalibrationConfirmationText = nil
         }
+    }
+
+    func acknowledgeSoulCalibrationIntro() {
+        hasAcknowledgedSoulCalibrationIntro = true
+        soulCalibrationErrorMessage = nil
     }
 
     func submitSoulCalibrationAnswer(_ answer: OnboardingCalibrationAnswer) async {
@@ -408,6 +433,22 @@ extension ChatViewModel {
             return false
         }
         return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func hasStartedSoulCalibrationQuestions(
+        _ state: OnboardingCalibrationState
+    ) -> Bool {
+        hasNonEmptySoulCalibrationText(state.answers.primaryGoal)
+            || hasNonEmptySoulCalibrationText(state.answers.workingRelationship)
+            || hasNonEmptySoulCalibrationText(state.answers.tonePreferences)
+    }
+
+    private func shouldAutoAcknowledgeSoulCalibrationIntro(
+        for state: OnboardingCalibrationState
+    ) -> Bool {
+        state.status == .awaitingNameAcceptance
+            || state.currentPrompt != .primaryGoal
+            || hasStartedSoulCalibrationQuestions(state)
     }
 
     private func sleepBeforeSoulCalibrationRetry() async throws {

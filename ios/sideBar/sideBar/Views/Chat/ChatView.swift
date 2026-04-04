@@ -125,9 +125,13 @@ private struct ChatDetailView: View {
                           let soulCalibrationState = viewModel.soulCalibrationState {
                     SoulCalibrationPromptView(
                         state: soulCalibrationState,
+                        showsIntro: viewModel.shouldShowSoulCalibrationIntro,
                         confirmationText: viewModel.soulCalibrationConfirmationText,
                         errorMessage: viewModel.soulCalibrationErrorMessage,
                         isBusy: viewModel.isSubmittingSoulCalibration,
+                        onContinueIntro: {
+                            viewModel.acknowledgeSoulCalibrationIntro()
+                        },
                         onSubmitPrimaryGoals: { choices in
                             Task {
                                 await viewModel.submitSoulCalibrationAnswer(

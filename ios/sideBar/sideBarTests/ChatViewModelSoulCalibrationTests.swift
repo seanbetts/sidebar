@@ -20,6 +20,86 @@ extension ChatViewModelTests {
         XCTAssertEqual(viewModel.soulCalibrationState?.currentPrompt, .primaryGoal)
     }
 
+    func testSyncSoulCalibrationShowsIntroForInitialPromptWithoutAnswers() {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .primaryGoal,
+                status: .inProgress
+            )
+        )
+
+        XCTAssertTrue(viewModel.shouldShowSoulCalibrationIntro)
+    }
+
+    func testAcknowledgeSoulCalibrationIntroHidesIntroUntilProgressAdvances() {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .primaryGoal,
+                status: .inProgress
+            )
+        )
+        viewModel.acknowledgeSoulCalibrationIntro()
+
+        XCTAssertFalse(viewModel.shouldShowSoulCalibrationIntro)
+    }
+
+    func testSyncSoulCalibrationAutoDismissesIntroAfterFirstAnswer() {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .workingRelationship,
+                status: .inProgress,
+                primaryGoal: "life_admin"
+            )
+        )
+
+        XCTAssertFalse(viewModel.shouldShowSoulCalibrationIntro)
+        XCTAssertTrue(viewModel.hasAcknowledgedSoulCalibrationIntro)
+    }
+
+    func testSyncSoulCalibrationResetClearsAcknowledgedIntroState() {
+        let cache = TestCacheClient()
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: cache
+        )
+
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .primaryGoal,
+                status: .inProgress
+            )
+        )
+        viewModel.acknowledgeSoulCalibrationIntro()
+
+        viewModel.syncSoulCalibration(from: nil)
+        viewModel.syncSoulCalibration(
+            from: soulCalibrationOnboardingState(
+                currentPrompt: .primaryGoal,
+                status: .inProgress
+            )
+        )
+
+        XCTAssertTrue(viewModel.shouldShowSoulCalibrationIntro)
+    }
+
     func testSubmitSoulCalibrationAnswerAdvancesPrompt() async throws {
         let cache = TestCacheClient()
         let onboardingAPI = MockOnboardingAPI()
@@ -64,7 +144,6 @@ extension ChatViewModelTests {
         XCTAssertEqual(onboardingAPI.submittedCalibrationAnswers.first?.prompt, .primaryGoal)
         XCTAssertEqual(viewModel.soulCalibrationState?.currentPrompt, .workingRelationship)
     }
-
     func testSubmitSoulCalibrationToneChoicesTransitionsToNameAcceptance() async throws {
         let cache = TestCacheClient()
         let onboardingAPI = MockOnboardingAPI()
@@ -321,7 +400,6 @@ extension ChatViewModelTests {
         XCTAssertTrue(viewModel.canShowFeatureDiscovery)
     }
 }
-
 private func soulCalibrationOnboardingState(
     currentPrompt: OnboardingCalibrationPrompt,
     status: OnboardingCalibrationStatus,
