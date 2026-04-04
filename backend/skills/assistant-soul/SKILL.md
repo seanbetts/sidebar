@@ -42,5 +42,7 @@ works over time, not a temporary mode for the current conversation.
   concise enough to scan in Settings and compact enough to carry in the runtime prompt.
 - Prefer a single compact paragraph per field. Avoid generic productivity clichés,
   inflated rhetoric, and long essay-style explanations.
+- Prefer specificity, originality, and surprise over safe convergence. Stay faithful
+  to the self sideBar is authoring, not to generic assistant defaults.
 - Resetting soul is a significant action. Do it only when explicitly requested or when
   a remediation path clearly calls for returning to defaults.
