@@ -279,6 +279,52 @@ def test_save_url_database_antibot_jina_blocked_content(monkeypatch):
     assert err.payload["code"] == "WEB_SAVE_BLOCKED_SITE"
 
 
+def test_save_url_database_google_unusual_traffic_page_is_rejected(monkeypatch):
+    module = _load_save_url_module()
+    _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        LocalParseFallbackError(
+            fallback="jina",
+            rule_id="antibot-fetch-challenge",
+            antibot_detection=AntibotDetection(
+                "generic", "challenge-form detected"
+            ),
+            stage="fetch",
+        )
+    )
+    module.get_markdown_content = lambda _url, _key: (
+        "Our systems have detected unusual traffic from your computer network. "
+        "This page checks to see if it's really you sending the requests, and not a robot.\n\n"
+        "This page appears when Google automatically detects requests coming from your computer network.\n\n"
+        "In the meantime, solving the above CAPTCHA will let you continue to use our services.\n\n"
+        "[Terms of Service](https://www.google.com/policies/terms/)\n\n"
+        "[Learn more](https://support.google.com/websearch/answer/86640)\n"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Google Search",
+            "url_source": "https://www.youtube.com/watch?v=abc123xyzAA",
+            "published_time": None,
+        },
+        "Ignored content",
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    with pytest.raises(module.WebSaveScriptError) as exc_info:
+        module.save_url_database("https://www.youtube.com/watch?v=abc123xyzAA", "user-1")
+
+    err = exc_info.value
+    assert err.payload["code"] == "WEB_SAVE_BLOCKED_SITE"
+
+
 def test_save_url_database_antibot_jina_reuters_shell_content_is_rejected(
     monkeypatch,
 ):

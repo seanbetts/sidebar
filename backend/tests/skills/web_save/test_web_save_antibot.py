@@ -78,6 +78,25 @@ def test_detects_datadome_challenge_marker():
     assert "DataDome" in detection.reason or "enable js and disable any ad blocker" in detection.reason.lower()
 
 
+def test_detects_google_unusual_traffic_page_in_markdown_text():
+    html = textwrap.dedent(
+        """
+        Our systems have detected unusual traffic from your computer network.
+
+        This page checks to see if it's really you sending the requests, and not a robot.
+
+        In the meantime, solving the above CAPTCHA will let you continue to use our services.
+        """
+    )
+
+    detection = detect_antibot_html(html)
+
+    assert detection is not None
+    assert detection.challenge_kind == "google"
+    assert "unusual traffic" in detection.reason.lower()
+    assert "captcha" in detection.reason.lower() or "robot" in detection.reason.lower()
+
+
 def test_returns_none_for_regular_article():
     html = textwrap.dedent(
         """
