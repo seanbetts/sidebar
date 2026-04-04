@@ -228,6 +228,33 @@ def test_calibration_prompts_frame_identity_and_soul_as_self_authored() -> None:
     assert "Choose your name for this user." not in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
 
 
+def test_calibration_prompt_assistant_identity_name_expands_name_range() -> None:
+    assert (
+        "Prefer specificity, originality, and surprise over safe convergence."
+        in CALIBRATION_AUTHORING_PRINCIPLES
+    )
+    assert (
+        "Choose the name that feels most native to the soul and identity you have already authored."
+        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+    )
+    assert (
+        "Do not use hyphens, spaces, numerals, or punctuation tricks."
+        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+    )
+    assert (
+        "Suitable names may come from uncommon human names"
+        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+    )
+    assert (
+        'Avoid default "cool AI assistant" naming patterns'
+        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+    )
+    assert (
+        "choose a meaningfully different naming mode"
+        in CALIBRATION_PROMPT_ASSISTANT_IDENTITY_NAME
+    )
+
+
 def test_build_recent_activity_block() -> None:
     notes = [
         {
