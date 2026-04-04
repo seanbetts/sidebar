@@ -44,12 +44,8 @@ class OnboardingService:
         """Return whether onboarding is complete for the resolved state."""
         milestones = state.get("milestones") or {}
         calibration = state.get("calibration") or {}
-        has_completion_milestone = bool(
-            milestones.get("secondary_tour_seen")
-            or milestones.get("first_outcome_completed")
-        )
         return (
-            has_completion_milestone
+            bool(milestones.get("secondary_tour_seen"))
             and calibration.get("status") == "completed"
             and not OnboardingService.needs_provider_connection(state)
         )

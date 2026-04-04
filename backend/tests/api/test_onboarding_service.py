@@ -296,7 +296,7 @@ def test_current_onboarding_step_uses_completed_when_tour_seen_after_provider_se
     assert OnboardingService.is_onboarding_complete(state) is True
 
 
-def test_current_onboarding_step_uses_completed_when_first_outcome_is_finished_after_provider_setup() -> None:
+def test_current_onboarding_step_keeps_feature_discovery_after_first_outcome_until_tour_is_dismissed() -> None:
     state = OnboardingService._resolve_state(
         {
             "status": "in_progress",
@@ -310,8 +310,8 @@ def test_current_onboarding_step_uses_completed_when_first_outcome_is_finished_a
     )
     state["provider_ready"] = True
 
-    assert OnboardingService.current_onboarding_step(state) == "completed"
-    assert OnboardingService.is_onboarding_complete(state) is True
+    assert OnboardingService.current_onboarding_step(state) == "feature_discovery"
+    assert OnboardingService.is_onboarding_complete(state) is False
 
 
 def test_is_onboarding_complete_true_when_tour_seen_even_if_permissions_are_still_skipped() -> None:

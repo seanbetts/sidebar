@@ -74,12 +74,12 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
     }
 
-    func testLoadOnboardingClearsRecoveryStateWhenBackendCompletesFromFirstOutcomeAlone() async {
+    func testLoadOnboardingKeepsFeatureDiscoveryWhenBackendHasFirstOutcomeButNoDismissal() async {
         let onboardingState = OnboardingState(
-            status: .completed,
+            status: .inProgress,
             providerReady: true,
-            currentOnboardingStep: .completed,
-            isOnboardingComplete: true,
+            currentOnboardingStep: .featureDiscovery,
+            isOnboardingComplete: false,
             intent: .notes,
             milestones: OnboardingMilestones(
                 providerConnected: "2026-04-02T11:00:00Z",
@@ -106,7 +106,7 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         await viewModel.loadOnboarding()
 
         XCTAssertEqual(viewModel.onboardingState, onboardingState)
-        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .featureDiscovery)
     }
 
     func testLoadOnboardingPreservesExistingFeatureDiscoveryStateWhenRefreshFails() async {

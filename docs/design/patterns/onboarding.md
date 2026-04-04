@@ -166,7 +166,7 @@ Signed-in phase 2 flow:
    - Introduces itself by its chosen name
    - Mentions the `Explore sideBar` surface
    - Explains that the discovery surface can be dismissed
-7. **Feature discovery** — the `Explore sideBar` surface remains available in Chat until the user dismisses it or reaches a first real outcome
+7. **Feature discovery** — the `Explore sideBar` surface remains available in Chat until the user explicitly dismisses it
 
 The calibration prompts are compact and mostly tap-based. The authored identity and soul are generated from the structured answers, then the chosen name is generated from that authored self rather than directly from the raw answers. The user does not name sideBar directly.
 
@@ -191,7 +191,7 @@ Tapping a tile starts a focused feature kickoff in a fresh chat. The goal is to 
 | Memory | AI learns the user over time; user always in control |
 | Widgets + Extensions (optional) | Home screen widgets and Share Extension / Safari Extension |
 
-Dismissing the discovery surface with "Not now" marks `secondary_tour_seen` and completes onboarding for that user. `first_outcome_completed` remains available for the stronger case where the user completes one real action during or after the tour.
+Dismissing the discovery surface with "Not now" marks `secondary_tour_seen` and completes onboarding for that user. `first_outcome_completed` remains available as a separate milestone for measuring or responding to a real outcome during or after the tour, but it does not dismiss the discovery surface on its own.
 
 ### FeatureIntroCard design
 
@@ -270,8 +270,8 @@ The backend owns all persistent onboarding state, exposed via `GET` and `PATCH /
 - `subscription_ready` — derived from live subscription state (true for Plus, Pro, or active BYOK)
 - `provider_ready` — derived from live provider settings (always true for Plus/Pro; requires key for BYOK)
 - `ai_ready` — derived from `subscription_ready AND provider_ready` (true when the user can chat)
-- `current_onboarding_step` — derived from subscription readiness, provider readiness, status, and completion milestones
-- `is_onboarding_complete` — derived from `ai_ready` plus completion milestones
+- `current_onboarding_step` — derived from subscription readiness, provider readiness, status, calibration completion, and explicit discovery dismissal
+- `is_onboarding_complete` — derived from `ai_ready`, calibration completion, and `secondary_tour_seen`
 
 Apple reads derived fields from the API response; it does not recompute them locally. `selected_provider` is not part of onboarding state — it belongs to general settings via `ai_primary_provider`. Subscription tier is not part of onboarding state — it belongs to the subscription model. Web onboarding remains deferred for now.
 
