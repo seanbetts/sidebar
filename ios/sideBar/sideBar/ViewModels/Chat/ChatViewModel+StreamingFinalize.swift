@@ -3,6 +3,7 @@ import Foundation
 
 // MARK: - ChatViewModel+StreamingFinalize
 extension ChatViewModel {
+    // swiftlint:disable:next function_body_length
     func finalizeStreaming(
         status: MessageStatus,
         streamError: String? = nil,
@@ -16,6 +17,9 @@ extension ChatViewModel {
             clearTypingRevealState(flushDisplayedContent: false)
             didReceiveTerminalStreamEvent = false
             isStreaming = false
+            currentStreamMessageVisibility = nil
+            currentAssistantInitiatedStreamSuppressesErrors = false
+            processAssistantInitiatedStreamsIfPossible()
             return
         }
         flushTypingRevealContent(for: messageId)
@@ -31,6 +35,11 @@ extension ChatViewModel {
                 error: streamError?.trimmedOrNil ?? message.error,
                 errorDetails: errorDetails?.trimmedOrNil ?? message.errorDetails
             )
+        }
+        if shouldSuppressCurrentStreamErrors && status == .error {
+            clearRetryState()
+            discardAssistantMessage(id: messageId)
+            return
         }
         typingRevealTargetsByMessageId[messageId] = nil
         if typingRevealTargetsByMessageId.isEmpty {
@@ -57,7 +66,7 @@ extension ChatViewModel {
                 )
             case .discard:
                 clearRetryState()
-                if status == .complete {
+                if status == .complete && !shouldSuppressCurrentStreamErrors {
                     errorMessage = "Assistant returned an empty response. Please try again."
                 }
                 discardAssistantMessage(id: messageId)
@@ -89,6 +98,9 @@ extension ChatViewModel {
         isStreaming = false
         streamingConversationId = nil
         currentStreamMessageId = nil
+        currentStreamMessageVisibility = nil
+        currentAssistantInitiatedStreamSuppressesErrors = false
+        processAssistantInitiatedStreamsIfPossible()
     }
 
     private func updateFinalizedMessage(
@@ -152,6 +164,12 @@ extension ChatViewModel {
     }
 
     private func discardAssistantMessage(id: String) {
+        typingRevealTargetsByMessageId[id] = nil
+        if typingRevealTargetsByMessageId.isEmpty {
+            typingRevealTask?.cancel()
+            typingRevealTask = nil
+        }
+        clearTypingRevealState(flushDisplayedContent: false)
         messages.removeAll { $0.id == id }
         syncMessagesToStore(
             conversationId: streamingConversationId ?? selectedConversationId,
@@ -161,6 +179,9 @@ extension ChatViewModel {
         isStreaming = false
         streamingConversationId = nil
         currentStreamMessageId = nil
+        currentStreamMessageVisibility = nil
+        currentAssistantInitiatedStreamSuppressesErrors = false
+        processAssistantInitiatedStreamsIfPossible()
     }
 
     private func emptyAssistantPresentation(

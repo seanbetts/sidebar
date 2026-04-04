@@ -42,6 +42,11 @@ class RequestAssemblyService:
     """Assemble chat inputs behind a service-layer boundary."""
 
     @staticmethod
+    def is_hidden_message(message: dict[str, Any]) -> bool:
+        """Return whether a stored transcript entry is hidden from the UI."""
+        return message.get("visibility") == "hidden"
+
+    @staticmethod
     def is_bootstrap_message(message: dict[str, Any]) -> bool:
         """Return whether a stored transcript entry is persisted bootstrap."""
         return message.get("kind") == "conversation_bootstrap"
@@ -51,6 +56,13 @@ class RequestAssemblyService:
         """Return whether a stored transcript entry was compacted out of replay."""
         compaction = message.get("compaction")
         return isinstance(compaction, dict) and compaction.get("status") == "compacted"
+
+    @classmethod
+    def should_exclude_hidden_message_from_replay(cls, message: dict[str, Any]) -> bool:
+        """Keep hidden internal instructions out of future prompt replay."""
+        if not cls.is_hidden_message(message):
+            return False
+        return message.get("kind") != "conversation_compaction_summary"
 
     @classmethod
     def extract_persisted_bootstrap_history(
@@ -121,6 +133,10 @@ class RequestAssemblyService:
             if RequestAssemblyService.is_bootstrap_message(message):
                 continue
             if RequestAssemblyService.is_compacted_source_message(message):
+                continue
+            if RequestAssemblyService.should_exclude_hidden_message_from_replay(
+                message
+            ):
                 continue
 
             role = message.get("role")

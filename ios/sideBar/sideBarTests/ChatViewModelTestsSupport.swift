@@ -175,7 +175,7 @@ class ChatViewModelTestCase: XCTestCase {
         onboardingAPI: (any OnboardingProviding)? = nil,
         scratchpadStore: ScratchpadStore? = nil,
         ingestionAPI: IngestionAPI? = nil,
-        streamClient: ChatViewModelTestsSupport.MockChatStreamClient? = nil,
+        streamClient: (any ChatStreamClient)? = nil,
         onOnboardingStateRefreshRequested: (() -> Void)? = nil,
         onOpenNoteRequested: ((String) -> Void)? = nil,
         requestContextProvider: (() -> ChatRequestContext?)? = nil,

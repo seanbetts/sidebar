@@ -461,7 +461,11 @@ extension ChatViewModel {
         guard !generatingTitleIds.contains(conversationId) else {
             return
         }
-        guard messages.count == 2 else {
+        guard messages.count >= 2 else {
+            return
+        }
+        guard messages.contains(where: { $0.role == .user }),
+              messages.contains(where: { $0.role == .assistant }) else {
             return
         }
         generatingTitleIds.insert(conversationId)
@@ -489,9 +493,7 @@ extension ChatViewModel {
     }
 
     var activeStreamingMessageId: String? {
-        if let currentStreamMessageId {
-            return currentStreamMessageId
-        }
-        return messages.last(where: { $0.role == .assistant && $0.status == .streaming })?.id
+        currentStreamMessageId
+            ?? messages.last(where: { $0.role == .assistant && $0.status == .streaming })?.id
     }
 }

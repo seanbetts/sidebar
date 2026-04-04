@@ -5,6 +5,38 @@ import Foundation
 // MARK: - ChatViewModel+Conversations
 
 extension ChatViewModel {
+    func ensureActiveConversationForOutgoingStream() async throws -> String {
+        var conversationId = selectedConversationId
+        if conversationId != nil {
+            setDraftConversationActive(false)
+        }
+        if conversationId == nil {
+            let conversation = try await conversationsAPI.create(title: "New Chat")
+            conversationId = conversation.id
+            selectedConversationId = conversation.id
+            setDraftConversationActive(false)
+            chatStore.upsertConversation(conversation)
+            chatStore.upsertConversationDetail(
+                ConversationWithMessages(
+                    id: conversation.id,
+                    title: conversation.title,
+                    titleGenerated: conversation.titleGenerated,
+                    createdAt: conversation.createdAt,
+                    updatedAt: conversation.updatedAt,
+                    messageCount: conversation.messageCount,
+                    firstMessage: conversation.firstMessage,
+                    isArchived: conversation.isArchived,
+                    messages: []
+                )
+            )
+        }
+
+        guard let conversationId else {
+            throw APIClientError.unknown
+        }
+        return conversationId
+    }
+
     public func startFeatureDiscovery(for feature: OnboardingDiscoveryFeature) async {
         let previousConversationId = selectedConversationId
         await startNewConversation()
@@ -67,7 +99,6 @@ extension ChatViewModel {
         refreshTask = nil
     }
 
-    // swiftlint:disable:next function_body_length
     public func sendMessage(text: String) async {
         guard let trimmed = text.trimmedOrNil, !isStreaming else {
             return
@@ -85,37 +116,11 @@ extension ChatViewModel {
             return ChatAttachment(fileId: fileId, filename: attachment.name)
         }
 
-        var conversationId = selectedConversationId
-        if conversationId != nil {
-            setDraftConversationActive(false)
-        }
-        if conversationId == nil {
-            do {
-                let conversation = try await conversationsAPI.create(title: "New Chat")
-                conversationId = conversation.id
-                selectedConversationId = conversation.id
-                setDraftConversationActive(false)
-                chatStore.upsertConversation(conversation)
-                chatStore.upsertConversationDetail(
-                    ConversationWithMessages(
-                        id: conversation.id,
-                        title: conversation.title,
-                        titleGenerated: conversation.titleGenerated,
-                        createdAt: conversation.createdAt,
-                        updatedAt: conversation.updatedAt,
-                        messageCount: conversation.messageCount,
-                        firstMessage: conversation.firstMessage,
-                        isArchived: conversation.isArchived,
-                        messages: []
-                    )
-                )
-            } catch {
-                errorMessage = ErrorMapping.message(for: error)
-                return
-            }
-        }
-
-        guard let conversationId else {
+        let conversationId: String
+        do {
+            conversationId = try await ensureActiveConversationForOutgoingStream()
+        } catch {
+            errorMessage = ErrorMapping.message(for: error)
             return
         }
 

@@ -2,6 +2,12 @@ import Foundation
 import sideBarShared
 
 extension ChatViewModel {
+    private static let soulCalibrationKickoffInstruction = """
+    Introduce yourself using your normal voice as the assistant the user just configured.
+    Mention the Explore sideBar pill at the top of the chat, explain that it shows what
+    you can do and can be dismissed, then invite the user to begin. Keep it brief.
+    """
+
     public var canShowFeatureDiscovery: Bool {
         soulCalibrationState == nil
     }
@@ -143,6 +149,7 @@ extension ChatViewModel {
         do {
             let response = try await onboardingAPI.acceptCalibrationName()
             applySoulCalibration(response: response)
+            await sendSoulCalibrationKickoffIfNeeded(after: response)
         } catch {
             soulCalibrationErrorMessage = soulCalibrationMessage(for: error)
         }
@@ -181,6 +188,28 @@ extension ChatViewModel {
     ) -> Bool {
         response.calibration.status == .awaitingNameAcceptance
             && (response.calibration.proposedName?.isEmpty ?? true)
+    }
+
+    private func shouldSendSoulCalibrationKickoff(
+        after response: OnboardingCalibrationActionResponse
+    ) -> Bool {
+        response.calibration.status == .completed
+            && response.state.currentOnboardingStep != .soulCalibration
+    }
+
+    private func sendSoulCalibrationKickoffIfNeeded(
+        after response: OnboardingCalibrationActionResponse
+    ) async {
+        guard shouldSendSoulCalibrationKickoff(after: response) else {
+            return
+        }
+
+        enqueueAssistantInitiatedStream(
+            AssistantInitiatedStreamOptions(
+                instruction: Self.soulCalibrationKickoffInstruction,
+                suppressErrors: true
+            )
+        )
     }
 
     private func submitSoulCalibrationAnswerWithRecovery(

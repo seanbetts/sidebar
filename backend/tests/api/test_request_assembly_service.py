@@ -77,6 +77,35 @@ def test_normalize_conversation_history_excludes_compacted_source_messages():
     ]
 
 
+def test_normalize_conversation_history_excludes_hidden_internal_instructions():
+    history = RequestAssemblyService.normalize_conversation_history(
+        [
+            {
+                "id": "hidden-user-1",
+                "role": "user",
+                "content": "Introduce yourself and mention the Explore sideBar pill.",
+                "visibility": "hidden",
+            },
+            {
+                "id": "assistant-1",
+                "role": "assistant",
+                "content": "Hi, I'm Voss.",
+            },
+            {
+                "id": "user-2",
+                "role": "user",
+                "content": "Help me plan my day",
+            },
+        ],
+        user_message_id=None,
+    )
+
+    assert history == [
+        {"role": "assistant", "content": "Hi, I'm Voss."},
+        {"role": "user", "content": "Help me plan my day"},
+    ]
+
+
 def test_normalize_conversation_history_includes_hidden_error_details_for_assistant():
     history = RequestAssemblyService.normalize_conversation_history(
         [

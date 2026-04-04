@@ -266,6 +266,12 @@ public struct ConversationWithMessages: Codable {
     public let messages: [Message]
 }
 
+/// Controls whether a streamed user instruction should appear in chat history.
+public enum ChatStreamMessageVisibility: String, Codable {
+    case visible
+    case hidden
+}
+
 /// Represents a chat stream request struct.
 public struct ChatStreamRequest: Codable {
     /// The message value.
@@ -276,6 +282,8 @@ public struct ChatStreamRequest: Codable {
     public let userMessageId: String?
     /// The assistant message id value.
     public let assistantMessageId: String?
+    /// The visibility of the submitted user message.
+    public let messageVisibility: ChatStreamMessageVisibility?
     /// The open context value.
     public let openContext: [String: AnyCodable]?
     /// The attachments value.
@@ -294,6 +302,7 @@ public struct ChatStreamRequest: Codable {
         conversationId: String? = nil,
         userMessageId: String? = nil,
         assistantMessageId: String? = nil,
+        messageVisibility: ChatStreamMessageVisibility? = nil,
         openContext: [String: AnyCodable]? = nil,
         attachments: [ChatAttachment]? = nil,
         currentLocation: String? = nil,
@@ -305,6 +314,7 @@ public struct ChatStreamRequest: Codable {
         self.conversationId = conversationId
         self.userMessageId = userMessageId
         self.assistantMessageId = assistantMessageId
+        self.messageVisibility = messageVisibility
         self.openContext = openContext
         self.attachments = attachments
         self.currentLocation = currentLocation

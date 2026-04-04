@@ -90,6 +90,90 @@ final class ChatViewModelTitleGenerationTests: XCTestCase {
         XCTAssertEqual(titleRequestCount, 1)
     }
 
+    func testFinalizeStreamingRequestsTitleWhenConversationStartsWithAssistantKickoff() async {
+        let cache = TestCacheClient()
+        let conversationsAPI = ChatViewModelTestsSupport.MockConversationsAPI(
+            listResult: .success([]),
+            getResult: .success(
+                ConversationWithMessages(
+                    id: "conv-1",
+                    title: "New Chat",
+                    titleGenerated: false,
+                    createdAt: "2026-01-02T00:00:00Z",
+                    updatedAt: "2026-01-02T00:00:00Z",
+                    messageCount: 0,
+                    firstMessage: nil,
+                    isArchived: nil,
+                    messages: []
+                )
+            )
+        )
+        var titleRequestCount = 0
+        let chatAPI = makeChatAPIForTitleGenerationTest {
+            titleRequestCount += 1
+        }
+        let viewModel = makeViewModel(
+            api: conversationsAPI,
+            cache: cache,
+            chatAPI: chatAPI
+        )
+        let conversation = Conversation(
+            id: "conv-1",
+            title: "New Chat",
+            titleGenerated: false,
+            createdAt: "2026-01-02T00:00:00Z",
+            updatedAt: "2026-01-02T00:00:00Z",
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: nil
+        )
+        viewModel.chatStore.upsertConversation(conversation)
+        viewModel.selectedConversationId = conversation.id
+        viewModel.streamingConversationId = conversation.id
+        viewModel.messages = [
+            Message(
+                id: "assistant-kickoff",
+                role: .assistant,
+                content: "Hi, I'm Voss.",
+                status: .complete,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:00Z",
+                error: nil
+            ),
+            Message(
+                id: "user-1",
+                role: .user,
+                content: "Help me plan the rest of today.",
+                status: .complete,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:01Z",
+                error: nil
+            ),
+            Message(
+                id: "assistant-1",
+                role: .assistant,
+                content: "Let's make a simple plan.",
+                status: .streaming,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T00:00:02Z",
+                error: nil
+            )
+        ]
+        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
+
+        viewModel.finalizeStreaming(status: .complete)
+
+        let requestedTitle = await waitForCondition {
+            titleRequestCount == 1
+        }
+
+        XCTAssertTrue(requestedTitle)
+        XCTAssertEqual(titleRequestCount, 1)
+    }
+
     private func makeViewModel<API: ConversationsProviding & ConversationsAPIProviding>(
         api: API,
         cache: CacheClient,

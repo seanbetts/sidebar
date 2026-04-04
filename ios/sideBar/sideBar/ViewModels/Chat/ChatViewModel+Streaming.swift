@@ -18,6 +18,8 @@ extension ChatViewModel {
             handler(event)
         }
     }
+
+    // swiftlint:disable:next function_body_length
     func makeStreamEventHandlers() -> [ChatStreamEventType: (ChatStreamEvent) -> Void] {
         #if DEBUG
         streamEventHandlersBuildCountForTesting += 1
@@ -43,8 +45,10 @@ extension ChatViewModel {
                     fallbackUserMessage: "The response hit an error. Please try again."
                 )
                 self?.didReceiveTerminalStreamEvent = true
-                self?.errorMessage = presentation.userMessage
-                self?.toastCenter?.show(message: presentation.userMessage)
+                if self?.shouldSuppressCurrentStreamErrors != true {
+                    self?.errorMessage = presentation.userMessage
+                    self?.toastCenter?.show(message: presentation.userMessage)
+                }
                 self?.finalizeStreaming(
                     status: .error,
                     streamError: presentation.userMessage,

@@ -6,6 +6,7 @@ extension ChatViewModel {
         errorMessage = nil
         isStreaming = true
         streamingConversationId = request.conversationId ?? selectedConversationId
+        currentStreamMessageVisibility = request.messageVisibility
         didReceiveTerminalStreamEvent = false
         ChatStreamingDebugTrace.log(
             "viewModel.stream.start",
@@ -51,8 +52,10 @@ extension ChatViewModel {
                 ].joined(separator: " ")
             )
             logStreamRequestFailure(mappedError)
-            errorMessage = presentation.userMessage
-            toastCenter?.show(message: presentation.userMessage)
+            if !shouldSuppressCurrentStreamErrors {
+                errorMessage = presentation.userMessage
+                toastCenter?.show(message: presentation.userMessage)
+            }
             finalizeStreaming(
                 status: .error,
                 streamError: presentation.userMessage,
@@ -77,6 +80,9 @@ extension ChatViewModel {
         isStreaming = false
         streamingConversationId = nil
         currentStreamMessageId = nil
+        currentStreamMessageVisibility = nil
+        currentAssistantInitiatedStreamSuppressesErrors = false
+        processAssistantInitiatedStreamsIfPossible()
     }
 
     public func beginStreamingMessage(assistantMessageId: String) {

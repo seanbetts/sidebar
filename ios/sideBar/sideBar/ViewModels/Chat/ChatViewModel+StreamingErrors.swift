@@ -7,6 +7,11 @@ private let chatStreamLogger = Logger(subsystem: "sideBar", category: "ChatStrea
 extension ChatViewModel {
     static let unexpectedStreamEndMessage = "The response stream ended unexpectedly. Please try again."
 
+    var shouldSuppressCurrentStreamErrors: Bool {
+        currentStreamMessageVisibility == .hidden
+            && currentAssistantInitiatedStreamSuppressesErrors
+    }
+
     func makeVoidEventHandler(
         _ action: @escaping (ChatViewModel) -> () -> Void
     ) -> (ChatStreamEvent) -> Void {
@@ -48,8 +53,10 @@ extension ChatViewModel {
             assistantMessageId=\(self.currentStreamMessageId ?? "nil", privacy: .public)
             """
         )
-        errorMessage = fallbackMessage
-        toastCenter?.show(message: fallbackMessage)
+        if !shouldSuppressCurrentStreamErrors {
+            errorMessage = fallbackMessage
+            toastCenter?.show(message: fallbackMessage)
+        }
         finalizeStreaming(status: .error, streamError: fallbackMessage)
     }
 

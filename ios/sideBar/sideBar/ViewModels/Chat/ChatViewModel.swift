@@ -6,6 +6,7 @@ import Foundation
 private final class ChatViewModelTeardownBag {
     private let lock = NSLock()
     private var streamClient: (any ChatStreamClient)?
+    private var assistantInitiatedStreamTask: Task<Void, Never>?
     private var clearActiveToolTask: Task<Void, Never>?
     private var typingRevealTask: Task<Void, Never>?
     private var refreshTask: PollingTask?
@@ -14,6 +15,12 @@ private final class ChatViewModelTeardownBag {
     func setStreamClient(_ streamClient: any ChatStreamClient) {
         lock.lock()
         self.streamClient = streamClient
+        lock.unlock()
+    }
+
+    func setAssistantInitiatedStreamTask(_ task: Task<Void, Never>?) {
+        lock.lock()
+        assistantInitiatedStreamTask = task
         lock.unlock()
     }
 
@@ -44,6 +51,7 @@ private final class ChatViewModelTeardownBag {
     deinit {
         lock.lock()
         let streamClient = streamClient
+        let assistantInitiatedStreamTask = assistantInitiatedStreamTask
         let clearActiveToolTask = clearActiveToolTask
         let typingRevealTask = typingRevealTask
         let refreshTask = refreshTask
@@ -51,6 +59,7 @@ private final class ChatViewModelTeardownBag {
         lock.unlock()
 
         streamClient?.disconnect()
+        assistantInitiatedStreamTask?.cancel()
         clearActiveToolTask?.cancel()
         typingRevealTask?.cancel()
         refreshTask?.cancel()
@@ -160,7 +169,15 @@ private final class ChatViewModelTeardownBag {
 
     var currentStreamMessageId: String?
     var streamingConversationId: String?
+    var currentStreamMessageVisibility: ChatStreamMessageVisibility?
+    var currentAssistantInitiatedStreamSuppressesErrors = false
     var didReceiveTerminalStreamEvent = false
+    var pendingAssistantInitiatedStreams: [AssistantInitiatedStreamOptions] = []
+    var assistantInitiatedStreamTask: Task<Void, Never>? {
+        didSet {
+            teardownBag.setAssistantInitiatedStreamTask(assistantInitiatedStreamTask)
+        }
+    }
     var latestRetrySource: ChatRetrySource?
     var latestRetryableAssistantMessageID: String?
     var retryInFlightAssistantMessageID: String?

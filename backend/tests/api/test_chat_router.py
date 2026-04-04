@@ -1330,6 +1330,68 @@ def test_stream_chat_rejects_oversized_system_prompt(test_client, monkeypatch):
     assert response.status_code == 400
 
 
+def test_stream_chat_persists_hidden_user_instruction_without_visible_count(
+    test_client, test_db, monkeypatch
+):
+    user_id = "user-1"
+    conversation = ConversationService.create_conversation(
+        test_db, user_id, "Hidden Kickoff"
+    )
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **_kwargs):
+            yield {"type": "token", "content": "Hi, I'm Voss."}
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(lambda *_args, **_kwargs: []),
+    )
+
+    app.dependency_overrides[get_current_user_id] = lambda: user_id
+    try:
+        response = test_client.post(
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={
+                "message": "Introduce yourself and mention the Explore sideBar pill.",
+                "conversation_id": str(conversation.id),
+                "assistant_message_id": "assistant-msg-1",
+                "message_visibility": "hidden",
+            },
+        )
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    test_db.expire_all()
+    updated = ConversationService.get_conversation(test_db, user_id, conversation.id)
+    assert updated.message_count == 1
+    assert len(updated.messages) == 3
+    assert updated.messages[0]["kind"] == "conversation_bootstrap"
+    assert updated.messages[0]["visibility"] == "hidden"
+    assert updated.messages[1]["role"] == "user"
+    assert updated.messages[1]["visibility"] == "hidden"
+    assert updated.messages[2]["role"] == "assistant"
+    assert updated.messages[2]["content"] == "Hi, I'm Voss."
+
+
 def test_stream_chat_rejects_request_that_exceeds_budget_after_trimming(
     test_client, monkeypatch
 ):

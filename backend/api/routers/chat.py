@@ -290,6 +290,7 @@ async def stream_chat(
     conversation_id = data.get("conversation_id")
     user_message_id = data.get("user_message_id")
     assistant_message_id = data.get("assistant_message_id")
+    message_visibility = data.get("message_visibility")
     history = data.get("history", [])
     open_context = data.get("open_context") or {}
     attachments = data.get("attachments") or []
@@ -300,6 +301,14 @@ async def stream_chat(
 
     if not message:
         raise BadRequestError("Message required")
+
+    normalized_message_visibility = (
+        message_visibility.strip().lower()
+        if isinstance(message_visibility, str) and message_visibility.strip()
+        else None
+    )
+    if normalized_message_visibility not in {"hidden", "visible", None}:
+        normalized_message_visibility = None
 
     chat_messages_total.inc()
 
@@ -677,6 +686,11 @@ async def stream_chat(
                             "content": message,
                             "status": "complete",
                             "timestamp": timestamp,
+                            **(
+                                {"visibility": normalized_message_visibility}
+                                if normalized_message_visibility == "hidden"
+                                else {}
+                            ),
                         },
                         {
                             "id": persisted_assistant_message_id,
