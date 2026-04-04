@@ -163,6 +163,23 @@ final class CachedStoreTests: XCTestCase {
         XCTAssertEqual(value, "hello")
     }
 
+    func testInMemoryCacheClientDeallocatesCleanlyAfterUse() {
+        weak var weakCache: InMemoryCacheClient?
+
+        autoreleasepool {
+            var cache: InMemoryCacheClient? = InMemoryCacheClient()
+            cache?.set(key: "greeting", value: "hello", ttlSeconds: 60)
+
+            let value: String? = cache?.get(key: "greeting")
+            XCTAssertEqual(value, "hello")
+
+            weakCache = cache
+            cache = nil
+        }
+
+        XCTAssertNil(weakCache)
+    }
+
 }
 
 @MainActor

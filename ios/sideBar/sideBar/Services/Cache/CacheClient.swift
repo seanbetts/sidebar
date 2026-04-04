@@ -41,6 +41,8 @@ public final class InMemoryCacheClient: CacheClient {
     public init() {
     }
 
+    nonisolated deinit {}
+
     public func get<T: Codable>(key: String) -> T? {
         let entry: Entry? = queue.sync {
             guard let entry = storage[key] else {
