@@ -186,6 +186,60 @@ private func makeActivationMouseEvent(
 @MainActor
 @available(iOS 26.0, *)
 final class SelectableNoteReadActivationIOSTests: NotesDetailViewHostingTestCase {
+    func testActivationTapRecognizerOwnsTouchSequenceDuringEditHandoff() throws {
+        let controller = mount(
+            SelectableNoteReadView(
+                document: NotesSemanticDocumentProjection.document(fromPlainText: "Hello world"),
+                maxContentWidth: 320,
+                onActivateEditing: { _ in }
+            ),
+            frame: CGRect(x: 0, y: 0, width: 320, height: 180),
+            makeKeyAndVisible: true
+        )
+        let textView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        let containerView = try XCTUnwrap(activationContainerView(for: textView))
+        let activationTapRecognizer = try XCTUnwrap(
+            containerView.gestureRecognizers?.compactMap { $0 as? UITapGestureRecognizer }.first
+        )
+        let competingRecognizer = UITapGestureRecognizer()
+        let recognizerDelegate = try XCTUnwrap(containerView as? UIGestureRecognizerDelegate)
+
+        XCTAssertTrue(
+            activationTapRecognizer.cancelsTouchesInView,
+            "The edit-activation tap should cancel the read text view's own touch handling so the same tap cannot steal first responder back."
+        )
+        XCTAssertFalse(
+            recognizerDelegate.gestureRecognizer?(
+                activationTapRecognizer,
+                shouldRecognizeSimultaneouslyWith: competingRecognizer
+            ) ?? true,
+            "The activation tap should not recognize simultaneously with the read text view's competing gestures during edit handoff."
+        )
+    }
+
+    func testActivationTapRecognizerCannotBePreventedByCompetingTapRecognizer() throws {
+        let controller = mount(
+            SelectableNoteReadView(
+                document: NotesSemanticDocumentProjection.document(fromPlainText: "Hello world"),
+                maxContentWidth: 320,
+                onActivateEditing: { _ in }
+            ),
+            frame: CGRect(x: 0, y: 0, width: 320, height: 180),
+            makeKeyAndVisible: true
+        )
+        let textView = try XCTUnwrap(findDescendantTextView(in: controller.view))
+        let containerView = try XCTUnwrap(activationContainerView(for: textView))
+        let activationTapRecognizer = try XCTUnwrap(
+            containerView.gestureRecognizers?.compactMap { $0 as? UITapGestureRecognizer }.first
+        )
+        let competingTapRecognizer = UITapGestureRecognizer()
+
+        XCTAssertFalse(
+            activationTapRecognizer.canBePrevented(by: competingTapRecognizer),
+            "The edit-activation tap should not yield to a competing tap recognizer from the read text view, or the first tap can disappear before activation fires."
+        )
+    }
+
     func testLinkTapDoesNotActivateEditing() throws {
         var capturedTarget: NotesEditorViewModel.PendingEditSelectionTarget?
         let document = NotesSemanticDocument(
@@ -383,6 +437,20 @@ private func findDescendantTextView(in view: UIView) -> UITextView? {
         if let match = findDescendantTextView(in: subview) {
             return match
         }
+    }
+
+    return nil
+}
+
+private func activationContainerView(for textView: UIView) -> UIView? {
+    let selector = NSSelectorFromString("handleActivationTapGesture:")
+    var currentView: UIView? = textView
+
+    while let view = currentView {
+        if view.responds(to: selector) {
+            return view
+        }
+        currentView = view.superview
     }
 
     return nil

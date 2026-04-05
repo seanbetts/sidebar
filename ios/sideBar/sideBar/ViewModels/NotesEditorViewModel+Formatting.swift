@@ -3,13 +3,68 @@ import SwiftUI
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
 extension NotesEditorViewModel {
+    func noteFormattingBarConfiguration(
+        for nativeEditorViewModel: NativeNoteEditorViewModel?
+    ) -> NoteFormattingBarConfiguration {
+        .init(
+            activeTextStyle: activeTextStyle(nativeEditorViewModel),
+            isTextStyleSectionEnabled: isTextStyleSectionEnabled(nativeEditorViewModel),
+            isBodyTextStyleEnabled: canApplyTextStyle(.body, nativeEditorViewModel),
+            isTitleTextStyleEnabled: canApplyTextStyle(.title, nativeEditorViewModel),
+            isHeadingTextStyleEnabled: canApplyTextStyle(.heading, nativeEditorViewModel),
+            isSubheadingTextStyleEnabled: canApplyTextStyle(.subheading, nativeEditorViewModel),
+            isBoldActive: isFormattingActive(.bold, nativeEditorViewModel),
+            isItalicActive: isFormattingActive(.italic, nativeEditorViewModel),
+            isUnderlineActive: isFormattingActive(.underline, nativeEditorViewModel),
+            isStrikethroughActive: isFormattingActive(.strikethrough, nativeEditorViewModel),
+            isInlineCodeActive: isFormattingActive(.inlineCode, nativeEditorViewModel),
+            isCodeBlockActive: isCodeBlockActive(nativeEditorViewModel),
+            isCodeBlockEnabled: canApplyCodeBlock(nativeEditorViewModel),
+            isUnorderedListActive: isListActive(.unorderedList, nativeEditorViewModel),
+            isUnorderedListEnabled: canApplyList(.unorderedList, nativeEditorViewModel),
+            isOrderedListActive: isListActive(.orderedList, nativeEditorViewModel),
+            isOrderedListEnabled: canApplyList(.orderedList, nativeEditorViewModel),
+            isChecklistActive: isListActive(.checklist, nativeEditorViewModel),
+            isChecklistEnabled: canApplyList(.checklist, nativeEditorViewModel),
+            isBlockquoteActive: isListActive(.blockquote, nativeEditorViewModel),
+            isBlockquoteEnabled: canApplyList(.blockquote, nativeEditorViewModel),
+            isEnabled: canApplyFormattingCommands(nativeEditorViewModel),
+            onTextStyleSelection: { [weak self] in self?.setTextStyle($0) },
+            onBoldTap: { [weak self] in self?.toggleFormatting(.bold) },
+            onItalicTap: { [weak self] in self?.toggleFormatting(.italic) },
+            onUnderlineTap: { [weak self] in self?.toggleFormatting(.underline) },
+            onStrikethroughTap: { [weak self] in self?.toggleFormatting(.strikethrough) },
+            onInlineCodeTap: { [weak self] in self?.toggleFormatting(.inlineCode) },
+            onCodeBlockTap: { [weak self] in self?.toggleCodeBlock() },
+            onUnorderedListTap: { [weak self] in self?.toggleList(.unorderedList) },
+            onOrderedListTap: { [weak self] in self?.toggleList(.orderedList) },
+            onChecklistTap: { [weak self] in self?.toggleList(.checklist) },
+            onBlockquoteTap: { [weak self] in self?.toggleList(.blockquote) },
+            onTitleShortcut: { [weak self] in self?.setTextStyle(.title) },
+            onHeadingShortcut: { [weak self] in self?.setTextStyle(.heading) },
+            onSubheadingShortcut: { [weak self] in self?.setTextStyle(.subheading) },
+            onBodyShortcut: { [weak self] in self?.setTextStyle(.body) }
+        )
+    }
+
     public func canApplyFormattingCommands() -> Bool {
-        currentNoteId != nil && attachedNativeEditorViewModel != nil && !isReadOnly && isEditingNote
+        canApplyFormattingCommands(attachedNativeEditorViewModel)
+    }
+
+    func canApplyFormattingCommands(_ nativeEditorViewModel: NativeNoteEditorViewModel?) -> Bool {
+        currentNoteId != nil && nativeEditorViewModel != nil && !isReadOnly && isEditingNote
     }
 
     public func isFormattingActive(_ formatting: NoteFormatting) -> Bool {
-        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
-              canApplyFormattingCommands() else { return false }
+        isFormattingActive(formatting, attachedNativeEditorViewModel)
+    }
+
+    func isFormattingActive(
+        _ formatting: NoteFormatting,
+        _ nativeEditorViewModel: NativeNoteEditorViewModel?
+    ) -> Bool {
+        guard let nativeEditorViewModel,
+              canApplyFormattingCommands(nativeEditorViewModel) else { return false }
         return nativeEditorViewModel.isFormattingActive(formatting)
     }
 
@@ -32,44 +87,81 @@ extension NotesEditorViewModel {
     }
 
     public func activeTextStyle() -> NoteTextStyle {
-        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
-              canApplyFormattingCommands() else { return .body }
+        activeTextStyle(attachedNativeEditorViewModel)
+    }
+
+    func activeTextStyle(_ nativeEditorViewModel: NativeNoteEditorViewModel?) -> NoteTextStyle {
+        guard let nativeEditorViewModel,
+              canApplyFormattingCommands(nativeEditorViewModel) else { return .body }
         return nativeEditorViewModel.activeTextStyle()
     }
 
     public func isTextStyleSectionEnabled() -> Bool {
-        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
-              canApplyFormattingCommands() else { return false }
+        isTextStyleSectionEnabled(attachedNativeEditorViewModel)
+    }
+
+    func isTextStyleSectionEnabled(_ nativeEditorViewModel: NativeNoteEditorViewModel?) -> Bool {
+        guard let nativeEditorViewModel,
+              canApplyFormattingCommands(nativeEditorViewModel) else { return false }
         return nativeEditorViewModel.isTextStyleSectionEnabled()
     }
 
     public func canApplyTextStyle(_ style: NoteTextStyle) -> Bool {
-        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
-              canApplyFormattingCommands() else { return false }
+        canApplyTextStyle(style, attachedNativeEditorViewModel)
+    }
+
+    func canApplyTextStyle(
+        _ style: NoteTextStyle,
+        _ nativeEditorViewModel: NativeNoteEditorViewModel?
+    ) -> Bool {
+        guard let nativeEditorViewModel,
+              canApplyFormattingCommands(nativeEditorViewModel) else { return false }
         return nativeEditorViewModel.canApplyTextStyle(style)
     }
 
     public func isCodeBlockActive() -> Bool {
-        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
-              canApplyFormattingCommands() else { return false }
+        isCodeBlockActive(attachedNativeEditorViewModel)
+    }
+
+    func isCodeBlockActive(_ nativeEditorViewModel: NativeNoteEditorViewModel?) -> Bool {
+        guard let nativeEditorViewModel,
+              canApplyFormattingCommands(nativeEditorViewModel) else { return false }
         return nativeEditorViewModel.isCodeBlockActive()
     }
 
     public func canApplyCodeBlock() -> Bool {
-        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
-              canApplyFormattingCommands() else { return false }
+        canApplyCodeBlock(attachedNativeEditorViewModel)
+    }
+
+    func canApplyCodeBlock(_ nativeEditorViewModel: NativeNoteEditorViewModel?) -> Bool {
+        guard let nativeEditorViewModel,
+              canApplyFormattingCommands(nativeEditorViewModel) else { return false }
         return nativeEditorViewModel.canApplyCodeBlock()
     }
 
     public func isListActive(_ listType: NotesSemanticDocument.BlockType) -> Bool {
-        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
-              canApplyFormattingCommands() else { return false }
+        isListActive(listType, attachedNativeEditorViewModel)
+    }
+
+    func isListActive(
+        _ listType: NotesSemanticDocument.BlockType,
+        _ nativeEditorViewModel: NativeNoteEditorViewModel?
+    ) -> Bool {
+        guard let nativeEditorViewModel,
+              canApplyFormattingCommands(nativeEditorViewModel) else { return false }
         return nativeEditorViewModel.isListActive(listType)
     }
 
     public func canApplyList(_ listType: NotesSemanticDocument.BlockType) -> Bool {
-        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
-              canApplyFormattingCommands() else { return false }
+        canApplyList(listType, attachedNativeEditorViewModel)
+    }
+
+    func canApplyList(
+        _ listType: NotesSemanticDocument.BlockType,
+        _ nativeEditorViewModel: NativeNoteEditorViewModel?
+    ) -> Bool {
+        guard let nativeEditorViewModel,
+              canApplyFormattingCommands(nativeEditorViewModel) else { return false }
         return nativeEditorViewModel.canApplyList(listType)
     }
 
@@ -117,44 +209,6 @@ extension NotesEditorViewModel {
 @available(iOS 26.0, macOS 26.0, *)
 extension NotesEditorViewModel {
     var noteFormattingBarConfiguration: NoteFormattingBarConfiguration {
-        .init(
-            activeTextStyle: activeTextStyle(),
-            isTextStyleSectionEnabled: isTextStyleSectionEnabled(),
-            isBodyTextStyleEnabled: canApplyTextStyle(.body),
-            isTitleTextStyleEnabled: canApplyTextStyle(.title),
-            isHeadingTextStyleEnabled: canApplyTextStyle(.heading),
-            isSubheadingTextStyleEnabled: canApplyTextStyle(.subheading),
-            isBoldActive: isFormattingActive(.bold),
-            isItalicActive: isFormattingActive(.italic),
-            isUnderlineActive: isFormattingActive(.underline),
-            isStrikethroughActive: isFormattingActive(.strikethrough),
-            isInlineCodeActive: isFormattingActive(.inlineCode),
-            isCodeBlockActive: isCodeBlockActive(),
-            isCodeBlockEnabled: canApplyCodeBlock(),
-            isUnorderedListActive: isListActive(.unorderedList),
-            isUnorderedListEnabled: canApplyList(.unorderedList),
-            isOrderedListActive: isListActive(.orderedList),
-            isOrderedListEnabled: canApplyList(.orderedList),
-            isChecklistActive: isListActive(.checklist),
-            isChecklistEnabled: canApplyList(.checklist),
-            isBlockquoteActive: isListActive(.blockquote),
-            isBlockquoteEnabled: canApplyList(.blockquote),
-            isEnabled: canApplyFormattingCommands(),
-            onTextStyleSelection: { [weak self] in self?.setTextStyle($0) },
-            onBoldTap: { [weak self] in self?.toggleFormatting(.bold) },
-            onItalicTap: { [weak self] in self?.toggleFormatting(.italic) },
-            onUnderlineTap: { [weak self] in self?.toggleFormatting(.underline) },
-            onStrikethroughTap: { [weak self] in self?.toggleFormatting(.strikethrough) },
-            onInlineCodeTap: { [weak self] in self?.toggleFormatting(.inlineCode) },
-            onCodeBlockTap: { [weak self] in self?.toggleCodeBlock() },
-            onUnorderedListTap: { [weak self] in self?.toggleList(.unorderedList) },
-            onOrderedListTap: { [weak self] in self?.toggleList(.orderedList) },
-            onChecklistTap: { [weak self] in self?.toggleList(.checklist) },
-            onBlockquoteTap: { [weak self] in self?.toggleList(.blockquote) },
-            onTitleShortcut: { [weak self] in self?.setTextStyle(.title) },
-            onHeadingShortcut: { [weak self] in self?.setTextStyle(.heading) },
-            onSubheadingShortcut: { [weak self] in self?.setTextStyle(.subheading) },
-            onBodyShortcut: { [weak self] in self?.setTextStyle(.body) }
-        )
+        noteFormattingBarConfiguration(for: attachedNativeEditorViewModel)
     }
 }

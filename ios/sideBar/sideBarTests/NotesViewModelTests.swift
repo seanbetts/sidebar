@@ -124,6 +124,60 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertEqual(api.getNoteCallCount, 0)
     }
 
+    func testLoadNoteIgnoresLateResponseForPreviouslySelectedNote() async throws {
+        let firstNote = NotePayload(
+            id: "note-a",
+            name: "First.md",
+            content: "First",
+            path: "note-a",
+            modified: nil,
+            created: nil
+        )
+        let secondNote = NotePayload(
+            id: "note-b",
+            name: "Second.md",
+            content: "Second",
+            path: "note-b",
+            modified: nil,
+            created: nil
+        )
+        let api = ControlledGetNotesAPI()
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: toastCenter,
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let firstLoad = Task { await viewModel.loadNote(id: firstNote.id) }
+        try await waitUntil(timeoutSeconds: 0.2) {
+            api.pendingGetNoteIDs.contains(firstNote.id)
+        }
+
+        let secondLoad = Task { await viewModel.loadNote(id: secondNote.id) }
+        try await waitUntil(timeoutSeconds: 0.2) {
+            api.pendingGetNoteIDs.contains(secondNote.id)
+        }
+
+        api.resumeGetNote(id: secondNote.id, result: .success(secondNote))
+        await secondLoad.value
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.activeNote?.id == secondNote.id
+        }
+        XCTAssertEqual(viewModel.selectedNoteId, secondNote.id)
+        XCTAssertEqual(viewModel.activeNote?.id, secondNote.id)
+
+        api.resumeGetNote(id: firstNote.id, result: .success(firstNote))
+        await firstLoad.value
+        await Task.yield()
+
+        XCTAssertEqual(viewModel.selectedNoteId, secondNote.id)
+        XCTAssertEqual(viewModel.activeNote?.id, secondNote.id)
+    }
+
     func testLoadArchivedTreeTracksLoadingState() async {
         let api = ControlledArchivedNotesAPI()
         let cache = InMemoryCacheClient()
@@ -736,6 +790,110 @@ private final class ControlledArchivedNotesAPI: NotesProviding {
     func resumeArchivedList(result: Result<FileTree, Error>) {
         guard let continuation = archivedContinuation else { return }
         archivedContinuation = nil
+        continuation.resume(with: result)
+    }
+}
+
+@MainActor
+private final class ControlledGetNotesAPI: NotesProviding {
+    private var continuations: [String: CheckedContinuation<NotePayload, Error>] = [:]
+    private(set) var pendingGetNoteIDs = Set<String>()
+
+    func listTree() async throws -> FileTree {
+        FileTree(children: [])
+    }
+
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        return FileTree(children: [])
+    }
+
+    func getNote(id: String) async throws -> NotePayload {
+        pendingGetNoteIDs.insert(id)
+        return try await withCheckedThrowingContinuation { continuation in
+            continuations[id] = continuation
+        }
+    }
+
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func updateNote(id: String, content: String) async throws -> NotePayload {
+        _ = id
+        _ = content
+        throw MockError.forced
+    }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw MockError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw MockError.forced
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        throw MockError.forced
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw MockError.forced
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        throw MockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func createFolder(path: String) async throws {
+        _ = path
+    }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = path
+    }
+
+    func resumeGetNote(id: String, result: Result<NotePayload, Error>) {
+        guard let continuation = continuations.removeValue(forKey: id) else { return }
+        pendingGetNoteIDs.remove(id)
         continuation.resume(with: result)
     }
 }

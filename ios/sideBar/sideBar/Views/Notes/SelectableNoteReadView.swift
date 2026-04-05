@@ -1466,7 +1466,7 @@ private final class SelectableNoteReadTextView: UITextView {
         )
     }
 
-    private func linkAttribute(at point: CGPoint) -> Any? {
+    fileprivate func linkAttribute(at point: CGPoint) -> Any? {
         guard attributedText.length > 0 else { return nil }
         guard let position = closestPosition(to: point) else { return nil }
         let characterIndex = min(
@@ -1558,19 +1558,36 @@ private final class SelectableNoteReadTextView: UITextView {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+private final class ReadActivationTapGestureRecognizer: UITapGestureRecognizer {
+    override func canBePrevented(by preventingGestureRecognizer: UIGestureRecognizer) -> Bool {
+        if preventingGestureRecognizer is UITapGestureRecognizer {
+            return false
+        }
+        return super.canBePrevented(by: preventingGestureRecognizer)
+    }
+
+    override func canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool {
+        if preventedGestureRecognizer is UITapGestureRecognizer {
+            return true
+        }
+        return super.canPrevent(preventedGestureRecognizer)
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
 private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizerDelegate {
     let textView = SelectableNoteReadTextView()
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     var onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     var onToggleChecklistItem: SelectableNoteReadView.ChecklistToggleHandler?
 
-    private lazy var activationTapRecognizer: UITapGestureRecognizer = {
-        let recognizer = UITapGestureRecognizer(
+    private lazy var activationTapRecognizer: ReadActivationTapGestureRecognizer = {
+        let recognizer = ReadActivationTapGestureRecognizer(
             target: self,
             action: #selector(handleActivationTapGesture(_:))
         )
         recognizer.numberOfTapsRequired = 1
-        recognizer.cancelsTouchesInView = false
+        recognizer.cancelsTouchesInView = true
         recognizer.delegate = self
         return recognizer
     }()
@@ -1596,14 +1613,16 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
 
     @objc
     private func handleActivationTapGesture(_ recognizer: UITapGestureRecognizer) {
-        guard recognizer.state == .ended else { return }
         let point = recognizer.location(in: textView)
+        guard recognizer.state == .ended else { return }
         if let checklistToggleTarget = textView.checklistToggleTarget(at: point),
            let onToggleChecklistItem {
             onToggleChecklistItem(checklistToggleTarget.blockIndex, checklistToggleTarget.itemIndex)
             return
         }
-        guard let target = textView.activationTarget(at: point) else { return }
+        guard let target = textView.activationTarget(at: point) else {
+            return
+        }
         if let onActivateEditingWithViewport {
             onActivateEditingWithViewport(
                 target,
@@ -1620,7 +1639,13 @@ private final class SelectableNoteReadContainerView: UIView, UIGestureRecognizer
     ) -> Bool {
         _ = gestureRecognizer
         _ = otherGestureRecognizer
-        return true
+        return false
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        let point = touch.location(in: textView)
+        _ = gestureRecognizer
+        return textView.linkAttribute(at: point) == nil
     }
 }
 

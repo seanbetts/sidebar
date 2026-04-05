@@ -5,6 +5,12 @@ import WidgetKit
 #endif
 
 extension NotesStore {
+    enum ActiveNoteUpdateMode {
+        case matchingSelection
+        case force
+        case none
+    }
+
     func indexNotesFromTree(_ tree: FileTree) {
         guard let indexer = spotlightIndexer else { return }
         let notes = flattenNoteNodes(from: tree.children)
@@ -147,10 +153,16 @@ extension NotesStore {
         return FileTreeSignature.make(current) != FileTreeSignature.make(incoming)
     }
 
-    func applyNoteUpdate(_ incoming: NotePayload, persist: Bool) {
+    func applyNoteUpdate(
+        _ incoming: NotePayload,
+        persist: Bool,
+        activeNoteMode: ActiveNoteUpdateMode = .matchingSelection
+    ) {
         syncNoteMetadataIntoTrees(incoming, persist: persist)
-        if shouldUpdateActiveNote(incoming) {
+        if shouldApplyNoteUpdateToActiveNote(incoming, mode: activeNoteMode),
+           shouldUpdateActiveNote(incoming) {
             activeNote = incoming
+            activeNoteRequestID = incoming.id
         }
         if persist {
             if shouldPersistNote(incoming) {
@@ -248,6 +260,28 @@ extension NotesStore {
             current.name != incoming.name ||
             current.path != incoming.path ||
             current.created != incoming.created
+    }
+
+    func shouldApplyNoteUpdateToActiveNote(
+        _ incoming: NotePayload,
+        mode: ActiveNoteUpdateMode
+    ) -> Bool {
+        switch mode {
+        case .force:
+            return true
+        case .none:
+            return false
+        case .matchingSelection:
+            if let activeNoteRequestID,
+               activeNoteRequestID == incoming.id || activeNoteRequestID == incoming.path {
+                return true
+            }
+            if let activeNote,
+               activeNote.id == incoming.id || activeNote.path == incoming.path {
+                return true
+            }
+            return false
+        }
     }
 
     func shouldPersistNote(_ note: NotePayload) -> Bool {

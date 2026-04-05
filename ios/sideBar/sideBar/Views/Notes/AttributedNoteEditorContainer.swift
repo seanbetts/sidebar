@@ -194,8 +194,10 @@ struct AttributedNoteEditorContainer: View {
             viewModel: nativeViewModel,
             maxContentWidth: maxContentWidth,
             isEditable: true,
-            shouldAutofocus: autofocusEnabled && editorViewModel.presentationMode == .edit,
-            formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
+            shouldAutofocus: autofocusEnabled && editorViewModel.shouldAutofocusEditorSurface,
+            formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration(
+                for: nativeViewModel
+            ),
             formattingBarPresentation: resolvedFormattingBarPresentation,
             pendingSelectionTarget: pendingSelectionTarget,
             pendingSelectionViewportAnchorY: pendingSelectionViewportAnchorY,
@@ -213,6 +215,7 @@ struct AttributedNoteEditorContainer: View {
                         + "isHoldingReadSurfaceDuringEditEntry=\(editorViewModel.isHoldingReadSurfaceDuringEditEntry) "
                         + NotesEditEntryDebugTrace.textViewSummary(textView)
                 )
+                editorViewModel.markEditorAutofocusSatisfied()
                 if shouldSkipDidBeginEditingPresentationReady {
                     shouldSkipDidBeginEditingPresentationReady = false
                     if let pendingPostAutofocusViewportAnchorY {
@@ -227,15 +230,19 @@ struct AttributedNoteEditorContainer: View {
                         details: NotesEditEntryDebugTrace.textViewSummary(textView)
                     )
                     textView.suppressAutofocusReveal = false
-                    onInitialPresentationReady?()
+                    DispatchQueue.main.async {
+                        onInitialPresentationReady?()
+                    }
                     return
                 }
                 let viewportAnchorY = pendingSelectionViewportAnchorY
                 pendingSelectionViewportAnchorY = nil
                 guard let viewportAnchorY else {
                     textView.suppressAutofocusReveal = false
-                    DispatchQueue.main.async {
-                        onInitialPresentationReady?()
+                    if editorViewModel.isHoldingReadSurfaceDuringEditEntry {
+                        DispatchQueue.main.async {
+                            onInitialPresentationReady?()
+                        }
                     }
                     return
                 }
@@ -252,7 +259,9 @@ struct AttributedNoteEditorContainer: View {
                             "viewportAnchorY=\(String(format: "%.2f", viewportAnchorY)) "
                             + NotesEditEntryDebugTrace.textViewSummary(textView)
                     )
-                    onInitialPresentationReady?()
+                    if editorViewModel.isHoldingReadSurfaceDuringEditEntry {
+                        onInitialPresentationReady?()
+                    }
                 }
             },
             onViewportSnapshotChange: { offset, selectedUTF16Range, selectionViewportAnchorY in

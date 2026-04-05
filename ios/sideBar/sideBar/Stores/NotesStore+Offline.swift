@@ -172,6 +172,7 @@ extension NotesStore {
         persistLocalTree(updatedTree)
         if archived, activeNote?.path == notePath {
             activeNote = nil
+            activeNoteRequestID = nil
         }
     }
 
@@ -183,6 +184,7 @@ extension NotesStore {
         invalidateNote(id: notePath)
         if activeNote?.path == notePath {
             activeNote = nil
+            activeNoteRequestID = nil
         }
     }
 
@@ -214,7 +216,7 @@ extension NotesStore {
         offlineStore?.set(key: CacheKeys.note(id: note.id), entityType: "note", value: updated, lastSyncAt: lastSyncAt)
         offlineStore?.set(key: CacheKeys.note(id: newPath), entityType: "note", value: updated, lastSyncAt: lastSyncAt)
         if activeNote?.id == note.id {
-            applyNoteUpdate(updated, persist: true)
+            applyNoteUpdate(updated, persist: true, activeNoteMode: .force)
         }
     }
 

@@ -10,7 +10,6 @@ extension NotesDetailView {
 
     var noteFormattingBar: some View {
         let configuration = noteFormattingBarConfiguration
-
         #if os(iOS)
         return UIKitNoteFormattingBarRepresentable(
             configuration: configuration,

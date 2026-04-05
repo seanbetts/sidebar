@@ -147,6 +147,71 @@ final class NotesReadModeViewportExitHoldTests: NotesDetailViewHostingTestCase {
         )
     }
 
+    func testEditToReadExitHoldDoesNotRefocusHeldEditorAfterViewRefresh() async throws {
+        let plainText = (0..<80)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let note = makeTestNote(plainText: plainText)
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+
+        _ = try await exitHoldEnterEditModeAndFindEditorTextView(
+            context: context,
+            controller: controller
+        )
+
+        environment.shortcutActionEvent = ShortcutActionEvent(
+            action: .closeItem,
+            section: .notes,
+            pane: nil
+        )
+
+        await waitUntil(timeout: .seconds(2)) {
+            context.editorViewModel.presentationMode == .read &&
+                exitHoldFindTextView(
+                    in: controller.view,
+                    accessibilityIdentifier: "notes-editor-text-view"
+                ) is UIKitNoteTextEditorSurface.AccessoryTextView
+        }
+
+        let heldEditorTextView = try XCTUnwrap(
+            exitHoldFindTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-editor-text-view"
+            ) as? UIKitNoteTextEditorSurface.AccessoryTextView
+        )
+        XCTAssertFalse(heldEditorTextView.shouldAutofocus)
+        XCTAssertFalse(heldEditorTextView.isFirstResponder)
+
+        context.store.applyEditorUpdate(
+            makeTestNote(
+                id: note.id,
+                plainText: plainText
+            )
+        )
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        drainNotesHostingRunLoop()
+        try? await Task.sleep(nanoseconds: 150_000_000)
+        drainNotesHostingRunLoop()
+
+        let refreshedHeldEditorTextView = exitHoldFindTextView(
+            in: controller.view,
+            accessibilityIdentifier: "notes-editor-text-view"
+        ) as? UIKitNoteTextEditorSurface.AccessoryTextView
+        if let refreshedHeldEditorTextView {
+            XCTAssertTrue(refreshedHeldEditorTextView === heldEditorTextView)
+            XCTAssertFalse(
+                refreshedHeldEditorTextView.isFirstResponder,
+                "Expected the hidden editor surface to stay unfocused during read-exit hold even if a later note refresh triggers another UIKit update. "
+                    + "shouldAutofocus=\(refreshedHeldEditorTextView.shouldAutofocus) "
+                    + "hasScheduledAutofocus=\(refreshedHeldEditorTextView.hasScheduledAutofocus) "
+                    + "windowAttached=\(refreshedHeldEditorTextView.window != nil)"
+            )
+        }
+    }
+
     private func exitHoldEnterEditModeAndFindEditorTextView(
         context: NotesDetailViewTestContext,
         controller: UIViewController

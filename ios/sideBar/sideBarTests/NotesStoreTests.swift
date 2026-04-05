@@ -251,6 +251,60 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertEqual(store.tree?.children.first?.modified, 2)
     }
 
+    func testBackgroundRefreshForPreviousNoteDoesNotReplaceNewActiveNote() async throws {
+        let firstCached = NotePayload(
+            id: "note-a",
+            name: "First.md",
+            content: "First cached",
+            path: "note-a",
+            modified: 1,
+            created: nil
+        )
+        let firstRefreshed = NotePayload(
+            id: "note-a",
+            name: "First.md",
+            content: "First refreshed",
+            path: "note-a",
+            modified: 2,
+            created: nil
+        )
+        let secondRemote = NotePayload(
+            id: "note-b",
+            name: "Second.md",
+            content: "Second remote",
+            path: "note-b",
+            modified: 3,
+            created: nil
+        )
+        let cache = TestCacheClient()
+        cache.set(key: CacheKeys.note(id: firstCached.id), value: firstCached, ttlSeconds: 60)
+        let api = ControlledNoteLoadingAPI()
+        let store = NotesStore(api: api, cache: cache)
+
+        try await store.loadNote(id: firstCached.id)
+        XCTAssertEqual(store.activeNote?.id, firstCached.id)
+        try await NotesStoreTestsSupport.waitUntilCondition(timeoutSeconds: 0.2) {
+            await api.pendingGetNoteIDs.contains(firstCached.id)
+        }
+
+        let secondLoad = Task {
+            try await store.loadNote(id: secondRemote.id, force: true)
+        }
+        try await NotesStoreTestsSupport.waitUntilCondition(timeoutSeconds: 0.2) {
+            await api.pendingGetNoteIDs.contains(secondRemote.id)
+        }
+
+        api.resumeGetNote(id: secondRemote.id, result: .success(secondRemote))
+        try await secondLoad.value
+        XCTAssertEqual(store.activeNote?.id, secondRemote.id)
+
+        api.resumeGetNote(id: firstCached.id, result: .success(firstRefreshed))
+        await Task.yield()
+
+        XCTAssertEqual(store.activeNote?.id, secondRemote.id)
+        XCTAssertEqual(store.activeNote?.plainText, secondRemote.plainText)
+    }
+
     func testEnqueueArchiveClearsPinnedStateOptimistically() async throws {
         let pinnedNode = FileNode(
             name: "Pinned.md",
@@ -457,6 +511,133 @@ private func currentPinnedOrder(in tree: FileTree?) -> [String] {
             return $0.path < $1.path
         }
         .map(\.path)
+}
+
+private actor ControlledNoteLoadingCoordinator {
+    private var continuations: [String: CheckedContinuation<NotePayload, Error>] = [:]
+    private var pendingIDs = Set<String>()
+
+    func begin(id: String, continuation: CheckedContinuation<NotePayload, Error>) {
+        pendingIDs.insert(id)
+        continuations[id] = continuation
+    }
+
+    func resume(id: String, result: Result<NotePayload, Error>) {
+        guard let continuation = continuations.removeValue(forKey: id) else { return }
+        pendingIDs.remove(id)
+        continuation.resume(with: result)
+    }
+
+    func hasPending(id: String) -> Bool {
+        pendingIDs.contains(id)
+    }
+}
+
+private final class ControlledNoteLoadingAPI: NotesProviding {
+    private let coordinator = ControlledNoteLoadingCoordinator()
+
+    var pendingGetNoteIDs: Set<String> {
+        get async {
+            var results = Set<String>()
+            for candidate in ["note-a", "note-b"] where await coordinator.hasPending(id: candidate) {
+                results.insert(candidate)
+            }
+            return results
+        }
+    }
+
+    func listTree() async throws -> FileTree { FileTree(children: []) }
+
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        return FileTree(children: [])
+    }
+
+    func getNote(id: String) async throws -> NotePayload {
+        try await withCheckedThrowingContinuation { continuation in
+            Task {
+                await coordinator.begin(id: id, continuation: continuation)
+            }
+        }
+    }
+
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func updateNote(id: String, content: String) async throws -> NotePayload {
+        _ = id
+        _ = content
+        throw NotesStoreTestsSupport.MockError.forced
+    }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw NotesStoreTestsSupport.MockError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw NotesStoreTestsSupport.MockError.forced
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        throw NotesStoreTestsSupport.MockError.forced
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw NotesStoreTestsSupport.MockError.forced
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        throw NotesStoreTestsSupport.MockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw NotesStoreTestsSupport.MockError.forced
+    }
+
+    func createFolder(path: String) async throws { _ = path }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws { _ = path }
+
+    func resumeGetNote(id: String, result: Result<NotePayload, Error>) {
+        Task {
+            await coordinator.resume(id: id, result: result)
+        }
+    }
 }
 
 private func pinnedNodes(in nodes: [FileNode]) -> [FileNode] {

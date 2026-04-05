@@ -30,6 +30,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     var isRefreshingTree = false
     var isRefreshingArchivedTree = false
     var refreshingNotes = Set<String>()
+    var activeNoteRequestID: String?
     let archivedNoteRetentionDays = 7
     let archivedNotePrefetchLimit = 50
     let archivedTreeLimit = 500
@@ -112,16 +113,17 @@ public final class NotesStore: CachedStoreBase<FileTree> {
     }
 
     public func loadNote(id: String, force: Bool = false) async throws {
+        activeNoteRequestID = id
         let cacheKey = CacheKeys.note(id: id)
         if !force, let cached: NotePayload = cache.get(key: cacheKey) {
-            applyNoteUpdate(cached, persist: false)
+            applyNoteUpdate(cached, persist: false, activeNoteMode: .matchingSelection)
             Task { [weak self] in
                 await self?.refreshNote(id: id)
             }
             return
         }
         if !force, let offline = offlineStore?.get(key: cacheKey, as: NotePayload.self) {
-            applyNoteUpdate(offline, persist: false)
+            applyNoteUpdate(offline, persist: false, activeNoteMode: .matchingSelection)
             if networkStatus?.isNetworkAvailable ?? true {
                 Task { [weak self] in
                     await self?.refreshNote(id: id)
@@ -130,7 +132,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
             return
         }
         let response = try await api.getNote(id: id)
-        applyNoteUpdate(response, persist: true)
+        applyNoteUpdate(response, persist: true, activeNoteMode: .matchingSelection)
     }
 
     public func invalidateTree() {
@@ -162,10 +164,11 @@ public final class NotesStore: CachedStoreBase<FileTree> {
 
     public func clearActiveNote() {
         activeNote = nil
+        activeNoteRequestID = nil
     }
 
     public func applyEditorUpdate(_ note: NotePayload) {
-        applyNoteUpdate(note, persist: true)
+        applyNoteUpdate(note, persist: true, activeNoteMode: .force)
     }
 
     public func applyRealtimeEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) async {
@@ -173,6 +176,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         if payload.eventType == .delete {
             if let noteId, activeNote?.id == noteId {
                 activeNote = nil
+                activeNoteRequestID = nil
             }
             if let noteId {
                 // Get the path before invalidating so we can remove from Spotlight
@@ -182,7 +186,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
                 invalidateNote(id: noteId)
             }
         } else if let record = payload.record, let mapped = RealtimeMappers.mapNote(record) {
-            applyNoteUpdate(mapped, persist: true)
+            applyNoteUpdate(mapped, persist: true, activeNoteMode: .matchingSelection)
         }
         await refreshTree()
     }
@@ -191,6 +195,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         tree = nil
         archivedTree = nil
         activeNote = nil
+        activeNoteRequestID = nil
     }
 
     // MARK: - Private
@@ -263,7 +268,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         defer { refreshingNotes.remove(id) }
         do {
             let response = try await api.getNote(id: id)
-            applyNoteUpdate(response, persist: true)
+            applyNoteUpdate(response, persist: true, activeNoteMode: .matchingSelection)
             markBackgroundRefreshSuccess()
         } catch {
             markBackgroundRefreshFailure()

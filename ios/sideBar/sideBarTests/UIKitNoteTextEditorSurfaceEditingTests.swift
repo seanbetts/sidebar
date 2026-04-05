@@ -8,6 +8,14 @@ import XCTest
 @MainActor
 @available(iOS 26.0, *)
 final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCase {
+    final class FocusReportingTextView: UITextView {
+        var isFocusedForTesting = false
+
+        override var isFirstResponder: Bool {
+            isFocusedForTesting
+        }
+    }
+
     func testUIKitSelectionChangesFlowBackIntoCanonicalSelectionUsingUTF16Offsets() throws {
         let viewModel = NativeNoteEditorViewModel()
         viewModel.loadDocument(
@@ -24,6 +32,36 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
             viewModel.selection,
             in: viewModel.attributedContent,
             equals: 5
+        )
+    }
+
+    func testUIKitSelectionChangesDoNotPublishBackAfterTextViewLosesFirstResponder() throws {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("abcdef"),
+            plainText: "abcdef"
+        )
+        let coordinator = UIKitNoteTextEditorSurface.Coordinator(viewModel: viewModel)
+        let textView = FocusReportingTextView()
+        textView.attributedText = NSAttributedString(string: "abcdef")
+        textView.delegate = coordinator
+        textView.isFocusedForTesting = true
+        textView.selectedRange = NSRange(location: 4, length: 0)
+        textView.delegate?.textViewDidChangeSelection?(textView)
+        assertUIKitInsertionPointUTF16Offset(
+            viewModel.selection,
+            in: viewModel.attributedContent,
+            equals: 4
+        )
+
+        textView.isFocusedForTesting = false
+        textView.selectedRange = NSRange(location: 0, length: 0)
+        textView.delegate?.textViewDidChangeSelection?(textView)
+
+        assertUIKitInsertionPointUTF16Offset(
+            viewModel.selection,
+            in: viewModel.attributedContent,
+            equals: 4
         )
     }
 

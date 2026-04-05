@@ -36,7 +36,8 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var saveErrorMessage: String?
     @Published public private(set) var isReadOnly: Bool = true
     @Published public private(set) var isQueuedForSync: Bool = false
-    @Published public internal(set) var isHoldingReadSurfaceDuringEditEntry: Bool = false
+    public internal(set) var isHoldingReadSurfaceDuringEditEntry: Bool = false
+    public internal(set) var isTransitioningEditExitToRead: Bool = false
     @Published public internal(set) var pendingReadSurfaceViewportOffset: CGPoint?
     @Published public internal(set) var pendingReadSurfaceViewportAnchorTarget: PendingEditSelectionTarget?
     @Published public internal(set) var pendingReadSurfaceViewportAnchorY: CGFloat?
@@ -66,9 +67,11 @@ public final class NotesEditorViewModel: ObservableObject {
     private var nativeEditorObservation: AnyCancellable?
     @available(iOS 26.0, macOS 26.0, *)
     private var hasScheduledNativeEditorObjectWillChange = false
+    private var hasScheduledDeferredViewStateObjectWillChange = false
     var pendingEditSelectionTarget: PendingEditSelectionTarget?
     var pendingEditViewportOffset: CGPoint?
     var pendingEditViewportAnchorY: CGFloat?
+    var requestsEditorAutofocus = false
     private var syncRequestedWhileSaving = false
     var pendingNoteUpdateTask: Task<Void, Never>?
     var pendingReadSurfaceViewportMirrorTask: Task<Void, Never>?
@@ -365,11 +368,25 @@ public final class NotesEditorViewModel: ObservableObject {
 
 }
 extension NotesEditorViewModel {
+    var shouldAutofocusEditorSurface: Bool {
+        presentationMode == .edit
+            && isTransitioningEditExitToRead == false
+            && requestsEditorAutofocus
+    }
+
+    func markEditorAutofocusSatisfied() {
+        guard requestsEditorAutofocus else { return }
+        requestsEditorAutofocus = false
+        scheduleDeferredViewStateObjectWillChange()
+    }
+
     private func clearEditSessionState() {
         pendingEditSelectionTarget = nil
         pendingEditViewportOffset = nil
         pendingEditViewportAnchorY = nil
+        requestsEditorAutofocus = false
         isHoldingReadSurfaceDuringEditEntry = false
+        isTransitioningEditExitToRead = false
         heldReadSurfaceViewportOffset = .zero
         heldReadSurfaceActivationTarget = nil
         heldReadSurfaceViewportAnchorY = nil
@@ -447,8 +464,27 @@ extension NotesEditorViewModel {
         guard !hasScheduledNativeEditorObjectWillChange else { return }
         hasScheduledNativeEditorObjectWillChange = true
         DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                NotesEditEntryDebugTrace.log(
+                    "notesEditor.scheduleNativeEditorObjectWillChange.fire",
+                    details:
+                        "presentationMode=\(self.presentationMode) "
+                        + "isHoldingReadSurfaceDuringEditEntry=\(self.isHoldingReadSurfaceDuringEditEntry) "
+                        + "isTransitioningEditExitToRead=\(self.isTransitioningEditExitToRead)"
+                )
+                self.hasScheduledNativeEditorObjectWillChange = false
+                self.objectWillChange.send()
+            }
+        }
+    }
+
+    func scheduleDeferredViewStateObjectWillChange() {
+        guard !hasScheduledDeferredViewStateObjectWillChange else { return }
+        hasScheduledDeferredViewStateObjectWillChange = true
+        DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.hasScheduledNativeEditorObjectWillChange = false
+            self.hasScheduledDeferredViewStateObjectWillChange = false
             self.objectWillChange.send()
         }
     }

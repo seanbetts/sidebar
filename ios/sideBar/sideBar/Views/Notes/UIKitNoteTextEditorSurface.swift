@@ -394,6 +394,11 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isApplyingProgrammaticText, !isApplyingProgrammaticSelection else { return }
+            NotesEditEntryDebugTrace.log(
+                "textViewDidChangeSelection",
+                details: NotesEditEntryDebugTrace.textViewSummary(textView)
+            )
+            guard textView.isFirstResponder else { return }
             let document = viewModel.currentPersistenceSnapshot().document
 
             let logicalSelectedRange = SelectableNoteReadView.logicalEditorSelectedRange(
@@ -414,6 +419,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             guard let textView = textView as? AccessoryTextView else { return }
+            NotesEditEntryDebugTrace.log(
+                "textViewDidBeginEditing.delegate",
+                details: NotesEditEntryDebugTrace.textViewSummary(textView)
+            )
             onDidBeginEditing?(textView)
         }
 

@@ -3,17 +3,16 @@ import SwiftUI
 extension NotesDetailView {
     var supportedNoteSurface: some View {
         ZStack {
-            if isShowingReadSurface
-                || editorViewModel.isHoldingReadSurfaceDuringEditEntry
-                || isHoldingEditorSurfaceDuringReadExit {
+            if viewModel.activeNote != nil && currentUnsupportedContent == nil {
                 configuredReadSurface()
                     .zIndex(isHoldingEditorSurfaceDuringReadExit ? 0 : 0)
-                    .opacity(isHoldingEditorSurfaceDuringReadExit ? 0 : 1)
+                    .opacity(isReadSurfaceVisibleForCurrentPresentation ? (isHoldingEditorSurfaceDuringReadExit ? 0 : 1) : 0)
                     .allowsHitTesting(
                         isShowingReadSurface
                             && !editorViewModel.isHoldingReadSurfaceDuringEditEntry
                             && !isHoldingEditorSurfaceDuringReadExit
                     )
+                    .accessibilityHidden(!isReadSurfaceVisibleForCurrentPresentation)
             }
 
             if isShowingEditorSurface || isHoldingEditorSurfaceDuringReadExit {
@@ -71,6 +70,12 @@ extension NotesDetailView {
     @ViewBuilder
     var editorSurface: some View {
         configuredEditorSurface
+    }
+
+    var isReadSurfaceVisibleForCurrentPresentation: Bool {
+        isShowingReadSurface
+            || editorViewModel.isHoldingReadSurfaceDuringEditEntry
+            || isHoldingEditorSurfaceDuringReadExit
     }
 
     @ViewBuilder

@@ -57,6 +57,8 @@ extension NotesEditorViewModel {
         liveEditorViewportOffset = nil
         liveEditorSelectionTarget = nil
         liveEditorSelectionViewportAnchorY = nil
+        requestsEditorAutofocus = true
+        isTransitioningEditExitToRead = false
         pendingReadViewportRestoration = nil
         clearPendingReadSurfaceViewportRestoration()
         #if os(iOS)
@@ -145,6 +147,8 @@ extension NotesEditorViewModel {
     }
 
     public func exitEditModeToRead(captureAttachedTextViewSnapshot: Bool = true) {
+        requestsEditorAutofocus = false
+        isTransitioningEditExitToRead = true
         pendingEditSelectionTarget = nil
         pendingEditViewportOffset = nil
         pendingEditViewportAnchorY = nil
@@ -177,6 +181,17 @@ extension NotesEditorViewModel {
             target: liveEditorSelectionTarget,
             viewportAnchorY: liveEditorSelectionViewportAnchorY
         )
+        #if os(iOS)
+        if #available(iOS 26.0, *),
+           let textView = nativeEditorTextView as? UIKitNoteTextEditorSurface.AccessoryTextView {
+            textView.shouldAutofocus = false
+            textView.hasScheduledAutofocus = false
+            textView.suppressAutofocusReveal = false
+            if textView.isFirstResponder {
+                _ = textView.resignFirstResponder()
+            }
+        }
+        #endif
         pendingReadViewportRestoration = restoration
         debugLastExitReadViewportRestoration = restoration
         liveEditorViewportOffset = nil

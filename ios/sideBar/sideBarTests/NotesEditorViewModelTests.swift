@@ -354,6 +354,69 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertFalse(context.viewModel.isEditingNote)
     }
 
+    func testExitEditModeImmediatelySuppressesEditorAutofocusBeforeReadPresentationApplies() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+        context.viewModel.enterEditMode()
+
+        XCTAssertTrue(context.viewModel.shouldAutofocusEditorSurface)
+
+        context.viewModel.exitEditModeToRead()
+
+        XCTAssertEqual(context.viewModel.presentationMode, .edit)
+        XCTAssertFalse(
+            context.viewModel.shouldAutofocusEditorSurface,
+            "Expected editor autofocus to be suppressed as soon as edit exit begins so the held UIKit surface cannot re-focus itself before read mode applies."
+        )
+
+        let didExit = await waitUntil(timeoutSeconds: 1.0, failOnTimeout: false) {
+            context.viewModel.presentationMode == .read
+        }
+
+        XCTAssertTrue(didExit)
+        XCTAssertFalse(context.viewModel.shouldAutofocusEditorSurface)
+    }
+
+    func testMarkEditorAutofocusSatisfiedDisablesAutofocusForCurrentEditSession() async {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+        context.viewModel.enterEditMode()
+
+        XCTAssertTrue(context.viewModel.shouldAutofocusEditorSurface)
+
+        context.viewModel.markEditorAutofocusSatisfied()
+
+        XCTAssertFalse(
+            context.viewModel.shouldAutofocusEditorSurface,
+            "Expected edit-entry autofocus to be one-shot so later UIKit updates do not schedule a second focus pass."
+        )
+        XCTAssertEqual(context.viewModel.presentationMode, .edit)
+    }
+
     func testExitEditModeClearsPendingSelectionTarget() async {
         let context = makeNotesEditorViewModelTestContext(
             api: MockNotesAPI(updateResult: .failure(MockError.forced))
@@ -1387,6 +1450,38 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(publicationCount, 0)
         try await waitUntil(timeoutSeconds: 1.0) { publicationCount == 1 }
         XCTAssertEqual(publicationCount, 1)
+        _ = cancellable
+    }
+
+    func testExitEditModeToReadDoesNotPublishSynchronouslyBeforeDeferredPresentation() async throws {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Hello",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+        context.viewModel.enterEditMode()
+
+        var publicationCount = 0
+        let cancellable = context.viewModel.objectWillChange.sink {
+            publicationCount += 1
+        }
+
+        context.viewModel.exitEditModeToRead(captureAttachedTextViewSnapshot: false)
+
+        XCTAssertEqual(
+            publicationCount,
+            0,
+            "Edit exit should not synchronously publish view-model changes from within the initiating SwiftUI update cycle."
+        )
+
         _ = cancellable
     }
 
