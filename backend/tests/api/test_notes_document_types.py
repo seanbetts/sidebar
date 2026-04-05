@@ -40,6 +40,7 @@ def test_allowed_block_types_include_future_schema_vocabulary() -> None:
         "paragraph",
         "heading",
         "subheading",
+        "divider",
         "unordered_list",
         "ordered_list",
         "checklist",
@@ -100,6 +101,7 @@ def test_validate_note_document_accepts_supported_block_types() -> None:
                     {"type": "paragraph", "content": [{"text": "Quoted", "marks": []}]}
                 ],
             },
+            {"type": "divider"},
             {"type": "code_block", "content": [{"text": "let x = 1", "marks": []}]},
         ],
     }
@@ -107,6 +109,26 @@ def test_validate_note_document_accepts_supported_block_types() -> None:
     validated = validate_note_document(document)
 
     assert validated == document
+
+
+def test_validate_note_document_normalizes_divider_to_contentless_leaf() -> None:
+    document = {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            {"type": "title", "content": [{"text": "Title", "marks": []}]},
+            {
+                "type": "divider",
+                "content": [{"text": "---", "marks": []}],
+                "children": [
+                    {"type": "paragraph", "content": [{"text": "Ignored", "marks": []}]}
+                ],
+            },
+        ],
+    }
+
+    validated = validate_note_document(document)
+
+    assert validated["blocks"][1] == {"type": "divider"}
 
 
 def test_validate_note_document_accepts_version_two_nested_container_blocks() -> None:

@@ -73,22 +73,10 @@ extension NoteTextFormattingDefinition {
         if structuralBoundary {
             let previousBlockType = previousBlockType(before: range.lowerBound, in: text)
             let nextBlockType = NoteTextBlockAttribute.blockType(from: noteBlock) ?? blockType
-            let boundaryOwner = previousBlockType ?? nextBlockType
-            let additionalSpacingAfter: CGFloat
-            if previousBlockType == .codeBlock {
-                additionalSpacingAfter = NoteTextParagraphMetrics.codeBlockPaddingAfter(
-                    baseFontSize: baseFontSize
-                )
-            } else if nextBlockType == .codeBlock {
-                additionalSpacingAfter = NoteTextParagraphMetrics.codeBlockPaddingBefore(
-                    baseFontSize: baseFontSize
-                )
-            } else {
-                additionalSpacingAfter = 0
-            }
-            return paragraphStyle(
-                for: boundaryOwner,
-                additionalSpacingAfter: additionalSpacingAfter
+            return NoteTextParagraphMetrics.boundaryParagraphStyle(
+                after: previousBlockType,
+                before: nextBlockType,
+                baseFontSize: baseFontSize
             )
         }
 

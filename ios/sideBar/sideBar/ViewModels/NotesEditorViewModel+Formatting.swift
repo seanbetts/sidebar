@@ -28,6 +28,8 @@ extension NotesEditorViewModel {
             isChecklistEnabled: canApplyList(.checklist, nativeEditorViewModel),
             isBlockquoteActive: isListActive(.blockquote, nativeEditorViewModel),
             isBlockquoteEnabled: canApplyList(.blockquote, nativeEditorViewModel),
+            isDividerActive: isDividerActive(nativeEditorViewModel),
+            isDividerEnabled: canInsertDivider(nativeEditorViewModel),
             isEnabled: canApplyFormattingCommands(nativeEditorViewModel),
             onTextStyleSelection: { [weak self] in self?.setTextStyle($0) },
             onBoldTap: { [weak self] in self?.toggleFormatting(.bold) },
@@ -40,6 +42,7 @@ extension NotesEditorViewModel {
             onOrderedListTap: { [weak self] in self?.toggleList(.orderedList) },
             onChecklistTap: { [weak self] in self?.toggleList(.checklist) },
             onBlockquoteTap: { [weak self] in self?.toggleList(.blockquote) },
+            onDividerTap: { [weak self] in self?.insertDivider() },
             onTitleShortcut: { [weak self] in self?.setTextStyle(.title) },
             onHeadingShortcut: { [weak self] in self?.setTextStyle(.heading) },
             onSubheadingShortcut: { [weak self] in self?.setTextStyle(.subheading) },
@@ -139,6 +142,26 @@ extension NotesEditorViewModel {
         return nativeEditorViewModel.canApplyCodeBlock()
     }
 
+    public func isDividerActive() -> Bool {
+        isDividerActive(attachedNativeEditorViewModel)
+    }
+
+    func isDividerActive(_ nativeEditorViewModel: NativeNoteEditorViewModel?) -> Bool {
+        guard let nativeEditorViewModel,
+              canApplyFormattingCommands(nativeEditorViewModel) else { return false }
+        return nativeEditorViewModel.isDividerActive()
+    }
+
+    public func canInsertDivider() -> Bool {
+        canInsertDivider(attachedNativeEditorViewModel)
+    }
+
+    func canInsertDivider(_ nativeEditorViewModel: NativeNoteEditorViewModel?) -> Bool {
+        guard let nativeEditorViewModel,
+              canApplyFormattingCommands(nativeEditorViewModel) else { return false }
+        return nativeEditorViewModel.canInsertDivider()
+    }
+
     public func isListActive(_ listType: NotesSemanticDocument.BlockType) -> Bool {
         isListActive(listType, attachedNativeEditorViewModel)
     }
@@ -197,6 +220,19 @@ extension NotesEditorViewModel {
         let previousContent = nativeEditorViewModel.attributedContent
         let previousSelection = nativeEditorViewModel.selection
         nativeEditorViewModel.toggleList(listType)
+        finalizeNativeEditorMutation(
+            nativeEditorViewModel,
+            previousContent: previousContent,
+            previousSelection: previousSelection
+        )
+    }
+
+    public func insertDivider() {
+        guard let nativeEditorViewModel = attachedNativeEditorViewModel,
+              canApplyFormattingCommands() else { return }
+        let previousContent = nativeEditorViewModel.attributedContent
+        let previousSelection = nativeEditorViewModel.selection
+        nativeEditorViewModel.insertDivider()
         finalizeNativeEditorMutation(
             nativeEditorViewModel,
             previousContent: previousContent,

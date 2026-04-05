@@ -136,6 +136,7 @@ def test_project_plain_text_handles_supported_rich_block_types_deterministically
                     }
                 ],
             },
+            {"type": "divider"},
             {
                 "type": "code_block",
                 "content": [{"text": "line 1\nline 2", "marks": []}],
@@ -153,7 +154,27 @@ def test_project_plain_text_handles_supported_rich_block_types_deterministically
         "- [x] Done item\n"
         "- [ ] Open item\n"
         "> Quoted line\n"
+        "\n"
         "line 1\nline 2"
+    )
+
+
+def test_project_plain_text_projects_divider_as_blank_separator() -> None:
+    document = {
+        "version": NOTE_DOCUMENT_VERSION,
+        "blocks": [
+            {"type": "title", "content": [{"text": "Weekly plan", "marks": []}]},
+            {"type": "paragraph", "content": [{"text": "Top priorities", "marks": []}]},
+            {"type": "divider"},
+            {"type": "paragraph", "content": [{"text": "Backlog review", "marks": []}]},
+        ],
+    }
+
+    assert project_plain_text_from_document(document) == (
+        "Weekly plan\n"
+        "Top priorities\n"
+        "\n"
+        "Backlog review"
     )
 
 

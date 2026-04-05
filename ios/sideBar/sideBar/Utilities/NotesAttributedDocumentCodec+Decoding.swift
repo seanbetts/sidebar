@@ -86,16 +86,20 @@ extension NotesAttributedDocumentCodec {
             blockType: resolvedBlockType
         )
         var segments = normalized.segments
-        if segments.isEmpty {
+        if segments.isEmpty, resolvedBlockType != .divider {
             segments = [NotesSemanticDocument.InlineSegment(text: "", marks: [])]
         }
-        blocks.append(
-            .init(
-                type: resolvedBlockType,
-                content: segments,
-                checked: normalized.checked
+        if resolvedBlockType == .divider {
+            blocks.append(.init(type: .divider))
+        } else {
+            blocks.append(
+                .init(
+                    type: resolvedBlockType,
+                    content: segments,
+                    checked: normalized.checked
+                )
             )
-        )
+        }
         currentSegments.removeAll(keepingCapacity: true)
         currentBlockMarker = nil
     }

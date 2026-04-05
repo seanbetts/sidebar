@@ -81,6 +81,8 @@ extension NativeNoteEditorViewModel {
         for block: NotesSemanticDocument.Block
     ) -> [String] {
         switch block.type {
+        case .divider:
+            return []
         case .paragraph, .title, .heading, .subheading, .codeBlock, .listItem:
             return listToggleLogicalLines(from: block.content)
         case .orderedList, .unorderedList, .checklist, .blockquote:

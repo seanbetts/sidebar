@@ -213,6 +213,49 @@ final class AppKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         )
     }
 
+    func testMountedAppKitEditorDrawsDividerRule() throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([.init(text: "Before", marks: [])]),
+                .init(type: .divider),
+                .paragraph([.init(text: "After", marks: [])])
+            ]
+        )
+        let textView = try mountEditorTextView(
+            document: document,
+            baseFontSize: NoteTextTypography.defaultBodyFontSize,
+            frame: NSRect(x: 0, y: 0, width: 420, height: 180)
+        )
+        let dividerRect = try XCTUnwrap(
+            NoteTextDividerDecorationLayout.ruleRects(
+                in: try XCTUnwrap(textView.textStorage),
+                layoutManager: try XCTUnwrap(textView.layoutManager),
+                textContainer: try XCTUnwrap(textView.textContainer),
+                textContainerInset: textView.textContainerInset
+            ).first
+        )
+        let beforeRect = try glyphRect(in: textView, characterIndex: 0).offsetBy(
+            dx: textView.textContainerInset.width,
+            dy: textView.textContainerInset.height
+        )
+        let afterRect = try glyphRect(in: textView, characterIndex: 8).offsetBy(
+            dx: textView.textContainerInset.width,
+            dy: textView.textContainerInset.height
+        )
+        let expectedWidth = textView.bounds.width - (textView.textContainerInset.width * 2) -
+            (NoteTextAppearance.dividerHorizontalInset * 2)
+
+        XCTAssertEqual(
+            dividerRect.minX,
+            textView.textContainerInset.width + NoteTextAppearance.dividerHorizontalInset,
+            accuracy: 1
+        )
+        XCTAssertEqual(dividerRect.width, expectedWidth, accuracy: 1)
+        XCTAssertGreaterThan(dividerRect.midY, beforeRect.midY)
+        XCTAssertLessThan(dividerRect.midY, afterRect.midY)
+    }
+
     func testMountedAppKitEditorAddsVerticalPaddingAroundCodeBlocks() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,

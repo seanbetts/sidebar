@@ -11,6 +11,7 @@ extension NotesAttributedDocumentCodec {
              .paragraph,
              .heading,
              .subheading,
+             .divider,
              .unorderedList,
              .orderedList,
              .checklist,
@@ -46,6 +47,13 @@ extension NotesAttributedDocumentCodec {
         additionalSpacingAfter: CGFloat = 0
     ) -> NSParagraphStyle {
         switch blockType {
+        case .divider:
+            return NoteTextParagraphMetrics.paragraphStyle(
+                for: .paragraph,
+                baseFontSize: baseFontSize,
+                additionalSpacingBefore: additionalSpacingBefore,
+                additionalSpacingAfter: additionalSpacingAfter
+            )
         case .unorderedList, .checklist:
             return NoteTextParagraphMetrics.paragraphStyle(
                 for: blockType,

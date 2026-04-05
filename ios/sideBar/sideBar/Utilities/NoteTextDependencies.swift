@@ -39,6 +39,14 @@ enum NoteTextParagraphMetrics {
         12
     }
 
+    static func dividerPaddingBefore(baseFontSize: CGFloat) -> CGFloat {
+        8
+    }
+
+    static func dividerPaddingAfter(baseFontSize: CGFloat) -> CGFloat {
+        8
+    }
+
     static func orderedListContentIndent(baseFontSize: CGFloat) -> CGFloat {
         baseFontSize * 2.5
     }
@@ -108,22 +116,20 @@ enum NoteTextParagraphMetrics {
         before nextBlockType: NotesSemanticDocument.BlockType,
         baseFontSize: CGFloat
     ) -> NSParagraphStyle {
-        paragraphStyle(
-            configuration: ParagraphStyleConfiguration(
-                lineSpacing: 0,
-                spacingBefore: nextBlockType == .codeBlock
-                    ? codeBlockPaddingBefore(baseFontSize: baseFontSize)
-                    : 0,
-                spacingAfter: previousBlockType == .codeBlock
-                    ? codeBlockPaddingAfter(baseFontSize: baseFontSize)
-                    : 0,
-                headIndent: 0,
-                firstLineHeadIndent: 0,
-                tailIndent: 0,
-                tabStops: [],
-                defaultTabInterval: 0
-            )
-        )
+        let owner = previousBlockType ?? nextBlockType
+        let baseStyle = paragraphStyle(for: owner, baseFontSize: baseFontSize)
+        let style = (baseStyle.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
+        if previousBlockType == .divider {
+            style.paragraphSpacingBefore += dividerPaddingAfter(baseFontSize: baseFontSize)
+        }
+        if nextBlockType == .divider {
+            style.paragraphSpacing += dividerPaddingBefore(baseFontSize: baseFontSize)
+        } else if previousBlockType == .codeBlock {
+            style.paragraphSpacing += codeBlockPaddingAfter(baseFontSize: baseFontSize)
+        } else if nextBlockType == .codeBlock {
+            style.paragraphSpacing += codeBlockPaddingBefore(baseFontSize: baseFontSize)
+        }
+        return style
     }
 
     private static func paragraphStyle(
@@ -173,6 +179,8 @@ enum NoteTextParagraphMetrics {
         }
 
         switch blockType {
+        case .divider:
+            return StyleMetrics(lineSpacing: 0, spacingBefore: 0, spacingAfter: 0)
         case .unorderedList, .orderedList, .checklist, .listItem, .blockquote, .codeBlock:
             return StyleMetrics(lineSpacing: 0, spacingBefore: 0, spacingAfter: 0)
         case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:

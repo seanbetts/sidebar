@@ -158,6 +158,16 @@ private extension UIKitNoteFormattingPopoverView {
             blockquoteAction = nil
         }
 
+        let dividerAction: (@MainActor @Sendable () -> Void)?
+        if currentConfiguration.isDividerEnabled {
+            dividerAction = { [weak self] in
+                self?.currentConfiguration.onDividerTap()
+                self?.onDismissRequested()
+            }
+        } else {
+            dividerAction = nil
+        }
+
         return [
             (
                 "note-formatting-future-list-group",
@@ -186,6 +196,11 @@ private extension UIKitNoteFormattingPopoverView {
                         identifier: "note-formatting-blockquote",
                         symbol: "text.quote",
                         action: blockquoteAction
+                    ),
+                    InlineActionItem(
+                        identifier: "note-formatting-divider",
+                        symbol: "minus",
+                        action: dividerAction
                     )
                 ]
             )

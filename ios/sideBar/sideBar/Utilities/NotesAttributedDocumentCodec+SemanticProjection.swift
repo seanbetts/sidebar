@@ -137,6 +137,8 @@ extension NotesAttributedDocumentCodec {
                 additionalSpacingBefore: spacingBefore,
                 additionalSpacingAfter: spacingAfter
             )
+        case .divider:
+            return AttributedString()
         case .codeBlock:
             return styledPresentationIntentText(
                 block.content.map(\.text).joined(),
@@ -185,6 +187,8 @@ extension NotesAttributedDocumentCodec {
                 blockType: block.type,
                 baseFontSize: baseFontSize
             )
+        case .divider:
+            return AttributedString()
         case .codeBlock:
             return styledPresentationIntentText(
                 block.content.map(\.text).joined(),
@@ -244,6 +248,8 @@ extension NotesAttributedDocumentCodec {
                 additionalSpacingBefore: spacingBefore,
                 additionalSpacingAfter: spacingAfter
             )
+        case .divider:
+            return AttributedString()
         case .unorderedList, .orderedList, .checklist, .blockquote:
             return attributedParagraph(
                 from: block.content,

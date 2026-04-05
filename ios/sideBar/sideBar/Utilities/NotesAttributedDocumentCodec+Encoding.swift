@@ -96,23 +96,10 @@ extension NotesAttributedDocumentCodec {
                 italic: false
             )
         #endif
-        let boundaryOwner = previousBlockType ?? nextBlockType
-        let additionalSpacingAfter: CGFloat
-        if previousBlockType == .codeBlock {
-            additionalSpacingAfter = NoteTextParagraphMetrics.codeBlockPaddingAfter(
-                baseFontSize: baseFontSize
-            )
-        } else if nextBlockType == .codeBlock {
-            additionalSpacingAfter = NoteTextParagraphMetrics.codeBlockPaddingBefore(
-                baseFontSize: baseFontSize
-            )
-        } else {
-            additionalSpacingAfter = 0
-        }
-        boundary[range].paragraphStyle = paragraphStyle(
-            for: boundaryOwner,
-            baseFontSize: baseFontSize,
-            additionalSpacingAfter: additionalSpacingAfter
+        boundary[range].paragraphStyle = NoteTextParagraphMetrics.boundaryParagraphStyle(
+            after: previousBlockType,
+            before: nextBlockType,
+            baseFontSize: baseFontSize
         )
         boundary[range].noteBlock = blockMarker(for: nextBlockType)
         boundary[range].noteStructuralBoundary = true

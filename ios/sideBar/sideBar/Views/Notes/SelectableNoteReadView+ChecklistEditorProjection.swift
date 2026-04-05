@@ -372,7 +372,7 @@ extension SelectableNoteReadView {
             return runningOffset
         case .blockquote:
             return offset + blockquotePlainTextLength(for: block.children ?? [])
-        case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
+        case .divider, .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
             return offset
         }
     }

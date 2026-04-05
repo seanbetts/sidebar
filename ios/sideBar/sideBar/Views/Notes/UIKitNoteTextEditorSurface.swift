@@ -25,6 +25,7 @@ final class UIKitNoteTextEditorContainerView: UIView {
         weak var textView: UIKitNoteTextEditorSurface.AccessoryTextView?
         private let codeBlockLayer = CAShapeLayer()
         private let blockquoteLayer = CAShapeLayer()
+        private let dividerLayer = CAShapeLayer()
 
         override init(frame: CGRect) {
             super.init(frame: frame)
@@ -33,8 +34,10 @@ final class UIKitNoteTextEditorContainerView: UIView {
             isOpaque = false
             codeBlockLayer.fillColor = NoteTextAppearance.codeBlockBackgroundColor.cgColor
             blockquoteLayer.fillColor = NoteTextAppearance.blockquoteRuleColor.cgColor
+            dividerLayer.fillColor = NoteTextAppearance.dividerRuleColor.cgColor
             layer.addSublayer(codeBlockLayer)
             layer.addSublayer(blockquoteLayer)
+            layer.addSublayer(dividerLayer)
         }
 
         @available(*, unavailable) required init?(coder: NSCoder) {
@@ -47,6 +50,9 @@ final class UIKitNoteTextEditorContainerView: UIView {
                 .resolvedColor(with: traits)
                 .cgColor
             blockquoteLayer.fillColor = NoteTextAppearance.blockquoteRuleColor
+                .resolvedColor(with: traits)
+                .cgColor
+            dividerLayer.fillColor = NoteTextAppearance.dividerRuleColor
                 .resolvedColor(with: traits)
                 .cgColor
         }
@@ -64,6 +70,7 @@ final class UIKitNoteTextEditorContainerView: UIView {
             guard attributedText.length > 0 else {
                 codeBlockLayer.path = nil
                 blockquoteLayer.path = nil
+                dividerLayer.path = nil
                 return
             }
 
@@ -106,6 +113,27 @@ final class UIKitNoteTextEditorContainerView: UIView {
                 }
                 blockquoteLayer.frame = bounds
                 blockquoteLayer.path = blockquotePath.cgPath
+            }
+
+            let dividerRuleRects = NoteTextDividerDecorationLayout.detachedRuleRects(
+                in: attributedText,
+                containerWidth: textView.bounds.width,
+                textContainerInset: textContainerInset
+            )
+            if dividerRuleRects.isEmpty {
+                dividerLayer.path = nil
+            } else {
+                let dividerPath = UIBezierPath()
+                for ruleRect in dividerRuleRects {
+                    dividerPath.append(
+                        UIBezierPath(
+                            roundedRect: ruleRect,
+                            cornerRadius: NoteTextAppearance.dividerRuleThickness / 2
+                        )
+                    )
+                }
+                dividerLayer.frame = bounds
+                dividerLayer.path = dividerPath.cgPath
             }
         }
     }

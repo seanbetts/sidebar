@@ -249,6 +249,23 @@ final class NotesAttributedDocumentCodecTests: XCTestCase {
         XCTAssertEqual(intent.components.map(\.kind), [.codeBlock(languageHint: nil)])
     }
 
+    func testDividerRoundTripsAsStructuralBlankSeparator() {
+        let document = NotesSemanticDocument(
+            blocks: [
+                .init(type: .title, content: [.init(text: "Weekly plan", marks: [])]),
+                .paragraph([.init(text: "Top priorities", marks: [])]),
+                .init(type: .divider),
+                .paragraph([.init(text: "Backlog review", marks: [])])
+            ]
+        )
+
+        let attributed = NotesAttributedDocumentCodec.attributedString(from: document, baseFontSize: 16)
+        let roundTrip = NotesAttributedDocumentCodec.document(from: attributed)
+
+        XCTAssertEqual(String(attributed.characters), "Weekly plan\nTop priorities\n\nBacklog review")
+        XCTAssertEqual(roundTrip, document)
+    }
+
     func testOrderedListContainerProjectsAndRoundTripsUsingPresentationIntent() throws {
         let document = NotesSemanticDocument(
             blocks: [
