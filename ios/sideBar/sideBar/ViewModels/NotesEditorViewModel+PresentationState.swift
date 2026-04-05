@@ -12,6 +12,10 @@ extension NotesEditorViewModel {
 
     public func completeEditEntryPresentationHold() {
         guard isHoldingReadSurfaceDuringEditEntry else { return }
+        NotesEditEntryDebugTrace.log(
+            "completeEditEntryPresentationHold.begin",
+            details: "presentationMode=\(presentationMode)"
+        )
         heldReadSurfaceActivationTarget = nil
         heldReadSurfaceViewportAnchorY = nil
         pendingEditEntryPresentationHoldTask?.cancel()
@@ -20,6 +24,10 @@ extension NotesEditorViewModel {
             guard let self, Task.isCancelled == false else { return }
             self.isHoldingReadSurfaceDuringEditEntry = false
             self.pendingEditEntryPresentationHoldTask = nil
+            NotesEditEntryDebugTrace.log(
+                "completeEditEntryPresentationHold.apply",
+                details: "presentationMode=\(self.presentationMode)"
+            )
         }
     }
 

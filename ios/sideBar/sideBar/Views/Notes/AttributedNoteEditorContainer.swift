@@ -14,12 +14,19 @@ struct AttributedNoteEditorContainer: View {
         case uiKit
     }
 
+    #if os(iOS)
+    typealias EditorTextViewFactory = () -> UIKitNoteTextEditorSurface.AccessoryTextView
+    #else
+    typealias EditorTextViewFactory = () -> AnyObject
+    #endif
+
     @ObservedObject var editorViewModel: NotesEditorViewModel
     let maxContentWidth: CGFloat
     let autofocusEnabled: Bool
     let onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)?
     let onInitialPresentationReady: (() -> Void)?
     let onEscape: ((NotesSemanticDocument) -> Void)?
+    let makeTextView: EditorTextViewFactory?
     @EnvironmentObject var environment: AppEnvironment
 
     @StateObject private var nativeViewModel: NativeNoteEditorViewModel
@@ -40,7 +47,8 @@ struct AttributedNoteEditorContainer: View {
         autofocusEnabled: Bool = true,
         onFormattingBarPresentationChange: ((NoteFormattingBarPresentation) -> Void)? = nil,
         onInitialPresentationReady: (() -> Void)? = nil,
-        onEscape: ((NotesSemanticDocument) -> Void)?
+        onEscape: ((NotesSemanticDocument) -> Void)?,
+        makeTextView: EditorTextViewFactory? = nil
     ) {
         self.editorViewModel = editorViewModel
         self.maxContentWidth = maxContentWidth
@@ -48,6 +56,7 @@ struct AttributedNoteEditorContainer: View {
         self.onFormattingBarPresentationChange = onFormattingBarPresentationChange
         self.onInitialPresentationReady = onInitialPresentationReady
         self.onEscape = onEscape
+        self.makeTextView = makeTextView
         _nativeViewModel = StateObject(wrappedValue: editorViewModel.sharedNativeEditor())
     }
 
@@ -185,9 +194,7 @@ struct AttributedNoteEditorContainer: View {
             viewModel: nativeViewModel,
             maxContentWidth: maxContentWidth,
             isEditable: true,
-            shouldAutofocus: autofocusEnabled
-                && pendingSelectionViewportAnchorY == nil
-                && editorViewModel.isHoldingReadSurfaceDuringEditEntry == false,
+            shouldAutofocus: autofocusEnabled && editorViewModel.presentationMode == .edit,
             formattingBarConfiguration: editorViewModel.noteFormattingBarConfiguration,
             formattingBarPresentation: resolvedFormattingBarPresentation,
             pendingSelectionTarget: pendingSelectionTarget,
@@ -196,6 +203,16 @@ struct AttributedNoteEditorContainer: View {
                 pendingSelectionTarget = nil
             },
             onDidBeginEditing: { textView in
+                NotesEditEntryDebugTrace.log(
+                    "editorContainer.onDidBeginEditing.begin",
+                    details:
+                        "shouldSkipDidBeginEditingPresentationReady=\(shouldSkipDidBeginEditingPresentationReady) "
+                        + "pendingSelectionViewportAnchorY=\(pendingSelectionViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
+                        + "pendingPostAutofocusViewportAnchorY="
+                        + "\(pendingPostAutofocusViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
+                        + "isHoldingReadSurfaceDuringEditEntry=\(editorViewModel.isHoldingReadSurfaceDuringEditEntry) "
+                        + NotesEditEntryDebugTrace.textViewSummary(textView)
+                )
                 if shouldSkipDidBeginEditingPresentationReady {
                     shouldSkipDidBeginEditingPresentationReady = false
                     if let pendingPostAutofocusViewportAnchorY {
@@ -205,7 +222,12 @@ struct AttributedNoteEditorContainer: View {
                         )
                         self.pendingPostAutofocusViewportAnchorY = nil
                     }
+                    NotesEditEntryDebugTrace.log(
+                        "editorContainer.onDidBeginEditing.skipReady",
+                        details: NotesEditEntryDebugTrace.textViewSummary(textView)
+                    )
                     textView.suppressAutofocusReveal = false
+                    onInitialPresentationReady?()
                     return
                 }
                 let viewportAnchorY = pendingSelectionViewportAnchorY
@@ -224,6 +246,12 @@ struct AttributedNoteEditorContainer: View {
                     textView.positionCurrentSelection(
                         atViewportAnchorY: viewportAnchorY
                     )
+                    NotesEditEntryDebugTrace.log(
+                        "editorContainer.onDidBeginEditing.readyAfterPosition",
+                        details:
+                            "viewportAnchorY=\(String(format: "%.2f", viewportAnchorY)) "
+                            + NotesEditEntryDebugTrace.textViewSummary(textView)
+                    )
                     onInitialPresentationReady?()
                 }
             },
@@ -236,6 +264,19 @@ struct AttributedNoteEditorContainer: View {
             },
             onTextViewReady: { textView in
                 editorViewModel.attachNativeEditorTextView(textView)
+                let pendingSelectionViewportOffsetSummary =
+                    pendingSelectionViewportOffset.map {
+                        "(\(String(format: "%.2f", $0.x)),\(String(format: "%.2f", $0.y)))"
+                    } ?? "nil"
+                NotesEditEntryDebugTrace.log(
+                    "editorContainer.onTextViewReady.begin",
+                    details:
+                        "pendingSelectionViewportOffset=\(pendingSelectionViewportOffsetSummary) "
+                        + "pendingSelectionViewportAnchorY=\(pendingSelectionViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
+                        + "isHoldingReadSurfaceDuringEditEntry="
+                        + "\(editorViewModel.isHoldingReadSurfaceDuringEditEntry) "
+                        + NotesEditEntryDebugTrace.textViewSummary(textView)
+                )
                 if let pendingSelectionViewportOffset,
                    !textView.isFirstResponder,
                    textView.hasScheduledAutofocus == false {
@@ -272,14 +313,21 @@ struct AttributedNoteEditorContainer: View {
                     if shouldRepairSelectionAnchor {
                         textView.positionCurrentSelection(atViewportAnchorY: viewportAnchorY)
                     }
+                    NotesEditEntryDebugTrace.log(
+                        "editorContainer.onTextViewReady.preReady",
+                        details:
+                            "viewportAnchorY=\(String(format: "%.2f", viewportAnchorY)) "
+                            + "shouldRepairSelectionAnchor=\(shouldRepairSelectionAnchor) "
+                            + NotesEditEntryDebugTrace.textViewSummary(textView)
+                    )
                     textView.hasScheduledAutofocus = false
                     pendingPostAutofocusViewportAnchorY = viewportAnchorY
                     shouldSkipDidBeginEditingPresentationReady = true
-                    onInitialPresentationReady?()
                     pendingSelectionViewportOffset = nil
                     pendingSelectionViewportAnchorY = nil
                 }
             },
+            makeTextView: makeTextView,
             onEscape: {
                 _ = handleEscapeKey(
                     document: nativeViewModel.currentPersistenceSnapshot().document

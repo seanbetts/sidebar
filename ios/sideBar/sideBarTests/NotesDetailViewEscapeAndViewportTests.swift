@@ -191,6 +191,85 @@ extension NotesDetailViewTests {
             equals: 5
         )
     }
+
+    #if os(iOS)
+    @available(iOS 26.0, *)
+    func testAnchoredEditEntryKeepsReadSurfaceHoldUntilAutofocusBegins() async throws {
+        let plainText = (0..<200)
+            .map { index in "Line \(index) body text" }
+            .joined(separator: "\n")
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: plainText))
+        let environment = makeNotesDetailTestEnvironment()
+        let targetOffset = NSString(string: plainText).range(of: "Line 80 body text").location
+        let probeTextView = EditEntryProbeAccessoryTextView()
+        probeTextView.onWillBecomeFirstResponder = {
+            probeTextView.holdStateWhenAutofocusBegan =
+                context.editorViewModel.isHoldingReadSurfaceDuringEditEntry
+        }
+
+        context.editorViewModel.heldReadSurfaceViewportOffset = CGPoint(x: 0, y: 1240.5)
+        context.editorViewModel.enterEditMode(
+            at: .characterOffset(targetOffset),
+            viewportAnchorY: 137
+        )
+
+        let container = AttributedNoteEditorContainer(
+            editorViewModel: context.editorViewModel,
+            maxContentWidth: 640,
+            onInitialPresentationReady: {
+                context.editorViewModel.completeEditEntryPresentationHold()
+            },
+            onEscape: { _ in },
+            makeTextView: { probeTextView }
+        )
+
+        let controller = mount(
+            container.environmentObject(environment),
+            frame: CGRect(x: 0, y: 0, width: 900, height: 700),
+            makeKeyAndVisible: true
+        )
+        _ = controller
+
+        await waitUntil(timeout: .seconds(2)) {
+            probeTextView.didAttemptBecomeFirstResponder
+        }
+
+        XCTAssertEqual(
+            probeTextView.holdStateWhenAutofocusBegan,
+            true,
+            "Expected the read-surface hold to stay active until autofocus begins so the pre-repair editor state never flashes onscreen."
+        )
+    }
+
+    @available(iOS 26.0, *)
+    func testAttributedNoteEditorContainerDoesNotAutofocusWhilePresentationModeIsRead() async throws {
+        let context = await makeNotesDetailViewTestContext(note: makeTestNote(plainText: "Hello world"))
+        let environment = makeNotesDetailTestEnvironment()
+        let probeTextView = EditEntryProbeAccessoryTextView()
+        let container = AttributedNoteEditorContainer(
+            editorViewModel: context.editorViewModel,
+            maxContentWidth: 640,
+            onEscape: { _ in },
+            makeTextView: { probeTextView }
+        )
+
+        let controller = mount(
+            container.environmentObject(environment),
+            frame: CGRect(x: 0, y: 0, width: 900, height: 700),
+            makeKeyAndVisible: true
+        )
+        _ = controller
+
+        drainNotesHostingRunLoop()
+        try? await Task.sleep(nanoseconds: 150_000_000)
+        drainNotesHostingRunLoop()
+
+        XCTAssertFalse(
+            probeTextView.didAttemptBecomeFirstResponder,
+            "Expected the editor surface to stay unfocused while Notes is in read mode."
+        )
+    }
+    #endif
 }
 
 #if os(iOS)
@@ -205,6 +284,20 @@ private final class ViewportShiftingAccessoryTextView: UIKitNoteTextEditorSurfac
             contentOffset = offsetAfterResign
         }
         return didResign
+    }
+}
+
+@available(iOS 26.0, *)
+@MainActor
+private final class EditEntryProbeAccessoryTextView: UIKitNoteTextEditorSurface.AccessoryTextView {
+    var onWillBecomeFirstResponder: (() -> Void)?
+    private(set) var didAttemptBecomeFirstResponder = false
+    var holdStateWhenAutofocusBegan: Bool?
+
+    override func becomeFirstResponder() -> Bool {
+        didAttemptBecomeFirstResponder = true
+        onWillBecomeFirstResponder?()
+        return super.becomeFirstResponder()
     }
 }
 #endif

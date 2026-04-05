@@ -404,6 +404,93 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         XCTAssertTrue(textView.isFirstResponder)
     }
 
+    func testEditableSurfaceAutofocusesPromptlyAfterWindowAttachment() {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let textView = ReloadTrackingAccessoryTextView()
+        let controller = UIHostingController(
+            rootView: AnyView(
+                AutofocusSurfaceHost(
+                    autofocusState: AutofocusState(true),
+                    viewModel: viewModel,
+                    textView: textView
+                )
+            )
+        )
+        let frame = CGRect(x: 0, y: 0, width: 360, height: 320)
+
+        controller.loadViewIfNeeded()
+        controller.view.frame = frame
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertFalse(textView.isFirstResponder)
+
+        let window = makeUIKitNoteTextEditorSurfaceHostingWindow(frame: frame)
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        controller.view.frame = frame
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertTrue(
+            textView.isFirstResponder,
+            "Expected window attachment to trigger autofocus immediately rather than waiting for a later unrelated view update."
+        )
+
+        NotesDetailViewTestRetainer.hostingControllers.append(controller)
+        NotesDetailViewTestRetainer.hostingWindows.append(window)
+    }
+
+    func testEditableSurfaceClearsScheduledAutofocusAfterCanceledAttempt() {
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.loadDocument(
+            canonicalContent: canonicalUIKitPlainTextPass("Hello"),
+            plainText: "Hello"
+        )
+        let autofocusState = AutofocusState(true)
+        let textView = ReloadTrackingAccessoryTextView()
+        let controller = UIHostingController(
+            rootView: AnyView(
+                AutofocusSurfaceHost(
+                    autofocusState: autofocusState,
+                    viewModel: viewModel,
+                    textView: textView
+                )
+            )
+        )
+        let frame = CGRect(x: 0, y: 0, width: 360, height: 320)
+        let window = makeUIKitNoteTextEditorSurfaceHostingWindow(frame: frame)
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        controller.view.frame = frame
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+
+        autofocusState.isEnabled = false
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertFalse(textView.isFirstResponder)
+        XCTAssertFalse(textView.hasScheduledAutofocus)
+
+        autofocusState.isEnabled = true
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertTrue(textView.isFirstResponder)
+
+        NotesDetailViewTestRetainer.hostingControllers.append(controller)
+        NotesDetailViewTestRetainer.hostingWindows.append(window)
+    }
+
     private func mountAutofocusSurfaceHost(
         viewModel: NativeNoteEditorViewModel,
         autofocusState: AutofocusState,

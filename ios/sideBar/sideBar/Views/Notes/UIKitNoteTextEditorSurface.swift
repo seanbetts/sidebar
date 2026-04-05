@@ -62,6 +62,7 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var onHeadingCommand: (() -> Void)?
         var onSubheadingCommand: (() -> Void)?
         var onBodyCommand: (() -> Void)?
+        var onDidMoveToWindow: ((AccessoryTextView) -> Void)?
         var shouldAutofocus = false
         var hasScheduledAutofocus = false
         var suppressAutofocusReveal = false
@@ -126,6 +127,11 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             updateViewportInsets()
             updateCodeBlockBackgroundLayoutState()
             reportViewportSnapshotIfNeeded()
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            onDidMoveToWindow?(self)
         }
 
         override func draw(_ rect: CGRect) {
@@ -271,6 +277,9 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.maxReadableContentWidth = maxContentWidth
         textView.onViewportSnapshotChange = onViewportSnapshotChange
         textView.onEscapeCommand = onEscape
+        textView.onDidMoveToWindow = { attachedTextView in
+            handleTextViewDidMoveToWindow(attachedTextView)
+        }
         textView.delegate = context.coordinator
         textView.textFormattingConfiguration = nil
         if shouldShowFormattingAccessory, let formattingBarConfiguration {
@@ -291,6 +300,9 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.maxReadableContentWidth = maxContentWidth
         textView.onViewportSnapshotChange = onViewportSnapshotChange
         textView.onEscapeCommand = onEscape
+        textView.onDidMoveToWindow = { attachedTextView in
+            handleTextViewDidMoveToWindow(attachedTextView)
+        }
         if pendingSelectionViewportAnchorY != nil, textView.shouldAutofocus, !textView.isFirstResponder {
             textView.suppressAutofocusReveal = true
         }

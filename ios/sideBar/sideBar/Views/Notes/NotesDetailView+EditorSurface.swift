@@ -81,6 +81,12 @@ extension NotesDetailView {
             maxContentWidth: contentMaxWidth,
             onFormattingBarPresentationChange: handleFormattingBarPresentationChange,
             onInitialPresentationReady: {
+                NotesEditEntryDebugTrace.log(
+                    "editorSurface.onInitialPresentationReady",
+                    details:
+                        "isHoldingReadSurfaceDuringEditEntry=\(editorViewModel.isHoldingReadSurfaceDuringEditEntry) "
+                        + "presentationMode=\(editorViewModel.presentationMode)"
+                )
                 editorViewModel.completeEditEntryPresentationHold()
             },
             onEscape: handleEscapeKey
