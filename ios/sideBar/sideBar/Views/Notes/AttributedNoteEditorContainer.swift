@@ -28,6 +28,7 @@ struct AttributedNoteEditorContainer: View {
     @State private var pendingSelectionViewportOffset: CGPoint?
     @State private var pendingSelectionViewportAnchorY: CGFloat?
     @State private var shouldSkipDidBeginEditingPresentationReady = false
+    @State private var pendingPostAutofocusViewportAnchorY: CGFloat?
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     #if os(iOS)
     @State private var isSoftwareKeyboardVisible = false
@@ -197,6 +198,13 @@ struct AttributedNoteEditorContainer: View {
             onDidBeginEditing: { textView in
                 if shouldSkipDidBeginEditingPresentationReady {
                     shouldSkipDidBeginEditingPresentationReady = false
+                    if let pendingPostAutofocusViewportAnchorY {
+                        textView.layoutIfNeeded()
+                        textView.positionCurrentSelection(
+                            atViewportAnchorY: pendingPostAutofocusViewportAnchorY
+                        )
+                        self.pendingPostAutofocusViewportAnchorY = nil
+                    }
                     textView.suppressAutofocusReveal = false
                     return
                 }
@@ -265,6 +273,7 @@ struct AttributedNoteEditorContainer: View {
                         textView.positionCurrentSelection(atViewportAnchorY: viewportAnchorY)
                     }
                     textView.hasScheduledAutofocus = false
+                    pendingPostAutofocusViewportAnchorY = viewportAnchorY
                     shouldSkipDidBeginEditingPresentationReady = true
                     onInitialPresentationReady?()
                     pendingSelectionViewportOffset = nil

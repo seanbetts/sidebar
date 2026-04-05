@@ -1422,16 +1422,6 @@ private final class SelectableNoteReadTextView: UITextView {
     }
 
     private func resolvedInitialViewportRestoration() -> InitialViewportRestoration? {
-        if let pendingInitialViewportOffset {
-            return InitialViewportRestoration(
-                mode: pendingInitialViewportAnchorTarget == nil ? "offset" : "offset-preferred",
-                offset: clampedContentOffset(for: pendingInitialViewportOffset),
-                requestedOffset: pendingInitialViewportOffset,
-                viewportAnchorY: pendingInitialViewportAnchorY.map {
-                    String(format: "%.2f", $0)
-                } ?? "nil"
-            )
-        }
         if let pendingInitialViewportAnchorTarget,
            let pendingInitialViewportAnchorY,
            let requestedOffset = SelectableNoteReadView.contentOffset(
@@ -1444,6 +1434,16 @@ private final class SelectableNoteReadTextView: UITextView {
                 offset: clampedContentOffset(for: requestedOffset),
                 requestedOffset: requestedOffset,
                 viewportAnchorY: String(format: "%.2f", pendingInitialViewportAnchorY)
+            )
+        }
+        if let pendingInitialViewportOffset {
+            return InitialViewportRestoration(
+                mode: pendingInitialViewportAnchorTarget == nil ? "offset" : "offset-fallback",
+                offset: clampedContentOffset(for: pendingInitialViewportOffset),
+                requestedOffset: pendingInitialViewportOffset,
+                viewportAnchorY: pendingInitialViewportAnchorY.map {
+                    String(format: "%.2f", $0)
+                } ?? "nil"
             )
         }
         return nil
@@ -1631,13 +1631,22 @@ extension SelectableNoteReadView {
         target: ReadActivationTarget,
         fallbackPoint: CGPoint? = nil
     ) -> CGFloat? {
+        let resolvedTarget: ReadActivationTarget
+        if let readTextView = textView as? SelectableNoteReadTextView {
+            resolvedTarget = readViewportAnchorTarget(
+                in: readTextView.document,
+                editorTarget: target
+            )
+        } else {
+            resolvedTarget = target
+        }
         let visibleViewport = CGRect(
             origin: textView.contentOffset,
             size: textView.bounds.size
         ).inset(by: textView.adjustedContentInset)
         let viewportHeight = visibleViewport.height
         guard viewportHeight > 0 else { return nil }
-        if case .characterOffset(let offset) = target,
+        if case .characterOffset(let offset) = resolvedTarget,
            let position = textView.position(from: textView.beginningOfDocument, offset: offset) {
             let anchorY = textView.caretRect(for: position).midY - visibleViewport.minY
             if anchorY >= 0, anchorY <= viewportHeight {

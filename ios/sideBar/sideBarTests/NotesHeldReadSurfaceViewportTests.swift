@@ -6,6 +6,55 @@ import XCTest
 @MainActor
 @available(iOS 26.0, *)
 final class NotesHeldReadSurfaceViewportTests: NotesDetailViewHostingTestCase {
+    func testComplexReadSurfaceScrollPublishesHeldViewportOffsetBeforeEditEntry() async throws {
+        let note = makeComplexViewportParityNote()
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(findTextView(in: controller.view))
+
+        readTextView.setContentOffset(CGPoint(x: 0, y: 365.475), animated: false)
+        drainNotesHostingRunLoop()
+
+        await waitUntil(timeout: .seconds(1)) {
+            abs(context.editorViewModel.heldReadSurfaceViewportOffset.y - 365.475) <= 1
+        }
+
+        XCTAssertEqual(
+            context.editorViewModel.heldReadSurfaceViewportOffset.y,
+            365.475,
+            accuracy: 1
+        )
+    }
+
+    func testEnterEditModeCarriesHeldViewportOffsetIntoPendingEditState() async throws {
+        let note = makeComplexViewportParityNote()
+        let plainText = note.plainText
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(findTextView(in: controller.view))
+        let targetOffset = NSString(string: plainText).range(of: "Code Blocks").location
+
+        readTextView.setContentOffset(CGPoint(x: 0, y: 365.475), animated: false)
+        drainNotesHostingRunLoop()
+        await waitUntil(timeout: .seconds(1)) {
+            abs(context.editorViewModel.heldReadSurfaceViewportOffset.y - 365.475) <= 1
+        }
+
+        context.editorViewModel.enterEditMode(
+            at: .characterOffset(targetOffset),
+            viewportAnchorY: 338.5
+        )
+
+        let pendingOffsetY = try XCTUnwrap(context.editorViewModel.debugPendingEditViewportOffset?.y)
+        XCTAssertEqual(
+            pendingOffsetY,
+            365.475,
+            accuracy: 1
+        )
+    }
+
     func testReadToEditActivationFromMiddleKeepsHeldReadSurfaceTargetLineAtSameRelativePosition() async throws {
         let plainText = (0..<120)
             .map { index in "Line \(index) body text" }
@@ -70,15 +119,15 @@ final class NotesHeldReadSurfaceViewportTests: NotesDetailViewHostingTestCase {
 
     func testReadToEditActivationPreservesViewportOffsetForListAndCodeHeavyNotes() async throws {
         let note = makeComplexViewportParityNote()
-        let plainText = note.plainText
         let context = await makeNotesDetailViewTestContext(note: note)
         let environment = makeNotesDetailTestEnvironment()
         let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
         let readTextView = try XCTUnwrap(findTextView(in: controller.view))
-        let targetOffset = NSString(string: plainText).range(of: "Code Blocks").location
+        let displayedTargetOffset = NSString(string: readTextView.attributedText.string)
+            .range(of: "Code Blocks").location
 
         let readTargetPosition = try XCTUnwrap(
-            readTextView.position(from: readTextView.beginningOfDocument, offset: targetOffset)
+            readTextView.position(from: readTextView.beginningOfDocument, offset: displayedTargetOffset)
         )
         let initialReadTargetRect = readTextView.caretRect(for: readTargetPosition)
         let readViewportHeight = readTextView.bounds.inset(by: readTextView.adjustedContentInset).height
@@ -91,13 +140,30 @@ final class NotesHeldReadSurfaceViewportTests: NotesDetailViewHostingTestCase {
         let readTargetRect = readTextView.caretRect(for: readTargetPosition)
         let readViewport = readTextView.bounds.inset(by: readTextView.adjustedContentInset)
         let expectedViewportAnchorY = readTargetRect.midY - readViewport.minY
+        let tapPoint = CGPoint(x: readTargetRect.midX, y: readTargetRect.midY)
+        let editorTargetOffset = SelectableNoteReadView.editingActivationCharacterOffset(
+            in: note.document,
+            readCharacterOffset: displayedTargetOffset
+        )
+        let viewportAnchorY = try XCTUnwrap(
+            SelectableNoteReadView.viewportAnchorYForEditingActivation(
+                in: readTextView,
+                target: .characterOffset(editorTargetOffset),
+                fallbackPoint: tapPoint
+            )
+        )
 
         context.editorViewModel.enterEditMode(
-            at: .characterOffset(targetOffset),
-            viewportAnchorY: expectedViewportAnchorY
+            at: .characterOffset(editorTargetOffset),
+            viewportAnchorY: viewportAnchorY
         )
-        drainNotesHostingRunLoop()
-        drainNotesHostingRunLoop()
+        await waitUntil {
+            context.editorViewModel.isHoldingReadSurfaceDuringEditEntry == false &&
+                findTextView(
+                    in: controller.view,
+                    accessibilityIdentifier: "notes-editor-text-view"
+                ) is UIKitNoteTextEditorSurface.AccessoryTextView
+        }
 
         let editorTextView = try XCTUnwrap(
             findTextView(
@@ -105,27 +171,84 @@ final class NotesHeldReadSurfaceViewportTests: NotesDetailViewHostingTestCase {
                 accessibilityIdentifier: "notes-editor-text-view"
             ) as? UIKitNoteTextEditorSurface.AccessoryTextView
         )
+        let selectionRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
+        let editorViewport = editorTextView.bounds.inset(by: editorTextView.adjustedContentInset)
+        let actualViewportAnchorY = selectionRect.midY - editorViewport.minY
 
         XCTAssertEqual(
-            editorTextView.contentOffset.y,
-            targetReadOffset,
-            accuracy: 1,
+            actualViewportAnchorY,
+            expectedViewportAnchorY,
+            accuracy: 2,
             "readOffset=\(targetReadOffset) editorOffset=\(editorTextView.contentOffset.y) "
-                + "expectedViewportAnchorY=\(expectedViewportAnchorY)"
+                + "expectedViewportAnchorY=\(expectedViewportAnchorY) "
+                + "actualViewportAnchorY=\(actualViewportAnchorY) "
+                + "selectionRect=\(selectionRect) "
+                + "editorViewport=\(editorViewport)"
+        )
+    }
+
+    func testReadActivationViewportAnchorMapsEditorTargetBackToReadProjectionForComplexNotes() async throws {
+        let note = makeComplexViewportParityNote()
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
+        let readTextView = try XCTUnwrap(findTextView(in: controller.view))
+        let displayedTargetOffset = NSString(string: readTextView.attributedText.string)
+            .range(of: "Code Blocks").location
+
+        XCTAssertNotEqual(displayedTargetOffset, NSNotFound)
+
+        let displayedTargetPosition = try XCTUnwrap(
+            readTextView.position(from: readTextView.beginningOfDocument, offset: displayedTargetOffset)
+        )
+        let initialReadTargetRect = readTextView.caretRect(for: displayedTargetPosition)
+        let readViewportHeight = readTextView.bounds.inset(by: readTextView.adjustedContentInset).height
+        let targetReadOffset = max(
+            initialReadTargetRect.midY - (readViewportHeight * 0.55),
+            -readTextView.adjustedContentInset.top
+        )
+
+        readTextView.setContentOffset(CGPoint(x: 0, y: targetReadOffset), animated: false)
+        drainNotesHostingRunLoop()
+
+        let displayedTargetRect = readTextView.caretRect(for: displayedTargetPosition)
+        let tapPoint = CGPoint(x: displayedTargetRect.midX, y: displayedTargetRect.midY)
+        let expectedViewportAnchorY = displayedTargetRect.midY
+            - readTextView.bounds.inset(by: readTextView.adjustedContentInset).minY
+        let editorTarget = NotesEditorViewModel.PendingEditSelectionTarget.characterOffset(
+            SelectableNoteReadView.editingActivationCharacterOffset(
+                in: note.document,
+                readCharacterOffset: displayedTargetOffset
+            )
+        )
+
+        let capturedViewportAnchorY = SelectableNoteReadView.viewportAnchorYForEditingActivation(
+            in: readTextView,
+            target: editorTarget,
+            fallbackPoint: tapPoint
+        )
+
+        XCTAssertEqual(
+            try XCTUnwrap(capturedViewportAnchorY),
+            expectedViewportAnchorY,
+            accuracy: 1,
+            "displayedTargetOffset=\(displayedTargetOffset) editorTarget=\(editorTarget) "
+                + "tapPoint=\(tapPoint) contentOffset=\(readTextView.contentOffset) "
+                + "adjustedInset=\(readTextView.adjustedContentInset)"
         )
     }
 
     func testReadToEditActivationFromCodeHeavyNoteLeavesEditorScrollable() async throws {
         let note = makeComplexViewportParityNote()
-        let plainText = note.plainText
         let context = await makeNotesDetailViewTestContext(note: note)
         let environment = makeNotesDetailTestEnvironment()
         let controller = mount(context.makeView(), environment: environment, makeKeyAndVisible: true)
         let readTextView = try XCTUnwrap(findTextView(in: controller.view))
-        let targetOffset = NSString(string: plainText).range(of: "console.log").location
+        let displayedTargetOffset = NSString(string: readTextView.attributedText.string)
+            .range(of: "console.log").location
 
         let readTargetPosition = try XCTUnwrap(
-            readTextView.position(from: readTextView.beginningOfDocument, offset: targetOffset)
+            readTextView.position(from: readTextView.beginningOfDocument, offset: displayedTargetOffset)
         )
         let initialReadTargetRect = readTextView.caretRect(for: readTargetPosition)
         let readViewportHeight = readTextView.bounds.inset(by: readTextView.adjustedContentInset).height
@@ -136,12 +259,22 @@ final class NotesHeldReadSurfaceViewportTests: NotesDetailViewHostingTestCase {
         readTextView.setContentOffset(CGPoint(x: 0, y: targetReadOffset), animated: false)
         drainNotesHostingRunLoop()
         let readTargetRect = readTextView.caretRect(for: readTargetPosition)
-        let readViewport = readTextView.bounds.inset(by: readTextView.adjustedContentInset)
-        let expectedViewportAnchorY = readTargetRect.midY - readViewport.minY
+        let tapPoint = CGPoint(x: readTargetRect.midX, y: readTargetRect.midY)
+        let editorTargetOffset = SelectableNoteReadView.editingActivationCharacterOffset(
+            in: note.document,
+            readCharacterOffset: displayedTargetOffset
+        )
+        let viewportAnchorY = try XCTUnwrap(
+            SelectableNoteReadView.viewportAnchorYForEditingActivation(
+                in: readTextView,
+                target: .characterOffset(editorTargetOffset),
+                fallbackPoint: tapPoint
+            )
+        )
 
         context.editorViewModel.enterEditMode(
-            at: .characterOffset(targetOffset),
-            viewportAnchorY: expectedViewportAnchorY
+            at: .characterOffset(editorTargetOffset),
+            viewportAnchorY: viewportAnchorY
         )
         await waitUntil {
             context.editorViewModel.isHoldingReadSurfaceDuringEditEntry == false &&
@@ -171,7 +304,13 @@ final class NotesHeldReadSurfaceViewportTests: NotesDetailViewHostingTestCase {
         editorTextView.setContentOffset(CGPoint(x: 0, y: targetEditorOffset), animated: false)
         drainNotesHostingRunLoop()
 
-        XCTAssertEqual(editorTextView.selectedRange.location, targetOffset)
+        XCTAssertEqual(
+            editorTextView.selectedRange.location,
+            SelectableNoteReadView.editorDisplaySelectedRange(
+                in: note.document,
+                logicalSelectedRange: NSRange(location: editorTargetOffset, length: 0)
+            ).location
+        )
         XCTAssertEqual(editorTextView.contentOffset.y, targetEditorOffset, accuracy: 1)
         XCTAssertGreaterThanOrEqual(editorTextView.contentOffset.y, initialEditorOffset)
     }
