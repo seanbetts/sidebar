@@ -21,6 +21,116 @@ private struct UIKitNoteTextEditorUndoSnapshot {
 }
 
 final class UIKitNoteTextEditorContainerView: UIView {
+    final class DecorationView: UIView {
+        weak var textView: UIKitNoteTextEditorSurface.AccessoryTextView?
+        private let codeBlockLayer = CAShapeLayer()
+        private let blockquoteLayer = CAShapeLayer()
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            backgroundColor = .clear
+            isUserInteractionEnabled = false
+            isOpaque = false
+            codeBlockLayer.fillColor = NoteTextAppearance.codeBlockBackgroundColor.cgColor
+            blockquoteLayer.fillColor = NoteTextAppearance.blockquoteRuleColor.cgColor
+            layer.addSublayer(codeBlockLayer)
+            layer.addSublayer(blockquoteLayer)
+        }
+
+        @available(*, unavailable) required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        private func syncResolvedColors() {
+            let traits = textView?.traitCollection ?? traitCollection
+            codeBlockLayer.fillColor = NoteTextAppearance.codeBlockBackgroundColor
+                .resolvedColor(with: traits)
+                .cgColor
+            blockquoteLayer.fillColor = NoteTextAppearance.blockquoteRuleColor
+                .resolvedColor(with: traits)
+                .cgColor
+        }
+
+        override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+            super.traitCollectionDidChange(previousTraitCollection)
+            syncResolvedColors()
+            refreshPaths()
+        }
+
+        func refreshPaths() {
+            guard let textView else { return }
+            syncResolvedColors()
+            let attributedText = textView.attributedText ?? NSAttributedString()
+            guard attributedText.length > 0 else {
+                codeBlockLayer.path = nil
+                blockquoteLayer.path = nil
+                NoteTextDecorationDebugTrace.log(
+                    "editor.refreshPaths.empty",
+                    details:
+                        "bounds=\(NoteTextDecorationDebugTrace.summarize(bounds)) "
+                        + "contentOffset=\(NoteTextDecorationDebugTrace.summarize(textView.contentOffset))",
+                    dedupe: true
+                )
+                return
+            }
+
+            let textContainerInset = CGSize(
+                width: textView.textContainerInset.left,
+                height: textView.textContainerInset.top
+            )
+            let codeBlockRects = NoteTextCodeBlockBackgroundLayout.detachedBlockRects(
+                in: attributedText,
+                containerWidth: textView.bounds.width,
+                textContainerInset: textContainerInset
+            )
+            if codeBlockRects.isEmpty {
+                codeBlockLayer.path = nil
+            } else {
+                let codeBlockPath = UIBezierPath()
+                for blockRect in codeBlockRects {
+                    codeBlockPath.append(
+                        UIBezierPath(
+                            roundedRect: blockRect,
+                            cornerRadius: NoteTextAppearance.codeBlockCornerRadius
+                        )
+                    )
+                }
+                codeBlockLayer.frame = bounds
+                codeBlockLayer.path = codeBlockPath.cgPath
+            }
+
+            let blockquoteRuleRects = NoteTextBlockquoteDecorationLayout.detachedRuleRects(
+                in: attributedText,
+                containerWidth: textView.bounds.width,
+                textContainerInset: textContainerInset
+            )
+            if blockquoteRuleRects.isEmpty {
+                blockquoteLayer.path = nil
+            } else {
+                let blockquotePath = UIBezierPath()
+                for ruleRect in blockquoteRuleRects {
+                    blockquotePath.append(UIBezierPath(roundedRect: ruleRect, cornerRadius: 1.5))
+                }
+                blockquoteLayer.frame = bounds
+                blockquoteLayer.path = blockquotePath.cgPath
+            }
+
+            NoteTextDecorationDebugTrace.log(
+                "editor.refreshPaths",
+                details:
+                    "bounds=\(NoteTextDecorationDebugTrace.summarize(bounds)) "
+                    + "frame=\(NoteTextDecorationDebugTrace.summarize(frame)) "
+                    + "contentOffset=\(NoteTextDecorationDebugTrace.summarize(textView.contentOffset)) "
+                    + "contentSize=\(NoteTextDecorationDebugTrace.summarize(textView.contentSize)) "
+                    + "inset=\(NoteTextDecorationDebugTrace.summarize(textView.textContainerInset)) "
+                    + NoteTextDecorationDebugTrace.summarizeRects(codeBlockRects, label: "code")
+                    + " "
+                    + NoteTextDecorationDebugTrace.summarizeRects(blockquoteRuleRects, label: "quote"),
+                dedupe: true
+            )
+        }
+    }
+
     let textView: UIKitNoteTextEditorSurface.AccessoryTextView
 
     init(textView: UIKitNoteTextEditorSurface.AccessoryTextView) {
@@ -63,14 +173,11 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         var onSubheadingCommand: (() -> Void)?
         var onBodyCommand: (() -> Void)?
         var onDidMoveToWindow: ((AccessoryTextView) -> Void)?
+        weak var decorationView: UIKitNoteTextEditorContainerView.DecorationView?
         var shouldAutofocus = false
         var hasScheduledAutofocus = false
         var suppressAutofocusReveal = false
         private var lastReportedViewportSnapshot: UIKitNoteTextEditorViewportSnapshot?
-        private var cachedCodeBlockBackgroundRects: [CGRect] = []
-        private var isCodeBlockBackgroundLayoutDirty = true
-        private var lastCodeBlockBackgroundLayoutBoundsWidth: CGFloat = 0
-        private var lastCodeBlockBackgroundLayoutInset: UIEdgeInsets = .zero
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { setNeedsLayout() }
         }
@@ -83,7 +190,14 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         override var contentOffset: CGPoint {
             didSet {
                 reportViewportSnapshotIfNeeded()
-                setNeedsDisplay()
+                decorationView?.refreshPaths()
+            }
+        }
+
+        override var contentSize: CGSize {
+            didSet {
+                syncDecorationViewFrame()
+                decorationView?.refreshPaths()
             }
         }
 
@@ -125,8 +239,18 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             super.layoutSubviews()
             updateTextContainerInsets()
             updateViewportInsets()
-            updateCodeBlockBackgroundLayoutState()
+            syncDecorationViewFrame()
+            decorationView?.refreshPaths()
             reportViewportSnapshotIfNeeded()
+            NoteTextDecorationDebugTrace.log(
+                "editor.layoutSubviews",
+                details:
+                    "bounds=\(NoteTextDecorationDebugTrace.summarize(bounds)) "
+                    + "contentOffset=\(NoteTextDecorationDebugTrace.summarize(contentOffset)) "
+                    + "contentSize=\(NoteTextDecorationDebugTrace.summarize(contentSize)) "
+                    + "inset=\(NoteTextDecorationDebugTrace.summarize(textContainerInset))",
+                dedupe: true
+            )
         }
 
         override func didMoveToWindow() {
@@ -134,9 +258,9 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             onDidMoveToWindow?(self)
         }
 
-        override func draw(_ rect: CGRect) {
-            drawCodeBlockBackgrounds(in: rect)
-            super.draw(rect)
+        override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+            super.traitCollectionDidChange(previousTraitCollection)
+            decorationView?.refreshPaths()
         }
 
         override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
@@ -170,48 +294,21 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         }
 
         func invalidateCodeBlockBackgroundLayout() {
-            isCodeBlockBackgroundLayoutDirty = true
-            cachedCodeBlockBackgroundRects = []
-            setNeedsDisplay()
+            decorationView?.refreshPaths()
         }
 
-        private func updateCodeBlockBackgroundLayoutState() {
-            let widthChanged = abs(lastCodeBlockBackgroundLayoutBoundsWidth - bounds.width) > 0.5
-            let insetChanged = lastCodeBlockBackgroundLayoutInset != textContainerInset
-            guard widthChanged || insetChanged else { return }
-            lastCodeBlockBackgroundLayoutBoundsWidth = bounds.width
-            lastCodeBlockBackgroundLayoutInset = textContainerInset
-            invalidateCodeBlockBackgroundLayout()
-        }
-
-        private func drawCodeBlockBackgrounds(in rect: CGRect) {
-            guard textStorage.length > 0 else { return }
-            let backgroundRects = resolvedCodeBlockBackgroundRects()
-            guard backgroundRects.isEmpty == false else { return }
-
-            NoteTextAppearance.codeBlockBackgroundColor.setFill()
-            for backgroundRect in backgroundRects where backgroundRect.intersects(rect) {
-                UIBezierPath(
-                    roundedRect: backgroundRect,
-                    cornerRadius: NoteTextAppearance.codeBlockCornerRadius
-                ).fill()
-            }
-        }
-
-        private func resolvedCodeBlockBackgroundRects() -> [CGRect] {
-            guard isCodeBlockBackgroundLayoutDirty == false else {
-                cachedCodeBlockBackgroundRects = NoteTextCodeBlockBackgroundLayout.detachedBlockRects(
-                    in: textStorage,
-                    containerWidth: bounds.width,
-                    textContainerInset: CGSize(
-                        width: textContainerInset.left,
-                        height: textContainerInset.top
-                    )
-                )
-                isCodeBlockBackgroundLayoutDirty = false
-                return cachedCodeBlockBackgroundRects
-            }
-            return cachedCodeBlockBackgroundRects
+        private func syncDecorationViewFrame() {
+            guard let decorationView else { return }
+            let resolvedHeight = max(bounds.height, contentSize.height)
+            let resolvedFrame = CGRect(
+                x: 0,
+                y: 0,
+                width: bounds.width,
+                height: resolvedHeight
+            )
+            guard decorationView.frame != resolvedFrame else { return }
+            decorationView.frame = resolvedFrame
+            decorationView.refreshPaths()
         }
 
     }
@@ -287,8 +384,13 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
                 configuration: formattingBarConfiguration
             )
         }
+        let decorationView = UIKitNoteTextEditorContainerView.DecorationView()
+        decorationView.textView = textView
+        textView.insertSubview(decorationView, at: 0)
+        textView.decorationView = decorationView
+        let containerView = UIKitNoteTextEditorContainerView(textView: textView)
         onTextViewReady?(textView)
-        return UIKitNoteTextEditorContainerView(textView: textView)
+        return containerView
     }
 
     func updateUIView(_ containerView: UIKitNoteTextEditorContainerView, context: Context) {
@@ -394,10 +496,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isApplyingProgrammaticText, !isApplyingProgrammaticSelection else { return }
-            NotesEditEntryDebugTrace.log(
-                "textViewDidChangeSelection",
-                details: NotesEditEntryDebugTrace.textViewSummary(textView)
-            )
             guard textView.isFirstResponder else { return }
             let document = viewModel.currentPersistenceSnapshot().document
 
@@ -419,10 +517,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             guard let textView = textView as? AccessoryTextView else { return }
-            NotesEditEntryDebugTrace.log(
-                "textViewDidBeginEditing.delegate",
-                details: NotesEditEntryDebugTrace.textViewSummary(textView)
-            )
             onDidBeginEditing?(textView)
         }
 

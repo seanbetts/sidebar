@@ -1,4 +1,5 @@
 #if os(iOS)
+import SwiftUI
 import UIKit
 import XCTest
 @testable import sideBar
@@ -6,6 +7,183 @@ import XCTest
 @MainActor
 @available(iOS 26.0, *)
 final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
+    func testAnchoredReadToEditActivationKeepsCodeBlockBackgroundAlignedInMountedDetailView() async throws {
+        let document = complexDecorationViewportDocument()
+        let note = NotePayload(
+            id: "code-decoration-note",
+            name: "Decoration",
+            document: document,
+            plainText: NotesSemanticDocumentProjection.plainText(from: document),
+            path: "/code-decoration-note.md",
+            modified: nil,
+            created: nil
+        )
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(
+            context.makeView().environmentObject(environment),
+            frame: CGRect(x: 0, y: 0, width: 516, height: 887),
+            makeKeyAndVisible: true
+        )
+        controller.view.window?.overrideUserInterfaceStyle = .dark
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        drainNotesHostingRunLoop()
+        let readTextView = try XCTUnwrap(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-read-text-view"
+            )
+        )
+        let readPlainText = readTextView.attributedText.string as NSString
+        let targetOffset = readPlainText.range(of: "function greet(name) {").location
+        XCTAssertNotEqual(targetOffset, NSNotFound)
+
+        let expectedViewportAnchorY = try anchoredReadViewportAnchorY(
+            in: readTextView,
+            targetOffset: targetOffset
+        )
+        context.editorViewModel.enterEditMode(
+            at: .characterOffset(targetOffset),
+            viewportAnchorY: expectedViewportAnchorY
+        )
+
+        let editorTextView = try await waitForAnchoredEditorTextView(in: controller.view)
+        let renderView = try XCTUnwrap(editorTextView.superview)
+
+        await waitUntil(timeout: .seconds(2)) {
+            guard context.editorViewModel.isHoldingReadSurfaceDuringEditEntry == false else {
+                return false
+            }
+            guard let firstLineRange = (editorTextView.attributedText.string as NSString)
+                .range(of: "function greet(name) {").nonNotFound else {
+                return false
+            }
+            return anchoredEditorViewportAnchorY(
+                in: editorTextView,
+                targetOffset: firstLineRange.location
+            ).map { abs($0 - expectedViewportAnchorY) <= 24 } == true
+        }
+
+        let plainText = editorTextView.attributedText.string as NSString
+        let firstLineRange = try XCTUnwrap(plainText.range(of: "function greet(name) {").nonNotFound)
+        let secondLineRange = try XCTUnwrap(
+            plainText.range(of: "console.log('Hello, ${name}!');").nonNotFound
+        )
+        let firstLineRect = try anchoredEditorGlyphRect(
+            in: editorTextView,
+            characterIndex: firstLineRange.location
+        ).offsetBy(
+            dx: editorTextView.textContainerInset.left,
+            dy: editorTextView.textContainerInset.top
+        )
+        let secondLineRect = try anchoredEditorGlyphRect(
+            in: editorTextView,
+            characterIndex: secondLineRange.location + secondLineRange.length - 1
+        ).offsetBy(
+            dx: editorTextView.textContainerInset.left,
+            dy: editorTextView.textContainerInset.top
+        )
+        let samplePoint = CGPoint(
+            x: firstLineRect.maxX + ((secondLineRect.maxX - firstLineRect.maxX) * 0.5),
+            y: firstLineRect.midY - editorTextView.contentOffset.y
+        )
+        let sampledColor = try XCTUnwrap(
+            anchoredEditorSamplePixelColor(in: renderView, at: samplePoint)
+        )
+        anchoredAssertColorsApproximatelyEqual(
+            sampledColor.resolvedColor(with: renderView.traitCollection),
+            NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: renderView.traitCollection),
+            tolerance: 0.05
+        )
+    }
+
+    func testAnchoredReadToEditActivationKeepsBlockquoteRuleAlignedInMountedDetailView() async throws {
+        let document = complexDecorationViewportDocument()
+        let note = NotePayload(
+            id: "blockquote-decoration-note",
+            name: "Decoration",
+            document: document,
+            plainText: NotesSemanticDocumentProjection.plainText(from: document),
+            path: "/blockquote-decoration-note.md",
+            modified: nil,
+            created: nil
+        )
+        let context = await makeNotesDetailViewTestContext(note: note)
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(
+            context.makeView().environmentObject(environment),
+            frame: CGRect(x: 0, y: 0, width: 516, height: 887),
+            makeKeyAndVisible: true
+        )
+        controller.view.window?.overrideUserInterfaceStyle = .dark
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        drainNotesHostingRunLoop()
+        let readTextView = try XCTUnwrap(
+            findTextView(
+                in: controller.view,
+                accessibilityIdentifier: "notes-read-text-view"
+            )
+        )
+        let readPlainText = readTextView.attributedText.string as NSString
+        let targetOffset = readPlainText.range(of: "This is a blockquote.").location
+        XCTAssertNotEqual(targetOffset, NSNotFound)
+
+        let expectedViewportAnchorY = try anchoredReadViewportAnchorY(
+            in: readTextView,
+            targetOffset: targetOffset
+        )
+        context.editorViewModel.enterEditMode(
+            at: .characterOffset(targetOffset),
+            viewportAnchorY: expectedViewportAnchorY
+        )
+
+        let editorTextView = try await waitForAnchoredEditorTextView(in: controller.view)
+        let renderView = try XCTUnwrap(editorTextView.superview)
+
+        await waitUntil(timeout: .seconds(2)) {
+            guard context.editorViewModel.isHoldingReadSurfaceDuringEditEntry == false else {
+                return false
+            }
+            guard let quoteRange = (editorTextView.attributedText.string as NSString)
+                .range(of: "This is a blockquote.").nonNotFound else {
+                return false
+            }
+            return anchoredEditorViewportAnchorY(
+                in: editorTextView,
+                targetOffset: quoteRange.location
+            ).map { abs($0 - expectedViewportAnchorY) <= 24 } == true
+        }
+
+        let plainText = editorTextView.attributedText.string as NSString
+        let quoteRange = try XCTUnwrap(plainText.range(of: "This is a blockquote.").nonNotFound)
+        let quoteRect = try anchoredEditorGlyphRect(
+            in: editorTextView,
+            characterIndex: quoteRange.location
+        ).offsetBy(
+            dx: editorTextView.textContainerInset.left,
+            dy: editorTextView.textContainerInset.top
+        )
+        let ruleRect = try anchoredEditorBlockquoteRuleRect(
+            in: editorTextView,
+            nearY: quoteRect.midY
+        )
+        let samplePoint = CGPoint(
+            x: ruleRect.midX,
+            y: ruleRect.midY - editorTextView.contentOffset.y
+        )
+        let sampledColor = try XCTUnwrap(
+            anchoredEditorSamplePixelColor(in: renderView, at: samplePoint)
+        )
+
+        anchoredAssertColorsApproximatelyEqual(
+            sampledColor.resolvedColor(with: renderView.traitCollection),
+            UIColor.separator.resolvedColor(with: renderView.traitCollection),
+            tolerance: 0.08
+        )
+    }
+
     func testReadToEditActivationHandsViewportAndSelectionIntoEditorSurface() async throws {
         let plainText = (0..<40)
             .map { index in "Line \(index) body text" }
@@ -602,5 +780,203 @@ private func findTextView(in view: UIView?, accessibilityIdentifier: String) -> 
     }
 
     return nil
+}
+
+private extension NSRange {
+    var nonNotFound: NSRange? {
+        location == NSNotFound ? nil : self
+    }
+}
+
+@MainActor
+private func complexDecorationViewportDocument() -> NotesSemanticDocument {
+    NotesSemanticDocument(
+        version: NotesSemanticDocument.currentVersion,
+        blocks: [
+            .init(type: .heading, content: [.init(text: "Code Blocks", marks: [])]),
+            .init(type: .subheading, content: [.init(text: "JavaScript", marks: [])]),
+            .init(
+                type: .codeBlock,
+                content: [.init(
+                    text: """
+                    function greet(name) {
+                    console.log('Hello, ${name}!');
+                    return true;
+                    }
+                    """,
+                    marks: []
+                )]
+            ),
+            .init(type: .subheading, content: [.init(text: "Python", marks: [])]),
+            .init(
+                type: .codeBlock,
+                content: [.init(
+                    text: """
+                    def calculate_sum(a, b):
+                        return a + b
+                    result = calculate_sum(5, 10)
+                    print(f"Result: {result}")
+                    """,
+                    marks: []
+                )]
+            ),
+            .init(type: .heading, content: [.init(text: "Blockquotes", marks: [])]),
+            .init(type: .subheading, content: [.init(text: "Simple Blockquote", marks: [])]),
+            .init(
+                type: .blockquote,
+                children: [
+                    .paragraph([
+                        .init(text: "This is a blockquote.\nIt can span multiple lines.", marks: [])
+                    ])
+                ]
+            ),
+            .paragraph([.init(text: String(repeating: "Trailing paragraph text. ", count: 30), marks: [])])
+        ]
+    )
+}
+
+@MainActor
+private func anchoredReadViewportAnchorY(
+    in textView: UITextView,
+    targetOffset: Int
+) throws -> CGFloat {
+    let targetPosition = try XCTUnwrap(
+        textView.position(from: textView.beginningOfDocument, offset: targetOffset)
+    )
+    let initialTargetRect = textView.caretRect(for: targetPosition)
+    let viewportHeight = textView.bounds.inset(by: textView.adjustedContentInset).height
+    let targetReadOffset = max(
+        initialTargetRect.midY - (viewportHeight * 0.55),
+        -textView.adjustedContentInset.top
+    )
+    textView.setContentOffset(CGPoint(x: 0, y: targetReadOffset), animated: false)
+    drainNotesHostingRunLoop()
+    drainNotesHostingRunLoop()
+
+    let targetRect = textView.caretRect(for: targetPosition)
+    let viewport = textView.bounds.inset(by: textView.adjustedContentInset)
+    return targetRect.midY - viewport.minY
+}
+
+@MainActor
+private func anchoredEditorViewportAnchorY(
+    in textView: UIKitNoteTextEditorSurface.AccessoryTextView,
+    targetOffset: Int
+) -> CGFloat? {
+    guard let position = textView.position(from: textView.beginningOfDocument, offset: targetOffset) else {
+        return nil
+    }
+    let rect = textView.caretRect(for: position)
+    let viewport = textView.visibleViewportRect()
+    guard viewport.height > 0 else { return nil }
+    return rect.midY - viewport.minY
+}
+
+@MainActor
+private func anchoredEditorGlyphRect(
+    in textView: UITextView,
+    characterIndex: Int
+) throws -> CGRect {
+    let layoutManager = textView.layoutManager
+    let textContainer = textView.textContainer
+    textContainer.size = CGSize(width: textView.bounds.width, height: CGFloat.greatestFiniteMagnitude)
+    layoutManager.ensureLayout(for: textContainer)
+    let glyphRange = layoutManager.glyphRange(
+        forCharacterRange: NSRange(location: characterIndex, length: 1),
+        actualCharacterRange: nil
+    )
+    return layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+}
+
+@MainActor
+private func anchoredEditorBlockquoteRuleRect(
+    in textView: UIKitNoteTextEditorSurface.AccessoryTextView,
+    nearY: CGFloat
+) throws -> CGRect {
+    let rects = NoteTextBlockquoteDecorationLayout.detachedRuleRects(
+        in: textView.attributedText,
+        containerWidth: textView.bounds.width,
+        textContainerInset: CGSize(
+            width: textView.textContainerInset.left,
+            height: textView.textContainerInset.top
+        )
+    )
+    return try XCTUnwrap(
+        rects.min(by: { abs($0.midY - nearY) < abs($1.midY - nearY) })
+    )
+}
+
+@MainActor
+private func anchoredEditorSamplePixelColor(
+    in view: UIView,
+    at point: CGPoint,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) -> UIColor? {
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    let image = UIGraphicsImageRenderer(bounds: view.bounds, format: format).image { context in
+        view.layer.render(in: context.cgContext)
+    }
+    guard let cgImage = image.cgImage,
+          let dataProvider = cgImage.dataProvider,
+          let data = dataProvider.data else {
+        XCTFail("Expected rendered pixel data", file: file, line: line)
+        return nil
+    }
+
+    let pixelX = Int(point.x.rounded(.down))
+    let pixelY = Int(point.y.rounded(.down))
+    guard pixelX >= 0, pixelX < cgImage.width, pixelY >= 0, pixelY < cgImage.height else {
+        XCTFail("Sample point out of bounds: \(point)", file: file, line: line)
+        return nil
+    }
+
+    let bytes = CFDataGetBytePtr(data)
+    let bytesPerPixel = cgImage.bitsPerPixel / 8
+    let offset = (pixelY * cgImage.bytesPerRow) + (pixelX * bytesPerPixel)
+    let alpha = CGFloat(bytes?[offset + 3] ?? 0) / 255
+    guard alpha > 0 else { return UIColor(red: 0, green: 0, blue: 0, alpha: 0) }
+
+    return UIColor(
+        red: (CGFloat(bytes?[offset] ?? 0) / 255) / alpha,
+        green: (CGFloat(bytes?[offset + 1] ?? 0) / 255) / alpha,
+        blue: (CGFloat(bytes?[offset + 2] ?? 0) / 255) / alpha,
+        alpha: alpha
+    )
+}
+
+@MainActor
+private func anchoredAssertColorsApproximatelyEqual(
+    _ actual: UIColor,
+    _ expected: UIColor,
+    tolerance: CGFloat,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    var actualRed: CGFloat = 0
+    var actualGreen: CGFloat = 0
+    var actualBlue: CGFloat = 0
+    var actualAlpha: CGFloat = 0
+    var expectedRed: CGFloat = 0
+    var expectedGreen: CGFloat = 0
+    var expectedBlue: CGFloat = 0
+    var expectedAlpha: CGFloat = 0
+
+    XCTAssertTrue(
+        actual.getRed(&actualRed, green: &actualGreen, blue: &actualBlue, alpha: &actualAlpha),
+        file: file,
+        line: line
+    )
+    XCTAssertTrue(
+        expected.getRed(&expectedRed, green: &expectedGreen, blue: &expectedBlue, alpha: &expectedAlpha),
+        file: file,
+        line: line
+    )
+
+    XCTAssertEqual(actualRed, expectedRed, accuracy: tolerance, file: file, line: line)
+    XCTAssertEqual(actualGreen, expectedGreen, accuracy: tolerance, file: file, line: line)
+    XCTAssertEqual(actualBlue, expectedBlue, accuracy: tolerance, file: file, line: line)
+    XCTAssertEqual(actualAlpha, expectedAlpha, accuracy: tolerance, file: file, line: line)
 }
 #endif

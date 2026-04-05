@@ -72,18 +72,6 @@ extension NotesDetailView {
         viewportAnchorY: CGFloat?
     ) {
         guard currentUnsupportedContent == nil else { return }
-        let heldReadOffsetSummary =
-            "heldReadOffset=("
-            + "\(String(format: "%.2f", editorViewModel.heldReadSurfaceViewportOffset.x)),"
-            + "\(String(format: "%.2f", editorViewModel.heldReadSurfaceViewportOffset.y))) "
-        NotesEditEntryDebugTrace.log(
-            "activateReadSurfaceEditing",
-            details:
-                "target=\(target) "
-                + "viewportAnchorY=\(viewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
-                + heldReadOffsetSummary
-                + "presentationMode=\(editorViewModel.presentationMode)"
-        )
         #if os(iOS)
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),

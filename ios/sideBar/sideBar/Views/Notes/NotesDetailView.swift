@@ -438,13 +438,6 @@ extension NotesDetailView {
     }
 
     func handleFormattingBarPresentationChange(_ presentation: NoteFormattingBarPresentation) {
-        NotesEditEntryDebugTrace.log(
-            "notesDetail.handleFormattingBarPresentationChange",
-            details:
-                "presentation=\(presentation) "
-                + "presentationMode=\(editorViewModel.presentationMode) "
-                + "isHoldingReadSurfaceDuringEditEntry=\(editorViewModel.isHoldingReadSurfaceDuringEditEntry)"
-        )
         activeFormattingBarPresentation = presentation
     }
 

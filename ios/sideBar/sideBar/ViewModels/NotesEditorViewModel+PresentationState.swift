@@ -12,22 +12,12 @@ extension NotesEditorViewModel {
 
     public func completeEditEntryPresentationHold() {
         guard isHoldingReadSurfaceDuringEditEntry else { return }
-        NotesEditEntryDebugTrace.log(
-            "completeEditEntryPresentationHold.begin",
-            details: "presentationMode=\(presentationMode)"
-        )
         heldReadSurfaceActivationTarget = nil
         heldReadSurfaceViewportAnchorY = nil
         pendingEditEntryPresentationHoldTask?.cancel()
         pendingEditEntryPresentationHoldTask = Task { @MainActor [weak self] in
             await Task.yield()
             guard let self, Task.isCancelled == false else { return }
-            NotesEditEntryDebugTrace.log(
-                "completeEditEntryPresentationHold.willApply",
-                details:
-                    "presentationMode=\(self.presentationMode) "
-                    + "isHoldingReadSurfaceDuringEditEntry=\(self.isHoldingReadSurfaceDuringEditEntry)"
-            )
             try? await Task.sleep(nanoseconds: 16_000_000)
             guard Task.isCancelled == false else { return }
             DispatchQueue.main.async { [weak self] in
@@ -35,10 +25,6 @@ extension NotesEditorViewModel {
                 self.isHoldingReadSurfaceDuringEditEntry = false
                 self.pendingEditEntryPresentationHoldTask = nil
                 self.scheduleDeferredViewStateObjectWillChange()
-                NotesEditEntryDebugTrace.log(
-                    "completeEditEntryPresentationHold.apply",
-                    details: "presentationMode=\(self.presentationMode)"
-                )
             }
         }
     }

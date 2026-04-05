@@ -443,6 +443,133 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         )
     }
 
+    func testDetachedDecorationRectsMatchMountedReadLayoutForComplexDocumentOnIOS() throws {
+        let document = complexDecorationDocument()
+        let textView = try makeReadTextView(
+            document: document,
+            frame: CGRect(x: 0, y: 0, width: 420, height: 900)
+        )
+        let liveCodeRects = NoteTextCodeBlockBackgroundLayout.blockRects(
+            in: textView.attributedText,
+            layoutManager: textView.layoutManager,
+            textContainer: textView.textContainer,
+            textContainerInset: CGSize(
+                width: textView.textContainerInset.left,
+                height: textView.textContainerInset.top
+            )
+        )
+        let detachedCodeRects = NoteTextCodeBlockBackgroundLayout.detachedBlockRects(
+            in: textView.attributedText,
+            containerWidth: textView.bounds.width,
+            textContainerInset: CGSize(
+                width: textView.textContainerInset.left,
+                height: textView.textContainerInset.top
+            )
+        )
+        let liveRuleRects = NoteTextBlockquoteDecorationLayout.ruleRects(
+            in: textView.attributedText,
+            layoutManager: textView.layoutManager,
+            textContainer: textView.textContainer,
+            textContainerInset: CGSize(
+                width: textView.textContainerInset.left,
+                height: textView.textContainerInset.top
+            )
+        )
+        let detachedRuleRects = NoteTextBlockquoteDecorationLayout.detachedRuleRects(
+            in: textView.attributedText,
+            containerWidth: textView.bounds.width,
+            textContainerInset: CGSize(
+                width: textView.textContainerInset.left,
+                height: textView.textContainerInset.top
+            )
+        )
+
+        XCTAssertEqual(detachedCodeRects.count, liveCodeRects.count)
+        XCTAssertEqual(detachedRuleRects.count, liveRuleRects.count)
+
+        for (detachedRect, liveRect) in zip(detachedCodeRects, liveCodeRects) {
+            XCTAssertEqual(detachedRect.minY, liveRect.minY, accuracy: 1)
+            XCTAssertEqual(detachedRect.maxY, liveRect.maxY, accuracy: 1)
+        }
+
+        for (detachedRect, liveRect) in zip(detachedRuleRects, liveRuleRects) {
+            XCTAssertEqual(detachedRect.minY, liveRect.minY, accuracy: 1)
+            XCTAssertEqual(detachedRect.maxY, liveRect.maxY, accuracy: 1)
+        }
+    }
+
+    func testMountedReadViewKeepsCodeBlockBackgroundAlignedAfterScrollForComplexDocumentOnIOS() throws {
+        let document = complexDecorationDocument()
+        let textView = try makeReadTextView(
+            document: document,
+            frame: CGRect(x: 0, y: 0, width: 420, height: 420)
+        )
+        let plainText = textView.attributedText.string as NSString
+        let firstLineRange = plainText.range(of: "function greet(name) {")
+        let secondLineRange = plainText.range(of: "console.log('Hello, ${name}!');")
+        XCTAssertNotEqual(firstLineRange.location, NSNotFound)
+        XCTAssertNotEqual(secondLineRange.location, NSNotFound)
+
+        let firstLineRect = try contentGlyphRect(in: textView, characterIndex: firstLineRange.location)
+        let secondLineRect = try contentGlyphRect(
+            in: textView,
+            characterIndex: secondLineRange.location + secondLineRange.length - 1
+        )
+        XCTAssertGreaterThan(secondLineRect.maxX - firstLineRect.maxX, 20)
+
+        textView.setContentOffset(
+            CGPoint(x: 0, y: max(firstLineRect.minY - 120, 0)),
+            animated: false
+        )
+        textView.setNeedsLayout()
+        textView.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        let samplePoint = CGPoint(
+            x: firstLineRect.maxX + ((secondLineRect.maxX - firstLineRect.maxX) * 0.5),
+            y: firstLineRect.midY - textView.contentOffset.y
+        )
+        let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
+
+        assertColorsApproximatelyEqual(
+            sampledColor.resolvedColor(with: textView.traitCollection),
+            NoteTextAppearance.codeBlockBackgroundColor.resolvedColor(with: textView.traitCollection),
+            tolerance: 0.05
+        )
+    }
+
+    func testMountedReadViewKeepsBlockquoteRuleAlignedAfterScrollForComplexDocumentOnIOS() throws {
+        let document = complexDecorationDocument()
+        let textView = try makeReadTextView(
+            document: document,
+            frame: CGRect(x: 0, y: 0, width: 420, height: 420)
+        )
+        let plainText = textView.attributedText.string as NSString
+        let quoteRange = plainText.range(of: "This is a blockquote.")
+        XCTAssertNotEqual(quoteRange.location, NSNotFound)
+
+        let quoteRect = try contentGlyphRect(in: textView, characterIndex: quoteRange.location)
+        textView.setContentOffset(
+            CGPoint(x: 0, y: max(quoteRect.minY - 120, 0)),
+            animated: false
+        )
+        textView.setNeedsLayout()
+        textView.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        let samplePoint = CGPoint(
+            x: max(1, quoteRect.minX - 7),
+            y: quoteRect.midY - textView.contentOffset.y
+        )
+        let sampledColor = try XCTUnwrap(samplePixelColor(in: textView, at: samplePoint))
+
+        assertColorsApproximatelyEqual(
+            sampledColor.resolvedColor(with: textView.traitCollection),
+            UIColor.separator.resolvedColor(with: textView.traitCollection),
+            tolerance: 0.08
+        )
+    }
+
     func testMakePlatformAttributedContentPreservesContextualParagraphSpacingAroundCodeBlocksOnIOS() throws {
         let baseFontSize: CGFloat = 16
         let document = NotesSemanticDocument(
@@ -622,5 +749,77 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
 
         XCTAssertFalse(matchesExpectedWithinTolerance, file: file, line: line)
     }
+
+    private func contentGlyphRect(
+        in textView: UITextView,
+        characterIndex: Int,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> CGRect {
+        let attributedText = textView.attributedText ?? NSAttributedString()
+        guard characterIndex >= 0, characterIndex < attributedText.length else {
+            XCTFail("Character index out of bounds", file: file, line: line)
+            return .zero
+        }
+
+        let layoutManager = textView.layoutManager
+        let textContainer = textView.textContainer
+        textContainer.size = CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude)
+        layoutManager.ensureLayout(for: textContainer)
+        let glyphRange = layoutManager.glyphRange(
+            forCharacterRange: NSRange(location: characterIndex, length: 1),
+            actualCharacterRange: nil
+        )
+        return layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer).offsetBy(
+            dx: textView.textContainerInset.left,
+            dy: textView.textContainerInset.top
+        )
+    }
     #endif
+
+    private func complexDecorationDocument() -> NotesSemanticDocument {
+        NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .heading, content: [.init(text: "Code Blocks", marks: [])]),
+                .init(type: .subheading, content: [.init(text: "JavaScript", marks: [])]),
+                .init(
+                    type: .codeBlock,
+                    content: [.init(
+                        text: """
+                        function greet(name) {
+                        console.log('Hello, ${name}!');
+                        return true;
+                        }
+                        """,
+                        marks: []
+                    )]
+                ),
+                .init(type: .subheading, content: [.init(text: "Python", marks: [])]),
+                .init(
+                    type: .codeBlock,
+                    content: [.init(
+                        text: """
+                        def calculate_sum(a, b):
+                            return a + b
+                        result = calculate_sum(5, 10)
+                        print(f"Result: {result}")
+                        """,
+                        marks: []
+                    )]
+                ),
+                .init(type: .heading, content: [.init(text: "Blockquotes", marks: [])]),
+                .init(type: .subheading, content: [.init(text: "Simple Blockquote", marks: [])]),
+                .init(
+                    type: .blockquote,
+                    children: [
+                        .paragraph([
+                            .init(text: "This is a blockquote.\nIt can span multiple lines.", marks: [])
+                        ])
+                    ]
+                ),
+                .paragraph([.init(text: String(repeating: "Trailing paragraph text. ", count: 30), marks: [])])
+            ]
+        )
+    }
 }

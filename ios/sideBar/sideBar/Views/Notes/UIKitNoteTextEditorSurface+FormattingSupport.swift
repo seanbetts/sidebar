@@ -5,71 +5,23 @@ import UIKit
 extension UIKitNoteTextEditorSurface {
     func handleTextViewDidMoveToWindow(_ textView: AccessoryTextView) {
         guard textView.window != nil else { return }
-        NotesEditEntryDebugTrace.log(
-            "textView.didMoveToWindow",
-            details: NotesEditEntryDebugTrace.textViewSummary(textView)
-        )
         onTextViewReady?(textView)
         scheduleAutofocusIfNeeded(for: textView)
     }
 
     func scheduleAutofocusIfNeeded(for textView: AccessoryTextView) {
-        guard textView.shouldAutofocus else {
-            NotesEditEntryDebugTrace.log(
-                "scheduleAutofocusIfNeeded.skip",
-                details: "reason=shouldAutofocusFalse " + NotesEditEntryDebugTrace.textViewSummary(textView)
-            )
-            return
-        }
-        guard textView.window != nil else {
-            NotesEditEntryDebugTrace.log(
-                "scheduleAutofocusIfNeeded.skip",
-                details: "reason=noWindow " + NotesEditEntryDebugTrace.textViewSummary(textView)
-            )
-            return
-        }
-        guard !textView.isFirstResponder else {
-            NotesEditEntryDebugTrace.log(
-                "scheduleAutofocusIfNeeded.skip",
-                details: "reason=alreadyFirstResponder " + NotesEditEntryDebugTrace.textViewSummary(textView)
-            )
-            return
-        }
-        guard !textView.hasScheduledAutofocus else {
-            NotesEditEntryDebugTrace.log(
-                "scheduleAutofocusIfNeeded.skip",
-                details: "reason=alreadyScheduled " + NotesEditEntryDebugTrace.textViewSummary(textView)
-            )
-            return
-        }
-        NotesEditEntryDebugTrace.log(
-            "scheduleAutofocusIfNeeded.schedule",
-            details: NotesEditEntryDebugTrace.textViewSummary(textView)
-        )
+        guard textView.shouldAutofocus else { return }
+        guard textView.window != nil else { return }
+        guard !textView.isFirstResponder else { return }
+        guard !textView.hasScheduledAutofocus else { return }
         textView.hasScheduledAutofocus = true
         DispatchQueue.main.async { [weak textView] in
             guard let textView else { return }
             defer { textView.hasScheduledAutofocus = false }
-            guard textView.shouldAutofocus, textView.window != nil else {
-                NotesEditEntryDebugTrace.log(
-                    "scheduleAutofocusIfNeeded.cancel",
-                    details: NotesEditEntryDebugTrace.textViewSummary(textView)
-                )
-                return
-            }
+            guard textView.shouldAutofocus, textView.window != nil else { return }
             guard !textView.isFirstResponder else { return }
-            NotesEditEntryDebugTrace.log(
-                "scheduleAutofocusIfNeeded.becomeFirstResponder.begin",
-                details: NotesEditEntryDebugTrace.textViewSummary(textView)
-            )
             textView.window?.makeKey()
-            let didBecomeFirstResponder = textView.becomeFirstResponder()
-            NotesEditEntryDebugTrace.log(
-                "scheduleAutofocusIfNeeded.becomeFirstResponder.end",
-                details:
-                    "didBecomeFirstResponder=\(didBecomeFirstResponder) "
-                    + NotesEditEntryDebugTrace.textViewSummary(textView)
-            )
+            _ = textView.becomeFirstResponder()
         }
     }
 

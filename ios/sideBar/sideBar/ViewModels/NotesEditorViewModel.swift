@@ -466,13 +466,6 @@ extension NotesEditorViewModel {
         DispatchQueue.main.async { [weak self] in
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-                NotesEditEntryDebugTrace.log(
-                    "notesEditor.scheduleNativeEditorObjectWillChange.fire",
-                    details:
-                        "presentationMode=\(self.presentationMode) "
-                        + "isHoldingReadSurfaceDuringEditEntry=\(self.isHoldingReadSurfaceDuringEditEntry) "
-                        + "isTransitioningEditExitToRead=\(self.isTransitioningEditExitToRead)"
-                )
                 self.hasScheduledNativeEditorObjectWillChange = false
                 self.objectWillChange.send()
             }

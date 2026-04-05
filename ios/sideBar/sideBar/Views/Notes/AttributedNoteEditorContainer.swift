@@ -205,16 +205,6 @@ struct AttributedNoteEditorContainer: View {
                 pendingSelectionTarget = nil
             },
             onDidBeginEditing: { textView in
-                NotesEditEntryDebugTrace.log(
-                    "editorContainer.onDidBeginEditing.begin",
-                    details:
-                        "shouldSkipDidBeginEditingPresentationReady=\(shouldSkipDidBeginEditingPresentationReady) "
-                        + "pendingSelectionViewportAnchorY=\(pendingSelectionViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
-                        + "pendingPostAutofocusViewportAnchorY="
-                        + "\(pendingPostAutofocusViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
-                        + "isHoldingReadSurfaceDuringEditEntry=\(editorViewModel.isHoldingReadSurfaceDuringEditEntry) "
-                        + NotesEditEntryDebugTrace.textViewSummary(textView)
-                )
                 editorViewModel.markEditorAutofocusSatisfied()
                 if shouldSkipDidBeginEditingPresentationReady {
                     shouldSkipDidBeginEditingPresentationReady = false
@@ -225,10 +215,6 @@ struct AttributedNoteEditorContainer: View {
                         )
                         self.pendingPostAutofocusViewportAnchorY = nil
                     }
-                    NotesEditEntryDebugTrace.log(
-                        "editorContainer.onDidBeginEditing.skipReady",
-                        details: NotesEditEntryDebugTrace.textViewSummary(textView)
-                    )
                     textView.suppressAutofocusReveal = false
                     DispatchQueue.main.async {
                         onInitialPresentationReady?()
@@ -253,12 +239,6 @@ struct AttributedNoteEditorContainer: View {
                     textView.positionCurrentSelection(
                         atViewportAnchorY: viewportAnchorY
                     )
-                    NotesEditEntryDebugTrace.log(
-                        "editorContainer.onDidBeginEditing.readyAfterPosition",
-                        details:
-                            "viewportAnchorY=\(String(format: "%.2f", viewportAnchorY)) "
-                            + NotesEditEntryDebugTrace.textViewSummary(textView)
-                    )
                     if editorViewModel.isHoldingReadSurfaceDuringEditEntry {
                         onInitialPresentationReady?()
                     }
@@ -273,19 +253,6 @@ struct AttributedNoteEditorContainer: View {
             },
             onTextViewReady: { textView in
                 editorViewModel.attachNativeEditorTextView(textView)
-                let pendingSelectionViewportOffsetSummary =
-                    pendingSelectionViewportOffset.map {
-                        "(\(String(format: "%.2f", $0.x)),\(String(format: "%.2f", $0.y)))"
-                    } ?? "nil"
-                NotesEditEntryDebugTrace.log(
-                    "editorContainer.onTextViewReady.begin",
-                    details:
-                        "pendingSelectionViewportOffset=\(pendingSelectionViewportOffsetSummary) "
-                        + "pendingSelectionViewportAnchorY=\(pendingSelectionViewportAnchorY.map { String(format: "%.2f", $0) } ?? "nil") "
-                        + "isHoldingReadSurfaceDuringEditEntry="
-                        + "\(editorViewModel.isHoldingReadSurfaceDuringEditEntry) "
-                        + NotesEditEntryDebugTrace.textViewSummary(textView)
-                )
                 if let pendingSelectionViewportOffset,
                    !textView.isFirstResponder,
                    textView.hasScheduledAutofocus == false {
@@ -322,13 +289,6 @@ struct AttributedNoteEditorContainer: View {
                     if shouldRepairSelectionAnchor {
                         textView.positionCurrentSelection(atViewportAnchorY: viewportAnchorY)
                     }
-                    NotesEditEntryDebugTrace.log(
-                        "editorContainer.onTextViewReady.preReady",
-                        details:
-                            "viewportAnchorY=\(String(format: "%.2f", viewportAnchorY)) "
-                            + "shouldRepairSelectionAnchor=\(shouldRepairSelectionAnchor) "
-                            + NotesEditEntryDebugTrace.textViewSummary(textView)
-                    )
                     textView.hasScheduledAutofocus = false
                     pendingPostAutofocusViewportAnchorY = viewportAnchorY
                     shouldSkipDidBeginEditingPresentationReady = true
