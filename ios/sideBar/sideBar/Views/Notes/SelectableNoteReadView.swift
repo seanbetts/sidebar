@@ -1154,13 +1154,6 @@ private final class SelectableNoteReadTextView: UITextView {
         didSet {
             reportViewportOffsetIfNeeded()
             setNeedsDisplay()
-            NoteTextDecorationDebugTrace.log(
-                "read.contentOffset",
-                details:
-                    "offset=\(NoteTextDecorationDebugTrace.summarize(contentOffset)) "
-                    + "bounds=\(NoteTextDecorationDebugTrace.summarize(bounds)) "
-                    + "contentSize=\(NoteTextDecorationDebugTrace.summarize(contentSize))"
-            )
         }
     }
 
@@ -1189,15 +1182,6 @@ private final class SelectableNoteReadTextView: UITextView {
         updateCodeBlockBackgroundLayoutState()
         applyInitialViewportOffsetIfNeeded()
         reportViewportOffsetIfNeeded()
-        NoteTextDecorationDebugTrace.log(
-            "read.layoutSubviews",
-            details:
-                "bounds=\(NoteTextDecorationDebugTrace.summarize(bounds)) "
-                + "contentOffset=\(NoteTextDecorationDebugTrace.summarize(contentOffset)) "
-                + "contentSize=\(NoteTextDecorationDebugTrace.summarize(contentSize)) "
-                + "inset=\(NoteTextDecorationDebugTrace.summarize(textContainerInset))",
-            dedupe: true
-        )
     }
 
     override func draw(_ rect: CGRect) {
@@ -1284,15 +1268,6 @@ private final class SelectableNoteReadTextView: UITextView {
             )
         )
         isCodeBlockBackgroundLayoutDirty = false
-        NoteTextDecorationDebugTrace.log(
-            "read.resolveCodeBlocks",
-            details:
-                "bounds=\(NoteTextDecorationDebugTrace.summarize(bounds)) "
-                + "contentOffset=\(NoteTextDecorationDebugTrace.summarize(contentOffset)) "
-                + "inset=\(NoteTextDecorationDebugTrace.summarize(textContainerInset)) "
-                + NoteTextDecorationDebugTrace.summarizeRects(cachedCodeBlockBackgroundRects, label: "code"),
-            dedupe: true
-        )
         return cachedCodeBlockBackgroundRects
     }
 

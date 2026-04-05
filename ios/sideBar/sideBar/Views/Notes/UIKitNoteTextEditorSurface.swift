@@ -64,13 +64,6 @@ final class UIKitNoteTextEditorContainerView: UIView {
             guard attributedText.length > 0 else {
                 codeBlockLayer.path = nil
                 blockquoteLayer.path = nil
-                NoteTextDecorationDebugTrace.log(
-                    "editor.refreshPaths.empty",
-                    details:
-                        "bounds=\(NoteTextDecorationDebugTrace.summarize(bounds)) "
-                        + "contentOffset=\(NoteTextDecorationDebugTrace.summarize(textView.contentOffset))",
-                    dedupe: true
-                )
                 return
             }
 
@@ -114,20 +107,6 @@ final class UIKitNoteTextEditorContainerView: UIView {
                 blockquoteLayer.frame = bounds
                 blockquoteLayer.path = blockquotePath.cgPath
             }
-
-            NoteTextDecorationDebugTrace.log(
-                "editor.refreshPaths",
-                details:
-                    "bounds=\(NoteTextDecorationDebugTrace.summarize(bounds)) "
-                    + "frame=\(NoteTextDecorationDebugTrace.summarize(frame)) "
-                    + "contentOffset=\(NoteTextDecorationDebugTrace.summarize(textView.contentOffset)) "
-                    + "contentSize=\(NoteTextDecorationDebugTrace.summarize(textView.contentSize)) "
-                    + "inset=\(NoteTextDecorationDebugTrace.summarize(textView.textContainerInset)) "
-                    + NoteTextDecorationDebugTrace.summarizeRects(codeBlockRects, label: "code")
-                    + " "
-                    + NoteTextDecorationDebugTrace.summarizeRects(blockquoteRuleRects, label: "quote"),
-                dedupe: true
-            )
         }
     }
 
@@ -242,15 +221,6 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             syncDecorationViewFrame()
             decorationView?.refreshPaths()
             reportViewportSnapshotIfNeeded()
-            NoteTextDecorationDebugTrace.log(
-                "editor.layoutSubviews",
-                details:
-                    "bounds=\(NoteTextDecorationDebugTrace.summarize(bounds)) "
-                    + "contentOffset=\(NoteTextDecorationDebugTrace.summarize(contentOffset)) "
-                    + "contentSize=\(NoteTextDecorationDebugTrace.summarize(contentSize)) "
-                    + "inset=\(NoteTextDecorationDebugTrace.summarize(textContainerInset))",
-                dedupe: true
-            )
         }
 
         override func didMoveToWindow() {
