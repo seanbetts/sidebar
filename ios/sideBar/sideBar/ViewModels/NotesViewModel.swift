@@ -150,6 +150,7 @@ public final class NotesViewModel: ObservableObject {
     public func clearSelection() {
         selectedNoteId = nil
         pendingNoteId = nil
+        activeNote = nil
         store.clearActiveNote()
     }
 

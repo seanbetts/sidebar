@@ -373,6 +373,17 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertNil(context.notesViewModel.activeNote)
     }
 
+    func testHandleCloseShortcutFromReadModeClosesByNextMainActorTurn() async throws {
+        let context = await makeNotesDetailViewTestContext()
+        context.editorViewModel.presentationMode = .read
+
+        context.makeView().handleCloseShortcut()
+        await Task.yield()
+
+        XCTAssertNil(context.editorViewModel.currentNoteId)
+        XCTAssertNil(context.notesViewModel.activeNote)
+    }
+
     func testReadInitialViewportRestorationAppliedDefersPendingRestorationCleanup() async {
         let context = await makeNotesDetailViewTestContext()
         context.editorViewModel.setPendingReadSurfaceViewportRestoration(

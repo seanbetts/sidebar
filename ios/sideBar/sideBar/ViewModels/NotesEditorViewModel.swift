@@ -184,7 +184,9 @@ public final class NotesEditorViewModel: ObservableObject {
     @available(iOS 26.0, macOS 26.0, *)
     public func makeNativeEditorViewModel() -> NativeNoteEditorViewModel {
         let viewModel = buildNativeEditorViewModel()
-        alignPersistenceBaseline(with: viewModel)
+        if currentNoteId != nil {
+            alignPersistenceBaseline(with: viewModel)
+        }
         return viewModel
     }
 
@@ -400,7 +402,42 @@ extension NotesEditorViewModel {
         debugLastExitReadViewportRestoration = nil
     }
 
+    private var isResetForNoActiveNote: Bool {
+        currentNoteId == nil
+            && presentationMode == .read
+            && content.isEmpty
+            && canonicalContent.isEmpty
+            && isDirty == false
+            && isSaving == false
+            && lastSavedAt == nil
+            && saveErrorMessage == nil
+            && isReadOnly
+            && isQueuedForSync == false
+            && unsupportedContent == nil
+            && pendingEditSelectionTarget == nil
+            && pendingEditViewportOffset == nil
+            && pendingEditViewportAnchorY == nil
+            && requestsEditorAutofocus == false
+            && isHoldingReadSurfaceDuringEditEntry == false
+            && isTransitioningEditExitToRead == false
+            && heldReadSurfaceViewportOffset == .zero
+            && heldReadSurfaceActivationTarget == nil
+            && heldReadSurfaceViewportAnchorY == nil
+            && liveEditorViewportOffset == nil
+            && liveEditorSelectionTarget == nil
+            && liveEditorSelectionViewportAnchorY == nil
+            && pendingReadViewportRestoration == nil
+            && pendingReadSurfaceViewportOffset == nil
+            && pendingReadSurfaceViewportAnchorTarget == nil
+            && pendingReadSurfaceViewportAnchorY == nil
+            && debugLastExitReadViewportRestoration == nil
+            && syncRequestedWhileSaving == false
+            && nativeEditorViewModel == nil
+            && sharedNativeEditorViewModel == nil
+    }
+
     private func resetStateForNoActiveNote() {
+        guard isResetForNoActiveNote == false else { return }
         if #available(iOS 26.0, macOS 26.0, *) {
             resetNativeEditorObservation()
             sharedNativeEditorViewModel = nil
@@ -486,7 +523,10 @@ extension NotesEditorViewModel {
     public func setReadOnly(_ readOnly: Bool) { guard isReadOnly != readOnly else { return }; isReadOnly = readOnly }
     @available(iOS 26.0, macOS 26.0, *)
     func alignPersistenceBaseline(with nativeViewModel: NativeNoteEditorViewModel) {
-        let snapshot = nativeViewModel.currentPersistenceSnapshot(); content = snapshot.plainText
+        guard currentNoteId != nil else { return }
+        let snapshot = nativeViewModel.currentPersistenceSnapshot()
+        guard snapshot.plainText != content || snapshot.canonicalContent != canonicalContent else { return }
+        content = snapshot.plainText
         canonicalContent = snapshot.canonicalContent
     }
     fileprivate func normalizedEditorSnapshot(for note: NotePayload) -> (content: String, plainText: String) {

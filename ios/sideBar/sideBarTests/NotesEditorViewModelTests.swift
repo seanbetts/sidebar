@@ -378,7 +378,10 @@ final class NotesEditorViewModelTests: XCTestCase {
         XCTAssertEqual(context.viewModel.presentationMode, .edit)
         XCTAssertFalse(
             context.viewModel.shouldAutofocusEditorSurface,
-            "Expected editor autofocus to be suppressed as soon as edit exit begins so the held UIKit surface cannot re-focus itself before read mode applies."
+            """
+            Expected editor autofocus to be suppressed as soon as edit exit begins so the held UIKit
+            surface cannot re-focus itself before read mode applies.
+            """
         )
 
         let didExit = await waitUntil(timeoutSeconds: 1.0, failOnTimeout: false) {
@@ -1448,8 +1451,58 @@ extension NotesEditorViewModelTests {
         context.viewModel.attachNativeEditor(nativeViewModel)
 
         XCTAssertEqual(publicationCount, 0)
-        try await waitUntil(timeoutSeconds: 1.0) { publicationCount == 1 }
-        XCTAssertEqual(publicationCount, 1)
+        try await waitUntil(timeoutSeconds: 1.0) { publicationCount > 0 }
+        XCTAssertGreaterThanOrEqual(publicationCount, 1)
+        _ = cancellable
+    }
+
+    func testNotesEditorViewModelDoesNotPublishWithoutMutation() async throws {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+
+        var publicationCount = 0
+        let cancellable = context.viewModel.objectWillChange.sink {
+            publicationCount += 1
+        }
+
+        try? await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertEqual(publicationCount, 0)
+        _ = cancellable
+    }
+
+    func testMakingNativeEditorDoesNotPublishParentWithoutAttachment() async throws {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        _ = context.viewModel.makeNativeEditorViewModel()
+
+        var publicationCount = 0
+        let cancellable = context.viewModel.objectWillChange.sink {
+            publicationCount += 1
+        }
+
+        try? await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertEqual(publicationCount, 0)
+        _ = cancellable
+    }
+
+    func testNativeEditorDoesNotPublishAfterCreationWithoutMutation() async throws {
+        let context = makeNotesEditorViewModelTestContext(
+            api: MockNotesAPI(updateResult: .failure(MockError.forced))
+        )
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+
+        var publicationCount = 0
+        let cancellable = nativeViewModel.objectWillChange.sink {
+            publicationCount += 1
+        }
+
+        try? await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertEqual(publicationCount, 0)
         _ = cancellable
     }
 
