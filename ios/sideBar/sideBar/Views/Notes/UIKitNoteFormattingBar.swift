@@ -318,7 +318,10 @@ extension UIKitNoteFormattingBar {
         dismissBackdropView?.frame = hostView.bounds
         let maxWidth = max(
             0,
-            min(380, hostView.bounds.width - hostView.safeAreaInsets.left - hostView.safeAreaInsets.right - 16)
+            min(
+                UIKitNoteFormattingPopoverView.preferredPopoverWidth,
+                hostView.bounds.width - hostView.safeAreaInsets.left - hostView.safeAreaInsets.right - 16
+            )
         )
         guard maxWidth > 0 else { return }
 

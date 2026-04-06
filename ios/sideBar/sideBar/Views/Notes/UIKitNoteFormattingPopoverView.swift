@@ -5,6 +5,8 @@ import UIKit
 @MainActor
 @available(iOS 26.0, *)
 final class UIKitNoteFormattingPopoverView: UIView {
+    static let preferredPopoverWidth: CGFloat = 400
+
     private let backgroundEffectView = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
     private let contentStack = UIStackView()
     private let textStyleScrollView = UIScrollView()
@@ -47,15 +49,16 @@ final class UIKitNoteFormattingPopoverView: UIView {
     }
 
     func preferredSize(maxWidth: CGFloat) -> CGSize {
+        let resolvedWidth = min(maxWidth, Self.preferredPopoverWidth)
         let compressed = systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
-        guard compressed.width > maxWidth else { return compressed }
+        guard compressed.width > resolvedWidth else { return compressed }
 
         let constrained = systemLayoutSizeFitting(
-            CGSize(width: maxWidth, height: UIView.layoutFittingCompressedSize.height),
+            CGSize(width: resolvedWidth, height: UIView.layoutFittingCompressedSize.height),
             withHorizontalFittingPriority: .required,
             verticalFittingPriority: .fittingSizeLevel
         )
-        return CGSize(width: maxWidth, height: constrained.height)
+        return CGSize(width: resolvedWidth, height: constrained.height)
     }
 }
 

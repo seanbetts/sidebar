@@ -406,6 +406,28 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(layout.frame.maxX, 312, accuracy: 0.5)
     }
 
+    func testPopoverExpandsBeyondLegacyThreeHundredEightyPointCapWhenHostAllowsIt() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let window = makeUIKitNoteTextEditorSurfaceHostingWindow(
+            frame: CGRect(x: 0, y: 0, width: 520, height: 900)
+        )
+        window.isHidden = false
+
+        let bar = UIKitNoteFormattingBar(configuration: makeEnabledConfiguration())
+        bar.frame = CGRect(x: 440, y: 760, width: 60, height: 48)
+        window.addSubview(bar)
+        bar.setNeedsLayout()
+        bar.layoutIfNeeded()
+
+        bar.presentPopover()
+        let popover = try XCTUnwrap(bar.popoverView)
+
+        XCTAssertGreaterThan(popover.frame.width, 380)
+    }
+
     func testTapOutsidePopoverDismissesIt() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")
