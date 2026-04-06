@@ -5,9 +5,9 @@ extension WebsitesDetailView {
     var pendingWebsiteLoadingView: some View {
         VStack(spacing: DesignTokens.Spacing.md) {
             LoadingView(message: viewModel.detailLoadingMessage)
-            if viewModel.canCancelWebsiteSave() {
+            if let pending = viewModel.cancelablePendingWebsite {
                 Button("Cancel") {
-                    Task { await viewModel.cancelWebsiteSave() }
+                    Task { await appEnvironment.cancelPendingWebsite(pending) }
                 }
                 .buttonStyle(.bordered)
             }

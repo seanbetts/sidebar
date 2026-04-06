@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Combine
 import CoreData
 import Foundation
@@ -17,6 +18,7 @@ public final class WriteQueue: ObservableObject {
     private let encoder = JSONEncoder()
     let logger = Logger(subsystem: "sideBar", category: "WriteQueue")
     var hasRecoveredStuckWrites = false
+    var hasRecoveredConflictWrites = false
     init(
         container: NSPersistentContainer,
         connectivityMonitor: ConnectivityMonitor,
@@ -31,8 +33,11 @@ public final class WriteQueue: ObservableObject {
         self.maxPendingWrites = maxPendingWrites
         Task { [weak self] in
             await self?.recoverStuckWritesIfNeeded()
-            await self?.restoreConflictPauseState()
+            await self?.recoverConflictWritesIfNeeded()
             await self?.loadPendingCount()
+            if let self, self.autoProcessEnabled, self.executor != nil, !self.connectivityMonitor.isOffline {
+                await self.processQueue()
+            }
         }
         observeNetwork()
     }
@@ -97,8 +102,9 @@ public final class WriteQueue: ObservableObject {
     }
 
     func processQueue() async {
-        guard !isProcessing, !isPausedForConflict, executor != nil, !connectivityMonitor.isOffline else { return }
+        guard !isProcessing, executor != nil, !connectivityMonitor.isOffline else { return }
         await recoverStuckWritesIfNeeded()
+        await recoverConflictWritesIfNeeded()
         isProcessing = true
         defer { isProcessing = false }
 
@@ -144,6 +150,24 @@ public final class WriteQueue: ObservableObject {
                     lastAttemptAt: write.lastAttemptAt
                 )
             }
+        }
+    }
+
+    func hasPendingWritesNeedingFlush() async -> Bool {
+        do {
+            return try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.fetchLimit = 1
+                request.predicate = NSPredicate(
+                    format: "status == %@ OR status == %@",
+                    WriteQueueStatus.pending.rawValue,
+                    WriteQueueStatus.inProgress.rawValue
+                )
+                return try context.fetch(request).isEmpty == false
+            }
+        } catch {
+            logger.error("Failed to inspect pending writes for background flush: \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 
@@ -244,6 +268,12 @@ public final class WriteQueue: ObservableObject {
         }
     }
 
+    func retryAllWrites() async {
+        await retryFailedWrites()
+        await processQueue()
+        await loadPendingCount()
+    }
+
     func setConflictPauseState(_ isPaused: Bool) { isPausedForConflict = isPaused }
     func resolveConflict(id: UUID, resolution: WriteQueueConflictResolution) async {
         do {
@@ -276,10 +306,6 @@ public final class WriteQueue: ObservableObject {
             return
         }
         await loadPendingCount()
-        await restoreConflictPauseState()
-        if isPausedForConflict {
-            return
-        }
         resumeProcessing()
     }
 }
@@ -297,15 +323,8 @@ private extension WriteQueue {
             return true
         } catch {
             if let conflictError = error as? WriteQueueConflictError {
-                await markWriteFailed(
-                    id: write.id,
-                    error: conflictError,
-                    shouldRetry: false,
-                    conflictReason: conflictError.reason,
-                    serverSnapshot: conflictError.serverSnapshot
-                )
-                isPausedForConflict = true
-                return false
+                await autoResolveConflict(write: write, error: conflictError)
+                return true
             }
             let shouldRetryWrite: Bool
             if case .unknownEntityType = (error as? WriteQueueError) {
@@ -402,6 +421,26 @@ private extension WriteQueue {
             return true
         }
     }
+
+    private func retryFailedWrites() async {
+        do {
+            try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
+                let writes = try context.fetch(request)
+                for write in writes {
+                    write.status = WriteQueueStatus.pending.rawValue
+                    write.lastError = nil
+                    write.lastAttemptAt = nil
+                    write.conflictReason = nil
+                    write.serverSnapshot = nil
+                }
+            }
+        } catch {
+            logger.error("Failed to retry failed writes: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     private func markWriteFailed(
         id: UUID,
         error: Error,
@@ -417,12 +456,8 @@ private extension WriteQueue {
                 guard let write = try context.fetch(request).first else { return }
                 write.status = shouldRetry ? WriteQueueStatus.pending.rawValue : WriteQueueStatus.failed.rawValue
                 write.lastError = String(describing: error)
-                if let conflictReason {
-                    write.conflictReason = conflictReason
-                }
-                if let serverSnapshot {
-                    write.serverSnapshot = serverSnapshot
-                }
+                write.conflictReason = conflictReason
+                write.serverSnapshot = serverSnapshot
             }
         } catch {
             logger.error("Failed to mark write as failed: \(error.localizedDescription, privacy: .public)")
@@ -466,7 +501,7 @@ private extension WriteQueue {
             .removeDuplicates()
             .filter { !$0 }
             .sink { [weak self] _ in
-                guard let self, self.autoProcessEnabled, !self.isPausedForConflict else { return }
+                guard let self, self.autoProcessEnabled else { return }
                 Task { [weak self] in
                     await self?.processQueue()
                 }
@@ -495,6 +530,37 @@ private extension WriteQueue {
                     continuation.resume(throwing: error)
                 }
             }
+        }
+    }
+
+    private func autoResolveConflict(write: PendingWriteRecord, error: WriteQueueConflictError) async {
+        let rebasedPayload = rebaseConflictPayload(
+            entityType: write.entityType,
+            payloadData: write.payload,
+            serverSnapshot: error.serverSnapshot ?? write.serverSnapshot
+        )
+
+        do {
+            try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.fetchLimit = 1
+                request.predicate = NSPredicate(format: "id == %@", write.id as CVarArg)
+                guard let pendingWrite = try context.fetch(request).first else { return }
+                if let rebasedPayload {
+                    pendingWrite.payload = rebasedPayload
+                    pendingWrite.status = WriteQueueStatus.pending.rawValue
+                    pendingWrite.attempts = 0
+                    pendingWrite.lastError = nil
+                    pendingWrite.lastAttemptAt = nil
+                } else {
+                    pendingWrite.status = WriteQueueStatus.failed.rawValue
+                    pendingWrite.lastError = "Automatic conflict resolution failed: \(error.reason)"
+                }
+                pendingWrite.conflictReason = nil
+                pendingWrite.serverSnapshot = nil
+            }
+        } catch {
+            logger.error("Failed to auto-resolve write conflict: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 import Combine
 import sideBarShared
@@ -18,7 +19,7 @@ struct WebsitesDetailView: View {
     #if os(iOS)
     @State private var quickActionsWebsiteId: String?
     #endif
-    @EnvironmentObject private var environment: AppEnvironment
+    @EnvironmentObject var appEnvironment: AppEnvironment
     @Environment(\.workspaceColumn) private var workspaceColumn
     @AppStorage(AppStorageKeys.workspaceExpanded) var isWorkspaceExpanded: Bool = false
     #if os(iOS)
@@ -42,7 +43,7 @@ struct WebsitesDetailView: View {
             closeWebsite()
             return .handled
         }
-        .onReceive(environment.navigation.$shortcutActionEvent) { event in
+        .onReceive(appEnvironment.navigation.$shortcutActionEvent) { event in
             guard let event,
                   event.matches(
                     section: .websites,
@@ -188,7 +189,24 @@ extension WebsitesDetailView {
             )
             #endif
         } else if viewModel.isLoadingDetail || !viewModel.pendingWebsites.isEmpty {
-            pendingWebsiteLoadingView
+            if let failedPending = failedPendingWebsite,
+               let errorMessage = viewModel.saveErrorMessage {
+                PlaceholderView(
+                    title: "Couldn't save website",
+                    subtitle: errorMessage,
+                    actionTitle: "Retry"
+                ) {
+                    Task {
+                        if let queueItemId = failedPending.queueItemId {
+                            await appEnvironment.retryPendingQueuedWebsite(queueItemId)
+                        } else {
+                            _ = await viewModel.retryPendingWebsite(id: failedPending.id)
+                        }
+                    }
+                }
+            } else {
+                pendingWebsiteLoadingView
+            }
         } else if let error = viewModel.errorMessage, viewModel.selectedWebsiteId != nil {
             PlaceholderView(
                 title: "Unable to load website",
@@ -274,9 +292,9 @@ extension WebsitesDetailView {
             let faviconView = FaviconImageView(
                 faviconUrl: website.faviconUrl,
                 faviconR2Key: website.faviconR2Key,
-                r2Endpoint: environment.container.config.r2Endpoint,
-                r2FaviconBucket: environment.container.config.r2FaviconBucket,
-                r2FaviconPublicBaseUrl: environment.container.config.r2FaviconPublicBaseUrl,
+                r2Endpoint: appEnvironment.container.config.r2Endpoint,
+                r2FaviconBucket: appEnvironment.container.config.r2FaviconBucket,
+                r2FaviconPublicBaseUrl: appEnvironment.container.config.r2FaviconPublicBaseUrl,
                 size: 24,
                 placeholderTint: DesignTokens.Colors.textPrimary
             )
@@ -368,6 +386,16 @@ extension WebsitesDetailView {
             && viewModel.pendingWebsites.isEmpty
             && !(viewModel.errorMessage != nil && viewModel.selectedWebsiteId != nil)
             && !(viewModel.isLoading && viewModel.items.isEmpty)
+    }
+
+    private var failedPendingWebsite: WebsitesViewModel.PendingWebsiteItem? {
+        if let selectedWebsiteId = viewModel.selectedWebsiteId,
+           let selectedPending = viewModel.pendingWebsites.first(where: { $0.id == selectedWebsiteId }),
+           selectedPending.status == .failed {
+            return selectedPending
+        }
+        guard viewModel.selectedWebsiteId == nil else { return nil }
+        return viewModel.pendingWebsites.first(where: { $0.status == .failed })
     }
 
     func openSource() {

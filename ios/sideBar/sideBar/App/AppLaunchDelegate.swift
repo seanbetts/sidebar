@@ -11,6 +11,8 @@ import UIKit
 final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
     static let tokenRefreshTaskIdentifier = "ai.sidebar.sidebar.tokenrefresh"
     static let widgetRefreshTaskIdentifier = "ai.sidebar.sidebar.widgetrefresh"
+    static let websiteSaveContinuationTaskIdentifier = "ai.sidebar.sidebar.website-save"
+    static let writeQueueFlushTaskIdentifier = "ai.sidebar.sidebar.writequeue"
     enum ShortcutCommandKeys {
         static let type = "type"
         static let section = "section"
@@ -102,6 +104,22 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
             self?.handleWidgetRefresh(task: refreshTask)
         }
 
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: Self.websiteSaveContinuationTaskIdentifier,
+            using: nil
+        ) { [weak self] task in
+            guard let processingTask = task as? BGProcessingTask else { return }
+            self?.handleWebsiteSaveContinuation(task: processingTask)
+        }
+
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: Self.writeQueueFlushTaskIdentifier,
+            using: nil
+        ) { [weak self] task in
+            guard let processingTask = task as? BGProcessingTask else { return }
+            self?.handleWriteQueueFlush(task: processingTask)
+        }
+
         return true
     }
 
@@ -186,6 +204,80 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
+    // MARK: - Background Website Save Continuation
+
+    private func handleWebsiteSaveContinuation(task: BGProcessingTask) {
+        let continuationTask = Task {
+            guard let environment = AppEnvironment.shared else {
+                return false
+            }
+            return await environment.performBackgroundWebsiteContinuation()
+        }
+
+        task.expirationHandler = {
+            continuationTask.cancel()
+        }
+
+        Task {
+            let success = await continuationTask.value
+            if let environment = AppEnvironment.shared,
+               environment.hasPendingWebsiteBackgroundWork {
+                Self.scheduleWebsiteSaveContinuation()
+            }
+            task.setTaskCompleted(success: success)
+        }
+    }
+
+    static func scheduleWebsiteSaveContinuation() {
+        let request = BGProcessingTaskRequest(identifier: websiteSaveContinuationTaskIdentifier)
+        request.requiresNetworkConnectivity = true
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 5)
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            let logger = Logger(subsystem: "sideBar", category: "BackgroundTask")
+            logger.error(
+                "Failed to schedule website save continuation: \(error.localizedDescription, privacy: .public)"
+            )
+        }
+    }
+
+    // MARK: - Background Write Queue Flush
+
+    private func handleWriteQueueFlush(task: BGProcessingTask) {
+        let flushTask = Task {
+            guard let environment = AppEnvironment.shared else {
+                return false
+            }
+            return await environment.performBackgroundWriteQueueFlush()
+        }
+
+        task.expirationHandler = {
+            flushTask.cancel()
+        }
+
+        Task {
+            let success = await flushTask.value
+            if let environment = AppEnvironment.shared,
+               await environment.writeQueue.hasPendingWritesNeedingFlush() {
+                Self.scheduleWriteQueueFlush()
+            }
+            task.setTaskCompleted(success: success)
+        }
+    }
+
+    static func scheduleWriteQueueFlush() {
+        let request = BGProcessingTaskRequest(identifier: writeQueueFlushTaskIdentifier)
+        request.requiresNetworkConnectivity = true
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 5)
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            let logger = Logger(subsystem: "sideBar", category: "BackgroundTask")
+            logger.error("Failed to schedule write queue flush: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
 #if DEBUG
     private func assertBackgroundTaskIdentifiersConfigured() {
         let key = "BGTaskSchedulerPermittedIdentifiers"
@@ -193,7 +285,12 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
             assertionFailure("Missing \(key) in app Info.plist")
             return
         }
-        let expected = [Self.tokenRefreshTaskIdentifier, Self.widgetRefreshTaskIdentifier]
+        let expected = [
+            Self.tokenRefreshTaskIdentifier,
+            Self.widgetRefreshTaskIdentifier,
+            Self.websiteSaveContinuationTaskIdentifier,
+            Self.writeQueueFlushTaskIdentifier
+        ]
         let missing = expected.filter { configured.contains($0) == false }
         if missing.isEmpty == false {
             assertionFailure("Missing BG task identifiers in Info.plist: \(missing.joined(separator: ", "))")

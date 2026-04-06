@@ -10,28 +10,23 @@ struct QueuedChangesView: View {
         List {
             if queuedChanges.isEmpty {
                 ContentUnavailableView(
-                    "All Synced",
+                    "No Sync Errors",
                     systemImage: "checkmark.circle",
-                    description: Text("No queued changes")
+                    description: Text("No failed queued changes")
                 )
             } else {
                 ForEach(queuedChanges) { queuedChange in
-                    QueuedChangeRow(queuedChange: queuedChange) { resolution in
-                        Task {
-                            await environment.writeQueue.resolveConflict(id: queuedChange.id, resolution: resolution)
-                            await reloadQueuedChanges()
-                        }
-                    }
+                    QueuedChangeRow(queuedChange: queuedChange)
                 }
                 .onDelete(perform: deleteQueuedChanges)
             }
         }
-        .navigationTitle("Queued Changes")
+        .navigationTitle("Sync Errors")
         .toolbar {
             if !queuedChanges.isEmpty {
                 Button("Retry All") {
                     Task {
-                        await environment.writeQueue.processQueue()
+                        await environment.writeQueue.retryAllWrites()
                         await reloadQueuedChanges()
                     }
                 }
@@ -55,6 +50,7 @@ struct QueuedChangesView: View {
     private func reloadQueuedChanges() async {
         do {
             queuedChanges = try await environment.writeQueue.fetchPendingWrites()
+                .filter { $0.status == WriteQueueStatus.failed.rawValue }
         } catch {
             logger.error("Failed to reload queued changes: \(error.localizedDescription, privacy: .public)")
             queuedChanges = []
@@ -76,7 +72,6 @@ struct QueuedChangesView: View {
 
 private struct QueuedChangeRow: View {
     let queuedChange: PendingWriteSummary
-    let onResolveQueuedChange: (WriteQueueConflictResolution) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -89,27 +84,11 @@ private struct QueuedChangeRow: View {
                     .appFont(.captionSemibold)
                     .foregroundStyle(statusColor)
             }
-            if let conflictReason = queuedChange.conflictReason {
-                HStack(spacing: DesignTokens.Spacing.sm) {
-                    Text(conflictReason)
-                        .appFont(.caption)
-                        .foregroundStyle(DesignTokens.Colors.error)
-                        .lineLimit(2)
-                    Spacer(minLength: 0)
-                    Button("Keep Queued Change") {
-                        onResolveQueuedChange(.keepLocal)
-                    }
-                    .buttonStyle(PendingWriteActionButtonStyle())
-                    Button("Use Server Version") {
-                        onResolveQueuedChange(.keepServer)
-                    }
-                    .buttonStyle(PendingWriteActionButtonStyle())
-                }
-            }
-            if queuedChange.conflictReason == nil, let error = queuedChange.lastError {
+            if let error = queuedChange.lastError {
                 Text(error)
                     .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
+                    .lineLimit(3)
             }
             Text("Attempts: \(queuedChange.attempts)")
                 .appFont(.caption)
@@ -142,16 +121,10 @@ private struct QueuedChangeRow: View {
     }
 
     private var statusText: String {
-        if queuedChange.conflictReason != nil {
-            return "Needs Review"
-        }
         return queuedChange.status.capitalized
     }
 
     private var statusColor: Color {
-        if queuedChange.conflictReason != nil {
-            return DesignTokens.Colors.error
-        }
         switch queuedChange.status {
         case WriteQueueStatus.failed.rawValue:
             return DesignTokens.Colors.error
@@ -160,23 +133,5 @@ private struct QueuedChangeRow: View {
         default:
             return DesignTokens.Colors.warning
         }
-    }
-}
-
-private struct PendingWriteActionButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .appFont(.captionSemibold)
-            .foregroundStyle(DesignTokens.Colors.textPrimary)
-            .padding(.horizontal, DesignTokens.Spacing.xs)
-            .padding(.vertical, DesignTokens.Spacing.xxs)
-            .background(DesignTokens.Colors.surface)
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(DesignTokens.Colors.border, lineWidth: 1)
-            )
-            .opacity(configuration.isPressed ? 0.7 : 1)
-            .animation(.easeOut(duration: DesignTokens.Animation.quick), value: configuration.isPressed)
     }
 }

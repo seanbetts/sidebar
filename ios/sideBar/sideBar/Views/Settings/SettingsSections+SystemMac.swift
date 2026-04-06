@@ -6,18 +6,18 @@ extension UserSettingsView {
     var macUserSettingsBody: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                if environment.writeQueue.pendingCount > 0 || environment.writeQueue.isProcessing {
+                if shouldShowQueuedChangesRecovery {
                     SettingsMacPanelCard {
                         SettingsMacSectionIntro(
-                            title: "Sync status",
-                            message: "Review queued changes before they finish syncing."
+                            title: "Sync errors",
+                            message: "Review failed queued changes and retry them when you're ready."
                         )
-                        SettingsMacStatusBanner(message: queuedChangeStatusText, tone: .info)
+                        SettingsMacStatusBanner(message: queuedChangeStatusText, tone: .error)
                         SettingsMacActionSection(
                             title: "Queued changes",
-                            message: "Open the queued changes view if you need to inspect or debug the current write queue."
+                            message: "Open the queued changes view to inspect failures and retry the write queue."
                         ) {
-                            Button("View queued changes") {
+                            Button("Review failed changes") {
                                 isQueuedChangesPresented = true
                             }
                             .buttonStyle(.borderedProminent)

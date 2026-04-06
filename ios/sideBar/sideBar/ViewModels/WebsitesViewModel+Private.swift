@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import OSLog
 import sideBarShared
@@ -31,7 +32,12 @@ extension WebsitesViewModel {
 
     func beginWebsiteSave(for normalizedURL: URL) -> String? {
         let previousSelectedId = selectedWebsiteId
-        let pending = upsertPendingWebsite(from: normalizedURL, source: .directSave)
+        let pending = upsertPendingWebsite(
+            from: normalizedURL,
+            source: .directSave,
+            status: .queued,
+            selectionFallbackId: previousSelectedId
+        )
         selectedWebsiteId = pending.id
         saveErrorMessage = nil
         isSavingWebsite = true
@@ -109,7 +115,7 @@ extension WebsitesViewModel {
         saveErrorMessage = nil
         isSavingWebsite = true
         isLoadingDetail = true
-        updatePendingWebsiteStatus(for: normalized.absoluteString, status: .reading)
+        updatePendingWebsiteStatus(for: normalized.absoluteString, status: .retrying)
 
         if let jobId = pending.jobId {
             jobPollingTasks[jobId]?.cancel()

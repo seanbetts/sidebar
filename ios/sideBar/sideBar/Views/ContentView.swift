@@ -35,7 +35,6 @@ public struct ContentView: View {
     @State var pendingBiometricUnavailableAlert = false
     @State var isSigningOut = false
     @State var pendingReadyFileNotification: ReadyFileNotification?
-    @State var pendingWriteResolution: PendingWriteSummary?
     @State var workspaceExpandedPreviousLeftPanelExpanded: Bool?
     #if os(iOS)
     @State var lastWorkspaceIsPortrait: Bool?

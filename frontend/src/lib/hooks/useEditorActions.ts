@@ -2,7 +2,8 @@ import { get } from 'svelte/store';
 import type { EditorStore } from '$lib/stores/editor';
 import type { TreeStore } from '$lib/stores/tree/store';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
-import { logError } from '$lib/utils/errorHandling';
+import { handleFetchError, logError, parseError } from '$lib/utils/errorHandling';
+import { retryForegroundMutation } from '$lib/utils/foregroundMutationRetry';
 import { toast } from 'svelte-sonner';
 
 type NoteNode = { pinned?: boolean; archived?: boolean } | null;
@@ -32,6 +33,26 @@ type EditorActionsContext = {
  * @returns Action handlers for editor UI interactions.
  */
 export function useEditorActions(ctx: EditorActionsContext) {
+	const surfaceMutationError = (
+		fallbackMessage: string,
+		error: unknown,
+		context: Record<string, unknown>
+	): void => {
+		const parsed = parseError(error);
+		toast.error(parsed.message || fallbackMessage);
+		logError(fallbackMessage, error, context);
+	};
+
+	const performNoteMutation = async (request: () => Promise<Response>) => {
+		return retryForegroundMutation(async () => {
+			const response = await request();
+			if (!response.ok) {
+				await handleFetchError(response);
+			}
+			return response;
+		});
+	};
+
 	const buildFolderOptions = () => {
 		const tree = get(ctx.treeStore).trees?.['notes'];
 		const nodes = tree?.children || [];
@@ -102,17 +123,18 @@ export function useEditorActions(ctx: EditorActionsContext) {
 			ctx.setIsRenameDialogOpen(false);
 			return;
 		}
-		const response = await fetch(`/api/v1/notes/${currentNoteId}/rename`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ newName: `${trimmed}.md` })
-		});
-		if (!response.ok) {
-			toast.error('Failed to rename note');
-			logError('Failed to rename note', new Error('Request failed'), {
+		try {
+			await performNoteMutation(() =>
+				fetch(`/api/v1/notes/${currentNoteId}/rename`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ newName: `${trimmed}.md` })
+				})
+			);
+		} catch (error) {
+			surfaceMutationError('Failed to rename note', error, {
 				scope: 'editorActions.rename',
-				noteId: currentNoteId,
-				status: response.status
+				noteId: currentNoteId
 			});
 			return;
 		}
@@ -126,17 +148,18 @@ export function useEditorActions(ctx: EditorActionsContext) {
 	const handleMove = async (folder: string) => {
 		const currentNoteId = ctx.getCurrentNoteId();
 		if (!currentNoteId) return;
-		const response = await fetch(`/api/v1/notes/${currentNoteId}/move`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ folder })
-		});
-		if (!response.ok) {
-			toast.error('Failed to move note');
-			logError('Failed to move note', new Error('Request failed'), {
+		try {
+			await performNoteMutation(() =>
+				fetch(`/api/v1/notes/${currentNoteId}/move`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ folder })
+				})
+			);
+		} catch (error) {
+			surfaceMutationError('Failed to move note', error, {
 				scope: 'editorActions.move',
-				noteId: currentNoteId,
-				status: response.status
+				noteId: currentNoteId
 			});
 			return;
 		}
@@ -147,17 +170,18 @@ export function useEditorActions(ctx: EditorActionsContext) {
 	const handleArchive = async () => {
 		const currentNoteId = ctx.getCurrentNoteId();
 		if (!currentNoteId) return;
-		const response = await fetch(`/api/v1/notes/${currentNoteId}/archive`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ archived: true })
-		});
-		if (!response.ok) {
-			toast.error('Failed to archive note');
-			logError('Failed to archive note', new Error('Request failed'), {
+		try {
+			await performNoteMutation(() =>
+				fetch(`/api/v1/notes/${currentNoteId}/archive`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ archived: true })
+				})
+			);
+		} catch (error) {
+			surfaceMutationError('Failed to archive note', error, {
 				scope: 'editorActions.archive',
-				noteId: currentNoteId,
-				status: response.status
+				noteId: currentNoteId
 			});
 			return;
 		}
@@ -169,17 +193,18 @@ export function useEditorActions(ctx: EditorActionsContext) {
 	const handleUnarchive = async () => {
 		const currentNoteId = ctx.getCurrentNoteId();
 		if (!currentNoteId) return;
-		const response = await fetch(`/api/v1/notes/${currentNoteId}/archive`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ archived: false })
-		});
-		if (!response.ok) {
-			toast.error('Failed to unarchive note');
-			logError('Failed to unarchive note', new Error('Request failed'), {
+		try {
+			await performNoteMutation(() =>
+				fetch(`/api/v1/notes/${currentNoteId}/archive`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ archived: false })
+				})
+			);
+		} catch (error) {
+			surfaceMutationError('Failed to unarchive note', error, {
 				scope: 'editorActions.unarchive',
-				noteId: currentNoteId,
-				status: response.status
+				noteId: currentNoteId
 			});
 			return;
 		}
@@ -192,17 +217,18 @@ export function useEditorActions(ctx: EditorActionsContext) {
 		if (!currentNoteId) return;
 		const node = ctx.getNoteNode();
 		const pinned = !node?.pinned;
-		const response = await fetch(`/api/v1/notes/${currentNoteId}/pin`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ pinned })
-		});
-		if (!response.ok) {
-			toast.error('Failed to pin note');
-			logError('Failed to update pin', new Error('Request failed'), {
+		try {
+			await performNoteMutation(() =>
+				fetch(`/api/v1/notes/${currentNoteId}/pin`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ pinned })
+				})
+			);
+		} catch (error) {
+			surfaceMutationError('Failed to update pin', error, {
 				scope: 'editorActions.pin',
-				noteId: currentNoteId,
-				status: response.status
+				noteId: currentNoteId
 			});
 			return;
 		}
@@ -247,15 +273,16 @@ export function useEditorActions(ctx: EditorActionsContext) {
 	const handleDelete = async (): Promise<boolean> => {
 		const currentNoteId = ctx.getCurrentNoteId();
 		if (!currentNoteId) return false;
-		const response = await fetch(`/api/v1/notes/${currentNoteId}`, {
-			method: 'DELETE'
-		});
-		if (!response.ok) {
-			toast.error('Failed to delete note');
-			logError('Failed to delete note', new Error('Request failed'), {
+		try {
+			await performNoteMutation(() =>
+				fetch(`/api/v1/notes/${currentNoteId}`, {
+					method: 'DELETE'
+				})
+			);
+		} catch (error) {
+			surfaceMutationError('Failed to delete note', error, {
 				scope: 'editorActions.delete',
-				noteId: currentNoteId,
-				status: response.status
+				noteId: currentNoteId
 			});
 			return false;
 		}

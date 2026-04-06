@@ -45,7 +45,7 @@ struct ConversationsPanelView: View {
             header
             Group {
                 if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
-                    SidebarListSkeleton(rowCount: 6, showSubtitle: true)
+                    SidebarListSkeleton(rowCount: 8, showSubtitle: true)
                 } else if isSearchLoading && filteredGroups.isEmpty {
                     SidebarListSkeleton(rowCount: 3, showSubtitle: false)
                 } else if let loadErrorMessage = listLoadErrorMessage {

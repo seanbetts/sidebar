@@ -40,6 +40,7 @@ extension WebsitesViewModel {
         public let queueItemId: UUID?
         public let jobId: String?
         public let status: PendingWebsiteStatus
+        public let selectionFallbackId: String?
 
         public init(
             id: String,
@@ -50,7 +51,8 @@ extension WebsitesViewModel {
             source: PendingWebsiteSource,
             queueItemId: UUID? = nil,
             jobId: String? = nil,
-            status: PendingWebsiteStatus = .reading
+            status: PendingWebsiteStatus = .reading,
+            selectionFallbackId: String? = nil
         ) {
             self.id = id
             self.title = title
@@ -61,14 +63,36 @@ extension WebsitesViewModel {
             self.queueItemId = queueItemId
             self.jobId = jobId
             self.status = status
+            self.selectionFallbackId = selectionFallbackId
         }
 
         /// User-facing status label with YouTube-specific wording for active processing.
         public var statusLabel: String {
+            if status == .queued, source == .queuedShare {
+                return "Saved for later"
+            }
             if status == .reading, YouTubeURLPolicy.extractVideoId(from: url) != nil {
                 return "Watching..."
             }
             return status.label
+        }
+
+        public var progressMessage: String {
+            let isYouTube = YouTubeURLPolicy.extractVideoId(from: url) != nil
+            switch status {
+            case .queued:
+                return isYouTube ? "Queued to watch..." : "Queued to read..."
+            case .reading:
+                return isYouTube ? "Watching..." : "Reading..."
+            case .retrying:
+                return "Retrying website save..."
+            case .failed:
+                return "Website save failed"
+            }
+        }
+
+        public var canCancel: Bool {
+            status != .failed && (jobId != nil || queueItemId != nil)
         }
     }
 }
@@ -87,7 +111,8 @@ extension WebsitesViewModel {
         source: PendingWebsiteSource,
         id: String? = nil,
         queueItemId: UUID? = nil,
-        status: PendingWebsiteStatus? = nil
+        status: PendingWebsiteStatus? = nil,
+        selectionFallbackId: String? = nil
     ) -> PendingWebsiteItem {
         let canonical = canonicalWebsiteURLForPendingMatch(url.absoluteString) ?? url.absoluteString
         let resolvedStatus = status ?? defaultPendingWebsiteStatus(for: source)
@@ -102,7 +127,8 @@ extension WebsitesViewModel {
                 source: source,
                 queueItemId: queueItemId ?? existing.queueItemId,
                 jobId: existing.jobId,
-                status: resolvedStatus
+                status: resolvedStatus,
+                selectionFallbackId: selectionFallbackId ?? existing.selectionFallbackId
             )
             if updated != existing {
                 pendingWebsites[index] = updated
@@ -114,7 +140,8 @@ extension WebsitesViewModel {
             source: source,
             id: id,
             queueItemId: queueItemId,
-            status: resolvedStatus
+            status: resolvedStatus,
+            selectionFallbackId: selectionFallbackId
         )
         pendingWebsites.append(pending)
         return pending
@@ -159,7 +186,8 @@ extension WebsitesViewModel {
             source: existing.source,
             queueItemId: existing.queueItemId,
             jobId: jobId,
-            status: existing.status
+            status: existing.status,
+            selectionFallbackId: existing.selectionFallbackId
         )
     }
 
@@ -184,7 +212,8 @@ extension WebsitesViewModel {
             source: existing.source,
             queueItemId: existing.queueItemId,
             jobId: existing.jobId,
-            status: status
+            status: status,
+            selectionFallbackId: existing.selectionFallbackId
         )
     }
 
@@ -259,7 +288,8 @@ extension WebsitesViewModel {
         source: PendingWebsiteSource,
         id: String? = nil,
         queueItemId: UUID? = nil,
-        status: PendingWebsiteStatus? = nil
+        status: PendingWebsiteStatus? = nil,
+        selectionFallbackId: String? = nil
     ) -> PendingWebsiteItem {
         let host = url.host ?? url.absoluteString
         let domain = host.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
@@ -274,13 +304,14 @@ extension WebsitesViewModel {
             canonicalURL: canonicalWebsiteURLForPendingMatch(url.absoluteString) ?? url.absoluteString,
             source: source,
             queueItemId: queueItemId,
-            status: status ?? defaultPendingWebsiteStatus(for: source)
+            status: status ?? defaultPendingWebsiteStatus(for: source),
+            selectionFallbackId: selectionFallbackId
         )
     }
     private func defaultPendingWebsiteStatus(for source: PendingWebsiteSource) -> PendingWebsiteStatus {
         switch source {
         case .directSave:
-            return .reading
+            return .queued
         case .queuedShare:
             return .queued
         }

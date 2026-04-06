@@ -6,6 +6,8 @@ func rebaseConflictPayload(
     serverSnapshot: Data?
 ) -> Data? {
     switch entityType {
+    case WriteEntityType.note.rawValue:
+        return rebaseNotePayload(payloadData: payloadData, serverSnapshot: serverSnapshot)
     case WriteEntityType.task.rawValue:
         return rebaseTaskPayload(payloadData: payloadData, serverSnapshot: serverSnapshot)
     case WriteEntityType.file.rawValue:
@@ -15,6 +17,19 @@ func rebaseConflictPayload(
     default:
         return nil
     }
+}
+
+private func rebaseNotePayload(payloadData: Data, serverSnapshot: Data?) -> Data? {
+    guard let serverSnapshot else { return payloadData }
+    let decoder = JSONDecoder()
+    guard let snapshot = try? decoder.decode(ServerSnapshot.self, from: serverSnapshot),
+          snapshot.entityType == .note else {
+        return nil
+    }
+
+    // Note content edits are local-authoritative. Rebasing a note conflict means
+    // keeping the queued payload intact while acknowledging the newer snapshot.
+    return payloadData
 }
 
 private func rebaseTaskPayload(payloadData: Data, serverSnapshot: Data?) -> Data? {

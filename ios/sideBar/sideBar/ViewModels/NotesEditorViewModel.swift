@@ -26,6 +26,11 @@ public final class NotesEditorViewModel: ObservableObject {
         let target: PendingEditSelectionTarget?
         let viewportAnchorY: CGFloat?
     }
+    private struct PendingOptimisticQueuedNoteEcho: Equatable {
+        let noteId: String
+        let plainText: String
+        let canonicalContent: String
+    }
     @Published public private(set) var content: String = ""
     @Published public private(set) var canonicalContent: String = ""
     @Published public private(set) var currentNoteId: String?
@@ -77,6 +82,7 @@ public final class NotesEditorViewModel: ObservableObject {
     var pendingReadSurfaceViewportMirrorTask: Task<Void, Never>?
     var pendingEditEntryPresentationHoldTask: Task<Void, Never>?
     var pendingExitEditPresentationTask: Task<Void, Never>?
+    private var pendingOptimisticQueuedNoteEcho: PendingOptimisticQueuedNoteEcho?
     private var cancellables = Set<AnyCancellable>()
     init(
         notesViewModel: NotesViewModel,
@@ -100,6 +106,7 @@ public final class NotesEditorViewModel: ObservableObject {
         pendingEditEntryPresentationHoldTask?.cancel()
         pendingExitEditPresentationTask?.cancel()
     }
+    // swiftlint:disable:next cyclomatic_complexity
     func handleNoteUpdate(_ note: NotePayload?) {
         let previousNoteId = currentNoteId
         guard let note else {
@@ -123,7 +130,21 @@ public final class NotesEditorViewModel: ObservableObject {
         if isSameNote,
            normalized.plainText == content,
            normalized.content == canonicalContent {
+            if consumePendingOptimisticQueuedNoteEcho(noteId: note.id, normalized: normalized) {
+                isReadOnly = detectedUnsupportedContent != nil
+                if detectedUnsupportedContent != nil {
+                    presentationMode = .read
+                    clearEditSessionState()
+                }
+                return
+            }
+            if isQueuedForSync {
+                try? draftStorage.markSynced(entityType: "note", entityId: note.id)
+                lastSavedAt = Date()
+                saveErrorMessage = nil
+            }
             isReadOnly = detectedUnsupportedContent != nil
+            isQueuedForSync = false
             if detectedUnsupportedContent != nil {
                 presentationMode = .read
                 clearEditSessionState()
@@ -142,6 +163,7 @@ public final class NotesEditorViewModel: ObservableObject {
         isSaving = false
         lastSavedAt = nil
         if !isSameNote {
+            pendingOptimisticQueuedNoteEcho = nil
             saveErrorMessage = nil
         }
         isReadOnly = detectedUnsupportedContent != nil
@@ -240,32 +262,19 @@ public final class NotesEditorViewModel: ObservableObject {
         )
         let serverSnapshot = makeServerSnapshot(noteId: noteId)
 
-        if !networkStatus.isNetworkAvailable {
-            let queued = await enqueueNoteUpdate(
-                noteId: noteId,
-                payload: payload,
-                snapshot: serverSnapshot
-            )
-            if queued {
-                notesViewModel.applyLocalNoteSnapshot(id: noteId, document: snapshot.document)
-            }
-            nativeViewModel.markSaved(
-                plainText: snapshot.plainText,
-                canonicalContent: snapshot.canonicalContent
-            )
-            content = snapshot.plainText
-            canonicalContent = snapshot.canonicalContent
-            isSaving = false
-            isDirty = false
-            isQueuedForSync = queued
-            await syncFromNativeEditorIfRequested(nativeViewModel)
-            return
-        }
-
-        let savedNote = await notesViewModel.updateNoteContent(id: noteId, document: snapshot.document)
+        let queued = await enqueueNoteUpdate(
+            noteId: noteId,
+            payload: payload,
+            snapshot: serverSnapshot
+        )
         isSaving = false
-        if let savedNote {
-            try? draftStorage.markSynced(entityType: "note", entityId: noteId)
+        if queued {
+            registerPendingOptimisticQueuedNoteEcho(
+                noteId: noteId,
+                plainText: snapshot.plainText,
+                canonicalContent: snapshot.canonicalContent
+            )
+            notesViewModel.applyLocalNoteSnapshot(id: noteId, document: snapshot.document)
             nativeViewModel.markSaved(
                 plainText: snapshot.plainText,
                 canonicalContent: snapshot.canonicalContent
@@ -273,23 +282,8 @@ public final class NotesEditorViewModel: ObservableObject {
             content = snapshot.plainText
             canonicalContent = snapshot.canonicalContent
             isDirty = false
-            lastSavedAt = Date()
-            isQueuedForSync = false
-            notesViewModel.applySavedNoteAcknowledgement(
-                serverNote: savedNote,
-                document: snapshot.document
-            )
-        } else {
-            saveErrorMessage = "Failed to save note"
-            let queued = await enqueueNoteUpdate(
-                noteId: noteId,
-                payload: payload,
-                snapshot: serverSnapshot
-            )
-            if queued {
-                notesViewModel.applyLocalNoteSnapshot(id: noteId, document: snapshot.document)
-            }
-            isQueuedForSync = queued
+            lastSavedAt = nil
+            isQueuedForSync = true
         }
         await syncFromNativeEditorIfRequested(nativeViewModel)
     }
@@ -333,6 +327,33 @@ public final class NotesEditorViewModel: ObservableObject {
             saveErrorMessage = "Failed to queue changes"
         }
         return false
+    }
+
+    private func registerPendingOptimisticQueuedNoteEcho(
+        noteId: String,
+        plainText: String,
+        canonicalContent: String
+    ) {
+        pendingOptimisticQueuedNoteEcho = PendingOptimisticQueuedNoteEcho(
+            noteId: noteId,
+            plainText: plainText,
+            canonicalContent: canonicalContent
+        )
+    }
+
+    private func consumePendingOptimisticQueuedNoteEcho(
+        noteId: String,
+        normalized: (content: String, plainText: String)
+    ) -> Bool {
+        guard pendingOptimisticQueuedNoteEcho == PendingOptimisticQueuedNoteEcho(
+            noteId: noteId,
+            plainText: normalized.plainText,
+            canonicalContent: normalized.content
+        ) else {
+            return false
+        }
+        pendingOptimisticQueuedNoteEcho = nil
+        return true
     }
 
     @available(iOS 26.0, macOS 26.0, *)
@@ -460,6 +481,7 @@ extension NotesEditorViewModel {
         isQueuedForSync = false
         unsupportedContent = nil
         syncRequestedWhileSaving = false
+        pendingOptimisticQueuedNoteEcho = nil
     }
     @available(iOS 26.0, macOS 26.0, *)
     public func attachNativeEditor(_ nativeViewModel: NativeNoteEditorViewModel) {
@@ -559,47 +581,24 @@ extension NotesEditorViewModel {
 
         let payload = NoteUpdateRequest(document: document, plainText: plainText); let serverSnapshot = makeServerSnapshot(noteId: noteId)
 
-        if !networkStatus.isNetworkAvailable {
-            let queued = await enqueueNoteUpdate(
-                noteId: noteId,
-                payload: payload,
-                snapshot: serverSnapshot
-            )
-            if queued {
-                notesViewModel.applyLocalNoteSnapshot(id: noteId, document: document)
-            }
-            content = plainText
-            canonicalContent = encodedContent
-            isSaving = false
-            isDirty = false
-            isQueuedForSync = queued
-            return
-        }
-
-        let savedNote = await notesViewModel.updateNoteContent(id: noteId, document: document)
+        let queued = await enqueueNoteUpdate(
+            noteId: noteId,
+            payload: payload,
+            snapshot: serverSnapshot
+        )
         isSaving = false
-        if let savedNote {
-            try? draftStorage.markSynced(entityType: "note", entityId: noteId)
+        if queued {
+            registerPendingOptimisticQueuedNoteEcho(
+                noteId: noteId,
+                plainText: plainText,
+                canonicalContent: encodedContent
+            )
+            notesViewModel.applyLocalNoteSnapshot(id: noteId, document: document)
             content = plainText
             canonicalContent = encodedContent
             isDirty = false
-            lastSavedAt = Date()
-            isQueuedForSync = false
-            notesViewModel.applySavedNoteAcknowledgement(
-                serverNote: savedNote,
-                document: document
-            )
-        } else {
-            saveErrorMessage = "Failed to save note"
-            let queued = await enqueueNoteUpdate(
-                noteId: noteId,
-                payload: payload,
-                snapshot: serverSnapshot
-            )
-            if queued {
-                notesViewModel.applyLocalNoteSnapshot(id: noteId, document: document)
-            }
-            isQueuedForSync = queued
+            lastSavedAt = nil
+            isQueuedForSync = true
         }
     }
 }

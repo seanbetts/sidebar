@@ -73,9 +73,9 @@ public final class WebsitesViewModel: ObservableObject {
     var detailLoadingMessage: String {
         if let selectedWebsiteId,
            let selectedPending = pendingWebsites.first(where: { $0.id == selectedWebsiteId }) {
-            return selectedPending.title
+            return selectedPending.progressMessage
         }
-        return pendingWebsites.first?.title ?? "Reading..."
+        return pendingWebsites.first?.progressMessage ?? "Reading..."
     }
 
     let api: any WebsitesProviding
@@ -252,11 +252,47 @@ public final class WebsitesViewModel: ObservableObject {
         }
     }
 
+    func continuePendingWebsiteJobsInBackground(maxDuration: TimeInterval = 25) async -> Bool {
+        let deadline = Date().addingTimeInterval(max(1, maxDuration))
+
+        while Date() < deadline {
+            let pendingJobs = pendingWebsites.compactMap { pending -> PendingWebsiteItem? in
+                pending.jobId != nil ? pending : nil
+            }
+            guard !pendingJobs.isEmpty else { return true }
+
+            for pending in pendingJobs {
+                guard let jobId = pending.jobId,
+                      let pendingURL = URL(string: pending.url) else {
+                    continue
+                }
+                let shouldSelectOnCompletion = pending.source == .directSave
+                let isTerminal = await refreshWebsiteJobStatus(
+                    jobId: jobId,
+                    pendingURL: pendingURL,
+                    previousSelectedId: pending.selectionFallbackId,
+                    shouldSelectOnCompletion: shouldSelectOnCompletion
+                )
+                if isTerminal {
+                    continue
+                }
+            }
+
+            if pendingWebsites.contains(where: { $0.jobId != nil }) == false {
+                return true
+            }
+
+            try? await Task.sleep(for: .seconds(3))
+        }
+
+        return pendingWebsites.contains(where: { $0.jobId != nil }) == false
+    }
+
     private func saveWebsiteWithoutSelection(normalizedURL: URL) async -> Bool {
         _ = upsertPendingWebsite(
             from: normalizedURL,
             source: .queuedShare,
-            status: .reading
+            status: .queued
         )
         saveErrorMessage = nil
         do {
@@ -282,25 +318,13 @@ public final class WebsitesViewModel: ObservableObject {
 
     public func setPinned(id: String, pinned: Bool) async {
         errorMessage = nil
-        if networkStatus.isOffline {
-            do {
-                try await store.enqueuePin(id: id, pinned: pinned)
-            } catch WriteQueueError.queueFull {
-                errorMessage = "Sync queue full. Review pending changes."
-            } catch {
-                errorMessage = "Failed to queue website update"
-            }
-            return
-        }
         do {
-            let updated = try await api.pin(
-                id: id,
-                pinned: pinned,
-                clientUpdatedAt: store.currentUpdatedAt(id: id)
-            )
-            store.updateListItem(updated, persist: true)
+            try await store.enqueuePin(id: id, pinned: pinned)
+            errorMessage = nil
+        } catch WriteQueueError.queueFull {
+            errorMessage = "Sync queue full. Review pending changes."
         } catch {
-            errorMessage = ErrorMapping.message(for: error)
+            errorMessage = "Failed to queue website update"
         }
     }
 
@@ -309,55 +333,28 @@ public final class WebsitesViewModel: ObservableObject {
             return
         }
         errorMessage = nil
-        if networkStatus.isOffline {
-            do {
-                try await store.enqueueRename(id: id, title: trimmed)
-            } catch WriteQueueError.queueFull {
-                errorMessage = "Sync queue full. Review pending changes."
-            } catch {
-                errorMessage = "Failed to queue website update"
-            }
-            return
-        }
         do {
-            let updated = try await api.rename(
-                id: id,
-                title: trimmed,
-                clientUpdatedAt: store.currentUpdatedAt(id: id)
-            )
-            store.updateListItem(updated, persist: true)
+            try await store.enqueueRename(id: id, title: trimmed)
+            errorMessage = nil
+        } catch WriteQueueError.queueFull {
+            errorMessage = "Sync queue full. Review pending changes."
         } catch {
-            errorMessage = ErrorMapping.message(for: error)
+            errorMessage = "Failed to queue website update"
         }
     }
 
     public func setArchived(id: String, archived: Bool) async {
         errorMessage = nil
-        if networkStatus.isOffline {
-            do {
-                try await store.enqueueArchive(id: id, archived: archived)
-                if shouldClearSelectionAfterArchiving(id: id, archived: archived) {
-                    clearSelection()
-                }
-            } catch WriteQueueError.queueFull {
-                errorMessage = "Sync queue full. Review pending changes."
-            } catch {
-                errorMessage = "Failed to queue website update"
-            }
-            return
-        }
         do {
-            let updated = try await api.archive(
-                id: id,
-                archived: archived,
-                clientUpdatedAt: store.currentUpdatedAt(id: id)
-            )
-            store.updateListItem(updated, persist: true)
+            try await store.enqueueArchive(id: id, archived: archived)
             if shouldClearSelectionAfterArchiving(id: id, archived: archived) {
                 clearSelection()
             }
+            errorMessage = nil
+        } catch WriteQueueError.queueFull {
+            errorMessage = "Sync queue full. Review pending changes."
         } catch {
-            errorMessage = ErrorMapping.message(for: error)
+            errorMessage = "Failed to queue website update"
         }
     }
 
@@ -368,32 +365,16 @@ public final class WebsitesViewModel: ObservableObject {
 
     public func deleteWebsite(id: String) async {
         errorMessage = nil
-        if networkStatus.isOffline {
-            do {
-                try await store.enqueueDelete(id: id)
-                if selectedWebsiteId == id {
-                    clearSelection()
-                }
-            } catch WriteQueueError.queueFull {
-                errorMessage = "Sync queue full. Review pending changes."
-            } catch {
-                errorMessage = "Failed to queue website update"
-            }
-            return
-        }
-        let attemptedUpdatedAt = store.currentUpdatedAt(id: id)
         do {
-            try await api.delete(id: id, clientUpdatedAt: attemptedUpdatedAt)
-            store.removeItem(id: id, persist: true)
+            try await store.enqueueDelete(id: id)
             if selectedWebsiteId == id {
                 clearSelection()
             }
+            errorMessage = nil
+        } catch WriteQueueError.queueFull {
+            errorMessage = "Sync queue full. Review pending changes."
         } catch {
-            if isDeleteConflict(error),
-               await retryDeleteAfterRefresh(id: id, fallbackUpdatedAt: attemptedUpdatedAt) {
-                return
-            }
-            toastCenter.show(message: "Failed to delete website")
+            errorMessage = "Failed to queue website update"
         }
     }
 

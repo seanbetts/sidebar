@@ -121,15 +121,51 @@ final class WriteQueueConflictResolutionTests: XCTestCase {
         XCTAssertNil(updated.serverSnapshot)
     }
 
-    func testInitRestoresPausedStateWhenConflictExists() async throws {
+    func testRebaseConflictPayloadForNotePreservesLocalPayload() async throws {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .paragraph, content: [.init(text: "Local note body", marks: [])])
+            ]
+        )
+        let payload = NoteUpdateRequest(document: document, plainText: "Local note body")
+        let snapshot = ServerSnapshot(
+            entityType: .note,
+            entityId: "note-1",
+            capturedAt: Date(timeIntervalSince1970: 1),
+            payload: .note(
+                NoteSnapshot(
+                    modified: 2,
+                    name: "Renamed remotely",
+                    path: "/remote/path.md",
+                    pinned: true,
+                    pinnedOrder: 3,
+                    archived: false
+                )
+            )
+        )
+
+        let rebased = rebaseConflictPayload(
+            entityType: WriteEntityType.note.rawValue,
+            payloadData: try JSONEncoder().encode(payload),
+            serverSnapshot: try JSONEncoder().encode(snapshot)
+        )
+
+        let decoded = try XCTUnwrap(rebased).decode(as: NoteUpdateRequest.self)
+        XCTAssertEqual(decoded.plainText, payload.plainText)
+        XCTAssertEqual(decoded.document, payload.document)
+    }
+
+    func testInitRecoversConflictWriteForAutomaticReplay() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
             startMonitoring: false
         )
         let context = persistence.container.viewContext
+        let writeId = UUID()
         let write = PendingWrite.insertNew(in: context)
-        write.id = UUID()
+        write.id = writeId
         write.operationType = WriteOperation.rename.rawValue
         write.entityType = WriteEntityType.file.rawValue
         write.entityId = "file-1"
@@ -147,9 +183,20 @@ final class WriteQueueConflictResolutionTests: XCTestCase {
         )
 
         await waitUntilConflictState {
-            queue.isPausedForConflict
+            let request = PendingWrite.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "id == %@", writeId as CVarArg)
+            let recovered = try? persistence.container.viewContext.fetch(request).first
+            return recovered?.conflictReason == nil
         }
-        XCTAssertTrue(queue.isPausedForConflict)
+        XCTAssertFalse(queue.isPausedForConflict)
+
+        let request = PendingWrite.fetchRequest()
+        request.fetchLimit = 1
+        request.predicate = NSPredicate(format: "id == %@", writeId as CVarArg)
+        let recovered = try XCTUnwrap(persistence.container.viewContext.fetch(request).first)
+        XCTAssertEqual(recovered.status, WriteQueueStatus.failed.rawValue)
+        XCTAssertNil(recovered.conflictReason)
     }
 }
 
@@ -168,5 +215,11 @@ private func waitUntilConflictState(
     let isSatisfied = await condition()
     if !isSatisfied {
         XCTFail("Condition was not met before timeout")
+    }
+}
+
+private extension Data {
+    func decode<T: Decodable>(as type: T.Type) throws -> T {
+        try JSONDecoder().decode(type, from: self)
     }
 }

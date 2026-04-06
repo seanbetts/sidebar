@@ -2,7 +2,6 @@
 	import {
 		AlertDialog,
 		AlertDialogAction,
-		AlertDialogCancel,
 		AlertDialogContent,
 		AlertDialogDescription,
 		AlertDialogFooter,
@@ -12,7 +11,6 @@
 	import type { TaskSyncConflict } from '$lib/types/tasks';
 
 	export let conflict: TaskSyncConflict | null = null;
-	export let onKeepServer: (conflict: TaskSyncConflict) => void;
 	export let onKeepLocal: (conflict: TaskSyncConflict) => void;
 
 	$: open = conflict !== null;
@@ -36,8 +34,8 @@
 			<AlertDialogHeader>
 				<AlertDialogTitle>Task conflict</AlertDialogTitle>
 				<AlertDialogDescription>
-					"{conflict.serverTask?.title ?? 'This task'}" was changed in another location. Choose
-					which version to keep.
+					"{conflict.serverTask?.title ?? 'This task'}" was changed in another location. Your most
+					recent edit on this device will be kept automatically.
 				</AlertDialogDescription>
 			</AlertDialogHeader>
 
@@ -66,11 +64,8 @@
 			</div>
 
 			<AlertDialogFooter>
-				<AlertDialogCancel onclick={() => conflict && onKeepLocal(conflict)}>
+				<AlertDialogAction onclick={() => conflict && onKeepLocal(conflict)}>
 					Keep my version
-				</AlertDialogCancel>
-				<AlertDialogAction onclick={() => conflict && onKeepServer(conflict)}>
-					Keep their version
 				</AlertDialogAction>
 			</AlertDialogFooter>
 		{/if}

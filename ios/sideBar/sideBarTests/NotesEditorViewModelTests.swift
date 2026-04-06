@@ -844,9 +844,14 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         await viewModel.saveIfNeeded()
 
-        XCTAssertEqual(api.updateCallCount, 1)
-        XCTAssertEqual(api.updatedContents.count, 1)
-        XCTAssertNotEqual(api.updatedContents[0], initialContent)
+        let pendingWrites = try persistence.container.viewContext.fetch(PendingWrite.fetchRequest())
+        let queuedPayload = try XCTUnwrap(pendingWrites.first?.payload)
+        let queuedRequest = try JSONDecoder().decode(NoteUpdateRequest.self, from: queuedPayload)
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(pendingWrites.count, 1)
+        XCTAssertEqual(queuedRequest.plainText, initialContent)
+        XCTAssertNotEqual(queuedRequest.document, note.document)
+        XCTAssertTrue(viewModel.isQueuedForSync)
         XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
     }
 
@@ -998,9 +1003,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
-        let updated = NotePayload(id: "n1", name: "Note", content: "Updated", path: "/note.md", modified: 100, created: nil)
-        let api = NotesAPISpy(updateResult: .success(updated))
-        api.suspendNextUpdate = true
+        let api = NotesAPISpy(updateResult: .failure(MockError.forced))
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
@@ -1040,28 +1043,23 @@ final class NotesEditorViewModelTests: XCTestCase {
             await viewModel.syncFromNativeEditor(nativeViewModel)
         }
 
-        try await waitUntil(timeoutSeconds: 0.5) {
-            api.updateCallCount == 1
-        }
+        await Task.yield()
 
         nativeViewModel.attributedContent = AttributedString("Second")
         let secondSyncTask = Task {
             await viewModel.syncFromNativeEditor(nativeViewModel)
         }
 
-        api.resumeSuspendedUpdate()
-
         await firstSyncTask.value
         await secondSyncTask.value
-        try await waitUntil(timeoutSeconds: 2.0) {
-            api.updateCallCount == 2
-        }
 
-        XCTAssertEqual(api.updatedContents.count, 2)
-        XCTAssertEqual(
-            api.updatedContents.compactMap(decodedCanonicalPlainText),
-            ["First", "Second"]
-        )
+        let request = PendingWrite.fetchRequest()
+        let pendingWrites = try persistence.container.viewContext.fetch(request)
+        let queuedPayload = try XCTUnwrap(pendingWrites.first?.payload)
+        let queuedRequest = try JSONDecoder().decode(NoteUpdateRequest.self, from: queuedPayload)
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(pendingWrites.count, 1)
+        XCTAssertEqual(queuedRequest.plainText, "Second")
     }
 
     func testCurrentPlainTextSnapshotUsesAttachedNativeEditorContent() async throws {
@@ -1229,8 +1227,11 @@ extension NotesEditorViewModelTests {
 
         await viewModel.saveIfNeeded()
 
-        XCTAssertEqual(api.updateCallCount, 1)
+        let pendingWrites = try persistence.container.viewContext.fetch(PendingWrite.fetchRequest())
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(pendingWrites.count, 1)
         XCTAssertEqual(viewModel.content, "Updated")
+        XCTAssertTrue(viewModel.isQueuedForSync)
         XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
     }
 
@@ -1349,11 +1350,15 @@ extension NotesEditorViewModelTests {
 
         await viewModel.saveIfNeeded()
 
-        XCTAssertEqual(api.updateCallCount, 1)
+        let pendingWrites = try persistence.container.viewContext.fetch(PendingWrite.fetchRequest())
+        let queuedPayload = try XCTUnwrap(pendingWrites.first?.payload)
+        let queuedRequest = try JSONDecoder().decode(NoteUpdateRequest.self, from: queuedPayload)
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(pendingWrites.count, 1)
         XCTAssertEqual(viewModel.content, "Hello")
         XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
-        XCTAssertEqual(api.updatedContents.count, 1)
-        XCTAssertNotEqual(api.updatedContents[0], initialCanonical)
+        XCTAssertEqual(queuedRequest.plainText, initialCanonical)
+        XCTAssertNotEqual(queuedRequest.document, note.document)
     }
 
 }
@@ -1767,6 +1772,94 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(pending.count, 0)
     }
 
+    func testSaveDocumentSnapshotQueuesUpdateEvenWhenOnline() async throws {
+        let api = NotesAPISpy(updateResult: .failure(MockError.forced))
+        let context = makeNotesEditorViewModelTestContext(
+            api: api,
+            networkAvailable: true
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Original body",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        let updatedDocument = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([.init(text: "Queued body", marks: [])])
+            ]
+        )
+
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+
+        await context.viewModel.saveDocumentSnapshotIfNeeded(updatedDocument, force: true)
+
+        let pending = try await context.writeQueue.fetchPendingWrites()
+        let didMirrorActiveNote = await waitUntil(timeoutSeconds: 2.0, failOnTimeout: false) {
+            context.notesViewModel.activeNote?.document == updatedDocument
+        }
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.note.rawValue)
+        XCTAssertTrue(didMirrorActiveNote)
+        XCTAssertTrue(context.viewModel.isQueuedForSync)
+        XCTAssertFalse(context.viewModel.isSaving)
+        XCTAssertEqual(context.viewModel.content, "Queued body")
+        XCTAssertEqual(context.notesViewModel.activeNote?.plainText, "Queued body")
+    }
+
+    func testQueuedNoteStateClearsOnlyAfterServerAcknowledgement() async throws {
+        let updatedDocument = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .paragraph([.init(text: "Queued body", marks: [])])
+            ]
+        )
+        let context = makeNotesEditorViewModelTestContext(
+            api: NotesAPISpy(updateResult: .failure(MockError.forced)),
+            networkAvailable: true
+        )
+        let note = NotePayload(
+            id: "n1",
+            name: "Note",
+            content: "Original body",
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+        let acknowledged = NotePayload(
+            id: "n1",
+            name: "Queued body",
+            content: "Queued body",
+            document: updatedDocument,
+            path: "/note.md",
+            modified: nil,
+            created: nil
+        )
+
+        context.store.applyEditorUpdate(note)
+        await waitUntilNoteHydrated(context.viewModel, note: note)
+
+        await context.viewModel.saveDocumentSnapshotIfNeeded(updatedDocument, force: true)
+
+        let didApplyOptimisticEcho = await waitUntil(timeoutSeconds: 2.0, failOnTimeout: false) {
+            context.notesViewModel.activeNote?.document == updatedDocument
+        }
+        XCTAssertTrue(didApplyOptimisticEcho)
+        XCTAssertTrue(context.viewModel.isQueuedForSync)
+        XCTAssertNil(context.viewModel.lastSavedAt)
+
+        await Task.yield()
+        await Task.yield()
+        context.viewModel.handleNoteUpdate(acknowledged)
+        XCTAssertFalse(context.viewModel.isQueuedForSync)
+        XCTAssertNotNil(context.viewModel.lastSavedAt)
+    }
+
     func testReadModeChecklistToggleUpdatesSemanticStateAndPersists() async throws {
         let updatedDocument = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
@@ -1817,12 +1910,9 @@ extension NotesEditorViewModelTests {
 
         await context.viewModel.toggleChecklistItemInReadMode(blockIndex: 1, itemIndex: 0)
 
-        try await waitUntil(timeoutSeconds: 2.0) {
-            api.updateCallCount == 1
-        }
-
-        let persistedDocument: NotesSemanticDocument = try XCTUnwrap(api.updatedDocuments.last)
-        XCTAssertEqual(persistedDocument, updatedDocument)
+        let pending = try await context.writeQueue.fetchPendingWrites()
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(pending.count, 1)
         XCTAssertEqual(context.viewModel.content, "Title\n- [x] Done item")
         XCTAssertEqual(
             NotesSemanticDocumentCodec.decode(context.viewModel.canonicalContent),
@@ -1833,7 +1923,7 @@ extension NotesEditorViewModelTests {
         }
         XCTAssertTrue(didMirrorActiveNote)
         XCTAssertEqual(context.notesViewModel.activeNote?.document, updatedDocument)
-        XCTAssertFalse(context.viewModel.isQueuedForSync)
+        XCTAssertTrue(context.viewModel.isQueuedForSync)
     }
 }
 
@@ -2071,11 +2161,9 @@ extension NotesEditorViewModelTests {
 
         await context.viewModel.saveIfNeeded()
 
-        XCTAssertEqual(context.api.updateCallCount, 1)
-        XCTAssertEqual(
-            NotesSemanticDocumentProjection.plainText(from: context.api.updatedDocuments[0]),
-            "Hello world"
-        )
+        let pendingWrites = try await context.writeQueue.fetchPendingWrites()
+        XCTAssertEqual(context.api.updateCallCount, 0)
+        XCTAssertEqual(pendingWrites.count, 1)
         XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
         XCTAssertEqual(formattedSelection, before)
         XCTAssertEqual(
@@ -2093,9 +2181,17 @@ extension NotesEditorViewModelTests {
 
 @MainActor
 @available(iOS 26.0, macOS 26.0, *)
+private struct SelectionSaveReloadContext {
+    let api: NotesAPISpy
+    let viewModel: NotesEditorViewModel
+    let writeQueue: WriteQueue
+}
+
+@MainActor
+@available(iOS 26.0, macOS 26.0, *)
 private func makeSelectionSaveReloadContext(
     savedNote: NotePayload
-) async -> (api: NotesAPISpy, viewModel: NotesEditorViewModel) {
+) async -> SelectionSaveReloadContext {
     let api = NotesAPISpy(updateResult: .success(savedNote))
     let cache = TestCacheClient()
     let store = NotesStore(api: api, cache: cache)
@@ -2133,7 +2229,7 @@ private func makeSelectionSaveReloadContext(
     )
     store.applyEditorUpdate(note)
     await waitUntilNoteHydrated(viewModel, note: note)
-    return (api: api, viewModel: viewModel)
+    return SelectionSaveReloadContext(api: api, viewModel: viewModel, writeQueue: writeQueue)
 }
 
 @available(iOS 26.0, macOS 26.0, *)

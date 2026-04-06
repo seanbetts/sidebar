@@ -304,7 +304,7 @@ extension NotesDetailView {
             )
         }
         if editorViewModel.isQueuedForSync {
-            let label = environment.isNetworkAvailable ? "Queued to sync" : "Saved offline"
+            let label = "Saved for later"
             return NoteStatus(
                 iconName: "icloud.and.arrow.up",
                 accessibilityLabel: label,

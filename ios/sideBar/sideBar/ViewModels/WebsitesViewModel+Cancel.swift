@@ -3,11 +3,11 @@ import Foundation
 @MainActor
 extension WebsitesViewModel {
     public func canCancelWebsiteSave() -> Bool {
-        cancelablePendingWebsite() != nil
+        cancelablePendingWebsite != nil
     }
 
     public func cancelWebsiteSave() async {
-        guard let pending = cancelablePendingWebsite(),
+        guard let pending = cancelablePendingWebsite,
               pending.jobId != nil else { return }
 
         await cancelPendingWebsite(id: pending.id)
@@ -34,13 +34,13 @@ extension WebsitesViewModel {
         endWebsiteSave()
     }
 
-    private func cancelablePendingWebsite() -> PendingWebsiteItem? {
+    var cancelablePendingWebsite: PendingWebsiteItem? {
         if let selectedWebsiteId,
            let selectedPending = pendingWebsites.first(where: {
-               $0.id == selectedWebsiteId && $0.jobId != nil
+               $0.id == selectedWebsiteId && $0.canCancel
            }) {
             return selectedPending
         }
-        return pendingWebsites.first { $0.jobId != nil }
+        return pendingWebsites.first { $0.canCancel }
     }
 }

@@ -1,5 +1,6 @@
 import { writable, get } from 'svelte/store';
-import { handleFetchError, logError } from '$lib/utils/errorHandling';
+import { handleFetchError, logError, parseError } from '$lib/utils/errorHandling';
+import { retryForegroundMutation } from '$lib/utils/foregroundMutationRetry';
 
 export interface EditorState {
 	currentNoteId: string | null;
@@ -152,15 +153,17 @@ function createEditorStore() {
 			update((s) => ({ ...s, isSaving: true, saveError: null }));
 
 			try {
-				const response = await fetch(`/api/v1/notes/${state.currentNoteId}`, {
-					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ content: state.content })
-				});
+				await retryForegroundMutation(async () => {
+					const response = await fetch(`/api/v1/notes/${state.currentNoteId}`, {
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ content: state.content })
+					});
 
-				if (!response.ok) {
-					await handleFetchError(response);
-				}
+					if (!response.ok) {
+						await handleFetchError(response);
+					}
+				});
 
 				update((s) => ({
 					...s,
@@ -176,10 +179,11 @@ function createEditorStore() {
 					basePath: state.basePath,
 					noteId: state.currentNoteId
 				});
+				const parsed = parseError(error);
 				update((s) => ({
 					...s,
 					isSaving: false,
-					saveError: 'Failed to save note',
+					saveError: parsed.message || 'Failed to save note',
 					lastUpdateSource: null
 				}));
 			}

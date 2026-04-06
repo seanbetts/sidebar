@@ -11,20 +11,18 @@ struct UserSettingsView: View {
     @State var isSyncingDrafts = false
     @State var draftsUserId: String?
     @StateObject private var autosaveController = SystemAutosaveController()
+    @State private var failedQueuedChangeCount = 0
 
     var body: some View {
         #if os(macOS)
         macUserSettingsBody
         #else
         Form {
-            if environment.writeQueue.pendingCount > 0 || environment.writeQueue.isProcessing {
-                Section("Sync Status") {
-                    HStack(spacing: 8) {
-                        SyncStatusIndicator()
-                        Text(queuedChangeStatusText)
-                            .appFont(.labelMd)
-                    }
-                    Button("View queued changes") {
+            if shouldShowQueuedChangesRecovery {
+                Section("Sync Errors") {
+                    Text(queuedChangeStatusText)
+                        .appFont(.labelMd)
+                    Button("Review failed changes") {
                         isQueuedChangesPresented = true
                     }
                 }
@@ -63,6 +61,9 @@ struct UserSettingsView: View {
         }
         .onAppear {
             syncDraftsFromSettings(viewModel.settings)
+        }
+        .task(id: queuedChangeFailureRefreshSignature) {
+            await reloadFailedQueuedChangeCount()
         }
         .onChange(of: systemAutosaveSignature) { _, _ in
             scheduleAutosave()
@@ -159,10 +160,29 @@ struct UserSettingsView: View {
     }
 
     var queuedChangeStatusText: String {
-        if environment.writeQueue.isProcessing {
-            return "Syncing \(environment.writeQueue.pendingCount) queued changes"
+        switch failedQueuedChangeCount {
+        case 1:
+            return "1 failed change needs attention."
+        default:
+            return "\(failedQueuedChangeCount) failed changes need attention."
         }
-        return "\(environment.writeQueue.pendingCount) queued changes"
+    }
+
+    var shouldShowQueuedChangesRecovery: Bool {
+        failedQueuedChangeCount > 0
+    }
+
+    var queuedChangeFailureRefreshSignature: String {
+        "\(environment.writeQueue.pendingCount)-\(environment.writeQueue.isProcessing)"
+    }
+
+    func reloadFailedQueuedChangeCount() async {
+        do {
+            let queuedChanges = try await environment.writeQueue.fetchPendingWrites()
+            failedQueuedChangeCount = queuedChanges.filter { $0.status == WriteQueueStatus.failed.rawValue }.count
+        } catch {
+            failedQueuedChangeCount = 0
+        }
     }
 
     static func shouldSyncDrafts(

@@ -174,6 +174,32 @@ func shouldKeepPendingShareItem(
 }
 
 extension AppEnvironment {
+    var hasPendingWebsiteBackgroundWork: Bool {
+        let hasQueuedWebsiteShares = storage.pendingShareStore.loadAll().contains { $0.kind == .website }
+        let hasInFlightWebsiteJobs = websitesViewModel.pendingWebsites.contains { $0.jobId != nil }
+        return hasQueuedWebsiteShares || hasInFlightWebsiteJobs
+    }
+
+    func performBackgroundWebsiteContinuation(maxDuration: TimeInterval = 20) async -> Bool {
+        guard authState == .active, isProtectedContentReady, !connectivityMonitor.isOffline else {
+            return false
+        }
+
+        await consumePendingShares()
+        return await websitesViewModel.continuePendingWebsiteJobsInBackground(
+            maxDuration: maxDuration
+        )
+    }
+
+    func performBackgroundWriteQueueFlush() async -> Bool {
+        guard authState == .active, !connectivityMonitor.isOffline else {
+            return false
+        }
+
+        await writeQueue.processQueue()
+        return !(await writeQueue.hasPendingWritesNeedingFlush())
+    }
+
     func reconcileQueuedWebsitesWithSavedItems() {
         let existing = storage.pendingShareStore.loadAll()
         let pruned = prunedQueuedWebsiteItems(existing)

@@ -5,6 +5,7 @@ import { editorStore } from '$lib/stores/editor';
 describe('editorStore', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		vi.useRealTimers();
 		editorStore.reset();
 	});
 
@@ -35,6 +36,34 @@ describe('editorStore', () => {
 		await editorStore.saveNote();
 
 		const state = get(editorStore);
+		expect(state.isDirty).toBe(false);
+		expect(state.saveError).toBeNull();
+	});
+
+	it('retries transient note save failures before surfacing an error', async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.spyOn(global, 'fetch')
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ path: 'note-1', name: 'Note', content: 'Hello' })
+			} as Response)
+			.mockResolvedValueOnce({
+				ok: false,
+				status: 503,
+				json: async () => ({ error: 'Service unavailable' })
+			} as Response)
+			.mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response);
+
+		await editorStore.loadNote('notes', 'note-1');
+		editorStore.updateContent('Updated');
+
+		const savePromise = editorStore.saveNote();
+		await vi.runAllTimersAsync();
+		await savePromise;
+
+		const state = get(editorStore);
+		expect(fetchMock).toHaveBeenCalledTimes(3);
 		expect(state.isDirty).toBe(false);
 		expect(state.saveError).toBeNull();
 	});

@@ -5,7 +5,6 @@
 	import TasksTitlebar from '$lib/components/tasks/TasksTitlebar.svelte';
 	import TasksContent from '$lib/components/tasks/TasksContent.svelte';
 	import TaskDialogs from '$lib/components/tasks/TaskDialogs.svelte';
-	import TaskConflictDialog from '$lib/components/tasks/TaskConflictDialog.svelte';
 	import {
 		dueLabel as formatDueLabel,
 		formatDateKeyForDate,
@@ -69,12 +68,12 @@
 
 	$: activeConflict = pendingConflicts[0] ?? null;
 
-	function handleKeepServer(conflict: TaskSyncConflict) {
-		tasksStore.applyServerTask(conflict.operationId);
-	}
-
 	function handleKeepLocal(conflict: TaskSyncConflict) {
 		tasksStore.dismissConflict(conflict.operationId);
+	}
+
+	$: if (activeConflict) {
+		handleKeepLocal(activeConflict);
 	}
 
 	$: {
@@ -502,12 +501,6 @@
 			{dueLabel}
 		/>
 	</div>
-
-	<TaskConflictDialog
-		conflict={activeConflict}
-		onKeepServer={handleKeepServer}
-		onKeepLocal={handleKeepLocal}
-	/>
 
 	<TaskDialogs
 		bind:showDueDialog

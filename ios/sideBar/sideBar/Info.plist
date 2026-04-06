@@ -8,6 +8,8 @@
 	<array>
 		<string>ai.sidebar.sidebar.tokenrefresh</string>
 		<string>ai.sidebar.sidebar.widgetrefresh</string>
+		<string>ai.sidebar.sidebar.website-save</string>
+		<string>ai.sidebar.sidebar.writequeue</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
@@ -69,6 +71,7 @@
 	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>processing</string>
 		<string>remote-notification</string>
 	</array>
 	<key>UILaunchStoryboardName</key>

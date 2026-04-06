@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import XCTest
 import sideBarShared
 @testable import sideBar
@@ -375,6 +376,57 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertTrue(saveResult)
         await consumeTask.value
         XCTAssertEqual(websitesAPI.saveCallCount, 1)
+    }
+
+    func testPerformBackgroundWebsiteContinuationProcessesQueuedWebsiteSave() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let completedDetail = WebsiteDetail(
+            id: "saved-1",
+            title: "Saved",
+            url: url,
+            urlFull: url,
+            domain: "example.com",
+            content: "Saved content",
+            source: "web",
+            savedAt: "2026-03-20T23:41:37Z",
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: nil,
+            updatedAt: "2026-03-20T23:41:37Z",
+            lastOpenedAt: nil
+        )
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-1", status: "queued")
+            ),
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "completed",
+                    website: completedDetail,
+                    error: nil
+                )
+            )
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        let queuedItem = storage.pendingShareStore.enqueueWebsite(url: url)
+        XCTAssertNotNil(queuedItem)
+
+        let completed = await environment.performBackgroundWebsiteContinuation(maxDuration: 2)
+
+        XCTAssertTrue(completed)
+        XCTAssertEqual(websitesAPI.saveCallCount, 1)
+        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
+        XCTAssertTrue(environment.websitesViewModel.pendingWebsites.isEmpty)
+        XCTAssertEqual(environment.websitesViewModel.items.first?.id, "saved-1")
     }
 }
 

@@ -1,9 +1,11 @@
+// swiftlint:disable file_length
 import CoreData
 import Foundation
 import XCTest
 @testable import sideBar
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class WriteQueueTests: XCTestCase {
     func testEnqueueCreatesPendingWrite() async throws {
         let persistence = PersistenceController(inMemory: true)
@@ -76,6 +78,48 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertEqual(executor.executedIds, [writeId])
         XCTAssertEqual(queue.pendingCount, 0)
 
+        let remaining = try persistence.container.viewContext.fetch(request)
+        XCTAssertTrue(remaining.isEmpty)
+    }
+
+    func testRetryAllWritesRequeuesFailedWriteAndProcessesIt() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let executor = TestWriteExecutor()
+        let queue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            executor: executor,
+            autoProcessEnabled: false
+        )
+
+        struct Payload: Codable {
+            let value: String
+        }
+
+        let writeId = UUID()
+        let context = persistence.container.viewContext
+        let write = PendingWrite.insertNew(in: context)
+        write.id = writeId
+        write.operationType = WriteOperation.update.rawValue
+        write.entityType = WriteEntityType.note.rawValue
+        write.entityId = "note-1"
+        write.payload = try JSONEncoder().encode(Payload(value: "Retry me"))
+        write.createdAt = Date()
+        write.attempts = 3
+        write.status = WriteQueueStatus.failed.rawValue
+        write.lastError = "Timeout"
+        try context.save()
+
+        await queue.retryAllWrites()
+
+        XCTAssertEqual(executor.executedIds, [writeId])
+        XCTAssertEqual(queue.pendingCount, 0)
+
+        let request = PendingWrite.fetchRequest()
         let remaining = try persistence.container.viewContext.fetch(request)
         XCTAssertTrue(remaining.isEmpty)
     }
@@ -397,13 +441,13 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertEqual(next?.conflictReason, "First conflict")
     }
 
-    func testProcessQueuePausesOnConflict() async throws {
+    func testProcessQueueAutoResolvesConflictAndReplaysWrite() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
             startMonitoring: false
         )
-        let executor = ConflictWriteExecutor()
+        let executor = AutoResolvingConflictExecutor()
         let queue = WriteQueue(
             container: persistence.container,
             connectivityMonitor: connectivityMonitor,
@@ -411,22 +455,30 @@ final class WriteQueueTests: XCTestCase {
             autoProcessEnabled: false
         )
 
-        struct Payload: Codable {
-            let value: String
-        }
+        let payload = TaskOperationPayload(
+            operationId: "op-1",
+            op: "rename",
+            id: "task-1",
+            title: "Local title",
+            clientUpdatedAt: "2026-01-01T00:00:00Z"
+        )
 
         try await queue.enqueue(
             operation: .update,
-            entityType: .note,
-            entityId: "note-1",
-            payload: Payload(value: "Hi")
+            entityType: .task,
+            entityId: "task-1",
+            payload: payload
         )
 
         await queue.processQueue()
 
-        XCTAssertTrue(queue.isPausedForConflict)
-        let next = try await queue.fetchNextConflict()
-        XCTAssertEqual(next?.conflictReason, executor.conflictReason)
+        XCTAssertFalse(queue.isPausedForConflict)
+        XCTAssertEqual(executor.receivedPayloads.count, 2)
+        XCTAssertEqual(executor.receivedPayloads.first?.clientUpdatedAt, "2026-01-01T00:00:00Z")
+        XCTAssertEqual(executor.receivedPayloads.last?.clientUpdatedAt, "2026-01-02T00:00:00Z")
+        XCTAssertEqual(queue.pendingCount, 0)
+        let nextConflict = try await queue.fetchNextConflict()
+        XCTAssertNil(nextConflict)
     }
 }
 
@@ -438,11 +490,37 @@ private final class TestWriteExecutor: WriteQueueExecutor {
     }
 }
 
-private final class ConflictWriteExecutor: WriteQueueExecutor {
+private final class AutoResolvingConflictExecutor: WriteQueueExecutor {
     let conflictReason = "Server has newer data"
+    private let decoder = JSONDecoder()
+    private let encoder = JSONEncoder()
+    private(set) var receivedPayloads: [TaskOperationPayload] = []
+    private var hasThrownConflict = false
 
     func execute(write: PendingWriteRecord) async throws {
-        throw WriteQueueConflictError(reason: conflictReason, serverSnapshot: nil)
+        let payload = try decoder.decode(TaskOperationPayload.self, from: write.payload)
+        receivedPayloads.append(payload)
+
+        if !hasThrownConflict {
+            hasThrownConflict = true
+            let conflict = TaskSyncConflict(
+                operationId: payload.operationId,
+                op: payload.op,
+                id: payload.id ?? "task-1",
+                clientUpdatedAt: payload.clientUpdatedAt,
+                serverUpdatedAt: "2026-01-02T00:00:00Z",
+                serverTask: TaskItem(
+                    id: payload.id ?? "task-1",
+                    title: "Server title",
+                    status: "open",
+                    updatedAt: "2026-01-02T00:00:00Z"
+                )
+            )
+            throw WriteQueueConflictError(
+                reason: conflictReason,
+                serverSnapshot: try encoder.encode(conflict)
+            )
+        }
     }
 }
 

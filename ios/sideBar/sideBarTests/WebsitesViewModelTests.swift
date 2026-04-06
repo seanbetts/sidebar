@@ -236,6 +236,72 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.panelPinnedItemsSorted.map(\.id), previousOrder)
     }
 
+    func testRenameWebsiteQueuesUpdateEvenWhenOnline() async throws {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        store.attachWriteQueue(writeQueue)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        store.updateListItem(makeItem(id: "site-1", updatedAt: "2026-01-01T00:00:00Z"), persist: false)
+
+        await viewModel.renameWebsite(id: "site-1", title: "Queued title")
+
+        let pending = try await writeQueue.fetchPendingWrites()
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.website.rawValue)
+        XCTAssertEqual(store.items.first?.title, "Queued title")
+    }
+
+    func testDeleteWebsiteQueuesUpdateEvenWhenOnlineAndClearsSelection() async throws {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        store.attachWriteQueue(writeQueue)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        store.updateListItem(makeItem(id: "site-1", updatedAt: "2026-01-01T00:00:00Z"), persist: false)
+        viewModel.selectedWebsiteId = "site-1"
+
+        await viewModel.deleteWebsite(id: "site-1")
+
+        let pending = try await writeQueue.fetchPendingWrites()
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.entityType, WriteEntityType.website.rawValue)
+        XCTAssertTrue(store.items.isEmpty)
+        XCTAssertNil(viewModel.selectedWebsiteId)
+    }
+
     func testSaveWebsiteQueuesPendingSelectionUntilJobCompletes() async {
         let item = makeItem(id: "site-1")
         let detail = makeDetail(id: "site-1")
@@ -308,7 +374,8 @@ final class WebsitesViewModelTests: XCTestCase {
 
         XCTAssertNotNil(viewModel.pendingWebsite)
         XCTAssertEqual(viewModel.pendingWebsite?.title, "Reading...")
-        XCTAssertEqual(viewModel.detailLoadingMessage, "Reading...")
+        XCTAssertEqual(viewModel.pendingWebsite?.status, .queued)
+        XCTAssertEqual(viewModel.detailLoadingMessage, "Queued to read...")
         XCTAssertEqual(viewModel.selectedWebsiteId, viewModel.pendingWebsite?.id)
         XCTAssertTrue(viewModel.isLoadingDetail)
 
@@ -342,8 +409,9 @@ final class WebsitesViewModelTests: XCTestCase {
 
         XCTAssertNotNil(viewModel.pendingWebsite)
         XCTAssertEqual(viewModel.pendingWebsite?.title, "Watching...")
-        XCTAssertEqual(viewModel.pendingWebsite?.statusLabel, "Watching...")
-        XCTAssertEqual(viewModel.detailLoadingMessage, "Watching...")
+        XCTAssertEqual(viewModel.pendingWebsite?.status, .queued)
+        XCTAssertEqual(viewModel.pendingWebsite?.statusLabel, "Queued")
+        XCTAssertEqual(viewModel.detailLoadingMessage, "Queued to watch...")
         XCTAssertEqual(viewModel.selectedWebsiteId, viewModel.pendingWebsite?.id)
         XCTAssertTrue(viewModel.isLoadingDetail)
 
@@ -500,7 +568,7 @@ final class WebsitesViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.items.first?.id, "saved-1")
         XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
-        XCTAssertEqual(viewModel.pendingWebsite?.status, .reading)
+        XCTAssertEqual(viewModel.pendingWebsite?.status, .queued)
 
         viewModel.jobPollingTasks["job-1"]?.cancel()
         viewModel.jobPollingTasks.removeValue(forKey: "job-1")
@@ -567,9 +635,10 @@ final class WebsitesViewModelTests: XCTestCase {
         let retryTask = Task { await viewModel.retryPendingWebsite(id: "pending-1") }
         await Task.yield()
 
-        XCTAssertEqual(viewModel.pendingWebsite?.status, .reading)
+        XCTAssertEqual(viewModel.pendingWebsite?.status, .retrying)
         XCTAssertEqual(viewModel.pendingWebsite?.id, "pending-1")
         XCTAssertTrue(viewModel.isLoadingDetail)
+        XCTAssertEqual(viewModel.detailLoadingMessage, "Retrying website save...")
         XCTAssertNil(viewModel.saveErrorMessage)
 
         api.resumeSave(
@@ -626,6 +695,52 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isSavingWebsite)
         XCTAssertNil(viewModel.pendingWebsite)
         XCTAssertTrue(viewModel.jobPollingTasks.isEmpty)
+    }
+
+    func testContinuePendingWebsiteJobsInBackgroundCompletesSavedWebsite() async {
+        let completedDetail = makeDetail(
+            id: "saved-1",
+            url: "https://example.com",
+            domain: "example.com",
+            content: "Saved content",
+            updatedAt: "2026-03-21T10:00:00Z"
+        )
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "completed",
+                    website: completedDetail,
+                    error: nil
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+        viewModel.pendingWebsite = WebsitesViewModel.PendingWebsiteItem(
+            id: "pending-1",
+            title: "Reading...",
+            domain: "example.com",
+            url: "https://example.com",
+            canonicalURL: "https://example.com",
+            source: .directSave,
+            jobId: "job-1",
+            status: .queued,
+            selectionFallbackId: "site-existing"
+        )
+
+        let completed = await viewModel.continuePendingWebsiteJobsInBackground(maxDuration: 2)
+
+        XCTAssertTrue(completed)
+        XCTAssertTrue(viewModel.pendingWebsites.isEmpty)
+        XCTAssertEqual(viewModel.items.first?.id, "saved-1")
+        XCTAssertEqual(viewModel.selectedWebsiteId, "saved-1")
     }
 
     func testWebsiteRealtimeInsertDoesNotClearPendingYouTubeCandidate() async {
@@ -908,7 +1023,7 @@ final class WebsitesViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.pendingWebsites.count, 1)
         XCTAssertEqual(viewModel.pendingWebsites.first?.source, .queuedShare)
-        XCTAssertEqual(viewModel.pendingWebsites.first?.status, .reading)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.status, .queued)
 
         api.resumeSave(
             result: .success(
@@ -1084,6 +1199,17 @@ final class WebsitesViewModelTests: XCTestCase {
             deleteResult: .success(())
         )
         let store = WebsitesStore(api: api, cache: cache)
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        store.attachWriteQueue(writeQueue)
         let viewModel = WebsitesViewModel(
             api: api,
             store: store,
@@ -1094,8 +1220,10 @@ final class WebsitesViewModelTests: XCTestCase {
         await viewModel.selectWebsite(id: "site-1")
         await viewModel.deleteWebsite(id: "site-1")
 
+        let pending = try? await writeQueue.fetchPendingWrites()
         XCTAssertNil(viewModel.selectedWebsiteId)
         XCTAssertTrue(viewModel.items.isEmpty)
+        XCTAssertEqual(pending?.count, 1)
     }
 
     func testArchiveWebsiteClearsSelectionWhenActiveMatches() async throws {
@@ -1124,6 +1252,17 @@ final class WebsitesViewModelTests: XCTestCase {
             archiveResult: .success(archivedItem)
         )
         let store = WebsitesStore(api: api, cache: cache)
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        store.attachWriteQueue(writeQueue)
         let viewModel = WebsitesViewModel(
             api: api,
             store: store,
@@ -1138,41 +1277,48 @@ final class WebsitesViewModelTests: XCTestCase {
 
         await viewModel.setArchived(id: "site-1", archived: true)
 
+        let pending = try await writeQueue.fetchPendingWrites()
         XCTAssertNil(viewModel.active)
         XCTAssertNil(viewModel.selectedWebsiteId)
+        XCTAssertEqual(pending.count, 1)
     }
 
-    func testDeleteWebsiteConflictRefreshesAndRetries() async {
+    func testDeleteWebsiteQueuesWriteUsingListUpdatedAt() async throws {
         let staleUpdatedAt = "2026-02-08T14:19:25.939359+00:00"
-        let freshUpdatedAt = "2026-02-08T14:20:06.958809+00:00"
         let staleItem = makeItem(id: "site-1", updatedAt: staleUpdatedAt)
-        let freshItem = makeItem(id: "site-1", updatedAt: freshUpdatedAt)
         let cache = InMemoryCacheClient()
-        let api = MockWebsitesAPI(
-            listResult: .success(WebsitesResponse(items: [staleItem]))
-        )
-        api.enqueueDeleteResult(.failure(APIClientError.apiError("Website has been updated since last sync")))
-        api.enqueueDeleteResult(.success(()))
-        let toastCenter = ToastCenter()
+        let api = MockWebsitesAPI(listResult: .success(WebsitesResponse(items: [staleItem])))
         let store = WebsitesStore(api: api, cache: cache)
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        store.attachWriteQueue(writeQueue)
         let viewModel = WebsitesViewModel(
             api: api,
             store: store,
-            toastCenter: toastCenter,
+            toastCenter: ToastCenter(),
             networkStatus: TestNetworkStatus(isNetworkAvailable: true)
         )
 
         await viewModel.load(force: true)
-        api.enqueueListResult(.success(WebsitesResponse(items: [freshItem])))
         await viewModel.deleteWebsite(id: "site-1")
 
-        XCTAssertEqual(api.deleteRequestUpdatedAts, [staleUpdatedAt, freshUpdatedAt])
+        let pendingWrites = try persistence.container.viewContext.fetch(PendingWrite.fetchRequest())
+        let payload = try XCTUnwrap(pendingWrites.first?.payload)
+        let operation = try JSONDecoder().decode(WebsiteOperationPayload.self, from: payload)
+        XCTAssertEqual(operation.clientUpdatedAt, staleUpdatedAt)
         XCTAssertTrue(viewModel.items.isEmpty)
         XCTAssertNil(viewModel.errorMessage)
-        XCTAssertNil(toastCenter.toast)
     }
 
-    func testDeleteWebsiteUsesFreshestUpdatedAtFromActiveDetail() async {
+    func testDeleteWebsiteUsesFreshestUpdatedAtFromActiveDetail() async throws {
         let staleUpdatedAt = "2026-02-08T14:19:25.939359+00:00"
         let freshUpdatedAt = "2026-02-08T14:20:06.958809+00:00"
         let staleItem = makeItem(id: "site-1", updatedAt: staleUpdatedAt)
@@ -1184,6 +1330,17 @@ final class WebsitesViewModelTests: XCTestCase {
             deleteResult: .success(())
         )
         let store = WebsitesStore(api: api, cache: cache)
+        let persistence = PersistenceController(inMemory: true)
+        let connectivityMonitor = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        let writeQueue = WriteQueue(
+            container: persistence.container,
+            connectivityMonitor: connectivityMonitor,
+            autoProcessEnabled: false
+        )
+        store.attachWriteQueue(writeQueue)
         let viewModel = WebsitesViewModel(
             api: api,
             store: store,
@@ -1195,7 +1352,10 @@ final class WebsitesViewModelTests: XCTestCase {
         await viewModel.selectWebsite(id: "site-1")
         await viewModel.deleteWebsite(id: "site-1")
 
-        XCTAssertEqual(api.deleteRequestUpdatedAts, [freshUpdatedAt])
+        let pendingWrites = try persistence.container.viewContext.fetch(PendingWrite.fetchRequest())
+        let payload = try XCTUnwrap(pendingWrites.first?.payload)
+        let operation = try JSONDecoder().decode(WebsiteOperationPayload.self, from: payload)
+        XCTAssertEqual(operation.clientUpdatedAt, freshUpdatedAt)
         XCTAssertTrue(viewModel.items.isEmpty)
         XCTAssertNil(viewModel.errorMessage)
     }

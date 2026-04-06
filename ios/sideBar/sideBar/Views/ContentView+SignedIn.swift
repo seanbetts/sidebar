@@ -24,15 +24,6 @@ extension ContentView {
                 .phoneSheetGrabBarVisible()
         })
         #endif
-        content = AnyView(content.sheet(item: $pendingWriteResolution) { queuedChange in
-            QueuedChangeResolutionSheet(queuedChange: queuedChange) { resolution in
-                Task {
-                    await environment.writeQueue.resolveConflict(id: queuedChange.id, resolution: resolution)
-                    await refreshPendingWriteResolution()
-                }
-            }
-            .phoneSheetGrabBarVisible()
-        })
         content = AnyView(content.overlay(alignment: .top) {
             VStack(spacing: DesignTokens.Spacing.sm) {
                 if environment.shouldShowStaleAuthRetryBanner {
@@ -94,6 +85,12 @@ extension ContentView {
                 // Schedule background task for widget refresh (auth refresh is foreground-only)
                 if environment.isAuthenticated {
                     AppLaunchDelegate.scheduleWidgetRefresh()
+                    if environment.writeQueue.pendingCount > 0 {
+                        AppLaunchDelegate.scheduleWriteQueueFlush()
+                    }
+                    if environment.hasPendingWebsiteBackgroundWork {
+                        AppLaunchDelegate.scheduleWebsiteSaveContinuation()
+                    }
                 }
                 #endif
             }
@@ -263,15 +260,6 @@ extension ContentView {
             }
         }))
         #endif
-        content = AnyView(content.onReceive(environment.writeQueue.$isPausedForConflict) { isPaused in
-            if isPaused {
-                Task {
-                    await refreshPendingWriteResolution()
-                }
-            } else {
-                pendingWriteResolution = nil
-            }
-        })
         content = AnyView(content.onChange(of: environment.authState) { oldValue, newValue in
             _ = oldValue
             let isAuthenticated = newValue != .signedOut
@@ -469,21 +457,6 @@ extension ContentView {
             return "Unlock sideBar quickly and securely with Touch ID."
         default:
             return "Unlock sideBar quickly and securely with Face ID."
-        }
-    }
-
-    @MainActor
-    private func refreshPendingWriteResolution() async {
-        if environment.writeQueue.isPausedForConflict {
-            do {
-                pendingWriteResolution = try await environment.writeQueue.fetchNextConflict()
-            } catch {
-                let logger = Logger(subsystem: "sideBar", category: "ContentView")
-                logger.error("Failed to fetch queued change resolution: \(error.localizedDescription, privacy: .public)")
-                pendingWriteResolution = nil
-            }
-        } else {
-            pendingWriteResolution = nil
         }
     }
 }

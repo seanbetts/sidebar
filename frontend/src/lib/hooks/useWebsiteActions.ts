@@ -2,9 +2,10 @@ import { get } from 'svelte/store';
 import { websitesStore } from '$lib/stores/websites';
 import { websitesAPI } from '$lib/services/api';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
-import { logError } from '$lib/utils/errorHandling';
+import { logError, parseError } from '$lib/utils/errorHandling';
 import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 import { editorStore, currentNoteId } from '$lib/stores/editor';
+import { retryForegroundMutation } from '$lib/utils/foregroundMutationRetry';
 import { toast } from 'svelte-sonner';
 
 type WebsiteActionOptions = {
@@ -22,6 +23,17 @@ const defaultScope = (action: string) => `websiteActions.${action}`;
  * @returns Website action handlers.
  */
 export function useWebsiteActions() {
+	const surfaceMutationError = (
+		fallbackMessage: string,
+		error: unknown,
+		context: Record<string, unknown>
+	): false => {
+		const parsed = parseError(error);
+		toast.error(parsed.message || fallbackMessage);
+		logError(fallbackMessage, error, context);
+		return false;
+	};
+
 	const openWebsite = async (websiteId: string) => {
 		ingestionViewerStore.clearActive();
 		editorStore.reset();
@@ -35,7 +47,7 @@ export function useWebsiteActions() {
 		options: WebsiteActionOptions = {}
 	): Promise<boolean> => {
 		try {
-			await websitesAPI.rename(websiteId, title);
+			await retryForegroundMutation(() => websitesAPI.rename(websiteId, title));
 			websitesStore.renameLocal?.(websiteId, title);
 			if (options.updateActive) {
 				websitesStore.updateActiveLocal?.({ title });
@@ -43,12 +55,10 @@ export function useWebsiteActions() {
 			dispatchCacheEvent('website.renamed');
 			return true;
 		} catch (error) {
-			toast.error('Failed to rename website');
-			logError('Failed to rename website', error, {
+			return surfaceMutationError('Failed to rename website', error, {
 				scope: options.scope ?? defaultScope('rename'),
 				websiteId
 			});
-			return false;
 		}
 	};
 
@@ -58,7 +68,7 @@ export function useWebsiteActions() {
 		options: WebsiteActionOptions = {}
 	): Promise<boolean> => {
 		try {
-			await websitesAPI.setPinned(websiteId, pinned);
+			await retryForegroundMutation(() => websitesAPI.setPinned(websiteId, pinned));
 			websitesStore.setPinnedLocal?.(websiteId, pinned);
 			if (options.updateActive) {
 				websitesStore.updateActiveLocal?.({
@@ -69,13 +79,11 @@ export function useWebsiteActions() {
 			dispatchCacheEvent('website.pinned');
 			return true;
 		} catch (error) {
-			toast.error('Failed to pin website');
-			logError('Failed to update website pin', error, {
+			return surfaceMutationError('Failed to update website pin', error, {
 				scope: options.scope ?? defaultScope('pin'),
 				websiteId,
 				pinned
 			});
-			return false;
 		}
 	};
 
@@ -85,7 +93,7 @@ export function useWebsiteActions() {
 		options: WebsiteActionOptions = {}
 	): Promise<boolean> => {
 		try {
-			await websitesAPI.setArchived(websiteId, archived);
+			await retryForegroundMutation(() => websitesAPI.setArchived(websiteId, archived));
 			websitesStore.setArchivedLocal?.(websiteId, archived);
 			dispatchCacheEvent('website.archived');
 			if (options.clearActiveOnArchive && archived) {
@@ -95,13 +103,11 @@ export function useWebsiteActions() {
 			}
 			return true;
 		} catch (error) {
-			toast.error('Failed to archive website');
-			logError('Failed to archive website', error, {
+			return surfaceMutationError('Failed to archive website', error, {
 				scope: options.scope ?? defaultScope('archive'),
 				websiteId,
 				archived
 			});
-			return false;
 		}
 	};
 
@@ -110,7 +116,7 @@ export function useWebsiteActions() {
 		options: WebsiteActionOptions = {}
 	): Promise<boolean> => {
 		try {
-			await websitesAPI.delete(websiteId);
+			await retryForegroundMutation(() => websitesAPI.delete(websiteId));
 			websitesStore.removeLocal?.(websiteId);
 			dispatchCacheEvent('website.deleted');
 			if (options.clearActiveOnDelete) {
@@ -118,12 +124,10 @@ export function useWebsiteActions() {
 			}
 			return true;
 		} catch (error) {
-			toast.error('Failed to delete website');
-			logError('Failed to delete website', error, {
+			return surfaceMutationError('Failed to delete website', error, {
 				scope: options.scope ?? defaultScope('delete'),
 				websiteId
 			});
-			return false;
 		}
 	};
 
@@ -137,15 +141,13 @@ export function useWebsiteActions() {
 			.map((item) => item.id);
 		websitesStore.setPinnedOrderLocal?.(order);
 		try {
-			await websitesAPI.updatePinnedOrder(order);
+			await retryForegroundMutation(() => websitesAPI.updatePinnedOrder(order));
 			return true;
 		} catch (error) {
 			websitesStore.setPinnedOrderLocal?.(previousOrder);
-			toast.error('Failed to reorder pinned websites');
-			logError('Failed to update pinned order', error, {
+			return surfaceMutationError('Failed to update pinned order', error, {
 				scope: options.scope ?? defaultScope('pinnedOrder')
 			});
-			return false;
 		}
 	};
 
