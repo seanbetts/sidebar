@@ -315,7 +315,7 @@ extension SelectableNoteReadView {
                 prefixLength: blockquotePrefixLength,
                 startingAt: offset
             )
-        case .divider, .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
+        case .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
             return offset
         }
     }

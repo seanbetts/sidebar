@@ -136,35 +136,6 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
         XCTAssertEqual(style.defaultTabInterval, expectedIndent, accuracy: 0.001)
     }
 
-    func testBoundaryParagraphMetricsUseSharedDividerSpacing() {
-        let baseFontSize: CGFloat = 16
-
-        let beforeDivider = NoteTextParagraphMetrics.boundaryParagraphStyle(
-            after: .paragraph,
-            before: .divider,
-            baseFontSize: baseFontSize
-        )
-        let afterDivider = NoteTextParagraphMetrics.boundaryParagraphStyle(
-            after: .divider,
-            before: .paragraph,
-            baseFontSize: baseFontSize
-        )
-
-        XCTAssertEqual(beforeDivider.paragraphSpacingBefore, 0, accuracy: 0.001)
-        XCTAssertEqual(
-            beforeDivider.paragraphSpacing,
-            NoteTextParagraphMetrics.paragraphStyle(for: .paragraph, baseFontSize: baseFontSize).paragraphSpacing +
-                NoteTextParagraphMetrics.dividerPaddingBefore(baseFontSize: baseFontSize),
-            accuracy: 0.001
-        )
-        XCTAssertEqual(
-            afterDivider.paragraphSpacingBefore,
-            NoteTextParagraphMetrics.dividerPaddingAfter(baseFontSize: baseFontSize),
-            accuracy: 0.001
-        )
-        XCTAssertEqual(afterDivider.paragraphSpacing, 0, accuracy: 0.001)
-    }
-
     #if os(macOS)
     func testMakePlatformAttributedContentUsesSecondaryLabelColorForBlockquotesOnMacOS() throws {
         let document = NotesSemanticDocument(
@@ -237,47 +208,6 @@ final class SelectableNoteReadViewTypographyTests: XCTestCase {
             accuracy: 2,
             "Expected rule rect \(ruleRect.debugDescription) to align vertically with prefix rect \(prefixRect.debugDescription)"
         )
-    }
-
-    func testMountedReadViewDrawsDividerRuleOnMacOS() throws {
-        let document = NotesSemanticDocument(
-            blocks: [
-                .paragraph([.init(text: "Before", marks: [])]),
-                .init(type: .divider),
-                .paragraph([.init(text: "After", marks: [])])
-            ]
-        )
-        let textView = try makeReadTextView(
-            document: document,
-            frame: NSRect(x: 0, y: 0, width: 320, height: 180)
-        )
-        let dividerRect = try XCTUnwrap(
-            NoteTextDividerDecorationLayout.ruleRects(
-                in: try XCTUnwrap(textView.textStorage),
-                layoutManager: try XCTUnwrap(textView.layoutManager),
-                textContainer: try XCTUnwrap(textView.textContainer),
-                textContainerInset: textView.textContainerInset
-            ).first
-        )
-        let beforeRect = try glyphRect(in: textView, characterIndex: 0).offsetBy(
-            dx: textView.textContainerInset.width,
-            dy: textView.textContainerInset.height
-        )
-        let afterRect = try glyphRect(in: textView, characterIndex: 8).offsetBy(
-            dx: textView.textContainerInset.width,
-            dy: textView.textContainerInset.height
-        )
-        let expectedWidth = textView.bounds.width - (textView.textContainerInset.width * 2) -
-            (NoteTextAppearance.dividerHorizontalInset * 2)
-
-        XCTAssertEqual(
-            dividerRect.minX,
-            textView.textContainerInset.width + NoteTextAppearance.dividerHorizontalInset,
-            accuracy: 1
-        )
-        XCTAssertEqual(dividerRect.width, expectedWidth, accuracy: 1)
-        XCTAssertGreaterThan(dividerRect.midY, beforeRect.midY)
-        XCTAssertLessThan(dividerRect.midY, afterRect.midY)
     }
     #endif
 

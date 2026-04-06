@@ -41,7 +41,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
 
         override func draw(_ dirtyRect: NSRect) {
             drawCodeBlockBackgrounds(in: dirtyRect)
-            drawDividerRules(in: dirtyRect)
             super.draw(dirtyRect)
         }
 
@@ -79,6 +78,28 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             )
             guard textContainerInset != resolvedInset else { return }
             textContainerInset = resolvedInset
+        }
+
+        private func drawCodeBlockBackgrounds(in dirtyRect: NSRect) {
+            guard let textStorage,
+                  let layoutManager,
+                  let textContainer else { return }
+            let backgroundRects = NoteTextCodeBlockBackgroundLayout.blockRects(
+                in: textStorage,
+                layoutManager: layoutManager,
+                textContainer: textContainer,
+                textContainerInset: textContainerInset
+            )
+            guard backgroundRects.isEmpty == false else { return }
+
+            NoteTextAppearance.codeBlockBackgroundColor.setFill()
+            for backgroundRect in backgroundRects where backgroundRect.intersects(dirtyRect) {
+                NSBezierPath(
+                    roundedRect: backgroundRect,
+                    xRadius: NoteTextAppearance.codeBlockCornerRadius,
+                    yRadius: NoteTextAppearance.codeBlockCornerRadius
+                ).fill()
+            }
         }
     }
 
@@ -419,53 +440,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             )
             registerUndoSnapshot(redoSnapshot, on: textView)
             applyCurrentEditorState(to: textView)
-        }
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-extension AppKitNoteTextEditorSurface.EditorTextView {
-    fileprivate func drawCodeBlockBackgrounds(in dirtyRect: NSRect) {
-        guard let textStorage,
-              let layoutManager,
-              let textContainer else { return }
-        let backgroundRects = NoteTextCodeBlockBackgroundLayout.blockRects(
-            in: textStorage,
-            layoutManager: layoutManager,
-            textContainer: textContainer,
-            textContainerInset: textContainerInset
-        )
-        guard backgroundRects.isEmpty == false else { return }
-
-        NoteTextAppearance.codeBlockBackgroundColor.setFill()
-        for backgroundRect in backgroundRects where backgroundRect.intersects(dirtyRect) {
-            NSBezierPath(
-                roundedRect: backgroundRect,
-                xRadius: NoteTextAppearance.codeBlockCornerRadius,
-                yRadius: NoteTextAppearance.codeBlockCornerRadius
-            ).fill()
-        }
-    }
-
-    fileprivate func drawDividerRules(in dirtyRect: NSRect) {
-        guard let textStorage,
-              let layoutManager,
-              let textContainer else { return }
-        let ruleRects = NoteTextDividerDecorationLayout.ruleRects(
-            in: textStorage,
-            layoutManager: layoutManager,
-            textContainer: textContainer,
-            textContainerInset: textContainerInset
-        )
-        guard ruleRects.isEmpty == false else { return }
-
-        NoteTextAppearance.dividerRuleColor.setFill()
-        for ruleRect in ruleRects where ruleRect.intersects(dirtyRect) {
-            NSBezierPath(
-                roundedRect: ruleRect,
-                xRadius: NoteTextAppearance.dividerRuleThickness / 2,
-                yRadius: NoteTextAppearance.dividerRuleThickness / 2
-            ).fill()
         }
     }
 }

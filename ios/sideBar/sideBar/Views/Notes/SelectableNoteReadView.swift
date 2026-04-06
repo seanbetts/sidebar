@@ -541,8 +541,6 @@ struct SelectableNoteReadView: View {
         baseFontSize: CGFloat
     ) -> NSParagraphStyle {
         switch blockType {
-        case .divider:
-            return NoteTextParagraphMetrics.paragraphStyle(for: .paragraph, baseFontSize: baseFontSize)
         case .unorderedList, .checklist:
             return NoteTextParagraphMetrics.paragraphStyle(
                 for: blockType,
@@ -803,7 +801,6 @@ private final class SelectableNoteReadTextView: NSTextView {
 
     override func draw(_ dirtyRect: NSRect) {
         drawCodeBlockBackgrounds(in: dirtyRect)
-        drawDividerRules(in: dirtyRect)
         drawBlockquoteRules(in: dirtyRect)
         super.draw(dirtyRect)
     }
@@ -925,28 +922,6 @@ private final class SelectableNoteReadTextView: NSTextView {
         NoteTextAppearance.blockquoteRuleColor.setFill()
         for ruleRect in ruleRects where ruleRect.intersects(dirtyRect) {
             NSBezierPath(roundedRect: ruleRect, xRadius: 1.5, yRadius: 1.5).fill()
-        }
-    }
-
-    private func drawDividerRules(in dirtyRect: NSRect) {
-        guard let textStorage,
-              let layoutManager,
-              let textContainer else { return }
-        let ruleRects = NoteTextDividerDecorationLayout.ruleRects(
-            in: textStorage,
-            layoutManager: layoutManager,
-            textContainer: textContainer,
-            textContainerInset: textContainerInset
-        )
-        guard ruleRects.isEmpty == false else { return }
-
-        NoteTextAppearance.dividerRuleColor.setFill()
-        for ruleRect in ruleRects where ruleRect.intersects(dirtyRect) {
-            NSBezierPath(
-                roundedRect: ruleRect,
-                xRadius: NoteTextAppearance.dividerRuleThickness / 2,
-                yRadius: NoteTextAppearance.dividerRuleThickness / 2
-            ).fill()
         }
     }
 
@@ -1211,7 +1186,6 @@ private final class SelectableNoteReadTextView: UITextView {
 
     override func draw(_ rect: CGRect) {
         drawCodeBlockBackgrounds(in: rect)
-        drawDividerRules(in: rect)
         drawBlockquoteRules(in: rect)
         super.draw(rect)
     }
@@ -1280,27 +1254,6 @@ private final class SelectableNoteReadTextView: UITextView {
         NoteTextAppearance.blockquoteRuleColor.setFill()
         for ruleRect in ruleRects where ruleRect.intersects(rect) {
             UIBezierPath(roundedRect: ruleRect, cornerRadius: 1.5).fill()
-        }
-    }
-
-    private func drawDividerRules(in rect: CGRect) {
-        guard attributedText.length > 0 else { return }
-        let ruleRects = NoteTextDividerDecorationLayout.detachedRuleRects(
-            in: attributedText,
-            containerWidth: bounds.width,
-            textContainerInset: CGSize(
-                width: textContainerInset.left,
-                height: textContainerInset.top
-            )
-        )
-        guard ruleRects.isEmpty == false else { return }
-
-        NoteTextAppearance.dividerRuleColor.setFill()
-        for ruleRect in ruleRects where ruleRect.intersects(rect) {
-            UIBezierPath(
-                roundedRect: ruleRect,
-                cornerRadius: NoteTextAppearance.dividerRuleThickness / 2
-            ).fill()
         }
     }
 

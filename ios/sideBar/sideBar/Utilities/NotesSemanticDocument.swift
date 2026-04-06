@@ -125,7 +125,6 @@ extension NotesSemanticDocument {
         case paragraph
         case heading
         case subheading
-        case divider
         case unorderedList = "unordered_list"
         case orderedList = "ordered_list"
         case checklist
@@ -266,11 +265,7 @@ private extension NotesSemanticDocument {
     ) -> Block? {
         switch block.type {
         case .title, .paragraph, .heading, .subheading, .codeBlock,
-             .divider,
              .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:
-            if block.type == .divider {
-                return .init(type: .divider)
-            }
             return .init(type: block.type, content: block.content)
         case .listItem:
             guard let parent, listContainerTypes.contains(parent) else {
@@ -302,7 +297,7 @@ private extension NotesSemanticDocument {
 private extension NotesSemanticDocument.BlockType {
     var supportsInlineContent: Bool {
         switch self {
-        case .divider, .orderedList, .unorderedList, .checklist, .blockquote:
+        case .orderedList, .unorderedList, .checklist, .blockquote:
             return false
         case .title, .paragraph, .heading, .subheading, .listItem, .codeBlock,
              .table, .tableRow, .tableCell, .media, .caption, .htmlBlock:

@@ -14,7 +14,6 @@ ALLOWED_BLOCK_TYPES = {
     "paragraph",
     "heading",
     "subheading",
-    "divider",
     "unordered_list",
     "ordered_list",
     "task_list",
@@ -34,7 +33,6 @@ SUPPORTED_BLOCK_TYPES = {
     "paragraph",
     "heading",
     "subheading",
-    "divider",
     "unordered_list",
     "ordered_list",
     "checklist",
@@ -281,9 +279,6 @@ def _normalize_block(
     if block_type not in SUPPORTED_BLOCK_TYPES:
         return {"type": block_type}
 
-    if block_type == "divider":
-        return {"type": "divider"}
-
     canonical = {
         "type": block_type,
         "content": normalized["content"],
@@ -381,12 +376,6 @@ def _validate_supported_leaf_block(
     if block_type not in SUPPORTED_BLOCK_TYPES:
         return
 
-    if block_type == "divider":
-        block.pop("content", None)
-        block.pop("checked", None)
-        block.pop("children", None)
-        return
-
     content = block.get("content")
     if not isinstance(content, list):
         raise _invalid_document(f"block {index} content must be a list")
@@ -468,8 +457,6 @@ def _project_lines(
             lines.extend(
                 _prefixed_lines(_project_textual_block(block), prefix=quote_prefix)
             )
-        elif block_type == "divider":
-            lines.append(f"{quote_prefix}".rstrip())
         elif block_type == "ordered_list":
             for item_index, child in enumerate(block.get("children", []), start=1):
                 lines.extend(

@@ -277,6 +277,13 @@ extension NativeNoteEditorViewModel {
         selection = selection(from: remappedSelectionSnapshot, in: updatedContent)
     }
 
+    private func canUnwrapList(
+        for blockInfo: DocumentBlockInfo,
+        listType: NotesSemanticDocument.BlockType
+    ) -> Bool {
+        blockInfo.block.type == listType
+    }
+
     func toggleFormatting(_ formatting: NoteFormatting) {
         let nonEmptyRanges = selectionRanges().ranges.filter { !$0.isEmpty }
         guard !nonEmptyRanges.isEmpty else {

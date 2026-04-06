@@ -41,7 +41,6 @@ private extension NotesUnsupportedContent {
         .paragraph,
         .heading,
         .subheading,
-        .divider,
         .unorderedList,
         .orderedList,
         .checklist,

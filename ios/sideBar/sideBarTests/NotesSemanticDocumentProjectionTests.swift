@@ -79,7 +79,6 @@ final class NotesSemanticDocumentProjectionTests: XCTestCase {
                         .paragraph([.init(text: "Quoted line", marks: [])])
                     ]
                 ),
-                .init(type: .divider),
                 .init(type: .codeBlock, content: [.init(text: "line 1\nline 2", marks: [])])
             ]
         )
@@ -94,7 +93,6 @@ final class NotesSemanticDocumentProjectionTests: XCTestCase {
             1. Run tests
             - [x] Completed item
             > Quoted line
-
             line 1
             line 2
             """
@@ -174,52 +172,6 @@ final class NotesSemanticDocumentProjectionTests: XCTestCase {
         )
 
         XCTAssertEqual(NotesSemanticDocumentProjection.title(from: document), "Semantic Title")
-    }
-
-    func testPlainTextProjectionProjectsDividerAsBlankSeparator() {
-        let document = NotesSemanticDocument(
-            version: NotesSemanticDocument.currentVersion,
-            blocks: [
-                .init(type: .title, content: [.init(text: "Weekly plan", marks: [])]),
-                .paragraph([.init(text: "Top priorities", marks: [])]),
-                .init(type: .divider),
-                .paragraph([.init(text: "Backlog review", marks: [])])
-            ]
-        )
-
-        XCTAssertEqual(
-            NotesSemanticDocumentProjection.plainText(from: document),
-            """
-            Weekly plan
-            Top priorities
-
-            Backlog review
-            """
-        )
-    }
-
-    func testSemanticDocumentNormalizesDividerAsContentlessLeafBlock() {
-        let document = NotesSemanticDocument(
-            version: NotesSemanticDocument.currentVersion,
-            blocks: [
-                .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                .init(
-                    type: .divider,
-                    content: [.init(text: "---", marks: [])],
-                    children: [
-                        .paragraph([.init(text: "Ignored", marks: [])])
-                    ]
-                )
-            ]
-        )
-
-        XCTAssertEqual(
-            document.blocks,
-            [
-                .init(type: .title, content: [.init(text: "Title", marks: [])]),
-                .init(type: .divider)
-            ]
-        )
     }
 
     func testSemanticDocumentCodecDecodesLegacyTaskListAliasAsChecklist() throws {

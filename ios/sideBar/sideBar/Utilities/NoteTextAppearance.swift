@@ -12,13 +12,10 @@ enum NoteTextAppearance {
     static var checklistCompletedTextColor: UIColor { .secondaryLabel }
     static var blockquoteTextColor: UIColor { .secondaryLabel }
     static var blockquoteRuleColor: UIColor { .separator }
-    static var dividerRuleColor: UIColor { .separator }
     static var inlineCodeBackgroundColor: UIColor { .secondarySystemFill }
     static var codeBlockBackgroundColor: UIColor { .secondarySystemBackground }
     static var codeBlockCornerRadius: CGFloat { 10 }
     static var codeBlockVerticalPadding: CGFloat { 8 }
-    static var dividerRuleThickness: CGFloat { 1 }
-    static var dividerHorizontalInset: CGFloat { 12 }
 
     static func backgroundColor(
         for blockType: NotesSemanticDocument.BlockType,
@@ -32,7 +29,6 @@ enum NoteTextAppearance {
     static var checklistCompletedTextColor: NSColor { .secondaryLabelColor }
     static var blockquoteTextColor: NSColor { .secondaryLabelColor }
     static var blockquoteRuleColor: NSColor { .separatorColor }
-    static var dividerRuleColor: NSColor { .separatorColor }
     static var inlineCodeBackgroundColor: NSColor { .quaternaryLabelColor.withAlphaComponent(0.18) }
     static var codeBlockBackgroundColor: NSColor {
         NSColor(name: NSColor.Name("notesCodeBlockBackground")) { appearance in
@@ -45,8 +41,6 @@ enum NoteTextAppearance {
     }
     static var codeBlockCornerRadius: CGFloat { 10 }
     static var codeBlockVerticalPadding: CGFloat { 8 }
-    static var dividerRuleThickness: CGFloat { 1 }
-    static var dividerHorizontalInset: CGFloat { 12 }
 
     static func backgroundColor(
         for blockType: NotesSemanticDocument.BlockType,

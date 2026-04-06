@@ -67,8 +67,6 @@ enum NotesSemanticDocumentProjection {
         switch block.type {
         case .title, .paragraph, .heading, .subheading, .listItem, .codeBlock:
             return prefixedLines(inlineText(from: block.content), prefix: quotePrefix)
-        case .divider:
-            return [quotePrefix.trimmingCharacters(in: .whitespaces)]
         case .orderedList:
             return (block.children ?? []).enumerated().flatMap { itemIndex, child in
                 projectedListItemLines(
