@@ -35,6 +35,7 @@ final class UIKitNoteTextEditorContainerView: UIView {
             blockquoteLayer.fillColor = NoteTextAppearance.blockquoteRuleColor.cgColor
             layer.addSublayer(codeBlockLayer)
             layer.addSublayer(blockquoteLayer)
+            registerForAppearanceChanges()
         }
 
         @available(*, unavailable) required init?(coder: NSCoder) {
@@ -51,10 +52,11 @@ final class UIKitNoteTextEditorContainerView: UIView {
                 .cgColor
         }
 
-        override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-            super.traitCollectionDidChange(previousTraitCollection)
-            syncResolvedColors()
-            refreshPaths()
+        private func registerForAppearanceChanges() {
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _) in
+                self.syncResolvedColors()
+                self.refreshPaths()
+            }
         }
 
         func refreshPaths() {
@@ -161,6 +163,15 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             didSet { setNeedsLayout() }
         }
 
+        override init(frame: CGRect, textContainer: NSTextContainer?) {
+            super.init(frame: frame, textContainer: textContainer)
+            registerForAppearanceChanges()
+        }
+
+        @available(*, unavailable) required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
         override var inputAccessoryView: UIView? {
             get { formattingAccessoryView }
             set { formattingAccessoryView = newValue }
@@ -228,9 +239,10 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
             onDidMoveToWindow?(self)
         }
 
-        override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-            super.traitCollectionDidChange(previousTraitCollection)
-            decorationView?.refreshPaths()
+        private func registerForAppearanceChanges() {
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: AccessoryTextView, _) in
+                self.decorationView?.refreshPaths()
+            }
         }
 
         override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
