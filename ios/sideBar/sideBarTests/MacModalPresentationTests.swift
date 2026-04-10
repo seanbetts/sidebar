@@ -38,6 +38,7 @@ final class MacModalPresentationTests: XCTestCase {
 
     func testScratchpadUsesEditorPanelType() {
         XCTAssertEqual(scratchpadPopoverPanelType(), .editorSheet)
+        XCTAssertEqual(macModalFrameWidth(for: scratchpadPopoverPanelType()), 640)
     }
 
     func testQueuedChangesUsesChooserPanelType() {

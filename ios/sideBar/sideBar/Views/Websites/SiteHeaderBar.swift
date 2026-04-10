@@ -215,7 +215,11 @@ public struct SiteHeaderBar: View {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(buttonBorder, lineWidth: 1)
                 )
-                .popover(isPresented: $isScratchpadPresented) {
+                .popover(
+                    isPresented: $isScratchpadPresented,
+                    attachmentAnchor: .rect(.bounds),
+                    arrowEdge: .top
+                ) {
                     MacPopoverShell(type: scratchpadPopoverPanelType()) {
                         ScratchpadPopoverView(
                             api: environment.container.scratchpadAPI,
@@ -223,6 +227,7 @@ public struct SiteHeaderBar: View {
                             scratchpadStore: environment.scratchpadStore
                         )
                     }
+                    .presentationCompactAdaptation(.sheet)
                 }
             }
         }

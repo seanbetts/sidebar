@@ -26,50 +26,12 @@ public struct ScratchpadPopoverView: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
-                ScratchpadHeaderRow(
-                    isSaving: isSaving,
-                    errorMessage: viewModel.errorMessage
-                )
-                Divider()
-
-                Group {
-                    if isEditing {
-                        TextEditor(text: $draft)
-                            .appFont(.body)
-                            .focused($isEditorFocused)
-                            .scrollContentBackground(.hidden)
-                            .frame(maxWidth: .infinity)
-                            .accessibilityLabel("Scratchpad text")
-                            .accessibilityHint("Enter notes for your scratchpad.")
-                    } else {
-                        ScrollView {
-                            Text(draft.isEmpty ? ScratchpadConstants.placeholder : draft)
-                                .appFont(.body)
-                                .foregroundStyle(DesignTokens.Colors.textPrimary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .textSelection(.enabled)
-                        }
-                        .onTapGesture {
-                            isEditing = true
-                            isEditorFocused = true
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .overlay {
-                    if isLoading && !hasLoaded {
-                        VStack(spacing: 8) {
-                            LoadingIndicatorView(size: LoadingIndicatorSize.panel)
-                            Text("Loading...")
-                                .appFont(.caption)
-                        }
-                    }
-                }
+        Group {
+            if usesPhoneSheetLayout {
+                phoneSheetContent
+            } else {
+                popoverContent
             }
-            .frame(minHeight: 280)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .onChange(of: draft) { _, _ in
             guard hasLoaded, !isUpdatingContent else { return }
@@ -81,7 +43,7 @@ public struct ScratchpadPopoverView: View {
             scheduleSave()
         }
         .onChange(of: isEditorFocused) { _, isFocused in
-            if !isFocused {
+            if !isFocused, !usesPhoneSheetLayout {
                 isEditing = false
             }
         }
@@ -97,8 +59,126 @@ public struct ScratchpadPopoverView: View {
             }
         }
         .task {
+            if usesPhoneSheetLayout {
+                isEditing = true
+                isEditorFocused = true
+            }
             refreshScratchpad()
         }
+    }
+
+    private var popoverContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ScratchpadHeaderRow(
+                isSaving: isSaving,
+                errorMessage: viewModel.errorMessage
+            )
+            Divider()
+
+            standardScratchpadBody
+        }
+        .frame(minHeight: 280)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var phoneSheetContent: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if let errorMessage = viewModel.errorMessage, !errorMessage.isEmpty {
+                    ScratchpadErrorBannerView(errorMessage: errorMessage)
+                        .padding(.horizontal, DesignTokens.Spacing.md)
+                        .padding(.top, DesignTokens.Spacing.sm)
+                }
+
+                VStack(alignment: .leading, spacing: 0) {
+                    if isSaving {
+                        Text("Saving...")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, DesignTokens.Spacing.md)
+                            .padding(.top, DesignTokens.Spacing.sm)
+                    }
+
+                    ZStack(alignment: .topLeading) {
+                        if draft.isEmpty {
+                            Text(ScratchpadConstants.placeholder)
+                                .appFont(.body)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, DesignTokens.Spacing.xs)
+                                .padding(.leading, DesignTokens.Spacing.xxsPlus)
+                        }
+
+                        TextEditor(text: $draft)
+                            .appFont(.body)
+                            .focused($isEditorFocused)
+                            .scrollContentBackground(.hidden)
+                            .accessibilityLabel("Scratchpad text")
+                            .accessibilityHint("Enter notes for your scratchpad.")
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.top, isSaving ? DesignTokens.Spacing.xs : DesignTokens.Spacing.sm)
+                    .overlay {
+                        if isLoading && !hasLoaded {
+                            VStack(spacing: 8) {
+                                LoadingIndicatorView(size: LoadingIndicatorSize.panel)
+                                Text("Loading...")
+                                    .appFont(.caption)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, DesignTokens.Spacing.sm)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+            .background(DesignTokens.Colors.background.ignoresSafeArea())
+            .navigationTitle(ScratchpadConstants.title)
+            .navigationBarTitleDisplayModeInline()
+        }
+    }
+
+    @ViewBuilder
+    private var standardScratchpadBody: some View {
+        Group {
+            if isEditing {
+                TextEditor(text: $draft)
+                    .appFont(.body)
+                    .focused($isEditorFocused)
+                    .scrollContentBackground(.hidden)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("Scratchpad text")
+                    .accessibilityHint("Enter notes for your scratchpad.")
+            } else {
+                ScrollView {
+                    Text(draft.isEmpty ? ScratchpadConstants.placeholder : draft)
+                        .appFont(.body)
+                        .foregroundStyle(DesignTokens.Colors.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
+                .onTapGesture {
+                    isEditing = true
+                    isEditorFocused = true
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .overlay {
+            if isLoading && !hasLoaded {
+                VStack(spacing: 8) {
+                    LoadingIndicatorView(size: LoadingIndicatorSize.panel)
+                    Text("Loading...")
+                        .appFont(.caption)
+                }
+            }
+        }
+    }
+
+    private var usesPhoneSheetLayout: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
     }
 
     @MainActor
@@ -173,26 +253,7 @@ private struct ScratchpadHeaderRow: View {
                 }
             }
             if !isSaving, let errorMessage {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .appFont(.captionSemibold)
-                        .foregroundStyle(DesignTokens.Colors.error)
-                        .padding(.top, 1)
-                    Text(errorMessage)
-                        .appFont(.caption)
-                        .foregroundStyle(DesignTokens.Colors.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.vertical, DesignTokens.Spacing.xs)
-                .padding(.horizontal, DesignTokens.Spacing.sm)
-                .background(DesignTokens.Colors.errorBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
-                        .stroke(DesignTokens.Colors.errorBorder, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous))
-                .accessibilityLabel("Scratchpad error")
-                .accessibilityValue(errorMessage)
+                ScratchpadErrorBannerView(errorMessage: errorMessage)
             }
         }
     }
@@ -202,6 +263,33 @@ private struct ScratchpadHeaderRow: View {
             .appFont(.caption)
             .foregroundStyle(color)
             .lineLimit(1)
+    }
+}
+
+private struct ScratchpadErrorBannerView: View {
+    let errorMessage: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .appFont(.captionSemibold)
+                .foregroundStyle(DesignTokens.Colors.error)
+                .padding(.top, 1)
+            Text(errorMessage)
+                .appFont(.caption)
+                .foregroundStyle(DesignTokens.Colors.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, DesignTokens.Spacing.xs)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .background(DesignTokens.Colors.errorBackground)
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
+                .stroke(DesignTokens.Colors.errorBorder, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous))
+        .accessibilityLabel("Scratchpad error")
+        .accessibilityValue(errorMessage)
     }
 }
 

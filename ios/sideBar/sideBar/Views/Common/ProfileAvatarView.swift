@@ -90,7 +90,11 @@ struct GlobalAvatarRegionControls: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Scratchpad")
-            .popover(isPresented: $isScratchpadPresented) {
+            .popover(
+                isPresented: $isScratchpadPresented,
+                attachmentAnchor: .rect(.bounds),
+                arrowEdge: .top
+            ) {
                 MacPopoverShell(type: scratchpadPopoverPanelType()) {
                     ScratchpadPopoverView(
                         api: environment.container.scratchpadAPI,
@@ -98,6 +102,7 @@ struct GlobalAvatarRegionControls: View {
                         scratchpadStore: environment.scratchpadStore
                     )
                 }
+                .presentationCompactAdaptation(.sheet)
             }
 
             SettingsAvatarButton(size: avatarSize)
