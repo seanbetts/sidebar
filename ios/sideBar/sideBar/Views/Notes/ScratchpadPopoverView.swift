@@ -59,10 +59,6 @@ public struct ScratchpadPopoverView: View {
             }
         }
         .task {
-            if usesPhoneSheetLayout {
-                isEditing = true
-                isEditorFocused = true
-            }
             refreshScratchpad()
         }
     }
@@ -99,33 +95,7 @@ public struct ScratchpadPopoverView: View {
                             .padding(.top, DesignTokens.Spacing.sm)
                     }
 
-                    ZStack(alignment: .topLeading) {
-                        if draft.isEmpty {
-                            Text(ScratchpadConstants.placeholder)
-                                .appFont(.body)
-                                .foregroundStyle(.secondary)
-                                .padding(.top, DesignTokens.Spacing.xs)
-                                .padding(.leading, DesignTokens.Spacing.xxsPlus)
-                        }
-
-                        TextEditor(text: $draft)
-                            .appFont(.body)
-                            .focused($isEditorFocused)
-                            .scrollContentBackground(.hidden)
-                            .accessibilityLabel("Scratchpad text")
-                            .accessibilityHint("Enter notes for your scratchpad.")
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.top, isSaving ? DesignTokens.Spacing.xs : DesignTokens.Spacing.sm)
-                    .overlay {
-                        if isLoading && !hasLoaded {
-                            VStack(spacing: 8) {
-                                LoadingIndicatorView(size: LoadingIndicatorSize.panel)
-                                Text("Loading...")
-                                    .appFont(.caption)
-                            }
-                        }
-                    }
+                    phoneScratchpadBody
                 }
                 .padding(.horizontal, DesignTokens.Spacing.sm)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -133,6 +103,35 @@ public struct ScratchpadPopoverView: View {
             .background(DesignTokens.Colors.background.ignoresSafeArea())
             .navigationTitle(ScratchpadConstants.title)
             .navigationBarTitleDisplayModeInline()
+        }
+    }
+
+    @ViewBuilder
+    private var phoneScratchpadBody: some View {
+        Group {
+            if draft.isEmpty && !isEditing {
+                scratchpadEmptyState {
+                    beginEditing()
+                }
+            } else {
+                TextEditor(text: $draft)
+                    .appFont(.body)
+                    .focused($isEditorFocused)
+                    .scrollContentBackground(.hidden)
+                    .accessibilityLabel("Scratchpad text")
+                    .accessibilityHint("Enter notes for your scratchpad.")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.top, isSaving ? DesignTokens.Spacing.xs : DesignTokens.Spacing.sm)
+        .overlay {
+            if isLoading && !hasLoaded {
+                VStack(spacing: 8) {
+                    LoadingIndicatorView(size: LoadingIndicatorSize.panel)
+                    Text("Loading...")
+                        .appFont(.caption)
+                }
+            }
         }
     }
 
@@ -147,9 +146,13 @@ public struct ScratchpadPopoverView: View {
                     .frame(maxWidth: .infinity)
                     .accessibilityLabel("Scratchpad text")
                     .accessibilityHint("Enter notes for your scratchpad.")
+            } else if draft.isEmpty {
+                scratchpadEmptyState {
+                    beginEditing()
+                }
             } else {
                 ScrollView {
-                    Text(draft.isEmpty ? ScratchpadConstants.placeholder : draft)
+                    Text(draft)
                         .appFont(.body)
                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -216,6 +219,10 @@ public struct ScratchpadPopoverView: View {
         hasUserEdits = false
         lastSavedContent = content
         draft = stripped
+        if usesPhoneSheetLayout, !hasLoaded {
+            isEditing = !stripped.isEmpty
+            isEditorFocused = !stripped.isEmpty
+        }
         isUpdatingContent = false
     }
 
@@ -234,6 +241,24 @@ public struct ScratchpadPopoverView: View {
             }
         }
         isSaving = false
+    }
+
+    @MainActor
+    private func beginEditing() {
+        isEditing = true
+        isEditorFocused = true
+    }
+
+    @ViewBuilder
+    private func scratchpadEmptyState(onTap: @escaping () -> Void) -> some View {
+        EmptyStateView(
+            title: "Scratchpad is empty.",
+            subtitle: ScratchpadConstants.placeholder,
+            systemImage: "square.and.pencil"
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
     }
 }
 

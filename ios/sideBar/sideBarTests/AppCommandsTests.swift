@@ -142,6 +142,17 @@ final class AppCommandsTests: XCTestCase {
             )
         )
     }
+
+    func testMacCommandsExposeScratchpadShortcut() throws {
+        let normalized = try normalizedAppCommandsSource()
+
+        XCTAssertTrue(
+            normalized.contains(
+                "Button(\"Scratchpad\"){environment.emitShortcutAction(.openScratchpad)}"
+                    + ".keyboardShortcut(\"o\",modifiers:[.command,.shift])"
+            )
+        )
+    }
 }
 
 private func normalizedAppCommandsSource(

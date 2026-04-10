@@ -52,6 +52,11 @@ struct SidebarCommands: Commands {
             }
 
             CommandGroup(after: .newItem) {
+                Button("Scratchpad") {
+                    environment.emitShortcutAction(.openScratchpad)
+                }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+
                 Button("Close Item") {
                     guard shouldHandleCloseItem else { return }
                     environment.emitShortcutAction(.closeItem)
