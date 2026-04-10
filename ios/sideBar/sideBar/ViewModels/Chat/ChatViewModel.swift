@@ -140,7 +140,7 @@ private final class ChatViewModelTeardownBag {
     var chatAPI: ChatAPI { network.chatAPI }
     var conversationsAPI: ConversationsAPIProviding { network.conversationsAPI }
     var onboardingAPI: (any OnboardingProviding)? { network.onboardingAPI }
-    var ingestionAPI: IngestionAPI { network.ingestionAPI }
+    var ingestionAPI: any IngestionProviding { network.ingestionAPI }
     var streamClient: ChatStreamClient { network.streamClient }
     var networkStatus: any NetworkStatusProviding { network.networkStatus }
 

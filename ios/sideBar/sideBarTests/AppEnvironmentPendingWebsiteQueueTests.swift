@@ -448,8 +448,7 @@ extension AppEnvironmentPendingWebsiteQueueTests {
         websitesAPI: (any WebsitesProviding)? = nil
     ) -> AppEnvironment {
         let authSession = PlaceholderAuthSession(authState: .signedOut)
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
+        let container = makeNoNetworkServiceContainer(
             authSession: authSession,
             cacheClient: InMemoryCacheClient(),
             websitesAPI: websitesAPI

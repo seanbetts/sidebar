@@ -4,6 +4,25 @@ import sideBarShared
 
 @MainActor
 final class ConnectivityMonitorTests: XCTestCase {
+    func testDefaultInitializerDoesNotStartMonitoringUnderXCTest() async {
+        ProbeURLProtocol.reset()
+        let sessionConfiguration = URLSessionConfiguration.ephemeral
+        sessionConfiguration.protocolClasses = [ProbeURLProtocol.self]
+        let session = URLSession(configuration: sessionConfiguration)
+
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://127.0.0.1:8001/api/v1")!,
+            session: session
+        )
+        XCTAssertNotNil(monitor)
+
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertEqual(ProbeURLProtocol.requestCount, 0)
+        monitor = nil
+        session.invalidateAndCancel()
+    }
+
     func testStartMonitoringFalseDoesNotScheduleBackgroundHealthProbes() async {
         ProbeURLProtocol.reset()
         let sessionConfiguration = URLSessionConfiguration.ephemeral
@@ -17,6 +36,32 @@ final class ConnectivityMonitorTests: XCTestCase {
         )
         XCTAssertNotNil(monitor)
 
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertEqual(ProbeURLProtocol.requestCount, 0)
+        monitor = nil
+        session.invalidateAndCancel()
+    }
+
+    func testStartMonitoringFalseDoesNotProbeAfterRequestFailureNotifications() async {
+        ProbeURLProtocol.reset()
+        let sessionConfiguration = URLSessionConfiguration.ephemeral
+        sessionConfiguration.protocolClasses = [ProbeURLProtocol.self]
+        let session = URLSession(configuration: sessionConfiguration)
+
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://127.0.0.1:8001/api/v1")!,
+            startMonitoring: false,
+            session: session
+        )
+        XCTAssertNotNil(monitor)
+
+        NotificationCenter.default.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["error": URLError(.cannotConnectToHost)]
+        )
+        await waitForMainQueueDrain()
         try? await Task.sleep(nanoseconds: 200_000_000)
 
         XCTAssertEqual(ProbeURLProtocol.requestCount, 0)

@@ -114,6 +114,168 @@ private enum DeepLinkWebsitesAPIError: Error {
     case forced
 }
 
+private enum NoNetworkAppEnvironmentError: Error {
+    case unused
+}
+
+private struct NoNetworkNotesAPI: NotesProviding {
+    func listTree() async throws -> FileTree { FileTree(children: []) }
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        return FileTree(children: [])
+    }
+    func getNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
+    }
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        _ = id
+        _ = document
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func updatePinnedOrder(ids: [String]) async throws { _ = ids }
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func createFolder(path: String) async throws { _ = path }
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+    func deleteFolder(path: String) async throws { _ = path }
+}
+
+private final class NoNetworkTasksAPI: TasksProviding {
+    func list(scope: String) async throws -> TaskListResponse {
+        TaskListResponse(scope: scope, generatedAt: nil, tasks: [], projects: nil, groups: nil)
+    }
+    func projectTasks(projectId: String) async throws -> TaskListResponse {
+        _ = projectId
+        return TaskListResponse(scope: "project", generatedAt: nil, tasks: [], projects: nil, groups: nil)
+    }
+    func groupTasks(groupId: String) async throws -> TaskListResponse {
+        _ = groupId
+        return TaskListResponse(scope: "group", generatedAt: nil, tasks: [], projects: nil, groups: nil)
+    }
+    func search(query: String) async throws -> TaskListResponse {
+        _ = query
+        return TaskListResponse(scope: "search", generatedAt: nil, tasks: [], projects: nil, groups: nil)
+    }
+    func counts() async throws -> TaskCountsResponse {
+        TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(today: 0, upcoming: 0, completed: 0),
+            projects: [],
+            groups: []
+        )
+    }
+    func createGroup(title: String) async throws -> TaskGroup {
+        _ = title
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func renameGroup(groupId: String, title: String) async throws -> TaskGroup {
+        _ = groupId
+        _ = title
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func deleteGroup(groupId: String) async throws {
+        _ = groupId
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func createProject(title: String, groupId: String?) async throws -> TaskProject {
+        _ = title
+        _ = groupId
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func renameProject(projectId: String, title: String) async throws -> TaskProject {
+        _ = projectId
+        _ = title
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func deleteProject(projectId: String) async throws {
+        _ = projectId
+        throw NoNetworkAppEnvironmentError.unused
+    }
+    func apply(_ payload: TaskOperationBatch) async throws -> TaskSyncResponse {
+        _ = payload
+        return TaskSyncResponse(
+            applied: [],
+            tasks: [],
+            nextTasks: [],
+            conflicts: [],
+            updates: nil,
+            serverUpdatedSince: nil
+        )
+    }
+    func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse {
+        _ = payload
+        return TaskSyncResponse(
+            applied: [],
+            tasks: [],
+            nextTasks: [],
+            conflicts: [],
+            updates: nil,
+            serverUpdatedSince: nil
+        )
+    }
+}
+
+private func makeNoNetworkWebsitesAPI() -> any WebsitesProviding {
+    DeepLinkWebsitesAPI(
+        saveResult: .success(
+            WebsiteSaveJobResponse(jobId: "job-\(UUID().uuidString)", status: "queued")
+        )
+    )
+}
+
+func makeNoNetworkServiceContainer(
+    authSession: AuthSession,
+    cacheClient: CacheClient,
+    websitesAPI: (any WebsitesProviding)? = nil
+) -> ServiceContainer {
+    ServiceContainer(
+        config: .fallbackForTesting(),
+        authSession: authSession,
+        cacheClient: cacheClient,
+        notesAPI: NoNetworkNotesAPI(),
+        ingestionAPI: IngestionStoreTestsSupport.MockIngestionAPI(
+            listResponse: IngestionListResponse(items: [])
+        ),
+        tasksAPI: NoNetworkTasksAPI(),
+        websitesAPI: websitesAPI ?? makeNoNetworkWebsitesAPI()
+    )
+}
+
 @MainActor
 extension AppEnvironmentDeepLinkTests {
     func clearWidgetPendingOperations() {
@@ -209,8 +371,7 @@ extension AppEnvironmentDeepLinkTests {
         websitesAPI: (any WebsitesProviding)? = nil
     ) -> AppEnvironment {
         let authSession = PlaceholderAuthSession(authState: .signedOut)
-        let container = ServiceContainer(
-            config: .fallbackForTesting(),
+        let container = makeNoNetworkServiceContainer(
             authSession: authSession,
             cacheClient: InMemoryCacheClient(),
             websitesAPI: websitesAPI

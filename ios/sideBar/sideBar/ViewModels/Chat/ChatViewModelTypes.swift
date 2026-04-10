@@ -13,7 +13,7 @@ struct ChatNetworkCoordinator {
     let chatAPI: ChatAPI
     let conversationsAPI: ConversationsAPIProviding
     let onboardingAPI: (any OnboardingProviding)?
-    let ingestionAPI: IngestionAPI
+    let ingestionAPI: any IngestionProviding
     let streamClient: ChatStreamClient
     let networkStatus: any NetworkStatusProviding
 
@@ -21,7 +21,7 @@ struct ChatNetworkCoordinator {
         chatAPI: ChatAPI,
         conversationsAPI: ConversationsAPIProviding,
         onboardingAPI: (any OnboardingProviding)? = nil,
-        ingestionAPI: IngestionAPI,
+        ingestionAPI: any IngestionProviding,
         streamClient: ChatStreamClient,
         networkStatus: any NetworkStatusProviding
     ) {

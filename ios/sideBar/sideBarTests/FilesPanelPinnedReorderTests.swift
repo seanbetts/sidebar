@@ -249,6 +249,14 @@ private final class FilesPanelTestAPI: IngestionProviding {
         throw FilesPanelTestError.unused
     }
 
+    func upload(fileURL: URL, filename: String, mimeType: String, folder: String) async throws -> String {
+        _ = fileURL
+        _ = filename
+        _ = mimeType
+        _ = folder
+        throw FilesPanelTestError.unused
+    }
+
     func cancel(fileId: String) async throws {
         _ = fileId
         throw FilesPanelTestError.unused

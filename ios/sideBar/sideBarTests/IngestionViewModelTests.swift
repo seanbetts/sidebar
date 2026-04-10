@@ -1312,6 +1312,14 @@ private struct MockIngestionAPI: IngestionProviding {
         return try contentResult.get()
     }
 
+    func upload(fileURL: URL, filename: String, mimeType: String, folder: String) async throws -> String {
+        _ = fileURL
+        _ = filename
+        _ = mimeType
+        _ = folder
+        throw MockError.forced
+    }
+
     func cancel(fileId: String) async throws {
         onCancel?(fileId)
         return try cancelResult.get()

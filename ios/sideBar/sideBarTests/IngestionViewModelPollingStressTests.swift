@@ -110,6 +110,14 @@ private struct PollingStressIngestionAPI: IngestionProviding {
         throw PollingStressError.forced
     }
 
+    func upload(fileURL: URL, filename: String, mimeType: String, folder: String) async throws -> String {
+        _ = fileURL
+        _ = filename
+        _ = mimeType
+        _ = folder
+        throw PollingStressError.forced
+    }
+
     func cancel(fileId: String) async throws {
         _ = fileId
     }

@@ -7,6 +7,7 @@ public protocol IngestionProviding {
     func list() async throws -> IngestionListResponse
     func getMeta(fileId: String) async throws -> IngestionMetaResponse
     func getContent(fileId: String, kind: String, range: String?) async throws -> Data
+    func upload(fileURL: URL, filename: String, mimeType: String, folder: String) async throws -> String
     func cancel(fileId: String) async throws
     func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws
     func updatePinnedOrder(ids: [String]) async throws
@@ -17,6 +18,10 @@ public protocol IngestionProviding {
 }
 
 public extension IngestionProviding {
+    func upload(fileURL: URL, filename: String, mimeType: String, folder: String = "") async throws -> String {
+        try await upload(fileURL: fileURL, filename: filename, mimeType: mimeType, folder: folder)
+    }
+
     func pin(fileId: String, pinned: Bool) async throws {
         try await pin(fileId: fileId, pinned: pinned, clientUpdatedAt: nil)
     }

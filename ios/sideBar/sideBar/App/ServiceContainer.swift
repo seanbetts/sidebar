@@ -17,11 +17,11 @@ public final class ServiceContainer {
     /// Conversations API wrapper for chat thread operations.
     public let conversationsAPI: ConversationsAPI
     /// Notes API wrapper for note tree and note content operations.
-    public let notesAPI: NotesAPI
+    public let notesAPI: any NotesProviding
     /// Files API wrapper for file browser operations.
     public let filesAPI: FilesAPI
     /// Ingestion API wrapper for upload and ingestion metadata operations.
-    public let ingestionAPI: IngestionAPI
+    public let ingestionAPI: any IngestionProviding
     /// Websites API wrapper for website list and sync operations.
     public let websitesAPI: any WebsitesProviding
     /// Memories API wrapper for memory retrieval operations.
@@ -39,7 +39,7 @@ public final class ServiceContainer {
     /// Scratchpad API wrapper for scratchpad content operations.
     public let scratchpadAPI: ScratchpadAPI
     /// Tasks API wrapper for task list and mutation operations.
-    public let tasksAPI: TasksAPI
+    public let tasksAPI: any TasksProviding
     /// Device tokens API wrapper for push token registration.
     public let deviceTokensAPI: DeviceTokensAPI
     /// Password reset API wrapper for reset initiation from signed-out surfaces.
@@ -66,6 +66,9 @@ public final class ServiceContainer {
         config: EnvironmentConfig,
         authSession: AuthSession,
         cacheClient: CacheClient,
+        notesAPI: (any NotesProviding)? = nil,
+        ingestionAPI: (any IngestionProviding)? = nil,
+        tasksAPI: (any TasksProviding)? = nil,
         websitesAPI: (any WebsitesProviding)? = nil,
         passwordRecoveryManager: (any PasswordRecoveryManaging)? = nil,
         passwordChangeManager: (any PasswordChanging)? = nil
@@ -84,9 +87,9 @@ public final class ServiceContainer {
 
         self.chatAPI = ChatAPI(client: apiClient)
         self.conversationsAPI = ConversationsAPI(client: apiClient)
-        self.notesAPI = NotesAPI(client: apiClient)
+        self.notesAPI = notesAPI ?? NotesAPI(client: apiClient)
         self.filesAPI = FilesAPI(client: apiClient)
-        self.ingestionAPI = IngestionAPI(client: apiClient)
+        self.ingestionAPI = ingestionAPI ?? IngestionAPI(client: apiClient)
         self.websitesAPI = websitesAPI ?? WebsitesAPI(client: apiClient)
         self.memoriesAPI = MemoriesAPI(client: apiClient)
         self.settingsAPI = SettingsAPI(client: apiClient)
@@ -95,7 +98,7 @@ public final class ServiceContainer {
         self.weatherAPI = WeatherAPI(client: apiClient)
         self.placesAPI = PlacesAPI(client: apiClient)
         self.scratchpadAPI = ScratchpadAPI(client: apiClient)
-        self.tasksAPI = TasksAPI(client: apiClient)
+        self.tasksAPI = tasksAPI ?? TasksAPI(client: apiClient)
         self.deviceTokensAPI = DeviceTokensAPI(client: apiClient)
         self.passwordResetAPI = PasswordResetAPI(client: apiClient)
         self.passwordRecoveryManager =
@@ -119,7 +122,10 @@ public final class ServiceContainer {
 
     /// Creates a realtime client configured from the active environment settings.
     public func makeRealtimeClient(handler: RealtimeEventHandler?) -> RealtimeClient {
-        SupabaseRealtimeAdapter(config: config, handler: handler)
+        if EnvironmentConfig.isRunningTestsOrPreviews() {
+            return PlaceholderRealtimeClient()
+        }
+        return SupabaseRealtimeAdapter(config: config, handler: handler)
     }
 }
 

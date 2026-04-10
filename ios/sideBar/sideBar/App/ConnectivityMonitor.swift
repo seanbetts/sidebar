@@ -14,6 +14,7 @@ final class ConnectivityMonitor: ObservableObject {
     private let baseUrl: URL
     private let internetProbeUrl: URL
     private let session: URLSession
+    private let allowsHealthProbes: Bool
     private var probeTask: Task<Void, Never>?
     private var schedulerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
@@ -31,13 +32,14 @@ final class ConnectivityMonitor: ObservableObject {
 
     init(
         baseUrl: URL,
-        startMonitoring: Bool = true,
+        startMonitoring: Bool = !EnvironmentConfig.isRunningTestsOrPreviews(),
         session: URLSession = .shared,
         internetProbeUrl: URL = URL(string: "https://www.apple.com/library/test/success.html")!
     ) {
         self.baseUrl = baseUrl
         self.session = session
         self.internetProbeUrl = internetProbeUrl
+        self.allowsHealthProbes = startMonitoring
         self.monitor = NWPathMonitor()
         if startMonitoring {
             monitor.pathUpdateHandler = { [weak self] path in
@@ -119,6 +121,9 @@ final class ConnectivityMonitor: ObservableObject {
     }
 
     private func scheduleProbe(immediate: Bool) {
+        guard allowsHealthProbes else {
+            return
+        }
         if let lastProbeAt,
            !immediate,
            Date().timeIntervalSince(lastProbeAt) < minimumProbeInterval {

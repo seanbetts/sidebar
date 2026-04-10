@@ -58,6 +58,9 @@ public extension EnvironmentConfig {
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
             return true
         }
+        if NSClassFromString("XCTestCase") != nil {
+            return true
+        }
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
             return true
         }

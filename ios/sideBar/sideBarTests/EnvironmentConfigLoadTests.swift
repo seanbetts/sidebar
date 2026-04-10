@@ -3,6 +3,10 @@ import sideBarShared
 @testable import sideBar
 
 final class EnvironmentConfigLoadTests: XCTestCase {
+    func testIsRunningTestsOrPreviewsReturnsTrueUnderXCTest() {
+        XCTAssertTrue(EnvironmentConfig.isRunningTestsOrPreviews())
+    }
+
     func testLoadPrefersApiBaseUrlOverrideFromEnvironment() throws {
         let originalAPI = environmentValue(for: "API_BASE_URL")
         let originalSupabaseURL = environmentValue(for: "SUPABASE_URL")

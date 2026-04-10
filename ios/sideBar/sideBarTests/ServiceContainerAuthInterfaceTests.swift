@@ -35,6 +35,21 @@ final class ServiceContainerAuthInterfaceTests: XCTestCase {
 
         XCTAssertEqual(container.signInRateLimiter?.lockoutRemainingSeconds, 45)
     }
+
+    func testMakeRealtimeClientReturnsPlaceholderUnderXCTest() {
+        let authSession = AuthCapabilitySessionDouble(
+            canRestoreOfflineSession: false,
+            restoreOfflineSessionResult: false,
+            lockoutRemainingSeconds: nil
+        )
+        let container = ServiceContainer(
+            config: .fallbackForTesting(),
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient()
+        )
+
+        XCTAssertTrue(container.makeRealtimeClient(handler: nil) is PlaceholderRealtimeClient)
+    }
 }
 
 private final class AuthCapabilitySessionDouble: AuthSession, OfflineAccessRestoring, SignInRateLimitStatusProviding {
