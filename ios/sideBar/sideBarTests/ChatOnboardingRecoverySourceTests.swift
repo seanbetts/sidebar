@@ -25,6 +25,17 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains(".accessibilityLabel(\"OpenSettings\")"))
     }
 
+    func testProviderRecoveryBannerTriggersStateRevalidation() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "awaitenvironment.settingsViewModel.refreshProviderRecoveryStateIfNeeded()"
+            )
+        )
+    }
+
     func testChatViewDoesNotSurfacePermissionRecoveryCards() throws {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

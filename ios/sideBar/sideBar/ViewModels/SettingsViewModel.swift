@@ -28,6 +28,7 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var primaryProviderError: String?
     @Published public private(set) var onboardingState: OnboardingState?
     @Published public private(set) var isLoadingOnboarding: Bool = false
+    var isRefreshingProviderRecoveryState = false
 
     let settingsAPI: any SettingsProviding
     let skillsAPI: any SkillsProviding

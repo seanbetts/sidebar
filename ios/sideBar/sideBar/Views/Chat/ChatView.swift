@@ -112,6 +112,9 @@ private struct ChatDetailView: View {
                     .padding(.bottom, DesignTokens.Spacing.sm)
                     .frame(maxWidth: contentMaxWidth)
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .task {
+                        await environment.settingsViewModel.refreshProviderRecoveryStateIfNeeded()
+                    }
                 } else if environment.settingsViewModel.signedInOnboardingRecoveryState == .soulCalibration,
                           let soulCalibrationState = viewModel.soulCalibrationState {
                     SoulCalibrationPromptView(

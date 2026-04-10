@@ -44,6 +44,21 @@ extension SettingsViewModel {
         setOnboardingState(completedOnboardingState(from: onboardingState, timestamp: timestamp))
     }
 
+    public func refreshProviderRecoveryStateIfNeeded() async {
+        guard signedInOnboardingRecoveryState == .providerRecovery else {
+            return
+        }
+        guard !isRefreshingProviderRecoveryState else {
+            return
+        }
+
+        isRefreshingProviderRecoveryState = true
+        defer { isRefreshingProviderRecoveryState = false }
+
+        await load(force: true)
+        await loadOnboarding(force: true)
+    }
+
     private var requiresPrimaryProviderRecovery: Bool {
         if onboardingState?.providerReady == false {
             return true
