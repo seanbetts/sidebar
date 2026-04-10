@@ -1,4 +1,126 @@
 import SwiftUI
+import UniformTypeIdentifiers
+import sideBarShared
+
+enum ChatConversationActionsSurface {
+    case header
+    case toolbar
+}
+
+struct ChatConversationActionsMenu: View {
+    @ObservedObject var viewModel: ChatViewModel
+    let surface: ChatConversationActionsSurface
+    var chromeStyle: HeaderActionControlChromeStyle = .plain
+    @EnvironmentObject private var environment: AppEnvironment
+    @State private var exportDocument: PlainTextFileDocument?
+    @State private var exportFilename = "Chat.txt"
+    @State private var isExporting = false
+
+    var body: some View {
+        actionControl
+            .fileExporter(
+                isPresented: $isExporting,
+                document: exportDocument,
+                contentType: .plainText,
+                defaultFilename: exportFilename
+            ) { _ in
+                exportDocument = nil
+            }
+    }
+
+    @ViewBuilder
+    private var actionControl: some View {
+        #if os(macOS)
+        Menu {
+            actionButtons
+        } label: {
+            HeaderActionIcon(systemName: "ellipsis")
+                .headerActionControlChrome(chromeStyle)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Chat options")
+        #else
+        switch surface {
+        case .header:
+            HeaderActionMenuButton(
+                systemImage: "ellipsis",
+                accessibilityLabel: "Chat options",
+                items: actionItems,
+                isCompact: false,
+                chromeStyle: chromeStyle
+            )
+        case .toolbar:
+            Menu {
+                actionButtons
+            } label: {
+                Image(systemName: "ellipsis")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Chat options")
+        }
+        #endif
+    }
+
+    private var actionItems: [SidebarMenuItem] {
+        [
+            SidebarMenuItem(title: "Share Transcript", systemImage: "square.and.arrow.up", role: nil) {
+                shareConversation()
+            },
+            SidebarMenuItem(title: "Export Transcript", systemImage: "square.and.arrow.down", role: nil) {
+                exportConversation()
+            }
+        ]
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        Button {
+            shareConversation()
+        } label: {
+            Label("Share Transcript", systemImage: "square.and.arrow.up")
+        }
+        Button {
+            exportConversation()
+        } label: {
+            Label("Export Transcript", systemImage: "square.and.arrow.down")
+        }
+    }
+
+    private var selectedConversationTitle: String {
+        guard let selectedId = viewModel.selectedConversationId,
+              let conversation = viewModel.conversations.first(where: { $0.id == selectedId }) else {
+            return "Chat"
+        }
+        return conversation.title
+    }
+
+    private var transcriptText: String? {
+        let transcript = ConversationCopyFormatter.formattedTranscript(
+            title: selectedConversationTitle,
+            messages: viewModel.messages,
+            assistantName: environment.settingsViewModel.assistantDisplayName
+        )
+        return transcript.trimmedOrNil
+    }
+
+    private func shareConversation() {
+        guard let transcriptText else {
+            environment.toastCenter.show(message: "Share unavailable")
+            return
+        }
+        SystemSharePresenter.share(text: transcriptText)
+    }
+
+    private func exportConversation() {
+        guard let transcriptText else {
+            environment.toastCenter.show(message: "Export unavailable")
+            return
+        }
+        exportDocument = PlainTextFileDocument(text: transcriptText)
+        exportFilename = ConversationCopyFormatter.exportFilename(title: selectedConversationTitle)
+        isExporting = true
+    }
+}
 
 struct ChatHeaderView: View {
     static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
@@ -21,13 +143,20 @@ struct ChatHeaderView: View {
         ContentHeaderRow(
             iconName: "bubble",
             title: selectedTitle,
-            titleLineLimit: 1
-        , trailing: {
+            titleLineLimit: 1,
+            trailing: {
             HStack(spacing: 12) {
-                if showNewChatButton || showCloseButton {
+                if showNewChatButton || showCloseButton || showConversationActionsMenu {
                     HeaderActionRow(spacing: DesignTokens.Spacing.xs) {
                         if shouldShowExpandButton {
                             expandButton
+                        }
+                        if showConversationActionsMenu {
+                            ChatConversationActionsMenu(
+                                viewModel: viewModel,
+                                surface: .header,
+                                chromeStyle: Self.actionControlChromeStyle
+                            )
                         }
                         if showNewChatButton {
                             HeaderActionButton(
@@ -76,6 +205,13 @@ struct ChatHeaderView: View {
 
     private var showCloseButton: Bool {
         viewModel.selectedConversationId != nil
+    }
+
+    private var showConversationActionsMenu: Bool {
+        guard viewModel.selectedConversationId != nil else {
+            return false
+        }
+        return !viewModel.isBlankConversation
     }
 
     private var headerBackground: Color {

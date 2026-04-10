@@ -15,12 +15,6 @@ extension AppEnvironment {
         await consumeWidgetCompletions()
     }
 
-    func consumeWidgetIntentHandoff() async {
-        await consumeWidgetQuickSave()
-        consumeWidgetAddTask()
-        consumeWidgetAddNote()
-    }
-
     func consumeWebsiteSaveHandoff() async {
         guard authState == .active, isProtectedContentReady else { return }
         await consumeExtensionEvents()
@@ -328,13 +322,10 @@ extension AppEnvironment {
                 reconcileQueuedWebsitesWithSavedItems()
             }
             await consumeWidgetCompletions()
-            await consumeWidgetQuickSave()
             if includeDeferredRefresh {
                 await refreshWidgetDataBridges()
             }
         }
-        consumeWidgetAddTask()
-        consumeWidgetAddNote()
         #if os(iOS)
         if includeDeferredRefresh {
             try? await Task.sleep(nanoseconds: 1_000_000_000)

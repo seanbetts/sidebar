@@ -30,6 +30,9 @@ final class WidgetIntentRoutingTests: XCTestCase {
             appSource.numberOfOccurrences(of: "guardleturl=URL(string:\"sidebar://tasks/new\")else"),
             1
         )
+        XCTAssertFalse(widgetSource.contains("recordAddTaskIntent"))
+        XCTAssertFalse(appSource.contains("recordAddTaskIntent"))
+        XCTAssertFalse(appSource.contains("consumeWidgetAddTask"))
     }
 
     func testCreateNoteIntentTargetsOpenNewNoteDeepLink() throws {
@@ -44,6 +47,21 @@ final class WidgetIntentRoutingTests: XCTestCase {
             appSource.numberOfOccurrences(of: "guardleturl=URL(string:\"sidebar://notes/new\")else"),
             1
         )
+        XCTAssertFalse(widgetSource.contains("recordAddNoteIntent"))
+        XCTAssertFalse(appSource.contains("recordAddNoteIntent"))
+        XCTAssertFalse(appSource.contains("consumeWidgetAddNote"))
+    }
+
+    func testQuickSaveIntentTargetsWebsiteSaveDeepLink() throws {
+        let widgetSource = try normalizedWidgetWebsiteIntentsSource()
+        let appSource = try normalizedSideBarAppSource()
+
+        for source in [widgetSource, appSource] {
+            XCTAssertTrue(source.contains("components.host=\"websites\""))
+            XCTAssertTrue(source.contains("components.path=\"/save\""))
+            XCTAssertTrue(source.contains("URLQueryItem(name:\"url\",value:url.absoluteString)"))
+            XCTAssertFalse(source.contains("recordQuickSaveIntent"))
+        }
     }
 
     func testPopulatedWidgetsExposeSectionWideTapTargets() throws {
@@ -105,6 +123,18 @@ private func normalizedWidgetNoteIntentsSource(
 ) throws -> String {
     try widgetSource(
         at: ["sideBarWidgets", "Intents", "NoteIntents.swift"],
+        file: file,
+        line: line
+    )
+    .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+}
+
+private func normalizedWidgetWebsiteIntentsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try widgetSource(
+        at: ["sideBarWidgets", "Intents", "WebsiteIntents.swift"],
         file: file,
         line: line
     )

@@ -118,10 +118,7 @@ extension ContentView {
                 if environment.authState == .active {
                     environment.websiteQueueCoordinator.appDidBecomeActive()
                     await environment.consumeWidgetCompletions()
-                    await environment.consumeWidgetQuickSave()
                 }
-                environment.consumeWidgetAddTask()
-                environment.consumeWidgetAddNote()
             }
         })
         #endif

@@ -48,6 +48,7 @@ extension AppEnvironment {
                 offlineStore: core.offlineStore,
                 networkStatus: core.connectivityMonitor
             )
+            tasksStore.spotlightIndexer = core.spotlightIndexer
             let notesStore = NotesStore(
                 api: container.notesAPI,
                 cache: container.cacheClient,

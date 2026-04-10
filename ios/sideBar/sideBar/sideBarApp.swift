@@ -191,21 +191,11 @@ struct AddTaskIntent: AppIntent {
     private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        logger.info("AddTaskIntent recording pending add task (app process)")
-        await MainActor.run {
-            let widgetDataManager = AppEnvironment.shared?.storage.widgetDataManager ?? WidgetDataManager.shared
-            widgetDataManager.recordAddTaskIntent()
-            if let environment = AppEnvironment.shared {
-                #if os(macOS)
-                NSApplication.shared.activate(ignoringOtherApps: true)
-                #endif
-                environment.consumeWidgetAddTask()
-            }
-        }
         guard let url = URL(string: "sidebar://tasks/new") else {
             logger.error("AddTaskIntent failed: invalid deep link URL")
             return .result()
         }
+        logger.info("AddTaskIntent opening deep link (app process)")
         return .result(opensIntent: OpenURLIntent(url))
     }
 }
@@ -249,21 +239,11 @@ struct CreateNoteIntent: AppIntent {
     private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        await MainActor.run {
-            let widgetDataManager = AppEnvironment.shared?.storage.widgetDataManager ?? WidgetDataManager.shared
-            widgetDataManager.recordAddNoteIntent()
-            if let environment = AppEnvironment.shared {
-                #if os(macOS)
-                NSApplication.shared.activate(ignoringOtherApps: true)
-                #endif
-                environment.consumeWidgetAddNote()
-            }
-        }
         guard let url = URL(string: "sidebar://notes/new") else {
             logger.error("CreateNoteIntent failed: invalid deep link URL")
             return .result()
         }
-        logger.info("CreateNoteIntent recording pending create note (app process)")
+        logger.info("CreateNoteIntent opening deep link (app process)")
         return .result(opensIntent: OpenURLIntent(url))
     }
 }
@@ -294,18 +274,27 @@ struct QuickSaveIntent: AppIntent {
     var url: URL?
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        if let url {
-            logger.info("QuickSaveIntent recording pending save for URL: \(url.absoluteString)")
-            await MainActor.run {
-                let widgetDataManager = AppEnvironment.shared?.storage.widgetDataManager ?? WidgetDataManager.shared
-                widgetDataManager.recordQuickSaveIntent(url: url)
-            }
+        guard let url else {
+            logger.error("QuickSaveIntent failed: no URL provided")
+            return .result()
         }
-        guard let deepLink = URL(string: "sidebar://websites") else {
+        guard let deepLink = Self.websiteSaveDeepLink(for: url) else {
             logger.error("QuickSaveIntent failed: invalid deep link URL")
             return .result()
         }
+        logger.info("QuickSaveIntent opening save deep link for URL: \(url.absoluteString, privacy: .public)")
         return .result(opensIntent: OpenURLIntent(deepLink))
+    }
+
+    private static func websiteSaveDeepLink(for url: URL) -> URL? {
+        var components = URLComponents()
+        components.scheme = "sidebar"
+        components.host = "websites"
+        components.path = "/save"
+        components.queryItems = [
+            URLQueryItem(name: "url", value: url.absoluteString)
+        ]
+        return components.url
     }
 }
 

@@ -7,15 +7,19 @@ import os
 
 /// Protocol for Spotlight indexing operations, enabling testability.
 public protocol SpotlightIndexing: AnyObject {
+  func indexTask(_ task: SpotlightTask) async
+  func indexTasks(_ tasks: [SpotlightTask]) async
   func indexNote(_ note: SpotlightNote) async
   func indexNotes(_ notes: [SpotlightNote]) async
   func indexFile(_ file: SpotlightFile) async
   func indexFiles(_ files: [SpotlightFile]) async
   func indexWebsite(_ website: SpotlightWebsite) async
   func indexWebsites(_ websites: [SpotlightWebsite]) async
+  func removeTask(id: String) async
   func removeNote(path: String) async
   func removeFile(id: String) async
   func removeWebsite(id: String) async
+  func clearTasksIndex() async
   func clearNotesIndex() async
   func clearFilesIndex() async
   func clearWebsitesIndex() async
@@ -95,13 +99,13 @@ public struct SpotlightWebsite {
 /// Indexes notes and files so they appear in iOS Spotlight search.
 /// Tapping a result opens the app via deep link.
 public final class SpotlightIndexer: SpotlightIndexing {
-  private let index: CSSearchableIndex
-  private let logger = Logger(subsystem: "sideBar", category: "Spotlight")
+  let index: CSSearchableIndex
+  let logger = Logger(subsystem: "sideBar", category: "Spotlight")
 
   static let notesDomain = "com.sidebar.notes"
   static let filesDomain = "com.sidebar.files"
   static let websitesDomain = "com.sidebar.websites"
-  private let batchSize = 100
+  let batchSize = 100
   private let contentPreviewLength = 200
 
   public init(index: CSSearchableIndex = .default()) {
@@ -246,6 +250,7 @@ public final class SpotlightIndexer: SpotlightIndexing {
   // MARK: - Clear All
 
   public func clearAllIndexes() async {
+    await clearTasksIndex()
     await clearNotesIndex()
     await clearFilesIndex()
     await clearWebsitesIndex()
@@ -404,7 +409,11 @@ extension SpotlightIndexer {
   /// - Parameter identifier: The CSSearchableItemActivityIdentifier (e.g., "note:path/to/note.md" or "file:uuid")
   /// - Returns: A sidebar:// URL if the identifier is valid, nil otherwise.
   public static func deepLinkURL(from identifier: String) -> URL? {
-    if identifier.hasPrefix("note:") {
+    if identifier.hasPrefix("task:") {
+      let id = String(identifier.dropFirst(5))
+      guard !id.isEmpty else { return nil }
+      return URL(string: "sidebar://tasks")
+    } else if identifier.hasPrefix("note:") {
       let path = String(identifier.dropFirst(5))
       guard !path.isEmpty else { return nil }
       let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path

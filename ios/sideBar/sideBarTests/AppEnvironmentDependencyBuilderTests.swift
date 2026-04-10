@@ -20,6 +20,7 @@ final class AppEnvironmentDependencyBuilderTests: XCTestCase {
         XCTAssertTrue(dependencies.ingestionStore.writeQueue === dependencies.writeQueue)
 
         XCTAssertTrue((dependencies.notesStore.spotlightIndexer as AnyObject?) === dependencies.spotlightIndexer)
+        XCTAssertTrue((dependencies.tasksStore.spotlightIndexer as AnyObject?) === dependencies.spotlightIndexer)
         XCTAssertTrue((dependencies.websitesStore.spotlightIndexer as AnyObject?) === dependencies.spotlightIndexer)
         XCTAssertTrue((dependencies.ingestionStore.spotlightIndexer as AnyObject?) === dependencies.spotlightIndexer)
     }

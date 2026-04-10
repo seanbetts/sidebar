@@ -32,7 +32,6 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
 
         retainedEnvironments.removeAll()
         environment = makeEnvironment(storage: storage)
-        clearWidgetPendingOperations()
         resetDeepLinkState(requireEnvironment())
     }
 
@@ -40,7 +39,6 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
         if let environment {
             resetDeepLinkState(environment)
         }
-        clearWidgetPendingOperations()
         if let suiteName {
             defaults.removePersistentDomain(forName: suiteName)
         }
@@ -57,74 +55,66 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
         super.tearDown()
     }
 
-    func testConsumeWidgetAddTaskPreservesPendingOperationWhenSignedOut() {
+    func testSignedOutTaskDeepLinkDoesNotMutateVisibleTaskState() {
         let environment = requireEnvironment()
-
-        storage.widgetDataManager.recordPendingOperation(
-            WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
-            for: .tasks
-        )
-
         environment.authState = .signedOut
-        environment.consumeWidgetAddTask()
+        environment.isTasksFocused = true
 
-        let remaining = storage.widgetDataManager.consumePendingOperations(
-            for: .tasks,
-            actionType: TaskWidgetAction.self
-        )
-        XCTAssertEqual(remaining.count, 1)
-        XCTAssertEqual(remaining.first?.action, .addNew)
+        environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
+
+        XCTAssertNil(environment.commandSelection)
+        XCTAssertFalse(environment.pendingNewTaskDeepLink)
+        XCTAssertNil(environment.tasksViewModel.newTaskDraft)
+        XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
     }
 
-    func testConsumeWidgetAddNotePreservesPendingOperationWhenSignedOut() {
+    func testSignedOutNoteDeepLinkDoesNotMutateVisibleNoteState() {
         let environment = requireEnvironment()
-
-        storage.widgetDataManager.recordPendingOperation(
-            WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew),
-            for: .notes
-        )
-
         environment.authState = .signedOut
-        environment.consumeWidgetAddNote()
 
-        let remaining = storage.widgetDataManager.consumePendingOperations(
-            for: .notes,
-            actionType: NoteWidgetAction.self
-        )
-        XCTAssertEqual(remaining.count, 1)
-        XCTAssertEqual(remaining.first?.action, .addNew)
+        environment.handleDeepLink(URL(string: "sidebar://notes/new")!)
+
+        XCTAssertNil(environment.commandSelection)
+        XCTAssertFalse(environment.pendingNewNoteDeepLink)
+        XCTAssertNil(environment.notesViewModel.selectedNoteId)
+        XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
     }
 
-    func testConsumeWidgetQuickSavePreservesPendingURLWhenSignedOut() async {
+    func testSignedOutWebsiteSaveDeepLinkDoesNotStartSaveUntilAuthenticated() async {
+        let savedURL = "https://example.com/articles/\(UUID().uuidString)"
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
+            )
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
         let environment = requireEnvironment()
-        let url = URL(string: "https://example.com/articles/\(UUID().uuidString)")!
-
-        storage.widgetDataManager.recordPendingQuickSave(url: url)
-
         environment.authState = .signedOut
-        await environment.consumeWidgetQuickSave()
 
-        XCTAssertEqual(storage.widgetDataManager.consumePendingQuickSave(), url)
+        environment.handleDeepLink(Self.quickSaveDeepLink(url: savedURL))
+
+        XCTAssertNil(environment.commandSelection)
+        XCTAssertEqual(websitesAPI.saveCallCount, 0)
+        XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
+
+        environment.authState = .active
+        await environment.replayProtectedDeferredActionsIfReady()
+
+        XCTAssertEqual(websitesAPI.lastSavedURL, savedURL)
     }
 
-    private func clearWidgetPendingOperations() {
-        _ = storage.widgetDataManager.consumePendingOperations(
-            for: .tasks,
-            actionType: TaskWidgetAction.self
-        )
-        _ = storage.widgetDataManager.consumePendingOperations(
-            for: .notes,
-            actionType: NoteWidgetAction.self
-        )
-        _ = storage.widgetDataManager.consumePendingQuickSave()
-    }
-
-    private func makeEnvironment(storage: AppEnvironmentStorage) -> AppEnvironment {
+    private func makeEnvironment(
+        storage: AppEnvironmentStorage,
+        websitesAPI: DeepLinkWebsitesAPI? = nil
+    ) -> AppEnvironment {
         let authSession = PlaceholderAuthSession(authState: .signedOut)
         let container = ServiceContainer(
             config: .fallbackForTesting(),
             authSession: authSession,
-            cacheClient: InMemoryCacheClient()
+            cacheClient: InMemoryCacheClient(),
+            websitesAPI: websitesAPI ?? DeepLinkWebsitesAPI(
+                saveResult: .failure(NSError(domain: "AppEnvWidgetAuthPreservationTests", code: 1))
+            )
         )
         let environment = AppEnvironment(container: container, storage: storage)
         retainedEnvironments.append(environment)
@@ -152,9 +142,21 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
         environment.pendingNewNoteDeepLink = false
         environment.pendingScratchpadDeepLink = false
         environment.tasksPhoneDetailRouteId = nil
+        environment.queuedProtectedDeepLinks.removeAll()
         environment.tasksViewModel.cancelNewTask()
         environment.tasksViewModel.reset()
         environment.chatViewModel.reset()
         environment.websitesViewModel.pendingWebsite = nil
+    }
+
+    private static func quickSaveDeepLink(url: String) -> URL {
+        var components = URLComponents()
+        components.scheme = "sidebar"
+        components.host = "websites"
+        components.path = "/save"
+        components.queryItems = [
+            URLQueryItem(name: "url", value: url)
+        ]
+        return components.url!
     }
 }

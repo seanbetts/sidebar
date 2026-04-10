@@ -29,16 +29,6 @@ extension AppEnvironment {
         }
     }
 
-    func configureWidgetIntentObserver() {
-        guard widgetIntentObserver == nil else { return }
-        widgetIntentObserver = WidgetIntentHandoffNotifier.observe { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                await self.consumeWidgetIntentHandoff()
-            }
-        }
-    }
-
     func configureSubscriptions() {
         if let authSession = container.observableAuthSession {
             bindAuthSession(authSession)

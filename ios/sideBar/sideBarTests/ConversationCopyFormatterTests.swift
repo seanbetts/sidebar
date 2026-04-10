@@ -71,4 +71,16 @@ final class ConversationCopyFormatterTests: XCTestCase {
         XCTAssertTrue(formatted.contains("Agent:\nRequest failed"))
         XCTAssertFalse(formatted.contains("Agent:\n\n"))
     }
+
+    func testExportFilenameSanitizesConversationTitle() {
+        let filename = ConversationCopyFormatter.exportFilename(title: "Trip Planning / Q2?")
+
+        XCTAssertEqual(filename, "Trip-Planning-Q2.txt")
+    }
+
+    func testExportFilenameFallsBackToDefaultTitleWhenEmpty() {
+        let filename = ConversationCopyFormatter.exportFilename(title: "   ")
+
+        XCTAssertEqual(filename, "Chat.txt")
+    }
 }

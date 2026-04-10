@@ -49,32 +49,12 @@ final class WebsiteSaveHandoffNotifierTests: XCTestCase {
 
     func testExtensionEventStoreRecordWebsiteSavedPostsHandoffNotification() {
         let eventStore = makeExtensionEventStore()
-        let website = ExtensionSavedWebsite(
-            id: "website-\(UUID().uuidString)",
-            title: "Saved Website",
-            url: "https://example.com/article",
-            urlFull: "https://example.com/article",
-            domain: "example.com",
-            content: "Saved content",
-            source: "web",
-            savedAt: "2026-03-14T00:00:00Z",
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: false,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: nil,
-            readingTime: nil,
-            updatedAt: nil,
-            lastOpenedAt: nil
-        )
         assertSingleHandoffDelivery(
             in: self,
             description: "saved event notification received",
             observe: WebsiteSaveHandoffNotifier.observe,
             post: {
-                eventStore.recordWebsiteSaved(website: website)
+                eventStore.recordWebsiteSaved(url: "https://example.com/article")
             },
             removeObserver: WebsiteSaveHandoffNotifier.removeObserver
         )

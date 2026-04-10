@@ -22,6 +22,7 @@ import Combine
     private var latestLoadRequestId: UInt64 = 0
     private var inFlightListRefreshes: [TaskSelection: Task<TaskListResponse, Error>] = [:]
     private var inFlightCountsRefresh: Task<TaskCountsResponse, Error>?
+    weak var spotlightIndexer: (any SpotlightIndexing)?
     weak var writeQueue: WriteQueue?
     public init(
         api: any TasksProviding,
@@ -247,6 +248,7 @@ import Combine
                 value: list,
                 lastSyncAt: nil
             )
+            indexTasksInSpotlight(list.tasks)
         }
     }
 

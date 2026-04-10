@@ -2,6 +2,16 @@ import SwiftUI
 import sideBarShared
 import UniformTypeIdentifiers
 
+enum FileShareAction {
+    static func makeTemporaryShareURL(
+        data: Data,
+        filename: String,
+        temporaryStore: TemporaryFileStore = .shared
+    ) throws -> URL {
+        try temporaryStore.store(data: data, filename: filename)
+    }
+}
+
 struct FilesHeaderActions: View {
     static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
 
@@ -93,6 +103,7 @@ struct FilesHeaderActions: View {
             systemImage: "ellipsis",
             accessibilityLabel: "File options",
             items: fileHeaderMenuItems,
+            items: fileHeaderMenuItems,
             isCompact: isCompact,
             chromeStyle: compactPhoneToolbarChromeStyle
         )
@@ -110,6 +121,9 @@ struct FilesHeaderActions: View {
             },
             .download {
                 Task { await downloadFile() }
+            },
+            SidebarMenuItem(title: "Share", systemImage: "square.and.arrow.up", role: nil) {
+                Task { await shareFile() }
             },
             .delete {
                 isDeleteAlertPresented = true
@@ -301,30 +315,49 @@ struct FilesHeaderActions: View {
     }
 
     private func downloadFile() async {
-        guard let meta = viewModel.activeMeta else {
-            environment.toastCenter.show(message: "Download unavailable")
-            return
-        }
-        guard let derivative = viewModel.preferredDownloadDerivative(for: meta) else {
-            environment.toastCenter.show(message: "Download unavailable")
-            return
-        }
         do {
-            let data = try await environment.container.ingestionAPI.getContent(
-                fileId: meta.file.id,
-                kind: derivative.kind,
-                range: nil
-            )
-            exportDocument = BinaryFileDocument(data: data)
-            exportFilename = viewModel.makeFilename(
-                base: meta.file.filenameOriginal,
-                mimeType: derivative.mime,
-                fallback: derivative.kind
-            )
+            let payload = try await fileTransferPayload()
+            exportDocument = BinaryFileDocument(data: payload.data)
+            exportFilename = payload.filename
             isExporting = true
         } catch {
             environment.toastCenter.show(message: "Failed to download file")
         }
+    }
+
+    private func shareFile() async {
+        do {
+            let payload = try await fileTransferPayload()
+            let url = try FileShareAction.makeTemporaryShareURL(
+                data: payload.data,
+                filename: payload.filename
+            )
+            await MainActor.run {
+                SystemSharePresenter.share(url: url)
+            }
+        } catch {
+            environment.toastCenter.show(message: "Failed to share file")
+        }
+    }
+
+    private func fileTransferPayload() async throws -> (data: Data, filename: String) {
+        guard let meta = viewModel.activeMeta else {
+            throw FileTransferError.unavailable
+        }
+        guard let derivative = viewModel.preferredDownloadDerivative(for: meta) else {
+            throw FileTransferError.unavailable
+        }
+        let data = try await environment.container.ingestionAPI.getContent(
+            fileId: meta.file.id,
+            kind: derivative.kind,
+            range: nil
+        )
+        let filename = viewModel.makeFilename(
+            base: meta.file.filenameOriginal,
+            mimeType: derivative.mime,
+            fallback: derivative.kind
+        )
+        return (data, filename)
     }
 
     private func deleteActiveFile() async {
@@ -346,4 +379,8 @@ struct FilesHeaderActions: View {
         return newName + ext
     }
 
+}
+
+private enum FileTransferError: Error {
+    case unavailable
 }

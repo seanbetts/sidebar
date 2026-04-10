@@ -14,7 +14,12 @@ extension AppEnvironment {
 
         guard url.scheme == "sidebar" else { return }
         let logger = Logger(subsystem: "sideBar", category: "DeepLink")
-        guard !(isAuthenticated && !isProtectedContentReady) else {
+        guard isAuthenticated else {
+            logger.info("Queueing deep link until sign-in completes: \(url.absoluteString, privacy: .public)")
+            queueProtectedDeepLink(url)
+            return
+        }
+        guard isProtectedContentReady else {
             logger.info("Queueing protected deep link until auth is ready: \(url.absoluteString, privacy: .public)")
             queueProtectedDeepLink(url)
             return
@@ -97,7 +102,16 @@ extension AppEnvironment {
     private func handleWebsitesDeepLink(url: URL, logger: Logger) {
         routeWorkspaceSelection(to: .websites, source: "deeplink_websites")
         let path = url.path
-        if !path.isEmpty && path != "/" {
+        if path == "/save" {
+            guard let websiteURL = websiteSaveURL(from: url) else {
+                logger.info("Deep link missing website save URL")
+                return
+            }
+            logger.info("Deep link to save website: \(websiteURL, privacy: .public)")
+            Task {
+                _ = await enqueueWebsiteSave(url: websiteURL, selectAfterSave: false)
+            }
+        } else if !path.isEmpty && path != "/" {
             // Path format: /{websiteId}
             let websiteId = String(path.dropFirst())
             logger.info("Deep link to website: \(websiteId, privacy: .public)")
@@ -181,6 +195,11 @@ extension AppEnvironment {
         default:
             return "Opened Tasks via Deep Link"
         }
+    }
+
+    private func websiteSaveURL(from deepLink: URL) -> String? {
+        let components = URLComponents(url: deepLink, resolvingAgainstBaseURL: false)
+        return components?.queryItems?.first(where: { $0.name == "url" })?.value
     }
 
     func beginPasswordRecovery(from url: URL) async {

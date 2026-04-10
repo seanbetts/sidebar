@@ -32,6 +32,25 @@ enum ConversationCopyFormatter {
         }
         return "Chat: \(conversationTitle)\n\n" + lines.joined(separator: "\n\n")
     }
+
+    static func exportFilename(title: String) -> String {
+        let trimmedTitle = title.trimmed
+        let baseTitle = trimmedTitle.isEmpty ? "Chat" : trimmedTitle
+        let cleanedScalars = baseTitle.unicodeScalars.map { scalar -> Character in
+            if CharacterSet.alphanumerics.contains(scalar) {
+                return Character(scalar)
+            }
+            if CharacterSet.whitespacesAndNewlines.contains(scalar) || "-_".unicodeScalars.contains(scalar) {
+                return "-"
+            }
+            return "-"
+        }
+        let collapsed = String(cleanedScalars)
+            .split(separator: "-", omittingEmptySubsequences: true)
+            .joined(separator: "-")
+        let filenameBase = collapsed.isEmpty ? "Chat" : collapsed
+        return "\(filenameBase).txt"
+    }
 }
 
 extension ConversationsPanelView {

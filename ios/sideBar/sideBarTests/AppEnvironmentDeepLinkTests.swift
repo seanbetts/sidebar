@@ -54,6 +54,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     func testHandleNotesNewDeepLinkSetsPendingFlagAndSelection() async {
         let environment = requireEnvironment()
+        environment.authState = .active
         environment.handleDeepLink(URL(string: "sidebar://notes/new")!)
 
         XCTAssertEqual(environment.commandSelection, .notes)
@@ -62,6 +63,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     func testHandleTasksNewDeepLinkWhenNotFocusedSetsPendingFlag() async {
         let environment = requireEnvironment()
+        environment.authState = .active
         environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
 
         XCTAssertEqual(environment.commandSelection, .tasks)
@@ -71,6 +73,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     func testHandleTasksNewDeepLinkWhenFocusedStartsNewTaskImmediately() async {
         let environment = requireEnvironment()
+        environment.authState = .active
         environment.isTasksFocused = true
 
         environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
@@ -82,6 +85,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     func testHandleTasksTodayDeepLinkSelectsTasksSection() async {
         let environment = requireEnvironment()
+        environment.authState = .active
 
         environment.handleDeepLink(URL(string: "sidebar://tasks/today")!)
 
@@ -90,6 +94,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     func testHandleNotesRootDeepLinkSelectsNotesSection() async {
         let environment = requireEnvironment()
+        environment.authState = .active
 
         environment.handleDeepLink(URL(string: "sidebar://notes")!)
 
@@ -103,6 +108,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     func testHandleNoteDeepLinkDecodesPercentEncodedPath() async {
         let environment = requireEnvironment()
+        environment.authState = .active
 
         environment.handleDeepLink(URL(string: "sidebar://notes/Folder/My%20Note.md")!)
 
@@ -117,14 +123,35 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     func testHandleWebsitesRootDeepLinkSelectsWebsitesSection() async {
         let environment = requireEnvironment()
+        environment.authState = .active
 
         environment.handleDeepLink(URL(string: "sidebar://websites")!)
 
         XCTAssertEqual(environment.commandSelection, .websites)
     }
 
+    func testHandleWebsiteSaveDeepLinkWhenActiveStartsQueuedWebsiteSave() async {
+        let savedURL = "https://example.com/articles/\(UUID().uuidString)"
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
+            )
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        environment.handleDeepLink(Self.quickSaveDeepLink(url: savedURL))
+        await waitForWebsiteEventSurface(savedURL, in: environment)
+
+        XCTAssertEqual(environment.commandSelection, .websites)
+        XCTAssertEqual(websitesAPI.lastSavedURL, savedURL)
+        XCTAssertTrue(websiteEventIsSurfaced(savedURL, in: environment))
+    }
+
     func testHandleFilesRootDeepLinkSelectsFilesSection() async {
         let environment = requireEnvironment()
+        environment.authState = .active
 
         environment.handleDeepLink(URL(string: "sidebar://files")!)
 
@@ -137,6 +164,7 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
 
     func testHandleChatConversationDeepLinkSelectsConversationImmediately() async {
         let environment = requireEnvironment()
+        environment.authState = .active
         let conversationID = UUID().uuidString.lowercased()
 
         environment.handleDeepLink(URL(string: "sidebar://chat/\(conversationID)")!)
@@ -192,7 +220,6 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(environment.commandSelection, .tasks)
         XCTAssertTrue(environment.pendingNewTaskDeepLink)
     }
-
     func testConsumeWidgetCompletionsPreservesPendingCompletionWhenSignedOut() async {
         let environment = requireEnvironment()
         let taskId = UUID().uuidString
@@ -233,22 +260,6 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(remaining.count, 1)
         XCTAssertEqual(remaining.first?.action, .addNew)
         XCTAssertEqual(remaining.first?.itemId, "")
-    }
-
-    func testConsumeWidgetAddNoteSetsPendingFlagAndSelection() async {
-        let environment = requireEnvironment()
-        environment.authState = .active
-        let operation = WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew)
-        storage.widgetDataManager.recordPendingOperation(operation, for: .notes)
-
-        environment.consumeWidgetAddNote()
-
-        XCTAssertEqual(environment.commandSelection, .notes)
-        XCTAssertTrue(environment.pendingNewNoteDeepLink)
-        XCTAssertEqual(
-            environment.workspaceStore.state.primaryPane.descriptor,
-            .builtIn(.notes)
-        )
     }
 
     func testConsumeExtensionEventsWhenActiveShowsPendingWebsite() async {
@@ -368,67 +379,6 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertTrue(storage.extensionEventStore.consumeEvents().isEmpty)
     }
 
-    func testHandleSignedInActivationConsumesWidgetAddTask() async {
-        let environment = requireEnvironment()
-        environment.authState = .active
-        environment.isTasksFocused = false
-
-        storage.widgetDataManager.recordPendingOperation(
-            WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
-            for: .tasks
-        )
-
-        await environment.handleSignedInActivation()
-
-        XCTAssertEqual(environment.commandSelection, .tasks)
-        XCTAssertTrue(environment.pendingNewTaskDeepLink)
-    }
-
-    func testHandleSignedInActivationConsumesWidgetQuickSave() async {
-        let url = URL(string: "https://example.com/articles/\(UUID().uuidString)")!
-        let websitesAPI = DeepLinkWebsitesAPI(
-            saveResult: .success(
-                WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
-            )
-        )
-        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
-        let environment = requireEnvironment()
-        environment.authState = .active
-
-        storage.widgetDataManager.recordPendingQuickSave(url: url)
-
-        await environment.handleSignedInActivation()
-        await waitForWebsiteEventSurface(url.absoluteString, in: environment)
-
-        XCTAssertEqual(environment.commandSelection, .websites)
-        XCTAssertEqual(websitesAPI.lastSavedURL, url.absoluteString)
-        XCTAssertTrue(
-            websiteEventIsSurfaced(url.absoluteString, in: environment),
-            "Expected widget quick save to surface the queued website URL."
-        )
-    }
-
-    func testAddTaskIntentRoutesImmediatelyWhenAppEnvironmentIsAvailable() async throws {
-        let environment = requireEnvironment()
-        environment.authState = .active
-        environment.isTasksFocused = false
-
-        _ = try await AddTaskIntent().perform()
-
-        XCTAssertEqual(environment.commandSelection, .tasks)
-        XCTAssertTrue(environment.pendingNewTaskDeepLink)
-    }
-
-    func testCreateNoteIntentRoutesImmediatelyWhenAppEnvironmentIsAvailable() async throws {
-        let environment = requireEnvironment()
-        environment.authState = .active
-
-        _ = try await CreateNoteIntent().perform()
-
-        XCTAssertEqual(environment.commandSelection, .notes)
-        XCTAssertTrue(environment.pendingNewNoteDeepLink)
-    }
-
     func testHandleSignedInActivationRefreshesWebsiteWidgetSnapshot() async {
         let item = WebsiteItem(
             id: "website-1",
@@ -461,6 +411,17 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         let after: WidgetWebsiteData = storage.widgetDataManager.load(for: .websites)
         XCTAssertEqual(after.totalCount, 1)
         XCTAssertEqual(after.websites.first?.url, item.url)
+    }
+
+    private static func quickSaveDeepLink(url: String) -> URL {
+        var components = URLComponents()
+        components.scheme = "sidebar"
+        components.host = "websites"
+        components.path = "/save"
+        components.queryItems = [
+            URLQueryItem(name: "url", value: url)
+        ]
+        return components.url!
     }
 
 }

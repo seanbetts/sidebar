@@ -67,12 +67,22 @@ struct QuickSaveIntent: AppIntent {
             logger.error("QuickSaveIntent: No URL provided")
             return .result()
         }
-        logger.info("QuickSaveIntent recording pending save for URL: \(url.absoluteString)")
-        WidgetDataManager.shared.recordQuickSaveIntent(url: url)
-        guard let deepLink = URL(string: "sidebar://websites") else {
+        guard let deepLink = Self.websiteSaveDeepLink(for: url) else {
             logger.error("QuickSaveIntent failed: invalid deep link URL")
             return .result()
         }
+        logger.info("QuickSaveIntent opening save deep link for URL: \(url.absoluteString, privacy: .public)")
         return .result(opensIntent: OpenURLIntent(deepLink))
+    }
+
+    private static func websiteSaveDeepLink(for url: URL) -> URL? {
+        var components = URLComponents()
+        components.scheme = "sidebar"
+        components.host = "websites"
+        components.path = "/save"
+        components.queryItems = [
+            URLQueryItem(name: "url", value: url.absoluteString)
+        ]
+        return components.url
     }
 }

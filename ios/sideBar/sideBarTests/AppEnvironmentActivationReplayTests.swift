@@ -59,6 +59,7 @@ extension AppEnvironmentDeepLinkTests {
     func testHandleSignedInActivationDoesNotWaitForQueuedWebsiteReplay() async {
         let url = "https://example.com/articles/\(UUID().uuidString)"
         let replayGate = AsyncReplayGate()
+        let completion = AsyncCompletionFlag()
         let websitesAPI = DeepLinkWebsitesAPI(
             saveResult: .success(WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")),
             onSave: { _ in
@@ -70,22 +71,20 @@ extension AppEnvironmentDeepLinkTests {
         environment.authState = .active
 
         storage.extensionEventStore.recordWebsiteSaved(url: url)
-        storage.widgetDataManager.recordPendingOperation(
-            WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
-            for: .tasks
-        )
 
         let activationTask = Task {
             await environment.handleSignedInActivation(includeDeferredRefresh: false)
+            await completion.markFinished()
         }
 
-        for _ in 0..<20 where !environment.pendingNewTaskDeepLink {
+        for _ in 0..<20 where !storage.pendingShareStore.loadAll().contains(where: { $0.url == url }) {
             await Task.yield()
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
+        await waitForWebsiteSaveCallCount(1, in: websitesAPI)
+        let activationFinished = await completion.finished()
 
-        XCTAssertTrue(environment.pendingNewTaskDeepLink)
-        XCTAssertEqual(environment.commandSelection, .tasks)
+        XCTAssertTrue(activationFinished)
         XCTAssertTrue(storage.pendingShareStore.loadAll().contains(where: { $0.url == url }))
 
         await replayGate.open()
@@ -222,5 +221,17 @@ actor AsyncReplayGate {
         isOpen = true
         continuation?.resume()
         continuation = nil
+    }
+}
+
+actor AsyncCompletionFlag {
+    private var isFinished = false
+
+    func markFinished() {
+        isFinished = true
+    }
+
+    func finished() -> Bool {
+        isFinished
     }
 }

@@ -133,7 +133,6 @@ public final class AppEnvironment: ObservableObject {
     var cancellables = Set<AnyCancellable>()
     var hasPendingForwardedObjectWillChange = false
     var websiteSaveHandoffObserver: AnyObject?
-    var widgetIntentObserver: AnyObject?
     var widgetTaskCompletionObserver: AnyObject?
     var staleAuthRetryBannerRevealTask: Task<Void, Never>?
     let staleAuthRetryBannerDelayNanoseconds: UInt64
@@ -273,7 +272,6 @@ public final class AppEnvironment: ObservableObject {
         #endif
 
         configureWebsiteSaveHandoffObserver()
-        configureWidgetIntentObserver()
 
         if isTestMode {
             return
@@ -302,9 +300,6 @@ public final class AppEnvironment: ObservableObject {
     deinit {
         if let websiteSaveHandoffObserver {
             WebsiteSaveHandoffNotifier.removeObserver(websiteSaveHandoffObserver)
-        }
-        if let widgetIntentObserver {
-            WidgetIntentHandoffNotifier.removeObserver(widgetIntentObserver)
         }
         if let widgetTaskCompletionObserver {
             WidgetTaskCompletionHandoffNotifier.removeObserver(widgetTaskCompletionObserver)

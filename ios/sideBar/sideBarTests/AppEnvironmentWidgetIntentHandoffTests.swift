@@ -1,44 +1,46 @@
 import XCTest
-import sideBarShared
 @testable import sideBar
 
 @MainActor
 extension AppEnvironmentDeepLinkTests {
-    func testActiveEnvironmentConsumesQueuedAddTaskAfterLiveHandoffNotification() async {
+    func testSignedOutTaskDeepLinkQueuesUntilAuthentication() async {
         let environment = requireEnvironment()
+        environment.authState = .signedOut
+
+        environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
+
+        XCTAssertNil(environment.commandSelection)
+        XCTAssertFalse(environment.pendingNewTaskDeepLink)
+        XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
+
         environment.authState = .active
-        environment.isTasksFocused = false
-
-        storage.widgetDataManager.recordPendingOperation(
-            WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew),
-            for: .tasks
-        )
-        WidgetIntentHandoffNotifier.post()
-
-        await waitForTaskDeepLink(in: environment)
+        await environment.replayProtectedDeferredActionsIfReady()
 
         XCTAssertEqual(environment.commandSelection, .tasks)
         XCTAssertTrue(environment.pendingNewTaskDeepLink)
+        XCTAssertTrue(environment.queuedProtectedDeepLinks.isEmpty)
     }
 
-    func testActiveEnvironmentConsumesQueuedAddNoteAfterLiveHandoffNotification() async {
+    func testSignedOutNoteDeepLinkQueuesUntilAuthentication() async {
         let environment = requireEnvironment()
+        environment.authState = .signedOut
+
+        environment.handleDeepLink(URL(string: "sidebar://notes/new")!)
+
+        XCTAssertNil(environment.commandSelection)
+        XCTAssertFalse(environment.pendingNewNoteDeepLink)
+        XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
+
         environment.authState = .active
-
-        storage.widgetDataManager.recordPendingOperation(
-            WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew),
-            for: .notes
-        )
-        WidgetIntentHandoffNotifier.post()
-
-        await waitForNoteDeepLink(in: environment)
+        await environment.replayProtectedDeferredActionsIfReady()
 
         XCTAssertEqual(environment.commandSelection, .notes)
         XCTAssertTrue(environment.pendingNewNoteDeepLink)
+        XCTAssertTrue(environment.queuedProtectedDeepLinks.isEmpty)
     }
 
-    func testActiveEnvironmentConsumesQueuedQuickSaveAfterLiveHandoffNotification() async {
-        let url = URL(string: "https://example.com/articles/\(UUID().uuidString)")!
+    func testSignedOutWebsiteSaveDeepLinkQueuesUntilAuthentication() async {
+        let savedURL = "https://example.com/articles/\(UUID().uuidString)"
         let websitesAPI = DeepLinkWebsitesAPI(
             saveResult: .success(
                 WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
@@ -46,29 +48,31 @@ extension AppEnvironmentDeepLinkTests {
         )
         environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
         let environment = requireEnvironment()
+        environment.authState = .signedOut
+
+        environment.handleDeepLink(Self.queuedQuickSaveDeepLink(url: savedURL))
+
+        XCTAssertNil(environment.commandSelection)
+        XCTAssertTrue(environment.queuedProtectedDeepLinks.contains(Self.queuedQuickSaveDeepLink(url: savedURL)))
+
         environment.authState = .active
-
-        storage.widgetDataManager.recordPendingQuickSave(url: url)
-        WidgetIntentHandoffNotifier.post()
-
-        await waitForWebsiteEventSurface(url.absoluteString, in: environment)
+        await environment.replayProtectedDeferredActionsIfReady()
+        await waitForWebsiteEventSurface(savedURL, in: environment)
 
         XCTAssertEqual(environment.commandSelection, .websites)
-        XCTAssertEqual(websitesAPI.lastSavedURL, url.absoluteString)
-        XCTAssertTrue(websiteEventIsSurfaced(url.absoluteString, in: environment))
+        XCTAssertEqual(websitesAPI.lastSavedURL, savedURL)
+        XCTAssertTrue(websiteEventIsSurfaced(savedURL, in: environment))
+        XCTAssertTrue(environment.queuedProtectedDeepLinks.isEmpty)
     }
 
-    private func waitForTaskDeepLink(in environment: AppEnvironment, attempts: Int = 20) async {
-        for _ in 0..<attempts where !environment.pendingNewTaskDeepLink {
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 50_000_000)
-        }
-    }
-
-    private func waitForNoteDeepLink(in environment: AppEnvironment, attempts: Int = 20) async {
-        for _ in 0..<attempts where !environment.pendingNewNoteDeepLink {
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 50_000_000)
-        }
+    private static func queuedQuickSaveDeepLink(url: String) -> URL {
+        var components = URLComponents()
+        components.scheme = "sidebar"
+        components.host = "websites"
+        components.path = "/save"
+        components.queryItems = [
+            URLQueryItem(name: "url", value: url)
+        ]
+        return components.url!
     }
 }

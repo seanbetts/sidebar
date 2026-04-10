@@ -341,7 +341,7 @@ private final class TestNetworkStatus: NetworkStatusProviding {
 }
 
 @MainActor
-private final class StubTasksAPI: TasksProviding {
+final class StubTasksAPI: TasksProviding {
     var listCallCount: Int = 0
     var countsCallCount: Int = 0
     var listResponsesByScope: [String: TaskListResponse] = [:]

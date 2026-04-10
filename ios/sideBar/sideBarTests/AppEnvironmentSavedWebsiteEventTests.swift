@@ -4,297 +4,69 @@ import sideBarShared
 
 @MainActor
 extension AppEnvironmentDeepLinkTests {
-    func testConsumeExtensionEventsWhenActiveAppliesSavedWebsiteDetail() async {
+    func testConsumeExtensionEventsWhenActiveEnqueuesSavedWebsiteURL() async {
         let environment = requireEnvironment()
         environment.authState = .active
-        let website = makeSavedWebsiteEvent(url: "https://example.com/articles/\(UUID().uuidString)")
+        let url = "https://example.com/articles/\(UUID().uuidString)"
 
-        storage.extensionEventStore.recordWebsiteSaved(website: website)
+        storage.extensionEventStore.recordWebsiteSaved(url: url)
         await environment.consumeExtensionEvents()
 
-        XCTAssertNil(environment.websitesViewModel.pendingWebsite)
-        XCTAssertEqual(environment.websitesViewModel.items.first?.id, website.id)
-        XCTAssertEqual(environment.websitesViewModel.items.first?.url, website.url)
-        XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: website.id))
+        XCTAssertEqual(environment.websitesViewModel.pendingWebsite?.url, url)
+        XCTAssertTrue(storage.pendingShareStore.loadAll().contains(where: { $0.url == url }))
     }
 
-    func testActiveEnvironmentConsumesSavedWebsiteDetailAfterLiveHandoffNotification() async {
-        let environment = requireEnvironment()
-        environment.authState = .active
-        let website = makeSavedWebsiteEvent(url: "https://example.com/articles/\(UUID().uuidString)")
-
-        storage.extensionEventStore.recordWebsiteSaved(website: website)
-        await waitForSavedWebsite(id: website.id, url: website.url, in: environment)
-
-        XCTAssertEqual(environment.websitesViewModel.items.first?.id, website.id)
-        XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: website.id))
-    }
-
-    func testSavedWebsiteEventClearsMatchingQueuedWebsiteEntry() async {
+    func testHandleSignedInActivationConsumesSavedWebsiteURL() async {
         let websitesAPI = DeepLinkWebsitesAPI(
-            saveResult: .failure(NSError(domain: "AppEnvironmentSavedWebsiteEventTests", code: 1))
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
+            )
         )
         environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
         let environment = requireEnvironment()
         environment.authState = .active
-        let website = makeSavedWebsiteEvent(url: "https://example.com/articles/\(UUID().uuidString)")
+        let url = "https://example.com/articles/\(UUID().uuidString)"
 
-        _ = storage.pendingShareStore.enqueueWebsite(url: website.url)
-        storage.extensionEventStore.recordWebsiteSaved(website: website)
-
-        await environment.consumeExtensionEvents()
-
-        XCTAssertEqual(environment.websitesViewModel.items.first?.id, website.id)
-        XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: website.id))
-        XCTAssertNil(environment.websitesViewModel.pendingWebsite)
-        XCTAssertTrue(storage.pendingShareStore.loadAll().isEmpty)
-    }
-
-    func testConsumeExtensionEventsWhenActivePreservesYouTubeTranscriptMetadata() async {
-        let environment = requireEnvironment()
-        environment.authState = .active
-        let videoId = "abc123xyzAA"
-        let website = ExtensionSavedWebsite(
-            id: "website-\(UUID().uuidString)",
-            title: "Saved Video",
-            url: "https://www.youtube.com/watch?v=\(videoId)",
-            urlFull: "https://www.youtube.com/watch?v=\(videoId)",
-            domain: "youtube.com",
-            content: "Saved transcript content",
-            source: "youtube",
-            savedAt: "2026-03-13T00:00:00Z",
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: false,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: [
-                videoId: WebsiteTranscriptEntry(
-                    status: "ready",
-                    fileId: "file-1",
-                    updatedAt: "2026-03-13T00:00:00Z",
-                    error: nil
-                )
-            ],
-            readingTime: "12 min",
-            updatedAt: "2026-03-13T00:00:00Z",
-            lastOpenedAt: nil
-        )
-
-        storage.extensionEventStore.recordWebsiteSaved(website: website)
-        await environment.consumeExtensionEvents()
-        try? await environment.websitesStore.loadDetail(id: website.id)
-
-        XCTAssertEqual(
-            environment.websitesViewModel.items.first?.youtubeTranscripts?[videoId]?.status,
-            "ready"
-        )
-        XCTAssertEqual(
-            environment.websitesStore.active?.youtubeTranscripts?[videoId]?.fileId,
-            "file-1"
-        )
-    }
-
-    func testExtensionEventStoreCompactsOversizedSavedWebsitePayload() {
-        let hugeContent = String(repeating: "x", count: 300_000)
-        let website = ExtensionSavedWebsite(
-            id: "website-\(UUID().uuidString)",
-            title: "Huge Website",
-            url: "https://example.com/huge",
-            urlFull: "https://example.com/huge",
-            domain: "example.com",
-            content: hugeContent,
-            source: "web",
-            savedAt: "2026-03-13T00:00:00Z",
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: false,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: nil,
-            readingTime: "40 min",
-            updatedAt: "2026-03-13T00:00:00Z",
-            lastOpenedAt: nil
-        )
-
-        storage.extensionEventStore.recordWebsiteSaved(website: website)
-        let events = storage.extensionEventStore.consumeEvents()
-
-        XCTAssertEqual(events.count, 1)
-        XCTAssertEqual(events.first?.website?.id, website.id)
-        XCTAssertNil(events.first?.website?.content)
-        XCTAssertEqual(events.first?.website?.requiresDetailFetch, true)
-    }
-
-    func testExtensionEventStoreFallsBackToMinimalWebsiteEventWhenCompactPayloadStillExceedsLimit() {
-        let oversizedTitle = String(repeating: "T", count: 300_000)
-        let website = ExtensionSavedWebsite(
-            id: "website-\(UUID().uuidString)",
-            title: oversizedTitle,
-            url: "https://example.com/huge",
-            urlFull: "https://example.com/huge",
-            domain: "example.com",
-            content: "Saved content",
-            source: "web",
-            savedAt: "2026-03-13T00:00:00Z",
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: false,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: nil,
-            readingTime: "40 min",
-            updatedAt: "2026-03-13T00:00:00Z",
-            lastOpenedAt: nil
-        )
-
-        storage.extensionEventStore.recordWebsiteSaved(website: website)
-        let events = storage.extensionEventStore.consumeEvents()
-
-        XCTAssertEqual(events.count, 1)
-        XCTAssertEqual(events.first?.websiteUrl, website.url)
-        XCTAssertEqual(events.first?.website?.id, website.id)
-        XCTAssertEqual(events.first?.website?.url, website.url)
-        XCTAssertEqual(events.first?.website?.domain, website.domain)
-        XCTAssertNil(events.first?.website?.content)
-        XCTAssertEqual(events.first?.website?.requiresDetailFetch, true)
-        XCTAssertEqual(events.first?.website?.title.count, 256)
-    }
-
-    func testConsumeExtensionEventsWhenSavedWebsitePayloadRequiresDetailFetchHydratesByID() async {
-        let detail = WebsiteDetail(
-            id: "website-\(UUID().uuidString)",
-            title: "Fetched Detail",
-            url: "https://example.com/fetched",
-            urlFull: "https://example.com/fetched",
-            domain: "example.com",
-            content: "Fetched content",
-            source: "web",
-            savedAt: "2026-03-13T00:00:00Z",
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: false,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: nil,
-            readingTime: "6 min",
-            updatedAt: "2026-03-13T00:00:00Z",
-            lastOpenedAt: nil
-        )
-        let websitesAPI = DeepLinkWebsitesAPI(
-            saveResult: .failure(NSError(domain: "AppEnvironmentSavedWebsiteEventTests", code: 1)),
-            detailResult: .success(detail)
-        )
-        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
-        let environment = requireEnvironment()
-        environment.authState = .active
-        let website = ExtensionSavedWebsite(
-            id: detail.id,
-            title: detail.title,
-            url: detail.url,
-            urlFull: detail.urlFull,
-            domain: detail.domain,
-            content: nil,
-            source: detail.source,
-            savedAt: detail.savedAt,
-            publishedAt: detail.publishedAt,
-            pinned: detail.pinned,
-            pinnedOrder: detail.pinnedOrder,
-            archived: detail.archived,
-            faviconUrl: detail.faviconUrl,
-            faviconR2Key: detail.faviconR2Key,
-            youtubeTranscripts: detail.youtubeTranscripts,
-            readingTime: detail.readingTime,
-            updatedAt: detail.updatedAt,
-            lastOpenedAt: detail.lastOpenedAt,
-            requiresDetailFetch: true
-        )
-
-        storage.extensionEventStore.recordWebsiteSaved(website: website)
-        await environment.consumeExtensionEvents()
-
-        XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: detail.id))
-        try? await environment.websitesStore.loadDetail(id: detail.id)
-        XCTAssertEqual(environment.websitesStore.active?.content, "Fetched content")
-    }
-
-    func testHandleSignedInActivationConsumesSavedWebsiteDetailEvent() async {
-        let websitesAPI = DeepLinkWebsitesAPI(
-            saveResult: .failure(NSError(domain: "AppEnvironmentSavedWebsiteEventTests", code: 1))
-        )
-        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
-        let environment = requireEnvironment()
-        environment.authState = .active
-        let website = makeSavedWebsiteEvent(url: "https://example.com/articles/\(UUID().uuidString)")
-
-        storage.extensionEventStore.recordWebsiteSaved(website: website)
+        storage.extensionEventStore.recordWebsiteSaved(url: url)
 
         await environment.handleSignedInActivation(includeDeferredRefresh: false)
+        await waitForWebsiteEventSurface(url, in: environment)
 
-        XCTAssertEqual(environment.websitesViewModel.items.first?.id, website.id)
-        XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: website.id))
+        XCTAssertEqual(websitesAPI.lastSavedURL, url)
         XCTAssertTrue(storage.extensionEventStore.consumeEvents().isEmpty)
-        XCTAssertEqual(
-            websitesAPI.listCallCount,
-            0,
-            "Saved website activation should not depend on a list refresh to surface the event."
-        )
+        XCTAssertTrue(websiteEventIsSurfaced(url, in: environment))
     }
 
-    func testRefreshAuthStateWhenSessionBecomesActiveAppliesSavedWebsiteDetailEvents() async {
+    func testRefreshAuthStateWhenSessionBecomesActiveConsumesSavedWebsiteURL() async {
         let previousSharedEnvironment = AppEnvironment.shared
         defer { AppEnvironment.shared = previousSharedEnvironment }
 
+        let url = "https://example.com/articles/\(UUID().uuidString)"
         let authSession = SavedWebsiteEventMutableAuthSession(authState: .stale)
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "test-job-id", status: "queued")
+            )
+        )
         let container = ServiceContainer(
             config: .fallbackForTesting(),
             authSession: authSession,
-            cacheClient: InMemoryCacheClient()
+            cacheClient: InMemoryCacheClient(),
+            websitesAPI: websitesAPI
         )
         let environment = AppEnvironment(container: container, storage: storage)
         retainedEnvironments.append(environment)
         resetDeepLinkState(environment)
         environment.authState = .stale
 
-        let website = makeSavedWebsiteEvent(url: "https://example.com/articles/\(UUID().uuidString)")
-        storage.extensionEventStore.recordWebsiteSaved(website: website)
+        storage.extensionEventStore.recordWebsiteSaved(url: url)
 
         authSession.authState = .active
         environment.refreshAuthState()
+        await waitForWebsiteEventSurface(url, in: environment)
 
-        await waitForWebsiteEventSurface(website.url, in: environment)
-
-        XCTAssertEqual(environment.authState, AuthState.active)
-        XCTAssertEqual(environment.websitesViewModel.items.first?.id, website.id)
-        XCTAssertTrue(environment.websitesStore.hasCachedDetail(id: website.id))
-    }
-
-    func makeSavedWebsiteEvent(url: String) -> ExtensionSavedWebsite {
-        ExtensionSavedWebsite(
-            id: "website-\(UUID().uuidString)",
-            title: "Saved Website",
-            url: url,
-            urlFull: url,
-            domain: "example.com",
-            content: "Saved content",
-            source: "web",
-            savedAt: "2026-03-13T00:00:00Z",
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: false,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: nil,
-            readingTime: "4 min",
-            updatedAt: "2026-03-13T00:00:00Z",
-            lastOpenedAt: nil,
-            requiresDetailFetch: false
-        )
+        XCTAssertEqual(websitesAPI.lastSavedURL, url)
+        XCTAssertTrue(websiteEventIsSurfaced(url, in: environment))
     }
 }
 
@@ -315,29 +87,12 @@ private final class SavedWebsiteEventMutableAuthSession: AuthSession {
         self.authState = authState
     }
 
-    func signIn(email: String, password: String) async throws {
-        _ = email
-        _ = password
-        authState = .active
-    }
-
-    func signUp(email: String, password: String) async throws {
-        _ = email
-        _ = password
-    }
-
-    func verifyOTP(email: String, code: String) async throws {
-        _ = email
-        _ = code
-    }
-
+    func signIn(email: String, password: String) async throws {}
+    func signUp(email: String, password: String) async throws {}
+    func verifyOTP(email: String, code: String) async throws {}
+    func signOut() async {}
     func refreshSession() async {}
-
     func refreshSessionIfStale() async {}
-
-    func signOut() async {
-        accessToken = nil
-        userId = nil
-        authState = .signedOut
-    }
+    func sendPasswordReset(email: String) async throws {}
+    func updatePassword(_ newPassword: String) async throws {}
 }

@@ -1,6 +1,31 @@
 import Foundation
 
 extension TasksStore {
+    func indexTasksInSpotlight(_ items: [TaskItem]) {
+        guard let indexer = spotlightIndexer else { return }
+        let spotlightTasks = items
+            .filter { $0.deletedAt == nil && !$0.isPreview }
+            .map { item in
+                SpotlightTask(
+                    id: item.id,
+                    title: item.title,
+                    notes: item.notes,
+                    status: item.status,
+                    deadline: item.deadline
+                )
+            }
+        Task {
+            await indexer.indexTasks(spotlightTasks)
+        }
+    }
+
+    func removeTaskFromSpotlight(id: String) {
+        guard let indexer = spotlightIndexer else { return }
+        Task {
+            await indexer.removeTask(id: id)
+        }
+    }
+
     func enqueueOperation(_ operation: TaskOperationPayload) async throws {
         guard let writeQueue else { throw WriteQueueError.missingQueue }
         try await writeQueue.enqueue(

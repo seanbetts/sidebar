@@ -26,6 +26,12 @@ public struct ChatView: View {
             .toolbar {
                 if isCompact {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        if showCompactConversationActions {
+                            ChatConversationActionsMenu(
+                                viewModel: environment.chatViewModel,
+                                surface: .toolbar
+                            )
+                        }
                         if !isPhone {
                             Button {
                                 Task {
@@ -83,6 +89,13 @@ public struct ChatView: View {
         #else
         return false
         #endif
+    }
+
+    private var showCompactConversationActions: Bool {
+        guard environment.chatViewModel.selectedConversationId != nil else {
+            return false
+        }
+        return !environment.chatViewModel.isBlankConversation
     }
 }
 
