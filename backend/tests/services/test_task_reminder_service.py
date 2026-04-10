@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+from datetime import UTC, date, datetime
+from uuid import uuid4
+
+from api.models.task import Task
+from api.services.task_reminder_service import TaskReminderService
+
+
+def _task(
+    *,
+    user_id: str,
+    title: str,
+    deadline: date | None,
+    status: str = "active",
+) -> Task:
+    return Task(
+        id=uuid4(),
+        user_id=user_id,
+        title=title,
+        status=status,
+        deadline=deadline,
+    )
+
+
+def test_configured_user_gets_at_most_one_reminder_per_scheduled_day(test_db):
+    TaskReminderService.clear_emitted_days()
+    test_db.add(
+        _task(
+            user_id="user-123",
+            title="Pay rent",
+            deadline=date(2026, 1, 15),
+        )
+    )
+    test_db.commit()
+
+    first_reminder = TaskReminderService.build_daily_reminder(
+        test_db,
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+    second_reminder = TaskReminderService.build_daily_reminder(
+        test_db,
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        now=datetime(2026, 1, 15, 9, 30, tzinfo=UTC),
+    )
+    next_day_reminder = TaskReminderService.build_daily_reminder(
+        test_db,
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        now=datetime(2026, 1, 16, 9, 0, tzinfo=UTC),
+    )
+
+    assert first_reminder is not None
+    assert second_reminder is None
+    assert next_day_reminder is not None
+
+
+def test_reminder_payload_summarizes_due_today_and_overdue_work(test_db):
+    TaskReminderService.clear_emitted_days()
+    test_db.add_all(
+        [
+            _task(
+                user_id="user-123",
+                title="Overdue item",
+                deadline=date(2026, 1, 14),
+            ),
+            _task(
+                user_id="user-123",
+                title="Due today item",
+                deadline=date(2026, 1, 15),
+            ),
+        ]
+    )
+    test_db.commit()
+
+    reminder = TaskReminderService.build_daily_reminder(
+        test_db,
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+
+    assert reminder is not None
+    assert reminder.route == "sidebar://tasks/today"
+    assert reminder.body == "1 overdue task and 1 due today."
+    assert reminder.metadata == {
+        "overdue_count": 1,
+        "due_today_count": 1,
+        "scope": "today",
+    }
+
+
+def test_no_reminder_when_there_is_nothing_worth_surfacing(test_db):
+    TaskReminderService.clear_emitted_days()
+    test_db.add(
+        _task(
+            user_id="user-123",
+            title="Upcoming item",
+            deadline=date(2026, 1, 16),
+        )
+    )
+    test_db.commit()
+
+    reminder = TaskReminderService.build_daily_reminder(
+        test_db,
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
+    )
+
+    assert reminder is None

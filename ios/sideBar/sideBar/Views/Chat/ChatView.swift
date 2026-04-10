@@ -10,6 +10,7 @@ import UIKit
 
 public struct ChatView: View {
     @EnvironmentObject private var environment: AppEnvironment
+    @Environment(\.scenePhase) private var scenePhase
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -40,12 +41,23 @@ public struct ChatView: View {
                 }
             }
             #endif
-            .task {
-                environment.chatViewModel.startAutoRefresh()
+            .onAppear {
+                updateAutoRefresh(for: scenePhase)
+            }
+            .onChange(of: scenePhase) { _, newValue in
+                updateAutoRefresh(for: newValue)
             }
             .onDisappear {
                 environment.chatViewModel.stopAutoRefresh()
             }
+    }
+
+    private func updateAutoRefresh(for scenePhase: ScenePhase) {
+        if scenePhase == .active {
+            environment.chatViewModel.startAutoRefresh()
+        } else {
+            environment.chatViewModel.stopAutoRefresh()
+        }
     }
 
     private var chatTitle: String {

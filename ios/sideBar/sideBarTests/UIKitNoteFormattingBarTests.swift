@@ -311,7 +311,11 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         let buttonConfiguration = try XCTUnwrap(bar.menuButton.configuration)
 
         XCTAssertTrue(effectView.effect is UIGlassEffect)
-        XCTAssertEqual(effectView.layer.cornerRadius, 24, accuracy: CGFloat(0.01))
+        XCTAssertEqual(
+            effectView.layer.cornerRadius,
+            NoteFormattingBarChrome.cornerRadius(for: NoteFormattingBarChrome.entryControlHeight),
+            accuracy: CGFloat(0.01)
+        )
         XCTAssertEqual(effectView.layer.borderWidth, 1, accuracy: CGFloat(0.01))
         XCTAssertEqual(
             UIColor(cgColor: try XCTUnwrap(effectView.layer.borderColor))
@@ -336,6 +340,32 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
             UIKitNoteFormattingBar.glassBorderColor(for: UITraitCollection(userInterfaceStyle: .dark)),
             UIColor.white.withAlphaComponent(0.22)
         )
+    }
+
+    func testHiddenChromeModeKeepsMenuButtonInteractive() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 500, height: 900))
+        let bar = UIKitNoteFormattingBar(
+            configuration: makeEnabledConfiguration(),
+            showsVisibleChrome: false
+        )
+        bar.frame = CGRect(x: 420, y: 760, width: 60, height: 48)
+        hostView.addSubview(bar)
+        bar.setNeedsLayout()
+        bar.layoutIfNeeded()
+
+        let effectView: UIVisualEffectView = try XCTUnwrap(findDescendant(in: bar, accessibilityIdentifier: nil))
+
+        XCTAssertTrue(effectView.isHidden)
+        XCTAssertNil(bar.menuButton.configuration?.image)
+
+        bar.menuButton.sendActions(for: .touchUpInside)
+
+        let popover = try XCTUnwrap(bar.popoverView)
+        XCTAssertFalse(popover.isHidden)
     }
 
     func testPopoverLayoutPrefersBelowForFloatingPresentationWhenSpaceAllows() throws {

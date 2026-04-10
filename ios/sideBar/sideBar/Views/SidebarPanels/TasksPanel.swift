@@ -12,15 +12,17 @@ public struct TasksPanel: View {
 }
 
 struct TasksPanelView: View {
+    static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
+
     @ObservedObject var viewModel: TasksViewModel
-    @EnvironmentObject private var environment: AppEnvironment
+    @EnvironmentObject var environment: AppEnvironment
     @Environment(\.colorScheme) private var colorScheme
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
     @State private var hasLoaded = false
-    @State private var showNewGroupAlert: Bool = false
-    @State private var showNewProjectAlert: Bool = false
+    @State var showNewGroupAlert: Bool = false
+    @State var showNewProjectAlert: Bool = false
     @State private var showProjectGroupDialog: Bool = false
     @State private var newGroupTitle: String = ""
     @State private var newProjectTitle: String = ""
@@ -34,6 +36,7 @@ struct TasksPanelView: View {
             header
             content
         }
+        .sidebarPanelScaffoldBackground()
         .frame(maxHeight: .infinity)
         .onAppear {
             if !hasLoaded {
@@ -116,29 +119,7 @@ extension TasksPanelView {
             PanelHeader(title: "Tasks") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
-                        Menu {
-                            Button {
-                                handleNewTaskTap()
-                            } label: {
-                                Label("New task", systemImage: "checkmark.circle")
-                            }
-                            Button {
-                                showNewGroupAlert = true
-                            } label: {
-                                Label("New group", systemImage: "folder")
-                            }
-                            Button {
-                                showNewProjectAlert = true
-                            } label: {
-                                Label("New project", systemImage: "list.bullet.rectangle")
-                            }
-                        } label: {
-                            Image(systemName: "plus")
-                                .appFont(.labelMd)
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Add")
+                        addMenuButton
                     }
                     if isCompact {
                         GlobalAvatarRegionControls()
@@ -159,7 +140,7 @@ extension TasksPanelView {
             }
         }
         .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
-        .background(panelHeaderBackground())
+        .sidebarPanelHeaderBackground(showsInlineSearch: showsInlineSearch)
     }
 
     @ViewBuilder
@@ -174,7 +155,7 @@ extension TasksPanelView {
                 Task { await viewModel.load(selection: viewModel.preferredLoadSelection, force: true) }
             }
         } else {
-            List {
+            tasksPanelList {
                 Section {
                     tasksListRow(
                         title: "Today",
@@ -246,24 +227,11 @@ extension TasksPanelView {
                 isCompactPhone: isCompactPhone
             )
             .scrollContentBackground(.hidden)
-            .background(panelBackground)
+            .sidebarPanelListBackground()
             .refreshable {
                 await viewModel.load(selection: viewModel.preferredLoadSelection, force: true)
                 await viewModel.loadCounts(force: true)
             }
-        }
-    }
-
-    private func handleNewTaskTap() {
-        if Self.shouldDeepLinkForCompactNewTask(
-            isCompact: isCompact,
-            tasksPhoneDetailRouteId: environment.tasksPhoneDetailRouteId
-        ) {
-            environment.commandSelection = .tasks
-            environment.pendingNewTaskDeepLink = true
-            environment.tasksPhoneDetailRouteId = TaskSelection.today.cacheKey
-        } else {
-            viewModel.startNewTask()
         }
     }
 
@@ -295,16 +263,14 @@ extension TasksPanelView {
             onRename: onRename,
             onDelete: onDelete
         )
+        #if os(macOS)
+        .tag(selection)
+        #endif
     }
 
-}
-
-extension TasksPanelView {
-    static func shouldDeepLinkForCompactNewTask(
-        isCompact: Bool,
-        tasksPhoneDetailRouteId: String?
-    ) -> Bool {
-        isCompact && tasksPhoneDetailRouteId == nil
+    func activateTaskSelection(_ selection: TaskSelection) {
+        environment.commandSelection = .tasks
+        Task { await viewModel.load(selection: selection) }
     }
 }
 

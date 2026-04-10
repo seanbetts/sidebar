@@ -1,4 +1,5 @@
 // swiftlint:disable file_length
+import CoreData
 import XCTest
 import sideBarShared
 @testable import sideBar

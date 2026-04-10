@@ -27,6 +27,11 @@ enum LoginFocusPolicy {
     }
 }
 
+enum LoginChrome {
+    static let fieldKind: GlassChrome.Kind = .field
+    static let noticeKind: GlassChrome.Kind = .card
+}
+
 struct LoginPrimaryActionButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled

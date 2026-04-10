@@ -42,3 +42,16 @@ def test_task_change_notifications_skipped_when_unchanged():
 
     assert notifications.event is None
     assert notifications.badge_count is None
+
+
+def test_task_change_notifications_stay_limited_to_sse_and_badges():
+    TaskChangeService._last_sse_sent.clear()
+    TaskChangeService._last_push_sent.clear()
+
+    notifications = TaskChangeService.build_notifications(
+        user_id="user-123",
+        before=_counts(0),
+        after=_counts(1),
+    )
+
+    assert set(vars(notifications)) == {"event", "badge_count"}

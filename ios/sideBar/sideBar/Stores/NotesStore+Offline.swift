@@ -101,6 +101,18 @@ extension NotesStore {
         applyLocalMove(notePath: notePath, folder: folder, shouldUpdateCachedNotePath: false)
     }
 
+    func applyOptimisticPin(notePath: String, pinned: Bool) {
+        applyLocalPin(notePath: notePath, pinned: pinned)
+    }
+
+    func applyOptimisticArchive(notePath: String, archived: Bool) {
+        applyLocalArchive(notePath: notePath, archived: archived)
+    }
+
+    func applyOptimisticDelete(notePath: String) {
+        applyLocalDelete(notePath: notePath)
+    }
+
     /// Enqueues an offline pin toggle operation and applies it optimistically.
     public func enqueuePin(notePath: String, pinned: Bool) async throws {
         let snapshot = makeServerSnapshot(noteId: nil, notePath: notePath)

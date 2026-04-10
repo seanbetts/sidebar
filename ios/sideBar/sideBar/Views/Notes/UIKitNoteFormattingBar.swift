@@ -10,11 +10,12 @@ final class UIKitNoteFormattingBar: UIView {
     let menuButton: UIButton
     private var currentConfiguration: NoteFormattingBarConfiguration
     private var popoverPresentation: NoteFormattingBarPresentation
+    private var showsVisibleChrome: Bool
     private(set) var popoverView: UIKitNoteFormattingPopoverView?
     private var dismissBackdropView: PopoverDismissBackdropView?
-    private static let barHeight: CGFloat = 48
-    private static let minimumButtonTouchTarget: CGFloat = 44
-    private static let horizontalPadding: CGFloat = 8
+    private static let barHeight: CGFloat = NoteFormattingBarChrome.entryControlHeight
+    private static let minimumButtonTouchTarget: CGFloat = NoteFormattingBarChrome.entryControlWidth
+    private static let horizontalPadding: CGFloat = 0
     private static let verticalPadding: CGFloat = 0
     private static let popoverScreenPadding: CGFloat = 8
 
@@ -22,17 +23,19 @@ final class UIKitNoteFormattingBar: UIView {
         self.menuButton = Self.makeMenuButton()
         self.currentConfiguration = .disabled
         self.popoverPresentation = .floatingTopTrailing
+        self.showsVisibleChrome = true
         super.init(frame: frame)
         setUpViewHierarchy()
-        apply(configuration: .disabled, presentation: .floatingTopTrailing)
+        apply(configuration: .disabled, presentation: .floatingTopTrailing, showsVisibleChrome: true)
     }
 
     convenience init(
         configuration: NoteFormattingBarConfiguration,
-        presentation: NoteFormattingBarPresentation = .floatingTopTrailing
+        presentation: NoteFormattingBarPresentation = .floatingTopTrailing,
+        showsVisibleChrome: Bool = true
     ) {
         self.init(frame: .zero)
-        apply(configuration: configuration, presentation: presentation)
+        apply(configuration: configuration, presentation: presentation, showsVisibleChrome: showsVisibleChrome)
     }
 
     @available(*, unavailable)
@@ -42,14 +45,19 @@ final class UIKitNoteFormattingBar: UIView {
 
     func apply(
         configuration: NoteFormattingBarConfiguration,
-        presentation: NoteFormattingBarPresentation? = nil
+        presentation: NoteFormattingBarPresentation? = nil,
+        showsVisibleChrome: Bool? = nil
     ) {
         currentConfiguration = configuration
         if let presentation {
             popoverPresentation = presentation
         }
+        if let showsVisibleChrome {
+            self.showsVisibleChrome = showsVisibleChrome
+        }
         menuButton.isEnabled = configuration.isEnabled
-        menuButton.configuration = Self.buttonConfiguration()
+        menuButton.configuration = Self.buttonConfiguration(showsVisibleChrome: self.showsVisibleChrome)
+        backgroundEffectView.isHidden = !self.showsVisibleChrome
         popoverView?.apply(configuration: configuration)
         if !configuration.isEnabled {
             dismissPopover()
@@ -77,7 +85,6 @@ final class UIKitNoteFormattingBar: UIView {
         }
         super.willMove(toWindow: newWindow)
     }
-
 }
 
 @MainActor
@@ -149,21 +156,32 @@ final class UIKitNoteFormattingAccessoryView: UIView {
 struct UIKitNoteFormattingBarRepresentable: UIViewRepresentable {
     let configuration: NoteFormattingBarConfiguration
     let presentation: NoteFormattingBarPresentation
+    let showsVisibleChrome: Bool
 
     init(
         configuration: NoteFormattingBarConfiguration,
-        presentation: NoteFormattingBarPresentation = .floatingTopTrailing
+        presentation: NoteFormattingBarPresentation = .floatingTopTrailing,
+        showsVisibleChrome: Bool = true
     ) {
         self.configuration = configuration
         self.presentation = presentation
+        self.showsVisibleChrome = showsVisibleChrome
     }
 
     func makeUIView(context: Context) -> UIKitNoteFormattingBar {
-        UIKitNoteFormattingBar(configuration: configuration, presentation: presentation)
+        UIKitNoteFormattingBar(
+            configuration: configuration,
+            presentation: presentation,
+            showsVisibleChrome: showsVisibleChrome
+        )
     }
 
     func updateUIView(_ uiView: UIKitNoteFormattingBar, context: Context) {
-        uiView.apply(configuration: configuration, presentation: presentation)
+        uiView.apply(
+            configuration: configuration,
+            presentation: presentation,
+            showsVisibleChrome: showsVisibleChrome
+        )
     }
 
     func sizeThatFits(
@@ -197,23 +215,30 @@ extension UIKitNoteFormattingBar {
         return button
     }
 
-    static func buttonConfiguration() -> UIButton.Configuration {
+    static func buttonConfiguration(showsVisibleChrome: Bool = true) -> UIButton.Configuration {
         var configuration: UIButton.Configuration = .plain()
-        configuration.buttonSize = .mini
-        configuration.image = UIImage(systemName: "textformat")
-        configuration.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 6, bottom: 4, trailing: 6)
+        if showsVisibleChrome {
+            configuration.image = UIImage(
+                systemName: "textformat",
+                withConfiguration: UIImage.SymbolConfiguration(
+                    pointSize: NoteFormattingBarChrome.entrySymbolPointSize,
+                    weight: .semibold
+                )
+            )
+        } else {
+            configuration.image = nil
+        }
+        configuration.contentInsets = .zero
         configuration.background = .clear()
-        configuration.baseForegroundColor = .label
+        configuration.baseForegroundColor = showsVisibleChrome ? .label : .clear
         return configuration
     }
 
     static func glassBorderColor(for traitCollection: UITraitCollection) -> UIColor {
-        switch traitCollection.userInterfaceStyle {
-        case .dark:
-            UIColor.white.withAlphaComponent(0.22)
-        default:
-            UIColor.black.withAlphaComponent(0.12)
-        }
+        HeaderActionControlChromeBridge.borderColor(
+            for: NoteFormattingBarChrome.entryControlChromeStyle,
+            traitCollection: traitCollection
+        )
     }
 
     @objc func handleMenuButtonTap() {
@@ -239,7 +264,6 @@ extension UIKitNoteFormattingBar {
         popoverView?.isHidden = true
         dismissBackdropView?.isHidden = true
     }
-
     func tearDownPopoverHostViews() {
         dismissPopover()
         popoverView?.removeFromSuperview()
@@ -247,7 +271,6 @@ extension UIKitNoteFormattingBar {
         popoverView = nil
         dismissBackdropView = nil
     }
-
     @discardableResult
     func ensurePopoverView() -> UIKitNoteFormattingPopoverView {
         let hostView = window ?? self
@@ -270,7 +293,6 @@ extension UIKitNoteFormattingBar {
         popoverView = popover
         return popover
     }
-
     @discardableResult
     private func ensureDismissBackdropView() -> PopoverDismissBackdropView {
         let hostView = window ?? self
@@ -296,7 +318,6 @@ extension UIKitNoteFormattingBar {
         self.dismissBackdropView = dismissBackdropView
         return dismissBackdropView
     }
-
     func dismissPopoverIfNeeded(forTapLocation location: CGPoint, in hostView: UIView) {
         guard let popover = popoverView, popover.isHidden == false else { return }
         let popoverFrame: CGRect
@@ -312,7 +333,6 @@ extension UIKitNoteFormattingBar {
 
         dismissPopover()
     }
-
     func updatePopoverLayout() {
         guard let popover = popoverView, let hostView = popover.superview else { return }
         dismissBackdropView?.frame = hostView.bounds
@@ -397,7 +417,6 @@ extension UIKitNoteFormattingBar {
 
         return availableBelow >= availableAbove ? .below : .above
     }
-
     func setUpViewHierarchy() {
         accessibilityIdentifier = "note-formatting-bar"
         backgroundColor = .clear
@@ -408,7 +427,7 @@ extension UIKitNoteFormattingBar {
         backgroundEffectView.isUserInteractionEnabled = false
         backgroundEffectView.clipsToBounds = true
         backgroundEffectView.layer.cornerCurve = .continuous
-        backgroundEffectView.layer.cornerRadius = Self.barHeight / 2
+        backgroundEffectView.layer.cornerRadius = NoteFormattingBarChrome.cornerRadius(for: Self.barHeight)
         applyGlassChrome()
         addSubview(backgroundEffectView)
 
@@ -431,8 +450,8 @@ extension UIKitNoteFormattingBar {
 
         stackView.addArrangedSubview(menuButton)
         NSLayoutConstraint.activate([
-            menuButton.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.minimumButtonTouchTarget),
-            menuButton.heightAnchor.constraint(equalToConstant: Self.minimumButtonTouchTarget)
+            menuButton.widthAnchor.constraint(equalToConstant: Self.minimumButtonTouchTarget),
+            menuButton.heightAnchor.constraint(equalToConstant: Self.barHeight)
         ])
 
         menuButton.addTarget(self, action: #selector(handleMenuButtonTap), for: .touchUpInside)

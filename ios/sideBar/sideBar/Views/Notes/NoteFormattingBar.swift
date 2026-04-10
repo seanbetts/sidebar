@@ -1,13 +1,34 @@
 import SwiftUI
-
 #if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
+
+enum NoteFormattingBarChrome {
+    static let entryControlKind: GlassChrome.Kind = .actionButton
+    static let entryControlChromeStyle: HeaderActionControlChromeStyle = .glass
+    static let entrySymbolPointSize: CGFloat = HeaderActionControlMetrics.symbolPointSize
+    static let entryControlWidth: CGFloat = HeaderActionControlMetrics.chromeWidth
+    static let entryControlHeight: CGFloat = HeaderActionControlMetrics.chromeHeight
+
+    static func cornerRadius(for barHeight: CGFloat) -> CGFloat {
+        _ = barHeight
+        return DesignTokens.Radius.sm
+    }
+}
+
 @MainActor
-@available(iOS 26.0, *)
+@available(iOS 26.0, macOS 26.0, *)
 struct NoteFormattingBar: View {
     let configuration: NoteFormattingBarConfiguration
 
     var body: some View {
-        Menu {
+        HeaderActionMenuControl(
+            systemName: "textformat",
+            accessibilityLabel: "Formatting",
+            chromeStyle: NoteFormattingBarChrome.entryControlChromeStyle
+        ) {
             Section("Text Style") {
                 ForEach(NoteTextStyle.allCases, id: \.self) { style in
                     Button {
@@ -30,20 +51,8 @@ struct NoteFormattingBar: View {
                 inlineButton("Strikethrough", formatting: .strikethrough)
                 inlineButton("Inline Code", formatting: .inlineCode)
             }
-        } label: {
-            Image(systemName: "textformat")
-                .font(.system(size: 15, weight: .semibold))
-                .frame(width: 32, height: 32)
         }
-        .buttonStyle(.plain)
         .disabled(!configuration.isEnabled)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(.quaternary, lineWidth: 1)
-        }
         .accessibilityIdentifier("note-formatting-bar")
     }
 
@@ -60,4 +69,3 @@ struct NoteFormattingBar: View {
         }
     }
 }
-#endif

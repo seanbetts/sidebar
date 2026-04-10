@@ -12,6 +12,10 @@ from api.config import settings
 from api.db.session import SessionLocal
 from api.models.device_token import DeviceToken
 from api.services.device_token_service import DeviceTokenService
+from api.services.notification_types import (
+    APNSNotificationRequest,
+    PushNotificationSendResult,
+)
 
 
 class PushNotificationService:
@@ -21,19 +25,47 @@ class PushNotificationService:
     _cached_jwt_issued_at: int | None = None
 
     @classmethod
-    def send_badge_update(cls, tokens: list[DeviceToken], badge_count: int) -> None:
+    def send_badge_update(
+        cls, tokens: list[DeviceToken], badge_count: int
+    ) -> PushNotificationSendResult:
         """Send a silent badge update to device tokens.
 
         Args:
             tokens: Device tokens to notify.
             badge_count: Badge count to set.
         """
-        if not tokens:
-            return
+        requests = [
+            APNSNotificationRequest(
+                token=token.token,
+                platform=token.platform,
+                payload={
+                    "aps": {
+                        "content-available": 1,
+                        "badge": badge_count,
+                    }
+                },
+                push_type="background",
+                priority="5",
+            )
+            for token in tokens
+        ]
+        return cls.send_requests(requests)
+
+    @classmethod
+    def send_requests(
+        cls,
+        requests: list[APNSNotificationRequest],
+    ) -> PushNotificationSendResult:
+        """Send concrete APNs requests and clean up invalid tokens."""
+        if not requests:
+            return PushNotificationSendResult(attempted_count=0, sent_count=0)
 
         auth_token = cls._get_auth_token()
         if not auth_token:
-            return
+            return PushNotificationSendResult(
+                attempted_count=len(requests),
+                sent_count=0,
+            )
 
         environment = (settings.apns_env or "dev").lower()
         host = (
@@ -43,45 +75,49 @@ class PushNotificationService:
         )
 
         invalid_tokens: list[str] = []
+        sent_count = 0
         with httpx.Client(http2=True, timeout=5.0) as client:
-            for token in tokens:
-                topic = cls._topic_for_token(token)
+            for request in requests:
+                topic = request.topic or cls._topic_for_platform(request.platform)
                 if not topic:
                     continue
 
                 headers = {
                     "authorization": f"bearer {auth_token}",
                     "apns-topic": topic,
-                    "apns-push-type": "background",
-                    "apns-priority": "5",
+                    "apns-push-type": request.push_type,
+                    "apns-priority": request.priority,
                 }
-                payload = {
-                    "aps": {
-                        "content-available": 1,
-                        "badge": badge_count,
-                    }
-                }
-                url = f"https://{host}/3/device/{token.token}"
+                url = f"https://{host}/3/device/{request.token}"
                 try:
-                    response = client.post(url, json=payload, headers=headers)
-                    if response.status_code >= 400:
-                        reason = None
-                        try:
-                            body = response.json()
-                            reason = body.get("reason")
-                        except Exception:
-                            reason = None
-                        if response.status_code in {400, 410} and reason in {
-                            "BadDeviceToken",
-                            "Unregistered",
-                            "DeviceTokenNotForTopic",
-                        }:
-                            invalid_tokens.append(token.token)
-                        continue
+                    response = client.post(url, json=request.payload, headers=headers)
                 except httpx.HTTPError:
                     continue
+
+                if response.status_code >= 400:
+                    reason = None
+                    try:
+                        body = response.json()
+                        reason = body.get("reason")
+                    except Exception:
+                        reason = None
+                    if response.status_code in {400, 410} and reason in {
+                        "BadDeviceToken",
+                        "Unregistered",
+                        "DeviceTokenNotForTopic",
+                    }:
+                        invalid_tokens.append(request.token)
+                    continue
+
+                sent_count += 1
+
         if invalid_tokens:
             cls._disable_invalid_tokens(invalid_tokens)
+        return PushNotificationSendResult(
+            attempted_count=len(requests),
+            sent_count=sent_count,
+            invalid_tokens=tuple(invalid_tokens),
+        )
 
     @classmethod
     def _get_auth_token(cls) -> str | None:
@@ -108,10 +144,10 @@ class PushNotificationService:
         return token
 
     @classmethod
-    def _topic_for_token(cls, token: DeviceToken) -> str | None:
-        if token.platform == "ios":
+    def _topic_for_platform(cls, platform: str) -> str | None:
+        if platform == "ios":
             return settings.apns_topic_ios or settings.apns_topic
-        if token.platform == "macos":
+        if platform == "macos":
             return settings.apns_topic_macos or settings.apns_topic
         return settings.apns_topic
 

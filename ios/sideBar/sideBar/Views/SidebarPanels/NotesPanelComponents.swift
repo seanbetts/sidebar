@@ -125,7 +125,7 @@ struct NotesTreeRow: View {
             insets: rowInsets,
             verticalPadding: rowVerticalPadding,
             useListStyling: useListStyling,
-            primaryAction: item.isFile ? onSelect : nil
+            primaryAction: primaryAction
         ) {
             HStack(spacing: 8) {
                 Image(systemName: item.isFile ? "doc.text" : "folder")
@@ -208,6 +208,15 @@ struct NotesTreeRow: View {
         return DesignTokens.Spacing.xs
         #else
         return item.isFile ? DesignTokens.Spacing.xs : DesignTokens.Spacing.xxs
+        #endif
+    }
+
+    private var primaryAction: (() -> Void)? {
+        guard item.isFile else { return nil }
+        #if os(macOS)
+        return nil
+        #else
+        return onSelect
         #endif
     }
 }

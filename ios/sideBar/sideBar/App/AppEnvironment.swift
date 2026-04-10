@@ -141,6 +141,10 @@ public final class AppEnvironment: ObservableObject {
     var deviceToken: String?
     var lastRegisteredDeviceToken: String?
     var lastRegisteredUserId: String?
+    var inFlightDeviceToken: String?
+    var inFlightDeviceTokenUserId: String?
+    var devicePresenceReporter: DevicePresenceReporter?
+    var hasConfiguredDevicePresenceReporting = false
     #endif
 
     // swiftlint:disable function_body_length
@@ -393,6 +397,11 @@ public final class AppEnvironment: ObservableObject {
     public var pendingScratchpadDeepLink: Bool {
         get { navigation.pendingScratchpadDeepLink }
         set { navigation.pendingScratchpadDeepLink = newValue }
+    }
+
+    public var pendingMorningDigestDeepLink: Bool {
+        get { navigation.pendingMorningDigestDeepLink }
+        set { navigation.pendingMorningDigestDeepLink = newValue }
     }
 
     /// Last keyboard shortcut action routed through global shortcut handling.

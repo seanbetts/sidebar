@@ -39,9 +39,8 @@ struct SearchField: View {
         }
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, verticalPadding)
-        .background(backgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
-        .overlay(borderOverlay)
+        .frame(minHeight: minHeight)
+        .modifier(SearchFieldBackgroundModifier(chrome: Self.backgroundChrome(for: chrome)))
     }
 
     private var horizontalPadding: CGFloat {
@@ -52,23 +51,16 @@ struct SearchField: View {
         Self.verticalPadding(for: chrome)
     }
 
-    private var backgroundColor: Color {
-        switch chrome {
-        case .standard:
-            DesignTokens.Colors.input
-        case .dock:
-            .clear
-        }
+    private var minHeight: CGFloat {
+        Self.minHeight(for: chrome)
     }
 
-    @ViewBuilder
-    private var borderOverlay: some View {
+    static func backgroundChrome(for chrome: SearchFieldChrome) -> GlassChrome.Kind? {
         switch chrome {
         case .standard:
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+            return .field
         case .dock:
-            EmptyView()
+            return nil
         }
     }
 
@@ -84,7 +76,26 @@ struct SearchField: View {
     static func verticalPadding(for chrome: SearchFieldChrome) -> CGFloat {
         switch chrome {
         case .standard, .dock:
-            DesignTokens.Spacing.xs
+            DesignTokens.Spacing.xxsPlus
+        }
+    }
+
+    static func minHeight(for chrome: SearchFieldChrome) -> CGFloat {
+        switch chrome {
+        case .standard, .dock:
+            DesignTokens.Size.compactFieldHeight
+        }
+    }
+}
+
+private struct SearchFieldBackgroundModifier: ViewModifier {
+    let chrome: GlassChrome.Kind?
+
+    func body(content: Content) -> some View {
+        if let chrome {
+            content.glassChrome(chrome)
+        } else {
+            content
         }
     }
 }

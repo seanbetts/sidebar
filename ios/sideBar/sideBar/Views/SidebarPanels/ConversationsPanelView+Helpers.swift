@@ -77,23 +77,21 @@ extension ConversationsPanelView {
             PanelHeader(title: "Chat") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if showNewChatButton && !isCompactPhone {
-                        Button {
+                        HeaderActionButton(
+                            systemName: "plus",
+                            accessibilityLabel: "New chat",
+                            action: {
                             Task {
                                 await viewModel.startNewConversation()
                             }
-                        } label: {
-                            Image(systemName: "plus")
-                                .appFont(.labelMd)
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("New chat")
+                        },
+                            chromeStyle: Self.actionControlChromeStyle
+                        )
                     }
                     if isCompact {
                         GlobalAvatarRegionControls()
                     }
                 }
-                .frame(height: 28)
             }
             if showsInlineSearch {
                 SearchField(text: $searchQuery, placeholder: "Search chats", isFocused: $isSearchFocused)
@@ -102,7 +100,7 @@ extension ConversationsPanelView {
             }
         }
         .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
-        .background(panelHeaderBackground())
+        .sidebarPanelHeaderBackground(showsInlineSearch: showsInlineSearch)
     }
 
     var isCompact: Bool {
@@ -133,7 +131,7 @@ extension ConversationsPanelView {
     }
 
     var conversationsList: some View {
-        List {
+        conversationsPanelList {
             ForEach(filteredGroups) { group in
                 Section {
                     ForEach(group.conversations) { conversation in
@@ -145,9 +143,7 @@ extension ConversationsPanelView {
                                 bottom: 0,
                                 trailing: conversationRowHorizontalInset
                             ),
-                            primaryAction: {
-                                Task { await viewModel.selectConversation(id: conversation.id) }
-                            },
+                            primaryAction: conversationRowPrimaryAction(for: conversation),
                             content: {
                             ConversationRow(
                                 conversation: conversation,
@@ -166,6 +162,9 @@ extension ConversationsPanelView {
                                 isSelected: viewModel.selectedConversationId == conversation.id
                             )
                         )
+                        #if os(macOS)
+                        .tag(conversation.id)
+                        #endif
                     }
                 } header: {
                     sidebarProminentSectionHeader(group.title)
@@ -183,10 +182,43 @@ extension ConversationsPanelView {
             isCompactPhone: isCompactPhone
         )
         .scrollContentBackground(.hidden)
-        .background(panelBackground)
+        .sidebarPanelListBackground()
         .refreshable {
             await viewModel.refreshConversations()
         }
+    }
+
+    @ViewBuilder
+    private func conversationsPanelList<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        #if os(macOS)
+        List(selection: conversationSelectionBinding) {
+            content()
+        }
+        #else
+        List {
+            content()
+        }
+        #endif
+    }
+
+    private var conversationSelectionBinding: Binding<String?> {
+        Binding(
+            get: { viewModel.selectedConversationId },
+            set: { newValue in
+                guard let newValue, newValue != viewModel.selectedConversationId else { return }
+                Task { await viewModel.selectConversation(id: newValue) }
+            }
+        )
+    }
+
+    private func conversationRowPrimaryAction(for conversation: Conversation) -> (() -> Void)? {
+        #if os(macOS)
+        nil
+        #else
+        { Task { await viewModel.selectConversation(id: conversation.id) } }
+        #endif
     }
 
     func navigateConversationList(direction: ShortcutListDirection) {
@@ -261,7 +293,7 @@ extension ConversationsPanelView {
     }
 
     var panelBackground: Color {
-        DesignTokens.Colors.sidebar
+        PlatformTokens.sidebarPanelBackground
     }
 
     var conversationRowHorizontalInset: CGFloat {

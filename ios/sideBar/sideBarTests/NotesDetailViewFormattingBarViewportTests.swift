@@ -53,7 +53,7 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
                 .range(of: "function greet(name) {").nonNotFound else {
                 return false
             }
-            return anchoredEditorViewportAnchorY(
+            return self.anchoredEditorViewportAnchorY(
                 in: editorTextView,
                 targetOffset: firstLineRange.location
             ).map { abs($0 - expectedViewportAnchorY) <= 24 } == true
@@ -138,7 +138,7 @@ final class NotesFormattingViewportTests: NotesDetailViewHostingTestCase {
                 .range(of: "This is a blockquote.").nonNotFound else {
                 return false
             }
-            return anchoredEditorViewportAnchorY(
+            return self.anchoredEditorViewportAnchorY(
                 in: editorTextView,
                 targetOffset: quoteRange.location
             ).map { abs($0 - expectedViewportAnchorY) <= 24 } == true

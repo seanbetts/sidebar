@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ChatHeaderView: View {
+    static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
+
     @ObservedObject var viewModel: ChatViewModel
     @Environment(\.workspaceColumn) private var workspaceColumn
     @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
@@ -23,7 +25,7 @@ struct ChatHeaderView: View {
         , trailing: {
             HStack(spacing: 12) {
                 if showNewChatButton || showCloseButton {
-                    HeaderActionRow {
+                    HeaderActionRow(spacing: DesignTokens.Spacing.xs) {
                         if shouldShowExpandButton {
                             expandButton
                         }
@@ -35,7 +37,8 @@ struct ChatHeaderView: View {
                                     Task {
                                         await viewModel.startNewConversation()
                                     }
-                                }
+                                },
+                                chromeStyle: Self.actionControlChromeStyle
                             )
                         }
                         if showCloseButton {
@@ -46,7 +49,8 @@ struct ChatHeaderView: View {
                                     Task {
                                         await viewModel.closeConversation()
                                     }
-                                }
+                                },
+                                chromeStyle: Self.actionControlChromeStyle
                             )
                         }
                     }
@@ -92,14 +96,12 @@ struct ChatHeaderView: View {
     }
 
     private var expandButton: some View {
-        Button(action: expandChatView) {
-            Image(systemName: expandButtonIconName)
-                .appFont(.labelMd)
-                .frame(width: 28, height: 20)
-                .imageScale(.medium)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(expandButtonLabel)
+        HeaderActionButton(
+            systemName: expandButtonIconName,
+            accessibilityLabel: expandButtonLabel,
+            action: expandChatView,
+            chromeStyle: Self.actionControlChromeStyle
+        )
     }
 
     private var expandButtonIconName: String {

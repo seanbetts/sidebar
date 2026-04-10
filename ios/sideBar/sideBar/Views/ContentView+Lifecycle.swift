@@ -471,7 +471,8 @@ extension ContentView {
         guard environment.commandSelection == nil else { return false }
         guard !environment.pendingNewTaskDeepLink,
               !environment.pendingNewNoteDeepLink,
-              !environment.pendingScratchpadDeepLink else { return false }
+              !environment.pendingScratchpadDeepLink,
+              !environment.pendingMorningDigestDeepLink else { return false }
         return true
     }
 

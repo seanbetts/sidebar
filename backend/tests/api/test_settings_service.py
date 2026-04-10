@@ -232,6 +232,15 @@ def test_build_response_returns_blank_new_user_defaults_except_assistant_name() 
     payload = SettingsService.build_response(settings_record=None, user_id="user-1")
     assert payload["communication_style"] is None
     assert payload["working_relationship"] is None
+    assert payload["notification_preferences"] == {
+        "task_reminders_enabled": True,
+        "task_reminder_time": None,
+        "morning_digest_enabled": False,
+        "morning_digest_time": None,
+        "assistant_reply_notifications_enabled": False,
+        "assistant_proactive_notifications_enabled": False,
+        "schedule_timezone": None,
+    }
     assert payload["assistant_identity"]["name"] == "sideBar"
     assert payload["assistant_identity"]["tone"] is None
     assert payload["assistant_identity"]["values"] is None
@@ -312,6 +321,67 @@ def test_build_response_includes_agent_field_metadata() -> None:
     )
     assert payload["assistant_identity_meta"]["version"] == 2
     assert payload["assistant_soul_meta"]["version"] == 1
+
+
+def test_clean_updates_accepts_notification_preferences() -> None:
+    cleaned = SettingsService.clean_updates(
+        {
+            "notification_preferences": {
+                "task_reminders_enabled": True,
+                "task_reminder_time": "09:30",
+                "morning_digest_enabled": False,
+                "morning_digest_time": None,
+                "assistant_reply_notifications_enabled": True,
+                "assistant_proactive_notifications_enabled": False,
+                "schedule_timezone": "Europe/London",
+            }
+        }
+    )
+
+    assert cleaned["notification_preferences"]["task_reminders_enabled"] is True
+    assert cleaned["notification_preferences"]["task_reminder_time"] == "09:30"
+    assert cleaned["notification_preferences"]["schedule_timezone"] == "Europe/London"
+
+
+def test_clean_updates_rejects_task_reminders_without_time_and_timezone() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_updates(
+            {
+                "notification_preferences": {
+                    "task_reminders_enabled": True,
+                    "task_reminder_time": None,
+                    "morning_digest_enabled": False,
+                    "morning_digest_time": None,
+                    "assistant_reply_notifications_enabled": False,
+                    "assistant_proactive_notifications_enabled": False,
+                    "schedule_timezone": None,
+                }
+            }
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "task_reminder_time" in str(exc_info.value.detail)
+
+
+def test_clean_updates_rejects_unknown_notification_preference_keys() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        SettingsService.clean_updates(
+            {
+                "notification_preferences": {
+                    "task_reminders_enabled": True,
+                    "task_reminder_time": "09:30",
+                    "morning_digest_enabled": False,
+                    "morning_digest_time": None,
+                    "assistant_reply_notifications_enabled": False,
+                    "assistant_proactive_notifications_enabled": False,
+                    "schedule_timezone": "Europe/London",
+                    "unexpected": True,
+                }
+            }
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "notification_preferences has invalid fields" in str(exc_info.value.detail)
 
 
 def test_update_agent_settings_is_scoped_per_user(test_db, monkeypatch) -> None:

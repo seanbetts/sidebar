@@ -13,9 +13,9 @@ struct ChatInputUIKitView: UIViewRepresentable {
     @ScaledMetric(relativeTo: .body) private var textInsetBottom: CGFloat = 10
     @ScaledMetric(relativeTo: .body) private var textInsetLeading: CGFloat = 44
     @ScaledMetric(relativeTo: .body) private var textInsetTrailing: CGFloat = 48
-    @ScaledMetric(relativeTo: .body) private var sideButtonSize: CGFloat = 28
+    @ScaledMetric(relativeTo: .body) private var sideButtonSize: CGFloat = HeaderActionControlMetrics.iconFrameHeight
+    @ScaledMetric(relativeTo: .body) private var sideButtonSymbolSize: CGFloat = DesignTokens.Icon.md
     @ScaledMetric(relativeTo: .body) private var sideButtonHorizontalInset: CGFloat = 10
-    @ScaledMetric(relativeTo: .body) private var sideButtonBottomInset: CGFloat = 10
     @ScaledMetric(relativeTo: .body) private var placeholderTopInset: CGFloat = 8
     let isEnabled: Bool
     let isSendEnabled: Bool
@@ -51,23 +51,16 @@ struct ChatInputUIKitView: UIViewRepresentable {
         textView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         textView.accessibilityLabel = "Message"
 
-        let placeholderLabel = UILabel()
-        placeholderLabel.text = "Ask Anything..."
-        placeholderLabel.font = resolvedFont
-        placeholderLabel.adjustsFontForContentSizeCategory = usesSystemTextSize
-        placeholderLabel.textColor = UIColor.secondaryLabel
-        placeholderLabel.numberOfLines = 1
-
-        let attachButton = UIButton(type: .system)
-        attachButton.setImage(UIImage(systemName: "paperclip.circle.fill"), for: .normal)
-        attachButton.clipsToBounds = true
+        let placeholderLabel = makePlaceholderLabel(
+            font: resolvedFont,
+            adjustsForContentSizeCategory: usesSystemTextSize
+        )
+        let attachButton = makeAccessoryButton(systemName: "paperclip")
         attachButton.accessibilityLabel = "Attach file"
         attachButton.addTarget(context.coordinator, action: #selector(Coordinator.didTapAttach), for: .touchUpInside)
 
-        let button = UIButton(type: .system)
-        button.setImage(UIImage(systemName: "arrow.up.circle.fill"), for: .normal)
+        let button = makeAccessoryButton(systemName: "arrow.up")
         button.layer.cornerRadius = sideButtonSize / 2
-        button.clipsToBounds = true
         button.addTarget(context.coordinator, action: #selector(Coordinator.didTapSend), for: .touchUpInside)
         button.accessibilityLabel = "Send message"
 
@@ -96,11 +89,11 @@ struct ChatInputUIKitView: UIViewRepresentable {
             ),
             placeholderLabel.topAnchor.constraint(greaterThanOrEqualTo: textView.topAnchor, constant: placeholderTopInset),
             attachButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: sideButtonHorizontalInset),
-            attachButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -sideButtonBottomInset),
+            attachButton.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             attachButton.widthAnchor.constraint(equalToConstant: sideButtonSize),
             attachButton.heightAnchor.constraint(equalToConstant: sideButtonSize),
             button.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -sideButtonHorizontalInset),
-            button.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -sideButtonBottomInset),
+            button.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             button.widthAnchor.constraint(equalToConstant: sideButtonSize),
             button.heightAnchor.constraint(equalToConstant: sideButtonSize)
         ])
@@ -112,6 +105,35 @@ struct ChatInputUIKitView: UIViewRepresentable {
         context.coordinator.placeholderLabel = placeholderLabel
         placeholderLabel.isHidden = !text.trimmed.isEmpty
         return containerView
+    }
+
+    private func makePlaceholderLabel(
+        font: UIFont,
+        adjustsForContentSizeCategory: Bool
+    ) -> UILabel {
+        let label = UILabel()
+        label.text = "Ask Anything..."
+        label.font = font
+        label.adjustsFontForContentSizeCategory = adjustsForContentSizeCategory
+        label.textColor = UIColor.secondaryLabel
+        label.numberOfLines = 1
+        return label
+    }
+
+    private func makeAccessoryButton(systemName: String) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setImage(
+            UIImage(
+                systemName: systemName,
+                withConfiguration: UIImage.SymbolConfiguration(
+                    pointSize: sideButtonSymbolSize,
+                    weight: .semibold
+                )
+            ),
+            for: .normal
+        )
+        button.clipsToBounds = true
+        return button
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {

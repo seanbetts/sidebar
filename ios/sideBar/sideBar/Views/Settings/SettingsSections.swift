@@ -47,14 +47,15 @@ struct ProfileSettingsView: View {
 
     #if os(macOS)
     private var macProfileForm: some View {
-        Form {
-            macProfilePhotoSection
-            profileImageErrorSection
-            macProfileDetailsSection
-            macSignOutSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                macProfilePhotoSection
+                profileImageErrorSection
+                macProfileDetailsSection
+                macSignOutSection
+            }
+            .padding(DesignTokens.Spacing.lg)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
         .background(DesignTokens.Colors.settingsBackground)
         .confirmationDialog(
             "Change Profile Photo",
@@ -172,7 +173,7 @@ struct ProfileSettingsView: View {
 
     #if os(macOS)
     private var macProfilePhotoSection: some View {
-        Section {
+        SettingsMacPanelCard {
             SettingsMacSectionIntro(
                 title: "Profile photo",
                 message: "Choose an image that sideBar can use across tasks, notes, and assistant context."
@@ -189,7 +190,7 @@ struct ProfileSettingsView: View {
     }
 
     private var macProfileDetailsSection: some View {
-        Section {
+        SettingsMacPanelCard {
             SettingsMacSectionIntro(
                 title: "Personal details",
                 message: "Keep the details your assistant can reference during planning, writing, and personalization up to date."
@@ -228,7 +229,7 @@ struct ProfileSettingsView: View {
     }
 
     private var macSignOutSection: some View {
-        Section {
+        SettingsMacPanelCard {
             SettingsMacActionSection(
                 title: "Account",
                 message: "Sign out on this Mac if you need to switch workspace context or disconnect this device."
@@ -275,15 +276,15 @@ struct ProfileSettingsView: View {
     @ViewBuilder
     private var profileImageErrorSection: some View {
         if let profileImageError {
+            #if os(macOS)
+            SettingsMacStatusBanner(message: profileImageError, tone: .error)
+            #else
             Section {
-                #if os(macOS)
-                SettingsMacStatusBanner(message: profileImageError, tone: .error)
-                #else
                 Text(profileImageError)
                     .appFont(.caption)
                     .foregroundStyle(DesignTokens.Colors.error)
-                #endif
             }
+            #endif
         }
     }
 

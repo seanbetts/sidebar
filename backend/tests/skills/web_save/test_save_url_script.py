@@ -203,6 +203,33 @@ def test_save_url_database_reports_local_and_jina_failure(monkeypatch):
     assert "local parser found no readable content" in err.payload["message"].lower()
 
 
+def test_save_url_database_rejects_reserved_placeholder_urls_before_fallback(
+    monkeypatch,
+):
+    module = _load_save_url_module()
+    _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    module.resolve_apple_news_source_url = lambda url: url
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        AssertionError("reserved placeholder URLs should not reach local parsing")
+    )
+    module.get_markdown_content = lambda _url, _api_key: (_ for _ in ()).throw(
+        AssertionError("reserved placeholder URLs should not reach Jina fallback")
+    )
+
+    with pytest.raises(module.WebSaveScriptError) as exc_info:
+        module.save_url_database(
+            "https://example.com/articles/123e4567-e89b-12d3-a456-426614174000",
+            "user-1",
+        )
+
+    err = exc_info.value
+    assert err.error_type == "ValidationError"
+    assert err.payload["code"] == "WEB_SAVE_VALIDATION_ERROR"
+    assert "placeholder" in err.payload["message"].lower()
+
+
 def test_save_url_database_antibot_local_failure_calls_jina_once(monkeypatch):
     module = _load_save_url_module()
     captured = _stub_db_dependencies(module)

@@ -6,15 +6,6 @@ enum SettingsSavePillState: Equatable {
     case error(String)
 }
 
-enum SettingsSaveStatusPillChrome: Equatable {
-    case glass
-}
-
-enum SettingsSaveStatusPillPlatform {
-    case iOS
-    case macOS
-}
-
 struct SettingsSaveStatusPill: View {
     let state: SettingsSavePillState
 
@@ -35,22 +26,14 @@ struct SettingsSaveStatusPill: View {
             Text(title)
                 .appFont(.labelMd)
                 .foregroundStyle(.primary)
-                .lineLimit(2)
+                .lineLimit(titleLineLimit)
+                .truncationMode(.tail)
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .modifier(SettingsSaveStatusPillBackgroundModifier(chrome: Self.chrome(for: currentPlatform)))
+        .glassChrome(.pill)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
-    }
-
-    static func chrome(for platform: SettingsSaveStatusPillPlatform) -> SettingsSaveStatusPillChrome {
-        switch platform {
-        case .iOS:
-            return .glass
-        case .macOS:
-            return .glass
-        }
     }
 
     private var title: String {
@@ -65,31 +48,11 @@ struct SettingsSaveStatusPill: View {
         }
     }
 
-    private var currentPlatform: SettingsSaveStatusPillPlatform {
-        #if os(iOS)
-        .iOS
+    private var titleLineLimit: Int {
+        #if os(macOS)
+        return 1
         #else
-        .macOS
+        return 2
         #endif
-    }
-}
-
-private struct SettingsSaveStatusPillBackgroundModifier: ViewModifier {
-    let chrome: SettingsSaveStatusPillChrome
-
-    func body(content: Content) -> some View {
-        switch chrome {
-        case .glass:
-            if #available(iOS 26.0, macOS 26.0, *) {
-                content.glassEffect(.regular.interactive(), in: Capsule())
-            } else {
-                content
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .overlay {
-                        Capsule()
-                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                    }
-            }
-        }
     }
 }

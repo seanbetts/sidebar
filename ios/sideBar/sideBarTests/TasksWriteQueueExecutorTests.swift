@@ -5,7 +5,7 @@ import sideBarShared
 
 @MainActor
 final class TasksWriteQueueExecutorTests: XCTestCase {
-    func testExecuteDebouncesRefreshAcrossBackToBackWrites() async throws {
+    func testExecuteAppliesSyncResponsesAcrossBackToBackWrites() async throws {
         let api = TasksSyncAPIStub()
         let store = TasksWriteQueueStoreSpy()
         let executor = TasksWriteQueueExecutor(
@@ -16,13 +16,9 @@ final class TasksWriteQueueExecutorTests: XCTestCase {
 
         try await executor.execute(write: makeWrite(operationId: "op-1", taskId: "task-1"))
         try await executor.execute(write: makeWrite(operationId: "op-2", taskId: "task-2"))
-        try? await waitUntil(timeoutSeconds: 0.1) {
-            store.refreshAfterSyncCallCount == 1
-        }
 
         XCTAssertEqual(api.syncCallCount, 2)
-        XCTAssertEqual(store.refreshAfterSyncCallCount, 1)
-        XCTAssertEqual(store.removedPlaceholders, ["op-1", "op-2"])
+        XCTAssertEqual(store.appliedOperationIds, ["op-1", "op-2"])
         XCTAssertEqual(store.lastToken, "token-2")
     }
 
@@ -49,12 +45,16 @@ final class TasksWriteQueueExecutorTests: XCTestCase {
 
 @MainActor
 private final class TasksWriteQueueStoreSpy: TasksWriteQueueApplying {
-    var removedPlaceholders: [String] = []
+    var appliedOperationIds: [String] = []
     var lastToken: String?
-    var refreshAfterSyncCallCount: Int = 0
+
+    func applySyncResponse(_ response: TaskSyncResponse, operationId: String) {
+        _ = response
+        appliedOperationIds.append(operationId)
+    }
 
     func removePendingTaskPlaceholder(operationId: String) {
-        removedPlaceholders.append(operationId)
+        _ = operationId
     }
 
     func lastSyncToken() -> String? {
@@ -65,9 +65,7 @@ private final class TasksWriteQueueStoreSpy: TasksWriteQueueApplying {
         lastToken = token
     }
 
-    func refreshAfterSync() async {
-        refreshAfterSyncCallCount += 1
-    }
+    func refreshAfterSync() async {}
 }
 
 private final class TasksSyncAPIStub: TasksProviding {
@@ -151,18 +149,4 @@ private final class TasksSyncAPIStub: TasksProviding {
 
 private enum TasksWriteQueueExecutorStubError: Error {
     case unused
-}
-
-@MainActor
-private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {
-    let timeoutNanoseconds = UInt64(timeoutSeconds * 1_000_000_000)
-    let start = DispatchTime.now().uptimeNanoseconds
-
-    while !condition() {
-        if DispatchTime.now().uptimeNanoseconds - start > timeoutNanoseconds {
-            XCTFail("Timed out waiting for condition")
-            return
-        }
-        await Task.yield()
-    }
 }

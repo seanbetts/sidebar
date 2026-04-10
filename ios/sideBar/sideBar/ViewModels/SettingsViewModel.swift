@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import sideBarShared
 
 // NOTE: Revisit to prefer native-first data sources where applicable.
 
@@ -21,9 +22,9 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var isLoadingProfileImage: Bool = false
     @Published public private(set) var isSavingProfile: Bool = false
     @Published public private(set) var profileSaveError: String?
-    @Published public private(set) var isSavingSystem: Bool = false
-    @Published public private(set) var systemSaveError: String?
-    @Published public private(set) var settingsSaveCompletionCount: Int = 0
+    @Published public internal(set) var isSavingSystem: Bool = false
+    @Published public internal(set) var systemSaveError: String?
+    @Published public internal(set) var settingsSaveCompletionCount: Int = 0
     @Published public private(set) var isSavingPrimaryProvider: Bool = false
     @Published public private(set) var primaryProviderError: String?
     @Published public private(set) var onboardingState: OnboardingState?
@@ -357,6 +358,7 @@ public final class SettingsViewModel: LoadableViewModel {
                 pronouns: current.pronouns,
                 location: current.location,
                 profileImageUrl: current.profileImageUrl,
+                notificationPreferences: current.notificationPreferences,
                 assistantIdentity: current.assistantIdentity,
                 assistantIdentityMeta: current.assistantIdentityMeta,
                 assistantSoul: current.assistantSoul,

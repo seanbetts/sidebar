@@ -6,6 +6,11 @@ struct LoginGroupBoxStyle: GroupBoxStyle {
             configuration.label
             configuration.content
         }
-        .cardStyle()
+        .padding(DesignTokens.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay {
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
+                .stroke(DesignTokens.Colors.border.opacity(0.9), lineWidth: 1)
+        }
     }
 }

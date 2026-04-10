@@ -7,6 +7,8 @@ import UIKit
 #endif
 
 struct WebsitesDetailView: View {
+    static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
+
     @ObservedObject var viewModel: WebsitesViewModel
     @Environment(\.openURL) private var openURL
     @State private var safariURL: URL?
@@ -318,7 +320,8 @@ extension WebsitesDetailView {
             systemName: "xmark",
             accessibilityLabel: "Close website",
             action: closeWebsite,
-            isDisabled: viewModel.active == nil
+            isDisabled: viewModel.active == nil,
+            chromeStyle: Self.actionControlChromeStyle
         )
         .keyboardShortcut(.escape, modifiers: [])
     }
@@ -331,6 +334,7 @@ extension WebsitesDetailView {
                 .imageScale(.medium)
         }
         .buttonStyle(.plain)
+        .headerActionControlChrome(Self.actionControlChromeStyle)
         .accessibilityLabel(expandButtonLabel)
         .disabled(viewModel.active == nil)
     }

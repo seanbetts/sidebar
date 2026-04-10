@@ -22,6 +22,8 @@ public struct NotesPanel: View {
 }
 
 struct NotesPanelView: View {
+    static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
+
     @ObservedObject var viewModel: NotesViewModel
     @EnvironmentObject var environment: AppEnvironment
     #if !os(macOS)
@@ -71,6 +73,7 @@ struct NotesPanelView: View {
             header
             notesPanelContent
         }
+        .sidebarPanelScaffoldBackground()
         .frame(maxHeight: .infinity)
         .onAppear {
             if !hasLoaded {

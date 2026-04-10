@@ -99,6 +99,30 @@ def _apply_session_settings(
         connection.execute(text("SET search_path TO public"))
 
 
+def _apply_session_settings_with_retry(
+    connection,
+    user_id: str | None,
+    force_public_search_path: bool,
+    website_worker_scope: str | None = None,
+) -> None:
+    """Apply session settings and retry once after a dropped connection."""
+    try:
+        _apply_session_settings(
+            connection,
+            user_id,
+            force_public_search_path,
+            website_worker_scope,
+        )
+    except OperationalError as exc:
+        connection.invalidate(exc)
+        _apply_session_settings(
+            connection,
+            user_id,
+            force_public_search_path,
+            website_worker_scope,
+        )
+
+
 @event.listens_for(Session, "after_begin")
 def _set_app_user_id(session: Session, transaction, connection) -> None:
     user_id = session.info.get("app_user_id")
@@ -106,16 +130,12 @@ def _set_app_user_id(session: Session, transaction, connection) -> None:
         session.info.get("skip_search_path")
     )
     website_worker_scope = session.info.get("website_worker_scope")
-    try:
-        _apply_session_settings(
-            connection,
-            user_id,
-            force_public,
-            website_worker_scope,
-        )
-    except OperationalError as exc:
-        connection.invalidate(exc)
-        raise
+    _apply_session_settings_with_retry(
+        connection,
+        user_id,
+        force_public,
+        website_worker_scope,
+    )
 
 
 def _record_website_column_lazy_load(orm_execute_state) -> None:

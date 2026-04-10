@@ -5,12 +5,7 @@ struct PillModifier: ViewModifier {
         content
             .padding(.horizontal, DesignTokens.Spacing.sm)
             .padding(.vertical, DesignTokens.Spacing.xs)
-            .background(DesignTokens.Colors.surface)
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(DesignTokens.Colors.border, lineWidth: 1)
-            )
+            .glassChrome(.pill)
     }
 }
 

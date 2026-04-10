@@ -4,6 +4,19 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension FilesPanelView {
+    @ViewBuilder
+    func filesPanelList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        #if os(macOS)
+        List(selection: fileSelectionBinding) {
+            content()
+        }
+        #else
+        List {
+            content()
+        }
+        #endif
+    }
+
     var pinnedItems: [IngestionListItem] {
         let items = viewModel.panelPinnedItems
         guard !pinnedReorderDisplayedIDs.isEmpty else { return items }
@@ -26,8 +39,35 @@ extension FilesPanelView {
     }
 
     func open(fileId: String) {
-        viewModel.prepareSelection(fileId: fileId)
         Task { await viewModel.selectFile(fileId: fileId) }
+    }
+
+    var fileSelectionBinding: Binding<String?> {
+        Binding(
+            get: { viewModel.selectedFileId },
+            set: { newValue in
+                guard let selectionID = fileListSelectionID(for: newValue),
+                      selectionID != viewModel.selectedFileId else {
+                    return
+                }
+                open(fileId: selectionID)
+            }
+        )
+    }
+
+    func fileListSelectionID(for selectionID: String?) -> String? {
+        guard let selectionID else { return nil }
+        guard let item = viewModel.items.first(where: { $0.file.id == selectionID }) else { return nil }
+        return isFolder(item) ? nil : selectionID
+    }
+
+    func fileRowPrimaryAction(for item: IngestionListItem) -> (() -> Void)? {
+        guard !isFolder(item) else { return nil }
+        #if os(macOS)
+        return nil
+        #else
+        return { open(item: item) }
+        #endif
     }
 
     func pinAction(for item: IngestionListItem) -> (() -> Void)? {
@@ -192,7 +232,7 @@ extension FilesPanelView {
     }
 
     var panelBackground: Color {
-        DesignTokens.Colors.sidebar
+        PlatformTokens.sidebarPanelBackground
     }
 
 }

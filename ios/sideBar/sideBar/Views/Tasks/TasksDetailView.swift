@@ -1,6 +1,13 @@
 import SwiftUI
 
 struct TasksDetailView: View {
+    static let expandButtonChromeStyle: HeaderActionControlChromeStyle = .glass
+
+    enum HeaderStatus: Equatable {
+        case complete
+        case count(String)
+    }
+
     @ObservedObject var viewModel: TasksViewModel
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.workspaceColumn) private var workspaceColumn
@@ -179,6 +186,15 @@ struct TasksDetailView: View {
 }
 
 extension TasksDetailView {
+    static func headerStatus(totalCount: Int, selection: TaskSelection) -> HeaderStatus? {
+        guard selection != .none else { return nil }
+        guard totalCount > 0 else { return .complete }
+        if totalCount == 1 {
+            return .count("1 task")
+        }
+        return .count("\(totalCount) tasks")
+    }
+
     private func header(state: TasksViewState) -> some View {
         ContentHeaderRow(
             iconName: state.titleIcon,
@@ -189,19 +205,12 @@ extension TasksDetailView {
             titleLayoutPriority: 1,
             subtitleLayoutPriority: 0
         , trailing: {
-            HStack(spacing: DesignTokens.Spacing.sm) {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                if let status = Self.headerStatus(totalCount: state.totalCount, selection: state.selection) {
+                    headerStatusView(status)
+                }
                 if shouldShowExpandButton {
                     expandButton
-                }
-                if state.totalCount == 0 {
-                    Image(systemName: "checkmark")
-                        .appFont(.caption)
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
-                        .accessibilityLabel("No tasks")
-                } else if let label = tasksCountLabel(for: state) {
-                    Text(label)
-                        .appFont(.caption)
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
                 }
             }
         })
@@ -261,14 +270,12 @@ extension TasksDetailView {
     }
 
     private var expandButton: some View {
-        Button(action: expandTasksView) {
-            Image(systemName: expandButtonIconName)
-                .appFont(.labelMd)
-                .frame(width: 28, height: 20)
-                .imageScale(.medium)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(expandButtonLabel)
+        HeaderActionButton(
+            systemName: expandButtonIconName,
+            accessibilityLabel: expandButtonLabel,
+            action: expandTasksView,
+            chromeStyle: Self.expandButtonChromeStyle
+        )
     }
 
     private var expandButtonIconName: String {
@@ -465,6 +472,21 @@ extension TasksDetailView {
             Text(title)
                 .appFont(.subheadline)
                 .fontWeight(.semibold)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+        }
+    }
+
+    @ViewBuilder
+    private func headerStatusView(_ status: HeaderStatus) -> some View {
+        switch status {
+        case .complete:
+            Image(systemName: "checkmark")
+                .appFont(.caption)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                .accessibilityLabel("No tasks")
+        case .count(let label):
+            Text(label)
+                .appFont(.caption)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }
     }

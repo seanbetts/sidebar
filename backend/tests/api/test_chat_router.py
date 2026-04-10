@@ -1392,6 +1392,206 @@ def test_stream_chat_persists_hidden_user_instruction_without_visible_count(
     assert updated.messages[2]["content"] == "Hi, I'm Voss."
 
 
+def test_stream_chat_emits_assistant_reply_notification_when_user_is_away(
+    test_client, test_db, monkeypatch
+):
+    user_id = "user-1"
+    conversation = ConversationService.create_conversation(
+        test_db,
+        user_id,
+        "Assistant Reply Notification",
+    )
+    captured: dict[str, object] = {}
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **_kwargs):
+            yield {"type": "token", "content": "Done."}
+
+    class FakeDeviceTokenService:
+        @staticmethod
+        def list_active_tokens(_db, _user_id, **_kwargs):
+            captured["listed_tokens"] = True
+            return [
+                SimpleNamespace(
+                    token="token-1",
+                    platform="ios",
+                    is_foreground=False,
+                    capabilities={},
+                )
+            ]
+
+    class FakeNotificationPolicyService:
+        @staticmethod
+        def evaluate(intent, *, settings_record=None, device_tokens=None):
+            captured["intent"] = intent
+            captured["policy_settings"] = settings_record
+            captured["policy_tokens"] = tuple(device_tokens or ())
+            return SimpleNamespace(
+                should_deliver=True,
+                reason=None,
+                matched_tokens=tuple(device_tokens or ()),
+            )
+
+    class FakeNotificationDeliveryService:
+        @staticmethod
+        def deliver_intent(intent, *, device_tokens=None):
+            captured["delivered_intent"] = intent
+            captured["delivered_tokens"] = tuple(device_tokens or ())
+            return SimpleNamespace(
+                status="sent",
+                request_count=len(tuple(device_tokens or ())),
+                sent_count=len(tuple(device_tokens or ())),
+                reason=None,
+            )
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(chat_router, "DeviceTokenService", FakeDeviceTokenService, raising=False)
+    monkeypatch.setattr(
+        chat_router,
+        "NotificationPolicyService",
+        FakeNotificationPolicyService,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        chat_router,
+        "NotificationDeliveryService",
+        FakeNotificationDeliveryService,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(
+            lambda *_args, **_kwargs: SimpleNamespace(
+                name=None,
+                communication_style=None,
+                working_relationship=None,
+                enabled_skills=None,
+                ai_primary_provider="anthropic",
+                notification_preferences={
+                    "assistant_reply_notifications_enabled": True,
+                },
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(lambda *_args, **_kwargs: []),
+    )
+
+    app.dependency_overrides[get_current_user_id] = lambda: user_id
+    try:
+        response = test_client.post(
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={"message": "Hi", "conversation_id": str(conversation.id)},
+        )
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    delivered_intent = captured.get("delivered_intent")
+    assert delivered_intent is not None
+    assert delivered_intent.category.value == "assistant_reply"
+    assert delivered_intent.route == f"sidebar://chat/{conversation.id}"
+    assert delivered_intent.body == "Done."
+    assert delivered_intent.metadata == {
+        "conversation_id": str(conversation.id),
+    }
+    assert len(captured.get("delivered_tokens", ())) == 1
+
+
+def test_stream_chat_skips_assistant_reply_notification_for_hidden_messages(
+    test_client, test_db, monkeypatch
+):
+    user_id = "user-1"
+    conversation = ConversationService.create_conversation(
+        test_db,
+        user_id,
+        "Hidden Notification Suppression",
+    )
+    captured: dict[str, object] = {"delivery_calls": 0}
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **_kwargs):
+            yield {"type": "token", "content": "Silent update"}
+
+    class FakeNotificationDeliveryService:
+        @staticmethod
+        def deliver_intent(intent, *, device_tokens=None):
+            _ = intent
+            _ = device_tokens
+            captured["delivery_calls"] = int(captured["delivery_calls"]) + 1
+            return SimpleNamespace(status="sent", request_count=1, sent_count=1, reason=None)
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router,
+        "NotificationDeliveryService",
+        FakeNotificationDeliveryService,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(
+            lambda *_args, **_kwargs: SimpleNamespace(
+                name=None,
+                communication_style=None,
+                working_relationship=None,
+                enabled_skills=None,
+                ai_primary_provider="anthropic",
+                notification_preferences={
+                    "assistant_reply_notifications_enabled": True,
+                },
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(lambda *_args, **_kwargs: []),
+    )
+
+    app.dependency_overrides[get_current_user_id] = lambda: user_id
+    try:
+        response = test_client.post(
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={
+                "message": "Hi",
+                "conversation_id": str(conversation.id),
+                "message_visibility": "hidden",
+            },
+        )
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
+    assert captured["delivery_calls"] == 0
+
+
 def test_stream_chat_rejects_request_that_exceeds_budget_after_trimming(
     test_client, monkeypatch
 ):

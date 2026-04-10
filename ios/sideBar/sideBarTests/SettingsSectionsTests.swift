@@ -218,6 +218,17 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertEqual(autosaveRuns.value, 1)
         XCTAssertEqual(flushRuns.value, 0)
     }
+
+    func testGeneralNotificationTaskReminderTimeControlAppearsWhenEnabled() {
+        XCTAssertTrue(
+            GeneralSettingsView.shouldShowTaskReminderTimeControl(taskRemindersEnabled: true)
+        )
+    }
+
+    func testGeneralNotificationMorningDigestControlsStayHidden() {
+        XCTAssertFalse(GeneralSettingsView.shouldShowMorningDigestControls)
+    }
+
     func testDraftSynchronizerRespectsDirtyDraftsForSameUser() {
         let shouldSync = SettingsDraftSynchronizer.shouldSyncDrafts(
             hasLoadedDrafts: true,
@@ -662,6 +673,15 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacActionSection("))
     }
 
+    func testProfileSettingsMacSourceUsesInspectorScrollCardsInsteadOfGroupedForm() throws {
+        let normalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("ScrollView{VStack(alignment:.leading,spacing:DesignTokens.Spacing.lg){"))
+        XCTAssertTrue(normalized.contains("SettingsMacPanelCard{"))
+        XCTAssertFalse(normalized.contains("privatevarmacProfileForm:someView{Form{"))
+    }
+
     func testProfileSettingsMacSourceUsesPromptBasedTextFields() throws {
         let normalized = try profileSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -700,6 +720,15 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacActionSection("))
         XCTAssertTrue(normalized.contains("settingsMacWeatherPickerStyle()"))
         XCTAssertFalse(normalized.contains(".pickerStyle(.radioGroup)"))
+    }
+
+    func testGeneralSettingsMacSourceUsesInspectorScrollCardsInsteadOfGroupedForm() throws {
+        let normalized = try generalSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("ScrollView{VStack(alignment:.leading,spacing:DesignTokens.Spacing.lg){"))
+        XCTAssertTrue(normalized.contains("SettingsMacPanelCard{"))
+        XCTAssertFalse(normalized.contains("privatevarmacGeneralForm:someView{Form{"))
     }
 
     func testGeneralSettingsSourceIncludesPasswordChangeActionAndSheet() throws {
@@ -774,16 +803,14 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(dateOfBirthNormalized.contains("ProfileIOSFieldRow(\"DateofBirth\")"))
     }
 
-    func testSettingsSaveStatusPillChromeUsesGlassOnIOS() {
-        let chrome = SettingsSaveStatusPill.chrome(for: .iOS)
+    func testSettingsSaveStatusPillUsesDirectPillChromeWithoutPlatformIndirection() throws {
+        let normalized = try settingsSaveStatusPillSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertEqual(chrome, .glass)
-    }
-
-    func testSettingsSaveStatusPillChromeUsesGlassOnMacOS() {
-        let chrome = SettingsSaveStatusPill.chrome(for: .macOS)
-
-        XCTAssertEqual(chrome, .glass)
+        XCTAssertTrue(normalized.contains(".glassChrome(.pill)"))
+        XCTAssertFalse(normalized.contains("SettingsSaveStatusPillPlatform"))
+        XCTAssertFalse(normalized.contains("SettingsSaveStatusPillChrome"))
+        XCTAssertFalse(normalized.contains("chrome(for:currentPlatform)"))
     }
 
     func testUserSettingsMacSourceUsesTransparentEditors() throws {
@@ -1224,6 +1251,13 @@ private func settingsViewSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("SettingsView.swift", file: file, line: line)
+}
+
+private func settingsSaveStatusPillSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsSaveStatusPill.swift", file: file, line: line)
 }
 
 private func settingsSourceFile(

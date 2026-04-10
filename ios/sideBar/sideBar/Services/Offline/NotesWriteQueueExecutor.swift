@@ -1,12 +1,10 @@
 import Foundation
-import OSLog
 import sideBarShared
 
 final class NotesWriteQueueExecutor: WriteQueueExecutor {
     private let api: any NotesProviding
     private let store: any NotesWriteQueueApplying
     private let decoder = JSONDecoder()
-    private let logger = Logger(subsystem: "sideBar", category: "NotesWriteQueueExecutor")
     private lazy var noteHandlers: [WriteOperation: (PendingWriteRecord) async throws -> Void] = [
         .update: handleUpdate,
         .move: handleMove,
@@ -48,7 +46,6 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         let payload = try decoder.decode(MoveRequest.self, from: write.payload)
         let updated = try await api.moveNote(id: noteId, folder: payload.folder)
         store.applyEditorUpdate(updated)
-        await refreshTreeAfterMutation()
     }
 
     private func handleArchive(_ write: PendingWriteRecord) async throws {
@@ -56,7 +53,6 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         let payload = try decoder.decode(ArchiveRequest.self, from: write.payload)
         let updated = try await api.archiveNote(id: noteId, archived: payload.archived)
         store.applyEditorUpdate(updated)
-        await refreshTreeAfterMutation()
     }
 
     private func handlePin(_ write: PendingWriteRecord) async throws {
@@ -64,7 +60,6 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         let payload = try decoder.decode(PinRequest.self, from: write.payload)
         let updated = try await api.pinNote(id: noteId, pinned: payload.pinned)
         store.applyEditorUpdate(updated)
-        await refreshTreeAfterMutation()
     }
 
     private func handleDelete(_ write: PendingWriteRecord) async throws {
@@ -77,14 +72,5 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
             }
         }
         store.invalidateNote(id: noteId)
-        await refreshTreeAfterMutation()
-    }
-
-    private func refreshTreeAfterMutation() async {
-        do {
-            try await store.loadTree(force: true)
-        } catch {
-            logger.error("Failed to refresh note tree after queued write: \(error.localizedDescription, privacy: .public)")
-        }
     }
 }

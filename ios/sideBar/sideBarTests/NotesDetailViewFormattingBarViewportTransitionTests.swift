@@ -37,7 +37,7 @@ extension NotesFormattingViewportTests {
         )
         await waitUntil {
             context.editorViewModel.isHoldingReadSurfaceDuringEditEntry == false &&
-                findTextView(
+                self.findTextView(
                     in: controller.view,
                     accessibilityIdentifier: "notes-editor-text-view"
                 ) is UIKitNoteTextEditorSurface.AccessoryTextView
@@ -208,7 +208,7 @@ extension NotesFormattingViewportTests {
 
         await waitUntil(timeout: .seconds(2)) {
             context.editorViewModel.isHoldingReadSurfaceDuringEditEntry == false
-                && findTextView(
+                && self.findTextView(
                     in: controller.view,
                     accessibilityIdentifier: "notes-editor-text-view"
                 ) is UIKitNoteTextEditorSurface.AccessoryTextView
@@ -247,7 +247,7 @@ extension NotesFormattingViewportTests {
 
         await waitUntil {
             context.editorViewModel.isHoldingReadSurfaceDuringEditEntry &&
-                findTextView(
+                self.findTextView(
                     in: controller.view,
                     accessibilityIdentifier: "notes-read-text-view"
                 ) != nil

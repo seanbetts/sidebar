@@ -18,7 +18,7 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         }
 
         let button = try await waitForFormattingButton()
-        button.performClick(nil)
+        button.performClick(nil as Any?)
         _ = await waitUntil(timeout: .seconds(2)) {
             findFormattingPopover() != nil
         }
@@ -150,39 +150,60 @@ final class AppKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
     }
 
     func testFormattingBarUsesLiquidGlassBackgroundOnMacOS() async throws {
-        let harness = await MountedNotesDetailHarness()
-        defer { harness.dispose() }
-        harness.mount()
-        await harness.settle()
-
-        harness.context.makeView().activateReadSurfaceEditing(at: .start)
-        await waitUntil(timeout: .seconds(2)) {
-            harness.context.editorViewModel.presentationMode == .edit
-        }
-
-        let glassView = try XCTUnwrap(findFormattingBarGlassView())
+        let bar = AppKitNoteFormattingBar(
+            configuration: makeEnabledFormattingConfiguration(),
+            presentation: .floatingTopTrailing
+        )
+        bar.frame = NSRect(x: 0, y: 0, width: 48, height: 48)
+        bar.layoutSubtreeIfNeeded()
+        let glassView = try XCTUnwrap(findDescendantView(in: bar, identifier: "note-formatting-bar"))
         let resolvedGlassView = try XCTUnwrap(glassView as? NSGlassEffectView)
 
         XCTAssertEqual(resolvedGlassView.style, .regular)
     }
 
     func testFormattingBarUsesVisibleGlassBorderOnMacOS() async throws {
-        let harness = await MountedNotesDetailHarness()
-        defer { harness.dispose() }
-        harness.mount()
-        await harness.settle()
-
-        harness.context.makeView().activateReadSurfaceEditing(at: .start)
-        await waitUntil(timeout: .seconds(2)) {
-            harness.context.editorViewModel.presentationMode == .edit
-        }
-
-        let glassView = try XCTUnwrap(findFormattingBarGlassView())
+        let bar = AppKitNoteFormattingBar(
+            configuration: makeEnabledFormattingConfiguration(),
+            presentation: .floatingTopTrailing
+        )
+        bar.frame = NSRect(x: 0, y: 0, width: 48, height: 48)
+        bar.layoutSubtreeIfNeeded()
+        let glassView = try XCTUnwrap(findDescendantView(in: bar, identifier: "note-formatting-bar"))
 
         XCTAssertEqual(try XCTUnwrap(glassView.layer?.borderWidth), 1, accuracy: 0.01)
         XCTAssertNotNil(glassView.layer?.borderColor)
-        XCTAssertEqual(try XCTUnwrap(glassView.layer?.cornerRadius), 18, accuracy: 0.01)
+        XCTAssertEqual(
+            try XCTUnwrap(glassView.layer?.cornerRadius),
+            DesignTokens.Radius.sm,
+            accuracy: 0.01
+        )
         XCTAssertTrue(try XCTUnwrap(glassView.layer?.masksToBounds))
+    }
+
+    func testHiddenChromeModeKeepsMenuButtonInteractiveOnMacOS() throws {
+        let bar = AppKitNoteFormattingBar(
+            configuration: makeEnabledFormattingConfiguration(),
+            presentation: .floatingTopTrailing,
+            showsVisibleChrome: false
+        )
+        bar.frame = NSRect(x: 0, y: 0, width: 48, height: 48)
+        bar.layoutSubtreeIfNeeded()
+
+        let glassView = try XCTUnwrap(
+            findDescendantView(in: bar, identifier: "note-formatting-bar") as? NSGlassEffectView
+        )
+        let button = try XCTUnwrap(
+            findDescendantView(in: bar, identifier: "note-formatting-menu") as? NSButton
+        )
+
+        XCTAssertTrue(glassView.isHidden)
+        XCTAssertNil(button.image)
+
+        button.performClick(nil)
+
+        let popover = try XCTUnwrap(findDescendantView(in: bar, identifier: "note-formatting-popover"))
+        XCTAssertFalse(popover.isHidden)
     }
 
     func testFormattingPopoverUsesLiquidGlassBackgroundOnMacOS() async throws {

@@ -98,6 +98,29 @@ extension WebsitesPanelView {
         Task { await viewModel.selectWebsite(id: item.id) }
     }
 
+    @ViewBuilder
+    func websitesPanelList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        #if os(macOS)
+        List(selection: $selection) {
+            content()
+        }
+        #else
+        List {
+            content()
+        }
+        #endif
+    }
+
+    func handleWebsiteListSelectionChange(_ newSelection: String?) {
+        #if os(macOS)
+        guard let item = Self.selectedWebsiteItem(for: newSelection, items: viewModel.items),
+              viewModel.active?.id != item.id else {
+            return
+        }
+        open(item: item)
+        #endif
+    }
+
     func navigateWebsitesList(direction: ShortcutListDirection) {
         let ids = websitesNavigationItems()
         guard !ids.isEmpty else { return }
@@ -133,14 +156,14 @@ extension WebsitesPanelView {
             faviconBaseUrl: appEnvironment.container.config.r2Endpoint,
             r2FaviconBucket: appEnvironment.container.config.r2FaviconBucket,
             r2FaviconPublicBaseUrl: appEnvironment.container.config.r2FaviconPublicBaseUrl,
-            onSelect: { open(item: item) }
+            onSelect: websiteRowPrimaryAction(for: item)
         )
         .staggeredAppear(index: index, isActive: listAppeared)
         .platformContextMenu(items: websiteContextMenuItemsList(for: item))
         .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
 
         #if os(macOS)
-        row
+        row.tag(item.id)
         #else
         row
         #endif
@@ -224,7 +247,15 @@ extension WebsitesPanelView {
     }
 
     var panelBackground: Color {
-        DesignTokens.Colors.sidebar
+        PlatformTokens.sidebarPanelBackground
+    }
+
+    static func selectedWebsiteItem(
+        for selectionID: String?,
+        items: [WebsiteItem]
+    ) -> WebsiteItem? {
+        guard let selectionID else { return nil }
+        return items.first { $0.id == selectionID }
     }
 
     func staggerIndex(for id: String, section: String? = nil) -> Int {
@@ -271,6 +302,14 @@ extension WebsitesPanelView {
         UIDevice.current.userInterfaceIdiom == .phone
         #else
         false
+        #endif
+    }
+
+    private func websiteRowPrimaryAction(for item: WebsiteItem) -> (() -> Void)? {
+        #if os(macOS)
+        nil
+        #else
+        { open(item: item) }
         #endif
     }
 

@@ -368,6 +368,56 @@ final class NotesViewModelTests: XCTestCase {
 
         XCTAssertNil(viewModel.selectedNoteId)
     }
+
+    func testSetPinnedOnlineOptimisticallyUpdatesTreeWithoutReload() async throws {
+        let initialTree = FileTree(children: [
+            FileNode(
+                name: "Draft.md",
+                path: "Draft.md",
+                type: .file,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: nil,
+                expanded: nil,
+                pinned: false,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+        let pinnedNote = NotePayload(
+            id: "note-1",
+            name: "Draft.md",
+            content: "Body",
+            path: "Draft.md",
+            modified: nil,
+            created: nil
+        )
+        let api = ControlledPinNotesAPI(pinResult: pinnedNote)
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        store.applyTreeUpdate(initialTree, persist: false)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let pinTask = Task {
+            await viewModel.setPinned(id: "Draft.md", pinned: true)
+        }
+
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.tree?.children.first?.pinned == true
+        }
+
+        api.resumePin()
+        await pinTask.value
+
+        XCTAssertEqual(viewModel.tree?.children.first?.pinned, true)
+    }
 }
 
 private enum MockError: Error {
@@ -1003,6 +1053,114 @@ private final class ControlledMoveNotesAPI: NotesProviding {
         guard let moveContinuation else { return }
         self.moveContinuation = nil
         moveContinuation.resume(returning: moveResult)
+    }
+}
+
+@MainActor
+private final class ControlledPinNotesAPI: NotesProviding {
+    private let pinResult: NotePayload
+    private var pinContinuation: CheckedContinuation<NotePayload, Error>?
+
+    init(pinResult: NotePayload) {
+        self.pinResult = pinResult
+    }
+
+    func listTree() async throws -> FileTree {
+        FileTree(children: [])
+    }
+
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        return FileTree(children: [])
+    }
+
+    func getNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func updateNote(id: String, content: String) async throws -> NotePayload {
+        _ = id
+        _ = content
+        throw MockError.forced
+    }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        try await updateNote(
+            id: id,
+            content: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw MockError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw MockError.forced
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        throw MockError.forced
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw MockError.forced
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        return try await withCheckedThrowingContinuation { continuation in
+            pinContinuation = continuation
+        }
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func createFolder(path: String) async throws {
+        _ = path
+    }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = path
+    }
+
+    func resumePin() {
+        guard let pinContinuation else { return }
+        self.pinContinuation = nil
+        pinContinuation.resume(returning: pinResult)
     }
 }
 

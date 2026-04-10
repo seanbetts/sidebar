@@ -253,15 +253,24 @@ extension IngestionViewModel {
             }
             return false
         }
+        let previousFilename = items.first(where: { $0.file.id == fileId })?.file.filenameOriginal
+            ?? ((activeMeta?.file.id == fileId) ? activeMeta?.file.filenameOriginal : nil)
+        store.updateFilename(fileId: fileId, filename: filename)
+        items = store.items
+        activeMeta = store.activeMeta
         do {
             try await api.rename(
                 fileId: fileId,
                 filename: filename,
                 clientUpdatedAt: store.currentUpdatedAt(fileId: fileId)
             )
-            store.updateFilename(fileId: fileId, filename: filename)
             return true
         } catch {
+            if let previousFilename {
+                store.updateFilename(fileId: fileId, filename: previousFilename)
+                items = store.items
+                activeMeta = store.activeMeta
+            }
             return false
         }
     }

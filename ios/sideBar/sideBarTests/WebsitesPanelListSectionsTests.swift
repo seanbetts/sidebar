@@ -106,12 +106,25 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         XCTAssertFalse(offlineView.isPinnedReorderEditActive)
     }
 
-    func testPinnedReorderMoveKeepsSessionActiveUntilTimeoutAndPersistsFinalOrder() async {
+    func testPinnedReorderMovePersistsFinalOrderUsingPlatformInteractionModel() async {
         let (view, api) = await makeViewWithAPI(autoExitDelay: 0.05)
 
+        #if !os(iOS)
         view.enterPinnedReorder(from: "w1")
+        #endif
         view.movePinnedWebsites(from: IndexSet(integer: 0), to: 2)
 
+        #if os(iOS)
+        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
+        while api.updatePinnedOrderCallCount != 1,
+              DispatchTime.now().uptimeNanoseconds < deadline {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
+        XCTAssertEqual(api.lastPinnedOrderIDs, ["w2", "w1"])
+        XCTAssertEqual(view.pinnedItemsSorted.map { $0.id }, ["w2", "w1"])
+        #else
         XCTAssertTrue(view.isPinnedReordering)
         XCTAssertEqual(view.pinnedItemsSorted.map { $0.id }, ["w2", "w1"])
         XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
@@ -121,6 +134,7 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         XCTAssertFalse(view.isPinnedReordering)
         XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
         XCTAssertEqual(api.lastPinnedOrderIDs, ["w2", "w1"])
+        #endif
     }
 
     func testPinnedReorderCancelsWhenPinnedSetChangesMidGesture() async {
@@ -172,6 +186,27 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         let titles = view.websiteContextMenuItemsList(for: item).map(\.title)
 
         XCTAssertFalse(titles.contains("Reorder"))
+    }
+
+    func testSelectedWebsiteItemReturnsMatchingSelection() {
+        let items = [
+            makeWebsiteItem(id: "w1"),
+            makeWebsiteItem(id: "w2")
+        ]
+
+        let selected = WebsitesPanelView.selectedWebsiteItem(for: "w2", items: items)
+
+        XCTAssertEqual(selected?.id, "w2")
+    }
+
+    func testSelectedWebsiteItemReturnsNilWhenSelectionDoesNotExist() {
+        let items = [
+            makeWebsiteItem(id: "w1")
+        ]
+
+        let selected = WebsitesPanelView.selectedWebsiteItem(for: "missing", items: items)
+
+        XCTAssertNil(selected)
     }
 
     private func makeView(

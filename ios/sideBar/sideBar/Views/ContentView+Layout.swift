@@ -181,6 +181,11 @@ extension ContentView {
             )
             .phoneSheetGrabBarVisible()
         }
+        .sheet(isPresented: $isMorningDigestPresented) {
+            MorningDigestView()
+                .environmentObject(environment)
+                .phoneSheetGrabBarVisible()
+        }
     }
 
     func presentSettingsSurface() {

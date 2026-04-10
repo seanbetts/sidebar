@@ -4,6 +4,8 @@ import sideBarShared
 #if os(iOS)
 import UIKit
 import UserNotifications
+#elseif os(macOS)
+import AppKit
 #endif
 
 extension AppEnvironment {
@@ -42,6 +44,7 @@ extension AppEnvironment {
             bindAuthSession(authSession)
         }
         forwardObjectWillChange()
+        configureDevicePresenceReporting()
         monitorNetwork()
         syncCoordinator.start()
         setupTaskBadgeUpdates()
@@ -107,12 +110,6 @@ extension AppEnvironment {
             .store(in: &cancellables)
 
         navigation.objectWillChange
-            .sink { [weak self] _ in
-                self?.scheduleForwardedObjectWillChange()
-            }
-            .store(in: &cancellables)
-
-        chatViewModel.objectWillChange
             .sink { [weak self] _ in
                 self?.scheduleForwardedObjectWillChange()
             }
@@ -215,6 +212,48 @@ extension AppEnvironment {
         notesStore.resetBackgroundRefreshBackoff()
         websitesStore.resetBackgroundRefreshBackoff()
         ingestionStore.resetBackgroundRefreshBackoff()
+    }
+
+    private func configureDevicePresenceReporting() {
+        #if os(iOS) || os(macOS)
+        guard !hasConfiguredDevicePresenceReporting else { return }
+        hasConfiguredDevicePresenceReporting = true
+        _ = ensureDevicePresenceReporter()
+
+        #if os(iOS)
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                self?.reportDevicePresence(isForeground: true)
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)
+            .sink { [weak self] _ in
+                self?.reportDevicePresence(isForeground: false)
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .sink { [weak self] _ in
+                self?.reportDevicePresence(isForeground: false)
+            }
+            .store(in: &cancellables)
+        #elseif os(macOS)
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                self?.reportDevicePresence(isForeground: true)
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)
+            .sink { [weak self] _ in
+                self?.reportDevicePresence(isForeground: false)
+            }
+            .store(in: &cancellables)
+        #endif
+
+        reportCurrentDevicePresenceIfNeeded()
+        #endif
     }
 
 }

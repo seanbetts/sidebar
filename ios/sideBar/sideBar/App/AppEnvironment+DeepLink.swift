@@ -31,9 +31,15 @@ extension AppEnvironment {
             message: "Handling deep link.",
             metadata: ["url": url.absoluteString]
         )
+        handleSidebarDeepLink(url: url, logger: logger)
+    }
+
+    private func handleSidebarDeepLink(url: URL, logger: Logger) {
         switch url.host {
         case "tasks":
             handleTasksDeepLink(url: url, logger: logger)
+        case "digest":
+            handleDigestDeepLink(url: url, logger: logger)
         case "notes":
             handleNotesDeepLink(url: url, logger: logger)
         case "websites":
@@ -139,6 +145,12 @@ extension AppEnvironment {
         pendingScratchpadDeepLink = true
     }
 
+    private func handleDigestDeepLink(url: URL, logger: Logger) {
+        logger.info("Deep link to morning digest")
+        guard url.path == "/morning" else { return }
+        pendingMorningDigestDeepLink = true
+    }
+
     private func deepLinkActionName(for url: URL) -> String {
         switch url.host {
         case "tasks":
@@ -147,6 +159,8 @@ extension AppEnvironment {
             return url.path == "/new" ? "Started New Note via Deep Link" : "Opened Notes via Deep Link"
         case "chat":
             return url.path == "/new" ? "Started New Chat via Deep Link" : "Opened Chat via Deep Link"
+        case "digest":
+            return "Opened Morning Digest via Deep Link"
         case "scratchpad":
             return "Opened Scratchpad via Deep Link"
         case "websites":

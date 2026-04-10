@@ -1,7 +1,19 @@
 import SwiftUI
 
-func panelHeaderBackground() -> Color {
-    PlatformTokens.panelHeaderBackground
+func sidebarPanelHeaderUsesStandaloneBackground() -> Bool {
+    false
+}
+
+func sidebarPanelListUsesStandaloneBackground() -> Bool {
+    false
+}
+
+func sidebarPanelHeaderInlineSearchShadowBleed(showsInlineSearch: Bool) -> CGFloat {
+    guard showsInlineSearch else {
+        return 0
+    }
+
+    return LayoutMetrics.inlineSearchFieldBottomShadowBleed
 }
 
 func sidebarSectionHeader(_ title: String) -> some View {
@@ -17,6 +29,30 @@ func sidebarProminentSectionHeader(_ title: String) -> some View {
 }
 
 extension View {
+    func sidebarPanelScaffoldBackground() -> some View {
+        background(PlatformTokens.sidebarPanelBackground)
+    }
+
+    @ViewBuilder
+    func sidebarPanelHeaderBackground(showsInlineSearch: Bool = false) -> some View {
+        let header = padding(.bottom, sidebarPanelHeaderInlineSearchShadowBleed(showsInlineSearch: showsInlineSearch))
+
+        if sidebarPanelHeaderUsesStandaloneBackground() {
+            header.background(PlatformTokens.panelHeaderBackground)
+        } else {
+            header
+        }
+    }
+
+    @ViewBuilder
+    func sidebarPanelListBackground() -> some View {
+        if sidebarPanelListUsesStandaloneBackground() {
+            background(PlatformTokens.sidebarPanelBackground)
+        } else {
+            self
+        }
+    }
+
     @ViewBuilder
     func sidebarPanelListStyle(
         reducesCompactPhoneSectionHeaderGap: Bool = false

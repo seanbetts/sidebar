@@ -47,6 +47,14 @@ from api.services.capabilities.loader import CapabilityLoaderService
 from api.services.capabilities.resolver import CapabilityResolverService
 from api.services.capabilities.runtime_state import RuntimeCapabilityService
 from api.services.conversation_service import ConversationService
+from api.services.device_token_service import DeviceTokenService
+from api.services.notification_delivery_service import NotificationDeliveryService
+from api.services.notification_policy_service import NotificationPolicyService
+from api.services.notification_types import (
+    NotificationCategory,
+    NotificationDeliveryMode,
+    NotificationIntent,
+)
 from api.services.onboarding_service import OnboardingService
 from api.services.settings_service import SettingsService
 from api.services.user_ai_provider_key_service import UserAIProviderKeyService
@@ -111,6 +119,65 @@ def _sanitize_title(raw_title: str) -> str:
     if len(title) > 100:
         title = title[:100].rstrip()
     return title
+
+
+def _build_assistant_reply_notification_body(content: str) -> str | None:
+    """Normalize assistant text into a single push-friendly preview string."""
+    normalized = " ".join((content or "").split())
+    if not normalized:
+        return None
+    if len(normalized) <= 160:
+        return normalized
+    return f"{normalized[:157].rstrip()}..."
+
+
+def _deliver_assistant_reply_notification(
+    *,
+    db: Session,
+    user_id: str,
+    conversation_id: str,
+    assistant_message_id: str,
+    assistant_content: str,
+    message_visibility: str | None,
+) -> None:
+    """Best-effort delivery for user-visible assistant replies."""
+    if message_visibility == "hidden":
+        return
+
+    body = _build_assistant_reply_notification_body(assistant_content)
+    if not body:
+        return
+
+    settings_record = UserSettingsService.get_settings(db, user_id)
+    device_tokens = DeviceTokenService.list_active_tokens(db, user_id)
+    intent = NotificationIntent(
+        user_id=user_id,
+        category=NotificationCategory.ASSISTANT_REPLY,
+        delivery_mode=NotificationDeliveryMode.ALERT,
+        title="sideBar replied",
+        body=body,
+        route=f"sidebar://chat/{conversation_id}",
+        metadata={"conversation_id": conversation_id},
+    )
+    decision = NotificationPolicyService.evaluate(
+        intent,
+        settings_record=settings_record,
+        device_tokens=device_tokens,
+    )
+    if not decision.should_deliver:
+        return
+
+    try:
+        NotificationDeliveryService.deliver_intent(
+            intent,
+            device_tokens=decision.matched_tokens,
+        )
+    except Exception:
+        logger.exception(
+            "Assistant reply notification delivery failed for conversation %s",
+            conversation_id,
+            extra={"assistant_message_id": assistant_message_id},
+        )
 
 
 def _select_title_messages(messages: list[dict[str, object]]) -> tuple[str, str]:
@@ -709,6 +776,14 @@ async def stream_chat(
                         user_id,
                         conversation_uuid,
                         persisted_messages,
+                    )
+                    _deliver_assistant_reply_notification(
+                        db=persistence_db,
+                        user_id=user_id,
+                        conversation_id=str(conversation_uuid),
+                        assistant_message_id=persisted_assistant_message_id,
+                        assistant_content="".join(assistant_content_parts),
+                        message_visibility=normalized_message_visibility,
                     )
 
             # Stream complete

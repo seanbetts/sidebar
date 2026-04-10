@@ -4,10 +4,8 @@ import sideBarShared
 final class TasksWriteQueueExecutor: WriteQueueExecutor {
     private let api: any TasksProviding
     private let store: any TasksWriteQueueApplying
-    private let refreshDebounceNanoseconds: UInt64
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
-    private var deferredRefreshTask: Task<Void, Never>?
 
     init(
         api: any TasksProviding,
@@ -16,12 +14,11 @@ final class TasksWriteQueueExecutor: WriteQueueExecutor {
     ) {
         self.api = api
         self.store = store
-        self.refreshDebounceNanoseconds = refreshDebounceNanoseconds
+        _ = refreshDebounceNanoseconds
     }
 
     func execute(write: PendingWriteRecord) async throws {
         guard write.entityType == WriteEntityType.task.rawValue else { return }
-        deferredRefreshTask?.cancel()
         let operation = try decoder.decode(TaskOperationPayload.self, from: write.payload)
         let request = TaskSyncRequest(lastSync: store.lastSyncToken(), operations: [operation])
         let response = try await api.sync(request)
@@ -32,23 +29,9 @@ final class TasksWriteQueueExecutor: WriteQueueExecutor {
                 serverSnapshot: encoded
             )
         }
-        if response.applied.contains(operation.operationId) {
-            store.removePendingTaskPlaceholder(operationId: operation.operationId)
-        }
+        store.applySyncResponse(response, operationId: operation.operationId)
         if let token = response.serverUpdatedSince {
             store.updateLastSyncToken(token)
-        }
-        scheduleRefreshAfterSync()
-    }
-
-    private func scheduleRefreshAfterSync() {
-        deferredRefreshTask = Task { [weak self] in
-            guard let self else { return }
-            if self.refreshDebounceNanoseconds > 0 {
-                try? await Task.sleep(nanoseconds: self.refreshDebounceNanoseconds)
-            }
-            guard !Task.isCancelled else { return }
-            await self.store.refreshAfterSync()
         }
     }
 }

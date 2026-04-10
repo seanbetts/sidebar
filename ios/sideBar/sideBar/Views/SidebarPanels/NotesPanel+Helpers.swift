@@ -26,6 +26,50 @@ extension NotesPanelView {
         return .select
     }
 
+    @ViewBuilder
+    func notesPanelList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        #if os(macOS)
+        List(selection: noteSelectionBinding) {
+            content()
+        }
+        #else
+        List {
+            content()
+        }
+        #endif
+    }
+
+    var noteSelectionBinding: Binding<String?> {
+        Binding(
+            get: { viewModel.selectedNoteId },
+            set: { newValue in
+                guard let newValue,
+                      newValue != viewModel.selectedNoteId,
+                      noteNavigationItems().contains(newValue) else {
+                    return
+                }
+                requestNoteSelection(id: newValue)
+            }
+        )
+    }
+
+    func noteListSelectionID(for item: FileNodeItem) -> String? {
+        item.isFile ? item.id : nil
+    }
+
+    @ViewBuilder
+    func noteSelectableRow<Row: View>(_ row: Row, item: FileNodeItem) -> some View {
+        #if os(macOS)
+        if let selectionID = noteListSelectionID(for: item) {
+            row.tag(selectionID)
+        } else {
+            row
+        }
+        #else
+        row
+        #endif
+    }
+
     var header: some View {
         let showsInlineSearch = ContentView.shouldShowCompactPhoneInlineSearch(
             isCompact: isCompact,
@@ -36,26 +80,24 @@ extension NotesPanelView {
             PanelHeader(title: "Notes") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
-                        Button {
+                        HeaderActionButton(
+                            systemName: "folder",
+                            accessibilityLabel: "Add folder",
+                            action: {
                             newFolderName = ""
                             newFolderParent = ""
                             isNewFolderPresented = true
-                        } label: {
-                            Image(systemName: "folder")
-                                .appFont(.labelMd)
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Add folder")
-                        Button {
+                        },
+                            chromeStyle: Self.actionControlChromeStyle
+                        )
+                        HeaderActionButton(
+                            systemName: "plus",
+                            accessibilityLabel: "Add note",
+                            action: {
                             createBlankNote()
-                        } label: {
-                            Image(systemName: "plus")
-                                .appFont(.labelMd)
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Add note")
+                        },
+                            chromeStyle: Self.actionControlChromeStyle
+                        )
                     }
                     if isCompact {
                         GlobalAvatarRegionControls()
@@ -69,7 +111,7 @@ extension NotesPanelView {
             }
         }
         .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
-        .background(panelHeaderBackground())
+        .sidebarPanelHeaderBackground(showsInlineSearch: showsInlineSearch)
     }
 
     var isCompact: Bool {
@@ -233,7 +275,7 @@ extension NotesPanelView {
     }
 
     var searchResultsView: some View {
-        List {
+        notesPanelList {
             Section {
                 if let error = viewModel.errorMessage,
                    !viewModel.searchQuery.trimmed.isEmpty {
@@ -271,7 +313,7 @@ extension NotesPanelView {
             isCompactPhone: isCompactPhone
         )
         .scrollContentBackground(.hidden)
-        .background(panelBackground)
+        .sidebarPanelListBackground()
     }
 
     @ViewBuilder
@@ -297,6 +339,9 @@ extension NotesPanelView {
             }
         )
         .platformContextMenu(items: noteContextMenuItemsList(for: item))
+        #if os(macOS)
+        .tag(node.path)
+        #endif
     }
 
     var notesPanelContent: some View {

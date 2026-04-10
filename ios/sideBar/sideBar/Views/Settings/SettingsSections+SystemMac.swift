@@ -58,6 +58,7 @@ extension UserSettingsView {
                                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
                         )
                 }
+
             }
             .padding(DesignTokens.Spacing.lg)
         }

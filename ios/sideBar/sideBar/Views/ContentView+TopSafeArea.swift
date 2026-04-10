@@ -29,7 +29,7 @@ extension ContentView {
         var color: Color {
             switch self {
             case .sidebar:
-                return DesignTokens.Colors.sidebar
+                return PlatformTokens.sidebarPanelBackground
             case .settings:
                 return DesignTokens.Colors.settingsBackground
             case .contentBackground:

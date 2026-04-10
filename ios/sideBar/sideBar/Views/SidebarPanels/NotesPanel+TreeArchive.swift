@@ -21,7 +21,7 @@ extension NotesPanelView {
     }
 
     var notesTreeListView: some View {
-        List {
+        notesPanelList {
             switch panelState {
             case .sparse:
                 Section {
@@ -89,7 +89,7 @@ extension NotesPanelView {
                             }
                         } else {
                             OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
-                                NotesTreeRow(
+                                let row = NotesTreeRow(
                                     item: item,
                                     isSelected: viewModel.selectedNoteId == item.id,
                                     onSelect: {
@@ -103,6 +103,7 @@ extension NotesPanelView {
                                     }
                                 )
                                 .platformContextMenu(items: noteContextMenuItemsList(for: item))
+                                noteSelectableRow(row, item: item)
                             }
                             .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
                         }
@@ -119,7 +120,7 @@ extension NotesPanelView {
         .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
         #endif
         .scrollContentBackground(.hidden)
-        .background(panelBackground)
+        .sidebarPanelListBackground()
         .refreshable {
             await viewModel.loadTree()
         }
@@ -133,12 +134,12 @@ extension NotesPanelView {
     }
 
     var panelBackground: Color {
-        DesignTokens.Colors.sidebar
+        PlatformTokens.sidebarPanelBackground
     }
 
     var mainOutlineGroup: some View {
         OutlineGroup(buildItems(from: mainNodes), children: \.children) { item in
-            NotesTreeRow(
+            let row = NotesTreeRow(
                 item: item,
                 isSelected: viewModel.selectedNoteId == item.id,
                 onSelect: {
@@ -152,6 +153,7 @@ extension NotesPanelView {
                 }
             )
             .platformContextMenu(items: noteContextMenuItemsList(for: item))
+            noteSelectableRow(row, item: item)
         }
         .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
     }

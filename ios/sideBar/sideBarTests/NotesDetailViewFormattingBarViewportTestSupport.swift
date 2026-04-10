@@ -12,7 +12,7 @@ extension NotesFormattingViewportTests {
     ) async throws -> UIKitNoteTextEditorSurface.AccessoryTextView {
         var resolvedTextView: UIKitNoteTextEditorSurface.AccessoryTextView?
         try await waitUntil(timeout: .seconds(2)) {
-            resolvedTextView = findTextView(
+            resolvedTextView = self.findTextView(
                 in: rootView,
                 accessibilityIdentifier: "notes-editor-text-view"
             ) as? UIKitNoteTextEditorSurface.AccessoryTextView

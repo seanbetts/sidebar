@@ -42,4 +42,8 @@ public enum LayoutMetrics {
     public static var compactPhonePanelTopContentPadding: CGFloat {
         DesignTokens.Spacing.md
     }
+
+    public static var inlineSearchFieldBottomShadowBleed: CGFloat {
+        DesignTokens.Spacing.xs
+    }
 }

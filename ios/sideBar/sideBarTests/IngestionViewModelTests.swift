@@ -817,6 +817,40 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(uploadManager.startedRequests.first?.uploadId, "local-1")
     }
 
+    func testRenameFileOnlineOptimisticallyUpdatesFilenameBeforeApiReturns() async throws {
+        let originalItem = makeListItem(id: "file-1")
+        let api = ControlledRenameIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [originalItem])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+        await viewModel.load()
+
+        let renameTask = Task {
+            await viewModel.renameFile(fileId: "file-1", filename: "Renamed.pdf")
+        }
+
+        await waitUntil(timeout: .milliseconds(200)) {
+            viewModel.items.first?.file.filenameOriginal == "Renamed.pdf"
+        }
+
+        api.resumeRename()
+        _ = await renameTask.value
+
+        XCTAssertEqual(viewModel.items.first?.file.filenameOriginal, "Renamed.pdf")
+    }
+
     func testExtractYouTubeVideoIdSupportsCanonicalForms() async {
         let viewModel = makeViewModelForYouTubeParsing()
 
@@ -1255,6 +1289,101 @@ private actor PollingSleepRecorder {
 
     func snapshot() -> [UInt64] {
         recordedIntervals
+    }
+}
+
+@MainActor
+private final class ControlledRenameIngestionAPI: IngestionProviding {
+    let listResult: Result<IngestionListResponse, Error>
+    let metaResult: Result<IngestionMetaResponse, Error>
+    let contentResult: Result<Data, Error>
+    let pinResult: Result<Void, Error>
+    let youtubeResult: Result<String, Error>
+    private var renameContinuation: CheckedContinuation<Void, Error>?
+
+    init(
+        listResult: Result<IngestionListResponse, Error>,
+        metaResult: Result<IngestionMetaResponse, Error>,
+        contentResult: Result<Data, Error>,
+        pinResult: Result<Void, Error>,
+        youtubeResult: Result<String, Error>
+    ) {
+        self.listResult = listResult
+        self.metaResult = metaResult
+        self.contentResult = contentResult
+        self.pinResult = pinResult
+        self.youtubeResult = youtubeResult
+    }
+
+    func list() async throws -> IngestionListResponse {
+        try listResult.get()
+    }
+
+    func getMeta(fileId: String) async throws -> IngestionMetaResponse {
+        _ = fileId
+        return try metaResult.get()
+    }
+
+    func getContent(fileId: String, kind: String, range: String?) async throws -> Data {
+        _ = fileId
+        _ = kind
+        _ = range
+        return try contentResult.get()
+    }
+
+    func upload(fileURL: URL, filename: String, mimeType: String, folder: String) async throws -> String {
+        _ = fileURL
+        _ = filename
+        _ = mimeType
+        _ = folder
+        throw MockError.forced
+    }
+
+    func cancel(fileId: String) async throws {
+        _ = fileId
+        throw MockError.forced
+    }
+
+    func pin(fileId: String, pinned: Bool, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = pinned
+        _ = clientUpdatedAt
+        try pinResult.get()
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func delete(fileId: String, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = clientUpdatedAt
+        throw MockError.forced
+    }
+
+    func rename(fileId: String, filename: String, clientUpdatedAt: String?) async throws {
+        _ = fileId
+        _ = filename
+        _ = clientUpdatedAt
+        try await withCheckedThrowingContinuation { continuation in
+            renameContinuation = continuation
+        }
+    }
+
+    func ingestYouTube(url: String) async throws -> String {
+        _ = url
+        return try youtubeResult.get()
+    }
+
+    func sync(_ payload: IngestionSyncRequest) async throws -> IngestionSyncResponse {
+        _ = payload
+        return IngestionSyncResponse(applied: [], files: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
+    }
+
+    func resumeRename() {
+        guard let renameContinuation else { return }
+        self.renameContinuation = nil
+        renameContinuation.resume()
     }
 }
 

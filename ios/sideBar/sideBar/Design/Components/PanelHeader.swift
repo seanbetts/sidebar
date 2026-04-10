@@ -1,24 +1,9 @@
 import SwiftUI
 
 struct PanelHeader<Trailing: View>: View {
-    enum BackgroundStyle: Equatable {
-        case sidebar
-        case surface
-
-        var color: Color {
-            switch self {
-            case .sidebar:
-                return DesignTokens.Colors.sidebar
-            case .surface:
-                return DesignTokens.Colors.surface
-            }
-        }
-    }
-
     let title: String
     let subtitle: String?
     let trailing: Trailing
-    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var environment: AppEnvironment
 #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -41,6 +26,23 @@ struct PanelHeader<Trailing: View>: View {
     }
 
     var body: some View {
+        Group {
+            if let chrome = Self.chrome(
+                isMacOS: Self.runsOnMacOS,
+                colorScheme: colorScheme
+            ) {
+                headerContent
+                    .glassChrome(chrome)
+            } else {
+                headerContent
+            }
+        }
+        .overlay(alignment: .bottom) {
+            EmptyView()
+        }
+    }
+
+    private var headerContent: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -60,24 +62,14 @@ struct PanelHeader<Trailing: View>: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
-        .background(headerBackground)
-        .overlay(alignment: .bottom) {
-            EmptyView()
-        }
     }
 
-    private var headerBackground: Color {
-        Self.backgroundStyle(
-            isMacOS: Self.runsOnMacOS,
-            colorScheme: colorScheme
-        ).color
-    }
+    @Environment(\.colorScheme) private var colorScheme
 
-    static func backgroundStyle(isMacOS: Bool, colorScheme: ColorScheme) -> BackgroundStyle {
-        if isMacOS {
-            return colorScheme == .light ? .sidebar : .surface
-        }
-        return .sidebar
+    static func chrome(isMacOS: Bool, colorScheme: ColorScheme) -> GlassChrome.Kind? {
+        _ = isMacOS
+        _ = colorScheme
+        return nil
     }
 
     private static var runsOnMacOS: Bool {

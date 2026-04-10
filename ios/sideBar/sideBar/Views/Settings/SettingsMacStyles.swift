@@ -103,14 +103,6 @@ struct SettingsMacHeroButtonRow<Leading: View>: View {
             }
             .padding(DesignTokens.Spacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                    .fill(DesignTokens.Colors.settingsFormBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                    .stroke(DesignTokens.Colors.border.opacity(0.45), lineWidth: 1)
-            )
         }
         .buttonStyle(.plain)
     }
@@ -133,14 +125,7 @@ struct SettingsMacStatusBanner: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                .fill(backgroundColor)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                .stroke(borderColor, lineWidth: 1)
-        )
+        .glassChrome(Self.chromeKind)
     }
 
     private var iconColor: Color {
@@ -161,22 +146,8 @@ struct SettingsMacStatusBanner: View {
         }
     }
 
-    private var backgroundColor: Color {
-        switch tone {
-        case .info:
-            return DesignTokens.Colors.muted.opacity(0.5)
-        case .error:
-            return DesignTokens.Colors.errorSurface
-        }
-    }
-
-    private var borderColor: Color {
-        switch tone {
-        case .info:
-            return DesignTokens.Colors.border.opacity(0.45)
-        case .error:
-            return DesignTokens.Colors.errorBorder
-        }
+    static var chromeKind: GlassChrome.Kind {
+        .card
     }
 }
 
@@ -202,14 +173,6 @@ struct SettingsMacActionSection<Content: View>: View {
         }
         .padding(DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
-                .fill(DesignTokens.Colors.settingsFormBackground)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
-                .stroke(DesignTokens.Colors.border.opacity(0.45), lineWidth: 1)
-        )
     }
 }
 
@@ -226,14 +189,11 @@ struct SettingsMacPanelCard<Content: View>: View {
         }
         .padding(DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
-                .fill(DesignTokens.Colors.settingsFormBackground)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous)
-                .stroke(DesignTokens.Colors.border.opacity(0.45), lineWidth: 1)
-        )
+        .glassChrome(Self.chromeKind)
+    }
+
+    static var chromeKind: GlassChrome.Kind {
+        .card
     }
 }
 

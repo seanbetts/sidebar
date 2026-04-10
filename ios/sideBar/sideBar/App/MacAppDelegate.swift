@@ -2,17 +2,19 @@
 import AppKit
 import os
 import sideBarShared
+import UserNotifications
 
 extension Notification.Name {
     static let macAppTerminationRequested = Notification.Name("sideBar.macAppTerminationRequested")
 }
 
-final class MacAppDelegate: NSObject, NSApplicationDelegate {
+final class MacAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     private let logger = Logger(subsystem: "sideBar", category: "Push")
     private let deepLinkLogger = Logger(subsystem: "sideBar", category: "DeepLink")
     private static var queuedDeepLinks: [URL] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
         NSWindow.allowsAutomaticWindowTabbing = false
         if let config = try? EnvironmentConfig.load() {
             SentryBootstrap.startIfConfigured(config: config)
@@ -67,6 +69,30 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
             deepLinkLogger.info("MacAppDelegate handling deep link: \(url.absoluteString, privacy: .public)")
             handleOrQueueDeepLink(url)
         }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        _ = center
+        AppEnvironment.shared?.handleRemoteNotification(notification.request.content.userInfo)
+        completionHandler([.badge, .banner, .list, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        _ = center
+        let userInfo = response.notification.request.content.userInfo
+        AppEnvironment.shared?.handleRemoteNotification(userInfo)
+        if let route = NotificationRoute(userInfo: userInfo) {
+            handleOrQueueDeepLink(route.url)
+        }
+        completionHandler()
     }
 
     static func flushQueuedDeepLinks(using environment: AppEnvironment) {

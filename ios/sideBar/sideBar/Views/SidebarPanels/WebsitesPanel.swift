@@ -19,6 +19,8 @@ public struct WebsitesPanel: View {
     }
 }
 struct WebsitesPanelView: View {
+    static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
+
     @ObservedObject var viewModel: WebsitesViewModel
     @EnvironmentObject var appEnvironment: AppEnvironment
     #if !os(macOS)
@@ -76,6 +78,7 @@ struct WebsitesPanelView: View {
             header
             content
         }
+        .sidebarPanelScaffoldBackground()
         .frame(maxHeight: .infinity)
         .onAppear {
             if !hasLoaded {
@@ -93,6 +96,9 @@ struct WebsitesPanelView: View {
         }
         .onChange(of: viewModel.active?.id) { _, newValue in
             selection = newValue
+        }
+        .onChange(of: selection) { _, newValue in
+            handleWebsiteListSelectionChange(newValue)
         }
         .onChange(of: viewModel.isLoading) { _, isLoading in
             listAppeared = !isLoading
@@ -210,16 +216,15 @@ extension WebsitesPanelView {
             PanelHeader(title: "Websites") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
-                        Button {
+                        HeaderActionButton(
+                            systemName: "plus",
+                            accessibilityLabel: "Add website",
+                            action: {
                             newWebsiteUrl = ""
                             isNewWebsitePresented = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .appFont(.labelMd)
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Add website")
+                        },
+                            chromeStyle: Self.actionControlChromeStyle
+                        )
                     }
                     if isCompact {
                         GlobalAvatarRegionControls()
@@ -240,7 +245,7 @@ extension WebsitesPanelView {
             }
         }
         .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
-        .background(panelHeaderBackground())
+        .sidebarPanelHeaderBackground(showsInlineSearch: showsInlineSearch)
     }
 
     @ViewBuilder
@@ -265,7 +270,7 @@ extension WebsitesPanelView {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(panelBackground)
         } else if panelState == .search {
-            List {
+            websitesPanelList {
                 if !viewModel.pendingWebsites.isEmpty {
                     Section {
                         ForEach(viewModel.pendingWebsites, id: \.id) { pending in
@@ -294,12 +299,12 @@ extension WebsitesPanelView {
                 isCompactPhone: isCompactPhone
             )
             .scrollContentBackground(.hidden)
-            .background(panelBackground)
+            .sidebarPanelListBackground()
             .refreshable {
                 await viewModel.load()
             }
         } else {
-            List {
+            websitesPanelList {
                 if listSectionLayout.contains(.sparseState) {
                     Section {
                         SidebarSparseStateRow(
@@ -390,7 +395,7 @@ extension WebsitesPanelView {
             .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
             #endif
             .scrollContentBackground(.hidden)
-            .background(panelBackground)
+            .sidebarPanelListBackground()
             .onChange(of: pinnedItemsSorted.map(\.id)) { _, newValue in
                 handlePinnedSetChanged(newValue)
             }

@@ -1,0 +1,63 @@
+import XCTest
+@testable import sideBar
+
+final class SiteHeaderBarTests: XCTestCase {
+    func testDesktopTrailingActionChromeUsesSharedHeaderActionButtonStyle() {
+        XCTAssertEqual(SiteHeaderBar.desktopTrailingActionChromeStyle, .glass)
+    }
+
+    func testDesktopTrailingActionChromeUsesSharedActionButtonGlass() {
+        XCTAssertEqual(SiteHeaderBar.desktopTrailingActionChrome, .actionButton)
+    }
+
+    func testCompactTrailingActionChromeUsesSharedPillGlass() {
+        XCTAssertEqual(SiteHeaderBar.compactTrailingActionChrome, .pill)
+    }
+
+    func testDesktopTrailingControlsSkipGroupedGlass() {
+        XCTAssertFalse(SiteHeaderBar.usesGroupedGlass(forCompact: false))
+    }
+
+    func testCompactTrailingControlsSkipGroupedGlass() {
+        XCTAssertFalse(SiteHeaderBar.usesGroupedGlass(forCompact: true))
+    }
+
+    func testDesktopTrailingActionSourceUsesSharedHeaderActionButtons() throws {
+        let normalized = try siteHeaderBarSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertEqual(
+            normalized.components(
+                separatedBy: "HeaderActionButton("
+            ).count - 1,
+            2
+        )
+        XCTAssertEqual(
+            normalized.components(
+                separatedBy: "chromeStyle:Self.desktopTrailingActionChromeStyle"
+            ).count - 1,
+            2
+        )
+    }
+}
+
+private func siteHeaderBarSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sourceURL = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("Websites")
+        .appendingPathComponent("SiteHeaderBar.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read SiteHeaderBar.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}

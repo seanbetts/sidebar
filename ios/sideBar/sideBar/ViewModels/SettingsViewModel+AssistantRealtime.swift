@@ -38,6 +38,7 @@ extension SettingsViewModel {
                 pronouns: current.pronouns,
                 location: current.location,
                 profileImageUrl: current.profileImageUrl,
+                notificationPreferences: current.notificationPreferences,
                 assistantIdentity: mergedIdentity(
                     current: current.assistantIdentity,
                     incoming: update.assistantIdentity

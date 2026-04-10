@@ -162,12 +162,15 @@ extension FilesPanelView {
             let row = FilesIngestionRow(
                 item: item,
                 isSelected: isSelected,
-                onSelect: { open(item: item) },
+                onSelect: fileRowPrimaryAction(for: item),
                 onPinToggle: pinAction(for: item),
                 onDelete: deleteAction(for: item)
             )
             .platformContextMenu(items: fileContextMenuItemsList(for: item))
             .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
+            #if os(macOS)
+            .tag(item.file.id)
+            #endif
             .staggeredAppear(index: index, isActive: listAppeared)
             pinnedReorderableRow(row, itemID: item.file.id)
         }

@@ -91,6 +91,72 @@ def test_update_settings_accepts_ai_provider_preferences(test_client):
     assert body["ai_primary_provider"] == "anthropic"
 
 
+def test_get_settings_includes_notification_preference_defaults(test_client):
+    response = test_client.get(
+        "/api/settings",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["notification_preferences"] == {
+        "task_reminders_enabled": True,
+        "task_reminder_time": None,
+        "morning_digest_enabled": False,
+        "morning_digest_time": None,
+        "assistant_reply_notifications_enabled": False,
+        "assistant_proactive_notifications_enabled": False,
+        "schedule_timezone": None,
+    }
+
+
+def test_update_settings_accepts_notification_preferences(test_client):
+    response = test_client.patch(
+        "/api/settings",
+        headers=_auth_headers(),
+        json={
+            "notification_preferences": {
+                "task_reminders_enabled": True,
+                "task_reminder_time": "09:30",
+                "morning_digest_enabled": False,
+                "morning_digest_time": None,
+                "assistant_reply_notifications_enabled": True,
+                "assistant_proactive_notifications_enabled": False,
+                "schedule_timezone": "Europe/London",
+            }
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["notification_preferences"]["task_reminder_time"] == "09:30"
+    assert body["notification_preferences"]["schedule_timezone"] == "Europe/London"
+    assert body["notification_preferences"]["assistant_reply_notifications_enabled"] is True
+
+
+def test_update_settings_rejects_enabled_reminders_without_time_and_timezone(
+    test_client,
+):
+    response = test_client.patch(
+        "/api/settings",
+        headers=_auth_headers(),
+        json={
+            "notification_preferences": {
+                "task_reminders_enabled": True,
+                "task_reminder_time": None,
+                "morning_digest_enabled": False,
+                "morning_digest_time": None,
+                "assistant_reply_notifications_enabled": False,
+                "assistant_proactive_notifications_enabled": False,
+                "schedule_timezone": None,
+            }
+        },
+    )
+
+    assert response.status_code == 400
+    assert "task_reminder_time" in error_message(response)
+
+
 def test_provider_key_crud_flow(test_client, monkeypatch):
     monkeypatch.setattr(
         "api.routers.settings.ProviderKeyVerificationService.verify_provider_key",

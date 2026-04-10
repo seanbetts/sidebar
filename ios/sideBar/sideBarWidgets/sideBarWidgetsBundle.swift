@@ -30,6 +30,8 @@ struct SideBarWidgetsBundle: WidgetBundle {
         PinnedFilesWidget()
 
         #if os(iOS)
+        IngestionProgressLiveActivity()
+
         // Lock screen widgets - Tasks
         LockScreenTaskCountWidget()
         LockScreenTaskPreviewWidget()

@@ -5,6 +5,10 @@ import XCTest
 
 @MainActor
 final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
+    func testFormattingEntryControlUsesSharedActionButtonChrome() {
+        XCTAssertEqual(NoteFormattingBarChrome.entryControlKind, .actionButton)
+    }
+
 #if os(iOS)
     func testCustomFormattingBarIsHiddenInReadModeOnIOS() async {
         let context = await makeNotesDetailViewTestContext()

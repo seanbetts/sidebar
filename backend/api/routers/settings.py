@@ -51,6 +51,32 @@ class AgentFieldMetaPayload(BaseModel):
     reason: str | None = None
 
 
+class NotificationPreferencesPayload(BaseModel):
+    """Notification preference payload returned to Apple clients."""
+
+    task_reminders_enabled: bool = True
+    task_reminder_time: str | None = None
+    morning_digest_enabled: bool = False
+    morning_digest_time: str | None = None
+    assistant_reply_notifications_enabled: bool = False
+    assistant_proactive_notifications_enabled: bool = False
+    schedule_timezone: str | None = None
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    """Request payload for notification preference updates."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    task_reminders_enabled: bool | None = None
+    task_reminder_time: str | None = None
+    morning_digest_enabled: bool | None = None
+    morning_digest_time: str | None = None
+    assistant_reply_notifications_enabled: bool | None = None
+    assistant_proactive_notifications_enabled: bool | None = None
+    schedule_timezone: str | None = None
+
+
 class SettingsResponse(BaseModel):
     """Response payload for user settings."""
 
@@ -65,6 +91,7 @@ class SettingsResponse(BaseModel):
     pronouns: str | None = None
     location: str | None = None
     profile_image_url: str | None = None
+    notification_preferences: NotificationPreferencesPayload
     enabled_skills: list[str] = []
     installed_store_skills: list[str] = []
     assistant_identity: AssistantIdentityPayload | None = None
@@ -90,6 +117,7 @@ class SettingsUpdate(BaseModel):
     gender: str | None = None
     pronouns: str | None = None
     location: str | None = None
+    notification_preferences: NotificationPreferencesUpdate | None = None
     enabled_skills: list[str] | None = None
     ai_primary_provider: str | None = None
 

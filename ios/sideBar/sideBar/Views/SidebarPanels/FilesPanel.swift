@@ -26,6 +26,8 @@ public struct FilesPanel: View {
     }
 }
 struct FilesPanelView: View {
+    static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
+
     @EnvironmentObject var appEnvironment: AppEnvironment
     @ObservedObject var viewModel: IngestionViewModel
     let showsHeader: Bool
@@ -220,25 +222,23 @@ extension FilesPanelView {
             PanelHeader(title: "Files") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
-                        Button {
+                        HeaderActionButton(
+                            systemName: "play.rectangle",
+                            accessibilityLabel: "Add YouTube video",
+                            action: {
                             newYouTubeUrl = ""
                             isYouTubeAlertPresented = true
-                        } label: {
-                            Image(systemName: "play.rectangle")
-                                .appFont(.labelMd)
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Add YouTube video")
-                        Button {
+                        },
+                            chromeStyle: Self.actionControlChromeStyle
+                        )
+                        HeaderActionButton(
+                            systemName: "plus",
+                            accessibilityLabel: "Add file",
+                            action: {
                             isFileImporterPresented = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .appFont(.labelMd)
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Add file")
+                        },
+                            chromeStyle: Self.actionControlChromeStyle
+                        )
                     }
                     if isCompact {
                         GlobalAvatarRegionControls()
@@ -259,7 +259,7 @@ extension FilesPanelView {
             }
         }
         .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
-        .background(panelHeaderBackground())
+        .sidebarPanelHeaderBackground(showsInlineSearch: showsInlineSearch)
     }
 
     var isCompact: Bool {
@@ -283,7 +283,7 @@ extension FilesPanelView {
     }
 
     var filesListView: some View {
-        List {
+        filesPanelList {
             if !viewModel.panelSearchQuery.trimmed.isEmpty {
                 ForEach(searchResults, id: \.file.id) { item in
                     let index = staggerIndex(for: item.file.id)
@@ -291,7 +291,7 @@ extension FilesPanelView {
                     let row = FilesIngestionRow(
                         item: item,
                         isSelected: isSelected,
-                        onSelect: isFolder(item) ? nil : { open(item: item) },
+                        onSelect: fileRowPrimaryAction(for: item),
                         onPinToggle: pinAction(for: item),
                         onDelete: deleteAction(for: item)
                     )
@@ -302,6 +302,9 @@ extension FilesPanelView {
                             .staggeredAppear(index: index, isActive: listAppeared)
                     } else {
                         row
+                            #if os(macOS)
+                            .tag(item.file.id)
+                            #endif
                             .staggeredAppear(index: index, isActive: listAppeared)
                     }
                 }
@@ -329,7 +332,7 @@ extension FilesPanelView {
                                         let row = FilesIngestionRow(
                                             item: item,
                                             isSelected: viewModel.selectedFileId == item.file.id,
-                                            onSelect: isFolder(item) ? nil : { open(item: item) },
+                                            onSelect: fileRowPrimaryAction(for: item),
                                             onPinToggle: pinAction(for: item),
                                             onDelete: deleteAction(for: item)
                                         )
@@ -342,6 +345,9 @@ extension FilesPanelView {
                                                 )
                                         } else {
                                             row
+                                                #if os(macOS)
+                                                .tag(item.file.id)
+                                                #endif
                                                 .staggeredAppear(
                                                     index: index,
                                                     isActive: listAppeared
@@ -376,7 +382,7 @@ extension FilesPanelView {
         .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
         #endif
         .scrollContentBackground(.hidden)
-        .background(panelBackground)
+        .sidebarPanelListBackground()
         .onChange(of: pinnedItems.map { $0.file.id }) { _, newValue in
             handlePinnedSetChanged(newValue)
         }

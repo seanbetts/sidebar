@@ -160,89 +160,19 @@ public struct SiteHeaderBar: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(.trailing, DesignTokens.Spacing.smPlus)
-
-                Button(
-                    action: { onSwapContent?() },
-                    label: {
-                        Image(systemName: "arrow.left.arrow.right")
-                            .appFont(.subheadlineSemibold)
-                            .frame(width: 28, height: 28)
-                    }
-                )
-                .buttonStyle(.plain)
-                .disabled(onSwapContent == nil)
-                .accessibilityLabel("Swap panels")
-                .imageScale(.medium)
-                .padding(DesignTokens.Spacing.xxsPlus)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(buttonBackground)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(buttonBorder, lineWidth: 1)
-                )
+                desktopTrailingActionControls
             }
 
             if isCompact {
-                GlobalAvatarRegionControls()
-                    .padding(DesignTokens.Spacing.xxsPlus)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(buttonBackground)
-                    )
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(buttonBorder, lineWidth: 1)
-                    )
+                compactTrailingActionControls
             } else {
-                Button {
-                    isScratchpadPresented.toggle()
-                } label: {
-                    Image(systemName: "square.and.pencil")
-                        .appFont(.subheadlineSemibold)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Scratchpad")
-                .imageScale(.medium)
-                .padding(DesignTokens.Spacing.xxsPlus)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(buttonBackground)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(buttonBorder, lineWidth: 1)
-                )
-                .popover(
-                    isPresented: $isScratchpadPresented,
-                    attachmentAnchor: .rect(.bounds),
-                    arrowEdge: .top
-                ) {
-                    MacPopoverShell(type: scratchpadPopoverPanelType()) {
-                        ScratchpadPopoverView(
-                            api: environment.container.scratchpadAPI,
-                            cache: environment.container.cacheClient,
-                            scratchpadStore: environment.scratchpadStore
-                        )
-                    }
-                    .presentationCompactAdaptation(.sheet)
-                }
+                EmptyView()
             }
         }
     }
 
     private var barBackground: Color {
         DesignTokens.Colors.background
-    }
-
-    private var buttonBackground: Color {
-        DesignTokens.Colors.surface
-    }
-
-    private var buttonBorder: Color {
-        DesignTokens.Colors.border
     }
 
     private var isCompact: Bool {
@@ -346,6 +276,66 @@ public struct SiteHeaderBar: View {
             return "Ready"
         }
         return ""
+    }
+
+    static var desktopTrailingActionChrome: GlassChrome.Kind {
+        desktopTrailingActionChromeStyle.kind
+    }
+
+    static var desktopTrailingActionChromeStyle: HeaderActionControlChromeStyle {
+        .glass
+    }
+
+    static var compactTrailingActionChrome: GlassChrome.Kind {
+        .pill
+    }
+
+    static func usesGroupedGlass(forCompact: Bool) -> Bool {
+        false
+    }
+
+    @ViewBuilder
+    private var desktopTrailingActionControls: some View {
+        desktopTrailingActionButtons
+    }
+
+    private var desktopTrailingActionButtons: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            HeaderActionButton(
+                systemName: "arrow.left.arrow.right",
+                accessibilityLabel: "Swap panels",
+                action: { onSwapContent?() },
+                isDisabled: onSwapContent == nil,
+                chromeStyle: Self.desktopTrailingActionChromeStyle
+            )
+
+            HeaderActionButton(
+                systemName: "square.and.pencil",
+                accessibilityLabel: "Scratchpad",
+                action: { isScratchpadPresented.toggle() },
+                chromeStyle: Self.desktopTrailingActionChromeStyle
+            )
+            .popover(
+                isPresented: $isScratchpadPresented,
+                attachmentAnchor: .rect(.bounds),
+                arrowEdge: .top
+            ) {
+                MacPopoverShell(type: scratchpadPopoverPanelType()) {
+                    ScratchpadPopoverView(
+                        api: environment.container.scratchpadAPI,
+                        cache: environment.container.cacheClient,
+                        scratchpadStore: environment.scratchpadStore
+                    )
+                }
+                .presentationCompactAdaptation(.sheet)
+            }
+        }
+    }
+
+    private var compactTrailingActionControls: some View {
+        GlobalAvatarRegionControls()
+            .padding(DesignTokens.Spacing.xxsPlus)
+            .glassChrome(Self.compactTrailingActionChrome)
     }
 }
 

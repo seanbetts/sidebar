@@ -57,6 +57,13 @@ saved conversation by title or context. For now, it only renames conversations
 when you ask. If your request could match more than one chat, sideBar asks a
 follow-up instead of guessing.
 
+## Can sideBar notify me when a reply is ready?
+
+Yes. Turn on **Assistant reply notifications** in [Settings](/manual/settings)
+and sideBar can notify you when a reply finishes while your device is away.
+These alerts still follow your Apple system notification settings and Focus
+modes.
+
 ## Can I attach files to a chat message?
 
 Yes. Tap the attachment button in the chat input to attach a note, file,

@@ -33,6 +33,7 @@ enum DesignTokens {
 
     enum Size {
         static let touchTarget: CGFloat = 44
+        static let compactFieldHeight: CGFloat = 40
         static let sidebarWidth: CGFloat = 280
         static let panelMinWidth: CGFloat = 320
         static let contentMaxWidth: CGFloat = 520

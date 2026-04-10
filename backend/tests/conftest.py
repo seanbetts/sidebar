@@ -202,6 +202,30 @@ def _ensure_user_settings_columns(connection) -> None:
     )
     connection.execute(
         text(
+            "ALTER TABLE user_settings "
+            "ADD COLUMN IF NOT EXISTS notification_preferences jsonb"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE device_tokens "
+            "ADD COLUMN IF NOT EXISTS capabilities jsonb NOT NULL DEFAULT '{}'::jsonb"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE device_tokens "
+            "ADD COLUMN IF NOT EXISTS is_foreground boolean NOT NULL DEFAULT false"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE device_tokens "
+            "ADD COLUMN IF NOT EXISTS last_seen_at timestamptz"
+        )
+    )
+    connection.execute(
+        text(
             "ALTER TABLE conversations "
             "ADD COLUMN IF NOT EXISTS ai_provider text"
         )

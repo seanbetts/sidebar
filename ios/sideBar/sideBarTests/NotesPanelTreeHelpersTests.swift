@@ -110,12 +110,25 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertFalse(offlineView.isPinnedReorderEditActive)
     }
 
-    func testPinnedReorderMoveKeepsSessionActiveUntilTimeoutAndPersistsFinalOrder() async {
+    func testPinnedReorderMovePersistsFinalOrderUsingPlatformInteractionModel() async {
         let (view, api) = await makeViewWithAPI(autoExitDelay: 0.05)
 
+        #if !os(iOS)
         view.enterPinnedReorder(from: "note-a")
+        #endif
         view.movePinnedNotes(from: IndexSet(integer: 0), to: 2)
 
+        #if os(iOS)
+        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
+        while api.updatePinnedOrderCallCount != 1,
+              DispatchTime.now().uptimeNanoseconds < deadline {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
+        XCTAssertEqual(api.lastPinnedOrderIDs, ["note-b", "note-a"])
+        XCTAssertEqual(view.pinnedItems.map { $0.id }, ["note-b", "note-a"])
+        #else
         XCTAssertTrue(view.isPinnedReordering)
         XCTAssertEqual(view.pinnedItems.map { $0.id }, ["note-b", "note-a"])
         XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
@@ -125,6 +138,7 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertFalse(view.isPinnedReordering)
         XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
         XCTAssertEqual(api.lastPinnedOrderIDs, ["note-b", "note-a"])
+        #endif
     }
 
     func testPinnedReorderDropTargetsRejectNonPinnedOrCrossSectionItems() async {
@@ -298,6 +312,15 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
             ),
             .ignore
         )
+    }
+
+    func testNoteListSelectionIDReturnsIDForFilesOnly() async {
+        let panel = await makeView()
+        let fileItem = FileNodeItem(id: "note-1", name: "Note.md", type: .file)
+        let folderItem = FileNodeItem(id: "folder:notes", name: "Notes", type: .directory)
+
+        XCTAssertEqual(panel.noteListSelectionID(for: fileItem), "note-1")
+        XCTAssertNil(panel.noteListSelectionID(for: folderItem))
     }
 }
 

@@ -101,6 +101,8 @@ public struct UserSettings: Codable {
     public let location: String?
     /// The profile image url value.
     public let profileImageUrl: String?
+    /// Notification delivery preferences and schedule settings.
+    public let notificationPreferences: NotificationPreferencesSettings
     /// The assistant identity value.
     public let assistantIdentity: AssistantIdentitySettings?
     /// Metadata about assistant identity updates.
@@ -132,6 +134,7 @@ public struct UserSettings: Codable {
         case pronouns
         case location
         case profileImageUrl
+        case notificationPreferences
         case assistantIdentity
         case assistantIdentityMeta
         case assistantSoul
@@ -155,6 +158,7 @@ public struct UserSettings: Codable {
         pronouns: String?,
         location: String?,
         profileImageUrl: String?,
+        notificationPreferences: NotificationPreferencesSettings = .defaults,
         assistantIdentity: AssistantIdentitySettings? = nil,
         assistantIdentityMeta: AgentFieldMeta? = nil,
         assistantSoul: AssistantSoulSettings? = nil,
@@ -176,6 +180,7 @@ public struct UserSettings: Codable {
         self.pronouns = pronouns
         self.location = location
         self.profileImageUrl = profileImageUrl
+        self.notificationPreferences = notificationPreferences
         self.assistantIdentity = assistantIdentity
         self.assistantIdentityMeta = assistantIdentityMeta
         self.assistantSoul = assistantSoul
@@ -200,6 +205,10 @@ public struct UserSettings: Codable {
         pronouns = try container.decodeIfPresent(String.self, forKey: .pronouns)
         location = try container.decodeIfPresent(String.self, forKey: .location)
         profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
+        notificationPreferences = try container.decodeIfPresent(
+            NotificationPreferencesSettings.self,
+            forKey: .notificationPreferences
+        ) ?? .defaults
         assistantIdentity = try container.decodeIfPresent(
             AssistantIdentitySettings.self,
             forKey: .assistantIdentity
@@ -253,6 +262,8 @@ public struct SettingsUpdate: Encodable {
     public let pronouns: String?
     /// The location value.
     public let location: String?
+    /// Notification preference updates.
+    public let notificationPreferences: NotificationPreferencesUpdate?
     /// The assistant identity value.
     public let assistantIdentity: AssistantIdentitySettings?
     /// Optional strict-BYOK primary provider update.
@@ -272,6 +283,7 @@ public struct SettingsUpdate: Encodable {
         gender: String? = nil,
         pronouns: String? = nil,
         location: String? = nil,
+        notificationPreferences: NotificationPreferencesUpdate? = nil,
         assistantIdentity: AssistantIdentitySettings? = nil,
         aiPrimaryProvider: String? = nil,
         enabledSkills: [String]? = nil,
@@ -286,6 +298,7 @@ public struct SettingsUpdate: Encodable {
         self.gender = gender
         self.pronouns = pronouns
         self.location = location
+        self.notificationPreferences = notificationPreferences
         self.assistantIdentity = assistantIdentity
         self.aiPrimaryProvider = aiPrimaryProvider
         self.enabledSkills = enabledSkills
@@ -302,6 +315,7 @@ public struct SettingsUpdate: Encodable {
         case gender
         case pronouns
         case location
+        case notificationPreferences = "notification_preferences"
         case assistantIdentity = "assistant_identity"
         case aiPrimaryProvider = "ai_primary_provider"
         case enabledSkills = "enabled_skills"
@@ -322,6 +336,7 @@ public struct SettingsUpdate: Encodable {
         try container.encodeIfPresent(gender, forKey: .gender)
         try container.encodeIfPresent(pronouns, forKey: .pronouns)
         try container.encodeIfPresent(location, forKey: .location)
+        try container.encodeIfPresent(notificationPreferences, forKey: .notificationPreferences)
         try container.encodeIfPresent(assistantIdentity, forKey: .assistantIdentity)
         try container.encodeIfPresent(aiPrimaryProvider, forKey: .aiPrimaryProvider)
         try container.encodeIfPresent(enabledSkills, forKey: .enabledSkills)

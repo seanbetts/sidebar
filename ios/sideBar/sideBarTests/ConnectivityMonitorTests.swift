@@ -1,4 +1,5 @@
 import XCTest
+import Combine
 import sideBarShared
 @testable import sideBar
 
@@ -221,6 +222,41 @@ final class ConnectivityMonitorTests: XCTestCase {
         XCTAssertFalse(strongMonitor.isOffline)
         XCTAssertFalse(strongMonitor.isServerReachable)
 
+        monitor = nil
+    }
+
+    func testRepeatedSuccessNotificationsDoNotRepublishUnchangedOnlineState() async {
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        )
+        guard let strongMonitor = monitor else {
+            XCTFail("Expected monitor")
+            return
+        }
+
+        var publishCount = 0
+        var cancellables = Set<AnyCancellable>()
+        strongMonitor.objectWillChange
+            .sink {
+                publishCount += 1
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
+        NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
+        await waitForMainQueueDrain()
+
+        XCTAssertTrue(strongMonitor.isNetworkAvailable)
+        XCTAssertFalse(strongMonitor.isOffline)
+        XCTAssertTrue(strongMonitor.isServerReachable)
+        XCTAssertEqual(
+            publishCount,
+            0,
+            "Repeated success notifications should not republish unchanged online state."
+        )
+
+        cancellables.removeAll()
         monitor = nil
     }
 

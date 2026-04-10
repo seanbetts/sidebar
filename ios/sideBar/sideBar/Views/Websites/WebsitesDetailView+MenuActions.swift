@@ -3,7 +3,11 @@ import SwiftUI
 extension WebsitesDetailView {
     var websiteActionsMenu: some View {
         #if os(macOS)
-        Menu {
+        HeaderActionMenuControl(
+            systemName: "ellipsis",
+            accessibilityLabel: "Website options",
+            chromeStyle: Self.actionControlChromeStyle
+        ) {
             Button {
                 togglePinnedForActiveWebsite()
             } label: {
@@ -55,18 +59,15 @@ extension WebsitesDetailView {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
-        } label: {
-            HeaderActionIcon(systemName: "ellipsis")
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Website options")
         .disabled(viewModel.active == nil)
         #else
         HeaderActionMenuButton(
             systemImage: "ellipsis",
             accessibilityLabel: "Website options",
             items: websiteHeaderMenuItems,
-            isCompact: isCompact
+            isCompact: isCompact,
+            chromeStyle: Self.actionControlChromeStyle
         )
         .disabled(viewModel.active == nil)
         #endif
@@ -78,7 +79,8 @@ extension WebsitesDetailView {
             systemImage: "ellipsis",
             accessibilityLabel: "Website options",
             items: websiteHeaderMenuItems,
-            isCompact: isCompact
+            isCompact: isCompact,
+            chromeStyle: Self.actionControlChromeStyle
         )
         .disabled(viewModel.active == nil)
     }
@@ -122,6 +124,9 @@ extension WebsitesDetailView {
 }
 
 struct WebsiteContentQuickActionsPill: View {
+    static let controlTouchTarget: CGFloat = HeaderActionControlMetrics.chromeHeight
+    static let controlIconSize: CGFloat = HeaderActionControlMetrics.iconFrameHeight
+
     let isPinned: Bool
     let isArchived: Bool
     let onPinToggle: () -> Void
@@ -166,7 +171,8 @@ struct WebsiteContentQuickActionsPill: View {
         Button(role: role, action: action) {
             Image(systemName: systemName)
                 .appFont(.labelMd)
-                .frame(width: 22, height: 22)
+                .frame(width: Self.controlIconSize, height: Self.controlIconSize)
+                .frame(width: Self.controlTouchTarget, height: Self.controlTouchTarget)
                 .foregroundStyle(
                     role == .destructive ? DesignTokens.Colors.error : DesignTokens.Colors.textPrimary
                 )

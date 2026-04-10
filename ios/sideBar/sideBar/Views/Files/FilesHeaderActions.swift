@@ -3,6 +3,8 @@ import sideBarShared
 import UniformTypeIdentifiers
 
 struct FilesHeaderActions: View {
+    static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
+
     @ObservedObject var viewModel: IngestionViewModel
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.workspaceColumn) private var workspaceColumn
@@ -21,7 +23,7 @@ struct FilesHeaderActions: View {
     @State private var exportFilename: String = "file"
 
     var body: some View {
-        HeaderActionRow {
+        HeaderActionRow(spacing: DesignTokens.Spacing.xs) {
             if shouldShowExpandButton {
                 expandButton
             }
@@ -78,7 +80,11 @@ struct FilesHeaderActions: View {
 
     private var fileActionsMenu: some View {
         #if os(macOS)
-        Menu {
+        HeaderActionMenuControl(
+            systemName: "ellipsis",
+            accessibilityLabel: "File options",
+            chromeStyle: Self.actionControlChromeStyle
+        ) {
             Button {
                 Task { await togglePin() }
             } label: {
@@ -104,11 +110,7 @@ struct FilesHeaderActions: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
-        } label: {
-            HeaderActionIcon(systemName: "ellipsis")
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("File options")
         .disabled(viewModel.selectedFileId == nil)
         #else
         HeaderActionMenuButton(
@@ -131,7 +133,8 @@ struct FilesHeaderActions: View {
                     isDeleteAlertPresented = true
                 }
             ],
-            isCompact: isCompact
+            isCompact: isCompact,
+            chromeStyle: Self.actionControlChromeStyle
         )
         .disabled(viewModel.selectedFileId == nil)
         #endif
@@ -151,14 +154,12 @@ struct FilesHeaderActions: View {
     }
 
     private var expandButton: some View {
-        Button(action: expandFilesView) {
-            Image(systemName: expandButtonIconName)
-                .appFont(.labelMd)
-                .frame(width: 28, height: 20)
-                .imageScale(.medium)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(expandButtonLabel)
+        HeaderActionButton(
+            systemName: expandButtonIconName,
+            accessibilityLabel: expandButtonLabel,
+            action: expandFilesView,
+            chromeStyle: Self.actionControlChromeStyle
+        )
     }
 
     private var expandButtonIconName: String {
@@ -204,7 +205,8 @@ struct FilesHeaderActions: View {
                 action: {
                     viewModel.clearSelection()
                 },
-                isDisabled: viewModel.selectedFileId == nil
+                isDisabled: viewModel.selectedFileId == nil,
+                chromeStyle: Self.actionControlChromeStyle
             )
         }
         #else
@@ -214,7 +216,8 @@ struct FilesHeaderActions: View {
             action: {
                 viewModel.clearSelection()
             },
-            isDisabled: viewModel.selectedFileId == nil
+            isDisabled: viewModel.selectedFileId == nil,
+            chromeStyle: Self.actionControlChromeStyle
         )
         #endif
     }

@@ -3,6 +3,10 @@ import Foundation
 // MARK: - IngestionViewModel+ListPolling
 
 extension IngestionViewModel {
+    func syncIngestionProgressActivities(items: [IngestionListItem]) async {
+        await ingestionProgressActivityCoordinator.reconcile(items: items)
+    }
+
     func runListPollingTick() async {
         if isListPollRequestInFlight {
             return

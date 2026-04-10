@@ -174,8 +174,7 @@ public struct LoginView: View {
         }
         .padding(.vertical, DesignTokens.Spacing.xsPlus)
         .padding(.horizontal, DesignTokens.Spacing.sm)
-        .background(fieldBackground)
-        .overlay(fieldBorder)
+        .glassChrome(LoginChrome.fieldKind)
         .accessibilitySortPriority(3)
     }
     private var passwordFieldRow: some View {
@@ -205,8 +204,7 @@ public struct LoginView: View {
         }
         .padding(.vertical, DesignTokens.Spacing.xsPlus)
         .padding(.horizontal, DesignTokens.Spacing.sm)
-        .background(fieldBackground)
-        .overlay(fieldBorder)
+        .glassChrome(LoginChrome.fieldKind)
         .accessibilitySortPriority(2)
     }
     @ViewBuilder
@@ -358,15 +356,6 @@ public struct LoginView: View {
     }
     private var isSignInDisabled: Bool {
         isSigningIn || email.isEmpty || password.isEmpty || isLockedOut || !environment.isNetworkAvailable
-    }
-
-    private var fieldBackground: some View {
-        RoundedRectangle(cornerRadius: 8)
-            .fill(Color.secondary.opacity(0.08))
-    }
-    private var fieldBorder: some View {
-        RoundedRectangle(cornerRadius: 8)
-            .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
     }
     private var isValidEmail: Bool {
         isValidEmail(email)

@@ -420,13 +420,16 @@ extension TasksViewModel {
             return
         }
 
+        let snapshot = store.makeOptimisticSnapshot()
+        store.applyLocalOperation(operation)
+        updateCountsAfterLocalOperation(operation)
+        updateWidgetDataAfterOfflineOperation(operation)
         do {
-            _ = try await api.apply(TaskOperationBatch(operations: [operation]))
+            let response = try await api.apply(TaskOperationBatch(operations: [operation]))
+            store.applySyncResponse(response, operationId: operation.operationId)
             newTaskDraft = nil
-            await load(selection: selection, force: true)
-            await loadCounts(force: true)
-            await refreshWidgetData()
         } catch {
+            store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
             newTaskError = ErrorMapping.message(for: error)
         }
     }

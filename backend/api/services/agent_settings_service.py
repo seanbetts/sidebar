@@ -6,6 +6,11 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from api.services.settings_agent_fields import (
+    ASSISTANT_IDENTITY_FIELDS,
+    ASSISTANT_SOUL_FIELDS,
+    apply_agent_field_meta,
+)
 from api.services.settings_service import SettingsService
 from api.services.user_settings_service import UserSettingsService
 
@@ -56,9 +61,9 @@ class AgentSettingsService:
                     if current_settings
                     else None
                 ),
-                allowed_fields=SettingsService.ASSISTANT_IDENTITY_FIELDS,
+                allowed_fields=ASSISTANT_IDENTITY_FIELDS,
             )
-            cleaned["assistant_identity"] = SettingsService._apply_agent_field_meta(
+            cleaned["assistant_identity"] = apply_agent_field_meta(
                 merged_identity,
                 existing_value=(
                     getattr(current_settings, "assistant_identity", None)
@@ -76,9 +81,9 @@ class AgentSettingsService:
                     if current_settings
                     else None
                 ),
-                allowed_fields=SettingsService.ASSISTANT_SOUL_FIELDS,
+                allowed_fields=ASSISTANT_SOUL_FIELDS,
             )
-            cleaned["assistant_soul"] = SettingsService._apply_agent_field_meta(
+            cleaned["assistant_soul"] = apply_agent_field_meta(
                 merged_soul,
                 existing_value=(
                     getattr(current_settings, "assistant_soul", None)

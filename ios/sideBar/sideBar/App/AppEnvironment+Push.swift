@@ -108,8 +108,13 @@ extension AppEnvironment {
         if lastRegisteredDeviceToken == token, lastRegisteredUserId == userId {
             return
         }
+        if inFlightDeviceToken == token, inFlightDeviceTokenUserId == userId {
+            return
+        }
         let environment = pushEnvironment
         let platform = pushPlatform
+        inFlightDeviceToken = token
+        inFlightDeviceTokenUserId = userId
         Task {
             do {
                 try await container.deviceTokensAPI.register(
@@ -117,11 +122,18 @@ extension AppEnvironment {
                     platform: platform,
                     environment: environment
                 )
-                await MainActor.run {
+                if self.inFlightDeviceToken == token, self.inFlightDeviceTokenUserId == userId {
                     self.lastRegisteredDeviceToken = token
                     self.lastRegisteredUserId = userId
+                    self.inFlightDeviceToken = nil
+                    self.inFlightDeviceTokenUserId = nil
+                    self.reportCurrentDevicePresenceIfNeeded()
                 }
             } catch {
+                if self.inFlightDeviceToken == token, self.inFlightDeviceTokenUserId == userId {
+                    self.inFlightDeviceToken = nil
+                    self.inFlightDeviceTokenUserId = nil
+                }
                 self.pushLogger.error("Device token registration failed.")
                 return
             }
@@ -150,6 +162,55 @@ extension AppEnvironment {
         return "macos"
         #else
         return "ios"
+        #endif
+    }
+
+    func ensureDevicePresenceReporter() -> DevicePresenceReporter {
+        if let devicePresenceReporter {
+            return devicePresenceReporter
+        }
+
+        let reporter = DevicePresenceReporter { [weak self] token, isForeground, lastSeenAt in
+            guard let self else { return }
+            guard self.authState == .active else { return }
+            do {
+                try await self.container.deviceTokensAPI.updatePresence(
+                    token: token,
+                    isForeground: isForeground,
+                    lastSeenAt: lastSeenAt
+                )
+            } catch {
+                self.pushLogger.error("Device presence update failed.")
+            }
+        }
+        devicePresenceReporter = reporter
+        return reporter
+    }
+
+    func reportDevicePresence(isForeground: Bool) {
+        let reporter = ensureDevicePresenceReporter()
+        let token = deviceToken
+        Task { @MainActor in
+            await reporter.report(isForeground: isForeground, token: token)
+        }
+    }
+
+    func reportCurrentDevicePresenceIfNeeded() {
+        let reporter = ensureDevicePresenceReporter()
+        let token = deviceToken
+        let isForeground = currentPresenceForegroundState
+        Task { @MainActor in
+            await reporter.report(isForeground: isForeground, token: token)
+        }
+    }
+
+    private var currentPresenceForegroundState: Bool {
+        #if os(iOS)
+        UIApplication.shared.applicationState == .active
+        #elseif os(macOS)
+        NSApplication.shared.isActive
+        #else
+        false
         #endif
     }
 

@@ -70,6 +70,7 @@ public final class ServiceContainer {
         ingestionAPI: (any IngestionProviding)? = nil,
         tasksAPI: (any TasksProviding)? = nil,
         websitesAPI: (any WebsitesProviding)? = nil,
+        deviceTokensAPI: DeviceTokensAPI? = nil,
         passwordRecoveryManager: (any PasswordRecoveryManaging)? = nil,
         passwordChangeManager: (any PasswordChanging)? = nil
     ) {
@@ -99,7 +100,7 @@ public final class ServiceContainer {
         self.placesAPI = PlacesAPI(client: apiClient)
         self.scratchpadAPI = ScratchpadAPI(client: apiClient)
         self.tasksAPI = tasksAPI ?? TasksAPI(client: apiClient)
-        self.deviceTokensAPI = DeviceTokensAPI(client: apiClient)
+        self.deviceTokensAPI = deviceTokensAPI ?? DeviceTokensAPI(client: apiClient)
         self.passwordResetAPI = PasswordResetAPI(client: apiClient)
         self.passwordRecoveryManager =
             passwordRecoveryManager

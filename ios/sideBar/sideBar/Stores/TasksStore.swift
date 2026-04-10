@@ -5,20 +5,20 @@ import Combine
 /// Persistent store for task items, groups, and projects with optimistic update support.
 @MainActor public final class TasksStore: ObservableObject {
     @Published public private(set) var selection: TaskSelection = .none
-    @Published public private(set) var tasks: [TaskItem] = []
-    @Published public private(set) var groups: [TaskGroup] = []
-    @Published public private(set) var projects: [TaskProject] = []
-    @Published public private(set) var counts: TaskCountsResponse?
+    @Published public internal(set) var tasks: [TaskItem] = []
+    @Published public internal(set) var groups: [TaskGroup] = []
+    @Published public internal(set) var projects: [TaskProject] = []
+    @Published public internal(set) var counts: TaskCountsResponse?
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var searchPending: Bool = false
     @Published public private(set) var errorMessage: String?
 
     private let api: any TasksProviding
-    private let cache: CacheClient
-    private let offlineStore: OfflineStore?
+    let cache: CacheClient
+    let offlineStore: OfflineStore?
     private let networkStatus: (any NetworkStatusProviding)?
-    private var pendingRemovals: Set<String> = []
-    private var currentScope: String?
+    var pendingRemovals: Set<String> = []
+    var currentScope: String?
     private var latestLoadRequestId: UInt64 = 0
     private var inFlightListRefreshes: [TaskSelection: Task<TaskListResponse, Error>] = [:]
     private var inFlightCountsRefresh: Task<TaskCountsResponse, Error>?
@@ -311,183 +311,4 @@ import Combine
         offlineStore?.get(key: key, as: type)
     }
 
-}
-
-extension TasksStore {
-    func applyLocalOperation(_ operation: TaskOperationPayload) {
-        guard let kind = localOperation(from: operation.op) else { return }
-        applyLocalOperation(operation, kind: kind)
-        persistCurrentSnapshot()
-    }
-
-    func removePendingTaskPlaceholder(operationId: String) {
-        guard let offlineStore else { return }
-        let key = pendingTaskKey(operationId: operationId)
-        guard let placeholderId = offlineStore.get(key: key, as: String.self) else { return }
-        tasks.removeAll { $0.id == placeholderId }
-        offlineStore.remove(key: key)
-        persistCurrentSnapshot()
-    }
-
-    func lastSyncToken() -> String? {
-        offlineStore?.get(key: CacheKeys.tasksSync, as: String.self)
-    }
-
-    func updateLastSyncToken(_ token: String?) {
-        guard let offlineStore else { return }
-        guard let token else {
-            offlineStore.remove(key: CacheKeys.tasksSync)
-            return
-        }
-        offlineStore.set(key: CacheKeys.tasksSync, entityType: "taskSync", value: token, lastSyncAt: nil)
-    }
-
-    private func persistCurrentSnapshot() {
-        guard selection != .none else { return }
-        let scopeValue = currentScope ?? selection.scope ?? selection.cacheKey
-        let snapshot = TaskListResponse(
-            scope: scopeValue,
-            generatedAt: nil,
-            tasks: tasks,
-            projects: projects,
-            groups: groups
-        )
-        let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
-        cache.set(key: cacheKey, value: snapshot, ttlSeconds: CachePolicy.tasksList)
-        offlineStore?.set(key: cacheKey, entityType: "taskList", value: snapshot, lastSyncAt: nil)
-    }
-
-    private func updateTask(id: String, update: (TaskItem) -> TaskItem) {
-        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
-        tasks[index] = update(tasks[index])
-    }
-
-    private func addLocalTask(operation: TaskOperationPayload, title: String) {
-        let placeholderId = "local-\(UUID().uuidString)"
-        registerPendingTask(operationId: operation.operationId, placeholderId: placeholderId)
-        let task = TaskItem(
-            id: placeholderId,
-            title: title,
-            status: "open",
-            deadline: operation.dueDate,
-            notes: operation.notes,
-            projectId: operation.listId,
-            groupId: nil,
-            repeating: operation.recurrenceRule != nil,
-            repeatTemplate: nil,
-            recurrenceRule: operation.recurrenceRule,
-            nextInstanceDate: nil,
-            updatedAt: nil,
-            deletedAt: nil,
-            isPreview: true
-        )
-        tasks.insert(task, at: 0)
-    }
-
-    private func updatedTask(
-        _ task: TaskItem,
-        title: String? = nil,
-        notes: String? = nil,
-        projectId: String? = nil,
-        deadline: String? = nil,
-        recurrenceRule: RecurrenceRule? = nil,
-        repeating: Bool? = nil
-    ) -> TaskItem {
-        TaskItem(
-            id: task.id,
-            title: title ?? task.title,
-            status: task.status,
-            deadline: deadline ?? task.deadline,
-            notes: notes ?? task.notes,
-            projectId: projectId ?? task.projectId,
-            groupId: task.groupId,
-            repeating: repeating ?? task.repeating,
-            repeatTemplate: task.repeatTemplate,
-            recurrenceRule: recurrenceRule ?? task.recurrenceRule,
-            nextInstanceDate: task.nextInstanceDate,
-            updatedAt: task.updatedAt,
-            deletedAt: task.deletedAt,
-            isPreview: task.isPreview
-        )
-    }
-
-    private func registerPendingTask(operationId: String, placeholderId: String) {
-        guard let offlineStore else { return }
-        let key = pendingTaskKey(operationId: operationId)
-        offlineStore.set(key: key, entityType: "taskPending", value: placeholderId, lastSyncAt: nil)
-    }
-
-    private func pendingTaskKey(operationId: String) -> String {
-        "tasks.pending.\(operationId)"
-    }
-
-    private func localOperation(from op: String) -> LocalTaskOperation? {
-        switch op.lowercased() {
-        case "add":
-            return .add
-        case "complete", "trash":
-            return .remove
-        case "rename":
-            return .rename
-        case "notes":
-            return .notes
-        case "move":
-            return .move
-        case "set_due", "defer":
-            return .setDue
-        case "clear_due":
-            return .clearDue
-        case "set_repeat":
-            return .setRepeat
-        default:
-            return nil
-        }
-    }
-
-    private func applyLocalOperation(_ operation: TaskOperationPayload, kind: LocalTaskOperation) {
-        switch kind {
-        case .add:
-            guard let title = operation.title else { return }
-            addLocalTask(operation: operation, title: title)
-        case .remove:
-            guard let taskId = operation.id else { return }
-            _ = removeTask(id: taskId)
-        case .rename:
-            updateOperationTask(operation) { task in
-                updatedTask(task, title: operation.title)
-            }
-        case .notes:
-            updateOperationTask(operation) { task in
-                updatedTask(task, notes: operation.notes)
-            }
-        case .move:
-            updateOperationTask(operation) { task in
-                updatedTask(task, projectId: operation.listId)
-            }
-        case .setDue:
-            updateOperationTask(operation) { task in
-                updatedTask(task, deadline: operation.dueDate)
-            }
-        case .clearDue:
-            updateOperationTask(operation) { task in
-                updatedTask(task, deadline: nil)
-            }
-        case .setRepeat:
-            updateOperationTask(operation) { task in
-                updatedTask(
-                    task,
-                    recurrenceRule: operation.recurrenceRule,
-                    repeating: operation.recurrenceRule != nil
-                )
-            }
-        }
-    }
-
-    private func updateOperationTask(
-        _ operation: TaskOperationPayload,
-        update: (TaskItem) -> TaskItem
-    ) {
-        guard let taskId = operation.id else { return }
-        updateTask(id: taskId, update: update)
-    }
 }

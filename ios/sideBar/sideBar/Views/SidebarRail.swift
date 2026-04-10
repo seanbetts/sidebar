@@ -104,10 +104,12 @@ public struct SidebarRail: View {
                 .scaleEffect(iconScale(for: section))
                 .frame(width: 32, height: 32)
                 .foregroundStyle(isActive ? Color.accentColor : Color.primary)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(buttonBackground(isActive: isActive, isHovered: isHovered))
-                )
+                .background {
+                    SidebarRailButtonBackground(
+                        chrome: Self.buttonChrome(isActive: isActive, isHovered: isHovered),
+                        opacity: Self.buttonChromeOpacity(isActive: isActive, isHovered: isHovered)
+                    )
+                }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(section.title)
@@ -139,14 +141,22 @@ public struct SidebarRail: View {
         }
     }
 
-    private func buttonBackground(isActive: Bool, isHovered: Bool) -> Color {
+    static func buttonChrome(isActive: Bool, isHovered: Bool) -> GlassChrome.Kind? {
+        guard isActive || isHovered else {
+            return nil
+        }
+
+        return .actionButton
+    }
+
+    static func buttonChromeOpacity(isActive: Bool, isHovered: Bool) -> Double {
         if isActive {
-            return Color.accentColor.opacity(0.18)
+            return 1
         }
         if isHovered {
-            return Color.primary.opacity(0.08)
+            return 0.72
         }
-        return Color.clear
+        return 0
     }
 
     private var railBackground: Color {
@@ -165,4 +175,18 @@ public struct SidebarRail: View {
         section == .skillsStore ? 1.2 : 1.0
     }
 
+}
+
+private struct SidebarRailButtonBackground: View {
+    let chrome: GlassChrome.Kind?
+    let opacity: Double
+
+    var body: some View {
+        if let chrome {
+            Color.clear
+                .frame(width: 32, height: 32)
+                .glassChrome(chrome)
+                .opacity(opacity)
+        }
+    }
 }

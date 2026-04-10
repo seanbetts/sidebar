@@ -47,7 +47,7 @@ struct TaskPanelRow: View, Equatable {
             isSelected: isSelected,
             insets: rowInsets,
             useListStyling: useListStyling,
-            primaryAction: primaryAction
+            primaryAction: rowPrimaryAction
         ) {
             HStack(spacing: 8) {
                 Image(systemName: iconName)
@@ -126,5 +126,13 @@ struct TaskPanelRow: View, Equatable {
             items.append(.delete(handler: onDelete))
         }
         return items
+    }
+
+    private var rowPrimaryAction: (() -> Void)? {
+        #if os(macOS)
+        nil
+        #else
+        primaryAction
+        #endif
     }
 }

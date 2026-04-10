@@ -22,12 +22,7 @@ struct LoginPasswordResetNoticeView: View {
             .multilineTextAlignment(.center)
         }
         .padding(DesignTokens.Spacing.sm)
-        .background(DesignTokens.Colors.surface)
-        .cornerRadius(DesignTokens.Radius.xsPlus)
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
+        .glassChrome(LoginChrome.noticeKind)
         .frame(maxWidth: .infinity, alignment: .center)
         .accessibilityLabel("Authentication notice")
         .accessibilityValue(message)
@@ -50,12 +45,7 @@ struct LoginOfflineNoticeView: View {
             .multilineTextAlignment(.center)
         }
         .padding(DesignTokens.Spacing.sm)
-        .background(DesignTokens.Colors.surface)
-        .cornerRadius(DesignTokens.Radius.xsPlus)
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
+        .glassChrome(LoginChrome.noticeKind)
         .frame(maxWidth: .infinity, alignment: .center)
         .accessibilityLabel("Offline")
         .accessibilityValue("Sign in requires a connection.")
@@ -90,12 +80,7 @@ struct LoginOfflineUnlockView: View {
             .disabled(isLoading)
         }
         .padding(DesignTokens.Spacing.sm)
-        .background(DesignTokens.Colors.surface)
-        .cornerRadius(DesignTokens.Radius.xsPlus)
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.xsPlus, style: .continuous)
-                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-        )
+        .glassChrome(LoginChrome.noticeKind)
         .frame(maxWidth: .infinity, alignment: .center)
     }
 }

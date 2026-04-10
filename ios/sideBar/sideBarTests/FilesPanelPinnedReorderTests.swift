@@ -1,5 +1,6 @@
-import XCTest
 import sideBarShared
+import SwiftUI
+import XCTest
 @testable import sideBar
 
 @MainActor
@@ -65,6 +66,33 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
         XCTAssertFalse(offlineView.isPinnedReorderEditActive)
     }
 
+    func testFileSelectionBindingDefersPublishedSelectionMutationUntilAsyncOpenTask() async {
+        let fixture = makeViewModelAndStore(
+            items: [makeItem(id: "file-a", pinned: false)],
+            networkIsAvailable: true
+        )
+        let viewModel = fixture.viewModel
+        let view = FilesPanelView(
+            viewModel: viewModel,
+            showsHeader: false,
+            pinnedReorderNetworkAvailability: true
+        )
+
+        XCTAssertNil(viewModel.selectedFileId)
+
+        view.fileSelectionBinding.wrappedValue = "file-a"
+
+        XCTAssertNil(viewModel.selectedFileId)
+
+        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
+        while viewModel.selectedFileId != "file-a",
+              DispatchTime.now().uptimeNanoseconds < deadline {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(viewModel.selectedFileId, "file-a")
+    }
+
     func testPinnedReorderCancelsWhenPinnedSetChangesMidGesture() async {
         let view = makeView()
 
@@ -107,21 +135,55 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
         XCTAssertEqual(view.reorderedPinnedIDs(moving: "file-a", to: "file-b"), ["file-a", "file-b"])
     }
 
-    func testPinnedFileMoveKeepsSessionActiveUntilTimeoutAndPersistsFinalOrder() async {
+    func testPinnedFileMovePersistsFinalOrderUsingPlatformInteractionModel() async {
         let (view, api) = makeViewWithAPI(autoExitDelay: 0.05)
 
+        #if !os(iOS)
         view.enterPinnedReorder(from: "file-a")
+        #endif
         view.movePinnedFiles(from: IndexSet(integer: 0), to: 2)
 
+        #if os(iOS)
+        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
+        while api.updatePinnedOrderCallCount != 1,
+              DispatchTime.now().uptimeNanoseconds < deadline {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
+        XCTAssertEqual(api.lastPinnedOrderIDs, ["file-b", "file-a"])
+        XCTAssertEqual(view.pinnedItems.map(\.file.id), ["file-b", "file-a"])
+        #else
         XCTAssertTrue(view.isPinnedReordering)
         XCTAssertEqual(view.pinnedItems.map(\.file.id), ["file-b", "file-a"])
         XCTAssertEqual(api.updatePinnedOrderCallCount, 0)
 
-        try? await Task.sleep(nanoseconds: 120_000_000)
+        let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
+        while view.isPinnedReordering,
+              DispatchTime.now().uptimeNanoseconds < deadline {
+            await Task.yield()
+        }
 
         XCTAssertFalse(view.isPinnedReordering)
         XCTAssertEqual(api.updatePinnedOrderCallCount, 1)
         XCTAssertEqual(api.lastPinnedOrderIDs, ["file-b", "file-a"])
+        #endif
+    }
+
+    func testFileListSelectionIDReturnsFileIDForSelectableRows() {
+        let view = makeView(
+            items: [makeItem(id: "file-a", pinned: false)]
+        )
+
+        XCTAssertEqual(view.fileListSelectionID(for: "file-a"), "file-a")
+    }
+
+    func testFileListSelectionIDReturnsNilForFolders() {
+        let view = makeView(
+            items: [makeItem(id: "folder-a", pinned: false, category: "folder")]
+        )
+
+        XCTAssertNil(view.fileListSelectionID(for: "folder-a"))
     }
 
     private func makeView(
@@ -179,7 +241,8 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
     private func makeItem(
         id: String,
         pinned: Bool,
-        pinnedOrder: Int? = nil
+        pinnedOrder: Int? = nil,
+        category: String = "documents"
     ) -> IngestionListItem {
         IngestionListItem(
             file: IngestedFileMeta(
@@ -191,7 +254,7 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
                 sha256: nil,
                 pinned: pinned,
                 pinnedOrder: pinnedOrder,
-                category: "documents",
+                category: category,
                 sourceUrl: nil,
                 sourceMetadata: nil,
                 createdAt: "2026-03-22T10:00:00Z",

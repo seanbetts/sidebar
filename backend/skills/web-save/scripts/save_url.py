@@ -734,6 +734,36 @@ def save_url_database(url: str, user_id: str) -> dict[str, Any]:
         target_url,
         web_save_mode,
     )
+    reserved_hosts = {
+        "example.com",
+        "example.org",
+        "example.net",
+    }
+    parsed_target_url = urlparse(target_url)
+    target_host = (parsed_target_url.hostname or "").lower()
+    path_parts = [part for part in parsed_target_url.path.split("/") if part]
+    placeholder_uuid_like_slug = (
+        len(path_parts) >= 2
+        and path_parts[0] in {"article", "articles"}
+        and re.fullmatch(
+            r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+            path_parts[-1].lower(),
+        )
+        is not None
+    )
+    if target_host in reserved_hosts and placeholder_uuid_like_slug:
+        raise WebSaveScriptError(
+            "ValidationError",
+            classify_web_save_failure(
+                upstream_error_type="ValidationError",
+                upstream_message=(
+                    "Reserved placeholder URLs are not supported for website saves."
+                ),
+                url=url,
+                target_url=target_url,
+                mode=web_save_mode,
+            ),
+        )
     direct_youtube_page = _build_direct_youtube_page(target_url)
     if direct_youtube_page is not None:
         parsed = direct_youtube_page

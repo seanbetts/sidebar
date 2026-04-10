@@ -28,6 +28,9 @@ class UserSettings(Base):
     pronouns: Mapped[str | None] = mapped_column(Text, nullable=True)
     location: Mapped[str | None] = mapped_column(Text, nullable=True)
     profile_image_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notification_preferences: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
     assistant_identity: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB, nullable=True
     )

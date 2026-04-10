@@ -52,12 +52,18 @@ extension ContentView {
                     Color.black.opacity(0.2)
                         .ignoresSafeArea()
                         .onTapGesture {
-                            environment.dismissMacSettings()
+                            Task { @MainActor in
+                                environment.dismissMacSettings()
+                            }
                         }
 
                     SettingsView(
                         presentationStyle: .macModal,
-                        onClose: { environment.dismissMacSettings() }
+                        onClose: {
+                            Task { @MainActor in
+                                environment.dismissMacSettings()
+                            }
+                        }
                     )
                         .environmentObject(environment)
                         .padding(DesignTokens.Spacing.xl)
@@ -67,7 +73,9 @@ extension ContentView {
         })
         content = AnyView(content.onKeyPress(.escape) {
             guard environment.isMacSettingsPresented else { return .ignored }
-            environment.dismissMacSettings()
+            Task { @MainActor in
+                environment.dismissMacSettings()
+            }
             return .handled
         })
         content = AnyView(content.animation(.easeInOut(duration: 0.2), value: environment.isMacSettingsPresented))
@@ -244,6 +252,16 @@ extension ContentView {
                 #endif
                 environment.commandSelection = nil
             updateActiveSection()
+        })
+        content = AnyView(content.onChange(of: environment.pendingMorningDigestDeepLink) { _, isPending in
+            guard isPending else { return }
+            environment.pendingMorningDigestDeepLink = false
+            isMorningDigestPresented = true
+        })
+        content = AnyView(content.onAppear {
+            guard environment.pendingMorningDigestDeepLink else { return }
+            environment.pendingMorningDigestDeepLink = false
+            isMorningDigestPresented = true
         })
         content = AnyView(content.onChange(of: isWorkspaceExpanded) { _, newValue in
             environment.workspaceStore.dispatch(

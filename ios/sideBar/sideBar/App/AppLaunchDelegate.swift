@@ -2,13 +2,14 @@ import BackgroundTasks
 import sideBarShared
 import Foundation
 import os
+import UserNotifications
 
 #if os(iOS)
 import UIKit
 
 // MARK: - AppLaunchDelegate
 
-final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
+final class AppLaunchDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     static let tokenRefreshTaskIdentifier = "ai.sidebar.sidebar.tokenrefresh"
     static let widgetRefreshTaskIdentifier = "ai.sidebar.sidebar.widgetrefresh"
     static let websiteSaveContinuationTaskIdentifier = "ai.sidebar.sidebar.website-save"
@@ -78,6 +79,7 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
         if let config = try? EnvironmentConfig.load() {
             SentryBootstrap.startIfConfigured(config: config)
         }
@@ -121,6 +123,30 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         }
 
         return true
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        _ = center
+        AppEnvironment.shared?.handleRemoteNotification(notification.request.content.userInfo)
+        completionHandler([.badge, .banner, .list, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        _ = center
+        let userInfo = response.notification.request.content.userInfo
+        AppEnvironment.shared?.handleRemoteNotification(userInfo)
+        if let route = NotificationRoute(userInfo: userInfo) {
+            AppEnvironment.shared?.handleDeepLink(route.url)
+        }
+        completionHandler()
     }
 
     // MARK: - Background Token Refresh

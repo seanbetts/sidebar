@@ -6,6 +6,8 @@ import UIKit
 import AppKit
 #endif
 struct NotesDetailView: View {
+    static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
+
     @ObservedObject var viewModel: NotesViewModel
     @ObservedObject var editorViewModel: NotesEditorViewModel
     let contentMaxWidth: CGFloat = NoteTextLayout.maxContentWidth
@@ -463,6 +465,7 @@ extension NotesDetailView {
                 .imageScale(.medium)
         }
         .buttonStyle(.plain)
+        .headerActionControlChrome(Self.actionControlChromeStyle)
         .accessibilityLabel(expandButtonLabel)
         .disabled(viewModel.activeNote == nil)
     }

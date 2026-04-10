@@ -33,28 +33,31 @@ final class AppKitNoteFormattingBar: NSView {
     private let menuButton = MenuButton()
     private var currentConfiguration: NoteFormattingBarConfiguration
     private var popoverPresentation: NoteFormattingBarPresentation
+    private var showsVisibleChrome: Bool
     private weak var popoverView: AppKitNoteFormattingPopoverView?
     private weak var dismissBackdropButton: NSButton?
-    private static let barHeight: CGFloat = 52
-    private static let barWidth: CGFloat = 60
-    private static let horizontalPadding: CGFloat = 8
+    private static let barHeight: CGFloat = NoteFormattingBarChrome.entryControlHeight
+    private static let barWidth: CGFloat = NoteFormattingBarChrome.entryControlWidth
+    private static let horizontalPadding: CGFloat = 0
     private static let popoverScreenPadding: CGFloat = 8
     private static let topOverlapAllowance: CGFloat = 2
 
     override init(frame frameRect: NSRect) {
         self.currentConfiguration = .disabled
         self.popoverPresentation = .floatingTopTrailing
+        self.showsVisibleChrome = true
         super.init(frame: frameRect)
         setUpViewHierarchy()
-        apply(configuration: .disabled, presentation: .floatingTopTrailing)
+        apply(configuration: .disabled, presentation: .floatingTopTrailing, showsVisibleChrome: true)
     }
 
     convenience init(
         configuration: NoteFormattingBarConfiguration,
-        presentation: NoteFormattingBarPresentation = .floatingTopTrailing
+        presentation: NoteFormattingBarPresentation = .floatingTopTrailing,
+        showsVisibleChrome: Bool = true
     ) {
         self.init(frame: .zero)
-        apply(configuration: configuration, presentation: presentation)
+        apply(configuration: configuration, presentation: presentation, showsVisibleChrome: showsVisibleChrome)
     }
 
     @available(*, unavailable)
@@ -64,18 +67,36 @@ final class AppKitNoteFormattingBar: NSView {
 
     func apply(
         configuration: NoteFormattingBarConfiguration,
-        presentation: NoteFormattingBarPresentation? = nil
+        presentation: NoteFormattingBarPresentation? = nil,
+        showsVisibleChrome: Bool? = nil
     ) {
         currentConfiguration = configuration
         if let presentation {
             popoverPresentation = presentation
         }
+        if let showsVisibleChrome {
+            self.showsVisibleChrome = showsVisibleChrome
+        }
 
         menuButton.isEnabled = configuration.isEnabled
-        if let image = NSImage(systemSymbolName: "textformat", accessibilityDescription: nil) {
+        if self.showsVisibleChrome,
+           let image = NSImage(
+                systemSymbolName: "textformat",
+                accessibilityDescription: nil
+           )?.withSymbolConfiguration(
+                NSImage.SymbolConfiguration(
+                    pointSize: NoteFormattingBarChrome.entrySymbolPointSize,
+                    weight: .semibold
+                )
+            ) {
             menuButton.image = image
+        } else {
+            menuButton.image = nil
         }
-        menuButton.contentTintColor = configuration.isEnabled ? .labelColor : .secondaryLabelColor
+        menuButton.contentTintColor = self.showsVisibleChrome
+            ? (configuration.isEnabled ? .labelColor : .secondaryLabelColor)
+            : .clear
+        barContainerView.isHidden = !self.showsVisibleChrome
         popoverView?.apply(configuration: configuration)
 
         if !configuration.isEnabled || popoverPresentation == .hidden {
@@ -115,21 +136,32 @@ final class AppKitNoteFormattingBar: NSView {
 struct AppKitNoteFormattingBarRepresentable: NSViewRepresentable {
     let configuration: NoteFormattingBarConfiguration
     let presentation: NoteFormattingBarPresentation
+    let showsVisibleChrome: Bool
 
     init(
         configuration: NoteFormattingBarConfiguration,
-        presentation: NoteFormattingBarPresentation = .floatingTopTrailing
+        presentation: NoteFormattingBarPresentation = .floatingTopTrailing,
+        showsVisibleChrome: Bool = true
     ) {
         self.configuration = configuration
         self.presentation = presentation
+        self.showsVisibleChrome = showsVisibleChrome
     }
 
     func makeNSView(context: Context) -> AppKitNoteFormattingBar {
-        AppKitNoteFormattingBar(configuration: configuration, presentation: presentation)
+        AppKitNoteFormattingBar(
+            configuration: configuration,
+            presentation: presentation,
+            showsVisibleChrome: showsVisibleChrome
+        )
     }
 
     func updateNSView(_ nsView: AppKitNoteFormattingBar, context: Context) {
-        nsView.apply(configuration: configuration, presentation: presentation)
+        nsView.apply(
+            configuration: configuration,
+            presentation: presentation,
+            showsVisibleChrome: showsVisibleChrome
+        )
     }
 }
 
@@ -138,20 +170,24 @@ struct AppKitNoteFormattingBarRepresentable: NSViewRepresentable {
 struct AppKitNoteFormattingOverlay: View {
     let configuration: NoteFormattingBarConfiguration
     let presentation: NoteFormattingBarPresentation
+    let showsVisibleChrome: Bool
 
     init(
         configuration: NoteFormattingBarConfiguration,
-        presentation: NoteFormattingBarPresentation = .floatingTopTrailing
+        presentation: NoteFormattingBarPresentation = .floatingTopTrailing,
+        showsVisibleChrome: Bool = true
     ) {
         self.configuration = configuration
         self.presentation = presentation
+        self.showsVisibleChrome = showsVisibleChrome
     }
 
     var body: some View {
         GeometryReader { proxy in
             AppKitNoteFormattingBarRepresentable(
                 configuration: configuration,
-                presentation: presentation
+                presentation: presentation,
+                showsVisibleChrome: showsVisibleChrome
             )
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topTrailing)
         }
@@ -167,12 +203,13 @@ private extension AppKitNoteFormattingBar {
         barContainerView.identifier = NSUserInterfaceItemIdentifier("note-formatting-bar")
         barContainerView.translatesAutoresizingMaskIntoConstraints = false
         barContainerView.style = .regular
-        barContainerView.cornerRadius = 18
+        barContainerView.cornerRadius = NoteFormattingBarChrome.cornerRadius(for: Self.barHeight)
         barContainerView.wantsLayer = true
-        barContainerView.contentView = barContentView
         applyGlassChrome()
         addSubview(barContainerView)
+
         barContentView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(barContentView)
 
         menuButton.identifier = NSUserInterfaceItemIdentifier("note-formatting-menu")
         menuButton.setAccessibilityLabel("Formatting")
@@ -187,6 +224,11 @@ private extension AppKitNoteFormattingBar {
             barContainerView.trailingAnchor.constraint(equalTo: trailingAnchor),
             barContainerView.widthAnchor.constraint(equalToConstant: Self.barWidth),
             barContainerView.heightAnchor.constraint(equalToConstant: Self.barHeight),
+
+            barContentView.topAnchor.constraint(equalTo: topAnchor),
+            barContentView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            barContentView.widthAnchor.constraint(equalToConstant: Self.barWidth),
+            barContentView.heightAnchor.constraint(equalToConstant: Self.barHeight),
 
             menuButton.leadingAnchor.constraint(equalTo: barContentView.leadingAnchor, constant: Self.horizontalPadding),
             menuButton.trailingAnchor.constraint(equalTo: barContentView.trailingAnchor, constant: -Self.horizontalPadding),
@@ -205,12 +247,10 @@ private extension AppKitNoteFormattingBar {
     }
 
     var glassBorderColor: NSColor {
-        switch effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) {
-        case .darkAqua:
-            NSColor.white.withAlphaComponent(0.22)
-        default:
-            NSColor.black.withAlphaComponent(0.12)
-        }
+        HeaderActionControlChromeBridge.borderColor(
+            for: NoteFormattingBarChrome.entryControlChromeStyle,
+            appearance: effectiveAppearance
+        )
     }
 
     func handleMenuButtonTap() {
@@ -242,7 +282,7 @@ private extension AppKitNoteFormattingBar {
         if let popoverView {
             if popoverView.superview !== self {
                 popoverView.removeFromSuperview()
-                addSubview(popoverView, positioned: .above, relativeTo: barContainerView)
+                addSubview(popoverView, positioned: .above, relativeTo: barContentView)
             }
             return popoverView
         }
@@ -253,7 +293,7 @@ private extension AppKitNoteFormattingBar {
         popover.translatesAutoresizingMaskIntoConstraints = true
         popover.autoresizingMask = []
         popover.isHidden = true
-        addSubview(popover, positioned: .above, relativeTo: barContainerView)
+        addSubview(popover, positioned: .above, relativeTo: barContentView)
         self.popoverView = popover
         return popover
     }

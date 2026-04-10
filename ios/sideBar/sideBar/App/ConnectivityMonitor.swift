@@ -165,10 +165,16 @@ final class ConnectivityMonitor: ObservableObject {
     }
 
     private func setStatus(networkAvailable: Bool, serverReachable: Bool) {
-        isNetworkAvailable = networkAvailable
-        isServerReachable = serverReachable
         // Offline reflects device connectivity only; server reachability is tracked separately.
-        isOffline = !networkAvailable
+        let isOffline = !networkAvailable
+        guard self.isNetworkAvailable != networkAvailable ||
+                self.isServerReachable != serverReachable ||
+                self.isOffline != isOffline else {
+            return
+        }
+        self.isNetworkAvailable = networkAvailable
+        self.isServerReachable = serverReachable
+        self.isOffline = isOffline
     }
 
     private func recordInternetFailure() {

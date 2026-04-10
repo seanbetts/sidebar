@@ -11,17 +11,37 @@ struct MacPopoverShell<Content: View>: View {
 
     var body: some View {
         content
-            .padding(DesignTokens.Spacing.md)
+            .padding(Self.contentPadding)
             .frame(
                 minWidth: minWidth,
                 idealWidth: idealWidth,
                 maxWidth: maxWidth,
                 alignment: .topLeading
             )
-            .background(DesignTokens.Colors.surface)
+            .glassChrome(Self.chromeKind)
     }
 
     private var minWidth: CGFloat {
+        Self.minimumWidth(for: type)
+    }
+
+    private var idealWidth: CGFloat {
+        minWidth
+    }
+
+    private var maxWidth: CGFloat {
+        Self.maximumWidth(for: type)
+    }
+
+    static var chromeKind: GlassChrome.Kind {
+        .popoverShell
+    }
+
+    static var contentPadding: CGFloat {
+        DesignTokens.Spacing.md
+    }
+
+    static func minimumWidth(for type: MacPanelType) -> CGFloat {
         switch type {
         case .compactPopover:
             return 280
@@ -36,11 +56,7 @@ struct MacPopoverShell<Content: View>: View {
         }
     }
 
-    private var idealWidth: CGFloat {
-        minWidth
-    }
-
-    private var maxWidth: CGFloat {
-        max(minWidth, macModalFrameWidth(for: type))
+    static func maximumWidth(for type: MacPanelType) -> CGFloat {
+        max(minimumWidth(for: type), macModalFrameWidth(for: type))
     }
 }

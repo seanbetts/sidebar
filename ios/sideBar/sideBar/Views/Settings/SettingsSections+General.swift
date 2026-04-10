@@ -3,7 +3,7 @@ import sideBarShared
 import SwiftUI
 
 struct GeneralSettingsView: View {
-    @EnvironmentObject private var environment: AppEnvironment
+    @EnvironmentObject var environment: AppEnvironment
     enum TextSizeControlMode: Equatable {
         case picker
         case menuPicker
@@ -22,6 +22,13 @@ struct GeneralSettingsView: View {
     @State private var isPasswordChangePresented = false
     @State private var isStartingPasswordChange = false
     @State private var passwordChangeAuthFailure: LocalDeviceAuthenticationFailure?
+    @State var hasLoadedNotificationDrafts = false
+    @State var isSyncingNotificationDrafts = false
+    @State var notificationDraftsUserId: String?
+    @State var taskRemindersEnabled = false
+    @State var taskReminderTime = Self.defaultReminderDate()
+    @State var assistantReplyNotificationsEnabled = false
+    @StateObject var notificationAutosaveController = SystemAutosaveController()
     private let localDeviceAuthenticator: any LocalDeviceAuthenticating
 
     static func textSizeControlMode(for platform: TextSizeControlPlatform) -> TextSizeControlMode {
@@ -47,65 +54,80 @@ struct GeneralSettingsView: View {
 
     #if os(macOS)
     private var macGeneralForm: some View {
-        Form {
-            Section {
-                SettingsMacSectionIntro(
-                    title: "Text",
-                    message: "Choose how dense sideBar should feel across panels, editors, and assistant surfaces."
-                )
-                textSizeControl
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                notificationMacSections
 
-            Section {
-                SettingsMacActionSection(
-                    title: "Security",
-                    message: "Protect the app when your Mac supports biometric authentication."
-                ) {
-                    Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
-                        .disabled(!canUseDeviceAuth)
+                SettingsMacPanelCard {
+                    SettingsMacSectionIntro(
+                        title: "Text",
+                        message: "Choose how dense sideBar should feel across panels, editors, and assistant surfaces."
+                    )
+                    textSizeControl
+                }
 
-                    Button {
-                        startPasswordChangeFlow()
-                    } label: {
-                        Text("Change password")
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(isStartingPasswordChange || environment.authState != .active)
+                SettingsMacPanelCard {
+                    SettingsMacActionSection(
+                        title: "Security",
+                        message: "Protect the app when your Mac supports biometric authentication."
+                    ) {
+                        Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
+                            .disabled(!canUseDeviceAuth)
 
-                    if !canUseDeviceAuth {
-                        SettingsMacStatusBanner(
-                            message: "Set up Face ID or Touch ID to enable biometric unlock.",
-                            tone: .info
-                        )
+                        Button {
+                            startPasswordChangeFlow()
+                        } label: {
+                            Text("Change password")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isStartingPasswordChange || environment.authState != .active)
+
+                        if !canUseDeviceAuth {
+                            SettingsMacStatusBanner(
+                                message: "Set up Face ID or Touch ID to enable biometric unlock.",
+                                tone: .info
+                            )
+                        }
                     }
                 }
-            }
 
-            Section {
-                SettingsMacSectionIntro(
-                    title: "Weather",
-                    message: "Pick the temperature unit sideBar should use when weather context is shown."
-                )
-                Picker("Temperature Units", selection: $weatherUsesFahrenheit) {
-                    Text("Celsius").tag(false)
-                    Text("Fahrenheit").tag(true)
+                SettingsMacPanelCard {
+                    SettingsMacSectionIntro(
+                        title: "Weather",
+                        message: "Pick the temperature unit sideBar should use when weather context is shown."
+                    )
+                    Picker("Temperature Units", selection: $weatherUsesFahrenheit) {
+                        Text("Celsius").tag(false)
+                        Text("Fahrenheit").tag(true)
+                    }
+                    .appFont(.body)
+                    .pickerStyle(settingsMacWeatherPickerStyle())
                 }
-                .appFont(.body)
-                .pickerStyle(settingsMacWeatherPickerStyle())
             }
+            .padding(DesignTokens.Spacing.lg)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
         .background(DesignTokens.Colors.settingsBackground)
         .onAppear {
             appTextSizeRaw = AppTextSizeOption.resolved(from: appTextSizeRaw).rawValue
             evaluateBiometricSupport()
+            syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
+        }
+        .onChange(of: notificationSettingsSignature) { _, _ in
+            syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
+        }
+        .onChange(of: notificationAutosaveSignature) { _, _ in
+            scheduleNotificationAutosave()
+        }
+        .onDisappear {
+            flushPendingNotificationAutosave()
         }
     }
     #endif
 
     private var iosGeneralForm: some View {
         Form {
+            notificationIOSSections
+
             if !environment.settingsViewModel.permissionRecoveryItems.isEmpty {
                 Section("Permissions") {
                     ForEach(environment.settingsViewModel.permissionRecoveryItems) { item in
@@ -151,9 +173,19 @@ struct GeneralSettingsView: View {
         .onAppear {
             appTextSizeRaw = AppTextSizeOption.resolved(from: appTextSizeRaw).rawValue
             evaluateBiometricSupport()
+            syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
             Task {
                 await environment.settingsViewModel.refreshPermissionRecoveryStates()
             }
+        }
+        .onChange(of: notificationSettingsSignature) { _, _ in
+            syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
+        }
+        .onChange(of: notificationAutosaveSignature) { _, _ in
+            scheduleNotificationAutosave()
+        }
+        .onDisappear {
+            flushPendingNotificationAutosave()
         }
         .sheet(isPresented: $isPasswordChangePresented) {
             SettingsPasswordChangeView()

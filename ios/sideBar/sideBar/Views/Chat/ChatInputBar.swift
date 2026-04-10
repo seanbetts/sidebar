@@ -10,6 +10,8 @@ func chatInputReturnIntent(shiftPressed: Bool) -> ChatInputReturnIntent {
 }
 
 struct ChatInputBar: View {
+    static let chromeKind: GlassChrome.Kind = .field
+
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
@@ -17,8 +19,6 @@ struct ChatInputBar: View {
     let isAttachEnabled: Bool
     let onSend: () -> Void
     let onAttach: () -> Void
-
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ChatInputContainer {
@@ -39,25 +39,7 @@ struct ChatInputBar: View {
         }
         .frame(maxWidth: ChatLayout.maxContentWidth)
         .frame(maxWidth: .infinity, alignment: .center)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.mdPlus, style: .continuous)
-                .fill(DesignTokens.Colors.surface)
-        )
-        .bordered(color: borderColor, cornerRadius: DesignTokens.Radius.mdPlus)
-        .appShadow(color: shadowColor, radius: shadowRadius, y: shadowRadius * 0.6)
-    }
-
-    private var shadowColor: Color {
-        colorScheme == .dark ? Color.black.opacity(0.35) : Color.black.opacity(0.12)
-    }
-
-    private var borderColor: Color {
-        let color = DesignTokens.Colors.border
-        return colorScheme == .dark ? color.opacity(0.95) : color.opacity(0.7)
-    }
-
-    private var shadowRadius: CGFloat {
-        colorScheme == .dark ? 6 : 10
+        .glassChrome(Self.chromeKind)
     }
 
     private var computedHeight: CGFloat {

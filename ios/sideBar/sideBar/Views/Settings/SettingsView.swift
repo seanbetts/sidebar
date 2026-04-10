@@ -50,7 +50,6 @@ public struct SettingsView: View {
             #endif
         }
         .appTextSize()
-        .animation(.easeInOut(duration: DesignTokens.Animation.standard), value: savePillState)
         .onAppear {
             updateSavePillState()
         }
@@ -77,12 +76,6 @@ public struct SettingsView: View {
                 }
             }
             .frame(maxWidth: macModalFrameWidth(for: settingsMacPresentationPanelType()), maxHeight: 760)
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
-            }
-            .shadow(color: .black.opacity(0.18), radius: 32, y: 18)
             .onExitCommand {
                 onClose?()
             }
@@ -105,8 +98,6 @@ public struct SettingsView: View {
 
             Spacer(minLength: DesignTokens.Spacing.md)
 
-            inlineSaveStatusView
-
             Button {
                 onClose?()
             } label: {
@@ -119,15 +110,24 @@ public struct SettingsView: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)
+        .frame(height: LayoutMetrics.appHeaderMinHeight)
+        .overlay(alignment: .trailing) {
+            inlineSaveStatusView
+                .padding(.trailing, settingsHeaderSavePillTrailingInset)
+        }
     }
 
     @ViewBuilder
     private var inlineSaveStatusView: some View {
         if let savePillState {
             SettingsSaveStatusPill(state: savePillState)
-                .transition(.move(edge: .trailing).combined(with: .opacity))
+                .transition(.opacity)
                 .allowsHitTesting(false)
         }
+    }
+
+    private var settingsHeaderSavePillTrailingInset: CGFloat {
+        DesignTokens.Spacing.lg + DesignTokens.Icon.md + DesignTokens.Spacing.md
     }
     #endif
 

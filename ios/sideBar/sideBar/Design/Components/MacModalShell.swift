@@ -14,18 +14,38 @@ struct MacModalShell<Content: View>: View {
         content
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            .background(backgroundColor)
-            .presentationBackground(backgroundColor)
+            .glassChrome(Self.chromeKind)
+            .presentationBackground(.clear)
             .presentationSizing(.fitted)
             .frame(
-                minWidth: macModalFrameWidth(for: type),
-                idealWidth: macModalFrameWidth(for: type),
-                maxWidth: type == .largeInspectorSheet ? 1_120 : macModalFrameWidth(for: type) + 80
+                minWidth: minWidth,
+                idealWidth: idealWidth,
+                maxWidth: maxWidth
             )
     }
 
-    private var backgroundColor: Color {
-        type == .largeInspectorSheet ? DesignTokens.Colors.settingsBackground : DesignTokens.Colors.background
+    private var minWidth: CGFloat {
+        Self.minimumWidth(for: type)
+    }
+
+    private var idealWidth: CGFloat {
+        minWidth
+    }
+
+    private var maxWidth: CGFloat {
+        Self.maximumWidth(for: type)
+    }
+
+    static var chromeKind: GlassChrome.Kind {
+        .modalShell
+    }
+
+    static func minimumWidth(for type: MacPanelType) -> CGFloat {
+        macModalFrameWidth(for: type)
+    }
+
+    static func maximumWidth(for type: MacPanelType) -> CGFloat {
+        type == .largeInspectorSheet ? 1_120 : minimumWidth(for: type) + 80
     }
 }
 #else
@@ -40,6 +60,18 @@ struct MacModalShell<Content: View>: View {
 
     var body: some View {
         content
+    }
+
+    static var chromeKind: GlassChrome.Kind {
+        .modalShell
+    }
+
+    static func minimumWidth(for type: MacPanelType) -> CGFloat {
+        macModalFrameWidth(for: type)
+    }
+
+    static func maximumWidth(for type: MacPanelType) -> CGFloat {
+        type == .largeInspectorSheet ? 1_120 : minimumWidth(for: type) + 80
     }
 }
 #endif

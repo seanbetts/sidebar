@@ -41,6 +41,10 @@ If the latest eligible failed assistant response can be retried, that bubble
 shows a retry icon next to the error pill. Retry removes the failed response
 from the conversation and starts a fresh assistant attempt in its place.
 
+If you enable **Assistant reply notifications** in [Settings](/manual/settings),
+sideBar can also alert you when a reply is ready while your device is away.
+Tapping the notification opens the conversation that received the reply.
+
 You can attach files to any message. Attachments move through three states
 before the message is ready to send:
 

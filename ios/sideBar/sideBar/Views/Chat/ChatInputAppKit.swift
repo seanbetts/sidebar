@@ -13,8 +13,8 @@ struct ChatInputAppKitView: NSViewRepresentable {
     @ScaledMetric(relativeTo: .body) private var textHorizontalInset: CGFloat = 16
     @ScaledMetric(relativeTo: .body) private var textVerticalInset: CGFloat = 16
     @ScaledMetric(relativeTo: .body) private var sideButtonInset: CGFloat = 6
-    @ScaledMetric(relativeTo: .body) private var sideButtonSize: CGFloat = 48
-    @ScaledMetric(relativeTo: .body) private var sideButtonSymbolSize: CGFloat = 28
+    @ScaledMetric(relativeTo: .body) private var sideButtonSize: CGFloat = HeaderActionControlMetrics.iconFrameHeight
+    @ScaledMetric(relativeTo: .body) private var sideButtonSymbolSize: CGFloat = DesignTokens.Icon.md
     @ScaledMetric(relativeTo: .body) private var cornerRadiusAdjustment: CGFloat = 2
     let isEnabled: Bool
     let isSendEnabled: Bool
@@ -75,7 +75,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         attachButton.bezelStyle = .regularSquare
         attachButton.isBordered = false
         attachButton.image = NSImage(
-            systemSymbolName: "paperclip.circle.fill",
+            systemSymbolName: "paperclip",
             accessibilityDescription: nil
         )?.withSymbolConfiguration(
             NSImage.SymbolConfiguration(pointSize: sideButtonSymbolSize, weight: .semibold)
@@ -88,7 +88,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
         button.bezelStyle = .regularSquare
         button.isBordered = false
         button.image = NSImage(
-            systemSymbolName: "arrow.up.circle.fill",
+            systemSymbolName: "arrow.up",
             accessibilityDescription: nil
         )?.withSymbolConfiguration(
             NSImage.SymbolConfiguration(pointSize: sideButtonSymbolSize, weight: .semibold)

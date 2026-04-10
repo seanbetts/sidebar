@@ -4,6 +4,19 @@ import UIKit
 #endif
 
 extension TasksPanelView {
+    @ViewBuilder
+    func tasksPanelList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        #if os(macOS)
+        List(selection: taskSelectionBinding) {
+            content()
+        }
+        #else
+        List {
+            content()
+        }
+        #endif
+    }
+
     var groupsSorted: [TaskGroup] {
         viewModel.panelGroupsSorted
     }
@@ -36,7 +49,7 @@ extension TasksPanelView {
     }
 
     var panelBackground: Color {
-        DesignTokens.Colors.sidebar
+        PlatformTokens.sidebarPanelBackground
     }
 
     var isCompact: Bool {
@@ -49,6 +62,16 @@ extension TasksPanelView {
 
     var isCompactPhone: Bool {
         isCompact && isPhone
+    }
+
+    var taskSelectionBinding: Binding<TaskSelection?> {
+        Binding(
+            get: { self.viewModel.selection },
+            set: { newValue in
+                guard let newValue, newValue != self.viewModel.selection else { return }
+                self.activateTaskSelection(newValue)
+            }
+        )
     }
 
     private var isPhone: Bool {

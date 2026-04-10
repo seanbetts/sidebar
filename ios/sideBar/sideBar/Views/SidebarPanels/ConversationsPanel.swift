@@ -23,6 +23,8 @@ public struct ConversationsPanel: View {
     }
 }
 struct ConversationsPanelView: View {
+    static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
+
     @ObservedObject var viewModel: ChatViewModel
     @Binding var searchQuery: String
     @EnvironmentObject var environment: AppEnvironment
@@ -65,7 +67,7 @@ struct ConversationsPanelView: View {
                             systemImage: "bubble"
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(DesignTokens.Colors.sidebar)
+                        .background(PlatformTokens.sidebarPanelBackground)
                     } else {
                         SidebarPanelPlaceholder(
                             title: "No matching conversations",
@@ -79,6 +81,7 @@ struct ConversationsPanelView: View {
             }
             .frame(maxHeight: .infinity)
         }
+        .sidebarPanelScaffoldBackground()
         .frame(maxHeight: .infinity)
         .alert("Rename chat", isPresented: isRenameDialogPresented) {
             TextField("Chat name", text: $renameValue)

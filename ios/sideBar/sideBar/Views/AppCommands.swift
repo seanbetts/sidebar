@@ -34,7 +34,9 @@ struct SidebarCommands: Commands {
         if environment.isMacSettingsPresented {
             CommandGroup(after: .appSettings) {
                 Button("Close Settings") {
-                    environment.dismissMacSettings()
+                    Task { @MainActor in
+                        environment.dismissMacSettings()
+                    }
                 }
                 .keyboardShortcut(.escape, modifiers: [])
             }

@@ -100,6 +100,7 @@ public final class IngestionViewModel: ObservableObject {
     let toastCenter: ToastCenter
     let pendingShareStore: PendingShareStore
     let uploadManager: IngestionUploadManaging
+    let ingestionProgressActivityCoordinator: IngestionProgressActivityCoordinator
     let networkStatus: (any NetworkStatusProviding)?
     let jobPollingBaseInterval: TimeInterval
     let jobPollingMaxInterval: TimeInterval
@@ -124,14 +125,49 @@ public final class IngestionViewModel: ObservableObject {
     var nextListPollAttemptAt: Date?
     var statusCache: [String: String] = [:]
     let readyMessageTask = ManagedTask()
+    let ingestionProgressActivityTask = ManagedTask()
     private let teardownBag = IngestionViewModelTeardownBag()
 
-    public init(
+    public convenience init(
         api: any IngestionProviding,
         store: IngestionStore,
         temporaryStore: TemporaryFileStore,
         uploadManager: IngestionUploadManaging,
         toastCenter: ToastCenter,
+        pendingShareStore: PendingShareStore = .shared,
+        networkStatus: (any NetworkStatusProviding)? = nil,
+        jobPollingBaseInterval: TimeInterval = 2,
+        jobPollingMaxInterval: TimeInterval = 20,
+        jobPollingMaxConsecutiveFailures: Int = 6,
+        jobPollingJitterWindow: TimeInterval = 0.4,
+        jobPollingSleep: @escaping JobPollingSleep = { nanoseconds in
+            try await Task.sleep(nanoseconds: nanoseconds)
+        }
+    ) {
+        self.init(
+            api: api,
+            store: store,
+            temporaryStore: temporaryStore,
+            uploadManager: uploadManager,
+            toastCenter: toastCenter,
+            ingestionProgressActivityCoordinator: IngestionProgressActivityCoordinator(),
+            pendingShareStore: pendingShareStore,
+            networkStatus: networkStatus,
+            jobPollingBaseInterval: jobPollingBaseInterval,
+            jobPollingMaxInterval: jobPollingMaxInterval,
+            jobPollingMaxConsecutiveFailures: jobPollingMaxConsecutiveFailures,
+            jobPollingJitterWindow: jobPollingJitterWindow,
+            jobPollingSleep: jobPollingSleep
+        )
+    }
+
+    init(
+        api: any IngestionProviding,
+        store: IngestionStore,
+        temporaryStore: TemporaryFileStore,
+        uploadManager: IngestionUploadManaging,
+        toastCenter: ToastCenter,
+        ingestionProgressActivityCoordinator: IngestionProgressActivityCoordinator,
         pendingShareStore: PendingShareStore = .shared,
         networkStatus: (any NetworkStatusProviding)? = nil,
         jobPollingBaseInterval: TimeInterval = 2,
@@ -148,6 +184,7 @@ public final class IngestionViewModel: ObservableObject {
         self.toastCenter = toastCenter
         self.pendingShareStore = pendingShareStore
         self.uploadManager = uploadManager
+        self.ingestionProgressActivityCoordinator = ingestionProgressActivityCoordinator
         self.networkStatus = networkStatus
         self.jobPollingBaseInterval = max(jobPollingBaseInterval, 0.1)
         self.jobPollingMaxInterval = max(jobPollingMaxInterval, self.jobPollingBaseInterval)
@@ -162,6 +199,9 @@ public final class IngestionViewModel: ObservableObject {
                 self?.detectReadyTransitions(items: items)
                 self?.itemsVersion &+= 1
                 self?.updatePanelDerivedState()
+                self?.ingestionProgressActivityTask.run { [weak self] in
+                    await self?.syncIngestionProgressActivities(items: items)
+                }
             }
             .store(in: &cancellables)
 

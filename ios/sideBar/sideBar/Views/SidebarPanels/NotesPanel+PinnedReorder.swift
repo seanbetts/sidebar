@@ -154,7 +154,7 @@ extension NotesPanelView {
     @ViewBuilder
     func pinnedNoteRow(item: FileNodeItem) -> some View {
         let isSelected = viewModel.selectedNoteId == item.id
-        let row = NotesTreeRow(
+        let baseRow = NotesTreeRow(
             item: item,
             isSelected: isSelected,
             onSelect: {
@@ -167,6 +167,7 @@ extension NotesPanelView {
         )
         .platformContextMenu(items: noteContextMenuItemsList(for: item))
         .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
+        let row = noteSelectableRow(baseRow, item: item)
 
         #if os(iOS)
         row

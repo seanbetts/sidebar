@@ -101,6 +101,7 @@ class UserSettingsService:
         pronouns: Any = UNSET,
         location: Any = UNSET,
         profile_image_path: Any = UNSET,
+        notification_preferences: Any = UNSET,
         enabled_skills: Any = UNSET,
         installed_store_skills: Any = UNSET,
         assistant_identity: Any = UNSET,
@@ -128,6 +129,7 @@ class UserSettingsService:
             pronouns: Optional pronouns.
             location: Optional location.
             profile_image_path: Optional profile image path.
+            notification_preferences: Optional notification preference payload.
             enabled_skills: Optional list of enabled skills.
             installed_store_skills: Optional list of installed store skills.
             assistant_identity: Optional assistant identity payload.
@@ -172,6 +174,9 @@ class UserSettingsService:
                 settings.location = location
             if profile_image_path is not UserSettingsService.UNSET:
                 settings.profile_image_path = profile_image_path
+            if notification_preferences is not UserSettingsService.UNSET:
+                settings.notification_preferences = notification_preferences
+                flag_modified(settings, "notification_preferences")
             if assistant_identity is not UserSettingsService.UNSET:
                 settings.assistant_identity = assistant_identity
                 flag_modified(settings, "assistant_identity")
@@ -215,6 +220,9 @@ class UserSettingsService:
                 profile_image_path=None
                 if profile_image_path is UserSettingsService.UNSET
                 else profile_image_path,
+                notification_preferences=None
+                if notification_preferences is UserSettingsService.UNSET
+                else notification_preferences,
                 assistant_identity=None
                 if assistant_identity is UserSettingsService.UNSET
                 else assistant_identity,

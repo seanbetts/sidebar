@@ -3,22 +3,22 @@ import XCTest
 @testable import sideBar
 
 final class PanelHeaderTests: XCTestCase {
-    func testBackgroundStyleUsesSidebarOnIOSInLightMode() {
-        let style = PanelHeader<EmptyView>.backgroundStyle(
+    func testHeaderChromeSkipsContainerGlassOnIOSInLightMode() {
+        let chrome = PanelHeader<EmptyView>.chrome(
             isMacOS: false,
             colorScheme: .light
         )
 
-        XCTAssertEqual(style, .sidebar)
+        XCTAssertNil(chrome)
     }
 
-    func testBackgroundStyleUsesSidebarOnIOSInDarkMode() {
-        let style = PanelHeader<EmptyView>.backgroundStyle(
-            isMacOS: false,
+    func testHeaderChromeSkipsContainerGlassOnMacOSInDarkMode() {
+        let chrome = PanelHeader<EmptyView>.chrome(
+            isMacOS: true,
             colorScheme: .dark
         )
 
-        XCTAssertEqual(style, .sidebar)
+        XCTAssertNil(chrome)
     }
 
     func testSearchablePanelHeaderMinHeightKeepsSearchRowWhenInlineSearchIsVisible() {
@@ -61,6 +61,49 @@ final class PanelHeaderTests: XCTestCase {
     func testCompactPhoneTasksPanelTopPaddingUsesExtraSmallSpacing() {
         XCTAssertEqual(
             LayoutMetrics.compactPhoneTasksPanelTopPadding,
+            DesignTokens.Spacing.xs
+        )
+    }
+
+    func testSidebarPanelBackgroundTokenUsesSidebarOnIOS() {
+        XCTAssertEqual(
+            PlatformTokens.sidebarPanelBackgroundToken(isMacOS: false),
+            .sidebar
+        )
+    }
+
+    func testSidebarPanelBackgroundTokenUsesSidebarOnMacOS() {
+        XCTAssertEqual(
+            PlatformTokens.sidebarPanelBackgroundToken(isMacOS: true),
+            .sidebar
+        )
+    }
+
+    func testSidebarPanelHeaderDoesNotUseStandaloneBackgroundLayer() {
+        XCTAssertFalse(sidebarPanelHeaderUsesStandaloneBackground())
+    }
+
+    func testSidebarPanelListDoesNotUseStandaloneBackgroundLayer() {
+        XCTAssertFalse(sidebarPanelListUsesStandaloneBackground())
+    }
+
+    func testSidebarPanelHeaderInlineSearchShadowBleedUsesSearchFieldAllowance() {
+        XCTAssertEqual(
+            sidebarPanelHeaderInlineSearchShadowBleed(showsInlineSearch: true),
+            LayoutMetrics.inlineSearchFieldBottomShadowBleed
+        )
+    }
+
+    func testSidebarPanelHeaderSkipsInlineSearchShadowBleedWithoutSearchField() {
+        XCTAssertEqual(
+            sidebarPanelHeaderInlineSearchShadowBleed(showsInlineSearch: false),
+            0
+        )
+    }
+
+    func testInlineSearchFieldBottomShadowBleedUsesExtraSmallSpacing() {
+        XCTAssertEqual(
+            LayoutMetrics.inlineSearchFieldBottomShadowBleed,
             DesignTokens.Spacing.xs
         )
     }

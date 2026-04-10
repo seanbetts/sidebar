@@ -67,6 +67,40 @@ final class ChatViewModelConversationLifecycleTests: ChatViewModelTestCase {
         XCTAssertEqual(viewModel.conversations.first?.id, created.id)
     }
 
+    func testStartNewConversationInsertsLocalConversationBeforeCreateReturns() async {
+        let cache = TestCacheClient()
+        let created = Conversation(
+            id: "conv-new",
+            title: "New Chat",
+            titleGenerated: false,
+            createdAt: "2026-01-02T00:00:00Z",
+            updatedAt: "2026-01-02T00:00:00Z",
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: nil
+        )
+        let api = ControlledCreateConversationsAPI(created: created)
+        let viewModel = makeViewModel(api: api, cache: cache)
+
+        let startTask = Task {
+            await viewModel.startNewConversation()
+        }
+
+        await waitUntil {
+            viewModel.conversations.count == 1
+        }
+
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertTrue(viewModel.messages.isEmpty)
+        XCTAssertNotNil(viewModel.selectedConversationId, "Create should establish local conversation selection before the API returns")
+
+        api.resumeCreate()
+        await startTask.value
+
+        XCTAssertEqual(viewModel.selectedConversationId, created.id)
+        XCTAssertEqual(viewModel.conversations.first?.id, created.id)
+    }
+
     func testOpenDraftConversationClearsSelectionAndActivatesDraft() async {
         let cache = TestCacheClient()
         let viewModel = makeViewModel(
@@ -117,5 +151,76 @@ final class ChatViewModelConversationLifecycleTests: ChatViewModelTestCase {
         await viewModel.selectConversation(id: nil)
 
         XCTAssertFalse(viewModel.isDraftConversationActive)
+    }
+}
+
+@MainActor
+private final class ControlledCreateConversationsAPI: ConversationsAPIProviding, ConversationsProviding {
+    private let created: Conversation
+    private var createContinuation: CheckedContinuation<Conversation, Error>?
+
+    init(created: Conversation) {
+        self.created = created
+    }
+
+    func list() async throws -> [Conversation] {
+        return [Conversation]()
+    }
+
+    func get(id: String) async throws -> ConversationWithMessages {
+        _ = id
+        throw ChatViewModelTestsSupport.MockError.forced
+    }
+
+    func search(query: String, limit: Int) async throws -> [Conversation] {
+        _ = query
+        _ = limit
+        return [Conversation]()
+    }
+
+    func delete(conversationId: String) async throws -> Conversation {
+        _ = conversationId
+        throw ChatViewModelTestsSupport.MockError.forced
+    }
+
+    func create(title: String) async throws -> Conversation {
+        _ = title
+        return try await withCheckedThrowingContinuation { continuation in
+            createContinuation = continuation
+        }
+    }
+
+    func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
+        _ = conversationId
+        _ = message
+        throw ChatViewModelTestsSupport.MockError.forced
+    }
+
+    func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
+        _ = conversationId
+        _ = updates
+        throw ChatViewModelTestsSupport.MockError.forced
+    }
+
+    func resumeCreate() {
+        guard let createContinuation else { return }
+        self.createContinuation = nil
+        createContinuation.resume(returning: created)
+    }
+}
+
+@MainActor
+private func waitUntil(
+    timeoutSeconds: TimeInterval = 0.2,
+    condition: @escaping () -> Bool
+) async {
+    let timeoutNanoseconds = UInt64(timeoutSeconds * 1_000_000_000)
+    let started = DispatchTime.now().uptimeNanoseconds
+    while !condition() {
+        if DispatchTime.now().uptimeNanoseconds - started > timeoutNanoseconds {
+            XCTFail("Condition was not met before timeout")
+            return
+        }
+        await Task.yield()
     }
 }

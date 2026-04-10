@@ -11,24 +11,15 @@ extension ChatViewModel {
             setDraftConversationActive(false)
         }
         if conversationId == nil {
-            let conversation = try await conversationsAPI.create(title: "New Chat")
-            conversationId = conversation.id
-            selectedConversationId = conversation.id
-            setDraftConversationActive(false)
-            chatStore.upsertConversation(conversation)
-            chatStore.upsertConversationDetail(
-                ConversationWithMessages(
-                    id: conversation.id,
-                    title: conversation.title,
-                    titleGenerated: conversation.titleGenerated,
-                    createdAt: conversation.createdAt,
-                    updatedAt: conversation.updatedAt,
-                    messageCount: conversation.messageCount,
-                    firstMessage: conversation.firstMessage,
-                    isArchived: conversation.isArchived,
-                    messages: []
-                )
-            )
+            let pendingConversation = beginPendingConversation()
+            do {
+                let conversation = try await conversationsAPI.create(title: "New Chat")
+                finalizePendingConversation(pendingConversation, with: conversation)
+                conversationId = conversation.id
+            } catch {
+                rollbackPendingConversation(pendingConversation)
+                throw error
+            }
         }
 
         guard let conversationId else {
@@ -200,28 +191,13 @@ extension ChatViewModel {
         clearActiveToolTask?.cancel()
         await cleanupEmptyConversationIfNeeded()
         clearAttachments()
+        let pendingConversation = beginPendingConversation()
         do {
             let conversation = try await conversationsAPI.create(title: "New Chat")
-            selectedConversationId = conversation.id
-            setDraftConversationActive(false)
-            userDefaults.set(conversation.id, forKey: AppStorageKeys.lastConversationId)
-            messages = []
+            finalizePendingConversation(pendingConversation, with: conversation)
             clearRetryState()
-            chatStore.upsertConversation(conversation)
-            chatStore.upsertConversationDetail(
-                ConversationWithMessages(
-                    id: conversation.id,
-                    title: conversation.title,
-                    titleGenerated: conversation.titleGenerated,
-                    createdAt: conversation.createdAt,
-                    updatedAt: conversation.updatedAt,
-                    messageCount: conversation.messageCount,
-                    firstMessage: conversation.firstMessage,
-                    isArchived: conversation.isArchived,
-                    messages: []
-                )
-            )
         } catch {
+            rollbackPendingConversation(pendingConversation)
             errorMessage = ErrorMapping.message(for: error)
         }
     }
@@ -240,6 +216,73 @@ extension ChatViewModel {
                 await self?.addAttachment(url: url)
             }
         }
+    }
+
+    private func beginPendingConversation() -> Conversation {
+        let now = ISO8601DateFormatter().string(from: Date())
+        let pending = Conversation(
+            id: "pending-\(UUID().uuidString)",
+            title: "New Chat",
+            titleGenerated: false,
+            createdAt: now,
+            updatedAt: now,
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: false
+        )
+        selectedConversationId = pending.id
+        setDraftConversationActive(false)
+        messages = []
+        userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
+        chatStore.upsertConversation(pending, persist: false)
+        chatStore.upsertConversationDetail(
+            ConversationWithMessages(
+                id: pending.id,
+                title: pending.title,
+                titleGenerated: pending.titleGenerated,
+                createdAt: pending.createdAt,
+                updatedAt: pending.updatedAt,
+                messageCount: pending.messageCount,
+                firstMessage: pending.firstMessage,
+                isArchived: pending.isArchived,
+                messages: []
+            ),
+            persist: false
+        )
+        conversations = chatStore.conversations
+        return pending
+    }
+
+    private func finalizePendingConversation(_ pending: Conversation, with conversation: Conversation) {
+        chatStore.removeConversation(id: pending.id, persist: false)
+        selectedConversationId = conversation.id
+        setDraftConversationActive(false)
+        userDefaults.set(conversation.id, forKey: AppStorageKeys.lastConversationId)
+        messages = []
+        chatStore.upsertConversation(conversation)
+        chatStore.upsertConversationDetail(
+            ConversationWithMessages(
+                id: conversation.id,
+                title: conversation.title,
+                titleGenerated: conversation.titleGenerated,
+                createdAt: conversation.createdAt,
+                updatedAt: conversation.updatedAt,
+                messageCount: conversation.messageCount,
+                firstMessage: conversation.firstMessage,
+                isArchived: conversation.isArchived,
+                messages: []
+            )
+        )
+        conversations = chatStore.conversations
+    }
+
+    private func rollbackPendingConversation(_ pending: Conversation) {
+        chatStore.removeConversation(id: pending.id, persist: false)
+        selectedConversationId = nil
+        setDraftConversationActive(true)
+        messages = []
+        userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
+        conversations = chatStore.conversations
     }
 
     public func retryAttachment(id: String) {

@@ -293,22 +293,35 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertEqual(operation?.notes, "Updated")
     }
 
-    func testUpdateNotesRefreshesSelectionAndCounts() async {
+    func testUpdateNotesOptimisticallyUpdatesTaskWithoutRefreshingSelectionOrCounts() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "t1", title: "Draft", status: "open", notes: "Old", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
-        let updatedTask = TaskItem(id: "t1", title: "Draft", status: "open", notes: "Updated", updatedAt: "u2")
-        api.enqueueListResponse(scope: "today", tasks: [updatedTask])
-        api.enqueueListResponse(scope: "today", tasks: [updatedTask])
+        api.applyResult = .success(
+            TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
+        )
+        api.suspendNextApply()
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
 
-        await sut.viewModel.updateNotes(task: task, notes: "Updated")
+        let updateTask = Task {
+            await sut.viewModel.updateNotes(task: task, notes: "Updated")
+        }
+
+        await eventually {
+            sut.store.tasks.first?.notes == "Updated"
+        }
+        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertEqual(api.listCallCount, 1, "Manual note save should not force a visible list reload")
+        XCTAssertEqual(api.countsCallCount, 0, "Manual note save should not refresh counts")
+
+        api.resumeApply()
+        await updateTask.value
 
         XCTAssertEqual(api.applyCallCount, 1)
-        XCTAssertGreaterThanOrEqual(api.listCallCount, 3, "Manual save should refresh list and widget data")
-        XCTAssertGreaterThanOrEqual(api.countsCallCount, 1, "Manual save should refresh counts")
+        XCTAssertEqual(api.listCallCount, 1, "Successful note save should reconcile locally without reloading the list")
+        XCTAssertEqual(api.countsCallCount, 0, "Successful note save should not refresh counts")
     }
 
     func testMoveTaskOnlineOptimisticallyUpdatesProjectSelectionBeforeApplyReturns() async {
@@ -355,25 +368,36 @@ final class TasksViewModelTests: XCTestCase {
 
     // MARK: - New task creation
 
-    func testCreateTaskOnlineCallsApplyAndRefreshes() async {
+    func testCreateTaskOnlineOptimisticallyAddsPreviewWithoutRefreshingList() async {
         let api = TasksViewModelAPIStub()
         api.enqueueListResponse(scope: "today", tasks: [])
-        // Responses for post-create refresh
-        api.enqueueListResponse(scope: "today", tasks: [TaskItem(id: "t1", title: "Buy milk", status: "open")])
-        api.enqueueListResponse(scope: "today", tasks: [TaskItem(id: "t1", title: "Buy milk", status: "open")])
         api.applyResult = .success(
             TaskSyncResponse(applied: ["op-1"], tasks: [], nextTasks: [], conflicts: [], updates: nil, serverUpdatedSince: nil)
         )
+        api.suspendNextApply()
 
         let sut = makeSUT(api: api, networkAvailable: true)
         await sut.viewModel.load(selection: .today)
         sut.viewModel.startNewTask()
 
-        await sut.viewModel.createTask(title: "Buy milk", notes: "", dueDate: Date(), listId: nil)
+        let createTask = Task {
+            await sut.viewModel.createTask(title: "Buy milk", notes: "", dueDate: nil, listId: nil)
+        }
+
+        await eventually {
+            sut.store.tasks.first?.title == "Buy milk"
+        }
+        XCTAssertEqual(sut.store.tasks.first?.isPreview, true, "Online create should insert a local preview immediately")
+        XCTAssertEqual(api.applyCallCount, 1)
+        XCTAssertEqual(api.listCallCount, 1, "Online create should not reload the list before apply finishes")
+        XCTAssertEqual(api.countsCallCount, 0, "Online create should update counts locally instead of refreshing")
+
+        api.resumeApply()
+        await createTask.value
 
         XCTAssertEqual(api.applyCallCount, 1)
         XCTAssertNil(sut.viewModel.newTaskDraft, "Draft should be cleared after success")
-        XCTAssertGreaterThanOrEqual(api.listCallCount, 2, "Should refresh list after create")
+        XCTAssertEqual(api.listCallCount, 1, "Successful create should reconcile locally without reloading the list")
     }
 
     func testCreateTaskTrimsWhitespaceFromTitle() async {

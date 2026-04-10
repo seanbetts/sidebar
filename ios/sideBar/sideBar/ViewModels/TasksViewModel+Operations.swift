@@ -112,15 +112,14 @@ extension TasksViewModel {
             await queueOfflineOperation(operation)
             return
         }
+        let snapshot = store.makeOptimisticSnapshot()
         store.applyLocalOperation(operation)
         do {
             let response = try await api.apply(TaskOperationBatch(operations: [operation]))
             showNextInstanceScheduledToast(nextTasks: response.nextTasks)
-            await load(selection: selection, force: true)
-            await loadCounts(force: true)
-            await refreshWidgetData()
+            store.applySyncResponse(response, operationId: operation.operationId)
         } catch {
-            await load(selection: selection, force: true)
+            store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
             setLocalErrorMessage(ErrorMapping.message(for: error))
         }
     }
@@ -197,19 +196,20 @@ extension TasksViewModel {
             await queueOfflineOperation(operation)
             return
         }
+        let snapshot = store.makeOptimisticSnapshot()
+        store.applyLocalOperation(operation)
+        updateCountsAfterLocalOperation(operation)
+        if refreshWidget {
+            updateWidgetDataAfterOfflineOperation(operation)
+        }
         do {
             let response = try await api.apply(TaskOperationBatch(operations: [operation]))
             showNextInstanceScheduledToast(nextTasks: response.nextTasks)
-            if refreshSelection {
-                await load(selection: selection, force: true)
-            }
-            if refreshCounts {
-                await loadCounts(force: true)
-            }
-            if refreshWidget {
-                await refreshWidgetData()
-            }
+            _ = refreshSelection
+            _ = refreshCounts
+            store.applySyncResponse(response, operationId: operation.operationId)
         } catch {
+            store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
             setLocalErrorMessage(ErrorMapping.message(for: error))
         }
     }
@@ -230,7 +230,7 @@ extension TasksViewModel {
     }
 
     /// Updates widget data optimistically after an offline operation
-    private func updateWidgetDataAfterOfflineOperation(_ operation: TaskOperationPayload) {
+    func updateWidgetDataAfterOfflineOperation(_ operation: TaskOperationPayload) {
         // Only update widget for operations that affect "today" view
         guard case .today = selection else {
             // For non-today views, just update with current filtered tasks
@@ -242,7 +242,7 @@ extension TasksViewModel {
     }
 
     /// Updates task counts optimistically after an offline operation
-    private func updateCountsAfterLocalOperation(_ operation: TaskOperationPayload) {
+    func updateCountsAfterLocalOperation(_ operation: TaskOperationPayload) {
         guard counts != nil else { return }
 
         switch operation.op.lowercased() {

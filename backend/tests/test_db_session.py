@@ -111,7 +111,7 @@ def test_log_website_column_refresh_emits_structured_warning_and_clears_trace(
 def test_after_begin_invalidates_and_reraises_disconnect(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Disconnects in after_begin must invalidate and bubble up for caller retry."""
+    """Repeated disconnects in after_begin must still bubble up after one retry."""
     session = SimpleNamespace(info={})
     invalidated: list[BaseException] = []
     connection = SimpleNamespace(
@@ -142,7 +142,46 @@ def test_after_begin_invalidates_and_reraises_disconnect(
             connection=connection,
         )
 
-    assert apply_calls == 1
+    assert apply_calls == 2
+    assert len(invalidated) == 1
+
+
+def test_after_begin_retries_disconnect_once_before_succeeding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A single transaction-start disconnect should be recovered transparently."""
+    session = SimpleNamespace(info={"app_user_id": "user-1"})
+    invalidated: list[BaseException] = []
+    connection = SimpleNamespace(
+        invalidate=lambda exc=None: invalidated.append(exc),
+    )
+    apply_calls = 0
+
+    def fake_apply(
+        _connection,
+        user_id,
+        _force_public_search_path,
+        _website_worker_scope=None,
+    ) -> None:
+        nonlocal apply_calls
+        apply_calls += 1
+        assert user_id == "user-1"
+        if apply_calls == 1:
+            raise OperationalError(
+                "SET app.user_id = :user_id",
+                {"user_id": "user-1"},
+                Exception("SSL connection has been closed unexpectedly"),
+            )
+
+    monkeypatch.setattr(session_module, "_apply_session_settings", fake_apply)
+
+    session_module._set_app_user_id(
+        session,
+        transaction=object(),
+        connection=connection,
+    )
+
+    assert apply_calls == 2
     assert len(invalidated) == 1
 
 

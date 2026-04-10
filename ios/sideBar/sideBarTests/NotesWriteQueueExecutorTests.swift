@@ -151,7 +151,6 @@ final class NotesWriteQueueExecutorTests: XCTestCase {
         XCTAssertEqual(api.movedNotes.first?.id, "note-5")
         XCTAssertEqual(api.movedNotes.first?.folder, "archive")
         XCTAssertEqual(store.appliedNotes, api.moveResults)
-        XCTAssertEqual(store.loadTreeCallCount, 1)
     }
 }
 
@@ -199,7 +198,6 @@ private enum NotesWriteQueueExecutorTestError: Error {
 private final class NotesWriteQueueExecutorStoreSpy: NotesWriteQueueApplying {
     private(set) var appliedNotes: [NotePayload] = []
     private(set) var invalidatedNoteIds: [String] = []
-    private(set) var loadTreeCallCount = 0
 
     func applyEditorUpdate(_ note: NotePayload) {
         appliedNotes.append(note)
@@ -211,7 +209,6 @@ private final class NotesWriteQueueExecutorStoreSpy: NotesWriteQueueApplying {
 
     func loadTree(force: Bool) async throws {
         _ = force
-        loadTreeCallCount += 1
     }
 }
 

@@ -24,6 +24,9 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(normalized.contains("environment.commandSelection=nil"))
         XCTAssertTrue(normalized.contains("environment.isMacSettingsPresented"))
         XCTAssertTrue(normalized.contains("SettingsView(presentationStyle:.macModal"))
+        XCTAssertTrue(normalized.contains("Task{@MainActorinenvironment.dismissMacSettings()}"))
+        XCTAssertFalse(normalized.contains(".onTapGesture{environment.dismissMacSettings()}"))
+        XCTAssertFalse(normalized.contains("onClose:{environment.dismissMacSettings()}"))
     }
 
     func testSignedInContentShowsManualRetryBannerWhileAuthIsStale() throws {
@@ -91,6 +94,7 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(appCommands.contains("keyboardShortcut(\",\",modifiers:[.command])"))
         XCTAssertTrue(appCommands.contains("ifenvironment.isMacSettingsPresented{"))
         XCTAssertTrue(appCommands.contains("Button(\"CloseSettings\")"))
+        XCTAssertTrue(appCommands.contains("Task{@MainActorinenvironment.dismissMacSettings()}"))
     }
 
     func testMacAppDisablesAutomaticWindowTabbing() throws {
@@ -475,26 +479,6 @@ private func onboardingSheetCanvasSource(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read OnboardingSheetCanvas.swift: \(error)", file: file, line: line)
-        throw error
-    }
-}
-private func macMainWindowSceneBridgeSource(
-    file: StaticString = #filePath,
-    line: UInt = #line
-) throws -> String {
-    let fileURL = URL(fileURLWithPath: "\(file)")
-    let sideBarRoot = fileURL
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-    let sourceURL = sideBarRoot
-        .appendingPathComponent("sideBar")
-        .appendingPathComponent("App")
-        .appendingPathComponent("MacMainWindowSceneBridge.swift")
-
-    do {
-        return try String(contentsOf: sourceURL, encoding: .utf8)
-    } catch {
-        XCTFail("Failed to read MacMainWindowSceneBridge.swift: \(error)", file: file, line: line)
         throw error
     }
 }
