@@ -265,7 +265,11 @@ extension NotesPanelView {
                 sidebarProminentSectionHeader("Results")
             }
         }
-        .sidebarPanelListStyle()
+        .sidebarPanelListStyle(reducesCompactPhoneSectionHeaderGap: isCompactPhone)
+        .sidebarCompactPhoneTopPadding(
+            LayoutMetrics.compactPhoneSectionedPanelTopPaddingAdjustment,
+            isCompactPhone: isCompactPhone
+        )
         .scrollContentBackground(.hidden)
         .background(panelBackground)
     }

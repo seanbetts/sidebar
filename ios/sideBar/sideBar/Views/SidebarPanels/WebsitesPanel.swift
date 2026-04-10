@@ -288,7 +288,11 @@ extension WebsitesPanelView {
                     sidebarProminentSectionHeader("Results")
                 }
             }
-            .sidebarPanelListStyle()
+            .sidebarPanelListStyle(reducesCompactPhoneSectionHeaderGap: isCompactPhone)
+            .sidebarCompactPhoneTopPadding(
+                LayoutMetrics.compactPhoneSectionedPanelTopPaddingAdjustment,
+                isCompactPhone: isCompactPhone
+            )
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .refreshable {
@@ -377,7 +381,11 @@ extension WebsitesPanelView {
                     }
                 }
             }
-            .sidebarPanelListStyle()
+            .sidebarPanelListStyle(reducesCompactPhoneSectionHeaderGap: isCompactPhone)
+            .sidebarCompactPhoneTopPadding(
+                LayoutMetrics.compactPhoneSectionedPanelTopPaddingAdjustment,
+                isCompactPhone: isCompactPhone
+            )
             #if os(iOS)
             .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
             #endif

@@ -36,4 +36,32 @@ final class PanelHeaderTests: XCTestCase {
 
         XCTAssertEqual(minHeight, LayoutMetrics.appHeaderMinHeight)
     }
+
+    func testCompactPhonePanelSectionHeaderMinHeightUsesMediumSpacing() {
+        XCTAssertEqual(
+            LayoutMetrics.compactPhonePanelSectionHeaderMinHeight,
+            DesignTokens.Spacing.md
+        )
+    }
+
+    func testCompactPhonePanelTopContentPaddingUsesMediumSpacing() {
+        XCTAssertEqual(
+            LayoutMetrics.compactPhonePanelTopContentPadding,
+            DesignTokens.Spacing.md
+        )
+    }
+
+    func testCompactPhoneSectionedPanelTopPaddingAdjustmentPullsContentUpByMediumSpacing() {
+        XCTAssertEqual(
+            LayoutMetrics.compactPhoneSectionedPanelTopPaddingAdjustment,
+            -DesignTokens.Spacing.md
+        )
+    }
+
+    func testCompactPhoneTasksPanelTopPaddingUsesExtraSmallSpacing() {
+        XCTAssertEqual(
+            LayoutMetrics.compactPhoneTasksPanelTopPadding,
+            DesignTokens.Spacing.xs
+        )
+    }
 }

@@ -241,6 +241,10 @@ extension TasksPanelView {
                 }
             }
             .sidebarPanelListStyle()
+            .sidebarCompactPhoneTopPadding(
+                LayoutMetrics.compactPhoneTasksPanelTopPadding,
+                isCompactPhone: isCompactPhone
+            )
             .scrollContentBackground(.hidden)
             .background(panelBackground)
             .refreshable {

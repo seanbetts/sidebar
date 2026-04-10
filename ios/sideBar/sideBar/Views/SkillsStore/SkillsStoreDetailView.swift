@@ -131,7 +131,9 @@ public struct SkillsStoreView: View {
                         categoryFilter
                         content
                     }
-                    .padding(DesignTokens.Spacing.lg)
+                    .padding(.horizontal, DesignTokens.Spacing.lg)
+                    .padding(.top, isCompactPhone ? LayoutMetrics.compactPhonePanelTopContentPadding : DesignTokens.Spacing.lg)
+                    .padding(.bottom, DesignTokens.Spacing.lg)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
@@ -420,6 +422,10 @@ public struct SkillsStoreView: View {
         #endif
     }
 
+    private var isCompactPhone: Bool {
+        isCompact && isPhone
+    }
+
     private var searchQueryBinding: Binding<String> { searchQuery ?? $localSearchQuery }
 
     private var showsInitialLoadingState: Bool {
@@ -443,7 +449,6 @@ private extension SkillsStoreView {
                     } header: {
                         Text(viewModel.displayName(for: prompt.skill))
                     }
-
                     Section("Required Provider Keys") {
                         ForEach(prompt.missingProviders, id: \.self) { provider in
                             SecureField(
@@ -461,7 +466,6 @@ private extension SkillsStoreView {
                                 .foregroundStyle(DesignTokens.Colors.error)
                         }
                     }
-
                     Section {
                         Button {
                             Task {

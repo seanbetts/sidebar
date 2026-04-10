@@ -18,11 +18,38 @@ func sidebarProminentSectionHeader(_ title: String) -> some View {
 
 extension View {
     @ViewBuilder
-    func sidebarPanelListStyle() -> some View {
+    func sidebarPanelListStyle(
+        reducesCompactPhoneSectionHeaderGap: Bool = false
+    ) -> some View {
 #if os(macOS)
         self.listStyle(.sidebar)
 #else
-        self.listStyle(.plain)
+        if reducesCompactPhoneSectionHeaderGap {
+            self
+                .listStyle(.plain)
+                .environment(
+                    \.defaultMinListHeaderHeight,
+                    LayoutMetrics.compactPhonePanelSectionHeaderMinHeight
+                )
+        } else {
+            self.listStyle(.plain)
+        }
+#endif
+    }
+
+    @ViewBuilder
+    func sidebarCompactPhoneTopPadding(
+        _ padding: CGFloat,
+        isCompactPhone: Bool
+    ) -> some View {
+#if os(macOS)
+        self
+#else
+        if isCompactPhone {
+            self.padding(.top, padding)
+        } else {
+            self
+        }
 #endif
     }
 }

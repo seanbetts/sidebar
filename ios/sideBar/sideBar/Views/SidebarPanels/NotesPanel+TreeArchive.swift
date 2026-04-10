@@ -110,7 +110,11 @@ extension NotesPanelView {
                 }
             }
         }
-        .sidebarPanelListStyle()
+        .sidebarPanelListStyle(reducesCompactPhoneSectionHeaderGap: isCompactPhone)
+        .sidebarCompactPhoneTopPadding(
+            LayoutMetrics.compactPhoneSectionedPanelTopPaddingAdjustment,
+            isCompactPhone: isCompactPhone
+        )
         #if os(iOS)
         .environment(\.editMode, .constant(isPinnedReorderEditActive ? .active : .inactive))
         #endif

@@ -26,4 +26,20 @@ public enum LayoutMetrics {
     ) -> CGFloat {
         showsInlineSearch ? panelHeaderMinHeight : appHeaderMinHeight
     }
+
+    public static var compactPhonePanelSectionHeaderMinHeight: CGFloat {
+        DesignTokens.Spacing.md
+    }
+
+    public static var compactPhoneSectionedPanelTopPaddingAdjustment: CGFloat {
+        -DesignTokens.Spacing.md
+    }
+
+    public static var compactPhoneTasksPanelTopPadding: CGFloat {
+        DesignTokens.Spacing.xs
+    }
+
+    public static var compactPhonePanelTopContentPadding: CGFloat {
+        DesignTokens.Spacing.md
+    }
 }
