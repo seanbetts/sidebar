@@ -398,19 +398,34 @@ final class WriteQueueTests: XCTestCase {
         XCTAssertTrue(remaining.isEmpty)
     }
 
-    func testFetchNextConflictReturnsOldestConflict() async throws {
+    func testFetchNextConflictReturnsOldestConflictAddedAfterStartupRecovery() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
             startMonitoring: false
         )
+        let context = persistence.container.viewContext
+        let bootstrapWrite = PendingWrite.insertNew(in: context)
+        bootstrapWrite.id = UUID()
+        bootstrapWrite.operationType = WriteOperation.update.rawValue
+        bootstrapWrite.entityType = WriteEntityType.note.rawValue
+        bootstrapWrite.entityId = "bootstrap-note"
+        bootstrapWrite.payload = Data()
+        bootstrapWrite.createdAt = Date(timeIntervalSince1970: 0)
+        bootstrapWrite.attempts = 1
+        bootstrapWrite.status = WriteQueueStatus.failed.rawValue
+        try context.save()
+
         let queue = WriteQueue(
             container: persistence.container,
             connectivityMonitor: connectivityMonitor,
             autoProcessEnabled: false
         )
 
-        let context = persistence.container.viewContext
+        await waitUntilWriteQueueState {
+            queue.pendingCount == 1
+        }
+
         let firstId = UUID()
         let first = PendingWrite.insertNew(in: context)
         first.id = firstId
@@ -521,6 +536,25 @@ private final class AutoResolvingConflictExecutor: WriteQueueExecutor {
                 serverSnapshot: try encoder.encode(conflict)
             )
         }
+    }
+}
+
+@MainActor
+private func waitUntilWriteQueueState(
+    timeoutNanoseconds: UInt64 = 200_000_000,
+    condition: @escaping @MainActor () -> Bool
+) async {
+    let start = DispatchTime.now().uptimeNanoseconds
+    while DispatchTime.now().uptimeNanoseconds - start < timeoutNanoseconds {
+        if await condition() {
+            return
+        }
+        await Task.yield()
+    }
+
+    let isSatisfied = await condition()
+    if !isSatisfied {
+        XCTFail("Condition was not met before timeout")
     }
 }
 
