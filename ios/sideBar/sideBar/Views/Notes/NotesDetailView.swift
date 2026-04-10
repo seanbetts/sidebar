@@ -144,6 +144,9 @@ struct NotesDetailView: View {
         .toolbar {
             if isCompact, viewModel.activeNote != nil, isPhone {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if let status = noteStatus {
+                        noteToolbarStatusIcon(status)
+                    }
                     noteToolbarMenu
                 }
             }
@@ -246,18 +249,7 @@ extension NotesDetailView {
     }
 
     private var contentWithToolbar: some View {
-        VStack(spacing: 0) {
-            if isCompact, viewModel.activeNote != nil, let status = noteStatus {
-                HStack {
-                    Spacer()
-                    noteStatusText(status)
-                }
-                .padding(.horizontal, DesignTokens.Spacing.md)
-                .padding(.vertical, DesignTokens.Spacing.xs)
-                Divider()
-            }
-            contentOverlayRegion
-        }
+        contentOverlayRegion
     }
 
     @ViewBuilder
@@ -353,6 +345,15 @@ extension NotesDetailView {
             .accessibilityLabel(status.accessibilityLabel)
             .help(status.helpText)
     }
+
+    #if os(iOS)
+    private func noteToolbarStatusIcon(_ status: NoteStatus) -> some View {
+        HeaderActionIcon(systemName: status.iconName)
+            .foregroundStyle(status.color)
+            .accessibilityLabel(status.accessibilityLabel)
+            .help(status.helpText)
+    }
+    #endif
 
     private var noteStatusTitleAccessory: AnyView? {
         guard let status = noteStatus else { return nil }
