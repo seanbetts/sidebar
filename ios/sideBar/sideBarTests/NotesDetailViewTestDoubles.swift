@@ -3,6 +3,8 @@ import sideBarShared
 @testable import sideBar
 
 final class NotesDetailViewFailingNotesAPI: NotesProviding {
+    private(set) var updateCallCount = 0
+
     func listTree() async throws -> FileTree { FileTree(children: []) }
     func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
         _ = limit
@@ -24,12 +26,14 @@ final class NotesDetailViewFailingNotesAPI: NotesProviding {
     func updateNote(id: String, content: String) async throws -> NotePayload {
         _ = id
         _ = content
+        updateCallCount += 1
         throw NotesDetailViewTestError.forced
     }
 
     func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
         _ = id
         _ = document
+        updateCallCount += 1
         throw NotesDetailViewTestError.forced
     }
 

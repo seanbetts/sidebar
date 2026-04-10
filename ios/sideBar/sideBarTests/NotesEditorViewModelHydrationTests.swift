@@ -131,62 +131,29 @@ final class NotesEditorViewModelHydrationTests: XCTestCase {
         )
     }
 
-    func testSaveAcknowledgementKeepsActiveEditorOnLocalSnapshot() async throws {
+    func testQueuedSaveKeepsActiveEditorOnLocalSnapshotUntilAcknowledgement() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
         let savedNote = NotePayload(
             id: "n1",
-            name: "Server title",
-            document: NotesSemanticDocumentProjection.document(fromPlainText: "Server echo"),
-            plainText: "Server echo",
+            name: "Local edit",
+            document: NotesSemanticDocumentProjection.document(fromPlainText: "Local edit"),
+            plainText: "Local edit",
             path: "/note.md",
             modified: 200,
             created: nil
         )
-        let api = HydrationMockNotesAPI(updateResult: .success(savedNote))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let notesViewModel = NotesViewModel(
-            api: api,
-            store: store,
-            toastCenter: ToastCenter(),
-            networkStatus: HydrationTestNetworkStatus(isNetworkAvailable: true)
-        )
-        let persistence = PersistenceController(inMemory: true)
-        let draftStorage = DraftStorage(container: persistence.container)
-        let writeQueue = WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: ConnectivityMonitor(
-                baseUrl: URL(string: "http://localhost")!,
-                startMonitoring: false
-            ),
-            autoProcessEnabled: false
-        )
-        let viewModel = NotesEditorViewModel(
-            notesViewModel: notesViewModel,
-            draftStorage: draftStorage,
-            writeQueue: writeQueue,
-            networkStatus: HydrationTestNetworkStatus(isNetworkAvailable: true)
-        )
-        let note = NotePayload(
-            id: "n1",
-            name: "Note",
-            document: NotesSemanticDocumentProjection.document(fromPlainText: "Hello"),
-            plainText: "Hello",
-            path: "/note.md",
-            modified: 100,
-            created: nil
-        )
+        let context = makeQueuedSaveHydrationTestContext(savedNote: savedNote)
 
-        store.applyEditorUpdate(note)
+        context.store.applyEditorUpdate(context.note)
         try await waitUntilHydrated(timeoutSeconds: 2.0) {
-            viewModel.currentNoteId == "n1" && viewModel.content == "Hello"
+            context.viewModel.currentNoteId == "n1" && context.viewModel.content == "Hello"
         }
 
-        let nativeViewModel = viewModel.makeNativeEditorViewModel()
-        viewModel.attachNativeEditor(nativeViewModel)
-        viewModel.enterEditMode()
+        let nativeViewModel = context.viewModel.makeNativeEditorViewModel()
+        context.viewModel.attachNativeEditor(nativeViewModel)
+        context.viewModel.enterEditMode()
         nativeViewModel.attributedContent = AttributedString("Local edit")
         nativeViewModel.handleContentChange(previous: AttributedString("Hello"))
 
@@ -194,23 +161,91 @@ final class NotesEditorViewModelHydrationTests: XCTestCase {
             nativeViewModel.hasUnsavedChanges
         }
 
-        await viewModel.syncFromNativeEditor(nativeViewModel)
+        await context.viewModel.syncFromNativeEditor(nativeViewModel)
 
         try await waitUntilHydrated(timeoutSeconds: 2.0) {
-            viewModel.content == "Local edit"
-                && notesViewModel.activeNote?.plainText == "Local edit"
-                && notesViewModel.activeNote?.name == "Local edit"
-                && notesViewModel.activeNote?.modified == 200
+            context.viewModel.content == "Local edit"
+                && context.notesViewModel.activeNote?.plainText == "Local edit"
+                && context.notesViewModel.activeNote?.name == "Local edit"
+                && context.viewModel.isQueuedForSync
         }
 
-        XCTAssertEqual(viewModel.content, "Local edit")
-        XCTAssertEqual(viewModel.canonicalContent, canonicalUIKitPlainTextPass("Local edit"))
-        XCTAssertEqual(notesViewModel.activeNote?.plainText, "Local edit")
-        XCTAssertEqual(notesViewModel.activeNote?.name, "Local edit")
-        XCTAssertEqual(notesViewModel.activeNote?.modified, 200)
+        let pendingWrites = try await context.writeQueue.fetchPendingWrites()
+        XCTAssertEqual(pendingWrites.count, 1)
+        XCTAssertEqual(context.viewModel.content, "Local edit")
+        XCTAssertEqual(context.viewModel.canonicalContent, canonicalUIKitPlainTextPass("Local edit"))
+        XCTAssertEqual(context.notesViewModel.activeNote?.plainText, "Local edit")
+        XCTAssertEqual(context.notesViewModel.activeNote?.name, "Local edit")
+        XCTAssertEqual(context.notesViewModel.activeNote?.modified, 100)
+        XCTAssertTrue(context.viewModel.isQueuedForSync)
+        XCTAssertNil(context.viewModel.lastSavedAt)
         XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
         XCTAssertEqual(nativeViewModel.currentPersistenceSnapshot().plainText, "Local edit")
+
+        context.store.applyEditorUpdate(savedNote)
+
+        try await waitUntilHydrated(timeoutSeconds: 2.0) {
+            context.notesViewModel.activeNote?.modified == 200
+                && context.viewModel.isQueuedForSync == false
+                && context.viewModel.lastSavedAt != nil
+        }
+
+        XCTAssertFalse(context.viewModel.isQueuedForSync)
+        XCTAssertEqual(context.notesViewModel.activeNote?.modified, 200)
+        XCTAssertNotNil(context.viewModel.lastSavedAt)
     }
+}
+
+private struct QueuedSaveHydrationTestContext {
+    let note: NotePayload
+    let store: NotesStore
+    let notesViewModel: NotesViewModel
+    let viewModel: NotesEditorViewModel
+    let writeQueue: WriteQueue
+}
+
+@MainActor
+private func makeQueuedSaveHydrationTestContext(savedNote: NotePayload) -> QueuedSaveHydrationTestContext {
+    let api = HydrationMockNotesAPI(updateResult: .success(savedNote))
+    let store = NotesStore(api: api, cache: TestCacheClient())
+    let notesViewModel = NotesViewModel(
+        api: api,
+        store: store,
+        toastCenter: ToastCenter(),
+        networkStatus: HydrationTestNetworkStatus(isNetworkAvailable: true)
+    )
+    let persistence = PersistenceController(inMemory: true)
+    let writeQueue = WriteQueue(
+        container: persistence.container,
+        connectivityMonitor: ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        ),
+        autoProcessEnabled: false
+    )
+    let viewModel = NotesEditorViewModel(
+        notesViewModel: notesViewModel,
+        draftStorage: DraftStorage(container: persistence.container),
+        writeQueue: writeQueue,
+        networkStatus: HydrationTestNetworkStatus(isNetworkAvailable: true)
+    )
+    let note = NotePayload(
+        id: "n1",
+        name: "Note",
+        document: NotesSemanticDocumentProjection.document(fromPlainText: "Hello"),
+        plainText: "Hello",
+        path: "/note.md",
+        modified: 100,
+        created: nil
+    )
+
+    return QueuedSaveHydrationTestContext(
+        note: note,
+        store: store,
+        notesViewModel: notesViewModel,
+        viewModel: viewModel,
+        writeQueue: writeQueue
+    )
 }
 
 @MainActor

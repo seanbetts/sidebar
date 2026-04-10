@@ -1812,7 +1812,7 @@ extension NotesEditorViewModelTests {
         XCTAssertEqual(context.notesViewModel.activeNote?.plainText, "Queued body")
     }
 
-    func testQueuedNoteStateClearsOnlyAfterServerAcknowledgement() async throws {
+    func testQueuedNoteStateClearsOnlyAfterOptimisticEchoAndServerAcknowledgement() async throws {
         let updatedDocument = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
@@ -1853,8 +1853,10 @@ extension NotesEditorViewModelTests {
         XCTAssertTrue(context.viewModel.isQueuedForSync)
         XCTAssertNil(context.viewModel.lastSavedAt)
 
-        await Task.yield()
-        await Task.yield()
+        context.viewModel.handleNoteUpdate(acknowledged)
+        XCTAssertTrue(context.viewModel.isQueuedForSync)
+        XCTAssertNil(context.viewModel.lastSavedAt)
+
         context.viewModel.handleNoteUpdate(acknowledged)
         XCTAssertFalse(context.viewModel.isQueuedForSync)
         XCTAssertNotNil(context.viewModel.lastSavedAt)

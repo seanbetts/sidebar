@@ -29,12 +29,13 @@ extension NotesDetailViewTests {
     }
     #endif
 
-    func testHandleCloseShortcutPreservesUnsavedContentWithoutExplicitDocumentWhenSaveFails() async throws {
+    func testHandleCloseShortcutQueuesUnsavedContentWithoutExplicitDocument() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
 
-        let context = await makeNotesDetailViewTestContext(api: NotesDetailViewFailingNotesAPI())
+        let api = NotesDetailViewFailingNotesAPI()
+        let context = await makeNotesDetailViewTestContext(api: api)
         let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
         context.editorViewModel.attachNativeEditor(nativeViewModel)
         context.editorViewModel.enterEditMode()
@@ -46,18 +47,22 @@ extension NotesDetailViewTests {
         context.makeView().handleCloseShortcut()
         await waitUntil {
             context.editorViewModel.presentationMode == .read &&
-                context.editorViewModel.saveErrorMessage == "Failed to save note"
+                context.editorViewModel.isQueuedForSync
         }
 
+        let pendingWrites = try await context.writeQueue.fetchPendingWrites()
         let cachedDocument = try XCTUnwrap(
             NotesSemanticDocumentCodec.decode(context.editorViewModel.canonicalContent)
         )
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(pendingWrites.count, 1)
+        XCTAssertTrue(context.editorViewModel.isQueuedForSync)
         XCTAssertEqual(context.editorViewModel.content, "Shortcut unsaved text")
         XCTAssertEqual(
             NotesSemanticDocumentProjection.plainText(from: cachedDocument),
             "Shortcut unsaved text"
         )
-        XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
+        XCTAssertNil(context.editorViewModel.saveErrorMessage)
     }
 
     func testShortcutActionEventIgnoresEventsFromOtherSectionsOrPanes() async throws {

@@ -147,7 +147,7 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         #endif
     }
 
-    func testHandleCloseShortcutSyncsUnsavedEditorContentBeforeReturningToReadMode() async throws {
+    func testHandleCloseShortcutQueuesUnsavedEditorContentBeforeReturningToReadMode() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -164,23 +164,28 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
 
         context.makeView().handleCloseShortcut()
         await waitUntil {
-            api.updateCallCount == 1 &&
-                context.editorViewModel.presentationMode == .read &&
+            context.editorViewModel.presentationMode == .read &&
+                context.editorViewModel.isQueuedForSync &&
                 context.notesViewModel.activeNote?.plainText == "Updated from edit mode"
         }
 
-        XCTAssertEqual(api.updateCallCount, 1)
+        let pendingWrites = try await context.writeQueue.fetchPendingWrites()
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(pendingWrites.count, 1)
         XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertTrue(context.editorViewModel.isQueuedForSync)
+        XCTAssertNil(context.editorViewModel.saveErrorMessage)
         XCTAssertEqual(context.editorViewModel.content, "Updated from edit mode")
         XCTAssertEqual(context.notesViewModel.activeNote?.plainText, "Updated from edit mode")
     }
 
-    func testEscapeFromEditorPreservesUnsavedContentWhenSaveFails() async throws {
+    func testEscapeFromEditorQueuesUnsavedContentAndReturnsToReadMode() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
 
-        let context = await makeNotesDetailViewTestContext(api: NotesDetailViewFailingNotesAPI())
+        let api = NotesDetailViewFailingNotesAPI()
+        let context = await makeNotesDetailViewTestContext(api: api)
         let nativeViewModel = context.editorViewModel.makeNativeEditorViewModel()
         context.editorViewModel.attachNativeEditor(nativeViewModel)
         context.editorViewModel.enterEditMode()
@@ -203,22 +208,26 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         )
         await waitUntil {
             context.editorViewModel.presentationMode == .read &&
-                context.editorViewModel.saveErrorMessage == "Failed to save note"
+                context.editorViewModel.isQueuedForSync
         }
 
+        let pendingWrites = try await context.writeQueue.fetchPendingWrites()
         let cachedDocument = try XCTUnwrap(
             NotesSemanticDocumentCodec.decode(context.editorViewModel.canonicalContent)
         )
         XCTAssertEqual(context.editorViewModel.presentationMode, .read)
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(pendingWrites.count, 1)
+        XCTAssertTrue(context.editorViewModel.isQueuedForSync)
         XCTAssertEqual(context.editorViewModel.content, "Unsaved latest text")
         XCTAssertEqual(
             NotesSemanticDocumentProjection.plainText(from: cachedDocument),
             "Unsaved latest text"
         )
-        XCTAssertEqual(context.editorViewModel.saveErrorMessage, "Failed to save note")
+        XCTAssertNil(context.editorViewModel.saveErrorMessage)
     }
 
-    func testEscapeFromEditorReturnsToReadBeforeDelayedSaveCompletes() async throws {
+    func testEscapeFromEditorReturnsToReadBeforeQueuedWriteInspectionCompletes() async throws {
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26 or macOS 26")
         }
@@ -252,10 +261,13 @@ final class NotesDetailViewTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(context.editorViewModel.presentationMode, .read)
         await waitUntil(timeout: .milliseconds(150)) {
             context.notesViewModel.activeNote?.plainText == "Delayed save body"
-                && api.updateCallCount == 1
+                && context.editorViewModel.isQueuedForSync
         }
+        let pendingWrites = try await context.writeQueue.fetchPendingWrites()
         XCTAssertEqual(context.notesViewModel.activeNote?.plainText, "Delayed save body")
-        XCTAssertEqual(api.updateCallCount, 1)
+        XCTAssertEqual(api.updateCallCount, 0)
+        XCTAssertEqual(pendingWrites.count, 1)
+        XCTAssertTrue(context.editorViewModel.isQueuedForSync)
     }
 
     func testEscapeFromEditorAfterBlockquoteTypingTriggerTransitionsToReadWithSemanticBlockquoteSnapshot() async throws {

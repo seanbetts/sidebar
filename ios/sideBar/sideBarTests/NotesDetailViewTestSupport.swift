@@ -14,6 +14,7 @@ struct NotesDetailViewTestContext {
     let store: NotesStore
     let notesViewModel: NotesViewModel
     let editorViewModel: NotesEditorViewModel
+    let writeQueue: WriteQueue
     func makeView() -> NotesDetailView {
         NotesDetailView(
             viewModel: notesViewModel,
@@ -117,17 +118,18 @@ func makeNotesDetailViewTestContext(
         networkStatus: NotesDetailViewTestNetworkStatus(isNetworkAvailable: true)
     )
     let persistence = PersistenceController(inMemory: true)
+    let writeQueue = WriteQueue(
+        container: persistence.container,
+        connectivityMonitor: ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false
+        ),
+        autoProcessEnabled: false
+    )
     let editorViewModel = NotesEditorViewModel(
         notesViewModel: notesViewModel,
         draftStorage: DraftStorage(container: persistence.container),
-        writeQueue: WriteQueue(
-            container: persistence.container,
-            connectivityMonitor: ConnectivityMonitor(
-                baseUrl: URL(string: "http://localhost")!,
-                startMonitoring: false
-            ),
-            autoProcessEnabled: false
-        ),
+        writeQueue: writeQueue,
         networkStatus: NotesDetailViewTestNetworkStatus(isNetworkAvailable: true)
     )
     store.applyEditorUpdate(note)
@@ -140,7 +142,8 @@ func makeNotesDetailViewTestContext(
     return NotesDetailViewTestContext(
         store: store,
         notesViewModel: notesViewModel,
-        editorViewModel: editorViewModel
+        editorViewModel: editorViewModel,
+        writeQueue: writeQueue
     )
 }
 @MainActor

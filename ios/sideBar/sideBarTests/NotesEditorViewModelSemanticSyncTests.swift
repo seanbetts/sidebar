@@ -6,7 +6,7 @@ import XCTest
 
 @MainActor
 final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
-    func testSyncFromNativeEditorSendsSemanticDocumentAndUpdatesSavedTitleSurfaces() async throws {
+    func testSyncFromNativeEditorQueuesSemanticDocumentAndUpdatesLocalTitleSurfaces() async throws {
         try skipUnlessNativeEditorAvailable()
 
         let savedDocument = NotesSemanticDocument(
@@ -53,10 +53,16 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
             harness.notesViewModel.activeNote?.name == "Saved title"
         }
 
-        XCTAssertEqual(harness.api.updatedDocuments, [savedDocument])
+        let payload = try queuedNoteUpdatePayload(
+            in: harness.persistence.container.viewContext,
+            entityId: "n1"
+        )
+        XCTAssertEqual(payload.document, savedDocument)
+        XCTAssertEqual(payload.plainText, "Saved title\nBody")
         XCTAssertEqual(harness.notesViewModel.activeNote?.name, "Saved title")
         XCTAssertEqual(harness.store.tree?.children.first?.name, "Saved title")
         XCTAssertEqual(harness.viewModel.content, "Saved title\nBody")
+        XCTAssertTrue(harness.viewModel.isQueuedForSync)
     }
 
     func testSwitchingNotesReloadsSavedFormattedContent() async throws {
@@ -98,12 +104,16 @@ final class NotesEditorViewModelSemanticSyncTests: XCTestCase {
 
         await harness.viewModel.syncFromNativeEditor(nativeViewModel)
 
-        let savedDocument = try XCTUnwrap(harness.api.updatedDocuments.last)
+        let payload = try queuedNoteUpdatePayload(
+            in: harness.persistence.container.viewContext,
+            entityId: "n1"
+        )
+        let savedDocument = payload.document
         let savedNote = NotePayload(
             id: "n1",
             name: "Note",
             document: savedDocument,
-            plainText: NotesSemanticDocumentProjection.plainText(from: savedDocument),
+            plainText: payload.plainText,
             path: "/note.md",
             modified: 101,
             created: nil
