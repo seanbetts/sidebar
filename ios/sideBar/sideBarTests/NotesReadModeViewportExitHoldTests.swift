@@ -202,12 +202,17 @@ final class NotesReadModeViewportExitHoldTests: NotesDetailViewHostingTestCase {
         ) as? UIKitNoteTextEditorSurface.AccessoryTextView
         if let refreshedHeldEditorTextView {
             XCTAssertTrue(refreshedHeldEditorTextView === heldEditorTextView)
+            let failureMessage =
+                """
+                Expected the hidden editor surface to stay unfocused during read-exit hold even if a later
+                note refresh triggers another UIKit update.
+                """
+                + "shouldAutofocus=\(refreshedHeldEditorTextView.shouldAutofocus) "
+                + "hasScheduledAutofocus=\(refreshedHeldEditorTextView.hasScheduledAutofocus) "
+                + "windowAttached=\(refreshedHeldEditorTextView.window != nil)"
             XCTAssertFalse(
                 refreshedHeldEditorTextView.isFirstResponder,
-                "Expected the hidden editor surface to stay unfocused during read-exit hold even if a later note refresh triggers another UIKit update. "
-                    + "shouldAutofocus=\(refreshedHeldEditorTextView.shouldAutofocus) "
-                    + "hasScheduledAutofocus=\(refreshedHeldEditorTextView.hasScheduledAutofocus) "
-                    + "windowAttached=\(refreshedHeldEditorTextView.window != nil)"
+                failureMessage
             )
         }
     }

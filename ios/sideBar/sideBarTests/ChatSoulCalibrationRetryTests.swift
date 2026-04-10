@@ -1,8 +1,10 @@
+// swiftlint:disable file_length
 import XCTest
 import sideBarShared
 @testable import sideBar
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class ChatSoulCalibrationRetryTests: ChatViewModelTestCase {
     func testSubmitSoulCalibrationToneChoicesGeneratesNameAfterTransition() async throws {
         let cache = TestCacheClient()

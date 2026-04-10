@@ -206,14 +206,20 @@ final class SelectableNoteReadActivationIOSTests: NotesDetailViewHostingTestCase
 
         XCTAssertTrue(
             activationTapRecognizer.cancelsTouchesInView,
-            "The edit-activation tap should cancel the read text view's own touch handling so the same tap cannot steal first responder back."
+            """
+            The edit-activation tap should cancel the read text view's own touch handling so the same tap
+            cannot steal first responder back.
+            """
         )
         XCTAssertFalse(
             recognizerDelegate.gestureRecognizer?(
                 activationTapRecognizer,
                 shouldRecognizeSimultaneouslyWith: competingRecognizer
             ) ?? true,
-            "The activation tap should not recognize simultaneously with the read text view's competing gestures during edit handoff."
+            """
+            The activation tap should not recognize simultaneously with the read text view's competing
+            gestures during edit handoff.
+            """
         )
     }
 
@@ -236,7 +242,10 @@ final class SelectableNoteReadActivationIOSTests: NotesDetailViewHostingTestCase
 
         XCTAssertFalse(
             activationTapRecognizer.canBePrevented(by: competingTapRecognizer),
-            "The edit-activation tap should not yield to a competing tap recognizer from the read text view, or the first tap can disappear before activation fires."
+            """
+            The edit-activation tap should not yield to a competing tap recognizer from the read text view,
+            or the first tap can disappear before activation fires.
+            """
         )
     }
 

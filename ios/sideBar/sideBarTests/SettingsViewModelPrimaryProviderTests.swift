@@ -3,6 +3,7 @@ import sideBarShared
 @testable import sideBar
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class SettingsViewModelPrimaryProviderTests: XCTestCase {
     func testSavePrimaryProviderSendsProviderUpdate() async throws {
         let initial = UserSettings(

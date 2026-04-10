@@ -1,4 +1,5 @@
 #if os(iOS)
+// swiftlint:disable file_length
 import Combine
 import SwiftUI
 import UIKit
@@ -7,6 +8,7 @@ import XCTest
 
 @MainActor
 @available(iOS 26.0, *)
+// swiftlint:disable:next type_body_length
 final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
     @MainActor
     final class AutofocusState: ObservableObject {
