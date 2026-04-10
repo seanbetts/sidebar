@@ -206,7 +206,7 @@ extension TasksDetailView {
             }
         })
         .padding(DesignTokens.Spacing.md)
-        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight, alignment: .leading)
+        .frame(height: LayoutMetrics.contentHeaderMinHeight, alignment: .leading)
     }
 
     @ViewBuilder
