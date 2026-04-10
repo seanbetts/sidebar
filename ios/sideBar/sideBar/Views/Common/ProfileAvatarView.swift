@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 struct ProfileAvatarView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -66,5 +69,65 @@ struct SettingsAvatarButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Settings")
+    }
+}
+
+struct GlobalAvatarRegionControls: View {
+    @EnvironmentObject private var environment: AppEnvironment
+    @State private var isScratchpadPresented = false
+    let avatarSize: CGFloat
+
+    init(avatarSize: CGFloat = 28) {
+        self.avatarSize = avatarSize
+    }
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            Button(action: handleScratchpadTap) {
+                Image(systemName: "square.and.pencil")
+                    .appFont(.labelMd)
+                    .frame(width: avatarSize, height: avatarSize)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Scratchpad")
+            .popover(isPresented: $isScratchpadPresented) {
+                MacPopoverShell(type: scratchpadPopoverPanelType()) {
+                    ScratchpadPopoverView(
+                        api: environment.container.scratchpadAPI,
+                        cache: environment.container.cacheClient,
+                        scratchpadStore: environment.scratchpadStore
+                    )
+                }
+            }
+
+            SettingsAvatarButton(size: avatarSize)
+        }
+        .onReceive(environment.navigation.$shortcutActionEvent) { event in
+            guard let event,
+                  event.action == .openScratchpad,
+                  scratchpadPresentationStyle == .anchoredPopover else { return }
+            isScratchpadPresented = true
+        }
+    }
+
+    private var scratchpadPresentationStyle: ScratchpadPresentationStyle {
+        WorkspaceBehaviorPolicy.scratchpadPresentationStyle(isPhoneIdiom: isPhoneIdiom)
+    }
+
+    private var isPhoneIdiom: Bool {
+        #if os(iOS)
+        return UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        return false
+        #endif
+    }
+
+    private func handleScratchpadTap() {
+        switch scratchpadPresentationStyle {
+        case .anchoredPopover:
+            isScratchpadPresented = true
+        case .sheet:
+            environment.emitShortcutAction(.openScratchpad)
+        }
     }
 }

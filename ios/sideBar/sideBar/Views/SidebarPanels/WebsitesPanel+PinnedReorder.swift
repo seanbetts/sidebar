@@ -106,7 +106,9 @@ extension WebsitesPanelView {
         guard pinnedReorderCanInteract else { return }
         let reorderedIDs = reorderedPinnedIDs(from: source, to: destination)
         Task {
-            _ = await viewModel.reorderPinnedWebsites(ids: reorderedIDs)
+            if await viewModel.reorderPinnedWebsites(ids: reorderedIDs) {
+                Haptics.notification(.success)
+            }
         }
         #else
         guard isPinnedReordering else { return }
@@ -233,7 +235,9 @@ extension WebsitesPanelView {
         }
 
         pinnedReorderState.isPersisting = true
-        _ = await viewModel.reorderPinnedWebsites(ids: finalIDs)
+        if await viewModel.reorderPinnedWebsites(ids: finalIDs) {
+            Haptics.notification(.success)
+        }
         completePinnedReorder()
         #endif
     }

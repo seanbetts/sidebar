@@ -28,7 +28,10 @@ struct PhoneFloatingActionButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            Haptics.impact(.light)
+            action()
+        } label: {
             Image(systemName: systemName)
                 .appFont(.labelMd)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -101,7 +101,9 @@ extension FilesPanelView {
         guard pinnedReorderCanInteract else { return }
         let reorderedIDs = reorderedPinnedIDs(from: source, to: destination)
         Task {
-            _ = await viewModel.reorderPinnedFiles(ids: reorderedIDs)
+            if await viewModel.reorderPinnedFiles(ids: reorderedIDs) {
+                Haptics.notification(.success)
+            }
         }
         #else
         guard isPinnedReordering else { return }
@@ -249,7 +251,9 @@ extension FilesPanelView {
         }
 
         pinnedReorderState.isPersisting = true
-        _ = await viewModel.reorderPinnedFiles(ids: finalIDs)
+        if await viewModel.reorderPinnedFiles(ids: finalIDs) {
+            Haptics.notification(.success)
+        }
         completePinnedReorder()
         #endif
     }

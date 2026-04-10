@@ -110,7 +110,9 @@ extension NotesPanelView {
         guard pinnedReorderCanInteract else { return }
         let reorderedIDs = reorderedPinnedIDs(from: source, to: destination)
         Task {
-            _ = await viewModel.reorderPinnedNotes(ids: reorderedIDs)
+            if await viewModel.reorderPinnedNotes(ids: reorderedIDs) {
+                Haptics.notification(.success)
+            }
         }
         #else
         guard isPinnedReordering else { return }
@@ -242,7 +244,9 @@ extension NotesPanelView {
         }
 
         pinnedReorderState.isPersisting = true
-        _ = await viewModel.reorderPinnedNotes(ids: finalIDs)
+        if await viewModel.reorderPinnedNotes(ids: finalIDs) {
+            Haptics.notification(.success)
+        }
         completePinnedReorder()
         #endif
     }

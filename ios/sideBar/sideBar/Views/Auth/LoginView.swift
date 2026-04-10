@@ -380,13 +380,6 @@ public struct LoginView: View {
         let regex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         return NSPredicate(format: "SELF MATCHES %@", regex).evaluate(with: trimmed)
     }
-
-    #if os(iOS)
-    private func triggerHaptic(_ style: UINotificationFeedbackGenerator.FeedbackType) {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(style)
-    }
-    #endif
 }
 
 private extension LoginView {
@@ -416,9 +409,7 @@ private extension LoginView {
             try await environment.container.authSession.signIn(email: trimmedEmail, password: password)
             lastSignInEmail = trimmedEmail
             environment.refreshAuthState()
-            #if os(iOS)
-            triggerHaptic(.success)
-            #endif
+            Haptics.notification(.success)
             if reduceMotion {
                 showSuccess = true
             } else {
@@ -438,9 +429,7 @@ private extension LoginView {
             } else {
                 errorMessage = ErrorMapping.message(for: error)
             }
-            #if os(iOS)
-            triggerHaptic(.error)
-            #endif
+            Haptics.notification(.error)
         }
     }
     func requestPasswordReset() async {

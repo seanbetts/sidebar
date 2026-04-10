@@ -128,10 +128,7 @@ public struct WebsitesView: View {
             accessibilityLabel: "Website options",
             items: [
                 .pin(isPinned: isPinned) {
-                    guard let websiteId = environment.websitesViewModel.active?.id else { return }
-                    Task {
-                        await environment.websitesViewModel.setPinned(id: websiteId, pinned: !isPinned)
-                    }
+                    togglePinnedForActiveWebsite()
                 },
                 .rename {
                     renameValue = environment.websitesViewModel.active?.title ?? ""
@@ -200,8 +197,17 @@ public struct WebsitesView: View {
 
     private func archiveActiveWebsite() {
         guard let websiteId = environment.websitesViewModel.active?.id else { return }
+        Haptics.selection()
         Task {
             await environment.websitesViewModel.setArchived(id: websiteId, archived: !isArchived)
+        }
+    }
+
+    private func togglePinnedForActiveWebsite() {
+        guard let websiteId = environment.websitesViewModel.active?.id else { return }
+        Haptics.selection()
+        Task {
+            await environment.websitesViewModel.setPinned(id: websiteId, pinned: !isPinned)
         }
     }
 

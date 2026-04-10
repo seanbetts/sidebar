@@ -1,6 +1,9 @@
 import SwiftUI
 import sideBarShared
 import Combine
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - SiteHeaderBar
 
@@ -58,7 +61,9 @@ public struct SiteHeaderBar: View {
         .fixedSize(horizontal: false, vertical: true)
         #if os(iOS)
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
-            guard let event, event.action == .openScratchpad, !isCompact else { return }
+            guard let event,
+                  event.action == .openScratchpad,
+                  scratchpadPresentationStyle == .anchoredPopover else { return }
             isScratchpadPresented = true
         }
         #endif
@@ -180,23 +185,16 @@ public struct SiteHeaderBar: View {
             }
 
             if isCompact {
-                Button {
-                    onShowSettings?()
-                } label: {
-                    ProfileAvatarView(size: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Settings")
-                .imageScale(.medium)
-                .padding(DesignTokens.Spacing.xxsPlus)
-                .background(
-                    Circle()
-                        .fill(buttonBackground)
-                )
-                .overlay(
-                    Circle()
-                        .stroke(buttonBorder, lineWidth: 1)
-                )
+                GlobalAvatarRegionControls()
+                    .padding(DesignTokens.Spacing.xxsPlus)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(buttonBackground)
+                    )
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(buttonBorder, lineWidth: 1)
+                    )
             } else {
                 Button {
                     isScratchpadPresented.toggle()
@@ -247,6 +245,18 @@ public struct SiteHeaderBar: View {
         return false
         #else
         return horizontalSizeClass == .compact
+        #endif
+    }
+
+    private var scratchpadPresentationStyle: ScratchpadPresentationStyle {
+        WorkspaceBehaviorPolicy.scratchpadPresentationStyle(isPhoneIdiom: isPhoneIdiom)
+    }
+
+    private var isPhoneIdiom: Bool {
+        #if os(iOS)
+        return UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        return false
         #endif
     }
 

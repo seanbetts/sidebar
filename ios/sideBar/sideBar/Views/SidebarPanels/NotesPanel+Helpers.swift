@@ -58,7 +58,7 @@ extension NotesPanelView {
                         .accessibilityLabel("Add note")
                     }
                     if isCompact {
-                        SettingsAvatarButton()
+                        GlobalAvatarRegionControls()
                     }
                 }
             }

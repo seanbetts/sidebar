@@ -113,10 +113,7 @@ public struct NotesView: View {
             accessibilityLabel: "Note options",
             items: [
                 .pin(isPinned: isPinned) {
-                    guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
-                    Task {
-                        await environment.notesRuntime.viewModel.setPinned(id: noteId, pinned: !isPinned)
-                    }
+                    togglePinnedForActiveNote()
                 },
                 .move {
                     moveSelection = currentFolderPath
@@ -211,6 +208,14 @@ public struct NotesView: View {
         isExporting = true
     }
 
+    private func togglePinnedForActiveNote() {
+        guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
+        Haptics.selection()
+        Task {
+            await environment.notesRuntime.viewModel.setPinned(id: noteId, pinned: !isPinned)
+        }
+    }
+
     private func shareNoteText() {
         let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot()
         guard !text.isEmpty else { return }
@@ -219,6 +224,7 @@ public struct NotesView: View {
 
     private func archiveActiveNote() {
         guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
+        Haptics.selection()
         Task {
             await environment.notesRuntime.viewModel.setArchived(id: noteId, archived: !isArchived)
         }

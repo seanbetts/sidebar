@@ -103,12 +103,14 @@ extension NotesPanelView {
     }
 
     private func togglePin(for item: FileNodeItem) {
+        Haptics.selection()
         Task {
             await viewModel.setPinned(id: item.id, pinned: !item.pinned)
         }
     }
 
     private func toggleArchive(for item: FileNodeItem) {
+        Haptics.selection()
         Task {
             prepareForDestructiveAction()
             await waitForKeyboardDismissal()

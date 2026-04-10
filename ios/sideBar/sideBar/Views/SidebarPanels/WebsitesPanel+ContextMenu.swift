@@ -15,6 +15,7 @@ extension WebsitesPanelView {
     func websiteContextMenuItemsList(for item: WebsiteItem) -> [SidebarMenuItem] {
         let items: [SidebarMenuItem] = [
             .pin(isPinned: item.pinned) {
+                Haptics.selection()
                 Task { await viewModel.setPinned(id: item.id, pinned: !item.pinned) }
             },
             .rename {
@@ -39,6 +40,7 @@ extension WebsitesPanelView {
                 Task { await exportWebsiteContent(for: item) }
             },
             .archive(isArchived: item.archived) {
+                Haptics.selection()
                 Task { await viewModel.setArchived(id: item.id, archived: !item.archived) }
             },
             .delete {

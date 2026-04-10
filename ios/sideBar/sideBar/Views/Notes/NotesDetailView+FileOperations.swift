@@ -45,8 +45,17 @@ extension NotesDetailView {
         FolderOption.build(from: viewModel.tree?.children ?? [])
     }
 
+    func togglePinnedForActiveNote() {
+        guard let noteId = viewModel.activeNote?.path else { return }
+        Haptics.selection()
+        Task {
+            await viewModel.setPinned(id: noteId, pinned: !isPinned)
+        }
+    }
+
     func archiveActiveNote() {
         guard let noteId = viewModel.activeNote?.path else { return }
+        Haptics.selection()
         Task {
             await viewModel.setArchived(id: noteId, archived: !isArchived)
         }

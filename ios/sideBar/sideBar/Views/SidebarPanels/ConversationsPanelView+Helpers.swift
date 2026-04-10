@@ -90,7 +90,7 @@ extension ConversationsPanelView {
                         .accessibilityLabel("New chat")
                     }
                     if isCompact {
-                        SettingsAvatarButton()
+                        GlobalAvatarRegionControls()
                     }
                 }
                 .frame(height: 28)

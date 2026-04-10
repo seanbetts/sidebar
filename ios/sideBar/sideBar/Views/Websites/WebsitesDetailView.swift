@@ -426,6 +426,7 @@ extension WebsitesDetailView {
 
     func archiveActiveWebsite() {
         guard let websiteId = viewModel.active?.id else { return }
+        Haptics.selection()
         Task {
             await viewModel.setArchived(id: websiteId, archived: !isArchived)
         }
@@ -485,6 +486,14 @@ extension WebsitesDetailView {
         )
     }
 
+    func togglePinnedForActiveWebsite() {
+        guard let active = viewModel.active else { return }
+        Haptics.selection()
+        Task {
+            await viewModel.setPinned(id: active.id, pinned: !active.pinned)
+        }
+    }
+
     #if os(iOS)
     private func toggleQuickActionsPill(for websiteId: String) {
         withAnimation {
@@ -498,16 +507,10 @@ extension WebsitesDetailView {
         }
     }
 
-    private func togglePinnedForActiveWebsite() {
-        guard let active = viewModel.active else { return }
-        Task {
-            await viewModel.setPinned(id: active.id, pinned: !active.pinned)
-        }
-    }
-
     private func toggleArchiveForActiveWebsite() {
         guard let active = viewModel.active else { return }
         hideQuickActionsPill()
+        Haptics.selection()
         Task {
             await viewModel.setArchived(id: active.id, archived: !active.archived)
         }

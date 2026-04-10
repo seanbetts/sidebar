@@ -115,10 +115,7 @@ extension NotesDetailView {
                 archiveIcon: archiveIconName,
                 isEnabled: viewModel.activeNote != nil,
                 onPin: {
-                    guard let noteId = viewModel.activeNote?.path else { return }
-                    Task {
-                        await viewModel.setPinned(id: noteId, pinned: !isPinned)
-                    }
+                    togglePinnedForActiveNote()
                 },
                 onMove: {
                     moveSelection = currentFolderPath
@@ -149,10 +146,7 @@ extension NotesDetailView {
     private var noteSidebarMenuItems: [SidebarMenuItem] {
         [
             .pin(isPinned: isPinned) {
-                guard let noteId = viewModel.activeNote?.path else { return }
-                Task {
-                    await viewModel.setPinned(id: noteId, pinned: !isPinned)
-                }
+                togglePinnedForActiveNote()
             },
             .move {
                 moveSelection = currentFolderPath
@@ -179,10 +173,7 @@ extension NotesDetailView {
     @ViewBuilder
     var noteActionsMenuItems: some View {
         Button {
-            guard let noteId = viewModel.activeNote?.path else { return }
-            Task {
-                await viewModel.setPinned(id: noteId, pinned: !isPinned)
-            }
+            togglePinnedForActiveNote()
         } label: {
             Label(pinActionTitle, systemImage: pinIconName)
         }

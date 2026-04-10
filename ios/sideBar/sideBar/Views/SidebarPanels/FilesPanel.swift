@@ -241,7 +241,7 @@ extension FilesPanelView {
                         .accessibilityLabel("Add file")
                     }
                     if isCompact {
-                        SettingsAvatarButton()
+                        GlobalAvatarRegionControls()
                     }
                 }
             }

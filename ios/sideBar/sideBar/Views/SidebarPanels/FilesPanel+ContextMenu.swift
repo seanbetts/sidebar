@@ -15,6 +15,7 @@ extension FilesPanelView {
     func fileContextMenuItemsList(for item: IngestionListItem) -> [SidebarMenuItem] {
         [
             .pin(isPinned: item.file.pinned ?? false) {
+                Haptics.selection()
                 Task {
                     await viewModel.togglePinned(fileId: item.file.id, pinned: !(item.file.pinned ?? false))
                 }

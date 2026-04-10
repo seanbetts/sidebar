@@ -29,6 +29,7 @@ extension View {
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 if let onDelete {
                     Button(role: .destructive) {
+                        Haptics.notification(.error)
                         onDelete()
                     } label: {
                         Label(trailingDeleteTitle, systemImage: trailingDeleteSystemImage)

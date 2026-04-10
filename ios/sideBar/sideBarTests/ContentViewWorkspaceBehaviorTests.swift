@@ -258,6 +258,20 @@ final class ContentViewWorkspaceBehaviorTests: XCTestCase {
         )
     }
 
+    func testScratchpadPresentationStyleUsesSheetOnPhone() {
+        XCTAssertEqual(
+            WorkspaceBehaviorPolicy.scratchpadPresentationStyle(isPhoneIdiom: true),
+            .sheet
+        )
+    }
+
+    func testScratchpadPresentationStyleUsesAnchoredPopoverOffPhone() {
+        XCTAssertEqual(
+            WorkspaceBehaviorPolicy.scratchpadPresentationStyle(isPhoneIdiom: false),
+            .anchoredPopover
+        )
+    }
+
     func testWorkspaceBehaviorPolicyItemCloseCollapsesManualExpandedMode() {
         let plan = WorkspaceBehaviorPolicy.makeWorkspaceItemClosePlan(
             isWorkspaceExpanded: true,

@@ -36,15 +36,6 @@ public struct ChatView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("New chat")
                         }
-                        if isPhone {
-                            Button {
-                                environment.emitShortcutAction(.openScratchpad)
-                            } label: {
-                                Image(systemName: "square.and.pencil")
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Scratchpad")
-                        }
                     }
                 }
             }

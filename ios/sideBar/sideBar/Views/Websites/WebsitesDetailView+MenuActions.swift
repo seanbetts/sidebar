@@ -5,10 +5,7 @@ extension WebsitesDetailView {
         #if os(macOS)
         Menu {
             Button {
-                guard let websiteId = viewModel.active?.id else { return }
-                Task {
-                    await viewModel.setPinned(id: websiteId, pinned: !isPinned)
-                }
+                togglePinnedForActiveWebsite()
             } label: {
                 Label(pinActionTitle, systemImage: pinIconName)
             }
@@ -90,10 +87,7 @@ extension WebsitesDetailView {
     private var websiteHeaderMenuItems: [SidebarMenuItem] {
         [
             .pin(isPinned: isPinned) {
-                guard let websiteId = viewModel.active?.id else { return }
-                Task {
-                    await viewModel.setPinned(id: websiteId, pinned: !isPinned)
-                }
+                togglePinnedForActiveWebsite()
             },
             .rename {
                 renameValue = viewModel.active?.title ?? ""

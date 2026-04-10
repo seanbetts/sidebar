@@ -92,6 +92,7 @@ struct TaskRow<MenuContent: View>: View {
                             isCompleting = true
                         }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            Haptics.notification(.success)
                             onComplete()
                         }
                     } label: {

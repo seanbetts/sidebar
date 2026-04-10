@@ -41,12 +41,7 @@ struct SkillsSettingsView: View {
                     Toggle("Enable all", isOn: Binding(
                         get: { allSkillsEnabled },
                         set: { isEnabled in
-                            Task {
-                                await viewModel.setAllSkillsEnabled(
-                                    isEnabled,
-                                    scopeSkillIds: enableAllScopeSkillIds
-                                )
-                            }
+                            handleSetAllSkillsEnabled(isEnabled)
                         }
                     ))
                     .labelsHidden()
@@ -123,12 +118,7 @@ struct SkillsSettingsView: View {
                 Toggle("Enable all", isOn: Binding(
                     get: { allSkillsEnabled },
                     set: { isEnabled in
-                        Task {
-                            await viewModel.setAllSkillsEnabled(
-                                isEnabled,
-                                scopeSkillIds: enableAllScopeSkillIds
-                            )
-                        }
+                        handleSetAllSkillsEnabled(isEnabled)
                     }
                 ))
                 .disabled(
@@ -223,7 +213,7 @@ struct SkillsSettingsView: View {
             Toggle("", isOn: Binding(
                 get: { isSkillEnabled(skill.id) },
                 set: { isEnabled in
-                    Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
+                    handleSkillToggleChange(id: skill.id, enabled: isEnabled)
                 }
             ))
             .labelsHidden()
@@ -238,7 +228,7 @@ struct SkillsSettingsView: View {
         Toggle(isOn: Binding(
             get: { isSkillEnabled(skill.id) },
             set: { isEnabled in
-                Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
+                handleSkillToggleChange(id: skill.id, enabled: isEnabled)
             }
         )) {
             skillLabel(skill)
@@ -267,7 +257,7 @@ struct SkillsSettingsView: View {
                 Toggle("", isOn: Binding(
                     get: { isSkillEnabled(skill.id) },
                     set: { isEnabled in
-                        Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
+                        handleSkillToggleChange(id: skill.id, enabled: isEnabled)
                     }
                 ))
                 .labelsHidden()
@@ -293,7 +283,7 @@ struct SkillsSettingsView: View {
             Toggle("", isOn: Binding(
                 get: { isSkillEnabled(skill.id) },
                 set: { isEnabled in
-                    Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
+                    handleSkillToggleChange(id: skill.id, enabled: isEnabled)
                 }
             ))
             .labelsHidden()
@@ -325,6 +315,23 @@ struct SkillsSettingsView: View {
         let grouped = Dictionary(grouping: filteredSkills) { $0.category }
         return grouped.keys.sorted().map { key in
             (key, grouped[key]?.sorted { $0.name < $1.name } ?? [])
+        }
+    }
+
+    private func handleSkillToggleChange(id: String, enabled: Bool) {
+        Haptics.selection()
+        Task {
+            await viewModel.setSkillEnabled(id: id, enabled: enabled)
+        }
+    }
+
+    private func handleSetAllSkillsEnabled(_ enabled: Bool) {
+        Haptics.selection()
+        Task {
+            await viewModel.setAllSkillsEnabled(
+                enabled,
+                scopeSkillIds: enableAllScopeSkillIds
+            )
         }
     }
 

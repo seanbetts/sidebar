@@ -222,7 +222,7 @@ extension WebsitesPanelView {
                         .accessibilityLabel("Add website")
                     }
                     if isCompact {
-                        SettingsAvatarButton()
+                        GlobalAvatarRegionControls()
                     }
                 }
             }

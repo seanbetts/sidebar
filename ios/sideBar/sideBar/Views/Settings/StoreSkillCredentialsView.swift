@@ -323,6 +323,7 @@ struct StoreSkillCredentialsView: View {
             )
             providerKeyStatuses[normalizedProvider] = status
             providerKeyErrors[normalizedProvider] = nil
+            Haptics.selection()
             clearCredentialEditor()
         } catch {
             let message = ErrorMapping.message(for: error)

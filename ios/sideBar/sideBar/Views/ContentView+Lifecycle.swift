@@ -36,6 +36,10 @@ struct WorkspaceItemClosePlan: Equatable {
     let isWorkspaceExpanded: Bool
     let isWorkspaceExpandedByRotation: Bool
 }
+enum ScratchpadPresentationStyle: Equatable {
+    case anchoredPopover
+    case sheet
+}
 enum WorkspaceBehaviorPolicy {
     static func makeWorkspaceExpandedChangePlan(
         isExpanded: Bool,
@@ -112,6 +116,13 @@ enum WorkspaceBehaviorPolicy {
     ) -> Bool {
         guard workspaceColumn == .primary else { return false }
         return !isPhoneIdiom
+    }
+
+    static func scratchpadPresentationStyle(isPhoneIdiom: Bool) -> ScratchpadPresentationStyle {
+        if isPhoneIdiom {
+            return .sheet
+        }
+        return .anchoredPopover
     }
 
     static func makeWorkspaceItemClosePlan(

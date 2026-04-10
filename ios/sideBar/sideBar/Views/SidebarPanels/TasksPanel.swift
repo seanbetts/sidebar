@@ -141,7 +141,7 @@ extension TasksPanelView {
                         .accessibilityLabel("Add")
                     }
                     if isCompact {
-                        SettingsAvatarButton()
+                        GlobalAvatarRegionControls()
                     }
                 }
             }

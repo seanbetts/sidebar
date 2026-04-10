@@ -224,8 +224,15 @@ extension ContentView {
             // Handle pending scratchpad deep link
             if newValue == .chat && environment.pendingScratchpadDeepLink {
                 environment.pendingScratchpadDeepLink = false
-                #if !os(macOS)
-                isPhoneScratchpadPresented = true
+                #if os(macOS)
+                environment.emitShortcutAction(.openScratchpad)
+                #else
+                switch WorkspaceBehaviorPolicy.scratchpadPresentationStyle(isPhoneIdiom: isPhoneIdiom) {
+                case .sheet:
+                    isPhoneScratchpadPresented = true
+                case .anchoredPopover:
+                    environment.emitShortcutAction(.openScratchpad)
+                }
                 #endif
             }
             sidebarSelection = newValue
@@ -319,7 +326,7 @@ extension ContentView {
                     isLeftPanelExpanded.toggle()
                 }
             case .openScratchpad:
-                if horizontalSizeClass == .compact {
+                if WorkspaceBehaviorPolicy.scratchpadPresentationStyle(isPhoneIdiom: isPhoneIdiom) == .sheet {
                     isPhoneScratchpadPresented = true
                 }
             default:

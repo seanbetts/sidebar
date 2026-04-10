@@ -178,9 +178,7 @@ public struct BiometricLockView: View {
                 isAuthenticating = false
                 if success {
                     logger.notice("Biometric unlock succeeded")
-                    #if os(iOS)
-                    triggerHaptic(.success)
-                    #endif
+                    Haptics.notification(.success)
                     onUnlock()
                 } else if let error = error {
                     logger.error("Biometric unlock failed: \(error.localizedDescription, privacy: .public)")
@@ -188,9 +186,7 @@ public struct BiometricLockView: View {
                 } else {
                     logger.error("Biometric unlock failed: unknown error")
                     errorMessage = "Authentication failed."
-                    #if os(iOS)
-                    triggerHaptic(.error)
-                    #endif
+                    Haptics.notification(.error)
                 }
             }
         }
@@ -211,16 +207,12 @@ public struct BiometricLockView: View {
                 isAuthenticating = false
                 if success {
                     logger.notice("Passcode unlock succeeded")
-                    #if os(iOS)
-                    triggerHaptic(.success)
-                    #endif
+                    Haptics.notification(.success)
                     onUnlock()
                 } else if let error = error {
                     logger.error("Passcode unlock failed: \(error.localizedDescription, privacy: .public)")
                     errorMessage = error.localizedDescription
-                    #if os(iOS)
-                    triggerHaptic(.error)
-                    #endif
+                    Haptics.notification(.error)
                 }
             }
         }
@@ -240,9 +232,7 @@ public struct BiometricLockView: View {
     private func handleAuthenticationError(_ error: Error) {
         guard let laError = error as? LAError else {
             errorMessage = "Authentication failed. Please try again."
-            #if os(iOS)
-            triggerHaptic(.error)
-            #endif
+            Haptics.notification(.error)
             return
         }
 
@@ -261,16 +251,7 @@ public struct BiometricLockView: View {
         }
 
         if errorMessage != nil {
-            #if os(iOS)
-            triggerHaptic(.error)
-            #endif
+            Haptics.notification(.error)
         }
     }
-
-    #if os(iOS)
-    private func triggerHaptic(_ style: UINotificationFeedbackGenerator.FeedbackType) {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(style)
-    }
-    #endif
 }

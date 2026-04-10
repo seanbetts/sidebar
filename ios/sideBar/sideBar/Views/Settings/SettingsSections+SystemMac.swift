@@ -143,6 +143,7 @@ extension AgentSettingsView {
                                             apiKey: providerKeyInput
                                         )
                                         if success {
+                                            Haptics.selection()
                                             providerKeyInput = ""
                                         }
                                     }

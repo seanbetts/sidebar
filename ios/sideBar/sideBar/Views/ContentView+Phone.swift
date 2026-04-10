@@ -372,7 +372,7 @@ private struct CompactPhoneMoreRootView: View {
             PanelHeader(title: "More") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if shouldShowSettingsAvatar {
-                        SettingsAvatarButton()
+                        GlobalAvatarRegionControls()
                     }
                 }
                 .frame(height: 28)
