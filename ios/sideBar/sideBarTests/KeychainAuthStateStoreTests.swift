@@ -1,6 +1,7 @@
 import XCTest
 import sideBarShared
 import Security
+import CryptoKit
 @testable import sideBar
 
 final class KeychainAuthStateStoreTests: XCTestCase {
@@ -8,14 +9,19 @@ final class KeychainAuthStateStoreTests: XCTestCase {
 
     private final class TestKeychainClient: KeychainClient {
         var storage: [String: Data] = [:]
+        var legacyStorage: [String: Data] = [:]
+        var dataProtectionStorage: [String: Data] = [:]
         var nextCopyStatus: OSStatus?
         var nextUpdateStatus: OSStatus?
         var nextAddStatus: OSStatus?
         var nextDeleteStatus: OSStatus?
         var lastUpdateQuery: NSDictionary?
         var lastAddAttributes: NSDictionary?
+        var lastCopyQuery: NSDictionary?
+        var deleteQueries: [NSDictionary] = []
 
         func copyMatching(_ query: CFDictionary, result: UnsafeMutablePointer<AnyObject?>?) -> OSStatus {
+            lastCopyQuery = query as NSDictionary
             if let status = nextCopyStatus {
                 nextCopyStatus = nil
                 return status
@@ -23,7 +29,7 @@ final class KeychainAuthStateStoreTests: XCTestCase {
             guard let account = (query as NSDictionary)[kSecAttrAccount as String] as? String else {
                 return errSecParam
             }
-            guard let data = storage[account] else {
+            guard let data = storageForQuery(query as NSDictionary)[account] else {
                 return errSecItemNotFound
             }
             result?.pointee = data as AnyObject
@@ -39,6 +45,7 @@ final class KeychainAuthStateStoreTests: XCTestCase {
             guard let account = (attributes as NSDictionary)[kSecAttrAccount as String] as? String else {
                 return errSecParam
             }
+            var storage = storageForQuery(attributes as NSDictionary)
             if storage[account] != nil {
                 return errSecDuplicateItem
             }
@@ -46,6 +53,7 @@ final class KeychainAuthStateStoreTests: XCTestCase {
                 return errSecParam
             }
             storage[account] = data
+            setStorage(storage, for: attributes as NSDictionary)
             return errSecSuccess
         }
 
@@ -58,6 +66,7 @@ final class KeychainAuthStateStoreTests: XCTestCase {
             guard let account = (query as NSDictionary)[kSecAttrAccount as String] as? String else {
                 return errSecParam
             }
+            var storage = storageForQuery(query as NSDictionary)
             guard storage[account] != nil else {
                 return errSecItemNotFound
             }
@@ -65,10 +74,12 @@ final class KeychainAuthStateStoreTests: XCTestCase {
                 return errSecParam
             }
             storage[account] = data
+            setStorage(storage, for: query as NSDictionary)
             return errSecSuccess
         }
 
         func delete(_ query: CFDictionary) -> OSStatus {
+            deleteQueries.append(query as NSDictionary)
             if let status = nextDeleteStatus {
                 nextDeleteStatus = nil
                 return status
@@ -76,10 +87,36 @@ final class KeychainAuthStateStoreTests: XCTestCase {
             guard let account = (query as NSDictionary)[kSecAttrAccount as String] as? String else {
                 return errSecParam
             }
+            var storage = storageForQuery(query as NSDictionary)
             if storage.removeValue(forKey: account) != nil {
+                setStorage(storage, for: query as NSDictionary)
                 return errSecSuccess
             }
             return errSecItemNotFound
+        }
+
+        private func storageForQuery(_ query: NSDictionary) -> [String: Data] {
+            if isDataProtectionQuery(query) {
+                return dataProtectionStorage
+            }
+            if legacyStorage.isEmpty && dataProtectionStorage.isEmpty {
+                return storage
+            }
+            return legacyStorage
+        }
+
+        private func setStorage(_ storage: [String: Data], for query: NSDictionary) {
+            if isDataProtectionQuery(query) {
+                dataProtectionStorage = storage
+            } else if legacyStorage.isEmpty && dataProtectionStorage.isEmpty {
+                self.storage = storage
+            } else {
+                legacyStorage = storage
+            }
+        }
+
+        private func isDataProtectionQuery(_ query: NSDictionary) -> Bool {
+            (query[kSecUseDataProtectionKeychain as String] as? Bool) == true
         }
     }
 
@@ -189,6 +226,55 @@ final class KeychainAuthStateStoreTests: XCTestCase {
             "add attrs=\(String(describing: client.lastAddAttributes))"
         )
     }
+
+    #if os(macOS)
+    func testSaveUsesDataProtectionKeychainOnMacOS() throws {
+        let client = TestKeychainClient()
+        client.dataProtectionStorage["authEncryptionKey"] = Data(repeating: 0x3B, count: 32)
+        client.nextUpdateStatus = errSecItemNotFound
+        let store = KeychainAuthStateStore(
+            service: "sideBar.AuthTests.\(UUID().uuidString)",
+            keychain: client,
+            useInMemoryStore: false
+        )
+        Self.retainedStores.append(store)
+
+        try store.saveAccessToken("token-123")
+
+        XCTAssertEqual(
+            client.lastUpdateQuery?[kSecUseDataProtectionKeychain as String] as? Bool,
+            true,
+            "update query=\(String(describing: client.lastUpdateQuery))"
+        )
+        XCTAssertEqual(
+            client.lastAddAttributes?[kSecUseDataProtectionKeychain as String] as? Bool,
+            true,
+            "add attrs=\(String(describing: client.lastAddAttributes))"
+        )
+    }
+
+    func testLoadMigratesLegacyMacOSItemsIntoDataProtectionKeychain() throws {
+        let client = TestKeychainClient()
+        let keyData = Data(repeating: 0x4C, count: 32)
+        let key = SymmetricKey(data: keyData)
+        let sealedBox = try AES.GCM.seal(Data("legacy-token".utf8), using: key)
+        client.legacyStorage["authEncryptionKey"] = keyData
+        client.legacyStorage["accessToken"] = try XCTUnwrap(sealedBox.combined)
+
+        let store = KeychainAuthStateStore(
+            service: "sideBar.AuthTests.\(UUID().uuidString)",
+            keychain: client,
+            useInMemoryStore: false
+        )
+        Self.retainedStores.append(store)
+
+        XCTAssertEqual(try store.loadAccessToken(), "legacy-token")
+        XCTAssertNotNil(client.dataProtectionStorage["authEncryptionKey"])
+        XCTAssertNotNil(client.dataProtectionStorage["accessToken"])
+        XCTAssertNil(client.legacyStorage["authEncryptionKey"])
+        XCTAssertNil(client.legacyStorage["accessToken"])
+    }
+    #endif
 
     private func keychainStringValue(_ dictionary: NSDictionary?, for key: CFString) -> String? {
         guard let dictionary else {

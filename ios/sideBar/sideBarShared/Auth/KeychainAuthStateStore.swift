@@ -57,6 +57,11 @@ public struct SystemKeychainClient: KeychainClient {
 
 /// Stores auth state securely in the keychain.
 public final class KeychainAuthStateStore: AuthStateStore, AuthMetadataStore {
+    private enum KeychainQueryMode {
+        case current
+        case legacy
+    }
+
     private let service: String
     private let accessGroup: String?
     private let accessTokenAccount = "accessToken"
@@ -159,23 +164,16 @@ public final class KeychainAuthStateStore: AuthStateStore, AuthMetadataStore {
                 memoryDataStore[key]
             }
         }
-        var query = baseQuery(account: key)
-        query[kSecReturnData as String] = kCFBooleanTrue
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-
-        var item: AnyObject?
-        let status = keychain.copyMatching(query as CFDictionary, result: &item)
-        switch status {
-        case errSecSuccess:
-            guard let encryptedData = item as? Data else {
-                throw KeychainError.invalidData
-            }
-            return try decrypt(encryptedData)
-        case errSecItemNotFound:
+        let loadedItem = try loadStoredData(account: key)
+        guard let encryptedData = loadedItem.data else {
             return nil
-        default:
-            throw mapStatus(status)
         }
+        let decryptedData = try decrypt(encryptedData)
+        if loadedItem.mode == .legacy {
+            try saveSessionData(decryptedData, forKey: key)
+            try deleteLegacyItem(account: key)
+        }
+        return decryptedData
     }
 
     /// Removes session data for a given key.
@@ -235,27 +233,19 @@ public final class KeychainAuthStateStore: AuthStateStore, AuthMetadataStore {
                 memoryStore[account]
             }
         }
-        var query = baseQuery(account: account)
-        query[kSecReturnData as String] = kCFBooleanTrue
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-
-        var item: AnyObject?
-        let status = keychain.copyMatching(query as CFDictionary, result: &item)
-        switch status {
-        case errSecSuccess:
-            guard let encryptedData = item as? Data else {
-                throw KeychainError.invalidData
-            }
-            let decryptedData = try decrypt(encryptedData)
-            guard let string = String(data: decryptedData, encoding: .utf8) else {
-                throw KeychainError.invalidData
-            }
-            return string
-        case errSecItemNotFound:
+        let loadedItem = try loadStoredData(account: account)
+        guard let encryptedData = loadedItem.data else {
             return nil
-        default:
-            throw mapStatus(status)
         }
+        let decryptedData = try decrypt(encryptedData)
+        guard let string = String(data: decryptedData, encoding: .utf8) else {
+            throw KeychainError.invalidData
+        }
+        if loadedItem.mode == .legacy {
+            try saveString(string, account: account)
+            try deleteLegacyItem(account: account)
+        }
+        return string
     }
 
     private func deleteItem(account: String) throws {
@@ -269,14 +259,20 @@ public final class KeychainAuthStateStore: AuthStateStore, AuthMetadataStore {
             }
             return
         }
-        let query = baseQuery(account: account)
-        let status = keychain.delete(query as CFDictionary)
+        let status = keychain.delete(baseQuery(account: account) as CFDictionary)
         if status != errSecSuccess && status != errSecItemNotFound {
             throw mapStatus(status)
+        }
+        if supportsLegacyKeychainFallback {
+            try deleteLegacyItem(account: account)
         }
     }
 
     private func baseQuery(account: String) -> [String: Any] {
+        baseQuery(account: account, mode: .current)
+    }
+
+    private func baseQuery(account: String, mode: KeychainQueryMode) -> [String: Any] {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -286,6 +282,11 @@ public final class KeychainAuthStateStore: AuthStateStore, AuthMetadataStore {
         #if os(iOS) || os(macOS)
         if let accessGroup {
             query[kSecAttrAccessGroup as String] = accessGroup
+        }
+        #endif
+        #if os(macOS)
+        if mode == .current {
+            query[kSecUseDataProtectionKeychain as String] = true
         }
         #endif
         return query
@@ -350,23 +351,15 @@ public final class KeychainAuthStateStore: AuthStateStore, AuthMetadataStore {
     }
 
     private func loadRawData(account: String) throws -> Data? {
-        var query = baseQuery(account: account)
-        query[kSecReturnData as String] = kCFBooleanTrue
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-
-        var item: AnyObject?
-        let status = keychain.copyMatching(query as CFDictionary, result: &item)
-        switch status {
-        case errSecSuccess:
-            guard let data = item as? Data else {
-                throw KeychainError.invalidData
-            }
-            return data
-        case errSecItemNotFound:
+        let loadedItem = try loadStoredData(account: account)
+        guard let data = loadedItem.data else {
             return nil
-        default:
-            throw mapStatus(status)
         }
+        if loadedItem.mode == .legacy {
+            try saveRawData(data, account: account)
+            try deleteLegacyItem(account: account)
+        }
+        return data
     }
 
     private func saveRawData(_ data: Data, account: String) throws {
@@ -400,5 +393,55 @@ public final class KeychainAuthStateStore: AuthStateStore, AuthMetadataStore {
         stateLock.lock()
         defer { stateLock.unlock() }
         return try operation()
+    }
+
+    private func loadStoredData(account: String) throws -> (data: Data?, mode: KeychainQueryMode) {
+        if let data = try loadStoredData(account: account, mode: .current) {
+            return (data, .current)
+        }
+        if supportsLegacyKeychainFallback,
+           let data = try loadStoredData(account: account, mode: .legacy) {
+            return (data, .legacy)
+        }
+        return (nil, .current)
+    }
+
+    private func loadStoredData(account: String, mode: KeychainQueryMode) throws -> Data? {
+        var query = baseQuery(account: account, mode: mode)
+        query[kSecReturnData as String] = kCFBooleanTrue
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var item: AnyObject?
+        let status = keychain.copyMatching(query as CFDictionary, result: &item)
+        switch status {
+        case errSecSuccess:
+            guard let data = item as? Data else {
+                throw KeychainError.invalidData
+            }
+            return data
+        case errSecItemNotFound:
+            return nil
+        default:
+            throw mapStatus(status)
+        }
+    }
+
+    private func deleteLegacyItem(account: String) throws {
+        guard supportsLegacyKeychainFallback else {
+            return
+        }
+        let query = baseQuery(account: account, mode: .legacy)
+        let status = keychain.delete(query as CFDictionary)
+        if status != errSecSuccess && status != errSecItemNotFound {
+            throw mapStatus(status)
+        }
+    }
+
+    private var supportsLegacyKeychainFallback: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
     }
 }
