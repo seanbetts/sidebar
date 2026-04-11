@@ -47,7 +47,12 @@ final class ScratchpadPopoverSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("MacPopoverShell(type:scratchpadPopoverPanelType())"))
         XCTAssertTrue(normalized.contains("ScratchpadPopoverView("))
         XCTAssertTrue(normalized.contains("scratchpadView.padding(Self.iPadPopoverPadding)"))
-        XCTAssertTrue(normalized.contains("frame(minWidth:Self.iPadPopoverWidth,idealWidth:Self.iPadPopoverWidth,maxWidth:Self.iPadPopoverWidth,alignment:.topLeading)"))
+        let iPadPopoverFrame =
+            "frame(minWidth:Self.iPadPopoverWidth,idealWidth:Self.iPadPopoverWidth," +
+            "maxWidth:Self.iPadPopoverWidth,alignment:.topLeading)"
+        XCTAssertTrue(
+            normalized.contains(iPadPopoverFrame)
+        )
     }
 }
 

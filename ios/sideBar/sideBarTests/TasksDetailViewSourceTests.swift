@@ -32,10 +32,11 @@ final class TasksDetailViewSourceTests: XCTestCase {
                 "HeaderActionButton(systemName:\"plus\",accessibilityLabel:\"Newtask\""
             )
         )
+        let compactPlusIcon =
+            "Image(systemName:\"plus\").appFont(.subheadline)." +
+            "foregroundStyle(DesignTokens.Colors.textSecondary).frame(width:28,height:28)"
         XCTAssertFalse(
-            normalized.contains(
-                "Image(systemName:\"plus\").appFont(.subheadline).foregroundStyle(DesignTokens.Colors.textSecondary).frame(width:28,height:28)"
-            )
+            normalized.contains(compactPlusIcon)
         )
     }
 
