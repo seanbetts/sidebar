@@ -139,26 +139,7 @@ extension GeneralSettingsView {
             isSyncingDrafts: isSyncingNotificationDrafts,
             isDraftDirty: isNotificationDraftDirty
         ) {
-            let taskReminderOutcome = await environment.settingsViewModel.saveTaskReminderSettings(
-                isEnabled: taskRemindersEnabled,
-                reminderTime: taskRemindersEnabled
-                    ? Self.reminderTimeString(from: taskReminderTime)
-                    : nil,
-                scheduleTimezone: taskRemindersEnabled
-                    ? TimeZone.autoupdatingCurrent.identifier
-                    : nil
-            )
-            if taskReminderOutcome == .blockedBySystemPermission {
-                syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
-                return
-            }
-            let assistantRepliesOutcome = await environment.settingsViewModel
-                .saveAssistantReplyNotificationSettings(
-                isEnabled: assistantReplyNotificationsEnabled
-            )
-            if assistantRepliesOutcome == .blockedBySystemPermission {
-                syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
-            }
+            await performNotificationAutosaveSave()
         }
     }
 
@@ -173,26 +154,32 @@ extension GeneralSettingsView {
         notificationAutosaveController.flushPendingAutosave(
             shouldFlush: canFlush
         ) {
-            let taskReminderOutcome = await environment.settingsViewModel.saveTaskReminderSettings(
-                isEnabled: taskRemindersEnabled,
-                reminderTime: taskRemindersEnabled
-                    ? Self.reminderTimeString(from: taskReminderTime)
-                    : nil,
-                scheduleTimezone: taskRemindersEnabled
-                    ? TimeZone.autoupdatingCurrent.identifier
-                    : nil
-            )
-            if taskReminderOutcome == .blockedBySystemPermission {
-                syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
-                return
-            }
-            let assistantRepliesOutcome = await environment.settingsViewModel
-                .saveAssistantReplyNotificationSettings(
+            await performNotificationAutosaveSave()
+        }
+    }
+
+    @MainActor
+    private func performNotificationAutosaveSave() async {
+        let taskReminderOutcome = await environment.settingsViewModel.saveTaskReminderSettings(
+            isEnabled: taskRemindersEnabled,
+            reminderTime: taskRemindersEnabled
+                ? Self.reminderTimeString(from: taskReminderTime)
+                : nil,
+            scheduleTimezone: taskRemindersEnabled
+                ? TimeZone.autoupdatingCurrent.identifier
+                : nil
+        )
+        if taskReminderOutcome == .blockedBySystemPermission {
+            syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
+            return
+        }
+
+        let assistantRepliesOutcome = await environment.settingsViewModel
+            .saveAssistantReplyNotificationSettings(
                 isEnabled: assistantReplyNotificationsEnabled
             )
-            if assistantRepliesOutcome == .blockedBySystemPermission {
-                syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
-            }
+        if assistantRepliesOutcome == .blockedBySystemPermission {
+            syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
         }
     }
 
