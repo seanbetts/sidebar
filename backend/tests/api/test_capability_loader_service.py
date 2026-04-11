@@ -24,10 +24,11 @@ def _loader_service():
 
 def test_loader_skips_virtual_skill_docs_and_absent_examples(monkeypatch, caplog):
     service, module = _loader_service()
+    service._document_cache.clear()
     monkeypatch.setattr(
         module.settings,
         "skills_dir",
-        Path("/Users/sean/Coding/sideBar/backend/skills"),
+        Path(__file__).resolve().parents[2] / "skills",
     )
     caplog.set_level(logging.WARNING, logger="api.services.capabilities.loader")
 
