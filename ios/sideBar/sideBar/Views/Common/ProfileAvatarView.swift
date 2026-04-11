@@ -3,6 +3,10 @@ import SwiftUI
 import UIKit
 #endif
 
+enum GlobalAvatarRegionMetrics {
+    static let symbolScaleFactor: CGFloat = 0.7
+}
+
 struct ProfileAvatarView: View {
     @EnvironmentObject private var environment: AppEnvironment
     let size: CGFloat
@@ -17,7 +21,10 @@ struct ProfileAvatarView: View {
                     .scaledToFill()
             } else {
                 Image(systemName: "person.crop.circle")
-                    .appScaledFont(size: size * 0.7, weight: .regular)
+                    .appScaledFont(
+                        size: size * GlobalAvatarRegionMetrics.symbolScaleFactor,
+                        weight: .regular
+                    )
             }
         }
         .frame(width: size, height: size)
@@ -85,7 +92,10 @@ struct GlobalAvatarRegionControls: View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Button(action: handleScratchpadTap) {
                 Image(systemName: "square.and.pencil")
-                    .appFont(.labelMd)
+                    .appScaledFont(
+                        size: avatarSize * GlobalAvatarRegionMetrics.symbolScaleFactor,
+                        weight: .regular
+                    )
                     .frame(width: avatarSize, height: avatarSize)
             }
             .buttonStyle(.plain)
