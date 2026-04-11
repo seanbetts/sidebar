@@ -27,6 +27,17 @@ class TaskReminderService:
         cls._last_emitted_local_days.clear()
 
     @classmethod
+    def mark_emitted_day(
+        cls,
+        *,
+        user_id: str,
+        schedule_timezone: str,
+        local_date_iso: str,
+    ) -> None:
+        """Record that a reminder was successfully emitted for one local day."""
+        cls._last_emitted_local_days[(user_id, schedule_timezone)] = local_date_iso
+
+    @classmethod
     def build_daily_reminder(
         cls,
         db: Session,
@@ -67,9 +78,6 @@ class TaskReminderService:
         if overdue_count == 0 and due_today_count == 0:
             return None
 
-        cls._last_emitted_local_days[(user_id, schedule_timezone)] = (
-            local_date.isoformat()
-        )
         return NotificationIntent(
             user_id=user_id,
             category=NotificationCategory.TASK_REMINDER,

@@ -9,7 +9,7 @@ extension GeneralSettingsView {
             if Self.shouldShowTaskReminderTimeControl(taskRemindersEnabled: taskRemindersEnabled) {
                 DatePicker(
                     "Reminder time",
-                    selection: $taskReminderTime,
+                    selection: taskReminderTimeSelection,
                     displayedComponents: .hourAndMinute
                 )
             }
@@ -54,7 +54,7 @@ extension GeneralSettingsView {
                 SettingsMacFieldRow("Reminder time") {
                     DatePicker(
                         "Reminder time",
-                        selection: $taskReminderTime,
+                        selection: taskReminderTimeSelection,
                         displayedComponents: .hourAndMinute
                     )
                     .labelsHidden()
@@ -88,21 +88,28 @@ extension GeneralSettingsView {
     }
 
     var notificationAutosaveSignature: String {
-        [
+        let currentPreferences = environment.settingsViewModel.settings?.notificationPreferences
+        return [
             taskRemindersEnabled ? "1" : "0",
-            Self.reminderTimeString(from: taskReminderTime),
+            Self.resolvedTaskReminderTimeForAutosave(
+                taskRemindersEnabled: taskRemindersEnabled,
+                taskReminderTime: taskReminderTime,
+                hasExplicitTaskReminderTime: hasExplicitTaskReminderTime,
+                currentTaskRemindersEnabled: currentPreferences?.taskRemindersEnabled ?? false
+            ) ?? "",
             assistantReplyNotificationsEnabled ? "1" : "0"
         ].joined(separator: "|")
     }
 
     var isNotificationDraftDirty: Bool {
         guard let settings = environment.settingsViewModel.settings else { return false }
-        return taskRemindersEnabled != settings.notificationPreferences.taskRemindersEnabled
-            || (
-                taskRemindersEnabled
-                && Self.reminderTimeString(from: taskReminderTime)
-                    != settings.notificationPreferences.taskReminderTime
-            )
+        return Self.isTaskReminderDraftDirty(
+            taskRemindersEnabled: taskRemindersEnabled,
+            taskReminderTime: taskReminderTime,
+            hasExplicitTaskReminderTime: hasExplicitTaskReminderTime,
+            currentTaskRemindersEnabled: settings.notificationPreferences.taskRemindersEnabled,
+            currentTaskReminderTime: settings.notificationPreferences.taskReminderTime
+        )
             || assistantReplyNotificationsEnabled
                 != settings.notificationPreferences.assistantReplyNotificationsEnabled
     }
@@ -124,6 +131,7 @@ extension GeneralSettingsView {
         }
         isSyncingNotificationDrafts = true
         taskRemindersEnabled = settings.notificationPreferences.taskRemindersEnabled
+        hasExplicitTaskReminderTime = settings.notificationPreferences.taskReminderTime != nil
         taskReminderTime = Self.reminderDate(
             from: settings.notificationPreferences.taskReminderTime
         )
@@ -160,14 +168,21 @@ extension GeneralSettingsView {
 
     @MainActor
     private func performNotificationAutosaveSave() async {
+        let currentPreferences = environment.settingsViewModel.settings?.notificationPreferences
         let taskReminderOutcome = await environment.settingsViewModel.saveTaskReminderSettings(
             isEnabled: taskRemindersEnabled,
-            reminderTime: taskRemindersEnabled
-                ? Self.reminderTimeString(from: taskReminderTime)
-                : nil,
-            scheduleTimezone: taskRemindersEnabled
-                ? TimeZone.autoupdatingCurrent.identifier
-                : nil
+            reminderTime: Self.resolvedTaskReminderTimeForAutosave(
+                taskRemindersEnabled: taskRemindersEnabled,
+                taskReminderTime: taskReminderTime,
+                hasExplicitTaskReminderTime: hasExplicitTaskReminderTime,
+                currentTaskRemindersEnabled: currentPreferences?.taskRemindersEnabled ?? false
+            ),
+            scheduleTimezone: Self.resolvedTaskReminderTimezoneForAutosave(
+                taskRemindersEnabled: taskRemindersEnabled,
+                hasExplicitTaskReminderTime: hasExplicitTaskReminderTime,
+                currentTaskRemindersEnabled: currentPreferences?.taskRemindersEnabled ?? false,
+                currentTimezoneIdentifier: TimeZone.autoupdatingCurrent.identifier
+            )
         )
         if taskReminderOutcome == .blockedBySystemPermission {
             syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
@@ -243,8 +258,60 @@ extension GeneralSettingsView {
         return String(format: "%02d:%02d", hour, minute)
     }
 
+    static func isTaskReminderDraftDirty(
+        taskRemindersEnabled: Bool,
+        taskReminderTime: Date,
+        hasExplicitTaskReminderTime: Bool,
+        currentTaskRemindersEnabled: Bool,
+        currentTaskReminderTime: String?
+    ) -> Bool {
+        taskRemindersEnabled != currentTaskRemindersEnabled
+            || resolvedTaskReminderTimeForAutosave(
+                taskRemindersEnabled: taskRemindersEnabled,
+                taskReminderTime: taskReminderTime,
+                hasExplicitTaskReminderTime: hasExplicitTaskReminderTime,
+                currentTaskRemindersEnabled: currentTaskRemindersEnabled
+            ) != currentTaskReminderTime
+    }
+
+    static func resolvedTaskReminderTimeForAutosave(
+        taskRemindersEnabled: Bool,
+        taskReminderTime: Date,
+        hasExplicitTaskReminderTime: Bool,
+        currentTaskRemindersEnabled: Bool
+    ) -> String? {
+        guard taskRemindersEnabled else { return nil }
+        guard hasExplicitTaskReminderTime || !currentTaskRemindersEnabled else {
+            return nil
+        }
+        return reminderTimeString(from: taskReminderTime)
+    }
+
+    static func resolvedTaskReminderTimezoneForAutosave(
+        taskRemindersEnabled: Bool,
+        hasExplicitTaskReminderTime: Bool,
+        currentTaskRemindersEnabled: Bool,
+        currentTimezoneIdentifier: String
+    ) -> String? {
+        guard taskRemindersEnabled else { return nil }
+        guard hasExplicitTaskReminderTime || !currentTaskRemindersEnabled else {
+            return nil
+        }
+        return currentTimezoneIdentifier
+    }
+
     static func defaultReminderDate() -> Date {
         Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date())
             ?? Date()
+    }
+
+    var taskReminderTimeSelection: Binding<Date> {
+        Binding(
+            get: { taskReminderTime },
+            set: { newValue in
+                taskReminderTime = newValue
+                hasExplicitTaskReminderTime = true
+            }
+        )
     }
 }

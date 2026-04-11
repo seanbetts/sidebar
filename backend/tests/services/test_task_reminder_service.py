@@ -40,6 +40,11 @@ def test_configured_user_gets_at_most_one_reminder_per_scheduled_day(test_db):
         schedule_timezone="Europe/London",
         now=datetime(2026, 1, 15, 9, 0, tzinfo=UTC),
     )
+    TaskReminderService.mark_emitted_day(
+        user_id="user-123",
+        schedule_timezone="Europe/London",
+        local_date_iso="2026-01-15",
+    )
     second_reminder = TaskReminderService.build_daily_reminder(
         test_db,
         user_id="user-123",

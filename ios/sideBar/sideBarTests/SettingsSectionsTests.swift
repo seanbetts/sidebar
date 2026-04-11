@@ -229,6 +229,36 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(GeneralSettingsView.shouldShowMorningDigestControls)
     }
 
+    func testGeneralNotificationDraftStaysCleanWhenStoredReminderTimeIsUnset() {
+        let isDirty = GeneralSettingsView.isTaskReminderDraftDirty(
+            taskRemindersEnabled: true,
+            taskReminderTime: GeneralSettingsView.defaultReminderDate(),
+            hasExplicitTaskReminderTime: false,
+            currentTaskRemindersEnabled: true,
+            currentTaskReminderTime: nil
+        )
+
+        XCTAssertFalse(isDirty)
+    }
+
+    func testGeneralNotificationAutosaveSkipsSynthesizedReminderTimeForExistingUnsetSchedule() {
+        let reminderTime = GeneralSettingsView.resolvedTaskReminderTimeForAutosave(
+            taskRemindersEnabled: true,
+            taskReminderTime: GeneralSettingsView.defaultReminderDate(),
+            hasExplicitTaskReminderTime: false,
+            currentTaskRemindersEnabled: true
+        )
+        let timezone = GeneralSettingsView.resolvedTaskReminderTimezoneForAutosave(
+            taskRemindersEnabled: true,
+            hasExplicitTaskReminderTime: false,
+            currentTaskRemindersEnabled: true,
+            currentTimezoneIdentifier: "Europe/London"
+        )
+
+        XCTAssertNil(reminderTime)
+        XCTAssertNil(timezone)
+    }
+
     func testDraftSynchronizerRespectsDirtyDraftsForSameUser() {
         let shouldSync = SettingsDraftSynchronizer.shouldSyncDrafts(
             hasLoadedDrafts: true,

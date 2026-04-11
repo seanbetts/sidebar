@@ -50,6 +50,21 @@ class NotificationScheduleService:
         cls._last_emitted_windows.clear()
 
     @classmethod
+    def mark_emitted_window(
+        cls,
+        *,
+        user_id: str,
+        category: NotificationCategory,
+        local_now: datetime,
+        scheduled_time: str,
+    ) -> None:
+        """Record that a scheduled notification window was successfully delivered."""
+        cls._last_emitted_windows[(user_id, category)] = cls._window_marker(
+            local_now=local_now,
+            scheduled_time=scheduled_time,
+        )
+
+    @classmethod
     def find_due_users(
         cls,
         db: Session,
@@ -125,10 +140,14 @@ class NotificationScheduleService:
         scheduled_time: str,
     ) -> bool:
         """Deduplicate repeated evaluations inside the same local scheduled window."""
-        window_marker = f"{local_now.date().isoformat()}:{scheduled_time}"
+        window_marker = cls._window_marker(
+            local_now=local_now,
+            scheduled_time=scheduled_time,
+        )
         key = (user_id, category)
-        last_marker = cls._last_emitted_windows.get(key)
-        if last_marker == window_marker:
-            return True
-        cls._last_emitted_windows[key] = window_marker
-        return False
+        return cls._last_emitted_windows.get(key) == window_marker
+
+    @staticmethod
+    def _window_marker(*, local_now: datetime, scheduled_time: str) -> str:
+        """Build the unique key for one local scheduled-delivery minute."""
+        return f"{local_now.date().isoformat()}:{scheduled_time}"

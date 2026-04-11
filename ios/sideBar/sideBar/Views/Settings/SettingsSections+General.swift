@@ -27,6 +27,7 @@ struct GeneralSettingsView: View {
     @State var notificationDraftsUserId: String?
     @State var taskRemindersEnabled = false
     @State var taskReminderTime = Self.defaultReminderDate()
+    @State var hasExplicitTaskReminderTime = false
     @State var assistantReplyNotificationsEnabled = false
     @StateObject var notificationAutosaveController = SystemAutosaveController()
     private let localDeviceAuthenticator: any LocalDeviceAuthenticating

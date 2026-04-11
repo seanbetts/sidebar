@@ -6,6 +6,7 @@ import logging
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from api.config import settings
 from api.db.session import SessionLocal
@@ -22,15 +23,50 @@ logger = logging.getLogger("notification_schedule.worker")
 SLEEP_SECONDS = 30
 
 
-def _dispatch_task_reminders(db, due_users) -> int:
+def _mark_recipient_delivered(recipient, *, current_time: datetime) -> None:
+    """Persist in-process dedupe markers only after a real successful delivery."""
+    try:
+        local_now = current_time.astimezone(ZoneInfo(recipient.schedule_timezone))
+    except ZoneInfoNotFoundError:
+        return
+
+    NotificationScheduleService.mark_emitted_window(
+        user_id=recipient.user_id,
+        category=recipient.category,
+        local_now=local_now,
+        scheduled_time=recipient.scheduled_time,
+    )
+    local_date_iso = local_now.date().isoformat()
+    if recipient.category == NotificationCategory.TASK_REMINDER:
+        TaskReminderService.mark_emitted_day(
+            user_id=recipient.user_id,
+            schedule_timezone=recipient.schedule_timezone,
+            local_date_iso=local_date_iso,
+        )
+    elif recipient.category == NotificationCategory.MORNING_DIGEST:
+        MorningDigestService.mark_emitted_day(
+            user_id=recipient.user_id,
+            schedule_timezone=recipient.schedule_timezone,
+            local_date_iso=local_date_iso,
+        )
+
+
+def _dispatch_task_reminders(
+    db,
+    due_users,
+    *,
+    now: datetime | None = None,
+) -> int:
     """Build and deliver due task reminders."""
     environment = DeviceTokenService.normalize_environment(settings.apns_env)
+    current_time = now or datetime.now(UTC)
     delivered_count = 0
     for recipient in due_users:
         intent = TaskReminderService.build_daily_reminder(
             db,
             user_id=recipient.user_id,
             schedule_timezone=recipient.schedule_timezone,
+            now=current_time,
         )
         if not intent:
             continue
@@ -53,19 +89,28 @@ def _dispatch_task_reminders(db, due_users) -> int:
             intent,
             device_tokens=list(decision.matched_tokens) or tokens,
         )
+        if result.sent_count > 0:
+            _mark_recipient_delivered(recipient, current_time=current_time)
         delivered_count += result.sent_count
     return delivered_count
 
 
-def _dispatch_morning_digests(db, due_users) -> int:
+def _dispatch_morning_digests(
+    db,
+    due_users,
+    *,
+    now: datetime | None = None,
+) -> int:
     """Build and deliver due morning digests."""
     environment = DeviceTokenService.normalize_environment(settings.apns_env)
+    current_time = now or datetime.now(UTC)
     delivered_count = 0
     for recipient in due_users:
         intent = MorningDigestService.build_digest(
             db,
             user_id=recipient.user_id,
             schedule_timezone=recipient.schedule_timezone,
+            now=current_time,
         )
         if not intent:
             continue
@@ -88,6 +133,8 @@ def _dispatch_morning_digests(db, due_users) -> int:
             intent,
             device_tokens=list(decision.matched_tokens) or tokens,
         )
+        if result.sent_count > 0:
+            _mark_recipient_delivered(recipient, current_time=current_time)
         delivered_count += result.sent_count
     return delivered_count
 
@@ -111,8 +158,16 @@ def process_once(
             NotificationCategory.MORNING_DIGEST,
             now=current_time,
         )
-        dispatched_task_reminders = task_dispatcher(db, task_due)
-        dispatched_morning_digests = digest_dispatcher(db, digest_due)
+        dispatched_task_reminders = task_dispatcher(
+            db,
+            task_due,
+            now=current_time,
+        )
+        dispatched_morning_digests = digest_dispatcher(
+            db,
+            digest_due,
+            now=current_time,
+        )
         return {
             "task_reminders_due": len(task_due),
             "morning_digests_due": len(digest_due),

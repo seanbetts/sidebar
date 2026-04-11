@@ -134,6 +134,12 @@ def test_due_results_are_deduped_within_same_scheduled_window(test_db):
         NotificationCategory.TASK_REMINDER,
         now=now,
     )
+    NotificationScheduleService.mark_emitted_window(
+        user_id="user-london",
+        category=NotificationCategory.TASK_REMINDER,
+        local_now=now,
+        scheduled_time="09:30",
+    )
     second_due = NotificationScheduleService.find_due_users(
         test_db,
         NotificationCategory.TASK_REMINDER,
