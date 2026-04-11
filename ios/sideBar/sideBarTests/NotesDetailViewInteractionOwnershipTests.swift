@@ -28,13 +28,23 @@ extension NotesFormattingViewportTests {
         )
         XCTAssertTrue(editorTextView.becomeFirstResponder())
         drainNotesHostingRunLoop()
+        await waitUntil {
+            guard let selectionRect = editorTextView.selectionRectInContentCoordinates() else {
+                return false
+            }
+            return editorTextView.visibleViewportRect().intersects(selectionRect.insetBy(dx: 0, dy: -1))
+        }
 
         simulateUIKitTouchSelectionChange(
             on: editorTextView,
             to: NSRange(location: tapOffset, length: 0)
         )
         await waitUntil {
-            editorTextView.selectedRange.location == tapOffset
+            guard editorTextView.selectedRange.location == tapOffset,
+                  let selectionRect = editorTextView.selectionRectInContentCoordinates() else {
+                return false
+            }
+            return editorTextView.visibleViewportRect().intersects(selectionRect.insetBy(dx: 0, dy: -1))
         }
         let settledSelectionRect = try XCTUnwrap(editorTextView.selectionRectInContentCoordinates())
         XCTAssertTrue(

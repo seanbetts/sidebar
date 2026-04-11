@@ -1272,6 +1272,7 @@ private final class SelectableNoteReadTextView: UITextView {
     }
 
     private func reportViewportOffsetIfNeeded(force: Bool = false) {
+        guard force || hasPendingInitialViewportRestoration == false else { return }
         guard force || lastReportedViewportOffset != contentOffset else { return }
         lastReportedViewportOffset = contentOffset
         onViewportOffsetChange?(contentOffset)

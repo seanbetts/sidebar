@@ -387,7 +387,9 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
         textView.onDidMoveToWindow = { attachedTextView in
             handleTextViewDidMoveToWindow(attachedTextView)
         }
-        if pendingSelectionViewportAnchorY != nil, textView.shouldAutofocus, !textView.isFirstResponder {
+        let shouldSuppressAutofocusRevealForPendingSelection =
+            pendingSelectionTarget != nil && textView.shouldAutofocus && !textView.isFirstResponder
+        if shouldSuppressAutofocusRevealForPendingSelection {
             textView.suppressAutofocusReveal = true
         }
         let needsAccessoryReload = configureFormattingUI(
@@ -499,6 +501,21 @@ struct UIKitNoteTextEditorSurface: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             guard let textView = textView as? AccessoryTextView else { return }
+            let document = viewModel.currentPersistenceSnapshot().document
+            let logicalSelectedRange = SelectableNoteReadView.logicalEditorSelectedRange(
+                fromDisplaySelectedRange: textView.selectedRange,
+                in: textView.attributedText,
+                document: document
+            )
+            let selection = viewModel.selection(
+                fromUTF16Range: logicalSelectedRange,
+                in: viewModel.attributedContent
+            )
+            if selection != viewModel.selection {
+                viewModel.selection = selection
+                viewModel.handleSelectionChange()
+            }
+            textView.reportViewportSnapshotIfNeeded(force: true)
             onDidBeginEditing?(textView)
         }
 

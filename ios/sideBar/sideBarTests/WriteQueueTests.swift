@@ -337,6 +337,12 @@ final class WriteQueueTests: XCTestCase {
             autoProcessEnabled: false
         )
 
+        await waitUntilWriteQueueState {
+            queue.hasRecoveredStuckWrites
+                && queue.hasRecoveredConflictWrites
+                && queue.pendingCount == 0
+        }
+
         let writeId = UUID()
         let context = persistence.container.viewContext
         let write = PendingWrite.insertNew(in: context)

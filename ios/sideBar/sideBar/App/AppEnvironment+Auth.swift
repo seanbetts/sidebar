@@ -321,8 +321,8 @@ extension AppEnvironment {
         }
 
         if authState == .active {
-            let shouldRefreshWebsiteListFromPendingWork = hasPendingWebsiteCoordinatorWork
             await consumeExtensionEvents(awaitPendingShareReplay: false)
+            let shouldRefreshWebsiteListFromPendingWork = hasPendingWebsiteBackgroundWork
             if shouldRefreshWebsiteListFromPendingWork {
                 await websitesViewModel.refreshFromExtension()
                 reconcileQueuedWebsitesWithSavedItems()

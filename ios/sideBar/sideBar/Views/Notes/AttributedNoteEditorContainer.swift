@@ -224,6 +224,10 @@ struct AttributedNoteEditorContainer: View {
                 let viewportAnchorY = pendingSelectionViewportAnchorY
                 pendingSelectionViewportAnchorY = nil
                 guard let viewportAnchorY else {
+                    if pendingSelectionTarget != nil {
+                        textView.layoutIfNeeded()
+                        textView.scrollCurrentSelectionIntoView()
+                    }
                     textView.suppressAutofocusReveal = false
                     if editorViewModel.isHoldingReadSurfaceDuringEditEntry {
                         DispatchQueue.main.async {
@@ -267,33 +271,31 @@ struct AttributedNoteEditorContainer: View {
                 }
                 guard autofocusEnabled,
                       let viewportAnchorY = pendingSelectionViewportAnchorY,
+                      textView.window != nil,
                       !textView.isFirstResponder,
                       !textView.hasScheduledAutofocus else { return }
                 textView.suppressAutofocusReveal = true
                 textView.hasScheduledAutofocus = true
-                DispatchQueue.main.async { [weak textView] in
-                    guard let textView else { return }
-                    guard pendingSelectionViewportAnchorY == viewportAnchorY else {
-                        textView.hasScheduledAutofocus = false
-                        return
-                    }
-                    textView.layoutIfNeeded()
-                    let shouldRepairSelectionAnchor: Bool
-                    if let currentViewportAnchorY = textView.currentSelectionViewportAnchorY(),
-                       pendingSelectionViewportOffset != nil {
-                        shouldRepairSelectionAnchor =
-                            abs(currentViewportAnchorY - viewportAnchorY) > viewportBootstrapTolerance
-                    } else {
-                        shouldRepairSelectionAnchor = true
-                    }
-                    if shouldRepairSelectionAnchor {
-                        textView.positionCurrentSelection(atViewportAnchorY: viewportAnchorY)
-                    }
-                    textView.hasScheduledAutofocus = false
-                    pendingPostAutofocusViewportAnchorY = viewportAnchorY
-                    shouldSkipDidBeginEditingPresentationReady = true
-                    pendingSelectionViewportOffset = nil
-                    pendingSelectionViewportAnchorY = nil
+                defer { textView.hasScheduledAutofocus = false }
+                textView.layoutIfNeeded()
+                let shouldRepairSelectionAnchor: Bool
+                if let currentViewportAnchorY = textView.currentSelectionViewportAnchorY(),
+                   pendingSelectionViewportOffset != nil {
+                    shouldRepairSelectionAnchor =
+                        abs(currentViewportAnchorY - viewportAnchorY) > viewportBootstrapTolerance
+                } else {
+                    shouldRepairSelectionAnchor = true
+                }
+                if shouldRepairSelectionAnchor {
+                    textView.positionCurrentSelection(atViewportAnchorY: viewportAnchorY)
+                }
+                pendingPostAutofocusViewportAnchorY = viewportAnchorY
+                shouldSkipDidBeginEditingPresentationReady = true
+                pendingSelectionViewportOffset = nil
+                pendingSelectionViewportAnchorY = nil
+                if textView.shouldAutofocus, textView.window != nil, !textView.isFirstResponder {
+                    textView.window?.makeKey()
+                    _ = textView.becomeFirstResponder()
                 }
             },
             makeTextView: makeTextView,
