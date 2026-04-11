@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from api.exceptions import BadRequestError
+from api.exceptions import BadRequestError, ConflictError
 from api.models.device_token import DeviceToken
 
 
@@ -17,6 +18,8 @@ class DeviceTokenService:
 
     VALID_PLATFORMS = {"ios", "macos"}
     VALID_ENVIRONMENTS = {"dev", "prod"}
+    DUPLICATE_LOOKUP_ATTEMPTS = 3
+    DUPLICATE_LOOKUP_SLEEP_SECONDS = 0.05
 
     @staticmethod
     def normalize_environment(environment: str) -> str:
@@ -72,6 +75,32 @@ class DeviceTokenService:
         return constraint_name == "uq_device_tokens_token" or (
             "uq_device_tokens_token" in str(error.orig)
         )
+
+    @staticmethod
+    def _lookup_token_after_duplicate_conflict(
+        db: Session,
+        *,
+        token: str,
+    ) -> DeviceToken:
+        """Retry lookup for a token that conflicted during insert.
+
+        A concurrent registration can win the unique-token race slightly before the
+        row becomes visible to the follow-up ORM query. Retry a few times before
+        surfacing a typed conflict instead of raising ``NoResultFound``.
+        """
+        for attempt in range(DeviceTokenService.DUPLICATE_LOOKUP_ATTEMPTS):
+            record = (
+                db.query(DeviceToken).filter(DeviceToken.token == token).one_or_none()
+            )
+            if record is not None:
+                return record
+            if attempt < DeviceTokenService.DUPLICATE_LOOKUP_ATTEMPTS - 1:
+                expire_all = getattr(db, "expire_all", None)
+                if callable(expire_all):
+                    expire_all()
+                time.sleep(DeviceTokenService.DUPLICATE_LOOKUP_SLEEP_SECONDS)
+
+        raise ConflictError("Device token registration conflict")
 
     @staticmethod
     def register_token(
@@ -144,7 +173,10 @@ class DeviceTokenService:
             savepoint.rollback()
             if not DeviceTokenService._is_duplicate_token_integrity_error(exc):
                 raise
-            record = db.query(DeviceToken).filter(DeviceToken.token == token).one()
+            record = DeviceTokenService._lookup_token_after_duplicate_conflict(
+                db,
+                token=token,
+            )
             DeviceTokenService._apply_registration_state(
                 record,
                 user_id=user_id,
