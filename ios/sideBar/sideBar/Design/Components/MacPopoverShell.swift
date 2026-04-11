@@ -19,6 +19,7 @@ struct MacPopoverShell<Content: View>: View {
                 alignment: .topLeading
             )
             .glassChrome(Self.chromeKind)
+            .presentationBackground(.clear)
     }
 
     private var minWidth: CGFloat {

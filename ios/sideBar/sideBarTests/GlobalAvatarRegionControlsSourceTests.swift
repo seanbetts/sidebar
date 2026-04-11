@@ -30,6 +30,14 @@ final class GlobalAvatarRegionControlsSourceTests: XCTestCase {
         )
     }
 
+    func testGlobalAvatarRegionUsesPlainScratchpadControlAndSharedScratchpadSurface() throws {
+        let normalized = try profileAvatarSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("HeaderActionButton(systemName:\"square.and.pencil\""))
+        XCTAssertTrue(normalized.contains("ScratchpadPopoverSurface("))
+    }
+
     private func profileAvatarSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {
         let fileURL = URL(fileURLWithPath: "\(file)")
         let sideBarRoot = fileURL

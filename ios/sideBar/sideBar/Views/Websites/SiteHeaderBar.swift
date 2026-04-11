@@ -286,10 +286,6 @@ public struct SiteHeaderBar: View {
         .glass
     }
 
-    static var compactTrailingActionChrome: GlassChrome.Kind {
-        .pill
-    }
-
     static func usesGroupedGlass(forCompact: Bool) -> Bool {
         false
     }
@@ -320,13 +316,11 @@ public struct SiteHeaderBar: View {
                 attachmentAnchor: .rect(.bounds),
                 arrowEdge: .top
             ) {
-                MacPopoverShell(type: scratchpadPopoverPanelType()) {
-                    ScratchpadPopoverView(
-                        api: environment.container.scratchpadAPI,
-                        cache: environment.container.cacheClient,
-                        scratchpadStore: environment.scratchpadStore
-                    )
-                }
+                ScratchpadPopoverSurface(
+                    api: environment.container.scratchpadAPI,
+                    cache: environment.container.cacheClient,
+                    scratchpadStore: environment.scratchpadStore
+                )
                 .presentationCompactAdaptation(.sheet)
             }
         }
@@ -334,8 +328,6 @@ public struct SiteHeaderBar: View {
 
     private var compactTrailingActionControls: some View {
         GlobalAvatarRegionControls()
-            .padding(DesignTokens.Spacing.xxsPlus)
-            .glassChrome(Self.compactTrailingActionChrome)
     }
 }
 

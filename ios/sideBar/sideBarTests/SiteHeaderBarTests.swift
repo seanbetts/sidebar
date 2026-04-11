@@ -10,10 +10,6 @@ final class SiteHeaderBarTests: XCTestCase {
         XCTAssertEqual(SiteHeaderBar.desktopTrailingActionChrome, .actionButton)
     }
 
-    func testCompactTrailingActionChromeUsesSharedPillGlass() {
-        XCTAssertEqual(SiteHeaderBar.compactTrailingActionChrome, .pill)
-    }
-
     func testDesktopTrailingControlsSkipGroupedGlass() {
         XCTAssertFalse(SiteHeaderBar.usesGroupedGlass(forCompact: false))
     }
@@ -38,6 +34,22 @@ final class SiteHeaderBarTests: XCTestCase {
             ).count - 1,
             2
         )
+    }
+
+    func testCompactTrailingActionSourceUsesGlobalAvatarRegionWithoutOuterGlassWrapper() throws {
+        let normalized = try siteHeaderBarSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("privatevarcompactTrailingActionControls:someView{GlobalAvatarRegionControls()}"))
+        XCTAssertFalse(normalized.contains(".glassChrome(Self.compactTrailingActionChrome)"))
+    }
+
+    func testDesktopScratchpadPopoverUsesSharedScratchpadSurface() throws {
+        let normalized = try siteHeaderBarSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("ScratchpadPopoverSurface("))
+        XCTAssertFalse(normalized.contains("MacPopoverShell(type:scratchpadPopoverPanelType())"))
     }
 }
 

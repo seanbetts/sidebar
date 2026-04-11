@@ -262,6 +262,47 @@ public struct ScratchpadPopoverView: View {
     }
 }
 
+struct ScratchpadPopoverSurface: View {
+    let api: any ScratchpadProviding
+    let cache: CacheClient
+    let scratchpadStore: ScratchpadStore
+
+    var body: some View {
+#if os(macOS)
+        MacPopoverShell(type: scratchpadPopoverPanelType()) {
+            scratchpadView
+        }
+#else
+        // iPad popovers already provide the outer bubble chrome, so this path
+        // only restores the internal spacing and width that the raw content lost.
+        scratchpadView
+            .padding(Self.iPadPopoverPadding)
+            .frame(
+                minWidth: Self.iPadPopoverWidth,
+                idealWidth: Self.iPadPopoverWidth,
+                maxWidth: Self.iPadPopoverWidth,
+                alignment: .topLeading
+            )
+#endif
+    }
+
+    private var scratchpadView: some View {
+        ScratchpadPopoverView(
+            api: api,
+            cache: cache,
+            scratchpadStore: scratchpadStore
+        )
+    }
+
+    private static var iPadPopoverPadding: CGFloat {
+        DesignTokens.Spacing.md
+    }
+
+    private static var iPadPopoverWidth: CGFloat {
+        MacPopoverShell<EmptyView>.minimumWidth(for: scratchpadPopoverPanelType())
+    }
+}
+
 private struct ScratchpadHeaderRow: View {
     let isSaving: Bool
     let errorMessage: String?

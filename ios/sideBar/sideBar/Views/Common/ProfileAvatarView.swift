@@ -105,13 +105,11 @@ struct GlobalAvatarRegionControls: View {
                 attachmentAnchor: .rect(.bounds),
                 arrowEdge: .top
             ) {
-                MacPopoverShell(type: scratchpadPopoverPanelType()) {
-                    ScratchpadPopoverView(
-                        api: environment.container.scratchpadAPI,
-                        cache: environment.container.cacheClient,
-                        scratchpadStore: environment.scratchpadStore
-                    )
-                }
+                ScratchpadPopoverSurface(
+                    api: environment.container.scratchpadAPI,
+                    cache: environment.container.cacheClient,
+                    scratchpadStore: environment.scratchpadStore
+                )
                 .presentationCompactAdaptation(.sheet)
             }
 
