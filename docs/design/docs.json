@@ -69,6 +69,7 @@
           "patterns/wait-ux",
           "patterns/request-lifecycle",
           "patterns/error-handling",
+          "patterns/data-retention-and-cleanup",
           "patterns/ai-assistant-ui",
           "patterns/sidebar-model",
           "patterns/menus-and-shortcuts",

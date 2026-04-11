@@ -17,6 +17,7 @@ Document the repeated interaction patterns that sit above individual components 
 | [Wait UX](./wait-ux) | approved |
 | [Request Lifecycle](./request-lifecycle) | approved |
 | [Error Handling](./error-handling) | approved |
+| [Data Retention And Cleanup](./data-retention-and-cleanup) | draft |
 | [Onboarding](./onboarding) | partial |
 | [Handoffs](./handoffs) | approved |
 | [AI Assistant UI](./ai-assistant-ui) | approved |
