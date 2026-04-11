@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import shlex
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -14,7 +16,7 @@ from typing import Sequence
 APP_NAME = "sideBar.app"
 XCODE_PROJECT_RELATIVE_PATH = Path("ios/sideBar/sideBar.xcodeproj")
 BUILD_SCHEME = "sideBar"
-DERIVED_DATA_BASE = Path("DerivedData/widget-verification")
+DERIVED_DATA_BASE = Path(tempfile.gettempdir()) / "sidebar-widget-verification"
 WIDGET_BUNDLE_ID = "ai.sidebar.sidebar.sideBarWidgets"
 UNSIGNED_MACOS_BUILD_ARGS = [
     "CODE_SIGNING_ALLOWED=NO",
@@ -45,7 +47,8 @@ class CommandPlan:
 
 def mode_output_root(*, workspace_root: Path, mode: str) -> Path:
     """Return the mode-specific output root directory."""
-    return workspace_root / DERIVED_DATA_BASE / mode
+    workspace_hash = hashlib.sha256(str(workspace_root).encode("utf-8")).hexdigest()[:12]
+    return DERIVED_DATA_BASE / workspace_hash / mode
 
 
 def _unsigned_macos_build_command(command: list[str]) -> list[str]:

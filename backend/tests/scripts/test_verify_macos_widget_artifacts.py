@@ -39,16 +39,8 @@ def _capture_subprocess_calls(monkeypatch, module, *, fail_for: list[list[str]] 
 def test_debug_mode_runs_build_and_verification(monkeypatch, tmp_path: Path, capsys) -> None:
     """Debug mode should build macOS app output and verify the resulting bundle."""
     workspace_root = tmp_path / "workspace"
-    built_app = (
-        workspace_root
-        / "DerivedData"
-        / "widget-verification"
-        / "debug"
-        / "Build"
-        / "Products"
-        / "Debug"
-        / "sideBar.app"
-    )
+    derived_data_root = VERIFY_MODULE.mode_output_root(workspace_root=workspace_root, mode="debug")
+    built_app = derived_data_root / "Build" / "Products" / "Debug" / "sideBar.app"
     built_app.mkdir(parents=True)
 
     calls = _capture_subprocess_calls(monkeypatch, VERIFY_MODULE)
@@ -75,7 +67,7 @@ def test_debug_mode_runs_build_and_verification(monkeypatch, tmp_path: Path, cap
             "-destination",
             "platform=macOS",
             "-derivedDataPath",
-            str(workspace_root / "DerivedData/widget-verification/debug"),
+            str(derived_data_root),
             "CODE_SIGNING_ALLOWED=NO",
             "CODE_SIGNING_REQUIRED=NO",
             "CODE_SIGN_IDENTITY=",
@@ -96,16 +88,11 @@ def test_debug_mode_runs_build_and_verification(monkeypatch, tmp_path: Path, cap
 def test_release_mode_uses_release_configuration(monkeypatch, tmp_path: Path) -> None:
     """Release mode should build and verify the Release bundle path."""
     workspace_root = tmp_path / "workspace"
-    built_app = (
-        workspace_root
-        / "DerivedData"
-        / "widget-verification"
-        / "release"
-        / "Build"
-        / "Products"
-        / "Release"
-        / "sideBar.app"
+    derived_data_root = VERIFY_MODULE.mode_output_root(
+        workspace_root=workspace_root,
+        mode="release",
     )
+    built_app = derived_data_root / "Build" / "Products" / "Release" / "sideBar.app"
     built_app.mkdir(parents=True)
 
     calls = _capture_subprocess_calls(monkeypatch, VERIFY_MODULE)
@@ -130,7 +117,7 @@ def test_release_mode_uses_release_configuration(monkeypatch, tmp_path: Path) ->
         "-destination",
         "platform=macOS",
         "-derivedDataPath",
-        str(workspace_root / "DerivedData/widget-verification/release"),
+        str(derived_data_root),
         "CODE_SIGNING_ALLOWED=NO",
         "CODE_SIGNING_REQUIRED=NO",
         "CODE_SIGN_IDENTITY=",
@@ -152,10 +139,15 @@ def test_archive_export_mode_runs_archive_export_and_verification(
 ) -> None:
     """archive-export should archive, export, then verify the exported app bundle."""
     workspace_root = tmp_path / "workspace"
-    export_dir = workspace_root / "DerivedData/widget-verification/archive-export/export"
+    archive_export_root = VERIFY_MODULE.mode_output_root(
+        workspace_root=workspace_root,
+        mode="archive-export",
+    )
+    export_dir = archive_export_root / "export"
     exported_app = export_dir / "sideBar.app"
     exported_app.mkdir(parents=True)
     export_options_plist = workspace_root / "ExportOptions.plist"
+    export_options_plist.parent.mkdir(parents=True, exist_ok=True)
     export_options_plist.write_text("plist", encoding="utf-8")
 
     calls = _capture_subprocess_calls(monkeypatch, VERIFY_MODULE)
@@ -170,7 +162,7 @@ def test_archive_export_mode_runs_archive_export_and_verification(
         ]
     )
 
-    archive_path = workspace_root / "DerivedData/widget-verification/archive-export/sideBar.xcarchive"
+    archive_path = archive_export_root / "sideBar.xcarchive"
     assert exit_code == 0
     assert calls[0] == [
         "xcodebuild",
@@ -209,16 +201,8 @@ def test_archive_export_mode_runs_archive_export_and_verification(
 def test_cleanup_is_optional_and_runs_before_build(monkeypatch, tmp_path: Path) -> None:
     """When requested, stale widget cleanup should run before any build work."""
     workspace_root = tmp_path / "workspace"
-    built_app = (
-        workspace_root
-        / "DerivedData"
-        / "widget-verification"
-        / "debug"
-        / "Build"
-        / "Products"
-        / "Debug"
-        / "sideBar.app"
-    )
+    derived_data_root = VERIFY_MODULE.mode_output_root(workspace_root=workspace_root, mode="debug")
+    built_app = derived_data_root / "Build" / "Products" / "Debug" / "sideBar.app"
     built_app.mkdir(parents=True)
 
     calls = _capture_subprocess_calls(monkeypatch, VERIFY_MODULE)
@@ -280,7 +264,7 @@ def test_dry_run_prints_commands_without_running(monkeypatch, tmp_path: Path, ca
         + str(workspace_root / "ios/sideBar/sideBar.xcodeproj")
         + " -scheme sideBar -configuration Release -destination platform=macOS "
         + "-derivedDataPath "
-        + str(workspace_root / "DerivedData/widget-verification/release")
+        + str(VERIFY_MODULE.mode_output_root(workspace_root=workspace_root, mode="release"))
         + " CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="
         + " build"
     ) in captured.out
@@ -289,8 +273,8 @@ def test_dry_run_prints_commands_without_running(monkeypatch, tmp_path: Path, ca
         + str(workspace_root / "scripts/check_ios_extension_config_resolution.py")
         + " --configuration Release --built-app "
         + str(
-            workspace_root
-            / "DerivedData/widget-verification/release/Build/Products/Release/sideBar.app"
+            VERIFY_MODULE.mode_output_root(workspace_root=workspace_root, mode="release")
+            / "Build/Products/Release/sideBar.app"
         )
     ) in captured.out
 
@@ -314,6 +298,7 @@ def test_archive_export_requires_export_options_plist(tmp_path: Path, capsys) ->
 def test_fails_when_build_command_errors(monkeypatch, tmp_path: Path, capsys) -> None:
     """Build failures should return non-zero and surface the failing command."""
     workspace_root = tmp_path / "workspace"
+    derived_data_root = VERIFY_MODULE.mode_output_root(workspace_root=workspace_root, mode="debug")
     failing_command = [
         "xcodebuild",
         "-project",
@@ -325,7 +310,7 @@ def test_fails_when_build_command_errors(monkeypatch, tmp_path: Path, capsys) ->
         "-destination",
         "platform=macOS",
         "-derivedDataPath",
-        str(workspace_root / "DerivedData/widget-verification/debug"),
+        str(derived_data_root),
         "CODE_SIGNING_ALLOWED=NO",
         "CODE_SIGNING_REQUIRED=NO",
         "CODE_SIGN_IDENTITY=",
