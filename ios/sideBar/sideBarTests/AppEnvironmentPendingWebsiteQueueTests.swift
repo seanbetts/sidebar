@@ -4,6 +4,7 @@ import sideBarShared
 @testable import sideBar
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
     var retainedEnvironments: [AppEnvironment] = []
     var environment: AppEnvironment!
