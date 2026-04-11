@@ -40,7 +40,7 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
 
         XCTAssertFalse(environment.shouldShowStaleAuthRetryBanner)
 
-        try? await Task.sleep(nanoseconds: 80_000_000)
+        await waitForStaleAuthRetryBannerToAppear(in: environment)
 
         XCTAssertTrue(environment.shouldShowStaleAuthRetryBanner)
     }
@@ -82,7 +82,7 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
 
         authSession.authState = .stale
         environment.refreshAuthState()
-        try? await Task.sleep(nanoseconds: 80_000_000)
+        await waitForStaleAuthRetryBannerToAppear(in: environment)
         XCTAssertTrue(environment.shouldShowStaleAuthRetryBanner)
 
         authSession.authState = .active
@@ -106,7 +106,7 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
 
         authSession.authState = .stale
         environment.refreshAuthState()
-        try? await Task.sleep(nanoseconds: 80_000_000)
+        await waitForStaleAuthRetryBannerToAppear(in: environment)
         XCTAssertTrue(environment.shouldShowStaleAuthRetryBanner)
 
         await environment.beginSignOut()
@@ -151,6 +151,21 @@ final class AppEnvironmentStaleAuthRetryTests: XCTestCase {
 
         XCTAssertEqual(authSession.refreshSessionCallCount, 0)
         XCTAssertEqual(environment.authState, .active)
+    }
+
+    private func waitForStaleAuthRetryBannerToAppear(
+        in environment: AppEnvironment,
+        timeoutNanoseconds: UInt64 = 500_000_000,
+        pollNanoseconds: UInt64 = 10_000_000
+    ) async {
+        let deadline = DispatchTime.now().uptimeNanoseconds + timeoutNanoseconds
+        while !environment.shouldShowStaleAuthRetryBanner {
+            if DispatchTime.now().uptimeNanoseconds >= deadline {
+                XCTFail("Timed out waiting for stale auth retry banner to appear")
+                return
+            }
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+        }
     }
 }
 
