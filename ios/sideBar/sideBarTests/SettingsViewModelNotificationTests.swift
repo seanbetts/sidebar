@@ -28,6 +28,9 @@ final class SettingsViewModelNotificationTests: XCTestCase {
             )
         )
         let recorder = UpdateRecorder()
+        let notificationsRequester = MockNotificationPermissionRequester()
+        notificationsRequester.currentStateValue = .notAsked
+        notificationsRequester.requestResult = .granted
         let viewModel = SettingsViewModel(
             settingsAPI: MockSettingsAPI(
                 result: .success(initial),
@@ -35,6 +38,7 @@ final class SettingsViewModelNotificationTests: XCTestCase {
                 updateRecorder: recorder
             ),
             skillsAPI: MockSkillsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            notificationPermissionRequester: notificationsRequester,
             cache: TestCacheClient()
         )
         viewModel.applySettingsResponse(initial)
@@ -202,6 +206,9 @@ final class SettingsViewModelNotificationTests: XCTestCase {
             )
         )
         let recorder = UpdateRecorder()
+        let notificationsRequester = MockNotificationPermissionRequester()
+        notificationsRequester.currentStateValue = .notAsked
+        notificationsRequester.requestResult = .granted
         let viewModel = SettingsViewModel(
             settingsAPI: MockSettingsAPI(
                 result: .success(initial),
@@ -209,6 +216,7 @@ final class SettingsViewModelNotificationTests: XCTestCase {
                 updateRecorder: recorder
             ),
             skillsAPI: MockSkillsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            notificationPermissionRequester: notificationsRequester,
             cache: TestCacheClient()
         )
         viewModel.applySettingsResponse(initial)
@@ -290,6 +298,9 @@ final class SettingsViewModelNotificationTests: XCTestCase {
             )
         )
         let recorder = UpdateRecorder()
+        let notificationsRequester = MockNotificationPermissionRequester()
+        notificationsRequester.currentStateValue = .notAsked
+        notificationsRequester.requestResult = .granted
         let viewModel = SettingsViewModel(
             settingsAPI: MockSettingsAPI(
                 result: .success(initial),
@@ -297,6 +308,7 @@ final class SettingsViewModelNotificationTests: XCTestCase {
                 updateRecorder: recorder
             ),
             skillsAPI: MockSkillsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            notificationPermissionRequester: notificationsRequester,
             cache: TestCacheClient()
         )
         viewModel.applySettingsResponse(initial)
