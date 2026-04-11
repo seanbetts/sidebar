@@ -41,16 +41,17 @@ class CapabilityLoaderService:
             if capability is None:
                 continue
 
-            instruction_content = cls._load_document(capability.instruction_ref)
-            loaded_instruction_refs.append(capability.instruction_ref)
-            if instruction_content:
-                loaded_instructions.append(
-                    {
-                        "skill_id": capability.skill_id,
-                        "ref": capability.instruction_ref,
-                        "content": instruction_content,
-                    }
-                )
+            if capability.instruction_ref:
+                instruction_content = cls._load_document(capability.instruction_ref)
+                loaded_instruction_refs.append(capability.instruction_ref)
+                if instruction_content:
+                    loaded_instructions.append(
+                        {
+                            "skill_id": capability.skill_id,
+                            "ref": capability.instruction_ref,
+                            "content": instruction_content,
+                        }
+                    )
 
             for example_ref in capability.example_refs:
                 example_content = cls._load_document(example_ref)

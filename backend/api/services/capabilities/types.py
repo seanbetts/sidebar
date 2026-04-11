@@ -12,7 +12,7 @@ class CapabilityRegistryRecord:
 
     skill_id: str
     tier: str
-    instruction_ref: str
+    instruction_ref: str | None
     required_toolsets: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
     triggers: tuple[str, ...] = ()

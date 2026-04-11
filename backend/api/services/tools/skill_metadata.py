@@ -257,15 +257,15 @@ SKILL_TOKEN_ESTIMATES: dict[str, int] = {
     "onboarding-coach": 240,
 }
 
+VIRTUAL_SKILLS_WITHOUT_INSTRUCTIONS: frozenset[str] = frozenset(
+    {"memory", "ui-theme", "web-search"}
+)
+
 SKILL_INSTRUCTION_REFS: dict[str, str] = {
     skill_id: f"skills/{skill_id}/SKILL.md" for skill_id in EXPOSED_SKILLS
 }
 
-SKILL_EXAMPLE_REFS: dict[str, tuple[str, ...]] = {
-    "audio-transcribe": ("skills/audio-transcribe/examples/basic.md",),
-    "youtube-transcribe": ("skills/youtube-transcribe/examples/basic.md",),
-    "web-crawler-policy": ("skills/web-crawler-policy/examples/basic.md",),
-}
+SKILL_EXAMPLE_REFS: dict[str, tuple[str, ...]] = {}
 
 
 def canonicalize_skill_id(skill_id: str) -> str:
@@ -341,9 +341,11 @@ def get_skill_token_estimate(skill_id: str) -> int:
     return int(SKILL_TOKEN_ESTIMATES.get(canonical, 200))
 
 
-def get_instruction_ref(skill_id: str) -> str:
+def get_instruction_ref(skill_id: str) -> str | None:
     """Return the stable instruction reference for a skill."""
     canonical = canonicalize_skill_id(skill_id)
+    if canonical in VIRTUAL_SKILLS_WITHOUT_INSTRUCTIONS:
+        return None
     return SKILL_INSTRUCTION_REFS.get(canonical, f"skills/{canonical}/SKILL.md")
 
 
