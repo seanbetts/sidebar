@@ -115,6 +115,9 @@ def _apply_session_settings_with_retry(
         )
     except OperationalError as exc:
         connection.invalidate(exc)
+        rollback = getattr(connection, "rollback", None)
+        if callable(rollback):
+            rollback()
         _apply_session_settings(
             connection,
             user_id,

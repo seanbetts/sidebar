@@ -174,6 +174,26 @@ class SkillExecutor:
         return str(error_payload)
 
     @staticmethod
+    def _error_code(error_payload: dict[str, Any]) -> str | None:
+        """Extract a classified error code from a normalized failure payload."""
+        error_value = error_payload.get("error")
+        if isinstance(error_value, dict):
+            code = error_value.get("code")
+            if isinstance(code, str) and code.strip():
+                return code.strip()
+
+        code = error_payload.get("code")
+        if isinstance(code, str) and code.strip():
+            return code.strip()
+
+        return None
+
+    @classmethod
+    def _is_expected_failure(cls, error_payload: dict[str, Any]) -> bool:
+        """Return whether a normalized failure should be treated as expected."""
+        return cls._error_code(error_payload) == "WEB_SAVE_VALIDATION_ERROR"
+
+    @staticmethod
     def _decode_timeout_stream(stream: bytes | str | None) -> str:
         """Decode partial stdout/stderr captured on subprocess timeout."""
         if stream is None:
@@ -339,6 +359,8 @@ class SkillExecutor:
                     return output
                 else:
                     error = self._normalize_failure_payload(result.stderr)
+                    error_code = self._error_code(error)
+                    expected_failure = self._is_expected_failure(error)
 
                     # Audit log failure
                     AuditLogger.log_tool_call(
@@ -348,6 +370,8 @@ class SkillExecutor:
                         success=False,
                         error=self._error_summary(error),
                         user_id=user_id,
+                        expected_failure=expected_failure,
+                        error_code=error_code,
                     )
                     return error
 

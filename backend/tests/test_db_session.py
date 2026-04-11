@@ -185,6 +185,48 @@ def test_after_begin_retries_disconnect_once_before_succeeding(
     assert len(invalidated) == 1
 
 
+def test_after_begin_rolls_back_before_retrying_disconnect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Transaction-start disconnect retry must reset the invalid transaction first."""
+    session = SimpleNamespace(info={"website_worker_scope": "all"})
+    invalidated: list[BaseException] = []
+    rollbacks: list[bool] = []
+    connection = SimpleNamespace(
+        invalidate=lambda exc=None: invalidated.append(exc),
+        rollback=lambda: rollbacks.append(True),
+    )
+    apply_calls = 0
+
+    def fake_apply(
+        _connection,
+        _user_id,
+        _force_public_search_path,
+        _website_worker_scope=None,
+    ) -> None:
+        nonlocal apply_calls
+        apply_calls += 1
+        if apply_calls == 1:
+            raise OperationalError(
+                "SET LOCAL app.website_worker_scope = :worker_scope",
+                {"worker_scope": "all"},
+                Exception("SSL connection has been closed unexpectedly"),
+            )
+        assert rollbacks == [True]
+
+    monkeypatch.setattr(session_module, "_apply_session_settings", fake_apply)
+
+    session_module._set_app_user_id(
+        session,
+        transaction=object(),
+        connection=connection,
+    )
+
+    assert apply_calls == 2
+    assert len(invalidated) == 1
+    assert rollbacks == [True]
+
+
 def test_after_begin_applies_worker_scope_from_session_info(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

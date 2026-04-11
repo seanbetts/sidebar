@@ -53,6 +53,25 @@ class TestAuditLogger:
         assert "fs_write" in record.message
         assert "Permission denied" in record.message
 
+    def test_log_expected_failure_tool_call(self, capture_logs):
+        """Expected failures should not be emitted at error level."""
+        AuditLogger.log_tool_call(
+            tool_name="web-save.save_url.py",
+            parameters={"args": ["https://example.com/articles/123"]},
+            duration_ms=50.0,
+            success=False,
+            error="Reserved placeholder URLs are not supported for website saves.",
+            expected_failure=True,
+            error_code="WEB_SAVE_VALIDATION_ERROR",
+        )
+
+        assert len(capture_logs.records) == 1
+        record = capture_logs.records[0]
+
+        assert record.levelname == "INFO"
+        assert "TOOL_CALL_EXPECTED_FAILURE" in record.message
+        assert "WEB_SAVE_VALIDATION_ERROR" in record.message
+
     def test_redact_secrets_from_parameters(self, capture_logs):
         """Should redact sensitive parameters."""
         AuditLogger.log_tool_call(

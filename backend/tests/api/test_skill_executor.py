@@ -1,10 +1,14 @@
 """Tests for SkillExecutor security and functionality."""
 
+from __future__ import annotations
+
 import asyncio
 import json
 import subprocess
 import threading
 import time
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from api.config import settings
@@ -146,7 +150,9 @@ print(json.dumps({"success": True}))
             settings.skill_timeout_seconds = original_timeout
 
     @pytest.mark.asyncio
-    async def test_timeout_logs_partial_subprocess_output(self, executor, monkeypatch, caplog):
+    async def test_timeout_logs_partial_subprocess_output(
+        self, executor, monkeypatch, caplog
+    ):
         """Timeouts should log any partial stdout/stderr emitted before the kill."""
 
         def fake_run(*args, **kwargs):
@@ -401,3 +407,58 @@ print(json.dumps({"success": True, "data": {"message": message}}))
         # Should succeed and treat input as literal string
         assert result["success"] is True
         assert result["data"]["message"] == malicious_input
+
+    @pytest.mark.asyncio
+    async def test_execute_marks_structured_validation_failure_as_expected_audit_event(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Expected validation failures should not be audited as unexpected errors."""
+        skills_dir = tmp_path / "skills"
+        script_dir = skills_dir / "web-save" / "scripts"
+        script_dir.mkdir(parents=True)
+        (script_dir / "save_url.py").write_text("print('placeholder')\n")
+
+        workspace_base = tmp_path / "workspace"
+        executor = SkillExecutor(skills_dir=skills_dir, workspace_base=workspace_base)
+
+        stderr_payload = json.dumps(
+            {
+                "success": False,
+                "error": {
+                    "type": "ValidationError",
+                    "message": (
+                        "Reserved placeholder URLs are not supported for website saves."
+                    ),
+                    "code": "WEB_SAVE_VALIDATION_ERROR",
+                },
+            }
+        )
+
+        async def fake_to_thread(func, *args, **kwargs):
+            del func, args, kwargs
+            return SimpleNamespace(returncode=1, stdout="", stderr=stderr_payload)
+
+        captured: dict[str, object] = {}
+
+        monkeypatch.setattr(
+            "api.services.agent.skills.executor.asyncio.to_thread", fake_to_thread
+        )
+        monkeypatch.setattr(
+            "api.services.agent.skills.executor.AuditLogger.log_tool_call",
+            lambda **kwargs: captured.update(kwargs),
+        )
+
+        result = await executor.execute(
+            "web-save",
+            "save_url.py",
+            ["https://example.com/articles/123"],
+            user_id="user-1",
+        )
+
+        assert result["success"] is False
+        assert captured["tool_name"] == "web-save.save_url.py"
+        assert captured["success"] is False
+        assert captured["expected_failure"] is True
+        assert captured["error_code"] == "WEB_SAVE_VALIDATION_ERROR"

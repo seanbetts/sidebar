@@ -21,7 +21,9 @@ class AuditLogger:
         success: bool = True,
         error: str | None = None,
         user_id: str | None = None,
-    ):
+        expected_failure: bool = False,
+        error_code: str | None = None,
+    ) -> None:
         """Log a tool call with all relevant metadata."""
         # Redact secrets from parameters
         safe_params = AuditLogger._redact_secrets(parameters)
@@ -35,10 +37,14 @@ class AuditLogger:
             "success": success,
             "error": error,
             "user_id": user_id,
+            "expected_failure": expected_failure,
+            "error_code": error_code,
         }
 
         if success:
             logger.info(f"TOOL_CALL: {json.dumps(audit_entry)}")
+        elif expected_failure:
+            logger.info(f"TOOL_CALL_EXPECTED_FAILURE: {json.dumps(audit_entry)}")
         else:
             logger.error(f"TOOL_CALL_FAILED: {json.dumps(audit_entry)}")
 
