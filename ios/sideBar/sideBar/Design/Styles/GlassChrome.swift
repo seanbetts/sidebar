@@ -128,7 +128,11 @@ private struct GlassChromeModifier: ViewModifier {
         case (.roundedRectangle(let cornerRadius), .regular):
             content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         case (.roundedRectangle(let cornerRadius), .interactive):
-            content.glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            content
+                .glassEffect(
+                    .regular.interactive(),
+                    in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                )
         }
     }
 
