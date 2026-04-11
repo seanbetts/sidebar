@@ -9,11 +9,11 @@ final class WidgetExtensionCoverageTests: XCTestCase {
     override func setUp() {
         super.setUp()
         ExternalSurfaceDiagnosticsStore.shared.clear()
-        clearTaskWidgetStorage()
+        clearWidgetStorage()
     }
 
     override func tearDown() {
-        clearTaskWidgetStorage()
+        clearWidgetStorage()
         ExternalSurfaceDiagnosticsStore.shared.clear()
         super.tearDown()
     }
@@ -590,6 +590,20 @@ private func clearTaskWidgetStorage() {
     let defaults = UserDefaults(suiteName: groupId)
     defaults?.removeObject(forKey: WidgetContentType.tasks.dataKey)
     defaults?.removeObject(forKey: WidgetContentType.tasks.pendingKey)
+    defaults?.removeObject(forKey: "widgetTodayTasks")
+    defaults?.removeObject(forKey: "widgetPendingCompletions")
+    defaults?.removeObject(forKey: "widgetPendingAddTask")
+    defaults?.synchronize()
+}
+
+private func clearWidgetStorage() {
+    let groupId = appGroupIdForWidgetTests()
+    let defaults = UserDefaults(suiteName: groupId)
+    for contentType in [WidgetContentType.tasks, .notes, .websites, .files] {
+        defaults?.removeObject(forKey: contentType.dataKey)
+        defaults?.removeObject(forKey: contentType.pendingKey)
+    }
+    defaults?.removeObject(forKey: "widgetIsAuthenticated")
     defaults?.removeObject(forKey: "widgetTodayTasks")
     defaults?.removeObject(forKey: "widgetPendingCompletions")
     defaults?.removeObject(forKey: "widgetPendingAddTask")
