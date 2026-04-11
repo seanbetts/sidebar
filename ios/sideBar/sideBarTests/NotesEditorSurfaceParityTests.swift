@@ -21,43 +21,31 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
                 .paragraph([.init(text: "Bold", marks: [.bold])]),
                 .paragraph([.init(text: "", marks: [])]),
                 .paragraph([.init(text: "Italic", marks: [.italic])])
             ]
         )
-        let note = NotePayload(
-            id: "n1",
-            name: "Formatted Gap",
-            document: document,
-            plainText: "Bold\n\nItalic",
-            path: "/note.md",
-            modified: nil,
-            created: nil
-        )
         let editorDocument = try constrainedEditorDocument(
-            document: note.document,
+            document: document,
             baseFontSize: NoteTextTypography.defaultBodyFontSize
         )
-        let attributedEditorDocument = NSAttributedString(editorDocument)
+        let attributedEditorDocument = bridgedEditorDocument(editorDocument)
         let expectedBodyStyle = NoteTextParagraphMetrics.bodyParagraphStyle(
             baseFontSize: NoteTextTypography.defaultBodyFontSize
         )
-        let expectedTitleStyle = NoteTextParagraphMetrics.paragraphStyle(
-            for: .title,
-            baseFontSize: NoteTextTypography.defaultBodyFontSize
-        )
 
-        XCTAssertEqual(attributedEditorDocument.string, "Bold\n\nItalic")
-        try assertParagraphStyle(attributedEditorDocument, matches: expectedBodyStyle, at: 0)
-        try assertParagraphStyle(attributedEditorDocument, matches: expectedTitleStyle, at: 4)
+        XCTAssertEqual(attributedEditorDocument.string, "Title\nBold\n\nItalic")
         try assertParagraphStyle(attributedEditorDocument, matches: expectedBodyStyle, at: 6)
+        try assertParagraphStyle(attributedEditorDocument, matches: expectedBodyStyle, at: 12)
     }
 
     func testReadSurfaceFormattingMatchesEditorSurfaceForSameSemanticNoteOnIOS() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
                 .paragraph([
                     .init(text: "Bold", marks: [.bold]),
                     .init(text: " ", marks: []),
@@ -77,19 +65,21 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
             document: document,
             baseFontSize: baseFontSize
         )
+        let bridgedEditDocument = bridgedEditorDocument(editDocument)
 
-        XCTAssertEqual(readAttributed.string, String(editDocument.characters))
-        XCTAssertEqual(readAttributed.string, "Bold Italic Underline")
+        XCTAssertEqual(readAttributed.string, bridgedEditDocument.string)
+        XCTAssertEqual(readAttributed.string, "Title\nBold Italic Underline")
 
-        try assertMatchingFontTraits(readAttributed, editDocument, at: 0)
-        try assertMatchingFontTraits(readAttributed, editDocument, at: 5)
-        try assertMatchingUnderline(readAttributed, editDocument, at: 12)
+        try assertMatchingFontTraits(readAttributed, bridgedEditDocument, at: 6)
+        try assertMatchingFontTraits(readAttributed, bridgedEditDocument, at: 11)
+        try assertMatchingUnderline(readAttributed, editDocument, at: 18)
     }
 
     func testReadSurfaceBoldFontMatchesMountedEditorSurfaceExactlyOnIOS() throws {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
                 .paragraph([
                     .init(text: "Bold", marks: [.bold])
                 ])
@@ -101,8 +91,14 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
             from: document,
             baseFontSize: baseFontSize
         )
-        let readFont = try fontAttribute(in: readAttributed, at: 0)
-        let expectedFont = notePlatformBoldBodyFont(baseFontSize: baseFontSize)
+        let editDocument = try constrainedEditorDocument(
+            document: document,
+            baseFontSize: baseFontSize
+        )
+        let bridgedEditDocument = bridgedEditorDocument(editDocument)
+        let boldLocation = try location(of: "Bold", in: readAttributed)
+        let readFont = try fontAttribute(in: readAttributed, at: boldLocation)
+        let expectedFont = try fontAttribute(in: bridgedEditDocument, at: boldLocation)
         let readTraits = notePlatformFontTraits(from: readFont)
 
         XCTAssertEqual(readFont.fontName, expectedFont.fontName)
@@ -241,6 +237,7 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
         let document = NotesSemanticDocument(
             version: NotesSemanticDocument.currentVersion,
             blocks: [
+                .init(type: .title, content: [.init(text: "Title", marks: [])]),
                 .paragraph([
                     .init(text: "Bold", marks: [.bold]),
                     .init(text: " ", marks: []),
@@ -258,10 +255,11 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
             document: document,
             baseFontSize: baseFontSize
         )
+        let bridgedEditDocument = bridgedEditorDocument(editDocument)
 
-        XCTAssertEqual(readAttributed.string, String(editDocument.characters))
-        try assertMatchingFontTraits(readAttributed, editDocument, at: 0)
-        try assertMatchingFontTraits(readAttributed, editDocument, at: 5)
+        XCTAssertEqual(readAttributed.string, bridgedEditDocument.string)
+        try assertMatchingFontTraits(readAttributed, bridgedEditDocument, at: 6)
+        try assertMatchingFontTraits(readAttributed, bridgedEditDocument, at: 11)
         XCTAssertFalse(try attributedNoteEditorContainerMountsSwiftUISurfaceDirectly())
     }
 
@@ -301,23 +299,24 @@ final class NotesEditorSurfaceParityTests: XCTestCase {
 
 private func assertMatchingFontTraits(
     _ lhs: NSAttributedString,
-    _ rhs: AttributedString,
+    _ rhs: NSAttributedString,
     at location: Int,
     file: StaticString = #filePath,
     line: UInt = #line
 ) throws {
     let lhsFont = try fontAttribute(in: lhs, at: location, file: file, line: line)
     let lhsTraits = notePlatformFontTraits(from: lhsFont)
-    let rhsRange = singleCharacterRange(at: location, in: rhs, file: file, line: line)
+    let rhsFont = try fontAttribute(in: rhs, at: location, file: file, line: line)
+    let rhsTraits = notePlatformFontTraits(from: rhsFont)
     XCTAssertEqual(
         lhsTraits.bold,
-        noteRangeHasBoldTrait(rhs, range: rhsRange),
+        rhsTraits.bold,
         file: file,
         line: line
     )
     XCTAssertEqual(
         lhsTraits.italic,
-        noteRangeHasItalicTrait(rhs, range: rhsRange),
+        rhsTraits.italic,
         file: file,
         line: line
     )
@@ -353,6 +352,11 @@ private func constrainedEditorDocument(
     NoteTextFormattingDefinition(baseFontSize: baseFontSize).constrainDocument(&constrained)
     _ = (file, line)
     return constrained
+}
+
+private func bridgedEditorDocument(_ document: AttributedString) -> NSAttributedString {
+    (try? NSAttributedString(document, including: \.noteTextEditor))
+        ?? NSAttributedString(document)
 }
 
 private func fontAttribute(
@@ -435,7 +439,6 @@ private func assertParagraphStyle(
     )
     XCTAssertEqual(actual.tailIndent, expected.tailIndent, accuracy: 0.001, file: file, line: line)
 }
-
 private func paragraphStyleAttribute(
     in attributedText: NSAttributedString,
     at location: Int,
@@ -457,11 +460,9 @@ private func paragraphStyleAttribute(
         line: line
     )
 }
-
 private enum NotesEditorSurfaceParityTestError: Error {
     case missingAttribute
 }
-
 private func location(
     of substring: String,
     in attributedText: NSAttributedString,
@@ -476,7 +477,6 @@ private func location(
     }
     return range.location
 }
-
 private func singleCharacterRange(
     at location: Int,
     in text: AttributedString,
@@ -491,7 +491,6 @@ private func singleCharacterRange(
         )
         return text.startIndex..<text.startIndex
     }
-
     let lower = text.index(text.startIndex, offsetByCharacters: location)
     let upper = text.index(afterCharacter: lower)
     return lower..<upper

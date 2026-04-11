@@ -180,13 +180,47 @@ extension NotesEditorCodeBlockSpacingTests {
         let bytes = CFDataGetBytePtr(data)
         let bytesPerPixel = cgImage.bitsPerPixel / 8
         let offset = (pixelY * cgImage.bytesPerRow) + (pixelX * bytesPerPixel)
-        let alpha = CGFloat(bytes?[offset + 3] ?? 0) / 255
+        let byte0 = CGFloat(bytes?[offset] ?? 0) / 255
+        let byte1 = CGFloat(bytes?[offset + 1] ?? 0) / 255
+        let byte2 = CGFloat(bytes?[offset + 2] ?? 0) / 255
+        let byte3 = CGFloat(bytes?[offset + 3] ?? 0) / 255
+        let isLittleEndian = cgImage.bitmapInfo.contains(.byteOrder32Little)
+        let alphaInfo = cgImage.alphaInfo
+        let red: CGFloat
+        let green: CGFloat
+        let blue: CGFloat
+        let alpha: CGFloat
+
+        if isLittleEndian &&
+            (alphaInfo == .premultipliedFirst || alphaInfo == .first || alphaInfo == .noneSkipFirst) {
+            red = byte2
+            green = byte1
+            blue = byte0
+            alpha = byte3
+        } else if !isLittleEndian &&
+            (alphaInfo == .premultipliedFirst || alphaInfo == .first || alphaInfo == .noneSkipFirst) {
+            red = byte1
+            green = byte2
+            blue = byte3
+            alpha = byte0
+        } else if isLittleEndian &&
+            (alphaInfo == .premultipliedLast || alphaInfo == .last || alphaInfo == .noneSkipLast) {
+            red = byte1
+            green = byte2
+            blue = byte3
+            alpha = byte0
+        } else {
+            red = byte0
+            green = byte1
+            blue = byte2
+            alpha = byte3
+        }
         guard alpha > 0 else { return UIColor(red: 0, green: 0, blue: 0, alpha: 0) }
 
         return UIColor(
-            red: (CGFloat(bytes?[offset] ?? 0) / 255) / alpha,
-            green: (CGFloat(bytes?[offset + 1] ?? 0) / 255) / alpha,
-            blue: (CGFloat(bytes?[offset + 2] ?? 0) / 255) / alpha,
+            red: red / alpha,
+            green: green / alpha,
+            blue: blue / alpha,
             alpha: alpha
         )
     }

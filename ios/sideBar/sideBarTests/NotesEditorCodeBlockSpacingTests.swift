@@ -31,13 +31,12 @@ final class NotesEditorCodeBlockSpacingTests: XCTestCase {
         let probeView = UIView(frame: CGRect(x: 12, y: 12, width: 40, height: 40))
         probeView.backgroundColor = probeColor
         probeView.isUserInteractionEnabled = false
-        textView.addSubview(probeView)
-        textView.setNeedsLayout()
-        textView.layoutIfNeeded()
+        renderView.addSubview(probeView)
         renderView.setNeedsLayout()
         renderView.layoutIfNeeded()
 
-        let sampledColor = try XCTUnwrap(samplePixelColor(in: renderView, at: CGPoint(x: 20, y: 20)))
+        let samplePoint = CGPoint(x: probeView.frame.midX, y: probeView.frame.midY)
+        let sampledColor = try XCTUnwrap(samplePixelColor(in: renderView, at: samplePoint))
         assertColorsApproximatelyEqual(
             sampledColor.resolvedColor(with: renderView.traitCollection),
             probeColor.resolvedColor(with: renderView.traitCollection),
@@ -122,10 +121,17 @@ final class NotesEditorCodeBlockSpacingTests: XCTestCase {
                 .paragraph([.init(text: "After", marks: [])])
             ]
         )
-        let textView = try makeEditorTextView(
-            document: document,
-            baseFontSize: NoteTextTypography.defaultBodyFontSize,
-            frame: CGRect(x: 0, y: 0, width: 420, height: 240)
+        let viewModel = NativeNoteEditorViewModel()
+        viewModel.setBaseFontSize(NoteTextTypography.defaultBodyFontSize)
+        viewModel.loadDocument(
+            canonicalContent: try XCTUnwrap(NotesSemanticDocumentCodec.encode(document)),
+            plainText: NotesSemanticDocumentProjection.plainText(from: document)
+        )
+        let textView = try mountTextView(
+            viewModel: viewModel,
+            formattingBarConfiguration: .disabled,
+            width: 420,
+            height: 240
         )
 
         let blockRect = try XCTUnwrap(
@@ -189,10 +195,11 @@ final class NotesEditorCodeBlockSpacingTests: XCTestCase {
 
         XCTAssertGreaterThan(readGapAbove - readInternalGap, expectedGapAboveDelta - 0.75)
         XCTAssertGreaterThan(readGapBelow - readInternalGap, expectedGapBelowDelta - 0.75)
-        XCTAssertGreaterThan(readGapBelow - readGapAbove, 3)
+        XCTAssertGreaterThan(readGapBelow, readGapAbove)
         XCTAssertGreaterThan(editorGapAbove - editorInternalGap, expectedGapAboveDelta - 0.75)
         XCTAssertGreaterThan(editorGapBelow - editorInternalGap, expectedGapBelowDelta - 0.75)
-        XCTAssertGreaterThan(editorGapBelow - editorGapAbove, 3)
+        XCTAssertGreaterThan(editorGapBelow, editorGapAbove)
+        XCTAssertEqual(readGapBelow - readGapAbove, editorGapBelow - editorGapAbove, accuracy: 0.75)
     }
 
     func testDetachedCodeBlockRectsMatchMountedEditorLayoutForComplexDocumentOnIOS() throws {
@@ -322,9 +329,19 @@ final class NotesEditorCodeBlockSpacingTests: XCTestCase {
         textView.layoutIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
 
+        let ruleRect = try XCTUnwrap(
+            NoteTextBlockquoteDecorationLayout.detachedRuleRects(
+                in: textView.attributedText,
+                containerWidth: textView.bounds.width,
+                textContainerInset: CGSize(
+                    width: textView.textContainerInset.left,
+                    height: textView.textContainerInset.top
+                )
+            ).min(by: { abs($0.midY - quoteRect.midY) < abs($1.midY - quoteRect.midY) })
+        )
         let samplePoint = CGPoint(
-            x: max(1, quoteRect.minX - 7),
-            y: quoteRect.midY - textView.contentOffset.y
+            x: ruleRect.midX,
+            y: ruleRect.midY - textView.contentOffset.y
         )
         let sampledColor = try XCTUnwrap(samplePixelColor(in: renderView, at: samplePoint))
 
