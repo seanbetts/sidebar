@@ -89,6 +89,7 @@ ios/**/*.podspec
 
 # Build artifacts
 ios/**/DerivedData/
+ios/**/.codex-derived-data/
 ios/**/build/
 ios/**/.tools/
 ios/sideBar/sideBarUITests/LocalUploadFixtures/*
