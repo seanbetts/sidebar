@@ -9,12 +9,18 @@ final class GlobalAvatarRegionControlsSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("staticletsymbolScaleFactor:CGFloat=0.7"))
         XCTAssertTrue(
             normalized.contains(
-                "Image(systemName:\"person.crop.circle\").appScaledFont(size:size*GlobalAvatarRegionMetrics.symbolScaleFactor,weight:.regular)"
+                "Image(systemName:\"person.crop.circle\")"
+                    + ".appScaledFont("
+                    + "size:size*GlobalAvatarRegionMetrics.symbolScaleFactor,"
+                    + "weight:.regular)"
             )
         )
         XCTAssertTrue(
             normalized.contains(
-                "Image(systemName:\"square.and.pencil\").appScaledFont(size:avatarSize*GlobalAvatarRegionMetrics.symbolScaleFactor,weight:.regular)"
+                "Image(systemName:\"square.and.pencil\")"
+                    + ".appScaledFont("
+                    + "size:avatarSize*GlobalAvatarRegionMetrics.symbolScaleFactor,"
+                    + "weight:.regular)"
             )
         )
         XCTAssertFalse(

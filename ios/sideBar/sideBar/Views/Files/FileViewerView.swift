@@ -122,6 +122,11 @@ public struct FileViewerView: View {
         if let url = state.fileURL {
             if let pdfController {
                 PDFViewerContainer(url: url, controller: pdfController)
+                    .overlay(alignment: .topTrailing) {
+                        PdfViewerFloatingControls(controller: pdfController)
+                            .padding(.top, DesignTokens.Spacing.sm)
+                            .padding(.trailing, DesignTokens.Spacing.md)
+                    }
             } else {
                 PDFKitView(url: url)
             }

@@ -35,6 +35,8 @@ struct PDFViewerContainer: View {
     var body: some View {
         GeometryReader { proxy in
             PDFViewer(url: url, controller: controller)
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipped()
                 .onChange(of: proxy.size) { _, _ in
                     controller.updateContainerSize(proxy.size)
                 }
@@ -179,13 +181,80 @@ struct PDFViewerContainer: View {
     var body: some View {
         GeometryReader { proxy in
             PDFViewer(url: url, controller: controller)
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipped()
                 .onChange(of: proxy.size) { _, _ in
+                    PDFResizeDebugTrace.log(
+                        "PDFViewerContainer.sizeChanged",
+                        details: "size=\(PDFResizeDebugTrace.describe(proxy.size)) url=\(url.lastPathComponent)"
+                    )
                     controller.updateContainerSize(proxy.size)
                 }
                 .onAppear {
+                    PDFResizeDebugTrace.log(
+                        "PDFViewerContainer.appear",
+                        details: "size=\(PDFResizeDebugTrace.describe(proxy.size)) url=\(url.lastPathComponent)"
+                    )
                     controller.updateContainerSize(proxy.size)
                 }
         }
+    }
+}
+
+final class ClippedPDFHostView: UIView {
+    let pdfView = PDFView()
+    private var lastLayoutSummary: String?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+
+        clipsToBounds = true
+        pdfView.clipsToBounds = true
+        pdfView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(pdfView)
+
+        NSLayoutConstraint.activate([
+            pdfView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            pdfView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            pdfView.topAnchor.constraint(equalTo: topAnchor),
+            pdfView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard PDFResizeDebugTrace.isEnabled else { return }
+
+        let summary = [
+            "host=\(PDFResizeDebugTrace.describe(bounds))",
+            "pdf=\(PDFResizeDebugTrace.describe(pdfView.bounds))",
+            describeScrollViewState()
+        ].joined(separator: " ")
+
+        guard summary != lastLayoutSummary else { return }
+        lastLayoutSummary = summary
+        PDFResizeDebugTrace.log("ClippedPDFHostView.layoutSubviews", details: summary)
+    }
+
+    private func describeScrollViewState() -> String {
+        guard let scrollView = pdfView.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView else {
+            return "scroll=nil"
+        }
+        let documentView = scrollView.subviews.first
+        return [
+            "scrollClass=\(NSStringFromClass(type(of: scrollView)))",
+            "scrollBounds=\(PDFResizeDebugTrace.describe(scrollView.bounds))",
+            "contentSize=\(PDFResizeDebugTrace.describe(scrollView.contentSize))",
+            "contentOffset=\(PDFResizeDebugTrace.describe(scrollView.contentOffset))",
+            "zoomScale=\(PDFResizeDebugTrace.rounded(scrollView.zoomScale))",
+            "docClass=\(documentView.map { NSStringFromClass(type(of: $0)) } ?? "nil")",
+            "docFrame=\(documentView.map { PDFResizeDebugTrace.describe($0.frame) } ?? "nil")"
+        ].joined(separator: " ")
     }
 }
 
@@ -193,18 +262,17 @@ struct PDFViewer: UIViewRepresentable {
     let url: URL
     let controller: PDFViewerController
 
-    func makeUIView(context: Context) -> PDFView {
-        let view = PDFView()
-        view.clipsToBounds = true
-        view.backgroundColor = UIColor.systemBackground
-        context.coordinator.loadDocument(into: view, url: url)
-        controller.attach(pdfView: view)
-        return view
+    func makeUIView(context: Context) -> ClippedPDFHostView {
+        let hostView = ClippedPDFHostView()
+        hostView.pdfView.backgroundColor = UIColor.systemBackground
+        context.coordinator.loadDocument(into: hostView.pdfView, url: url)
+        controller.attach(pdfView: hostView.pdfView)
+        return hostView
     }
 
-    func updateUIView(_ uiView: PDFView, context: Context) {
-        context.coordinator.loadDocument(into: uiView, url: url)
-        controller.attach(pdfView: uiView)
+    func updateUIView(_ uiView: ClippedPDFHostView, context: Context) {
+        context.coordinator.loadDocument(into: uiView.pdfView, url: url)
+        controller.attach(pdfView: uiView.pdfView)
         controller.scheduleFitAndRefresh()
     }
 
@@ -229,16 +297,16 @@ struct PDFViewer: UIViewRepresentable {
 struct PDFKitView: UIViewRepresentable {
     let url: URL
 
-    func makeUIView(context: Context) -> PDFView {
-        let view = PDFView()
-        view.autoScales = true
-        view.backgroundColor = UIColor.systemBackground
-        context.coordinator.loadDocument(into: view, url: url)
-        return view
+    func makeUIView(context: Context) -> ClippedPDFHostView {
+        let hostView = ClippedPDFHostView()
+        hostView.pdfView.autoScales = true
+        hostView.pdfView.backgroundColor = UIColor.systemBackground
+        context.coordinator.loadDocument(into: hostView.pdfView, url: url)
+        return hostView
     }
 
-    func updateUIView(_ uiView: PDFView, context: Context) {
-        context.coordinator.loadDocument(into: uiView, url: url)
+    func updateUIView(_ uiView: ClippedPDFHostView, context: Context) {
+        context.coordinator.loadDocument(into: uiView.pdfView, url: url)
     }
 
     func makeCoordinator() -> Coordinator {

@@ -4,7 +4,6 @@ import UniformTypeIdentifiers
 
 struct FilesHeaderView: View {
     @ObservedObject var viewModel: IngestionViewModel
-    @ObservedObject var pdfController: PDFViewerController
 
     var body: some View {
         ContentHeaderRow(
@@ -18,17 +17,13 @@ struct FilesHeaderView: View {
             subtitleShowsDivider: activeFileType != nil,
             subtitleDividerWidth: 2,
             subtitleDividerHeight: 28,
-            subtitleTracking: 0.8
-        , trailing: {
-            if viewModel.selectedFileId != nil {
-                HeaderActionRow {
-                    if isPdf {
-                        PdfHeaderControls(controller: pdfController, isCompact: false)
-                    }
+            subtitleTracking: 0.8,
+            trailing: {
+                if viewModel.selectedFileId != nil {
                     FilesHeaderActions(viewModel: viewModel)
                 }
             }
-        })
+        )
         .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
@@ -117,17 +112,6 @@ struct FilesHeaderView: View {
         }
         return viewModel.items.first { $0.file.id == selectedId }?.recommendedViewer
     }
-
-    private var isPdf: Bool {
-        if let mime = selectedMimeOriginal {
-            let normalized = mime.split(separator: ";").first?.trimmed.lowercased() ?? mime
-            if normalized == "application/pdf" {
-                return true
-            }
-        }
-        return selectedRecommendedViewer == "viewer_pdf"
-    }
-
     private func fileTypeLabel(name: String, mime: String?) -> String {
         guard let mime else {
             return extensionLabel(from: name)

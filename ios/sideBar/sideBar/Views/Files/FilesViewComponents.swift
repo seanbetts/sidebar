@@ -2,61 +2,57 @@ import SwiftUI
 import UniformTypeIdentifiers
 import sideBarShared
 
-struct PdfHeaderControls: View {
+struct PdfViewerFloatingControls: View {
     @ObservedObject var controller: PDFViewerController
-    let isCompact: Bool
 
     var body: some View {
-        HStack(spacing: isCompact ? 8 : 12) {
-            PdfControlButton(
-                systemName: "chevron.left",
-                accessibilityLabel: "Previous page",
-                isDisabled: !controller.canPrev
-            ) {
-                controller.goToPreviousPage()
+        HeaderActionMenuControl(
+            systemName: "doc.viewfinder",
+            accessibilityLabel: "PDF controls",
+            chromeStyle: .glass
+        ) {
+            Section("Page") {
+                Button {
+                    controller.goToPreviousPage()
+                } label: {
+                    Label("Previous page", systemImage: "chevron.left")
+                }
+                .disabled(!controller.canPrev)
+
+                Button {
+                    controller.goToNextPage()
+                } label: {
+                    Label("Next page", systemImage: "chevron.right")
+                }
+                .disabled(!controller.canNext)
             }
-            Text(pageLabel)
-                .appFont(isCompact ? .caption2 : .caption)
-                .foregroundStyle(.secondary)
-                .frame(minWidth: isCompact ? 44 : 60)
-            PdfControlButton(
-                systemName: "chevron.right",
-                accessibilityLabel: "Next page",
-                isDisabled: !controller.canNext
-            ) {
-                controller.goToNextPage()
+
+            Section("Zoom") {
+                Button {
+                    controller.zoomOut()
+                } label: {
+                    Label("Zoom out", systemImage: "minus.magnifyingglass")
+                }
+
+                Button {
+                    controller.zoomIn()
+                } label: {
+                    Label("Zoom in", systemImage: "plus.magnifyingglass")
+                }
+
+                Text("Zoom: \(zoomLabel)")
             }
-            PdfControlButton(
-                systemName: "minus",
-                accessibilityLabel: "Zoom out"
-            ) {
-                controller.zoomOut()
+
+            Section("Fit") {
+                fitModeButton("Fit to height", systemImage: "distribute.vertical", mode: .height)
+                fitModeButton("Fit to width", systemImage: "distribute.horizontal", mode: .width)
             }
-            PdfControlButton(
-                systemName: "plus",
-                accessibilityLabel: "Zoom in"
-            ) {
-                controller.zoomIn()
-            }
-            Text(zoomLabel)
-                .appFont(isCompact ? .caption2 : .caption)
-                .foregroundStyle(.secondary)
-                .frame(minWidth: isCompact ? 44 : 56)
-            PdfControlButton(
-                systemName: "distribute.vertical",
-                accessibilityLabel: "Fit to height",
-                isActive: false
-            ) {
-                controller.setFitMode(.height)
-            }
-            PdfControlButton(
-                systemName: "distribute.horizontal",
-                accessibilityLabel: "Fit to width",
-                isActive: false
-            ) {
-                controller.setFitMode(.width)
+
+            Section("Status") {
+                Text("Page \(pageLabel)")
             }
         }
+        .accessibilityIdentifier("pdf-floating-controls")
     }
 
     private var pageLabel: String {
@@ -67,25 +63,22 @@ struct PdfHeaderControls: View {
         let percent = Int(round(controller.zoomMultiplier * 100))
         return "\(percent)%"
     }
-}
 
-struct PdfControlButton: View {
-    let systemName: String
-    let accessibilityLabel: String
-    var isActive: Bool = false
-    var isDisabled: Bool = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .appFont(.captionSemibold)
-                .frame(width: 24, height: 20)
-                .foregroundStyle(isActive ? .primary : .secondary)
+    @ViewBuilder
+    private func fitModeButton(
+        _ title: String,
+        systemImage: String,
+        mode: PDFViewerController.FitMode
+    ) -> some View {
+        Button {
+            controller.setFitMode(mode)
+        } label: {
+            if controller.fitMode == mode {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Label(title, systemImage: systemImage)
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
-        .disabled(isDisabled)
     }
 }
 
@@ -110,21 +103,10 @@ struct BinaryFileDocument: FileDocument {
 struct FilesDetailContainer: View {
     @ObservedObject var viewModel: IngestionViewModel
     @ObservedObject var pdfController: PDFViewerController
-    #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    #endif
 
     var body: some View {
         if let meta = viewModel.activeMeta {
-            VStack(spacing: 0) {
-                if shouldShowPdfHeader {
-                    PdfHeaderControls(controller: pdfController, isCompact: true)
-                        .padding(.horizontal, DesignTokens.Spacing.md)
-                        .padding(.vertical, DesignTokens.Spacing.sm)
-                    Divider()
-                }
-                IngestionDetailView(viewModel: viewModel, meta: meta, pdfController: pdfController)
-            }
+            IngestionDetailView(viewModel: viewModel, meta: meta, pdfController: pdfController)
         } else if let selectedItem = viewModel.selectedItem,
                   viewModel.selectedFileId != nil,
                   viewModel.errorMessage == nil,
@@ -152,15 +134,6 @@ struct FilesDetailContainer: View {
         }
     }
 
-    private var shouldShowPdfHeader: Bool {
-        #if os(macOS)
-        return false
-        #else
-        guard horizontalSizeClass == .compact else { return false }
-        guard let mime = viewModel.activeMeta?.file.mimeOriginal else { return false }
-        return mime.split(separator: ";").first?.trimmed.lowercased() == "application/pdf"
-        #endif
-    }
 }
 
 struct FilesProcessingView: View {

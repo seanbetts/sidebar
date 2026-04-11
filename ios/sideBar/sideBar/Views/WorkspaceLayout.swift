@@ -137,6 +137,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         mainContent()
                             .frame(width: widths.main)
                             .frame(maxHeight: .infinity)
+                            .clipped()
                             .ignoresSafeArea(.all, edges: .bottom)
 
                         if !isRightSidebarCollapsed {

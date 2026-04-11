@@ -10,7 +10,11 @@ public struct FilesView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @AppStorage(AppStorageKeys.rightSidebarWidth) private var rightSidebarWidth: Double = 360
+    @AppStorage(AppStorageKeys.workspaceExpanded) private var isWorkspaceExpanded: Bool = false
+    @AppStorage(AppStorageKeys.workspaceExpandedByRotation) private var isWorkspaceExpandedByRotation: Bool = false
     @StateObject private var pdfController = PDFViewerController()
+    @State private var pendingPDFRefitTask: Task<Void, Never>?
 
     public init() {
     }
@@ -19,8 +23,7 @@ public struct FilesView: View {
         VStack(spacing: 0) {
             if !isCompact, !isShowingWelcomeHome {
                 FilesHeaderView(
-                    viewModel: environment.ingestionViewModel,
-                    pdfController: pdfController
+                    viewModel: environment.ingestionViewModel
                 )
                 Divider()
             }
@@ -42,6 +45,20 @@ public struct FilesView: View {
         #endif
         .onChange(of: environment.ingestionViewModel.selectedFileId) { _, _ in
             pdfController.reset()
+        }
+        .onChange(of: isWorkspaceExpanded) { _, _ in
+            schedulePDFRefitAfterWorkspaceResize(reason: "workspaceExpanded=\(isWorkspaceExpanded)")
+        }
+        .onChange(of: isWorkspaceExpandedByRotation) { _, _ in
+            schedulePDFRefitAfterWorkspaceResize(
+                reason: "workspaceExpandedByRotation=\(isWorkspaceExpandedByRotation)"
+            )
+        }
+        .onChange(of: rightSidebarWidth) { _, _ in
+            schedulePDFRefitAfterWorkspaceResize(reason: "rightSidebarWidth=\(rightSidebarWidth)")
+        }
+        .onDisappear {
+            pendingPDFRefitTask?.cancel()
         }
     }
 
@@ -134,5 +151,35 @@ public struct FilesView: View {
             return nil
         }
         return environment.ingestionViewModel.items.first { $0.file.id == selectedId }?.file.mimeOriginal
+    }
+
+    private func schedulePDFRefitAfterWorkspaceResize(reason: String) {
+        guard shouldShowPdfControls else { return }
+
+        PDFResizeDebugTrace.log(
+            "FilesView.schedulePDFRefitAfterWorkspaceResize",
+            details: [
+                "reason=\(reason)",
+                "mime=\(selectedMimeOriginal ?? "nil")",
+                "rightSidebarWidth=\(rightSidebarWidth)"
+            ].joined(separator: " ")
+        )
+
+        pendingPDFRefitTask?.cancel()
+        pdfController.scheduleFitAndRefresh()
+
+        pendingPDFRefitTask = Task { @MainActor in
+            for delay in [150, 350, 700] {
+                try? await Task.sleep(for: .milliseconds(delay))
+                if Task.isCancelled {
+                    return
+                }
+                PDFResizeDebugTrace.log(
+                    "FilesView.schedulePDFRefitAfterWorkspaceResize.retry",
+                    details: "delayMs=\(delay)"
+                )
+                pdfController.scheduleFitAndRefresh()
+            }
+        }
     }
 }
