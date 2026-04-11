@@ -6,79 +6,47 @@ struct PdfViewerFloatingControls: View {
     @ObservedObject var controller: PDFViewerController
 
     var body: some View {
-        HeaderActionMenuControl(
-            systemName: "doc.viewfinder",
-            accessibilityLabel: "PDF controls",
-            chromeStyle: .glass
-        ) {
-            Section("Page") {
-                Button {
-                    controller.goToPreviousPage()
-                } label: {
-                    Label("Previous page", systemImage: "chevron.left")
+        let configuration = controller.controlBarConfiguration
+        Group {
+#if os(iOS)
+            if #available(iOS 26.0, *) {
+                ZStack {
+                    PDFControlBar(configuration: configuration)
+                        .disabled(!configuration.isEnabled)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+
+                    UIKitPDFControlBarRepresentable(
+                        configuration: configuration,
+                        showsVisibleChrome: false
+                    )
                 }
-                .disabled(!controller.canPrev)
+                .disabled(!configuration.isEnabled)
+            } else {
+                PDFControlBar(configuration: configuration)
+            }
+#elseif os(macOS)
+            if #available(macOS 26.0, *) {
+                ZStack {
+                    PDFControlBar(configuration: configuration)
+                        .disabled(!configuration.isEnabled)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
 
-                Button {
-                    controller.goToNextPage()
-                } label: {
-                    Label("Next page", systemImage: "chevron.right")
+                    AppKitPDFControlOverlay(
+                        configuration: configuration,
+                        showsVisibleChrome: false
+                    )
                 }
-                .disabled(!controller.canNext)
+                .disabled(!configuration.isEnabled)
+            } else {
+                PDFControlBar(configuration: configuration)
             }
-
-            Section("Zoom") {
-                Button {
-                    controller.zoomOut()
-                } label: {
-                    Label("Zoom out", systemImage: "minus.magnifyingglass")
-                }
-
-                Button {
-                    controller.zoomIn()
-                } label: {
-                    Label("Zoom in", systemImage: "plus.magnifyingglass")
-                }
-
-                Text("Zoom: \(zoomLabel)")
-            }
-
-            Section("Fit") {
-                fitModeButton("Fit to height", systemImage: "distribute.vertical", mode: .height)
-                fitModeButton("Fit to width", systemImage: "distribute.horizontal", mode: .width)
-            }
-
-            Section("Status") {
-                Text("Page \(pageLabel)")
-            }
+#else
+            PDFControlBar(configuration: configuration)
+#endif
         }
         .accessibilityIdentifier("pdf-floating-controls")
-    }
-
-    private var pageLabel: String {
-        "\(controller.currentPage) / \(max(controller.pageCount, 1))"
-    }
-
-    private var zoomLabel: String {
-        let percent = Int(round(controller.zoomMultiplier * 100))
-        return "\(percent)%"
-    }
-
-    @ViewBuilder
-    private func fitModeButton(
-        _ title: String,
-        systemImage: String,
-        mode: PDFViewerController.FitMode
-    ) -> some View {
-        Button {
-            controller.setFitMode(mode)
-        } label: {
-            if controller.fitMode == mode {
-                Label(title, systemImage: "checkmark")
-            } else {
-                Label(title, systemImage: systemImage)
-            }
-        }
     }
 }
 
