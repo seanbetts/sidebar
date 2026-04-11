@@ -204,8 +204,9 @@
         subscriptions are refunded through Apple).
       </p>
       <p>
-        When your account is closed we will delete or de-identify Your Content within a reasonable
-        period, subject to the retention rules in our Privacy Policy.
+        When your account is closed we trigger an immediate purge of your account-scoped content
+        as described in our <a href="/privacy">Privacy Policy</a>, subject to the limited legal,
+        billing, and backup exceptions set out there.
       </p>
     </section>
 

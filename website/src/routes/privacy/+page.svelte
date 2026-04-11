@@ -191,21 +191,60 @@
     <section>
       <h2>6. Data Retention</h2>
       <p>
-        We keep personal data only as long as needed for the purposes described in this policy or as
-        required by law.
+        We keep personal data only as long as needed for the purposes described in this policy or
+        as required by law.
+      </p>
+
+      <h3>Account data</h3>
+      <p>
+        Account information is kept for as long as your account is active. If you close your
+        account, we purge your account-scoped data immediately, subject to the limited exceptions
+        below.
+      </p>
+
+      <h3>Content you delete</h3>
+      <p>
+        When you delete content inside sideBar we move it to a soft-deleted state for a short
+        restore window and then remove it. We aim to apply roughly the following windows:
       </p>
       <ul>
-        <li>Account data is kept for as long as your account is active.</li>
+        <li>Notes: restorable for around 7 days, hard-deleted within around 90 days</li>
+        <li>Saved websites: restorable for around 7 days, hard-deleted within around 60 days</li>
+        <li>Tasks, projects, and groups: hard-deleted within around 60 days</li>
         <li>
-          Content you create (chats, notes, tasks, files) is kept until you delete it or close your
-          account.
+          Uploaded and ingested files: derivative storage is removed at delete time; the remaining
+          metadata is hard-deleted within around 30 days
         </li>
-        <li>Operational logs and crash reports are typically kept for up to 90 days.</li>
-        <li>
-          Billing records are kept for as long as required by tax and accounting law (generally up
-          to 7 years in the UK).
-        </li>
+        <li>BYOK provider API keys: hard-deleted within around 7 days of removal</li>
       </ul>
+      <p>
+        Restoration is only guaranteed during the initial restore window. After that window,
+        limited metadata may be retained briefly to keep sync working across your devices, but the
+        full content is no longer recoverable.
+      </p>
+
+      <h3>Account deletion</h3>
+      <p>
+        When you delete your sideBar account we trigger an immediate purge of your account-scoped
+        data, including your chats, notes, tasks, files, memories, provider keys, and related
+        operational records. Ordinary retention windows no longer apply once the account is
+        deleted.
+      </p>
+
+      <h3>Operational data</h3>
+      <p>
+        Operational logs, job records, crash reports, and performance telemetry are typically kept
+        for up to 90 days.
+      </p>
+
+      <h3>Billing and legal records</h3>
+      <p>
+        Billing records are kept for as long as required by tax and accounting law (generally up
+        to 7 years in the UK). We may also retain limited records where needed for legal,
+        security, or fraud-prevention reasons.
+      </p>
+
+      <h3>Backups</h3>
       <p>
         Backup copies may persist for a limited period under standard disaster-recovery policies
         before being overwritten.
