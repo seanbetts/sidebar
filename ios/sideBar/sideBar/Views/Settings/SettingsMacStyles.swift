@@ -5,7 +5,7 @@ func settingsMacSidebarWidth() -> CGFloat {
 }
 
 func settingsMacRowLabelWidth() -> CGFloat {
-    160
+    FormFieldLayoutMetrics.settingsMacLabelWidth
 }
 
 func settingsMacSectionIntroSpacing() -> CGFloat {
@@ -49,16 +49,9 @@ struct SettingsMacFieldRow<Content: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.md) {
-            Text(label)
-                .appFont(.body)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
-                .frame(width: settingsMacRowLabelWidth(), alignment: .leading)
-
+        FormField(label) {
             content
-                .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.vertical, DesignTokens.Spacing.xs)
     }
 }
 

@@ -179,11 +179,8 @@ struct SettingsPasswordChangeView: View {
         submitLabel: SubmitLabel,
         onSubmit: @escaping () -> Void
     ) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "lock")
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
-            SecureFieldWithToggle(
+        FormField(leadingSystemName: "lock") {
+            FormFieldSecureInput(
                 title: title,
                 text: text,
                 focus: $focusedField,
@@ -193,16 +190,6 @@ struct SettingsPasswordChangeView: View {
                 onSubmit: onSubmit
             )
         }
-        .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .padding(.horizontal, DesignTokens.Spacing.sm)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
-                .fill(Color.secondary.opacity(0.08))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm)
-                .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
-        )
     }
 
     private func submit() async {

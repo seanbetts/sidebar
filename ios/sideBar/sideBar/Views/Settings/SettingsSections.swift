@@ -59,16 +59,10 @@ struct ProfileSettingsView: View {
         .background(DesignTokens.Colors.settingsBackground)
         .confirmationDialog(
             "Change Profile Photo",
-            isPresented: $isProfilePhotoSourceDialogPresented
+            isPresented: $isProfilePhotoSourceDialogPresented,
+            titleVisibility: .visible
         ) {
-            Button("Choose from Photos") {
-                isProfilePhotoPickerPresented = true
-            }
-            Button("Choose from Files") {
-                isProfileImageImporterPresented = true
-            }
-            Button("Cancel", role: .cancel) {
-            }
+            profilePhotoSourceDialogActions
         }
         .photosPicker(
             isPresented: $isProfilePhotoPickerPresented,
@@ -120,16 +114,10 @@ struct ProfileSettingsView: View {
         }
         .confirmationDialog(
             "Change Profile Photo",
-            isPresented: $isProfilePhotoSourceDialogPresented
+            isPresented: $isProfilePhotoSourceDialogPresented,
+            titleVisibility: .visible
         ) {
-            Button("Choose from Photos") {
-                isProfilePhotoPickerPresented = true
-            }
-            Button("Choose from Files") {
-                isProfileImageImporterPresented = true
-            }
-            Button("Cancel", role: .cancel) {
-            }
+            profilePhotoSourceDialogActions
         }
         .photosPicker(
             isPresented: $isProfilePhotoPickerPresented,
@@ -171,6 +159,18 @@ struct ProfileSettingsView: View {
         }
     }
 
+    @ViewBuilder
+    private var profilePhotoSourceDialogActions: some View {
+        Button("Choose from Photos") {
+            isProfilePhotoPickerPresented = true
+        }
+        Button("Choose from Files") {
+            isProfileImageImporterPresented = true
+        }
+        Button("Cancel", role: .cancel) {
+        }
+    }
+
     #if os(macOS)
     private var macProfilePhotoSection: some View {
         SettingsMacPanelCard {
@@ -195,19 +195,19 @@ struct ProfileSettingsView: View {
                 title: "Personal details",
                 message: "Keep the details your assistant can reference during planning, writing, and personalization up to date."
             )
-            SettingsMacFieldRow("Name") {
+            FormField("Name") {
                 TextField(text: $name, prompt: Text("Not set")) {
                 }
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 320)
             }
-            SettingsMacFieldRow("Job Title") {
+            FormField("Job Title") {
                 TextField(text: $jobTitle, prompt: Text("Not set")) {
                 }
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 320)
             }
-            SettingsMacFieldRow("Employer") {
+            FormField("Employer") {
                 TextField(text: $employer, prompt: Text("Not set")) {
                 }
                     .textFieldStyle(.roundedBorder)
@@ -215,7 +215,7 @@ struct ProfileSettingsView: View {
             }
             genderField
             pronounsField
-            SettingsMacFieldRow("Home location") {
+            FormField("Home location") {
                 TextField(text: $location, prompt: Text("Not set")) {
                 }
                     .textFieldStyle(.roundedBorder)
@@ -290,24 +290,24 @@ struct ProfileSettingsView: View {
 
     private var iosProfileDetailsSection: some View {
         Section("Profile") {
-            ProfileIOSFieldRow("Name") {
+            FormField("Name") {
                 TextField("Not set", text: $name)
                     .multilineTextAlignment(.trailing)
                     #if os(iOS)
                     .textInputAutocapitalization(.words)
                     #endif
             }
-            ProfileIOSFieldRow("Job Title") {
+            FormField("Job Title") {
                 TextField("Not set", text: $jobTitle)
                     .multilineTextAlignment(.trailing)
             }
-            ProfileIOSFieldRow("Employer") {
+            FormField("Employer") {
                 TextField("Not set", text: $employer)
                     .multilineTextAlignment(.trailing)
             }
             genderField
             pronounsField
-            ProfileIOSFieldRow("Home location") {
+            FormField("Home location") {
                 TextField("Not set", text: $location)
                     .multilineTextAlignment(.trailing)
             }

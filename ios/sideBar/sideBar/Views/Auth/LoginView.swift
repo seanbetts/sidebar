@@ -177,8 +177,8 @@ public struct LoginView: View {
         .accessibilitySortPriority(3)
     }
     private var passwordFieldRow: some View {
-        LoginFieldRow(leadingSystemName: "lock") {
-            SecureFieldWithToggle(
+        FormField(leadingSystemName: "lock") {
+            FormFieldSecureInput(
                 title: "Password",
                 text: $password,
                 focus: $focusedField,

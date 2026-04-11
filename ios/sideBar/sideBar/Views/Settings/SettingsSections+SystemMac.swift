@@ -100,7 +100,7 @@ extension AgentSettingsView {
                         title: "AI provider",
                         message: "Choose the primary model provider sideBar should use for assistant responses."
                     )
-                    SettingsMacFieldRow("Provider") {
+                    FormField("Provider") {
                         Picker("Provider", selection: $selectedPrimaryProvider) {
                             ForEach(viewModel.supportedPrimaryProviders) { provider in
                                 Text(provider.displayName).tag(provider)
@@ -112,7 +112,7 @@ extension AgentSettingsView {
                     }
 
                     if selectedProviderHasKey {
-                        SettingsMacFieldRow("API key") {
+                        FormField("API key") {
                             HStack(spacing: DesignTokens.Spacing.sm) {
                                 Text(maskedProviderKeyText)
                                     .appFont(.body)
@@ -132,7 +132,7 @@ extension AgentSettingsView {
                             }
                         }
                     } else {
-                        SettingsMacFieldRow("API key") {
+                        FormField("API key") {
                             SecureField("Enter \(selectedPrimaryProvider.displayName) API key", text: $providerKeyInput)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(maxWidth: 320)

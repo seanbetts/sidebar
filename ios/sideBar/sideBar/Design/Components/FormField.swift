@@ -1,0 +1,177 @@
+import SwiftUI
+
+#if canImport(UIKit)
+import UIKit
+public typealias PlatformTextContentType = UITextContentType
+#elseif canImport(AppKit)
+import AppKit
+public typealias PlatformTextContentType = NSTextContentType
+#else
+public typealias PlatformTextContentType = String
+#endif
+
+enum FormFieldLayoutMetrics {
+    static let settingsIOSMinHeight: CGFloat = 28
+    static let settingsMacLabelWidth: CGFloat = 160
+}
+
+struct FormField<Content: View, Trailing: View>: View {
+    private enum Layout {
+        case settings(label: String)
+        case auth(leadingSystemName: String?)
+    }
+
+    private let layout: Layout
+    private let content: Content
+    private let trailing: Trailing
+
+    init(_ label: String, @ViewBuilder content: () -> Content) where Trailing == EmptyView {
+        layout = .settings(label: label)
+        self.content = content()
+        trailing = EmptyView()
+    }
+
+    init(
+        leadingSystemName: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) where Trailing == EmptyView {
+        layout = .auth(leadingSystemName: leadingSystemName)
+        self.content = content()
+        trailing = EmptyView()
+    }
+
+    init(
+        leadingSystemName: String? = nil,
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        layout = .auth(leadingSystemName: leadingSystemName)
+        self.content = content()
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        switch layout {
+        case let .settings(label):
+            settingsBody(label: label)
+        case let .auth(leadingSystemName):
+            authBody(leadingSystemName: leadingSystemName)
+        }
+    }
+
+    @ViewBuilder
+    private func settingsBody(label: String) -> some View {
+        #if os(macOS)
+        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.md) {
+            Text(label)
+                .appFont(.body)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                .frame(width: FormFieldLayoutMetrics.settingsMacLabelWidth, alignment: .leading)
+
+            content
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(.vertical, DesignTokens.Spacing.xs)
+        #else
+        LabeledContent {
+            content
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: FormFieldLayoutMetrics.settingsIOSMinHeight,
+                    alignment: .trailing
+                )
+        } label: {
+            Text(label)
+                .appFont(.body)
+        }
+        #endif
+    }
+
+    private func authBody(leadingSystemName: String?) -> some View {
+        HStack(spacing: LoginFieldChromeMetrics.rowSpacing) {
+            if let leadingSystemName {
+                Image(systemName: leadingSystemName)
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
+                    .frame(width: LoginFieldChromeMetrics.leadingIconWidth)
+            }
+
+            content
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: LoginFieldChromeMetrics.trailingControlSpacing) {
+                trailing
+            }
+        }
+        .appFont(.subheadline)
+        .padding(.vertical, LoginFieldChromeMetrics.fieldVerticalPadding)
+        .padding(.horizontal, LoginFieldChromeMetrics.fieldHorizontalPadding)
+        .glassChrome(LoginChrome.fieldKind)
+    }
+}
+
+public struct FormFieldSecureInput<Field: Hashable>: View {
+    let title: String
+    @Binding var text: String
+    private let focus: FocusState<Field?>.Binding
+    private let field: Field
+    var textContentType: PlatformTextContentType?
+    var submitLabel: SubmitLabel
+    var onSubmit: (() -> Void)?
+
+    @State private var isSecure = true
+
+    public init(
+        title: String,
+        text: Binding<String>,
+        focus: FocusState<Field?>.Binding,
+        field: Field,
+        textContentType: PlatformTextContentType? = nil,
+        submitLabel: SubmitLabel = .return,
+        onSubmit: (() -> Void)? = nil
+    ) {
+        self.title = title
+        _text = text
+        self.focus = focus
+        self.field = field
+        self.textContentType = textContentType
+        self.submitLabel = submitLabel
+        self.onSubmit = onSubmit
+    }
+
+    public var body: some View {
+        HStack(spacing: LoginFieldChromeMetrics.trailingControlSpacing) {
+            Group {
+                if isSecure {
+                    SecureField(title, text: $text)
+                } else {
+                    TextField(title, text: $text)
+                }
+            }
+            .textContentType(textContentType)
+            .autocorrectionDisabled()
+        #if canImport(UIKit)
+            .textInputAutocapitalization(.never)
+        #endif
+            .focused(focus, equals: field)
+            .submitLabel(submitLabel)
+            .onSubmit { onSubmit?() }
+
+            Button {
+                let wasFocused = focus.wrappedValue == field
+                isSecure.toggle()
+                if wasFocused {
+                    DispatchQueue.main.async {
+                        focus.wrappedValue = field
+                    }
+                }
+            } label: {
+                Image(systemName: isSecure ? "eye.slash.fill" : "eye.fill")
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isSecure ? "Show password" : "Hide password")
+        }
+    }
+}

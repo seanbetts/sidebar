@@ -1,11 +1,11 @@
 import SwiftUI
 
 extension View {
-    func deleteConfirmationAlert(
+    func destructiveConfirmationAlert(
         title: String,
         isPresented: Binding<Bool>,
         message: String,
-        confirmTitle: String = "Delete",
+        confirmTitle: String,
         cancelTitle: String = "Cancel",
         confirmAsDefaultAction: Bool = false,
         onConfirm: @escaping () -> Void,
@@ -28,5 +28,27 @@ extension View {
         } message: {
             Text(message)
         }
+    }
+
+    func deleteConfirmationAlert(
+        title: String,
+        isPresented: Binding<Bool>,
+        message: String,
+        confirmTitle: String = "Delete",
+        cancelTitle: String = "Cancel",
+        confirmAsDefaultAction: Bool = false,
+        onConfirm: @escaping () -> Void,
+        onCancel: @escaping () -> Void
+    ) -> some View {
+        destructiveConfirmationAlert(
+            title: title,
+            isPresented: isPresented,
+            message: message,
+            confirmTitle: confirmTitle,
+            cancelTitle: cancelTitle,
+            confirmAsDefaultAction: confirmAsDefaultAction,
+            onConfirm: onConfirm,
+            onCancel: onCancel
+        )
     }
 }

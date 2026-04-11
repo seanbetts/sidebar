@@ -1,7 +1,7 @@
 import SwiftUI
 
 func profileIOSRowMinHeight() -> CGFloat {
-    28
+    FormFieldLayoutMetrics.settingsIOSMinHeight
 }
 
 struct ProfileIOSFieldRow<Content: View>: View {
@@ -14,12 +14,8 @@ struct ProfileIOSFieldRow<Content: View>: View {
     }
 
     var body: some View {
-        LabeledContent {
+        FormField(label) {
             content
-                .frame(maxWidth: .infinity, minHeight: profileIOSRowMinHeight(), alignment: .trailing)
-        } label: {
-            Text(label)
-                .appFont(.body)
         }
     }
 }

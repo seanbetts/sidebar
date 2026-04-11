@@ -21,7 +21,7 @@ struct ShortcutsSettingsView: View {
                     title: "Shortcuts token",
                     message: "Use this token in Apple Shortcuts to authorize quick capture on this account."
                 )
-                SettingsMacFieldRow("Token") {
+                FormField("Token") {
                     Group {
                         if viewModel.shortcutsToken.isEmpty {
                             Text("No token generated yet.")
@@ -34,7 +34,7 @@ struct ShortcutsSettingsView: View {
                     .appFont(.body)
                     .frame(maxWidth: 360, alignment: .leading)
                 }
-                SettingsMacFieldRow("Actions") {
+                FormField("Actions") {
                     HStack(spacing: 12) {
                         Button(copied ? "Copied" : "Copy") {
                             copyToken()
@@ -183,7 +183,7 @@ struct APISettingsView: View {
                         message: "Core API behavior is managed by your server configuration."
                     )
                     if let userId = settings?.userId {
-                        SettingsMacFieldRow("User ID") {
+                        FormField("User ID") {
                             Text(userId)
                                 .appFont(.body)
                                 .foregroundStyle(.secondary)

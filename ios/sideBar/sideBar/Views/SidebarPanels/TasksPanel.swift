@@ -104,6 +104,9 @@ struct TasksPanelView: View {
             ForEach(sortedGroups, id: \.id) { group in
                 Button(group.title) { handleCreateProject(groupId: group.id) }
             }
+            Button("Cancel", role: .cancel) {
+                showProjectGroupDialog = false
+            }
         }
     }
 }

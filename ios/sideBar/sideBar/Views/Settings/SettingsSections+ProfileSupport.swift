@@ -307,7 +307,7 @@ extension ProfileSettingsView {
     @ViewBuilder
     var genderField: some View {
         #if os(macOS)
-        SettingsMacFieldRow("Gender") {
+        FormField("Gender") {
             Picker("Gender", selection: $gender) {
                 Text("Not set").tag("")
                 ForEach(genderPickerOptions, id: \.self) { option in
@@ -320,7 +320,7 @@ extension ProfileSettingsView {
         }
         .appFont(.body)
         #else
-        ProfileIOSFieldRow("Gender") {
+        FormField("Gender") {
             ProfileStringSelectorMenu(
                 selection: $gender,
                 options: genderPickerOptions,
@@ -333,7 +333,7 @@ extension ProfileSettingsView {
     @ViewBuilder
     var pronounsField: some View {
         #if os(macOS)
-        SettingsMacFieldRow("Pronouns") {
+        FormField("Pronouns") {
             Picker("Pronouns", selection: $pronouns) {
                 Text("Not set").tag("")
                 ForEach(pronounPickerOptions, id: \.self) { option in
@@ -346,7 +346,7 @@ extension ProfileSettingsView {
         }
         .appFont(.body)
         #else
-        ProfileIOSFieldRow("Pronouns") {
+        FormField("Pronouns") {
             ProfileStringSelectorMenu(
                 selection: $pronouns,
                 options: pronounPickerOptions,

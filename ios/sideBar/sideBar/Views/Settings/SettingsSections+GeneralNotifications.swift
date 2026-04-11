@@ -51,7 +51,7 @@ extension GeneralSettingsView {
             )
             Toggle("Daily task reminders", isOn: $taskRemindersEnabled)
             if Self.shouldShowTaskReminderTimeControl(taskRemindersEnabled: taskRemindersEnabled) {
-                SettingsMacFieldRow("Reminder time") {
+                FormField("Reminder time") {
                     DatePicker(
                         "Reminder time",
                         selection: taskReminderTimeSelection,

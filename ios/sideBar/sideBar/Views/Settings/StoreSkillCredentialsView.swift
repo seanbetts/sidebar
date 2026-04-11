@@ -54,18 +54,22 @@ struct StoreSkillCredentialsView: View {
                     }
                 }
             }
-            .alert(item: $removeCredentialPrompt) { prompt in
-                Alert(
-                    title: Text("Turn off \(viewModel.displayName(for: skill))?"),
-                    message: Text(removeCredentialPromptMessage(prompt)),
-                    primaryButton: .destructive(Text("Turn Off")) {
-                        Task {
-                            await confirmCredentialRemoval(prompt)
-                        }
-                    },
-                    secondaryButton: .cancel()
-                )
-            }
+            .destructiveConfirmationAlert(
+                title: removeCredentialPromptTitle,
+                isPresented: isRemoveCredentialPromptPresented,
+                message: removeCredentialPromptMessage,
+                confirmTitle: "Turn Off",
+                onConfirm: {
+                    guard let prompt = removeCredentialPrompt else { return }
+                    removeCredentialPrompt = nil
+                    Task {
+                        await confirmCredentialRemoval(prompt)
+                    }
+                },
+                onCancel: {
+                    removeCredentialPrompt = nil
+                }
+            )
             .alert(
                 "Update API key",
                 isPresented: isCredentialEditorPromptPresented,
@@ -379,6 +383,17 @@ struct StoreSkillCredentialsView: View {
         return "This turns off \(skillName). Your \(providerName) key stays connected for \(previewList)."
     }
 
+    private var removeCredentialPromptTitle: String {
+        "Turn off \(viewModel.displayName(for: skill))?"
+    }
+
+    private var removeCredentialPromptMessage: String {
+        guard let prompt = removeCredentialPrompt else {
+            return ""
+        }
+        return removeCredentialPromptMessage(prompt)
+    }
+
     private func otherInstalledSkillNamesRequiringProvider(for provider: String) -> [String] {
         let installedStoreSkillIds = Set(viewModel.settings?.installedStoreSkills ?? [])
         return SkillsStoreLogic.installedStoreSkillsRequiringProvider(
@@ -401,6 +416,17 @@ struct StoreSkillCredentialsView: View {
             set: { isPresented in
                 if !isPresented {
                     clearCredentialEditor()
+                }
+            }
+        )
+    }
+
+    private var isRemoveCredentialPromptPresented: Binding<Bool> {
+        Binding(
+            get: { removeCredentialPrompt != nil },
+            set: { isPresented in
+                if !isPresented {
+                    removeCredentialPrompt = nil
                 }
             }
         )

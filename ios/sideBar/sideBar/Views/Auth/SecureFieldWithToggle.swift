@@ -1,15 +1,5 @@
 import SwiftUI
 
-#if canImport(UIKit)
-import UIKit
-public typealias PlatformTextContentType = UITextContentType
-#elseif canImport(AppKit)
-import AppKit
-public typealias PlatformTextContentType = NSTextContentType
-#else
-public typealias PlatformTextContentType = String
-#endif
-
 public struct SecureFieldWithToggle<Field: Hashable>: View {
     let title: String
     @Binding var text: String
@@ -18,8 +8,6 @@ public struct SecureFieldWithToggle<Field: Hashable>: View {
     var textContentType: PlatformTextContentType?
     var submitLabel: SubmitLabel
     var onSubmit: (() -> Void)?
-
-    @State private var isSecure = true
 
     public init(
         title: String,
@@ -40,38 +28,14 @@ public struct SecureFieldWithToggle<Field: Hashable>: View {
     }
 
     public var body: some View {
-        HStack(spacing: LoginFieldChromeMetrics.trailingControlSpacing) {
-            Group {
-                if isSecure {
-                    SecureField(title, text: $text)
-                } else {
-                    TextField(title, text: $text)
-                }
-            }
-            .textContentType(textContentType)
-            .autocorrectionDisabled()
-        #if canImport(UIKit)
-            .textInputAutocapitalization(.never)
-        #endif
-            .focused(focus, equals: field)
-            .submitLabel(submitLabel)
-            .onSubmit { onSubmit?() }
-
-            Button {
-                let wasFocused = focus.wrappedValue == field
-                isSecure.toggle()
-                if wasFocused {
-                    DispatchQueue.main.async {
-                        focus.wrappedValue = field
-                    }
-                }
-            } label: {
-                Image(systemName: isSecure ? "eye.slash.fill" : "eye.fill")
-                    .foregroundStyle(.secondary)
-                    .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(isSecure ? "Show password" : "Hide password")
-        }
+        FormFieldSecureInput(
+            title: title,
+            text: $text,
+            focus: focus,
+            field: field,
+            textContentType: textContentType,
+            submitLabel: submitLabel,
+            onSubmit: onSubmit
+        )
     }
 }

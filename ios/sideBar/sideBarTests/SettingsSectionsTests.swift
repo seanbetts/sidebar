@@ -698,7 +698,7 @@ final class SettingsSectionsTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
         XCTAssertTrue(normalized.contains("SettingsMacHeroButtonRow("))
-        XCTAssertTrue(normalized.contains("SettingsMacFieldRow("))
+        XCTAssertTrue(normalized.contains("FormField("))
         XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
         XCTAssertTrue(normalized.contains("SettingsMacActionSection("))
     }
@@ -726,20 +726,34 @@ final class SettingsSectionsTests: XCTestCase {
         let normalized = try profileSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("SettingsMacFieldRow(\"Homelocation\")"))
-        XCTAssertTrue(normalized.contains("ProfileIOSFieldRow(\"Homelocation\")"))
+        XCTAssertEqual(
+            normalized.components(separatedBy: "FormField(\"Homelocation\")").count - 1,
+            2
+        )
+    }
+
+    func testProfileSettingsSourceUsesSharedVisibleProfilePhotoConfirmationDialogActions() throws {
+        let normalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("privatevarprofilePhotoSourceDialogActions:someView{"))
+        XCTAssertEqual(
+            normalized.components(
+                separatedBy:
+                ".confirmationDialog(\"ChangeProfilePhoto\",isPresented:$isProfilePhotoSourceDialogPresented,"
+                + "titleVisibility:.visible){profilePhotoSourceDialogActions}"
+            ).count - 1,
+            2
+        )
     }
 
     func testProfileSettingsIOSSourceUsesExplicitBodyFontLabelsForTextRows() throws {
-        let normalized = try profileIOSFieldRowSource()
+        let normalized = try formFieldSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
+        XCTAssertTrue(normalized.contains("LabeledContent{"))
         XCTAssertTrue(normalized.contains("Text(label).appFont(.body)"))
-        XCTAssertTrue(
-            normalized.contains(
-                "content.frame(maxWidth:.infinity,minHeight:profileIOSRowMinHeight(),alignment:.trailing)"
-            )
-        )
+        XCTAssertTrue(normalized.contains("minHeight:FormFieldLayoutMetrics.settingsIOSMinHeight"))
     }
 
     func testGeneralSettingsMacSourceUsesInspectorSectionIntrosAndCalmerWeatherControl() throws {
@@ -824,13 +838,13 @@ final class SettingsSectionsTests: XCTestCase {
         let dateOfBirthNormalized = try profileDateOfBirthFieldSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Name\")"))
-        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"JobTitle\")"))
-        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Employer\")"))
-        XCTAssertTrue(settingsNormalized.contains("ProfileIOSFieldRow(\"Homelocation\")"))
-        XCTAssertTrue(profileSupportNormalized.contains("ProfileIOSFieldRow(\"Gender\")"))
-        XCTAssertTrue(profileSupportNormalized.contains("ProfileIOSFieldRow(\"Pronouns\")"))
-        XCTAssertTrue(dateOfBirthNormalized.contains("ProfileIOSFieldRow(\"DateofBirth\")"))
+        XCTAssertTrue(settingsNormalized.contains("FormField(\"Name\")"))
+        XCTAssertTrue(settingsNormalized.contains("FormField(\"JobTitle\")"))
+        XCTAssertTrue(settingsNormalized.contains("FormField(\"Employer\")"))
+        XCTAssertTrue(settingsNormalized.contains("FormField(\"Homelocation\")"))
+        XCTAssertTrue(profileSupportNormalized.contains("FormField(\"Gender\")"))
+        XCTAssertTrue(profileSupportNormalized.contains("FormField(\"Pronouns\")"))
+        XCTAssertTrue(dateOfBirthNormalized.contains("FormField(\"DateofBirth\")"))
     }
 
     func testSettingsSaveStatusPillUsesDirectPillChromeWithoutPlatformIndirection() throws {
@@ -883,6 +897,15 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("@AppStorage(AppStorageKeys.settingsSelectedTab)privatevarselectedTabRaw=Tab.profile.rawValue"))
         XCTAssertTrue(normalized.contains("TabView(selection:$selectedTabRaw)"))
         XCTAssertTrue(normalized.contains(".tag(Tab.agent.rawValue)"))
+    }
+
+    func testStoreSkillCredentialsSourceUsesSharedDestructiveConfirmationAlert() throws {
+        let normalized = try storeSkillCredentialsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".destructiveConfirmationAlert("))
+        XCTAssertTrue(normalized.contains("confirmTitle:\"TurnOff\""))
+        XCTAssertFalse(normalized.contains(".alert(item:$removeCredentialPrompt)"))
     }
 
     func testSettingsMoreTabRoutesToMemoriesAndAppWithSettingsChrome() throws {
@@ -1070,7 +1093,7 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("SettingsMacPanelCard"))
         XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
         XCTAssertTrue(normalized.contains("SettingsMacStatusBanner("))
-        XCTAssertTrue(normalized.contains("SettingsMacFieldRow("))
+        XCTAssertTrue(normalized.contains("FormField("))
     }
 
     func testAgentSettingsMacSourceUsesAssistantTitlesForSoulSections() throws {
@@ -1190,6 +1213,27 @@ private func profileIOSFieldRowSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("ProfileIOSFieldRow.swift", file: file, line: line)
+}
+
+private func formFieldSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sourceURL = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Design")
+        .appendingPathComponent("Components")
+        .appendingPathComponent("FormField.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read FormField.swift: \(error)", file: file, line: line)
+        throw error
+    }
 }
 
 private func profileSupportSource(

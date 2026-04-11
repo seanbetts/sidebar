@@ -188,11 +188,8 @@ struct PasswordResetCompletionView: View {
         submitLabel: SubmitLabel,
         onSubmit: @escaping () -> Void
     ) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "lock")
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
-            SecureFieldWithToggle(
+        FormField(leadingSystemName: "lock") {
+            FormFieldSecureInput(
                 title: title,
                 text: text,
                 focus: $focusedField,
@@ -202,16 +199,6 @@ struct PasswordResetCompletionView: View {
                 onSubmit: onSubmit
             )
         }
-        .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .padding(.horizontal, DesignTokens.Spacing.sm)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.secondary.opacity(0.08))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
-        )
     }
 
     private func submit() async {

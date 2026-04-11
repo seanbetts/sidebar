@@ -9,7 +9,7 @@ struct ProfileDateOfBirthField: View {
 
     var body: some View {
         #if os(macOS)
-        SettingsMacFieldRow("Date of Birth") {
+        FormField("Date of Birth") {
             macContent
         }
         #else
@@ -52,7 +52,7 @@ struct ProfileDateOfBirthField: View {
 
     #if os(iOS)
     private var iosBody: some View {
-        ProfileIOSFieldRow("Date of Birth") {
+        FormField("Date of Birth") {
             iosContent
         }
         .sheet(isPresented: $isDatePickerPresented) {

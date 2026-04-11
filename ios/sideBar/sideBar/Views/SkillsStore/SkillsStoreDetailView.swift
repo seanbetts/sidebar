@@ -79,25 +79,22 @@ public struct SkillsStoreView: View {
                 }
             )
         }
-        .alert(
-            "Uninstall skill?",
+        .destructiveConfirmationAlert(
+            title: "Uninstall skill?",
             isPresented: isStoreUninstallPromptPresented,
-            presenting: storeUninstallPrompt
-        ) { prompt in
-            Button("Uninstall", role: .destructive) {
+            message: storeUninstallPromptMessage,
+            confirmTitle: "Uninstall",
+            onConfirm: {
+                guard let prompt = storeUninstallPrompt else { return }
+                storeUninstallPrompt = nil
                 Task {
-                    let succeeded = await performStoreUninstall(skillId: prompt.skill.id)
-                    if succeeded {
-                        storeUninstallPrompt = nil
-                    }
+                    _ = await performStoreUninstall(skillId: prompt.skill.id)
                 }
-            }
-            Button("Cancel", role: .cancel) {
+            },
+            onCancel: {
                 storeUninstallPrompt = nil
             }
-        } message: { prompt in
-            Text("This will uninstall \(viewModel.displayName(for: prompt.skill)).")
-        }
+        )
     }
 
     private var viewModel: SettingsViewModel {
@@ -328,7 +325,6 @@ public struct SkillsStoreView: View {
             installErrors[skillId] = nil
             return true
         }
-
         let message = viewModel.skillsError?.trimmingCharacters(in: .whitespacesAndNewlines)
         installErrors[skillId] = (message?.isEmpty == false) ? message : "Install failed."
         return false
@@ -345,7 +341,6 @@ public struct SkillsStoreView: View {
             installErrors[skillId] = nil
             return true
         }
-
         let message = viewModel.skillsError?.trimmingCharacters(in: .whitespacesAndNewlines)
         installErrors[skillId] = (message?.isEmpty == false) ? message : "Uninstall failed."
         return false
@@ -394,7 +389,6 @@ public struct SkillsStoreView: View {
     private func formattedSkillType(_ raw: String) -> String {
         raw.replacingOccurrences(of: "-", with: " ").replacingOccurrences(of: "_", with: " ").capitalized
     }
-
     private var isStoreUninstallPromptPresented: Binding<Bool> {
         Binding(
             get: { storeUninstallPrompt != nil },
@@ -404,6 +398,13 @@ public struct SkillsStoreView: View {
                 }
             }
         )
+    }
+
+    private var storeUninstallPromptMessage: String {
+        guard let prompt = storeUninstallPrompt else {
+            return ""
+        }
+        return "This will uninstall \(viewModel.displayName(for: prompt.skill))."
     }
 
     private var isCompact: Bool {
