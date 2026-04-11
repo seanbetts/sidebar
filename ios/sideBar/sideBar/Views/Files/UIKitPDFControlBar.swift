@@ -119,7 +119,7 @@ struct UIKitPDFControlBarRepresentable: UIViewRepresentable {
 @MainActor
 @available(iOS 26.0, *)
 final class UIKitPDFControlPopoverView: UIView {
-    static let preferredPopoverWidth: CGFloat = 320
+    static let preferredPopoverWidth: CGFloat = 460
 
     private let backgroundEffectView = UIVisualEffectView(effect: UIGlassEffect(style: .regular))
     private let hostingController: UIHostingController<PDFControlPopoverContent>
@@ -161,7 +161,7 @@ final class UIKitPDFControlPopoverView: UIView {
         let fitted = hostingController.sizeThatFits(
             in: CGSize(width: resolvedWidth, height: UIView.layoutFittingCompressedSize.height)
         )
-        return CGSize(width: resolvedWidth, height: max(fitted.height, 156))
+        return CGSize(width: resolvedWidth, height: max(fitted.height, 52))
     }
 
     private func setUpViewHierarchy() {
@@ -353,7 +353,7 @@ extension UIKitPDFControlBar {
 
         let topLimit = safeAreaInsets.top + popoverScreenPadding
         let bottomLimit = containerBounds.height - safeAreaInsets.bottom - popoverScreenPadding - popoverSize.height
-        let proposedY = anchorFrame.maxY + DesignTokens.Spacing.xs
+        let proposedY = anchorFrame.minY
         let resolvedY = min(max(proposedY, topLimit), max(topLimit, bottomLimit))
 
         return PopoverLayout(

@@ -97,72 +97,15 @@ struct PDFControlPopoverContent: View {
     var onDismissRequested: @MainActor @Sendable () -> Void = {}
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            sectionTitle("Page")
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                HeaderActionButton(
-                    systemName: "chevron.left",
-                    accessibilityLabel: "Previous page",
-                    action: perform(configuration.onGoToPreviousPage),
-                    isDisabled: !configuration.canGoToPreviousPage,
-                    chromeStyle: .glass
-                )
-
-                Spacer(minLength: DesignTokens.Spacing.xs)
-
-                Text(configuration.pageLabel)
-                    .appFont(.labelMd)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-
-                Spacer(minLength: DesignTokens.Spacing.xs)
-
-                HeaderActionButton(
-                    systemName: "chevron.right",
-                    accessibilityLabel: "Next page",
-                    action: perform(configuration.onGoToNextPage),
-                    isDisabled: !configuration.canGoToNextPage,
-                    chromeStyle: .glass
-                )
-            }
-
-            Divider()
-
-            sectionTitle("Zoom")
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                HeaderActionButton(
-                    systemName: "minus.magnifyingglass",
-                    accessibilityLabel: "Zoom out",
-                    action: perform(configuration.onZoomOut),
-                    chromeStyle: .glass
-                )
-
-                Spacer(minLength: DesignTokens.Spacing.xs)
-
-                Text(configuration.zoomLabel)
-                    .appFont(.labelMd)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-
-                Spacer(minLength: DesignTokens.Spacing.xs)
-
-                HeaderActionButton(
-                    systemName: "plus.magnifyingglass",
-                    accessibilityLabel: "Zoom in",
-                    action: perform(configuration.onZoomIn),
-                    chromeStyle: .glass
-                )
-            }
-
-            Divider()
-
-            sectionTitle("Fit")
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                fitModeChip("Fit to width", mode: .width)
-                fitModeChip("Fit to height", mode: .height)
-            }
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            pageGroup
+            groupDivider
+            zoomGroup
+            groupDivider
+            fitGroup
         }
-        .padding(DesignTokens.Spacing.md)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.vertical, DesignTokens.Spacing.xs)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("pdf-control-popover-content")
     }
@@ -174,32 +117,122 @@ struct PDFControlPopoverContent: View {
         }
     }
 
-    private func sectionTitle(_ title: String) -> some View {
-        Text(title)
-            .appFont(.captionSemibold)
-            .foregroundStyle(.secondary)
+    private var pageGroup: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            compactButton(
+                systemName: "chevron.left",
+                accessibilityLabel: "Previous page",
+                action: perform(configuration.onGoToPreviousPage),
+                isDisabled: !configuration.canGoToPreviousPage
+            )
+
+            Text(configuration.pageLabel)
+                .appFont(.labelMd)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .frame(minWidth: 48)
+
+            compactButton(
+                systemName: "chevron.right",
+                accessibilityLabel: "Next page",
+                action: perform(configuration.onGoToNextPage),
+                isDisabled: !configuration.canGoToNextPage
+            )
+        }
     }
 
-    private func fitModeChip(_ title: String, mode: PDFViewerController.FitMode) -> some View {
+    private var zoomGroup: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            compactButton(
+                systemName: "minus",
+                accessibilityLabel: "Zoom out",
+                action: perform(configuration.onZoomOut)
+            )
+
+            Text(configuration.zoomLabel)
+                .appFont(.labelMd)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .frame(minWidth: 56)
+
+            compactButton(
+                systemName: "plus",
+                accessibilityLabel: "Zoom in",
+                action: perform(configuration.onZoomIn)
+            )
+        }
+    }
+
+    private var fitGroup: some View {
+        HStack(spacing: DesignTokens.Spacing.xxs) {
+            fitIconButton(
+                systemName: "distribute.horizontal",
+                accessibilityLabel: "Fit to width",
+                mode: .width
+            )
+            fitIconButton(
+                systemName: "distribute.vertical",
+                accessibilityLabel: "Fit to height",
+                mode: .height
+            )
+        }
+    }
+
+    private var groupDivider: some View {
+        Rectangle()
+            .fill(.quaternary)
+            .frame(width: 1, height: HeaderActionControlMetrics.iconFrameHeight)
+            .accessibilityHidden(true)
+    }
+
+    private func compactButton(
+        systemName: String,
+        accessibilityLabel: String,
+        action: @escaping () -> Void,
+        isDisabled: Bool = false
+    ) -> some View {
+        Button {
+            action()
+        } label: {
+            Image(systemName: systemName)
+                .appFont(.labelMd)
+            .foregroundStyle(.primary)
+            .frame(
+                width: HeaderActionControlMetrics.iconFrameWidth,
+                height: HeaderActionControlMetrics.iconFrameHeight
+            )
+            .padding(HeaderActionControlMetrics.chromePadding)
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func fitIconButton(
+        systemName: String,
+        accessibilityLabel: String,
+        mode: PDFViewerController.FitMode
+    ) -> some View {
         Button {
             configuration.onSetFitMode(mode)
             onDismissRequested()
         } label: {
-            HStack(spacing: DesignTokens.Spacing.xxs) {
-                if configuration.fitMode == mode {
-                    Image(systemName: "checkmark")
-                        .appFont(.labelMd)
+            Image(systemName: systemName)
+                .appFont(.labelMd)
+                .foregroundStyle(configuration.fitMode == mode ? .primary : .secondary)
+                .frame(
+                    width: HeaderActionControlMetrics.iconFrameWidth,
+                    height: HeaderActionControlMetrics.iconFrameHeight
+                )
+                .padding(HeaderActionControlMetrics.chromePadding)
+                .background {
+                    if configuration.fitMode == mode {
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.xl, style: .continuous)
+                            .fill(.quaternary.opacity(0.6))
+                    }
                 }
-                Text(title)
-                    .appFont(.labelMd)
-                    .lineLimit(1)
-            }
-            .foregroundStyle(.primary)
-            .padding(.horizontal, DesignTokens.Spacing.sm)
-            .padding(.vertical, DesignTokens.Spacing.xxsPlus)
-            .glassChrome(.pill)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(title)
+        .accessibilityLabel(accessibilityLabel)
     }
 }

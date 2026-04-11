@@ -186,7 +186,7 @@ final class AppKitPDFControlPopoverView: NSView {
     private let onDismissRequested: @MainActor @Sendable () -> Void
     private var currentConfiguration: PDFControlBarConfiguration
     private var widthConstraint: NSLayoutConstraint?
-    static let preferredPopoverWidth: CGFloat = 320
+    static let preferredPopoverWidth: CGFloat = 460
 
     init(
         configuration: PDFControlBarConfiguration,
@@ -222,11 +222,12 @@ final class AppKitPDFControlPopoverView: NSView {
 
     func preferredSize(maxWidth: CGFloat) -> CGSize {
         let resolvedWidth = min(maxWidth, Self.preferredPopoverWidth)
-        widthConstraint?.constant = resolvedWidth
-        frame.size = CGSize(width: resolvedWidth, height: 220)
+        let contentWidth = max(0, resolvedWidth - (DesignTokens.Spacing.sm * 2))
+        widthConstraint?.constant = contentWidth
+        frame.size = CGSize(width: resolvedWidth, height: 80)
         layoutSubtreeIfNeeded()
         let fitted = hostingView.fittingSize
-        return CGSize(width: resolvedWidth, height: max(fitted.height, 156))
+        return CGSize(width: resolvedWidth, height: max(fitted.height, 52))
     }
 
     private func setUpViewHierarchy() {
@@ -244,19 +245,19 @@ final class AppKitPDFControlPopoverView: NSView {
         hostingView.translatesAutoresizingMaskIntoConstraints = false
         contentContainerView.addSubview(hostingView)
 
-        let widthConstraint = widthAnchor.constraint(equalToConstant: Self.preferredPopoverWidth)
+        let widthConstraint = hostingView.widthAnchor.constraint(equalToConstant: Self.preferredPopoverWidth)
         self.widthConstraint = widthConstraint
 
         NSLayoutConstraint.activate([
-            widthConstraint,
             backgroundEffectView.leadingAnchor.constraint(equalTo: leadingAnchor),
             backgroundEffectView.trailingAnchor.constraint(equalTo: trailingAnchor),
             backgroundEffectView.topAnchor.constraint(equalTo: topAnchor),
             backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            hostingView.leadingAnchor.constraint(equalTo: contentContainerView.leadingAnchor),
-            hostingView.trailingAnchor.constraint(equalTo: contentContainerView.trailingAnchor),
-            hostingView.topAnchor.constraint(equalTo: contentContainerView.topAnchor),
-            hostingView.bottomAnchor.constraint(equalTo: contentContainerView.bottomAnchor)
+            hostingView.leadingAnchor.constraint(equalTo: contentContainerView.leadingAnchor, constant: DesignTokens.Spacing.sm),
+            hostingView.trailingAnchor.constraint(equalTo: contentContainerView.trailingAnchor, constant: -DesignTokens.Spacing.sm),
+            hostingView.topAnchor.constraint(equalTo: contentContainerView.topAnchor, constant: DesignTokens.Spacing.xs),
+            hostingView.bottomAnchor.constraint(equalTo: contentContainerView.bottomAnchor, constant: -DesignTokens.Spacing.xs),
+            widthConstraint
         ])
     }
 }
@@ -411,7 +412,7 @@ private extension AppKitPDFControlBar {
             max(Self.popoverScreenPadding, maxX)
         )
         let resolvedY = min(
-            anchorFrame.maxY + DesignTokens.Spacing.xs,
+            anchorFrame.minY,
             max(Self.popoverScreenPadding, bounds.height - Self.popoverScreenPadding - popoverSize.height)
         )
 
