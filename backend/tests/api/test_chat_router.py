@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from api.config import settings
+from api.db import session as db_session
 from api.db.dependencies import get_current_user_id
 from api.main import app
 from api.middleware import rate_limit as rate_limit_module
@@ -78,6 +79,198 @@ def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
     assert "event: token" in body
     assert json.dumps({"type": "token", "content": "Hello"}) in body
     assert "event: complete" in body
+
+
+def test_stream_chat_does_not_hold_request_scoped_db_for_stream_lifetime(
+    test_client, monkeypatch
+):
+    class RequestScopedSession:
+        def __init__(self) -> None:
+            self.closed = False
+            self.info: dict[str, object] = {}
+
+        def close(self) -> None:
+            self.closed = True
+
+    class StreamScopedSession:
+        def __init__(self) -> None:
+            self.closed = False
+            self.info: dict[str, object] = {}
+
+        def close(self) -> None:
+            self.closed = True
+
+    observed: dict[str, object] = {
+        "request_db_calls": 0,
+        "request_db_closed_at_stream_start": None,
+        "tool_context_db_is_request_db": None,
+        "provider_lookup_db_is_request_db": None,
+    }
+    request_db = RequestScopedSession()
+    stream_sessions: list[StreamScopedSession] = []
+
+    def fake_get_db():
+        observed["request_db_calls"] += 1
+        try:
+            yield request_db
+        finally:
+            request_db.close()
+
+    def fake_session_local():
+        session = StreamScopedSession()
+        stream_sessions.append(session)
+        return session
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(
+            self,
+            *,
+            tool_context,
+            provider_key_lookup,
+            **_kwargs,
+        ):
+            observed["request_db_closed_at_stream_start"] = request_db.closed
+            observed["tool_context_db_is_request_db"] = (
+                getattr(tool_context, "db", None) is request_db
+            )
+            provider_key_lookup("anthropic")
+            yield {"type": "token", "content": "Hello"}
+
+    def fake_get_active_key(db, _user_id, _provider):
+        observed["provider_lookup_db_is_request_db"] = db is request_db
+        return "stream-key"
+
+    def _build_assembled_inputs(**_kwargs):
+        return AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Hi",
+            prompt_bundle={},
+        )
+
+    def _build_prepared_request(**_kwargs):
+        return PreparedChatRequest(
+            provider="anthropic",
+            model="claude-sonnet-4-6",
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Hi",
+            tool_definitions=[],
+            budget_report=RequestBudgetReport(
+                provider="anthropic",
+                model="claude-sonnet-4-6",
+                context_window_chars=40000,
+                reserved_output_chars=4000,
+                available_input_chars=35000,
+                provider_framing_chars=100,
+                system_prompt_chars=6,
+                bootstrap_history_chars=0,
+                conversation_history_chars=0,
+                current_message_chars=2,
+                tool_schema_chars=0,
+                total_input_chars=8,
+                overflow_chars=0,
+                within_budget=True,
+                failure_reason=None,
+                trimming_applied=False,
+                compaction_applied=False,
+            ),
+        )
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(db_session, "SessionLocal", fake_session_local)
+    monkeypatch.setattr(
+        db_session, "set_session_user_id", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        chat_router.UserAIProviderKeyService,
+        "get_active_key",
+        staticmethod(fake_get_active_key),
+    )
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+    monkeypatch.setattr(
+        chat_router.OnboardingService,
+        "get_onboarding_state",
+        staticmethod(lambda *_args, **_kwargs: None),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(lambda *_args, **_kwargs: []),
+    )
+    monkeypatch.setattr(
+        chat_router.SkillCatalogService,
+        "list_skills",
+        staticmethod(lambda *_args, **_kwargs: []),
+    )
+    monkeypatch.setattr(
+        chat_router.RuntimeCapabilityService,
+        "list_runtime_states",
+        staticmethod(lambda *_args, **_kwargs: []),
+    )
+    monkeypatch.setattr(
+        chat_router.CapabilityResolverService,
+        "resolve_for_turn",
+        staticmethod(
+            lambda **_kwargs: {
+                "selected_skill_ids": [],
+                "executable_skill_ids": [],
+                "blocked_skill_summaries": [],
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        chat_router.CapabilityLoaderService,
+        "load_for_turn",
+        staticmethod(lambda **_kwargs: {}),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_assembled_inputs",
+        staticmethod(_build_assembled_inputs),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_prepared_request",
+        staticmethod(_build_prepared_request),
+    )
+    app.dependency_overrides[db_session.get_db] = fake_get_db
+
+    try:
+        response = test_client.post(
+            "/api/chat/stream",
+            headers=_auth_headers(),
+            json={"message": "Hi"},
+        )
+    finally:
+        app.dependency_overrides.pop(db_session.get_db, None)
+
+    assert response.status_code == 200
+    assert observed["request_db_calls"] == 0 or (
+        observed["request_db_closed_at_stream_start"] is True
+    )
+    assert observed["tool_context_db_is_request_db"] is False
+    assert observed["provider_lookup_db_is_request_db"] is False
+    assert stream_sessions
+    assert all(session.closed for session in stream_sessions)
+    assert "event: token" in response.text
+    assert "event: complete" in response.text
 
 
 def test_stream_chat_rate_limit_is_user_scoped(test_client, monkeypatch):
@@ -1022,9 +1215,7 @@ def test_stream_chat_passes_prompt_preview_payload_to_tool_context(
     assert prompt_preview_payload["request_budget_report"]["tool_schema_chars"] > 0
 
 
-def test_stream_chat_injects_bootstrap_history_on_first_turn(
-    test_client, monkeypatch
-):
+def test_stream_chat_injects_bootstrap_history_on_first_turn(test_client, monkeypatch):
     captured: dict[str, object] = {}
 
     def _build_prompts(**_kwargs):
@@ -1455,7 +1646,9 @@ def test_stream_chat_emits_assistant_reply_notification_when_user_is_away(
             )
 
     monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
-    monkeypatch.setattr(chat_router, "DeviceTokenService", FakeDeviceTokenService, raising=False)
+    monkeypatch.setattr(
+        chat_router, "DeviceTokenService", FakeDeviceTokenService, raising=False
+    )
     monkeypatch.setattr(
         chat_router,
         "NotificationPolicyService",
@@ -1543,7 +1736,9 @@ def test_stream_chat_skips_assistant_reply_notification_for_hidden_messages(
             _ = intent
             _ = device_tokens
             captured["delivery_calls"] = int(captured["delivery_calls"]) + 1
-            return SimpleNamespace(status="sent", request_count=1, sent_count=1, reason=None)
+            return SimpleNamespace(
+                status="sent", request_count=1, sent_count=1, reason=None
+            )
 
     monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
     monkeypatch.setattr(
@@ -1827,7 +2022,10 @@ def test_stream_chat_compacts_trimmed_history_and_retries_prepared_request(
         response = test_client.post(
             "/api/chat/stream",
             headers=_auth_headers(),
-            json={"message": "Current question", "conversation_id": str(conversation.id)},
+            json={
+                "message": "Current question",
+                "conversation_id": str(conversation.id),
+            },
         )
     finally:
         app.dependency_overrides.pop(get_current_user_id, None)
@@ -1978,7 +2176,10 @@ def test_stream_chat_retries_without_attachment_content_on_prompt_overflow(
         json={
             "message": "Hi",
             "attachments": [
-                {"file_id": "00000000-0000-0000-0000-000000000001", "filename": "doc.md"}
+                {
+                    "file_id": "00000000-0000-0000-0000-000000000001",
+                    "filename": "doc.md",
+                }
             ],
         },
     )
@@ -2010,7 +2211,10 @@ def test_stream_chat_returns_clear_oversize_message_after_attachment_fallback_fa
         json={
             "message": "Hi",
             "attachments": [
-                {"file_id": "00000000-0000-0000-0000-000000000001", "filename": "doc.md"}
+                {
+                    "file_id": "00000000-0000-0000-0000-000000000001",
+                    "filename": "doc.md",
+                }
             ],
         },
     )

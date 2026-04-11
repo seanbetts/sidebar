@@ -4,7 +4,6 @@
 import hashlib
 import json
 import logging
-import os
 import time
 from datetime import UTC, datetime
 from typing import TypedDict, cast
@@ -19,7 +18,7 @@ from api.auth import verify_bearer_token
 from api.config import settings
 from api.constants import ChatConstants
 from api.db.dependencies import get_current_user_id
-from api.db.session import SessionLocal, get_db, set_session_user_id
+from api.db.session import get_db, user_scoped_session
 from api.exceptions import BadRequestError
 from api.metrics import (
     chat_messages_total,
@@ -228,15 +227,6 @@ def _require_completed_soul_calibration(
     )
 
 
-def _new_user_scoped_session(user_id: str) -> Session:
-    """Create a short-lived session with request-style user/search-path scoping."""
-    session = SessionLocal()
-    if os.getenv("TESTING"):
-        session.info["force_public_search_path"] = True
-    set_session_user_id(session, user_id)
-    return session
-
-
 def _assemble_prepared_request(
     *,
     db: Session,
@@ -332,7 +322,6 @@ def _build_prompt_preview_payload(
 @router.post("/stream")
 async def stream_chat(
     request: Request,
-    db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     _rate_limit: None = Depends(rate_limit_module.chat_stream_rate_limit),
@@ -380,198 +369,96 @@ async def stream_chat(
     chat_messages_total.inc()
 
     conversation_uuid = None
-    if conversation_id:
-        conversation_uuid = parse_uuid(conversation_id, "conversation", "id")
-        conversation = ConversationService.get_conversation(
-            db, user_id, conversation_uuid
-        )
-
-    settings_record = UserSettingsService.get_settings(db, user_id)
     user_agent = request.headers.get("user-agent")
     app_version = request.headers.get("x-app-version")
     now = datetime.now(UTC)
-    onboarding_state = OnboardingService.get_onboarding_state(db, user_id)
-    _require_completed_soul_calibration(onboarding_state)
-
     conversation_messages = None
-    if conversation_id:
-        conversation_messages = conversation.messages
-
-    enabled_skills = SettingsService.resolve_enabled_skills(
-        settings_record,
-        db=db,
-        user_id=user_id,
-    )
-    skill_catalog = SkillCatalogService.list_skills(settings.skills_dir)
-    skill_catalog_by_id = {
-        str(skill["id"]): skill for skill in skill_catalog if isinstance(skill, dict)
-    }
-    runtime_states = RuntimeCapabilityService.list_runtime_states(
-        db,
-        user_id=user_id,
-        settings_record=settings_record,
-    )
-    runtime_capabilities: list[dict[str, object]] = []
-    for runtime_state in runtime_states:
-        if runtime_state.skill_id not in enabled_skills:
-            continue
-        catalog_entry = skill_catalog_by_id.get(runtime_state.skill_id, {})
-        runtime_capabilities.append(
-            {
-                "skill_id": runtime_state.skill_id,
-                "name": str(catalog_entry.get("name", runtime_state.skill_id)),
-                "description": str(catalog_entry.get("description", "")),
-                "tags": list(catalog_entry.get("tags", [])),
-                "triggers": list(catalog_entry.get("triggers", [])),
-                "required_toolsets": list(catalog_entry.get("required_toolsets", [])),
-                "enabled": runtime_state.enabled,
-                "installed": runtime_state.installed,
-                "availability_status": runtime_state.availability_status,
-                "availability_reason": runtime_state.availability_reason,
-                "availability_remediation": runtime_state.availability_remediation,
-            }
-        )
-    resolver_result = CapabilityResolverService.resolve_for_turn(
-        user_message=message,
-        enabled_skill_ids=enabled_skills,
-        runtime_capabilities=runtime_capabilities,
-        open_context=open_context,
-        attachments=attachments,
-        onboarding_state=onboarding_state,
-    )
-    blocked_skill_summaries = list(
-        resolver_result.get(
-            "blocked_skill_summaries",
-            resolver_result.get("blocked_skills", []),
-        )
-    )
-    selected_skill_ids = list(resolver_result.get("selected_skill_ids", []))
-    executable_skill_ids = list(resolver_result.get("executable_skill_ids", []))
-    ai_gateway = AIProviderGateway(settings)
-    capability_loader_result = CapabilityLoaderService.load_for_turn(
-        selected_skill_ids=selected_skill_ids,
-        executable_skill_ids=executable_skill_ids,
-        tool_definition_resolver=getattr(ai_gateway, "get_chat_tool_definitions", None),
-    )
-
-    assembled_inputs = RequestAssemblyService.build_assembled_inputs(
-        db=db,
-        user_id=user_id,
-        message=message,
-        conversation_id=conversation_id,
-        conversation_messages=conversation_messages,
-        request_history=history,
-        user_message_id=user_message_id,
-        open_context=open_context,
-        attachments=attachments,
-        user_agent=user_agent,
-        current_location=current_location,
-        current_location_levels=current_location_levels,
-        current_weather=current_weather,
-        current_timezone=current_timezone,
-        now=now,
-        onboarding_state=onboarding_state,
-        blocked_skill_summaries=blocked_skill_summaries,
-        capability_loader_result=capability_loader_result,
-        prompt_context_service=PromptContextService,
-    )
-    tool_context = ToolExecutionContext(
-        db=db,
-        user_id=user_id,
-        open_context=open_context,
-        attachments=attachments,
-        conversation_id=conversation_uuid,
-        user_message_id=user_message_id,
-        message_visibility=normalized_message_visibility,
-        user_agent=user_agent,
-        app_version=app_version,
-        current_location=current_location,
-        current_location_levels=current_location_levels,
-        current_weather=current_weather,
-        current_timezone=current_timezone,
-        selected_skill_ids=selected_skill_ids,
-        executable_skill_ids=executable_skill_ids,
-        blocked_skill_summaries=blocked_skill_summaries,
-        enabled_skill_ids=list(enabled_skills),
-        runtime_capabilities=runtime_capabilities,
-        onboarding_state=onboarding_state,
-    )
-
-    stream_started_at = time.perf_counter()
-
-    def provider_key_lookup(provider: AIProvider) -> str | None:
-        return UserAIProviderKeyService.get_active_key(db, user_id, provider)
-
-    try:
-        chat_resolution = ai_gateway.resolve_chat(
-            settings_record=settings_record,
-            provider_key_lookup=provider_key_lookup,
-        )
-        if conversation_uuid is not None:
-            ConversationService.set_ai_provider_model(
+    with user_scoped_session(user_id) as db:
+        if conversation_id:
+            conversation_uuid = parse_uuid(conversation_id, "conversation", "id")
+            conversation = ConversationService.get_conversation(
                 db,
                 user_id,
                 conversation_uuid,
-                provider=chat_resolution.provider,
-                model=chat_resolution.model,
             )
-    except Exception as error:
-        error_message = str(error)
+            conversation_messages = list(conversation.messages or [])
 
-        async def error_generator():
-            chat_stream_errors_total.labels(type="server_error").inc()
-            error_event = {"type": "error", "error": error_message}
-            yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
+        settings_record = UserSettingsService.get_settings(db, user_id)
+        onboarding_state = OnboardingService.get_onboarding_state(db, user_id)
+        _require_completed_soul_calibration(onboarding_state)
 
-        return StreamingResponse(
-            error_generator(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
+        enabled_skills = SettingsService.resolve_enabled_skills(
+            settings_record,
+            db=db,
+            user_id=user_id,
+        )
+        skill_catalog = SkillCatalogService.list_skills(settings.skills_dir)
+        skill_catalog_by_id = {
+            str(skill["id"]): skill
+            for skill in skill_catalog
+            if isinstance(skill, dict)
+        }
+        runtime_states = RuntimeCapabilityService.list_runtime_states(
+            db,
+            user_id=user_id,
+            settings_record=settings_record,
+        )
+        runtime_capabilities: list[dict[str, object]] = []
+        for runtime_state in runtime_states:
+            if runtime_state.skill_id not in enabled_skills:
+                continue
+            catalog_entry = skill_catalog_by_id.get(runtime_state.skill_id, {})
+            runtime_capabilities.append(
+                {
+                    "skill_id": runtime_state.skill_id,
+                    "name": str(catalog_entry.get("name", runtime_state.skill_id)),
+                    "description": str(catalog_entry.get("description", "")),
+                    "tags": list(catalog_entry.get("tags", [])),
+                    "triggers": list(catalog_entry.get("triggers", [])),
+                    "required_toolsets": list(
+                        catalog_entry.get("required_toolsets", [])
+                    ),
+                    "enabled": runtime_state.enabled,
+                    "installed": runtime_state.installed,
+                    "availability_status": runtime_state.availability_status,
+                    "availability_reason": runtime_state.availability_reason,
+                    "availability_remediation": runtime_state.availability_remediation,
+                }
+            )
+        resolver_result = CapabilityResolverService.resolve_for_turn(
+            user_message=message,
+            enabled_skill_ids=enabled_skills,
+            runtime_capabilities=runtime_capabilities,
+            open_context=open_context,
+            attachments=attachments,
+            onboarding_state=onboarding_state,
+        )
+        blocked_skill_summaries = list(
+            resolver_result.get(
+                "blocked_skill_summaries",
+                resolver_result.get("blocked_skills", []),
+            )
+        )
+        selected_skill_ids = list(resolver_result.get("selected_skill_ids", []))
+        executable_skill_ids = list(resolver_result.get("executable_skill_ids", []))
+        ai_gateway = AIProviderGateway(settings)
+        capability_loader_result = CapabilityLoaderService.load_for_turn(
+            selected_skill_ids=selected_skill_ids,
+            executable_skill_ids=executable_skill_ids,
+            tool_definition_resolver=getattr(
+                ai_gateway,
+                "get_chat_tool_definitions",
+                None,
+            ),
         )
 
-    prepared_request = RequestAssemblyService.build_prepared_request(
-        provider=chat_resolution.provider,
-        model=chat_resolution.model,
-        assembled_inputs=assembled_inputs,
-        executable_skill_ids=executable_skill_ids,
-        capability_loader_result=capability_loader_result,
-        tool_definition_resolver=getattr(
-            ai_gateway,
-            "get_chat_tool_definitions",
-            None,
-        ),
-    )
-    trimmed_history_count = max(
-        len(assembled_inputs.conversation_history)
-        - len(prepared_request.conversation_history),
-        0,
-    )
-    RequestBudgetFeedbackService.log_budget_decision(
-        stage="prepared",
-        report=prepared_request.budget_report,
-        conversation_id=conversation_id,
-        trimmed_history_count=trimmed_history_count,
-    )
-    if conversation_uuid is not None and trimmed_history_count > 0:
-        compacted_conversation = (
-            ConversationCompactionService.compact_conversation_history(
-                db=db,
-                user_id=user_id,
-                conversation_id=conversation_uuid,
-                replay_messages_to_compact=trimmed_history_count,
-            )
-        )
-        assembled_inputs, prepared_request = _assemble_prepared_request(
+        assembled_inputs = RequestAssemblyService.build_assembled_inputs(
             db=db,
             user_id=user_id,
             message=message,
             conversation_id=conversation_id,
-            conversation_messages=compacted_conversation.messages,
-            history=history,
+            conversation_messages=conversation_messages,
+            request_history=history,
             user_message_id=user_message_id,
             open_context=open_context,
             attachments=attachments,
@@ -582,13 +469,82 @@ async def stream_chat(
             current_timezone=current_timezone,
             now=now,
             onboarding_state=onboarding_state,
-            provider=chat_resolution.provider,
-            model=chat_resolution.model,
+            blocked_skill_summaries=blocked_skill_summaries,
+            capability_loader_result=capability_loader_result,
+            prompt_context_service=PromptContextService,
+        )
+        tool_context = ToolExecutionContext(
+            user_id=user_id,
+            db_session_factory=lambda: user_scoped_session(user_id),
+            open_context=open_context,
+            attachments=attachments,
+            conversation_id=conversation_uuid,
+            user_message_id=user_message_id,
+            message_visibility=normalized_message_visibility,
+            user_agent=user_agent,
+            app_version=app_version,
+            current_location=current_location,
+            current_location_levels=current_location_levels,
+            current_weather=current_weather,
+            current_timezone=current_timezone,
             selected_skill_ids=selected_skill_ids,
             executable_skill_ids=executable_skill_ids,
             blocked_skill_summaries=blocked_skill_summaries,
-            ai_gateway=ai_gateway,
-            compaction_applied=True,
+            enabled_skill_ids=list(enabled_skills),
+            runtime_capabilities=runtime_capabilities,
+            onboarding_state=onboarding_state,
+        )
+
+        def provider_key_lookup(provider: AIProvider) -> str | None:
+            with user_scoped_session(user_id) as provider_db:
+                return UserAIProviderKeyService.get_active_key(
+                    provider_db,
+                    user_id,
+                    provider,
+                )
+
+        try:
+            chat_resolution = ai_gateway.resolve_chat(
+                settings_record=settings_record,
+                provider_key_lookup=provider_key_lookup,
+            )
+            if conversation_uuid is not None:
+                ConversationService.set_ai_provider_model(
+                    db,
+                    user_id,
+                    conversation_uuid,
+                    provider=chat_resolution.provider,
+                    model=chat_resolution.model,
+                )
+        except Exception as error:
+            error_message = str(error)
+
+            async def error_generator():
+                chat_stream_errors_total.labels(type="server_error").inc()
+                error_event = {"type": "error", "error": error_message}
+                yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
+
+            return StreamingResponse(
+                error_generator(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+
+        prepared_request = RequestAssemblyService.build_prepared_request(
+            provider=chat_resolution.provider,
+            model=chat_resolution.model,
+            assembled_inputs=assembled_inputs,
+            executable_skill_ids=executable_skill_ids,
+            capability_loader_result=capability_loader_result,
+            tool_definition_resolver=getattr(
+                ai_gateway,
+                "get_chat_tool_definitions",
+                None,
+            ),
         )
         trimmed_history_count = max(
             len(assembled_inputs.conversation_history)
@@ -596,27 +552,74 @@ async def stream_chat(
             0,
         )
         RequestBudgetFeedbackService.log_budget_decision(
-            stage="compaction_retry",
+            stage="prepared",
             report=prepared_request.budget_report,
             conversation_id=conversation_id,
             trimmed_history_count=trimmed_history_count,
         )
-    if not prepared_request.budget_report.within_budget:
-        RequestBudgetFeedbackService.log_budget_decision(
-            stage="overflow",
-            report=prepared_request.budget_report,
-            conversation_id=conversation_id,
-            trimmed_history_count=trimmed_history_count,
-        )
-        raise BadRequestError(
-            RequestBudgetFeedbackService.build_overflow_message(
-                prepared_request.budget_report
+        if conversation_uuid is not None and trimmed_history_count > 0:
+            compacted_conversation = (
+                ConversationCompactionService.compact_conversation_history(
+                    db=db,
+                    user_id=user_id,
+                    conversation_id=conversation_uuid,
+                    replay_messages_to_compact=trimmed_history_count,
+                )
             )
+            assembled_inputs, prepared_request = _assemble_prepared_request(
+                db=db,
+                user_id=user_id,
+                message=message,
+                conversation_id=conversation_id,
+                conversation_messages=compacted_conversation.messages,
+                history=history,
+                user_message_id=user_message_id,
+                open_context=open_context,
+                attachments=attachments,
+                user_agent=user_agent,
+                current_location=current_location,
+                current_location_levels=current_location_levels,
+                current_weather=current_weather,
+                current_timezone=current_timezone,
+                now=now,
+                onboarding_state=onboarding_state,
+                provider=chat_resolution.provider,
+                model=chat_resolution.model,
+                selected_skill_ids=selected_skill_ids,
+                executable_skill_ids=executable_skill_ids,
+                blocked_skill_summaries=blocked_skill_summaries,
+                ai_gateway=ai_gateway,
+                compaction_applied=True,
+            )
+            trimmed_history_count = max(
+                len(assembled_inputs.conversation_history)
+                - len(prepared_request.conversation_history),
+                0,
+            )
+            RequestBudgetFeedbackService.log_budget_decision(
+                stage="compaction_retry",
+                report=prepared_request.budget_report,
+                conversation_id=conversation_id,
+                trimmed_history_count=trimmed_history_count,
+            )
+        if not prepared_request.budget_report.within_budget:
+            RequestBudgetFeedbackService.log_budget_decision(
+                stage="overflow",
+                report=prepared_request.budget_report,
+                conversation_id=conversation_id,
+                trimmed_history_count=trimmed_history_count,
+            )
+            raise BadRequestError(
+                RequestBudgetFeedbackService.build_overflow_message(
+                    prepared_request.budget_report
+                )
+            )
+        tool_context.prompt_preview_payload = _build_prompt_preview_payload(
+            assembled_inputs=assembled_inputs,
+            prepared_request=prepared_request,
         )
-    tool_context.prompt_preview_payload = _build_prompt_preview_payload(
-        assembled_inputs=assembled_inputs,
-        prepared_request=prepared_request,
-    )
+
+    stream_started_at = time.perf_counter()
 
     async def event_generator():
         """Generate SSE events."""
@@ -770,7 +773,7 @@ async def stream_chat(
                         },
                     ]
                 )
-                with _new_user_scoped_session(user_id) as persistence_db:
+                with user_scoped_session(user_id) as persistence_db:
                     ConversationService.add_messages(
                         persistence_db,
                         user_id,

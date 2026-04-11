@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
@@ -13,8 +15,9 @@ from sqlalchemy.orm import Session
 class ToolExecutionContext:
     """Context passed to tool execution."""
 
-    db: Session
     user_id: str
+    db: Session | None = None
+    db_session_factory: Callable[[], AbstractContextManager[Session]] | None = None
     open_context: dict[str, Any] | None = None
     attachments: list[dict[str, Any]] = field(default_factory=list)
     conversation_id: UUID | None = None
@@ -40,6 +43,7 @@ class ToolExecutionContext:
         """Convert the context to a legacy dict payload."""
         return {
             "db": self.db,
+            "db_session_factory": self.db_session_factory,
             "user_id": self.user_id,
             "open_context": self.open_context,
             "attachments": self.attachments,

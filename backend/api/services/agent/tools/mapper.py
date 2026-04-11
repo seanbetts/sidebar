@@ -2,6 +2,7 @@
 
 import re
 import time
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from typing import Any
 
@@ -197,15 +198,33 @@ class ToolMapper:
             args.extend(["--user-id", user_id])
 
     @staticmethod
+    def _db_session_scope(context: dict[str, Any] | None):
+        """Yield a usable DB session from tool context."""
+        if not context:
+            return nullcontext(None)
+
+        db = context.get("db")
+        if db is not None:
+            return nullcontext(db)
+
+        db_session_factory = context.get("db_session_factory")
+        if callable(db_session_factory):
+            return db_session_factory()
+
+        return nullcontext(None)
+
+    @staticmethod
     def _settings_record_from_context(context: dict[str, Any] | None):
         """Fetch the user settings record from tool execution context."""
         if not context:
             return None
-        db = context.get("db")
         user_id = context.get("user_id")
-        if db is None or not user_id:
+        if not user_id:
             return None
-        return UserSettingsService.get_settings(db, str(user_id))
+        with ToolMapper._db_session_scope(context) as db:
+            if db is None:
+                return None
+            return UserSettingsService.get_settings(db, str(user_id))
 
     @staticmethod
     def _provider_key_lookup_from_context(
@@ -214,13 +233,19 @@ class ToolMapper:
         """Build a BYOK provider key lookup callback from tool context."""
         if not context:
             return None
-        db = context.get("db")
         user_id = context.get("user_id")
-        if db is None or not user_id:
+        if not user_id:
             return None
 
         def _lookup(provider):
-            return UserAIProviderKeyService.get_active_key(db, str(user_id), provider)
+            with ToolMapper._db_session_scope(context) as db:
+                if db is None:
+                    return None
+                return UserAIProviderKeyService.get_active_key(
+                    db,
+                    str(user_id),
+                    provider,
+                )
 
         return _lookup
 
@@ -261,17 +286,19 @@ class ToolMapper:
         if context is None:
             return normalized
 
-        db = context.get("db")
         user_id = context.get("user_id")
-        if db is None or not user_id:
+        if not user_id:
             return normalized
 
-        timestamp = datetime.now(UTC).isoformat()
-        updated_state = OnboardingService.update_onboarding_state(
-            db,
-            str(user_id),
-            {"milestones": {"first_outcome_completed": timestamp}},
-        )
+        with ToolMapper._db_session_scope(context) as db:
+            if db is None:
+                return normalized
+            timestamp = datetime.now(UTC).isoformat()
+            updated_state = OnboardingService.update_onboarding_state(
+                db,
+                str(user_id),
+                {"milestones": {"first_outcome_completed": timestamp}},
+            )
 
         result_data = normalized.get("data")
         if not isinstance(result_data, dict):

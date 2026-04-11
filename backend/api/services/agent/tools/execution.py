@@ -2,8 +2,25 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from typing import Any
+
+
+def _db_session_scope(context: dict[str, Any] | None):
+    """Yield a usable DB session from tool context."""
+    if not context:
+        return nullcontext(None)
+
+    db = context.get("db")
+    if db is not None:
+        return nullcontext(db)
+
+    db_session_factory = context.get("db_session_factory")
+    if callable(db_session_factory):
+        return db_session_factory()
+
+    return nullcontext(None)
 
 
 def handle_ui_theme(parameters: dict) -> dict[str, Any]:
@@ -32,9 +49,8 @@ def handle_prompt_preview(context: dict[str, Any] | None) -> dict[str, Any]:
     """
     if not context:
         return {"success": False, "error": "Missing prompt context"}
-    db = context.get("db")
     user_id = context.get("user_id")
-    if not db or not user_id:
+    if not user_id:
         return {"success": False, "error": "Missing database or user context"}
     precomputed_payload = context.get("prompt_preview_payload")
     if isinstance(precomputed_payload, dict):
@@ -48,68 +64,72 @@ def handle_prompt_preview(context: dict[str, Any] | None) -> dict[str, Any]:
     from api.services.settings_service import SettingsService
     from api.services.user_settings_service import UserSettingsService
 
-    settings_record = UserSettingsService.get_settings(db, user_id)
-    allowed_skills = SettingsService.resolve_enabled_skills(
-        settings_record,
-        db=db,
-        user_id=user_id,
-    )
-    policy = AIPolicyService.resolve_from_settings(settings_record)
-    selection = AIPolicyService.select_provider("chat", policy)
-    provider = selection.provider
-    model = get_default_model(provider, "chat", settings)
-    assembled_inputs = RequestAssemblyService.build_assembled_inputs(
-        db=db,
-        user_id=user_id,
-        message="",
-        conversation_id=(
-            str(context.get("conversation_id"))
-            if context.get("conversation_id") is not None
-            else None
-        ),
-        conversation_messages=None,
-        request_history=[],
-        user_message_id=(
-            str(context.get("user_message_id"))
-            if context.get("user_message_id") is not None
-            else None
-        ),
-        open_context=context.get("open_context") or {},
-        attachments=context.get("attachments") or [],
-        user_agent=context.get("user_agent"),
-        current_location=context.get("current_location"),
-        current_location_levels=context.get("current_location_levels"),
-        current_weather=context.get("current_weather"),
-        current_timezone=context.get("current_timezone"),
-        now=datetime.now(UTC),
-    )
-    ai_gateway = AIProviderGateway(settings)
-    prepared_request = RequestAssemblyService.build_prepared_request(
-        provider=provider,
-        model=model,
-        assembled_inputs=assembled_inputs,
-        allowed_skills=allowed_skills,
-        tool_definition_resolver=ai_gateway.get_chat_tool_definitions,
-    )
-    prompt_bundle = assembled_inputs.prompt_bundle
-    return {
-        "success": True,
-        "data": {
-            "system_prompt": prompt_bundle["system_prompt"]["text"],
-            "first_message_prompt": prompt_bundle["first_message_prompt"]["text"],
-            "system_prompt_sections": prompt_bundle["system_prompt"]["sections"],
-            "first_message_prompt_sections": prompt_bundle["first_message_prompt"][
-                "sections"
-            ],
-            "prompt_report": prompt_bundle["report"],
-            "request_budget_report": prepared_request.budget_report.__dict__,
-            "workspace_context_menu_actions": [
-                "copy_markdown",
-                "share_text",
-                "download",
-            ],
-        },
-    }
+    with _db_session_scope(context) as db:
+        if not db:
+            return {"success": False, "error": "Missing database or user context"}
+
+        settings_record = UserSettingsService.get_settings(db, user_id)
+        allowed_skills = SettingsService.resolve_enabled_skills(
+            settings_record,
+            db=db,
+            user_id=user_id,
+        )
+        policy = AIPolicyService.resolve_from_settings(settings_record)
+        selection = AIPolicyService.select_provider("chat", policy)
+        provider = selection.provider
+        model = get_default_model(provider, "chat", settings)
+        assembled_inputs = RequestAssemblyService.build_assembled_inputs(
+            db=db,
+            user_id=user_id,
+            message="",
+            conversation_id=(
+                str(context.get("conversation_id"))
+                if context.get("conversation_id") is not None
+                else None
+            ),
+            conversation_messages=None,
+            request_history=[],
+            user_message_id=(
+                str(context.get("user_message_id"))
+                if context.get("user_message_id") is not None
+                else None
+            ),
+            open_context=context.get("open_context") or {},
+            attachments=context.get("attachments") or [],
+            user_agent=context.get("user_agent"),
+            current_location=context.get("current_location"),
+            current_location_levels=context.get("current_location_levels"),
+            current_weather=context.get("current_weather"),
+            current_timezone=context.get("current_timezone"),
+            now=datetime.now(UTC),
+        )
+        ai_gateway = AIProviderGateway(settings)
+        prepared_request = RequestAssemblyService.build_prepared_request(
+            provider=provider,
+            model=model,
+            assembled_inputs=assembled_inputs,
+            allowed_skills=allowed_skills,
+            tool_definition_resolver=ai_gateway.get_chat_tool_definitions,
+        )
+        prompt_bundle = assembled_inputs.prompt_bundle
+        return {
+            "success": True,
+            "data": {
+                "system_prompt": prompt_bundle["system_prompt"]["text"],
+                "first_message_prompt": prompt_bundle["first_message_prompt"]["text"],
+                "system_prompt_sections": prompt_bundle["system_prompt"]["sections"],
+                "first_message_prompt_sections": prompt_bundle["first_message_prompt"][
+                    "sections"
+                ],
+                "prompt_report": prompt_bundle["report"],
+                "request_budget_report": prepared_request.budget_report.__dict__,
+                "workspace_context_menu_actions": [
+                    "copy_markdown",
+                    "share_text",
+                    "download",
+                ],
+            },
+        }
 
 
 def handle_memory_tool(
@@ -126,14 +146,16 @@ def handle_memory_tool(
     """
     if not context:
         return {"success": False, "error": "Missing memory context"}
-    db = context.get("db")
     user_id = context.get("user_id")
-    if not db or not user_id:
+    if not user_id:
         return {"success": False, "error": "Missing database or user context"}
+    with _db_session_scope(context) as db:
+        if not db:
+            return {"success": False, "error": "Missing database or user context"}
 
-    from api.services.memory_tool_handler import MemoryToolHandler
+        from api.services.memory_tool_handler import MemoryToolHandler
 
-    return MemoryToolHandler.execute_command(db, user_id, parameters)
+        return MemoryToolHandler.execute_command(db, user_id, parameters)
 
 
 def handle_other_preferences(parameters: dict) -> dict[str, Any]:

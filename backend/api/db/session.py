@@ -5,6 +5,7 @@ import os
 import time
 import traceback
 from collections.abc import Generator
+from contextlib import contextmanager
 
 from fastapi import Depends
 from sqlalchemy import create_engine, event, inspect, text
@@ -175,6 +176,26 @@ if os.getenv("TRACE_WEBSITE_CONTENT_LAZY_LOAD"):
     event.listen(Website, "refresh", _log_website_column_refresh)
 
 
+def _close_session(db: Session) -> None:
+    """Close a session defensively, invalidating dropped connections if needed."""
+    try:
+        db.close()
+    except OperationalError:
+        logger.warning(
+            "Database session close failed; invalidating connection",
+            exc_info=True,
+        )
+        invalidate = getattr(db, "invalidate", None)
+        if callable(invalidate):
+            try:
+                invalidate()
+            except Exception:  # pragma: no cover - defensive cleanup path
+                logger.warning(
+                    "Database session invalidate failed after close error",
+                    exc_info=True,
+                )
+
+
 def get_db(
     user_id: str = Depends(get_current_user_id),
 ) -> Generator[Session, None, None]:
@@ -186,22 +207,20 @@ def get_db(
         set_session_user_id(db, user_id)
         yield db
     finally:
-        try:
-            db.close()
-        except OperationalError:
-            logger.warning(
-                "Database session close failed; invalidating connection",
-                exc_info=True,
-            )
-            invalidate = getattr(db, "invalidate", None)
-            if callable(invalidate):
-                try:
-                    invalidate()
-                except Exception:  # pragma: no cover - defensive cleanup path
-                    logger.warning(
-                        "Database session invalidate failed after close error",
-                        exc_info=True,
-                    )
+        _close_session(db)
+
+
+@contextmanager
+def user_scoped_session(user_id: str | None) -> Generator[Session, None, None]:
+    """Create a short-lived session with the same RLS scoping as requests."""
+    db = SessionLocal()
+    if os.getenv("TESTING"):
+        db.info["force_public_search_path"] = True
+    try:
+        set_session_user_id(db, user_id)
+        yield db
+    finally:
+        _close_session(db)
 
 
 def set_session_user_id(db: Session, user_id: str | None) -> None:
