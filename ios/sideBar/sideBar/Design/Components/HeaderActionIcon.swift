@@ -6,13 +6,42 @@ import AppKit
 #endif
 
 enum HeaderActionControlMetrics {
-    static let symbolPointSize: CGFloat = DesignTokens.Icon.sm
-    static let iconFrameWidth: CGFloat = 28
-    static let iconFrameHeight: CGFloat = 20
-    static let chromePadding: CGFloat = DesignTokens.Spacing.xxsPlus
+    private static let baseIconFrameWidth: CGFloat = 28
+    private static let baseIconFrameHeight: CGFloat = 20
+    private static let baseChromePadding: CGFloat = DesignTokens.Spacing.xxsPlus
+
+    static func symbolPointSize(for option: AppTextSizeOption) -> CGFloat {
+        AppFontStyle.labelMd.pointSize(for: option)
+    }
+
+    static func iconFrameWidth(for option: AppTextSizeOption) -> CGFloat {
+        AppFontStyle.scaledMetric(baseIconFrameWidth, for: option)
+    }
+
+    static func iconFrameHeight(for option: AppTextSizeOption) -> CGFloat {
+        AppFontStyle.scaledMetric(baseIconFrameHeight, for: option)
+    }
+
+    static func chromePadding(for option: AppTextSizeOption) -> CGFloat {
+        AppFontStyle.scaledMetric(baseChromePadding, for: option)
+    }
+
     static let rowSpacing: CGFloat = DesignTokens.Spacing.xs
-    static let chromeWidth: CGFloat = iconFrameWidth + (chromePadding * 2)
-    static let chromeHeight: CGFloat = iconFrameHeight + (chromePadding * 2)
+
+    static func chromeWidth(for option: AppTextSizeOption) -> CGFloat {
+        iconFrameWidth(for: option) + (chromePadding(for: option) * 2)
+    }
+
+    static func chromeHeight(for option: AppTextSizeOption) -> CGFloat {
+        iconFrameHeight(for: option) + (chromePadding(for: option) * 2)
+    }
+
+    static var symbolPointSize: CGFloat { symbolPointSize(for: .current) }
+    static var iconFrameWidth: CGFloat { iconFrameWidth(for: .current) }
+    static var iconFrameHeight: CGFloat { iconFrameHeight(for: .current) }
+    static var chromePadding: CGFloat { chromePadding(for: .current) }
+    static var chromeWidth: CGFloat { chromeWidth(for: .current) }
+    static var chromeHeight: CGFloat { chromeHeight(for: .current) }
 }
 
 enum HeaderActionControlChromeStyle: Equatable {

@@ -9,14 +9,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
-    @ScaledMetric(relativeTo: .body) private var textInsetTop: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var textInsetBottom: CGFloat = 10
-    @ScaledMetric(relativeTo: .body) private var textInsetLeading: CGFloat = 44
-    @ScaledMetric(relativeTo: .body) private var textInsetTrailing: CGFloat = 48
-    @ScaledMetric(relativeTo: .body) private var sideButtonSize: CGFloat = HeaderActionControlMetrics.iconFrameHeight
-    @ScaledMetric(relativeTo: .body) private var sideButtonSymbolSize: CGFloat = DesignTokens.Icon.md
-    @ScaledMetric(relativeTo: .body) private var sideButtonHorizontalInset: CGFloat = 10
-    @ScaledMetric(relativeTo: .body) private var placeholderTopInset: CGFloat = 8
+    private var sideButtonSize: CGFloat = HeaderActionControlMetrics.iconFrameHeight
     let isEnabled: Bool
     let isSendEnabled: Bool
     let isAttachEnabled: Bool
@@ -24,6 +17,28 @@ struct ChatInputUIKitView: UIViewRepresentable {
     let maxHeight: CGFloat
     let onSend: () -> Void
     let onAttach: () -> Void
+
+    init(
+        text: Binding<String>,
+        measuredHeight: Binding<CGFloat>,
+        isEnabled: Bool,
+        isSendEnabled: Bool,
+        isAttachEnabled: Bool,
+        minHeight: CGFloat,
+        maxHeight: CGFloat,
+        onSend: @escaping () -> Void,
+        onAttach: @escaping () -> Void
+    ) {
+        self._text = text
+        self._measuredHeight = measuredHeight
+        self.isEnabled = isEnabled
+        self.isSendEnabled = isSendEnabled
+        self.isAttachEnabled = isAttachEnabled
+        self.minHeight = minHeight
+        self.maxHeight = maxHeight
+        self.onSend = onSend
+        self.onAttach = onAttach
+    }
 
     func makeUIView(context: Context) -> UIView {
         let containerView = UIView()
@@ -291,6 +306,34 @@ struct ChatInputUIKitView: UIViewRepresentable {
 
     private var resolvedTextSizeOption: AppTextSizeOption {
         AppTextSizeOption.resolved(from: appTextSizeRaw)
+    }
+
+    private var textInsetTop: CGFloat {
+        AppFontStyle.scaledMetric(12, for: resolvedTextSizeOption)
+    }
+
+    private var textInsetBottom: CGFloat {
+        AppFontStyle.scaledMetric(10, for: resolvedTextSizeOption)
+    }
+
+    private var textInsetLeading: CGFloat {
+        AppFontStyle.scaledMetric(44, for: resolvedTextSizeOption)
+    }
+
+    private var textInsetTrailing: CGFloat {
+        AppFontStyle.scaledMetric(48, for: resolvedTextSizeOption)
+    }
+
+    private var sideButtonSymbolSize: CGFloat {
+        AppFontStyle.scaledMetric(DesignTokens.Icon.md, for: resolvedTextSizeOption)
+    }
+
+    private var sideButtonHorizontalInset: CGFloat {
+        AppFontStyle.scaledMetric(10, for: resolvedTextSizeOption)
+    }
+
+    private var placeholderTopInset: CGFloat {
+        AppFontStyle.scaledMetric(8, for: resolvedTextSizeOption)
     }
 
     private var usesSystemTextSizeOption: Bool {

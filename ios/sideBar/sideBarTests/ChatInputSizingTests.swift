@@ -40,6 +40,18 @@ final class ChatInputSizingTests: XCTestCase {
         )
     }
 
+    func testChatInputChromeMetricsUseAppTextSizeHelpersInsteadOfScaledMetric() throws {
+        let uiKitSource = try chatInputSource(named: "ChatInputUIKit.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let appKitSource = try chatInputSource(named: "ChatInputAppKit.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(uiKitSource.contains("@ScaledMetric"))
+        XCTAssertFalse(appKitSource.contains("@ScaledMetric"))
+        XCTAssertTrue(uiKitSource.contains("AppFontStyle.scaledMetric("))
+        XCTAssertTrue(appKitSource.contains("AppFontStyle.scaledMetric("))
+    }
+
     func testUIKitAccessoryButtonsAreVerticallyCenteredInComposer() throws {
         let uiKitSource = try chatInputSource(named: "ChatInputUIKit.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

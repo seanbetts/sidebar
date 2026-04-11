@@ -39,8 +39,12 @@ public enum AppTextSizeOption: String, CaseIterable, Identifiable {
         AppTextSizeOption(rawValue: rawValue) ?? .system
     }
 
-    static var currentScaleMultiplier: CGFloat {
+    static var current: AppTextSizeOption {
         let rawValue = UserDefaults.standard.string(forKey: AppStorageKeys.appTextSize) ?? AppTextSizeOption.system.rawValue
-        return resolved(from: rawValue).scaleMultiplier
+        return resolved(from: rawValue)
+    }
+
+    static var currentScaleMultiplier: CGFloat {
+        current.scaleMultiplier
     }
 }

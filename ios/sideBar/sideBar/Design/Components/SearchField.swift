@@ -7,6 +7,7 @@ enum SearchFieldChrome {
 
 struct SearchField: View {
     @Binding var text: String
+    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     var placeholder: String = "Search"
     var isFocused: FocusState<Bool>.Binding?
     var chrome: SearchFieldChrome = .standard
@@ -14,6 +15,7 @@ struct SearchField: View {
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: "magnifyingglass")
+                .font(.system(size: iconPointSize))
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
             if let isFocused {
                 TextField(placeholder, text: $text)
@@ -32,6 +34,7 @@ struct SearchField: View {
                     text = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: iconPointSize))
                         .foregroundStyle(DesignTokens.Colors.textTertiary)
                 }
                 .buttonStyle(.plain)
@@ -44,15 +47,23 @@ struct SearchField: View {
     }
 
     private var horizontalPadding: CGFloat {
-        Self.horizontalPadding(for: chrome)
+        Self.horizontalPadding(for: chrome, option: resolvedTextSizeOption)
     }
 
     private var verticalPadding: CGFloat {
-        Self.verticalPadding(for: chrome)
+        Self.verticalPadding(for: chrome, option: resolvedTextSizeOption)
     }
 
     private var minHeight: CGFloat {
-        Self.minHeight(for: chrome)
+        Self.minHeight(for: chrome, option: resolvedTextSizeOption)
+    }
+
+    private var iconPointSize: CGFloat {
+        AppFontStyle.subheadline.pointSize(for: resolvedTextSizeOption)
+    }
+
+    private var resolvedTextSizeOption: AppTextSizeOption {
+        AppTextSizeOption.resolved(from: appTextSizeRaw)
     }
 
     static func backgroundChrome(for chrome: SearchFieldChrome) -> GlassChrome.Kind? {
@@ -64,26 +75,37 @@ struct SearchField: View {
         }
     }
 
-    static func horizontalPadding(for chrome: SearchFieldChrome) -> CGFloat {
+    static func horizontalPadding(
+        for chrome: SearchFieldChrome,
+        option: AppTextSizeOption = .current
+    ) -> CGFloat {
+        let basePadding: CGFloat
         switch chrome {
         case .standard:
-            DesignTokens.Spacing.sm
+            basePadding = DesignTokens.Spacing.sm
         case .dock:
-            DesignTokens.Spacing.xs
+            basePadding = DesignTokens.Spacing.xs
+        }
+        return AppFontStyle.scaledMetric(basePadding, for: option)
+    }
+
+    static func verticalPadding(
+        for chrome: SearchFieldChrome,
+        option: AppTextSizeOption = .current
+    ) -> CGFloat {
+        switch chrome {
+        case .standard, .dock:
+            return AppFontStyle.scaledMetric(DesignTokens.Spacing.xxsPlus, for: option)
         }
     }
 
-    static func verticalPadding(for chrome: SearchFieldChrome) -> CGFloat {
+    static func minHeight(
+        for chrome: SearchFieldChrome,
+        option: AppTextSizeOption = .current
+    ) -> CGFloat {
         switch chrome {
         case .standard, .dock:
-            DesignTokens.Spacing.xxsPlus
-        }
-    }
-
-    static func minHeight(for chrome: SearchFieldChrome) -> CGFloat {
-        switch chrome {
-        case .standard, .dock:
-            DesignTokens.Size.compactFieldHeight
+            return AppFontStyle.scaledMetric(DesignTokens.Size.compactFieldHeight, for: option)
         }
     }
 }

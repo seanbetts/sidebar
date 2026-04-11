@@ -24,8 +24,28 @@ final class SearchFieldTests: XCTestCase {
 
     func testStandardChromeUsesSharedCompactFieldMinHeight() {
         XCTAssertEqual(
-            SearchField.minHeight(for: .standard),
-            DesignTokens.Size.compactFieldHeight
+            SearchField.minHeight(for: .standard, option: .system),
+            DesignTokens.Size.compactFieldHeight,
+            accuracy: 0.0001
+        )
+    }
+
+    func testSearchFieldMetricsScaleWithAppTextSize() {
+        XCTAssertLessThan(
+            SearchField.minHeight(for: .standard, option: .small),
+            SearchField.minHeight(for: .standard, option: .system)
+        )
+        XCTAssertGreaterThan(
+            SearchField.minHeight(for: .standard, option: .large),
+            SearchField.minHeight(for: .standard, option: .system)
+        )
+        XCTAssertLessThan(
+            SearchField.verticalPadding(for: .standard, option: .small),
+            SearchField.verticalPadding(for: .standard, option: .system)
+        )
+        XCTAssertGreaterThan(
+            SearchField.verticalPadding(for: .standard, option: .large),
+            SearchField.verticalPadding(for: .standard, option: .system)
         )
     }
 }

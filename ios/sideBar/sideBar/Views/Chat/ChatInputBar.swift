@@ -14,6 +14,7 @@ struct ChatInputBar: View {
 
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
+    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     let isEnabled: Bool
     let isSendEnabled: Bool
     let isAttachEnabled: Bool
@@ -49,18 +50,22 @@ struct ChatInputBar: View {
 
     private var minHeight: CGFloat {
         #if os(macOS)
-        return 84
+        return AppFontStyle.scaledMetric(84, for: resolvedTextSizeOption)
         #else
-        return 46
+        return AppFontStyle.scaledMetric(46, for: resolvedTextSizeOption)
         #endif
     }
 
     private var maxHeight: CGFloat {
         #if os(macOS)
-        return 240
+        return AppFontStyle.scaledMetric(240, for: resolvedTextSizeOption)
         #else
-        return 140
+        return AppFontStyle.scaledMetric(140, for: resolvedTextSizeOption)
         #endif
+    }
+
+    private var resolvedTextSizeOption: AppTextSizeOption {
+        AppTextSizeOption.resolved(from: appTextSizeRaw)
     }
 }
 

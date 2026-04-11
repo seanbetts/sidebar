@@ -55,6 +55,16 @@ enum AppFontStyle {
     static func scaledPointSize(_ baseSize: CGFloat, for option: AppTextSizeOption) -> CGFloat {
         baseSize * option.scaleMultiplier
     }
+
+    static func scaledMetric(_ baseSize: CGFloat, for option: AppTextSizeOption) -> CGFloat {
+        let systemBodyPointSize = body.pointSize(for: .system)
+        guard systemBodyPointSize > 0 else {
+            return baseSize
+        }
+
+        let metricScale = body.pointSize(for: option) / systemBodyPointSize
+        return baseSize * metricScale
+    }
 }
 
 extension View {

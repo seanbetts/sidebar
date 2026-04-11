@@ -9,13 +9,7 @@ struct ChatInputAppKitView: NSViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
-    @ScaledMetric(relativeTo: .body) private var controlBarHeight: CGFloat = 44
-    @ScaledMetric(relativeTo: .body) private var textHorizontalInset: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var textVerticalInset: CGFloat = 16
-    @ScaledMetric(relativeTo: .body) private var sideButtonInset: CGFloat = 6
-    @ScaledMetric(relativeTo: .body) private var sideButtonSize: CGFloat = HeaderActionControlMetrics.iconFrameHeight
-    @ScaledMetric(relativeTo: .body) private var sideButtonSymbolSize: CGFloat = DesignTokens.Icon.md
-    @ScaledMetric(relativeTo: .body) private var cornerRadiusAdjustment: CGFloat = 2
+    private var sideButtonSize: CGFloat = HeaderActionControlMetrics.iconFrameHeight
     let isEnabled: Bool
     let isSendEnabled: Bool
     let isAttachEnabled: Bool
@@ -23,6 +17,28 @@ struct ChatInputAppKitView: NSViewRepresentable {
     let maxHeight: CGFloat
     let onSend: () -> Void
     let onAttach: () -> Void
+
+    init(
+        text: Binding<String>,
+        measuredHeight: Binding<CGFloat>,
+        isEnabled: Bool,
+        isSendEnabled: Bool,
+        isAttachEnabled: Bool,
+        minHeight: CGFloat,
+        maxHeight: CGFloat,
+        onSend: @escaping () -> Void,
+        onAttach: @escaping () -> Void
+    ) {
+        self._text = text
+        self._measuredHeight = measuredHeight
+        self.isEnabled = isEnabled
+        self.isSendEnabled = isSendEnabled
+        self.isAttachEnabled = isAttachEnabled
+        self.minHeight = minHeight
+        self.maxHeight = maxHeight
+        self.onSend = onSend
+        self.onAttach = onAttach
+    }
 
     // swiftlint:disable:next function_body_length
     func makeNSView(context: Context) -> NSView {
@@ -296,6 +312,30 @@ struct ChatInputAppKitView: NSViewRepresentable {
 
     private var resolvedTextSizeOption: AppTextSizeOption {
         AppTextSizeOption.resolved(from: appTextSizeRaw)
+    }
+
+    private var controlBarHeight: CGFloat {
+        AppFontStyle.scaledMetric(44, for: resolvedTextSizeOption)
+    }
+
+    private var textHorizontalInset: CGFloat {
+        AppFontStyle.scaledMetric(16, for: resolvedTextSizeOption)
+    }
+
+    private var textVerticalInset: CGFloat {
+        AppFontStyle.scaledMetric(16, for: resolvedTextSizeOption)
+    }
+
+    private var sideButtonInset: CGFloat {
+        AppFontStyle.scaledMetric(6, for: resolvedTextSizeOption)
+    }
+
+    private var sideButtonSymbolSize: CGFloat {
+        AppFontStyle.scaledMetric(DesignTokens.Icon.md, for: resolvedTextSizeOption)
+    }
+
+    private var cornerRadiusAdjustment: CGFloat {
+        AppFontStyle.scaledMetric(2, for: resolvedTextSizeOption)
     }
 
     private func textFont() -> NSFont {

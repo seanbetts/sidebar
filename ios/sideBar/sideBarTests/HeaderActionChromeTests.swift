@@ -3,17 +3,44 @@ import XCTest
 
 final class HeaderActionChromeTests: XCTestCase {
     func testSharedHeaderActionControlMetricsMatchStandaloneGlassChrome() {
-        XCTAssertEqual(HeaderActionControlMetrics.symbolPointSize, DesignTokens.Icon.sm)
-        XCTAssertEqual(HeaderActionControlMetrics.iconFrameWidth, 28)
-        XCTAssertEqual(HeaderActionControlMetrics.iconFrameHeight, 20)
+        XCTAssertEqual(
+            HeaderActionControlMetrics.symbolPointSize(for: .system),
+            AppFontStyle.labelMd.pointSize(for: .system),
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(HeaderActionControlMetrics.iconFrameWidth(for: .system), 28, accuracy: 0.0001)
+        XCTAssertEqual(HeaderActionControlMetrics.iconFrameHeight(for: .system), 20, accuracy: 0.0001)
         XCTAssertEqual(HeaderActionControlMetrics.rowSpacing, DesignTokens.Spacing.xs)
         XCTAssertEqual(
-            HeaderActionControlMetrics.chromeWidth,
-            HeaderActionControlMetrics.iconFrameWidth + (HeaderActionControlMetrics.chromePadding * 2)
+            HeaderActionControlMetrics.chromeWidth(for: .system),
+            HeaderActionControlMetrics.iconFrameWidth(for: .system)
+                + (HeaderActionControlMetrics.chromePadding(for: .system) * 2),
+            accuracy: 0.0001
         )
         XCTAssertEqual(
-            HeaderActionControlMetrics.chromeHeight,
-            HeaderActionControlMetrics.iconFrameHeight + (HeaderActionControlMetrics.chromePadding * 2)
+            HeaderActionControlMetrics.chromeHeight(for: .system),
+            HeaderActionControlMetrics.iconFrameHeight(for: .system)
+                + (HeaderActionControlMetrics.chromePadding(for: .system) * 2),
+            accuracy: 0.0001
+        )
+    }
+
+    func testHeaderActionMetricsScaleWithAppTextSize() {
+        XCTAssertLessThan(
+            HeaderActionControlMetrics.iconFrameWidth(for: .small),
+            HeaderActionControlMetrics.iconFrameWidth(for: .system)
+        )
+        XCTAssertGreaterThan(
+            HeaderActionControlMetrics.iconFrameWidth(for: .large),
+            HeaderActionControlMetrics.iconFrameWidth(for: .system)
+        )
+        XCTAssertLessThan(
+            HeaderActionControlMetrics.chromeHeight(for: .small),
+            HeaderActionControlMetrics.chromeHeight(for: .system)
+        )
+        XCTAssertGreaterThan(
+            HeaderActionControlMetrics.chromeHeight(for: .large),
+            HeaderActionControlMetrics.chromeHeight(for: .system)
         )
     }
 

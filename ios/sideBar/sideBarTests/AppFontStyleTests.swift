@@ -122,4 +122,18 @@ final class AppFontStyleTests: XCTestCase {
             accuracy: 0.0001
         )
     }
+
+    func testScaledMetricHelperTracksBodyScaleAcrossOptions() {
+        let systemMetric = AppFontStyle.scaledMetric(40, for: .system)
+        let smallMetric = AppFontStyle.scaledMetric(40, for: .small)
+        let largeMetric = AppFontStyle.scaledMetric(40, for: .large)
+
+        XCTAssertLessThan(smallMetric, systemMetric)
+        XCTAssertGreaterThan(largeMetric, systemMetric)
+        XCTAssertEqual(
+            largeMetric / smallMetric,
+            AppFontStyle.body.pointSize(for: .large) / AppFontStyle.body.pointSize(for: .small),
+            accuracy: 0.0001
+        )
+    }
 }
