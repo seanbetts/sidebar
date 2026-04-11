@@ -113,7 +113,6 @@ struct PDFControlPopoverContent: View {
     private func perform(_ action: @escaping @MainActor @Sendable () -> Void) -> () -> Void {
         {
             action()
-            onDismissRequested()
         }
     }
 
@@ -215,7 +214,6 @@ struct PDFControlPopoverContent: View {
     ) -> some View {
         Button {
             configuration.onSetFitMode(mode)
-            onDismissRequested()
         } label: {
             Image(systemName: systemName)
                 .appFont(.labelMd)
