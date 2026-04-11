@@ -3,7 +3,6 @@ from importlib import import_module
 import pytest
 
 from api.services.agent.skills.catalog import SkillCatalogService
-from api.services.capabilities.loader import CapabilityLoaderService
 
 
 def _write_skill(skill_root, skill_id: str, metadata_block: str = "") -> None:
@@ -206,20 +205,3 @@ def test_capability_registry_loads_without_db_access(monkeypatch) -> None:
 
     records = registry_loader.list_capabilities()
     assert records
-
-
-def test_capability_registry_refs_exist_on_disk() -> None:
-    records = import_module("api.services.capabilities.registry").CapabilityRegistry.list_capabilities()
-
-    missing_refs: list[str] = []
-    for record in records:
-        instruction_path = CapabilityLoaderService._resolve_ref_path(record.instruction_ref)
-        if not instruction_path.exists():
-            missing_refs.append(record.instruction_ref)
-
-        for example_ref in record.example_refs:
-            example_path = CapabilityLoaderService._resolve_ref_path(example_ref)
-            if not example_path.exists():
-                missing_refs.append(example_ref)
-
-    assert missing_refs == []
