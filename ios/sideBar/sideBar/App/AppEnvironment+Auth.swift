@@ -321,7 +321,12 @@ extension AppEnvironment {
         }
 
         if authState == .active {
+            let shouldRefreshWebsiteListFromPendingWork = hasPendingWebsiteCoordinatorWork
             await consumeExtensionEvents(awaitPendingShareReplay: false)
+            if shouldRefreshWebsiteListFromPendingWork {
+                await websitesViewModel.refreshFromExtension()
+                reconcileQueuedWebsitesWithSavedItems()
+            }
             await consumeWidgetCompletions()
             await consumeWidgetQuickSave()
             if includeDeferredRefresh {
