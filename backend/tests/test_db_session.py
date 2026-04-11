@@ -111,7 +111,7 @@ def test_log_website_column_refresh_emits_structured_warning_and_clears_trace(
 def test_after_begin_invalidates_and_reraises_disconnect(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Repeated disconnects in after_begin must still bubble up after one retry."""
+    """Disconnects in after_begin must invalidate and bubble up immediately."""
     session = SimpleNamespace(info={})
     invalidated: list[BaseException] = []
     connection = SimpleNamespace(
@@ -142,14 +142,14 @@ def test_after_begin_invalidates_and_reraises_disconnect(
             connection=connection,
         )
 
-    assert apply_calls == 2
+    assert apply_calls == 1
     assert len(invalidated) == 1
 
 
-def test_after_begin_retries_disconnect_once_before_succeeding(
+def test_after_begin_does_not_retry_disconnects_in_same_transaction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A single transaction-start disconnect should be recovered transparently."""
+    """A single transaction-start disconnect must not be retried in-place."""
     session = SimpleNamespace(info={"app_user_id": "user-1"})
     invalidated: list[BaseException] = []
     connection = SimpleNamespace(
@@ -175,20 +175,21 @@ def test_after_begin_retries_disconnect_once_before_succeeding(
 
     monkeypatch.setattr(session_module, "_apply_session_settings", fake_apply)
 
-    session_module._set_app_user_id(
-        session,
-        transaction=object(),
-        connection=connection,
-    )
+    with pytest.raises(OperationalError):
+        session_module._set_app_user_id(
+            session,
+            transaction=object(),
+            connection=connection,
+        )
 
-    assert apply_calls == 2
+    assert apply_calls == 1
     assert len(invalidated) == 1
 
 
-def test_after_begin_rolls_back_before_retrying_disconnect(
+def test_after_begin_never_rolls_back_connection_directly(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Transaction-start disconnect retry must reset the invalid transaction first."""
+    """after_begin must not mutate transaction state via direct rollback calls."""
     session = SimpleNamespace(info={"website_worker_scope": "all"})
     invalidated: list[BaseException] = []
     rollbacks: list[bool] = []
@@ -212,19 +213,19 @@ def test_after_begin_rolls_back_before_retrying_disconnect(
                 {"worker_scope": "all"},
                 Exception("SSL connection has been closed unexpectedly"),
             )
-        assert rollbacks == [True]
 
     monkeypatch.setattr(session_module, "_apply_session_settings", fake_apply)
 
-    session_module._set_app_user_id(
-        session,
-        transaction=object(),
-        connection=connection,
-    )
+    with pytest.raises(OperationalError):
+        session_module._set_app_user_id(
+            session,
+            transaction=object(),
+            connection=connection,
+        )
 
-    assert apply_calls == 2
+    assert apply_calls == 1
     assert len(invalidated) == 1
-    assert rollbacks == [True]
+    assert rollbacks == []
 
 
 def test_after_begin_applies_worker_scope_from_session_info(

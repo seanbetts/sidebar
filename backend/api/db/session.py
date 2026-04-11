@@ -105,7 +105,7 @@ def _apply_session_settings_with_retry(
     force_public_search_path: bool,
     website_worker_scope: str | None = None,
 ) -> None:
-    """Apply session settings and retry once after a dropped connection."""
+    """Apply session settings and invalidate dropped connections for caller retry."""
     try:
         _apply_session_settings(
             connection,
@@ -115,15 +115,7 @@ def _apply_session_settings_with_retry(
         )
     except OperationalError as exc:
         connection.invalidate(exc)
-        rollback = getattr(connection, "rollback", None)
-        if callable(rollback):
-            rollback()
-        _apply_session_settings(
-            connection,
-            user_id,
-            force_public_search_path,
-            website_worker_scope,
-        )
+        raise
 
 
 @event.listens_for(Session, "after_begin")
