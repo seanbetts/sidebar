@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from uuid import uuid4
 
-from api.models.device_token import DeviceToken
 from api.models.task import Task
 from api.models.user_settings import UserSettings
+from api.services.device_token_service import DeviceTokenService
 from api.services.morning_digest_service import MorningDigestService
 from api.services.notification_types import PushNotificationSendResult
 from api.services.push_notification_service import PushNotificationService
@@ -125,16 +125,14 @@ def test_morning_digest_dispatches_for_due_users_via_scheduled_worker(
             },
         )
     )
-    test_db.add(
-        DeviceToken(
-            user_id="user-123",
-            token="token-123",
-            platform="ios",
-            environment="dev",
-            capabilities={},
-            is_foreground=False,
-            last_seen_at=None,
-        )
+    DeviceTokenService.register_token(
+        test_db,
+        "user-123",
+        installation_id="install-123",
+        token="token-123",
+        platform="ios",
+        environment="dev",
+        capabilities={},
     )
     test_db.add(
         _task(
