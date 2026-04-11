@@ -1032,6 +1032,135 @@ def test_stream_chat_keeps_blocked_skills_visible_but_only_executes_executable_s
     assert captured["allowed_skills"] == ["notes"]
 
 
+def test_stream_chat_downgrades_unsupported_openai_web_search_with_provider_specific_remediation(
+    test_client, monkeypatch
+):
+    captured: dict[str, object] = {}
+
+    class FakeResolverService:
+        @staticmethod
+        def resolve_for_turn(**kwargs):
+            captured["resolver_enabled_skill_ids"] = kwargs.get("enabled_skill_ids")
+            return {
+                "selected_skill_ids": ["web-search", "notes"],
+                "executable_skill_ids": ["web-search", "notes"],
+                "blocked_skill_summaries": [],
+            }
+
+    class FakeGateway:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def get_chat_tool_definitions(self, allowed_skills=None):
+            captured["tool_definition_allowed_skills"] = allowed_skills
+            return []
+
+        def resolve_chat(self, **_kwargs):
+            return ChatResolution(
+                provider="openai",
+                model="gpt-4o-mini",
+                api_key="test-key",
+            )
+
+        async def stream_chat_with_tools(self, **kwargs):
+            captured["allowed_skills"] = kwargs.get("allowed_skills")
+            yield {"type": "token", "content": "Hello"}
+
+    def _build_assembled_inputs(**kwargs):
+        captured["blocked_skill_summaries"] = kwargs.get("blocked_skill_summaries")
+        return AssembledChatInputs(
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Search the web and save a note",
+            prompt_bundle={},
+        )
+
+    def _build_prepared_request(**kwargs):
+        captured["prepared_executable_skill_ids"] = kwargs.get("executable_skill_ids")
+        captured["prepared_provider"] = kwargs.get("provider")
+        captured["prepared_model"] = kwargs.get("model")
+        return PreparedChatRequest(
+            provider="openai",
+            model="gpt-4o-mini",
+            system_prompt="system",
+            bootstrap_history=[],
+            conversation_history=[],
+            current_user_message="Search the web and save a note",
+            tool_definitions=[],
+            budget_report=RequestBudgetReport(
+                provider="openai",
+                model="gpt-4o-mini",
+                context_window_chars=40000,
+                reserved_output_chars=4000,
+                available_input_chars=35000,
+                provider_framing_chars=100,
+                system_prompt_chars=6,
+                bootstrap_history_chars=0,
+                conversation_history_chars=0,
+                current_message_chars=30,
+                tool_schema_chars=0,
+                total_input_chars=36,
+                overflow_chars=0,
+                within_budget=True,
+                failure_reason=None,
+                trimming_applied=False,
+                compaction_applied=False,
+            ),
+        )
+
+    monkeypatch.setattr(chat_router, "AIProviderGateway", FakeGateway)
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings("openai")),
+    )
+    monkeypatch.setattr(
+        chat_router.SettingsService,
+        "resolve_enabled_skills",
+        staticmethod(lambda *_args, **_kwargs: ["web-search", "notes"]),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_assembled_inputs",
+        staticmethod(_build_assembled_inputs),
+    )
+    monkeypatch.setattr(
+        chat_router.RequestAssemblyService,
+        "build_prepared_request",
+        staticmethod(_build_prepared_request),
+    )
+    monkeypatch.setattr(
+        chat_router,
+        "CapabilityResolverService",
+        FakeResolverService,
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Search the web and save a note"},
+    )
+    assert response.status_code == 200
+    assert captured["prepared_executable_skill_ids"] == ["notes"]
+    assert captured["allowed_skills"] == ["notes"]
+    assert captured["blocked_skill_summaries"] == [
+        {
+            "skill_id": "web-search",
+            "availability_status": "provider_model_unsupported",
+            "availability_reason": (
+                "Web Search is unavailable for OpenAI model 'gpt-4o-mini'. "
+                "sideBar will continue without web search. Switch to a GPT-5 "
+                "or GPT-4.1 model to enable it."
+            ),
+            "availability_remediation": {
+                "action": "switch_model",
+                "provider": "openai",
+            },
+        }
+    ]
+
+
 def test_stream_chat_passes_prepared_tool_definitions_to_gateway_execution(
     test_client, monkeypatch
 ):

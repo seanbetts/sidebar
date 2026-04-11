@@ -70,90 +70,16 @@ class ProviderToolOrchestrator:
     ) -> AsyncIterator[dict[str, Any]]:
         """Run OpenAI chat with multi-turn function calling."""
         tools = self._resolved_tool_definitions()
-        if self._web_search_enabled():
-            async for event in self._run_openai_with_web_search(
-                client=client,
-                model=model,
-                message=message,
-                conversation_history=conversation_history,
-                system_prompt=system_prompt,
-                tools=tools,
-            ):
-                yield event
-            return
-
-        openai_tools = [
-            {
-                "type": "function",
-                "function": {
-                    "name": tool["name"],
-                    "description": tool["description"],
-                    "parameters": tool["input_schema"],
-                },
-            }
-            for tool in tools
-        ]
-        messages = self._build_openai_messages(
+        async for event in self._run_openai_with_responses_api(
+            client=client,
+            model=model,
             message=message,
             conversation_history=conversation_history,
             system_prompt=system_prompt,
-        )
-
-        for _ in range(ChatConstants.MAX_TOOL_ROUNDS):
-            response = await client.chat.completions.create(
-                model=model,
-                messages=messages,
-                tools=openai_tools,
-                tool_choice="auto",
-            )
-            choices = getattr(response, "choices", None) or []
-            if not choices:
-                return
-
-            assistant_message = getattr(choices[0], "message", None)
-            if assistant_message is None:
-                return
-            content_text = self._extract_openai_message_text(assistant_message)
-            if content_text:
-                yield {"type": "token", "content": content_text}
-
-            tool_calls = self._parse_openai_tool_calls(assistant_message)
-            if not tool_calls:
-                return
-
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": content_text or "",
-                    "tool_calls": [
-                        {
-                            "id": call.call_id,
-                            "type": "function",
-                            "function": {
-                                "name": call.name,
-                                "arguments": json.dumps(call.arguments),
-                            },
-                        }
-                        for call in tool_calls
-                    ],
-                }
-            )
-
-            async for event in self._execute_tool_calls(tool_calls):
-                if isinstance(event, dict) and event.get("_openai_tool_message"):
-                    messages.append(event["payload"])
-                    continue
-                if isinstance(event, dict) and event.get("_openai_responses_input"):
-                    continue
-                if isinstance(event, dict) and event.get("_google_tool_part"):
-                    continue
-                yield event
-            continue
-
-        yield {
-            "type": "error",
-            "error": "Maximum tool rounds reached before completion",
-        }
+            tools=tools,
+            web_search_enabled=self._web_search_enabled(),
+        ):
+            yield event
 
     async def run_google(
         self,
@@ -281,7 +207,7 @@ class ProviderToolOrchestrator:
             "error": "Maximum tool rounds reached before completion",
         }
 
-    async def _run_openai_with_web_search(
+    async def _run_openai_with_responses_api(
         self,
         *,
         client: Any,
@@ -290,8 +216,9 @@ class ProviderToolOrchestrator:
         conversation_history: list[dict[str, Any]] | None,
         system_prompt: str | None,
         tools: list[dict[str, Any]],
+        web_search_enabled: bool,
     ) -> AsyncIterator[dict[str, Any]]:
-        """Run OpenAI chat via Responses API when built-in web search is enabled."""
+        """Run OpenAI chat via the Responses API."""
         response_input: Any = self._build_openai_messages(
             message=message,
             conversation_history=conversation_history,
@@ -299,14 +226,16 @@ class ProviderToolOrchestrator:
         )
         response_id: str | None = None
 
-        openai_tools: list[dict[str, Any]] = [
-            build_openai_web_search_tool(
-                current_location_levels=(self._tool_context or {}).get(
-                    "current_location_levels"
-                ),
-                timezone=(self._tool_context or {}).get("current_timezone"),
+        openai_tools: list[dict[str, Any]] = []
+        if web_search_enabled:
+            openai_tools.append(
+                build_openai_web_search_tool(
+                    current_location_levels=(self._tool_context or {}).get(
+                        "current_location_levels"
+                    ),
+                    timezone=(self._tool_context or {}).get("current_timezone"),
+                )
             )
-        ]
         openai_tools.extend(
             {
                 "type": "function",
@@ -320,11 +249,13 @@ class ProviderToolOrchestrator:
         for _ in range(ChatConstants.MAX_TOOL_ROUNDS):
             request_kwargs: dict[str, Any] = {
                 "model": model,
-                "tools": openai_tools,
                 "tool_choice": "auto",
-                "include": ["web_search_call.action.sources"],
                 "input": response_input,
             }
+            if openai_tools:
+                request_kwargs["tools"] = openai_tools
+            if web_search_enabled:
+                request_kwargs["include"] = ["web_search_call.action.sources"]
             if isinstance(system_prompt, str) and system_prompt.strip():
                 request_kwargs["instructions"] = system_prompt.strip()
             if response_id:

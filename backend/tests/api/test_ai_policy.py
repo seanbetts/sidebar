@@ -6,7 +6,13 @@ from google.genai import types
 
 from api.config import settings
 from api.services.ai.gateway import AIProviderGateway
-from api.services.ai.registry import AIProvider, get_default_model
+from api.services.ai.registry import (
+    AIProvider,
+    build_web_search_fallback_summary,
+    get_default_model,
+    supports_google_web_search,
+    supports_openai_web_search,
+)
 from api.services.ai.tool_orchestrator import ProviderToolOrchestrator
 from api.services.ai.policy import (
     AICapabilityUnavailableError,
@@ -141,28 +147,31 @@ def test_google_function_declarations_normalize_input_schema() -> None:
 
 
 @pytest.mark.asyncio
-async def test_gateway_stream_chat_openai_emits_tokens_and_uses_model(monkeypatch) -> None:
+async def test_gateway_stream_chat_openai_emits_tokens_and_uses_responses_api(
+    monkeypatch,
+) -> None:
     captured: dict[str, Any] = {}
-    call_kwargs: list[dict[str, Any]] = []
+    response_calls: list[dict[str, Any]] = []
 
-    class FakeCompletions:
+    class FakeResponses:
         async def create(self, **kwargs):
-            call_kwargs.append(kwargs)
-            return SimpleNamespace(
-                choices=[
-                    SimpleNamespace(
-                        message=SimpleNamespace(content="Hello world", tool_calls=[])
-                    )
-                ]
+            response_calls.append(kwargs)
+            return SimpleNamespace(output_text="Hello world", output=[])
+
+    class ForbiddenCompletions:
+        async def create(self, **_kwargs):
+            raise AssertionError(
+                "Chat Completions should not be used for the main OpenAI chat path"
             )
 
     class FakeChat:
         def __init__(self):
-            self.completions = FakeCompletions()
+            self.completions = ForbiddenCompletions()
 
     class FakeOpenAIClient:
         def __init__(self):
             self.chat = FakeChat()
+            self.responses = FakeResponses()
 
     gateway = AIProviderGateway(
         settings,
@@ -190,8 +199,13 @@ async def test_gateway_stream_chat_openai_emits_tokens_and_uses_model(monkeypatc
         )
     ]
     assert [event["content"] for event in events] == ["Hello world"]
-    assert call_kwargs[0]["model"] == "gpt-5.3-chat-latest"
-    captured["kwargs"] = call_kwargs[0]
+    assert response_calls[0]["model"] == "gpt-5.3-chat-latest"
+    assert response_calls[0]["instructions"] == "Be concise"
+    assert response_calls[0]["input"] == [
+        {"role": "assistant", "content": "Hi"},
+        {"role": "user", "content": "How are you?"},
+    ]
+    captured["kwargs"] = response_calls[0]
 
 
 @pytest.mark.asyncio
@@ -247,50 +261,43 @@ async def test_gateway_generate_text_openai_uses_chat_model_and_system_prompt() 
 
 
 @pytest.mark.asyncio
-async def test_gateway_stream_chat_openai_executes_tools(monkeypatch) -> None:
-    class FakeCompletions:
+async def test_gateway_stream_chat_openai_executes_tools_via_responses_api(
+    monkeypatch,
+) -> None:
+    class FakeResponses:
         def __init__(self):
             self._responses = [
                 SimpleNamespace(
-                    choices=[
+                    output_text="",
+                    output=[
                         SimpleNamespace(
-                            message=SimpleNamespace(
-                                content="",
-                                tool_calls=[
-                                    SimpleNamespace(
-                                        id="call-1",
-                                        function=SimpleNamespace(
-                                            name="create_note",
-                                            arguments='{"title":"Test note"}',
-                                        ),
-                                    )
-                                ],
-                            )
+                            type="function_call",
+                            call_id="call-1",
+                            name="create_note",
+                            arguments='{"title":"Test note"}',
                         )
                     ]
                 ),
-                SimpleNamespace(
-                    choices=[
-                        SimpleNamespace(
-                            message=SimpleNamespace(
-                                content="Done",
-                                tool_calls=[],
-                            )
-                        )
-                    ]
-                ),
+                SimpleNamespace(output_text="Done", output=[]),
             ]
 
         async def create(self, **_kwargs):
             return self._responses.pop(0)
 
+    class ForbiddenCompletions:
+        async def create(self, **_kwargs):
+            raise AssertionError(
+                "Chat Completions should not be used for the main OpenAI chat path"
+            )
+
     class FakeChat:
         def __init__(self):
-            self.completions = FakeCompletions()
+            self.completions = ForbiddenCompletions()
 
     class FakeOpenAIClient:
         def __init__(self):
             self.chat = FakeChat()
+            self.responses = FakeResponses()
 
     class FakeToolMapper:
         def get_claude_tools(self, _allowed):
@@ -353,6 +360,53 @@ async def test_gateway_stream_chat_openai_executes_tools(monkeypatch) -> None:
     assert tool_call["icon_key"] == "notes"
     assert tool_result["skill_id"] == "notes"
     assert tool_result["icon_key"] == "notes"
+
+
+def test_openai_web_search_support_matches_supported_model_families() -> None:
+    assert supports_openai_web_search("gpt-5.3-chat-latest") is True
+    assert supports_openai_web_search("gpt-4.1-mini") is True
+    assert supports_openai_web_search("gpt-4o-mini") is False
+
+
+def test_google_web_search_support_requires_gemini_3_for_tool_combination() -> None:
+    assert supports_google_web_search("gemini-3.1-pro-preview") is True
+    assert (
+        supports_google_web_search(
+            "gemini-3.1-pro-preview",
+            requires_tool_combination=True,
+        )
+        is True
+    )
+    assert supports_google_web_search("gemini-2.5-pro") is True
+    assert (
+        supports_google_web_search(
+            "gemini-2.5-pro",
+            requires_tool_combination=True,
+        )
+        is False
+    )
+
+
+def test_google_web_search_fallback_summary_is_provider_specific() -> None:
+    summary = build_web_search_fallback_summary(
+        "google",
+        "gemini-2.5-pro",
+        requires_tool_combination=True,
+    )
+
+    assert summary == {
+        "skill_id": "web-search",
+        "availability_status": "provider_model_unsupported",
+        "availability_reason": (
+            "Web Search with other tools is unavailable for Google model "
+            "'gemini-2.5-pro'. sideBar will continue without web search. "
+            "Switch to a Gemini 3 model to enable combined search and tool use."
+        ),
+        "availability_remediation": {
+            "action": "switch_model",
+            "provider": "google",
+        },
+    }
 
 
 @pytest.mark.asyncio

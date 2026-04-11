@@ -41,7 +41,10 @@ improve the response.
 
 If you are using sideBar's default hosted path, there is no extra setup.
 If you choose your own provider in Settings, Web Search uses that provider's
-web search capability when the selected model supports it.
+web search capability when the selected model supports it. OpenAI web search
+requires a GPT-5 or GPT-4.1 chat model. Google web search works on supported
+Gemini models, but mixed turns that combine Google Search with other sideBar
+tools require a Gemini 3 model.
 
 ## How to enable
 
@@ -49,7 +52,8 @@ Web Search is enabled by default. If you have turned it off and want to
 re-enable it, go to **Settings → Skills** and toggle Web Search on.
 
 If Web Search is enabled but your selected provider model does not support it,
-sideBar falls back to its normal non-search response path.
+sideBar falls back to its normal non-search response path and explains the
+fallback in the assistant response.
 
 ## Examples
 
