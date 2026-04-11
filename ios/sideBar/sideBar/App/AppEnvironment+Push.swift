@@ -36,7 +36,9 @@ extension AppEnvironment {
             }
         },
         requestAuthorization: @escaping (@escaping (Bool) -> Void) -> Void = { completion in
-            UNUserNotificationCenter.current().requestAuthorization(options: [.badge]) { granted, _ in
+            UNUserNotificationCenter.current().requestAuthorization(
+                options: NotificationAuthorizationPolicy.visibleRemoteNotificationRequestOptions
+            ) { granted, _ in
                 completion(granted)
             }
         },

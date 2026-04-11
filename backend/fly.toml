@@ -10,6 +10,7 @@ primary_region = "lhr"
 
 [env]
   PORT = "8001"
+  APNS_ENV = "prod"
   WORKSPACE_BASE = "/tmp/skills"
   SKILLS_DIR = "/app/skills"
   SUPABASE_PROJECT_ID = "your-supabase-project-ref"

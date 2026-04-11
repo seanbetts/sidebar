@@ -99,7 +99,8 @@ public final class NotificationPermissionRequester: NotificationPermissionReques
 
     public init(
         center: UNUserNotificationCenter = .current(),
-        requestOptions: UNAuthorizationOptions = [.badge],
+        requestOptions: UNAuthorizationOptions = NotificationAuthorizationPolicy
+            .visibleRemoteNotificationRequestOptions,
         registerForRemoteNotifications: @escaping @MainActor @Sendable () -> Void = {
 #if os(iOS)
 #if targetEnvironment(simulator)
