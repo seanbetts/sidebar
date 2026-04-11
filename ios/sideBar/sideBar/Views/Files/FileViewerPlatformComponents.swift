@@ -195,6 +195,7 @@ struct PDFViewer: UIViewRepresentable {
 
     func makeUIView(context: Context) -> PDFView {
         let view = PDFView()
+        view.clipsToBounds = true
         view.backgroundColor = UIColor.systemBackground
         context.coordinator.loadDocument(into: view, url: url)
         controller.attach(pdfView: view)
