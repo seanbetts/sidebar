@@ -278,6 +278,9 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
         defer { cancellable.cancel() }
 
         context.editorViewModel.attachNativeEditor(context.editorViewModel.makeNativeEditorViewModel())
+        await waitUntil(timeout: .seconds(1)) {
+            changeCount > 0
+        }
 
         XCTAssertGreaterThan(changeCount, 0)
     }

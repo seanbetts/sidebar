@@ -133,7 +133,11 @@ final class UIKitNoteTextEditorSurfaceTests: NotesDetailViewHostingTestCase {
         )
 
         XCTAssertEqual(fittedSize.width, 390, accuracy: 0.5)
-        XCTAssertEqual(fittedSize.height, 56, accuracy: 0.5)
+        XCTAssertEqual(
+            fittedSize.height,
+            NoteFormattingBarChrome.entryControlHeight + 8,
+            accuracy: 0.5
+        )
     }
     func testFloatingTopTrailingPresentationOmitsUIKitFormattingBarAccessory() throws {
         let viewModel = NativeNoteEditorViewModel()

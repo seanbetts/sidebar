@@ -66,7 +66,16 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(bar.menuButton.accessibilityIdentifier, "note-formatting-menu")
         XCTAssertFalse(bar.menuButton.showsMenuAsPrimaryAction)
         XCTAssertNil(bar.menuButton.menu)
-        XCTAssertEqual(bar.menuButton.configuration?.image, UIImage(systemName: "textformat"))
+        XCTAssertEqual(
+            bar.menuButton.configuration?.image,
+            UIImage(
+                systemName: "textformat",
+                withConfiguration: UIImage.SymbolConfiguration(
+                    pointSize: NoteFormattingBarChrome.entrySymbolPointSize,
+                    weight: .semibold
+                )
+            )
+        )
     }
 
     func testNoteTextStyleUsesShortSubheadLabel() {
@@ -215,7 +224,7 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertNotEqual(size.width, UIView.noIntrinsicMetric)
         XCTAssertGreaterThan(size.width, 0)
         XCTAssertLessThan(size.width, 120)
-        XCTAssertEqual(size.height, 48)
+        XCTAssertEqual(size.height, NoteFormattingBarChrome.entryControlHeight)
     }
 
     func testBarIntrinsicWidthMatchesCompressedLayoutWidth() throws {
@@ -240,9 +249,16 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         bar.setNeedsLayout()
         bar.layoutIfNeeded()
 
-        XCTAssertGreaterThanOrEqual(bar.menuButton.frame.width, 44)
-        XCTAssertEqual(bar.menuButton.frame.height, CGFloat(44), accuracy: CGFloat(0.5))
-        XCTAssertGreaterThan(bar.bounds.height, bar.menuButton.bounds.height)
+        XCTAssertGreaterThanOrEqual(
+            bar.menuButton.frame.width,
+            NoteFormattingBarChrome.entryControlWidth
+        )
+        XCTAssertEqual(
+            bar.menuButton.frame.height,
+            NoteFormattingBarChrome.entryControlHeight,
+            accuracy: CGFloat(0.5)
+        )
+        XCTAssertEqual(bar.bounds.height, bar.menuButton.bounds.height, accuracy: CGFloat(0.5))
         XCTAssertLessThanOrEqual(bar.menuButton.frame.maxY, bar.bounds.maxY + CGFloat(0.5))
     }
 
@@ -254,10 +270,10 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         let bar = UIKitNoteFormattingBar(configuration: .disabled)
         let configuration = try XCTUnwrap(bar.menuButton.configuration)
 
-        XCTAssertEqual(configuration.contentInsets.top, 4)
-        XCTAssertEqual(configuration.contentInsets.bottom, 4)
-        XCTAssertEqual(configuration.contentInsets.leading, 6)
-        XCTAssertEqual(configuration.contentInsets.trailing, 6)
+        XCTAssertEqual(configuration.contentInsets.top, 0)
+        XCTAssertEqual(configuration.contentInsets.bottom, 0)
+        XCTAssertEqual(configuration.contentInsets.leading, 0)
+        XCTAssertEqual(configuration.contentInsets.trailing, 0)
     }
 
     func testFormattingMenuButtonDoesNotDrawNestedBackgroundInsideContainer() throws {
@@ -307,6 +323,9 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
                 onInlineCodeTap: {}
             )
         )
+        bar.frame = CGRect(origin: .zero, size: bar.intrinsicContentSize)
+        bar.setNeedsLayout()
+        bar.layoutIfNeeded()
         let effectView: UIVisualEffectView = try XCTUnwrap(findDescendant(in: bar, accessibilityIdentifier: nil))
         let buttonConfiguration = try XCTUnwrap(bar.menuButton.configuration)
 
@@ -319,8 +338,8 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(effectView.layer.borderWidth, 1, accuracy: CGFloat(0.01))
         XCTAssertEqual(
             UIColor(cgColor: try XCTUnwrap(effectView.layer.borderColor))
-                .resolvedColor(with: UITraitCollection(userInterfaceStyle: .light)),
-            UIKitNoteFormattingBar.glassBorderColor(for: UITraitCollection(userInterfaceStyle: .light))
+                .resolvedColor(with: bar.traitCollection),
+            UIKitNoteFormattingBar.glassBorderColor(for: bar.traitCollection)
         )
         XCTAssertTrue(bar.menuButton.isEnabled)
         XCTAssertNil(buttonConfiguration.background.visualEffect)

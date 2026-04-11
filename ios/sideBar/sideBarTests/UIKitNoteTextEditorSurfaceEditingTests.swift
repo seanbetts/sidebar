@@ -24,9 +24,10 @@ final class UIKitNoteTextEditorSurfaceEditingTests: NotesDetailViewHostingTestCa
             plainText: "A👍🏽B"
         )
         let coordinator = UIKitNoteTextEditorSurface.Coordinator(viewModel: viewModel)
-        let textView = UITextView()
+        let textView = FocusReportingTextView()
         textView.attributedText = NSAttributedString(string: "A👍🏽B")
         textView.delegate = coordinator
+        textView.isFocusedForTesting = true
         textView.selectedRange = NSRange(location: 5, length: 0)
         textView.delegate?.textViewDidChangeSelection?(textView)
         assertUIKitInsertionPointUTF16Offset(

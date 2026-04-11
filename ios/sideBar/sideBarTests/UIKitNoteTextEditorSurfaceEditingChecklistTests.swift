@@ -48,7 +48,8 @@ extension UIKitNoteTextEditorSurfaceEditingTests {
             plainText: NotesSemanticDocumentProjection.plainText(from: document)
         )
 
-        let textView = try mountTextView(viewModel: viewModel)
+        let textView = try mountTextView(viewModel: viewModel, makeKeyAndVisible: true)
+        XCTAssertTrue(textView.becomeFirstResponder())
         simulateUIKitSelectionChange(on: textView, to: NSRange(location: 2, length: 0))
 
         assertUIKitInsertionPointUTF16Offset(
