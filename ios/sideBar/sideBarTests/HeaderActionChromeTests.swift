@@ -99,6 +99,15 @@ final class HeaderActionChromeTests: XCTestCase {
         )
     }
 
+    func testMacOSFilesMenuUsesSharedSidebarMenuItems() throws {
+        let normalized = try headerActionSource(named: "FilesHeaderActions.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains("sidebarMenuItemsView(fileHeaderMenuItems)")
+        )
+    }
+
     func testMacOSNotesMenuAppliesChromeToMenuControl() throws {
         let normalized = try headerActionSource(named: "NotesDetailView+MenuActions.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

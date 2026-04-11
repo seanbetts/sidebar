@@ -85,59 +85,39 @@ struct FilesHeaderActions: View {
             accessibilityLabel: "File options",
             chromeStyle: Self.actionControlChromeStyle
         ) {
-            Button {
-                Task { await togglePin() }
-            } label: {
-                Label(pinActionTitle, systemImage: pinIconName)
-            }
-            Button {
-                beginRename()
-            } label: {
-                Label("Rename", systemImage: "pencil")
-            }
-            Button {
-                copyFileContent()
-            } label: {
-                Label("Copy Text", systemImage: "doc.on.doc")
-            }
-            Button {
-                Task { await downloadFile() }
-            } label: {
-                Label("Download", systemImage: "square.and.arrow.down")
-            }
-            Button(role: .destructive) {
-                isDeleteAlertPresented = true
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
+            sidebarMenuItemsView(fileHeaderMenuItems)
         }
         .disabled(viewModel.selectedFileId == nil)
         #else
         HeaderActionMenuButton(
             systemImage: "ellipsis",
             accessibilityLabel: "File options",
-            items: [
-                .pin(isPinned: isPinned) {
-                    Task { await togglePin() }
-                },
-                .rename {
-                    beginRename()
-                },
-                .copyText {
-                    copyFileContent()
-                },
-                .download {
-                    Task { await downloadFile() }
-                },
-                .delete {
-                    isDeleteAlertPresented = true
-                }
-            ],
+            items: fileHeaderMenuItems,
             isCompact: isCompact,
             chromeStyle: compactPhoneToolbarChromeStyle
         )
         .disabled(viewModel.selectedFileId == nil)
         #endif
+    }
+
+    private var fileHeaderMenuItems: [SidebarMenuItem] {
+        [
+            .pin(isPinned: isPinned) {
+                Task { await togglePin() }
+            },
+            .rename {
+                beginRename()
+            },
+            .copyText {
+                copyFileContent()
+            },
+            .download {
+                Task { await downloadFile() }
+            },
+            .delete {
+                isDeleteAlertPresented = true
+            }
+        ]
     }
 
     private var shouldShowExpandButton: Bool {

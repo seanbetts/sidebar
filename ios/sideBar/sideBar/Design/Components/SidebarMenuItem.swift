@@ -63,6 +63,14 @@ extension SidebarMenuItem {
         SidebarMenuItem(title: "Copy Markdown", systemImage: "doc.on.doc", role: nil, handler: handler)
     }
 
+    static func copyTitle(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil, handler: handler)
+    }
+
+    static func copyURL(handler: @escaping () -> Void) -> SidebarMenuItem {
+        SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil, handler: handler)
+    }
+
     static func download(handler: @escaping () -> Void) -> SidebarMenuItem {
         SidebarMenuItem(title: "Download", systemImage: "square.and.arrow.down", role: nil, handler: handler)
     }
