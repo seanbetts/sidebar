@@ -4,10 +4,18 @@ import sideBarShared
 
 @MainActor
 final class OnboardingViewModelProfileSyncTests: XCTestCase {
+    private var isolatedDefaults: [TestIsolation.IsolatedUserDefaults] = []
+
+    override func tearDown() {
+        isolatedDefaults.forEach { $0.tearDown() }
+        isolatedDefaults.removeAll()
+        super.tearDown()
+    }
+
     private func makeUserDefaults() -> UserDefaults {
-        let defaults = UserDefaults(suiteName: #filePath)!
-        defaults.removePersistentDomain(forName: #filePath)
-        return defaults
+        let isolated = TestIsolation.makeUserDefaults(prefix: "OnboardingViewModelProfileSyncTests")
+        isolatedDefaults.append(isolated)
+        return isolated.defaults
     }
 
     func testSaveProfilePublishesUpdatedSettingsResponse() async {
