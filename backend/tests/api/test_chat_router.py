@@ -1,3 +1,4 @@
+import inspect
 import json
 import logging
 from datetime import UTC, datetime
@@ -79,6 +80,12 @@ def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
     assert "event: token" in body
     assert json.dumps({"type": "token", "content": "Hello"}) in body
     assert "event: complete" in body
+
+
+def test_stream_chat_route_has_no_db_dependency():
+    parameters = inspect.signature(chat_router.stream_chat).parameters
+
+    assert "db" not in parameters
 
 
 def test_stream_chat_does_not_hold_request_scoped_db_for_stream_lifetime(

@@ -373,6 +373,8 @@ async def stream_chat(
     app_version = request.headers.get("x-app-version")
     now = datetime.now(UTC)
     conversation_messages = None
+    # Keep all request-time DB work inside a short-lived session before returning
+    # StreamingResponse. FastAPI keeps yield dependencies alive for the full stream.
     with user_scoped_session(user_id) as db:
         if conversation_id:
             conversation_uuid = parse_uuid(conversation_id, "conversation", "id")
