@@ -194,7 +194,22 @@ def get_db(
         set_session_user_id(db, user_id)
         yield db
     finally:
-        db.close()
+        try:
+            db.close()
+        except OperationalError:
+            logger.warning(
+                "Database session close failed; invalidating connection",
+                exc_info=True,
+            )
+            invalidate = getattr(db, "invalidate", None)
+            if callable(invalidate):
+                try:
+                    invalidate()
+                except Exception:  # pragma: no cover - defensive cleanup path
+                    logger.warning(
+                        "Database session invalidate failed after close error",
+                        exc_info=True,
+                    )
 
 
 def set_session_user_id(db: Session, user_id: str | None) -> None:
