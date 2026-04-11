@@ -100,4 +100,72 @@ final class SidebarMenuItemTests: XCTestCase {
         item.handler()
         XCTAssertTrue(didInvoke)
     }
+
+    func testWebsiteMenuSourcesUseSharedCopyTitleAndCopyURLFactories() throws {
+        let detailNormalized = try websitesSource(named: "WebsitesDetailView+MenuActions.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let listNormalized = try websitesSource(named: "WebsitesView.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let panelNormalized = try sidebarPanelSource(named: "WebsitesPanel+ContextMenu.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(detailNormalized.contains(".copyTitle{copyWebsiteTitle()}"))
+        XCTAssertTrue(detailNormalized.contains(".copyURL{copyWebsiteURL()}"))
+        XCTAssertFalse(detailNormalized.contains("SidebarMenuItem(title:\"CopyTitle\""))
+        XCTAssertFalse(detailNormalized.contains("SidebarMenuItem(title:\"CopyURL\""))
+
+        XCTAssertTrue(listNormalized.contains(".copyTitle{copyWebsiteTitle()}"))
+        XCTAssertTrue(listNormalized.contains(".copyURL{copyWebsiteURL()}"))
+        XCTAssertFalse(listNormalized.contains("SidebarMenuItem(title:\"CopyTitle\""))
+        XCTAssertFalse(listNormalized.contains("SidebarMenuItem(title:\"CopyURL\""))
+
+        XCTAssertTrue(panelNormalized.contains(".copyTitle{copyWebsiteTitle(for:item)}"))
+        XCTAssertTrue(panelNormalized.contains(".copyURL{copyWebsiteURL(for:item)}"))
+        XCTAssertFalse(panelNormalized.contains("SidebarMenuItem(title:\"CopyTitle\""))
+        XCTAssertFalse(panelNormalized.contains("SidebarMenuItem(title:\"CopyURL\""))
+    }
+}
+
+private func websitesSource(
+    named fileName: String,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sourceURL = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("Websites")
+        .appendingPathComponent(fileName)
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read \(fileName): \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func sidebarPanelSource(
+    named fileName: String,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sourceURL = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("SidebarPanels")
+        .appendingPathComponent(fileName)
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read \(fileName): \(error)", file: file, line: line)
+        throw error
+    }
 }

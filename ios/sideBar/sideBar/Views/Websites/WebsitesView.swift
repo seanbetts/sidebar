@@ -137,10 +137,10 @@ public struct WebsitesView: View {
                 .copyMarkdown {
                     copyWebsiteContent()
                 },
-                SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
+                .copyTitle {
                     copyWebsiteTitle()
                 },
-                SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
+                .copyURL {
                     copyWebsiteURL()
                 },
                 .share {

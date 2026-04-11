@@ -24,10 +24,10 @@ extension WebsitesPanelView {
             .copyMarkdown {
                 Task { await copyWebsiteContent(for: item) }
             },
-            SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
+            .copyTitle {
                 copyWebsiteTitle(for: item)
             },
-            SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
+            .copyURL {
                 copyWebsiteURL(for: item)
             },
             .share {

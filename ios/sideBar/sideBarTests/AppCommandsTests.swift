@@ -153,6 +153,24 @@ final class AppCommandsTests: XCTestCase {
             )
         )
     }
+
+    func testMacCommandsExposeViewMenuForSidebarAndScratchpad() throws {
+        let normalized = try normalizedAppCommandsSource()
+
+        XCTAssertTrue(normalized.contains("CommandMenu(\"View\")"))
+        XCTAssertTrue(
+            normalized.contains(
+                "Button(\"ToggleSidebar\"){environment.emitShortcutAction(.toggleSidebar)}"
+                    + ".keyboardShortcut(\"s\",modifiers:[.command,.shift])"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "Button(\"Scratchpad\"){environment.emitShortcutAction(.openScratchpad)}"
+                    + ".keyboardShortcut(\"o\",modifiers:[.command,.shift])"
+            )
+        )
+    }
 }
 
 private func normalizedAppCommandsSource(

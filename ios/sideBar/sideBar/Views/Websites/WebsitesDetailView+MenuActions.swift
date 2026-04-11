@@ -8,57 +8,7 @@ extension WebsitesDetailView {
             accessibilityLabel: "Website options",
             chromeStyle: Self.actionControlChromeStyle
         ) {
-            Button {
-                togglePinnedForActiveWebsite()
-            } label: {
-                Label(pinActionTitle, systemImage: pinIconName)
-            }
-            Button {
-                renameValue = viewModel.active?.title ?? ""
-                isRenameDialogPresented = true
-            } label: {
-                Label("Rename", systemImage: "pencil")
-            }
-            Button {
-                copyWebsiteContent()
-            } label: {
-                Label("Copy Markdown", systemImage: "doc.on.doc")
-            }
-            Button {
-                copyWebsiteTitle()
-            } label: {
-                Label("Copy Title", systemImage: "textformat")
-            }
-            Button {
-                copyWebsiteURL()
-            } label: {
-                Label("Copy URL", systemImage: "link")
-            }
-            Button {
-                shareWebsiteURL()
-            } label: {
-                Label("Share URL", systemImage: "square.and.arrow.up.on.square")
-            }
-            Button {
-                shareWebsiteText()
-            } label: {
-                Label("Share Text", systemImage: "square.and.arrow.up.on.square")
-            }
-            Button {
-                exportWebsite()
-            } label: {
-                Label("Download", systemImage: "square.and.arrow.down")
-            }
-            Button {
-                archiveActiveWebsite()
-            } label: {
-                Label(archiveMenuTitle, systemImage: archiveIconName)
-            }
-            Button(role: .destructive) {
-                isDeleteAlertPresented = true
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
+            sidebarMenuItemsView(websiteHeaderMenuItems)
         }
         .disabled(viewModel.active == nil)
         #else
@@ -98,10 +48,10 @@ extension WebsitesDetailView {
             .copyMarkdown {
                 copyWebsiteContent()
             },
-            SidebarMenuItem(title: "Copy Title", systemImage: "textformat", role: nil) {
+            .copyTitle {
                 copyWebsiteTitle()
             },
-            SidebarMenuItem(title: "Copy URL", systemImage: "link", role: nil) {
+            .copyURL {
                 copyWebsiteURL()
             },
             .share {
