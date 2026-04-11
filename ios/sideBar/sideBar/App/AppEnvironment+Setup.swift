@@ -15,6 +15,7 @@ extension AppEnvironment {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 await self.consumeWebsiteSaveHandoff()
+                self.websiteQueueCoordinator.queueDidChange(trigger: .handoff)
             }
         }
     }
@@ -170,9 +171,7 @@ extension AppEnvironment {
                 self?.isOffline = isOffline
                 if !isOffline {
                     self?.resetStoreRefreshBackoff()
-                    Task { [weak self] in
-                        await self?.consumePendingShares()
-                    }
+                    self?.websiteQueueCoordinator.connectivityDidRecover()
                 }
             }
             .store(in: &cancellables)

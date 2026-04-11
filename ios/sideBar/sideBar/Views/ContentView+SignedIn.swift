@@ -96,9 +96,7 @@ extension ContentView {
                     if environment.writeQueue.pendingCount > 0 {
                         AppLaunchDelegate.scheduleWriteQueueFlush()
                     }
-                    if environment.hasPendingWebsiteBackgroundWork {
-                        AppLaunchDelegate.scheduleWebsiteSaveContinuation()
-                    }
+                    environment.websiteQueueCoordinator.appDidEnterBackground()
                 }
                 #endif
             }
@@ -113,7 +111,7 @@ extension ContentView {
         content = AnyView(content.onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             Task {
                 if environment.authState == .active {
-                    await environment.consumeExtensionEvents(awaitPendingShareReplay: false)
+                    environment.websiteQueueCoordinator.appDidBecomeActive()
                     await environment.consumeWidgetCompletions()
                     await environment.consumeWidgetQuickSave()
                 }

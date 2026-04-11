@@ -249,6 +249,23 @@ public final class ExtensionEventStore {
         return events
     }
 
+    /// Returns queued extension events without clearing them.
+    public func loadEvents() -> [ExtensionEvent] {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let defaults = userDefaults,
+              let data = defaults.data(forKey: eventsKey) else {
+            return []
+        }
+        let decoder = Self.makeDecoder()
+        return (try? decoder.decode([ExtensionEvent].self, from: data)) ?? []
+    }
+
+    /// Indicates whether any queued website event still needs app-side handling.
+    public func hasQueuedWebsiteEvents() -> Bool {
+        loadEvents().contains { $0.type == .websiteSaved }
+    }
+
     /// Clears all recorded extension events without consuming them.
     public func clear() {
         lock.lock()

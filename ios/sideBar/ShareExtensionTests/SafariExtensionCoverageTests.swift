@@ -330,6 +330,23 @@ final class SafariExtensionCoverageTests: XCTestCase {
         XCTAssertTrue(content.contains("<string>$(ASSOCIATED_DOMAINS)</string>"))
     }
 
+    func testSafariHandlersUseExplicitQueueOnlyURLContract() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let handlerPaths = [
+            "ios/sideBar/sideBar Safari Extension/SafariWebExtensionHandler.swift",
+            "ios/sideBar/sideBar Safari Extension (macOS) Extension/SafariWebExtensionHandler.swift"
+        ]
+
+        for relativePath in handlerPaths {
+            let source = try String(
+                contentsOf: repositoryRoot.appendingPathComponent(relativePath),
+                encoding: .utf8
+            )
+            XCTAssertTrue(source.contains("ExtensionURLMessageHandler.handleSaveURLMessage("))
+            XCTAssertTrue(source.contains("saveStrategy: .queueOnly"))
+        }
+    }
+
     private func makeStore() -> PendingShareStore {
         let temporarySuiteName = "\(suiteName).\(UUID().uuidString)"
         temporarySuiteNames.append(temporarySuiteName)

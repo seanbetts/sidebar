@@ -2,6 +2,7 @@ import Foundation
 
 /// Routes Safari web extension messages into pending-share responses.
 public enum SafariExtensionMessageHandler {
+    // Safari URL producers are queue-only in production. Direct save remains test-only here.
     public static func responsePayload(
         for message: Any?,
         pendingStore: PendingShareStore = .shared,

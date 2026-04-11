@@ -190,6 +190,18 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(normalized, "https://www.youtube.com/watch?v=abc123xyzAA")
     }
 
+    func testShareExtensionURLFlowUsesQueueOnlySaveStrategy() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let source = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "ios/sideBar/ShareExtension/ShareViewController+URLHandling.swift"
+            ),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("saveStrategy: .queueOnly"))
+    }
+
     @MainActor
     func testShowSaveURLResultDefaultsToSavedForLaterForShareExtensionWebsites() {
         let controller = ShareViewController()

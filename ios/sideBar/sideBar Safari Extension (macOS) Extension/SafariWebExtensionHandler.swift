@@ -51,12 +51,11 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         )
 
         Task {
-            let responsePayload = await SafariExtensionMessageHandler.responsePayload(
-                for: message,
+            let responsePayload = await ExtensionURLMessageHandler.handleSaveURLMessage(
+                action: action,
+                urlString: urlString,
                 pendingStore: .shared,
-                refreshAccessToken: {
-                    await SafariExtensionAuthCoordinator.forceRefreshAccessToken()
-                }
+                saveStrategy: .queueOnly
             )
             os_log(.default, "SafariWebExtensionHandler response=%@", String(describing: responsePayload))
             let responseMetadata = [

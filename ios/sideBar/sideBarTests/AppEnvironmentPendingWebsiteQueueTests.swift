@@ -91,6 +91,19 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertEqual(environment.websitesViewModel.items.first?.url, url)
     }
 
+    func testHasPendingWebsiteCoordinatorWorkIncludesQueuedExtensionWebsiteEvents() {
+        let environment = requireEnvironment()
+
+        XCTAssertFalse(environment.hasPendingWebsiteCoordinatorWork)
+
+        storage.extensionEventStore.recordWebsiteSaved(
+            url: "https://example.com/articles/\(UUID().uuidString)"
+        )
+
+        XCTAssertTrue(environment.hasPendingWebsiteCoordinatorWork)
+        XCTAssertFalse(environment.hasPendingWebsiteBackgroundWork)
+    }
+
     func testConsumePendingSharesWhenBiometricUnlockRequiredDefersUntilUnlock() async {
         let url = "https://example.com/articles/\(UUID().uuidString)"
         let websitesAPI = DeepLinkWebsitesAPI(

@@ -174,6 +174,10 @@ func shouldKeepPendingShareItem(
 }
 
 extension AppEnvironment {
+    var hasPendingWebsiteCoordinatorWork: Bool {
+        hasPendingWebsiteBackgroundWork || storage.extensionEventStore.hasQueuedWebsiteEvents()
+    }
+
     var hasPendingWebsiteBackgroundWork: Bool {
         let hasQueuedWebsiteShares = storage.pendingShareStore.loadAll().contains { $0.kind == .website }
         let hasInFlightWebsiteJobs = websitesViewModel.pendingWebsites.contains { $0.jobId != nil }

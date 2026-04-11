@@ -137,6 +137,7 @@ public final class AppEnvironment: ObservableObject {
     var widgetTaskCompletionObserver: AnyObject?
     var staleAuthRetryBannerRevealTask: Task<Void, Never>?
     let staleAuthRetryBannerDelayNanoseconds: UInt64
+    lazy var websiteQueueCoordinator: WebsiteQueueCoordinator = makeWebsiteQueueCoordinator()
     #if os(iOS) || os(macOS)
     var deviceToken: String?
     var lastRegisteredDeviceToken: String?
@@ -420,5 +421,40 @@ public final class AppEnvironment: ObservableObject {
     public var tasksPhoneDetailRouteId: String? {
         get { navigation.tasksPhoneDetailRouteId }
         set { navigation.tasksPhoneDetailRouteId = newValue }
+    }
+
+    private func makeWebsiteQueueCoordinator() -> WebsiteQueueCoordinator {
+        let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
+        return WebsiteQueueCoordinator(
+            hasPendingWork: { [weak self] in
+                self?.hasPendingWebsiteCoordinatorWork ?? false
+            },
+            hasBackgroundContinuationWork: { [weak self] in
+                self?.hasPendingWebsiteBackgroundWork ?? false
+            },
+            canReplayNow: { [weak self] in
+                guard let self else { return false }
+                return self.authState == .active
+                    && self.isProtectedContentReady
+                    && !self.connectivityMonitor.isOffline
+            },
+            replay: { [weak self] in
+                await self?.consumeExtensionEvents(awaitPendingShareReplay: false)
+            },
+            scheduleContinuation: { [weak self] in
+                guard !isTestMode else { return }
+                guard let self, self.hasPendingWebsiteBackgroundWork else { return }
+                #if os(iOS)
+                AppLaunchDelegate.scheduleWebsiteSaveContinuation()
+                #endif
+            },
+            retryDelay: {
+                #if os(macOS)
+                .seconds(30)
+                #else
+                nil
+                #endif
+            }()
+        )
     }
 }
