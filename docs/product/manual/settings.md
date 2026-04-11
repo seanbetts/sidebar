@@ -46,19 +46,6 @@ If you made changes while offline, a **Sync status** panel appears here showing
 how many queued changes are waiting. They sync automatically once your
 connection returns. Tap **View queued changes** to see exactly what's waiting.
 
-**Task reminders**: choose whether sideBar sends one daily reminder for due and
-overdue tasks. Reminders only send once a day, they require a reminder time,
-and they still respect your Apple system notification settings.
-
-**Morning digest**: choose whether sideBar sends a daily task snapshot in the
-morning. The digest summarizes overdue, due today, and active tasks, and
-opening it takes you to a dedicated digest view with a quick link into today's
-tasks.
-
-**Assistant reply notifications**: choose whether sideBar alerts you when a
-reply is ready while your device is away. These alerts still follow your Apple
-system notification settings and Focus modes.
-
 ## sideBar
 
 This tab is named after your assistant and covers its AI configuration,
@@ -102,6 +89,14 @@ You can also add, edit, and search your memories here. sideBar reads relevant
 memories automatically; you don't need to mention them in conversation.
 
 ## App
+
+**Task reminders**: choose whether sideBar sends one daily reminder for due and
+overdue tasks. Reminders only send once a day, they require a reminder time,
+and they still respect your Apple system notification settings.
+
+**Assistant reply notifications**: choose whether sideBar alerts you when a
+reply is ready while your device is away. These alerts still follow your Apple
+system notification settings and Focus modes.
 
 **Text size**: choose System (follows your device's accessibility setting),
 Small, Medium, or Large.
