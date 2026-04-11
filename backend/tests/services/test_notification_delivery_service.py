@@ -38,10 +38,17 @@ def test_visible_alerts_build_apns_payloads_with_route_and_category(monkeypatch)
             user_id="user-123",
             category=NotificationCategory.TASK_REMINDER,
             delivery_mode=NotificationDeliveryMode.ALERT,
-            title="Task reminder",
-            body="You have 2 tasks due today.",
+            title="1 task overdue",
+            body="Pay rent is overdue, plus 1 due today.",
             route="sidebar://tasks/today",
-            metadata={"scope": "today"},
+            metadata={
+                "scope": "today",
+                "overdue_count": 1,
+                "due_today_count": 1,
+                "focus_task_id": "task-123",
+                "focus_task_title": "Pay rent",
+                "focus_scope": "overdue",
+            },
         ),
         device_tokens=[_token()],
     )
@@ -53,13 +60,20 @@ def test_visible_alerts_build_apns_payloads_with_route_and_category(monkeypatch)
     assert request.push_type == "alert"
     assert request.priority == "10"
     assert request.payload["aps"]["alert"] == {
-        "title": "Task reminder",
-        "body": "You have 2 tasks due today.",
+        "title": "1 task overdue",
+        "body": "Pay rent is overdue, plus 1 due today.",
     }
     assert request.payload["aps"]["category"] == "task_reminder"
     assert request.payload["sidebar_route"] == "sidebar://tasks/today"
     assert request.payload["notification_category"] == "task_reminder"
-    assert request.payload["notification_metadata"] == {"scope": "today"}
+    assert request.payload["notification_metadata"] == {
+        "scope": "today",
+        "overdue_count": 1,
+        "due_today_count": 1,
+        "focus_task_id": "task-123",
+        "focus_task_title": "Pay rent",
+        "focus_scope": "overdue",
+    }
 
 
 def test_badge_updates_still_flow_through_transport_layer(monkeypatch):
