@@ -4,8 +4,9 @@ import logging
 import os
 import time
 import traceback
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
+from typing import Any
 
 from fastapi import Depends
 from sqlalchemy import create_engine, event, inspect, text
@@ -19,6 +20,7 @@ from api.models.website import Website
 
 logger = logging.getLogger(__name__)
 _pending_website_column_lazy_loads: dict[int, dict[str, str]] = {}
+_SESSION_BOOTSTRAP_MAX_ATTEMPTS = 3
 
 # Create engine - Always use PostgreSQL
 use_pooler = "pooler." in settings.database_url
@@ -117,6 +119,31 @@ def _apply_session_settings_with_retry(
     except OperationalError as exc:
         connection.invalidate(exc)
         raise
+
+
+def _retry_session_bootstrap_operation(
+    db: Session,
+    operation_name: str,
+    operation: Callable[[], Any],
+) -> None:
+    """Retry session bootstrap work after invalidating a dropped connection."""
+    for attempt in range(1, _SESSION_BOOTSTRAP_MAX_ATTEMPTS + 1):
+        try:
+            operation()
+            return
+        except OperationalError:
+            if attempt == _SESSION_BOOTSTRAP_MAX_ATTEMPTS:
+                raise
+            logger.warning(
+                "Database session bootstrap failed during %s on attempt %s/%s; "
+                "retrying with a fresh connection",
+                operation_name,
+                attempt,
+                _SESSION_BOOTSTRAP_MAX_ATTEMPTS,
+                exc_info=True,
+            )
+            db.rollback()
+            db.invalidate()
 
 
 @event.listens_for(Session, "after_begin")
@@ -234,13 +261,11 @@ def set_session_user_id(db: Session, user_id: str | None) -> None:
         db.info.pop("app_user_id", None)
         return
     db.info["app_user_id"] = user_id
-    try:
-        db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
-    except OperationalError:
-        db.rollback()
-        db.invalidate()
-        db.info["app_user_id"] = user_id
-        db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
+    _retry_session_bootstrap_operation(
+        db,
+        "SET app.user_id",
+        lambda: db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id}),
+    )
 
 
 def set_website_worker_scope(db: Session, enabled: bool) -> None:
@@ -252,19 +277,14 @@ def set_website_worker_scope(db: Session, enabled: bool) -> None:
     """
     if enabled:
         db.info["website_worker_scope"] = "all"
-        try:
-            db.execute(
+        _retry_session_bootstrap_operation(
+            db,
+            "SET LOCAL app.website_worker_scope",
+            lambda: db.execute(
                 text("SET LOCAL app.website_worker_scope = :worker_scope"),
                 {"worker_scope": "all"},
-            )
-        except OperationalError:
-            db.rollback()
-            db.invalidate()
-            db.info["website_worker_scope"] = "all"
-            db.execute(
-                text("SET LOCAL app.website_worker_scope = :worker_scope"),
-                {"worker_scope": "all"},
-            )
+            ),
+        )
         return
 
     db.info.pop("website_worker_scope", None)

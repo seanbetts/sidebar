@@ -261,24 +261,26 @@ def test_after_begin_applies_worker_scope_from_session_info(
     }
 
 
-class _DisconnectingSession:
-    def __init__(self) -> None:
+class _BootstrapDisconnectingSession:
+    def __init__(self, failures_before_success: int) -> None:
         self.info: dict[str, str] = {}
+        self.failures_before_success = failures_before_success
         self.execute_calls = 0
         self.rollback_calls = 0
         self.invalidate_calls = 0
 
     def execute(self, _statement, _params=None):
         self.execute_calls += 1
-        if self.execute_calls == 1:
+        required_rollbacks = min(self.failures_before_success, self.execute_calls - 1)
+        if self.rollback_calls < required_rollbacks:
+            raise PendingRollbackError(
+                "Can't reconnect until invalid transaction is rolled back."
+            )
+        if self.execute_calls <= self.failures_before_success:
             raise OperationalError(
                 "SET app.user_id = :user_id",
                 {"user_id": "user-1"},
                 Exception("SSL connection has been closed unexpectedly"),
-            )
-        if self.rollback_calls == 0:
-            raise PendingRollbackError(
-                "Can't reconnect until invalid transaction is rolled back."
             )
         return None
 
@@ -289,25 +291,39 @@ class _DisconnectingSession:
         self.invalidate_calls += 1
 
 
-def test_set_session_user_id_rolls_back_before_retrying_disconnect() -> None:
-    """Explicit session setup must rollback before reconnecting an invalid session."""
-    db = _DisconnectingSession()
+def test_set_session_user_id_retries_bootstrap_disconnects_on_fresh_connections() -> None:
+    """Explicit user scoping should survive multiple stale pooled connections."""
+    db = _BootstrapDisconnectingSession(failures_before_success=2)
 
     session_module.set_session_user_id(db, "user-1")
 
     assert db.info["app_user_id"] == "user-1"
-    assert db.execute_calls == 2
-    assert db.rollback_calls == 1
-    assert db.invalidate_calls == 1
+    assert db.execute_calls == 3
+    assert db.rollback_calls == 2
+    assert db.invalidate_calls == 2
 
 
-def test_set_website_worker_scope_rolls_back_before_retrying_disconnect() -> None:
-    """Worker scope setup must rollback before retrying a dropped connection."""
-    db = _DisconnectingSession()
+def test_set_session_user_id_reraises_after_exhausting_bootstrap_retries() -> None:
+    """User scoping should still fail after the capped bootstrap retry budget."""
+    db = _BootstrapDisconnectingSession(
+        failures_before_success=session_module._SESSION_BOOTSTRAP_MAX_ATTEMPTS
+    )
+
+    with pytest.raises(OperationalError):
+        session_module.set_session_user_id(db, "user-1")
+
+    assert db.execute_calls == session_module._SESSION_BOOTSTRAP_MAX_ATTEMPTS
+    assert db.rollback_calls == session_module._SESSION_BOOTSTRAP_MAX_ATTEMPTS - 1
+    assert db.invalidate_calls == session_module._SESSION_BOOTSTRAP_MAX_ATTEMPTS - 1
+
+
+def test_set_website_worker_scope_retries_bootstrap_disconnects_on_fresh_connections() -> None:
+    """Worker scope setup should survive multiple stale pooled connections."""
+    db = _BootstrapDisconnectingSession(failures_before_success=2)
 
     session_module.set_website_worker_scope(db, enabled=True)
 
     assert db.info["website_worker_scope"] == "all"
-    assert db.execute_calls == 2
-    assert db.rollback_calls == 1
-    assert db.invalidate_calls == 1
+    assert db.execute_calls == 3
+    assert db.rollback_calls == 2
+    assert db.invalidate_calls == 2
