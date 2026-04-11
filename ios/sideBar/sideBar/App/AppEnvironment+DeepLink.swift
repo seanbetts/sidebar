@@ -133,7 +133,7 @@ extension AppEnvironment {
             let chatId = String(path.dropFirst())
             logger.info("Deep link to chat: \(chatId, privacy: .public)")
             Task {
-                await chatViewModel.loadConversation(id: chatId)
+                await chatViewModel.selectConversation(id: chatId)
             }
         }
     }

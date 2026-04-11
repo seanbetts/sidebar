@@ -135,6 +135,21 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         )
     }
 
+    func testHandleChatConversationDeepLinkSelectsConversationImmediately() async {
+        let environment = requireEnvironment()
+        let conversationID = UUID().uuidString.lowercased()
+
+        environment.handleDeepLink(URL(string: "sidebar://chat/\(conversationID)")!)
+
+        for _ in 0..<20 where environment.chatViewModel.selectedConversationId != conversationID {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertEqual(environment.commandSelection, .chat)
+        XCTAssertEqual(environment.chatViewModel.selectedConversationId, conversationID)
+    }
+
     func testConsumeWidgetAddTaskStartsTaskImmediatelyWhenTasksFocused() async {
         let environment = requireEnvironment()
         environment.authState = .active
