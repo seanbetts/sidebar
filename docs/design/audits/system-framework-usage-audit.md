@@ -116,7 +116,7 @@ iOS 26 / macOS 26 Liquid Glass (`.glassEffect`) is currently used in:
 
 - `PhoneFloatingActionDock`: `.glassEffect(.regular.interactive(), in: Capsule())` - the iPhone floating action container.
 
-This is the only production Liquid Glass surface. The Liquid Glass adoption plan (`2026-03-27-apple-liquid-glass-adoption.md`) defines a rollout sequence for 12 more elements.
+This was the only production Liquid Glass surface when this audit was written. Task 5 of the design-system remediation program later completed the broader Liquid Glass rollout across the Apple app.
 
 ### System materials (pre-Liquid Glass)
 
