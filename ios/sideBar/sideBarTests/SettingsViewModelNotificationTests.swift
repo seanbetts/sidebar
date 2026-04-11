@@ -86,6 +86,98 @@ final class SettingsViewModelNotificationTests: XCTestCase {
         XCTAssertFalse(viewModel.isSavingSystem)
     }
 
+    func testSaveTaskReminderSettingsRequestsNotificationPermissionBeforeEnabling() async {
+        let initial = makeSettings(
+            notificationPreferences: NotificationPreferencesSettings(
+                taskRemindersEnabled: false,
+                taskReminderTime: nil,
+                morningDigestEnabled: false,
+                morningDigestTime: nil,
+                assistantReplyNotificationsEnabled: false,
+                assistantProactiveNotificationsEnabled: false,
+                scheduleTimezone: "Europe/London"
+            )
+        )
+        let updated = makeSettings(
+            notificationPreferences: NotificationPreferencesSettings(
+                taskRemindersEnabled: true,
+                taskReminderTime: "09:30",
+                morningDigestEnabled: false,
+                morningDigestTime: nil,
+                assistantReplyNotificationsEnabled: false,
+                assistantProactiveNotificationsEnabled: false,
+                scheduleTimezone: "Europe/London"
+            )
+        )
+        let recorder = UpdateRecorder()
+        let notificationsRequester = MockNotificationPermissionRequester()
+        notificationsRequester.currentStateValue = .notAsked
+        notificationsRequester.requestResult = .granted
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(initial),
+                updateResult: .success(updated),
+                updateRecorder: recorder
+            ),
+            skillsAPI: MockSkillsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            notificationPermissionRequester: notificationsRequester,
+            cache: TestCacheClient()
+        )
+        viewModel.applySettingsResponse(initial)
+
+        await viewModel.saveTaskReminderSettings(
+            isEnabled: true,
+            reminderTime: "09:30",
+            scheduleTimezone: "Europe/London"
+        )
+
+        XCTAssertEqual(notificationsRequester.requestCount, 1)
+        XCTAssertEqual(recorder.callCount, 1)
+        XCTAssertTrue(recorder.lastUpdate?.notificationPreferences?.taskRemindersEnabled == true)
+    }
+
+    func testSaveTaskReminderSettingsRejectsEnableWhenNotificationPermissionDenied() async {
+        let initial = makeSettings(
+            notificationPreferences: NotificationPreferencesSettings(
+                taskRemindersEnabled: false,
+                taskReminderTime: nil,
+                morningDigestEnabled: false,
+                morningDigestTime: nil,
+                assistantReplyNotificationsEnabled: false,
+                assistantProactiveNotificationsEnabled: false,
+                scheduleTimezone: "Europe/London"
+            )
+        )
+        let recorder = UpdateRecorder()
+        let notificationsRequester = MockNotificationPermissionRequester()
+        notificationsRequester.currentStateValue = .denied
+        notificationsRequester.requestResult = .denied
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(initial),
+                updateRecorder: recorder
+            ),
+            skillsAPI: MockSkillsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            notificationPermissionRequester: notificationsRequester,
+            cache: TestCacheClient()
+        )
+        viewModel.applySettingsResponse(initial)
+
+        await viewModel.saveTaskReminderSettings(
+            isEnabled: true,
+            reminderTime: "09:30",
+            scheduleTimezone: "Europe/London"
+        )
+
+        XCTAssertEqual(notificationsRequester.requestCount, 1)
+        XCTAssertEqual(recorder.callCount, 0)
+        XCTAssertEqual(
+            viewModel.systemSaveError,
+            "Allow notifications in Apple Settings before enabling reminders."
+        )
+        XCTAssertFalse(viewModel.settings?.notificationPreferences.taskRemindersEnabled == true)
+    }
+
     func testSaveAssistantReplyNotificationSettingsPersistsToggle() async {
         let initial = makeSettings(
             notificationPreferences: NotificationPreferencesSettings(
@@ -131,6 +223,46 @@ final class SettingsViewModelNotificationTests: XCTestCase {
         XCTAssertEqual(
             viewModel.settings?.notificationPreferences.taskReminderTime,
             "09:30"
+        )
+    }
+
+    func testSaveAssistantReplyNotificationSettingsRejectsEnableWhenNotificationPermissionDenied() async {
+        let initial = makeSettings(
+            notificationPreferences: NotificationPreferencesSettings(
+                taskRemindersEnabled: true,
+                taskReminderTime: "09:30",
+                morningDigestEnabled: false,
+                morningDigestTime: nil,
+                assistantReplyNotificationsEnabled: false,
+                assistantProactiveNotificationsEnabled: false,
+                scheduleTimezone: "Europe/London"
+            )
+        )
+        let recorder = UpdateRecorder()
+        let notificationsRequester = MockNotificationPermissionRequester()
+        notificationsRequester.currentStateValue = .denied
+        notificationsRequester.requestResult = .denied
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(initial),
+                updateRecorder: recorder
+            ),
+            skillsAPI: MockSkillsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            notificationPermissionRequester: notificationsRequester,
+            cache: TestCacheClient()
+        )
+        viewModel.applySettingsResponse(initial)
+
+        await viewModel.saveAssistantReplyNotificationSettings(isEnabled: true)
+
+        XCTAssertEqual(notificationsRequester.requestCount, 1)
+        XCTAssertEqual(recorder.callCount, 0)
+        XCTAssertEqual(
+            viewModel.systemSaveError,
+            "Allow notifications in Apple Settings before enabling reminders."
+        )
+        XCTAssertFalse(
+            viewModel.settings?.notificationPreferences.assistantReplyNotificationsEnabled == true
         )
     }
 

@@ -1,26 +1,45 @@
 import Foundation
 import sideBarShared
 
+/// Describes the result of a notification-settings save attempt.
+public enum NotificationSettingsSaveOutcome: Equatable {
+    case persisted
+    case noChange
+    case blockedBySystemPermission
+    case failed
+}
+
 @MainActor
 extension SettingsViewModel {
+    @discardableResult
     public func saveTaskReminderSettings(
         isEnabled: Bool,
         reminderTime: String?,
         scheduleTimezone: String?
-    ) async {
+    ) async -> NotificationSettingsSaveOutcome {
         systemSaveError = nil
         let resolved = await currentSettingsForSave()
-        guard let current = resolved.settings else { systemSaveError = resolved.error; return }
+        guard let current = resolved.settings else {
+            systemSaveError = resolved.error
+            return .failed
+        }
 
         let normalizedReminderTime = reminderTime?.trimmedOrNil
         let normalizedTimezone = scheduleTimezone?.trimmedOrNil
         if isEnabled && (normalizedReminderTime == nil || normalizedTimezone == nil) {
             systemSaveError = "Task reminders require both a reminder time and timezone."
-            return
+            return .failed
         }
 
         let currentPreferences = current.notificationPreferences
         let enabledUpdate = isEnabled != currentPreferences.taskRemindersEnabled ? isEnabled : nil
+        if enabledUpdate == true {
+            let permissionState = await notificationPermissionRequester.requestPermission()
+            guard permissionState == .granted else {
+                systemSaveError = "Allow notifications in Apple Settings before enabling reminders."
+                return .blockedBySystemPermission
+            }
+        }
         let shouldForceSchedulePayload = isEnabled && enabledUpdate == true
         let reminderTimeUpdate: String?
         if shouldForceSchedulePayload {
@@ -41,7 +60,7 @@ extension SettingsViewModel {
         }
 
         if enabledUpdate == nil, reminderTimeUpdate == nil, timezoneUpdate == nil {
-            return
+            return .noChange
         }
 
         isSavingSystem = true
@@ -68,20 +87,36 @@ extension SettingsViewModel {
                 error,
                 operation: "notifications"
             )
+            isSavingSystem = false
+            return .failed
         }
         isSavingSystem = false
+        return .persisted
     }
 
-    public func saveAssistantReplyNotificationSettings(isEnabled: Bool) async {
+    @discardableResult
+    public func saveAssistantReplyNotificationSettings(
+        isEnabled: Bool
+    ) async -> NotificationSettingsSaveOutcome {
         systemSaveError = nil
         let resolved = await currentSettingsForSave()
-        guard let current = resolved.settings else { systemSaveError = resolved.error; return }
+        guard let current = resolved.settings else {
+            systemSaveError = resolved.error
+            return .failed
+        }
 
         let currentPreferences = current.notificationPreferences
         let enabledUpdate = isEnabled != currentPreferences.assistantReplyNotificationsEnabled
             ? isEnabled
             : nil
-        guard let enabledUpdate else { return }
+        guard let enabledUpdate else { return .noChange }
+        if enabledUpdate {
+            let permissionState = await notificationPermissionRequester.requestPermission()
+            guard permissionState == .granted else {
+                systemSaveError = "Allow notifications in Apple Settings before enabling reminders."
+                return .blockedBySystemPermission
+            }
+        }
 
         isSavingSystem = true
         systemSaveError = nil
@@ -104,28 +139,42 @@ extension SettingsViewModel {
                 error,
                 operation: "notifications"
             )
+            isSavingSystem = false
+            return .failed
         }
         isSavingSystem = false
+        return .persisted
     }
 
+    @discardableResult
     public func saveMorningDigestSettings(
         isEnabled: Bool,
         digestTime: String?,
         scheduleTimezone: String?
-    ) async {
+    ) async -> NotificationSettingsSaveOutcome {
         systemSaveError = nil
         let resolved = await currentSettingsForSave()
-        guard let current = resolved.settings else { systemSaveError = resolved.error; return }
+        guard let current = resolved.settings else {
+            systemSaveError = resolved.error
+            return .failed
+        }
 
         let normalizedDigestTime = digestTime?.trimmedOrNil
         let normalizedTimezone = scheduleTimezone?.trimmedOrNil
         if isEnabled && (normalizedDigestTime == nil || normalizedTimezone == nil) {
             systemSaveError = "Morning digest requires both a digest time and timezone."
-            return
+            return .failed
         }
 
         let currentPreferences = current.notificationPreferences
         let enabledUpdate = isEnabled != currentPreferences.morningDigestEnabled ? isEnabled : nil
+        if enabledUpdate == true {
+            let permissionState = await notificationPermissionRequester.requestPermission()
+            guard permissionState == .granted else {
+                systemSaveError = "Allow notifications in Apple Settings before enabling reminders."
+                return .blockedBySystemPermission
+            }
+        }
         let shouldForceSchedulePayload = isEnabled && enabledUpdate == true
         let digestTimeUpdate: String?
         if shouldForceSchedulePayload {
@@ -146,7 +195,7 @@ extension SettingsViewModel {
         }
 
         if enabledUpdate == nil, digestTimeUpdate == nil, timezoneUpdate == nil {
-            return
+            return .noChange
         }
 
         isSavingSystem = true
@@ -173,7 +222,10 @@ extension SettingsViewModel {
                 error,
                 operation: "notifications"
             )
+            isSavingSystem = false
+            return .failed
         }
         isSavingSystem = false
+        return .persisted
     }
 }

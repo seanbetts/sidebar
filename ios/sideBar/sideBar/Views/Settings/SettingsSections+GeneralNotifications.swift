@@ -139,7 +139,7 @@ extension GeneralSettingsView {
             isSyncingDrafts: isSyncingNotificationDrafts,
             isDraftDirty: isNotificationDraftDirty
         ) {
-            await environment.settingsViewModel.saveTaskReminderSettings(
+            let taskReminderOutcome = await environment.settingsViewModel.saveTaskReminderSettings(
                 isEnabled: taskRemindersEnabled,
                 reminderTime: taskRemindersEnabled
                     ? Self.reminderTimeString(from: taskReminderTime)
@@ -148,9 +148,17 @@ extension GeneralSettingsView {
                     ? TimeZone.autoupdatingCurrent.identifier
                     : nil
             )
-            await environment.settingsViewModel.saveAssistantReplyNotificationSettings(
+            if taskReminderOutcome == .blockedBySystemPermission {
+                syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
+                return
+            }
+            let assistantRepliesOutcome = await environment.settingsViewModel
+                .saveAssistantReplyNotificationSettings(
                 isEnabled: assistantReplyNotificationsEnabled
             )
+            if assistantRepliesOutcome == .blockedBySystemPermission {
+                syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
+            }
         }
     }
 
@@ -165,7 +173,7 @@ extension GeneralSettingsView {
         notificationAutosaveController.flushPendingAutosave(
             shouldFlush: canFlush
         ) {
-            await environment.settingsViewModel.saveTaskReminderSettings(
+            let taskReminderOutcome = await environment.settingsViewModel.saveTaskReminderSettings(
                 isEnabled: taskRemindersEnabled,
                 reminderTime: taskRemindersEnabled
                     ? Self.reminderTimeString(from: taskReminderTime)
@@ -174,9 +182,17 @@ extension GeneralSettingsView {
                     ? TimeZone.autoupdatingCurrent.identifier
                     : nil
             )
-            await environment.settingsViewModel.saveAssistantReplyNotificationSettings(
+            if taskReminderOutcome == .blockedBySystemPermission {
+                syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
+                return
+            }
+            let assistantRepliesOutcome = await environment.settingsViewModel
+                .saveAssistantReplyNotificationSettings(
                 isEnabled: assistantReplyNotificationsEnabled
             )
+            if assistantRepliesOutcome == .blockedBySystemPermission {
+                syncNotificationDraftsFromSettings(environment.settingsViewModel.settings)
+            }
         }
     }
 
