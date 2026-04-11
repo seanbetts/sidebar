@@ -441,6 +441,58 @@ final class AppEnvironmentPendingWebsiteQueueTests: XCTestCase {
         XCTAssertTrue(environment.websitesViewModel.pendingWebsites.isEmpty)
         XCTAssertEqual(environment.websitesViewModel.items.first?.id, "saved-1")
     }
+
+    func testRefreshAuthStateDelegatesRunnableWebsiteReplayToCoordinator() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let authSession = PlaceholderAuthSession(authState: .active)
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-\(UUID().uuidString)", status: "queued")
+            )
+        )
+        let container = makeNoNetworkServiceContainer(
+            authSession: authSession,
+            cacheClient: InMemoryCacheClient(),
+            websitesAPI: websitesAPI
+        )
+        environment = AppEnvironment(container: container, storage: storage)
+        retainedEnvironments.append(environment)
+        let environment = requireEnvironment()
+        let coordinator = WebsiteQueueCoordinatorSpy()
+        environment.websiteQueueCoordinator = coordinator.makeCoordinator()
+
+        _ = storage.pendingShareStore.enqueueWebsite(url: url)
+
+        environment.refreshAuthState()
+        await coordinator.waitForReplayCount(1)
+
+        XCTAssertEqual(websitesAPI.saveCallCount, 0)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().count, 1)
+    }
+
+    func testCompleteBiometricUnlockDelegatesDeferredWebsiteReplayToCoordinator() async {
+        let url = "https://example.com/articles/\(UUID().uuidString)"
+        let websitesAPI = DeepLinkWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-\(UUID().uuidString)", status: "queued")
+            )
+        )
+        environment = makeEnvironment(storage: storage, websitesAPI: websitesAPI)
+        let environment = requireEnvironment()
+        let coordinator = WebsiteQueueCoordinatorSpy()
+        environment.websiteQueueCoordinator = coordinator.makeCoordinator()
+        environment.authState = .active
+        storage.userDefaults.set(true, forKey: AppStorageKeys.biometricUnlockEnabled)
+        environment.isBiometricUnlocked = false
+
+        _ = storage.pendingShareStore.enqueueWebsite(url: url)
+
+        await environment.completeBiometricUnlock()
+        await coordinator.waitForReplayCount(1)
+
+        XCTAssertEqual(websitesAPI.saveCallCount, 0)
+        XCTAssertEqual(storage.pendingShareStore.loadAll().count, 1)
+    }
 }
 
 @MainActor
@@ -518,5 +570,29 @@ private actor AsyncGate {
         isOpen = true
         continuation?.resume()
         continuation = nil
+    }
+}
+
+@MainActor
+private final class WebsiteQueueCoordinatorSpy {
+    private(set) var replayCount = 0
+
+    func makeCoordinator() -> WebsiteQueueCoordinator {
+        WebsiteQueueCoordinator(
+            hasPendingWork: { true },
+            hasBackgroundContinuationWork: { true },
+            canReplayNow: { true },
+            replay: { [weak self] in
+                self?.replayCount += 1
+            }
+        )
+    }
+
+    func waitForReplayCount(_ expected: Int, attempts: Int = 40) async {
+        for _ in 0..<attempts where replayCount < expected {
+            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(25))
+        }
+        XCTAssertEqual(replayCount, expected)
     }
 }

@@ -90,12 +90,17 @@ extension ContentView {
             if newValue == .background {
                 environment.noteProtectedContentBackgrounded()
                 #if os(iOS)
-                // Schedule background task for widget refresh (auth refresh is foreground-only)
-                if environment.isAuthenticated {
+                let continuationPlan = Self.signedInBackgroundContinuationPlan(
+                    isAuthenticated: environment.isAuthenticated,
+                    pendingWriteCount: environment.writeQueue.pendingCount
+                )
+                if continuationPlan.shouldScheduleWidgetRefresh {
                     AppLaunchDelegate.scheduleWidgetRefresh()
-                    if environment.writeQueue.pendingCount > 0 {
+                }
+                if continuationPlan.shouldScheduleWriteQueueFlush {
                         AppLaunchDelegate.scheduleWriteQueueFlush()
-                    }
+                }
+                if continuationPlan.shouldNotifyWebsiteQueueCoordinator {
                     environment.websiteQueueCoordinator.appDidEnterBackground()
                 }
                 #endif

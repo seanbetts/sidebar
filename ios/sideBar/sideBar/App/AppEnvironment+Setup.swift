@@ -14,7 +14,6 @@ extension AppEnvironment {
         websiteSaveHandoffObserver = WebsiteSaveHandoffNotifier.observe { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                await self.consumeWebsiteSaveHandoff()
                 self.websiteQueueCoordinator.queueDidChange(trigger: .handoff)
             }
         }

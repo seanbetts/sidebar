@@ -314,6 +314,39 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(shouldShow)
     }
 
+    func testSignedInBackgroundContinuationPlanSchedulesWebsiteQueueAndWidgetRefreshWhenAuthenticated() {
+        let plan = ContentView.signedInBackgroundContinuationPlan(
+            isAuthenticated: true,
+            pendingWriteCount: 0
+        )
+
+        XCTAssertTrue(plan.shouldScheduleWidgetRefresh)
+        XCTAssertFalse(plan.shouldScheduleWriteQueueFlush)
+        XCTAssertTrue(plan.shouldNotifyWebsiteQueueCoordinator)
+    }
+
+    func testSignedInBackgroundContinuationPlanSchedulesWriteQueueFlushWhenPendingWritesExist() {
+        let plan = ContentView.signedInBackgroundContinuationPlan(
+            isAuthenticated: true,
+            pendingWriteCount: 2
+        )
+
+        XCTAssertTrue(plan.shouldScheduleWidgetRefresh)
+        XCTAssertTrue(plan.shouldScheduleWriteQueueFlush)
+        XCTAssertTrue(plan.shouldNotifyWebsiteQueueCoordinator)
+    }
+
+    func testSignedInBackgroundContinuationPlanDoesNothingWhenSignedOut() {
+        let plan = ContentView.signedInBackgroundContinuationPlan(
+            isAuthenticated: false,
+            pendingWriteCount: 3
+        )
+
+        XCTAssertFalse(plan.shouldScheduleWidgetRefresh)
+        XCTAssertFalse(plan.shouldScheduleWriteQueueFlush)
+        XCTAssertFalse(plan.shouldNotifyWebsiteQueueCoordinator)
+    }
+
     func testShouldAutoExpandChatSidebarWhenDesktopLayoutAndChatSelected() {
         let shouldExpand = ContentView.shouldAutoExpandChatSidebar(
             section: .chat,

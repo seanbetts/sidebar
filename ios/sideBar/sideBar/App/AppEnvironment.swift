@@ -264,6 +264,7 @@ public final class AppEnvironment: ObservableObject {
         AppSceneDelegate.flushQueuedDeepLinks(using: self)
         #elseif os(macOS)
         MacAppDelegate.flushQueuedDeepLinks(using: self)
+        MacAppDelegate.flushQueuedWebsiteQueueBootstrap(using: self)
         #endif
         #if DEBUG
         logStep("Stores + view models", storeStart)
@@ -456,5 +457,11 @@ public final class AppEnvironment: ObservableObject {
                 #endif
             }()
         )
+    }
+
+    func bootstrapMacWindowlessWebsiteQueueHost() {
+        #if os(macOS)
+        websiteQueueCoordinator.queueDidChange(trigger: .appDidBecomeActive)
+        #endif
     }
 }

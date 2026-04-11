@@ -12,6 +12,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
     private let logger = Logger(subsystem: "sideBar", category: "Push")
     private let deepLinkLogger = Logger(subsystem: "sideBar", category: "DeepLink")
     private static var queuedDeepLinks: [URL] = []
+    private static var shouldBootstrapWebsiteQueueWhenEnvironmentReady = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
@@ -22,6 +23,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
         purgeGeneratedSwiftUIWindowFrames()
         restoreMainWindowFrameIfNeeded()
         scheduleRemoteNotificationRegistration()
+        Self.requestWebsiteQueueBootstrapIfPossible()
     }
 
     func applicationShouldRestoreApplicationState(_ application: NSApplication) -> Bool {
@@ -102,6 +104,20 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
         for url in queued {
             environment.handleDeepLink(url)
         }
+    }
+
+    static func requestWebsiteQueueBootstrapIfPossible() {
+        if let environment = AppEnvironment.shared {
+            environment.bootstrapMacWindowlessWebsiteQueueHost()
+            return
+        }
+        shouldBootstrapWebsiteQueueWhenEnvironmentReady = true
+    }
+
+    static func flushQueuedWebsiteQueueBootstrap(using environment: AppEnvironment) {
+        guard shouldBootstrapWebsiteQueueWhenEnvironmentReady else { return }
+        shouldBootstrapWebsiteQueueWhenEnvironmentReady = false
+        environment.bootstrapMacWindowlessWebsiteQueueHost()
     }
 
     private func handleOrQueueDeepLink(_ url: URL) {

@@ -69,13 +69,12 @@ extension AppEnvironment {
             }
             #endif
             Task { [weak self] in
-                if self?.authState == .active {
-                    if becameActive {
-                        await self?.handleSignedInActivation()
-                    } else {
-                        await self?.consumeExtensionEvents(awaitPendingShareReplay: false)
-                        await self?.consumeWidgetCompletions()
-                    }
+                guard let self, self.authState == .active else { return }
+                if becameActive {
+                    await self.handleSignedInActivation()
+                } else {
+                    self.websiteQueueCoordinator.authDidBecomeRunnable()
+                    await self.consumeWidgetCompletions()
                 }
             }
         } else {
@@ -181,7 +180,7 @@ extension AppEnvironment {
         }
 
         guard authState == .active else { return }
-        await consumeExtensionEvents()
+        websiteQueueCoordinator.protectedContentDidBecomeReady()
     }
 
     private func reconcileCacheScopeForAuthenticatedUser() {
