@@ -16,7 +16,7 @@ final class LoginGlassChromeTests: XCTestCase {
 
         XCTAssertEqual(
             normalized.components(separatedBy: ".glassChrome(LoginChrome.fieldKind)").count - 1,
-            2
+            1
         )
         XCTAssertEqual(
             normalized.components(separatedBy: ".glassChrome(LoginChrome.noticeKind)").count - 1,
@@ -36,6 +36,25 @@ final class LoginGlassChromeTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains(".stroke(DesignTokens.Colors.border"))
+    }
+
+    func testLoginSourcesUseSharedFieldRowHelper() throws {
+        let normalized = try combinedLoginChromeSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertEqual(
+            normalized.components(separatedBy: "LoginFieldRow(").count - 1,
+            2
+        )
+        XCTAssertTrue(normalized.contains("structLoginFieldRow<Content:View,Trailing:View>:View{"))
+    }
+
+    func testSecureFieldToggleUsesSharedLoginFieldMetrics() throws {
+        let normalized = try secureFieldSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("spacing:LoginFieldChromeMetrics.trailingControlSpacing"))
+        XCTAssertTrue(normalized.contains(".font(.system(size:LoginFieldChromeMetrics.trailingSymbolPointSize))"))
     }
 }
 
@@ -85,6 +104,27 @@ private func loginGroupBoxStyleSource(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read LoginGroupBoxStyle.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func secureFieldSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sourceURL = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("Auth")
+        .appendingPathComponent("SecureFieldWithToggle.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read SecureFieldWithToggle.swift: \(error)", file: file, line: line)
         throw error
     }
 }

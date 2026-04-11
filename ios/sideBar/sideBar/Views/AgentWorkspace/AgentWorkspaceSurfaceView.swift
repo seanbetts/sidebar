@@ -284,14 +284,11 @@ struct AgentWorkspaceSurfaceView: View {
     }
 
     private var expandButton: some View {
-        Button(action: expandWorkspaceView) {
-            Image(systemName: expandButtonIconName)
-                .appFont(.labelMd)
-                .frame(width: 28, height: 20)
-                .imageScale(.medium)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(expandButtonLabel)
+        HeaderActionButton(
+            systemName: expandButtonIconName,
+            accessibilityLabel: expandButtonLabel,
+            action: expandWorkspaceView
+        )
     }
 
     private var expandButtonIconName: String {

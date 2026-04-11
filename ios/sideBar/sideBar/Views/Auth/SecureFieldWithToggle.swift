@@ -40,7 +40,7 @@ public struct SecureFieldWithToggle<Field: Hashable>: View {
     }
 
     public var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: LoginFieldChromeMetrics.trailingControlSpacing) {
             Group {
                 if isSecure {
                     SecureField(title, text: $text)
@@ -68,6 +68,7 @@ public struct SecureFieldWithToggle<Field: Hashable>: View {
             } label: {
                 Image(systemName: isSecure ? "eye.slash.fill" : "eye.fill")
                     .foregroundStyle(.secondary)
+                    .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(isSecure ? "Show password" : "Hide password")

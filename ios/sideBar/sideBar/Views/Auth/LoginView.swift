@@ -136,10 +136,7 @@ public struct LoginView: View {
         }
     }
     private var emailFieldRow: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "envelope")
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
+        LoginFieldRow(leadingSystemName: "envelope") {
             TextField("Email", text: $email)
                 .textContentType(LoginCredentialAutofillHints.email)
         #if canImport(UIKit)
@@ -152,13 +149,17 @@ public struct LoginView: View {
                 .onSubmit {
                     focusedField = .password
                 }
+        } trailing: {
             if !email.isEmpty {
                 if isValidEmail {
-                    SuccessCheckBadge(size: 18, symbolSize: 10)
+                    SuccessCheckBadge(
+                        size: LoginFieldChromeMetrics.statusBadgeSize,
+                        symbolSize: LoginFieldChromeMetrics.statusBadgeSymbolSize
+                    )
                 } else {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(DesignTokens.Colors.error)
-                        .appFont(.callout)
+                        .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
                 }
             }
             if !email.isEmpty {
@@ -167,21 +168,16 @@ public struct LoginView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
+                        .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
                 }
                 .buttonStyle(.plain)
                 .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .padding(.horizontal, DesignTokens.Spacing.sm)
-        .glassChrome(LoginChrome.fieldKind)
         .accessibilitySortPriority(3)
     }
     private var passwordFieldRow: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "lock")
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
+        LoginFieldRow(leadingSystemName: "lock") {
             SecureFieldWithToggle(
                 title: "Password",
                 text: $password,
@@ -191,20 +187,19 @@ public struct LoginView: View {
                 submitLabel: .go,
                 onSubmit: { Task { await signIn() } }
             )
+        } trailing: {
             if !password.isEmpty {
                 Button {
                     password = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
+                        .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
                 }
                 .buttonStyle(.plain)
                 .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.vertical, DesignTokens.Spacing.xsPlus)
-        .padding(.horizontal, DesignTokens.Spacing.sm)
-        .glassChrome(LoginChrome.fieldKind)
         .accessibilitySortPriority(2)
     }
     @ViewBuilder

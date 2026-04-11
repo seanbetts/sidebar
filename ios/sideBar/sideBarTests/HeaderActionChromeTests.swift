@@ -170,6 +170,18 @@ final class HeaderActionChromeTests: XCTestCase {
         XCTAssertTrue(filesNormalized.contains("compactPhoneToolbarChromeStyle"))
         XCTAssertTrue(filesNormalized.contains("returnisCompact&&isPhone?.plain:Self.actionControlChromeStyle"))
     }
+
+    func testAgentWorkspaceExpandActionUsesSharedHeaderActionButton() throws {
+        let normalized = try headerActionSource(named: "AgentWorkspaceSurfaceView.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains("privatevarexpandButton:someView{HeaderActionButton(")
+        )
+        XCTAssertFalse(
+            normalized.contains("privatevarexpandButton:someView{Button(action:expandWorkspaceView)")
+        )
+    }
 }
 
 private func headerActionSource(
@@ -201,6 +213,10 @@ private func headerActionSource(
     case "TasksPanel+AddMenu.swift":
         sourceURL = sourceRoot
             .appendingPathComponent("SidebarPanels")
+            .appendingPathComponent(fileName)
+    case "AgentWorkspaceSurfaceView.swift":
+        sourceURL = sourceRoot
+            .appendingPathComponent("AgentWorkspace")
             .appendingPathComponent(fileName)
     default:
         XCTFail("Unsupported header action source: \(fileName)", file: file, line: line)

@@ -32,6 +32,74 @@ enum LoginChrome {
     static let noticeKind: GlassChrome.Kind = .card
 }
 
+enum LoginFieldChromeMetrics {
+    private static let baseRowSpacing: CGFloat = 10
+    private static let baseLeadingIconWidth: CGFloat = 18
+    private static let baseFieldHorizontalPadding: CGFloat = DesignTokens.Spacing.sm
+    private static let baseFieldVerticalPadding: CGFloat = DesignTokens.Spacing.xsPlus
+    private static let baseTrailingControlSpacing: CGFloat = 8
+    private static let baseTrailingSymbolPointSize: CGFloat = 18
+    private static let baseStatusBadgeSize: CGFloat = 18
+    private static let baseStatusBadgeSymbolSize: CGFloat = 10
+
+    static var rowSpacing: CGFloat { AppFontStyle.scaledMetric(baseRowSpacing, for: .current) }
+    static var leadingIconWidth: CGFloat { AppFontStyle.scaledMetric(baseLeadingIconWidth, for: .current) }
+    static var fieldHorizontalPadding: CGFloat {
+        AppFontStyle.scaledMetric(baseFieldHorizontalPadding, for: .current)
+    }
+    static var fieldVerticalPadding: CGFloat {
+        AppFontStyle.scaledMetric(baseFieldVerticalPadding, for: .current)
+    }
+    static var trailingControlSpacing: CGFloat {
+        AppFontStyle.scaledMetric(baseTrailingControlSpacing, for: .current)
+    }
+    static var trailingSymbolPointSize: CGFloat {
+        AppFontStyle.scaledMetric(baseTrailingSymbolPointSize, for: .current)
+    }
+    static var statusBadgeSize: CGFloat {
+        AppFontStyle.scaledMetric(baseStatusBadgeSize, for: .current)
+    }
+    static var statusBadgeSymbolSize: CGFloat {
+        AppFontStyle.scaledMetric(baseStatusBadgeSymbolSize, for: .current)
+    }
+}
+
+struct LoginFieldRow<Content: View, Trailing: View>: View {
+    let leadingSystemName: String
+    private let content: Content
+    private let trailing: Trailing
+
+    init(
+        leadingSystemName: String,
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.leadingSystemName = leadingSystemName
+        self.content = content()
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        HStack(spacing: LoginFieldChromeMetrics.rowSpacing) {
+            Image(systemName: leadingSystemName)
+                .foregroundStyle(.secondary)
+                .font(.system(size: LoginFieldChromeMetrics.trailingSymbolPointSize))
+                .frame(width: LoginFieldChromeMetrics.leadingIconWidth)
+
+            content
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: LoginFieldChromeMetrics.trailingControlSpacing) {
+                trailing
+            }
+        }
+        .appFont(.subheadline)
+        .padding(.vertical, LoginFieldChromeMetrics.fieldVerticalPadding)
+        .padding(.horizontal, LoginFieldChromeMetrics.fieldHorizontalPadding)
+        .glassChrome(LoginChrome.fieldKind)
+    }
+}
+
 struct LoginPrimaryActionButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled
