@@ -10,6 +10,7 @@ def test_device_tokens_register_and_disable(test_client):
         "/api/v1/device-tokens",
         headers=_auth_headers(),
         json={
+            "installation_id": "install-123",
             "token": "device-token-123",
             "platform": "ios",
             "environment": "dev",
@@ -18,6 +19,7 @@ def test_device_tokens_register_and_disable(test_client):
     )
     assert response.status_code == 200
     payload = response.json()
+    assert payload["installationId"] == "install-123"
     assert payload["token"] == "device-token-123"
     assert payload["platform"] == "ios"
     assert payload["environment"] == "dev"
@@ -29,7 +31,7 @@ def test_device_tokens_register_and_disable(test_client):
         "DELETE",
         "/api/v1/device-tokens",
         headers=_auth_headers(),
-        json={"token": "device-token-123"},
+        json={"installation_id": "install-123"},
     )
     assert disable.status_code == 200
     disabled_payload = disable.json()
@@ -41,6 +43,7 @@ def test_device_tokens_presence_update(test_client):
         "/api/v1/device-tokens",
         headers=_auth_headers(),
         json={
+            "installation_id": "install-123",
             "token": "device-token-123",
             "platform": "ios",
             "environment": "dev",
@@ -53,13 +56,14 @@ def test_device_tokens_presence_update(test_client):
         "/api/v1/device-tokens/presence",
         headers=_auth_headers(),
         json={
-            "token": "device-token-123",
+            "installation_id": "install-123",
             "is_foreground": True,
             "last_seen_at": "2026-04-10T09:30:00Z",
         },
     )
     assert response.status_code == 200
     payload = response.json()
+    assert payload["installationId"] == "install-123"
     assert payload["token"] == "device-token-123"
     assert payload["isForeground"] is True
     assert payload["lastSeenAt"] == "2026-04-10T09:30:00+00:00"

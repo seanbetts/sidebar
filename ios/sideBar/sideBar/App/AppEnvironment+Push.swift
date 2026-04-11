@@ -113,32 +113,46 @@ extension AppEnvironment {
         guard authState == .active else { return }
         guard let token = deviceToken else { return }
         guard let userId = container.authSession.userId else { return }
-        if lastRegisteredDeviceToken == token, lastRegisteredUserId == userId {
+        let installationId = deviceInstallationId
+        if lastRegisteredDeviceInstallationId == installationId,
+           lastRegisteredDeviceToken == token,
+           lastRegisteredUserId == userId {
             return
         }
-        if inFlightDeviceToken == token, inFlightDeviceTokenUserId == userId {
+        if inFlightDeviceInstallationId == installationId,
+           inFlightDeviceToken == token,
+           inFlightDeviceTokenUserId == userId {
             return
         }
         let environment = pushEnvironment
         let platform = pushPlatform
+        inFlightDeviceInstallationId = installationId
         inFlightDeviceToken = token
         inFlightDeviceTokenUserId = userId
         Task {
             do {
                 try await container.deviceTokensAPI.register(
+                    installationId: installationId,
                     token: token,
                     platform: platform,
                     environment: environment
                 )
-                if self.inFlightDeviceToken == token, self.inFlightDeviceTokenUserId == userId {
+                if self.inFlightDeviceInstallationId == installationId,
+                   self.inFlightDeviceToken == token,
+                   self.inFlightDeviceTokenUserId == userId {
+                    self.lastRegisteredDeviceInstallationId = installationId
                     self.lastRegisteredDeviceToken = token
                     self.lastRegisteredUserId = userId
+                    self.inFlightDeviceInstallationId = nil
                     self.inFlightDeviceToken = nil
                     self.inFlightDeviceTokenUserId = nil
                     self.reportCurrentDevicePresenceIfNeeded()
                 }
             } catch {
-                if self.inFlightDeviceToken == token, self.inFlightDeviceTokenUserId == userId {
+                if self.inFlightDeviceInstallationId == installationId,
+                   self.inFlightDeviceToken == token,
+                   self.inFlightDeviceTokenUserId == userId {
+                    self.inFlightDeviceInstallationId = nil
                     self.inFlightDeviceToken = nil
                     self.inFlightDeviceTokenUserId = nil
                 }
@@ -150,8 +164,13 @@ extension AppEnvironment {
 
     func disableDeviceTokenIfNeeded() async {
         guard let token = deviceToken else { return }
+        let installationId = deviceInstallationId
+        clearDeviceRegistrationState()
         do {
-            try await container.deviceTokensAPI.disable(token: token)
+            try await container.deviceTokensAPI.disable(
+                installationId: installationId,
+                token: token
+            )
         } catch {
             return
         }
@@ -181,8 +200,10 @@ extension AppEnvironment {
         let reporter = DevicePresenceReporter { [weak self] token, isForeground, lastSeenAt in
             guard let self else { return }
             guard self.authState == .active else { return }
+            let installationId = self.deviceInstallationId
             do {
                 try await self.container.deviceTokensAPI.updatePresence(
+                    installationId: installationId,
                     token: token,
                     isForeground: isForeground,
                     lastSeenAt: lastSeenAt
@@ -222,6 +243,25 @@ extension AppEnvironment {
         #endif
     }
 
-    // Entitlement logging removed after verification.
+    private var deviceInstallationId: String {
+        let defaults = storage.userDefaults
+        if let existing = defaults.string(forKey: AppStorageKeys.deviceInstallationId),
+           !existing.isEmpty {
+            return existing
+        }
+
+        let generated = UUID().uuidString.lowercased()
+        defaults.set(generated, forKey: AppStorageKeys.deviceInstallationId)
+        return generated
+    }
+
+    private func clearDeviceRegistrationState() {
+        lastRegisteredDeviceInstallationId = nil
+        lastRegisteredDeviceToken = nil
+        lastRegisteredUserId = nil
+        inFlightDeviceInstallationId = nil
+        inFlightDeviceToken = nil
+        inFlightDeviceTokenUserId = nil
+    }
 }
 #endif

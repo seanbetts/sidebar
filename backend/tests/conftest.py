@@ -151,6 +151,10 @@ else:
 
 # Ensure all SQLAlchemy models are registered before metadata operations.
 from api.models.conversation import Conversation  # noqa: F401, E402
+from api.models.device_installation import (  # noqa: F401, E402
+    DeviceInstallation,
+    DeviceInstallationUser,
+)
 from api.models.device_token import DeviceToken  # noqa: F401, E402
 from api.models.file_ingestion import (  # noqa: F401, E402
     FileDerivative,
@@ -208,20 +212,80 @@ def _ensure_user_settings_columns(connection) -> None:
     )
     connection.execute(
         text(
-            "ALTER TABLE device_tokens "
-            "ADD COLUMN IF NOT EXISTS capabilities jsonb NOT NULL DEFAULT '{}'::jsonb"
+            "CREATE TABLE IF NOT EXISTS device_installations ("
+            "id uuid PRIMARY KEY, "
+            "installation_id text NOT NULL, "
+            "token text NOT NULL, "
+            "platform text NOT NULL, "
+            "environment text NOT NULL, "
+            "capabilities jsonb NOT NULL DEFAULT '{}'::jsonb, "
+            "is_foreground boolean NOT NULL DEFAULT false, "
+            "last_seen_at timestamptz NULL, "
+            "created_at timestamptz NOT NULL, "
+            "updated_at timestamptz NOT NULL, "
+            "disabled_at timestamptz NULL"
+            ")"
         )
     )
     connection.execute(
         text(
-            "ALTER TABLE device_tokens "
-            "ADD COLUMN IF NOT EXISTS is_foreground boolean NOT NULL DEFAULT false"
+            "CREATE TABLE IF NOT EXISTS device_installation_users ("
+            "id uuid PRIMARY KEY, "
+            "installation_pk uuid NOT NULL REFERENCES device_installations(id) ON DELETE CASCADE, "
+            "user_id text NOT NULL, "
+            "bound_at timestamptz NOT NULL, "
+            "unbound_at timestamptz NULL, "
+            "created_at timestamptz NOT NULL, "
+            "updated_at timestamptz NOT NULL"
+            ")"
         )
     )
     connection.execute(
         text(
-            "ALTER TABLE device_tokens "
-            "ADD COLUMN IF NOT EXISTS last_seen_at timestamptz"
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_device_installations_active_installation_id "
+            "ON device_installations (installation_id) WHERE disabled_at IS NULL"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_device_installations_active_token "
+            "ON device_installations (token) WHERE disabled_at IS NULL"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_device_installations_platform "
+            "ON device_installations (platform)"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_device_installations_environment "
+            "ON device_installations (environment)"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_device_installations_disabled_at "
+            "ON device_installations (disabled_at)"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_device_installation_users_user_id "
+            "ON device_installation_users (user_id)"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS idx_device_installation_users_installation_pk "
+            "ON device_installation_users (installation_pk)"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_device_installation_users_active_installation "
+            "ON device_installation_users (installation_pk) WHERE unbound_at IS NULL"
         )
     )
     connection.execute(

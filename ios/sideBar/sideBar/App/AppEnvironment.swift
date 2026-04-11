@@ -140,8 +140,10 @@ public final class AppEnvironment: ObservableObject {
     lazy var websiteQueueCoordinator: WebsiteQueueCoordinator = makeWebsiteQueueCoordinator()
     #if os(iOS) || os(macOS)
     var deviceToken: String?
+    var lastRegisteredDeviceInstallationId: String?
     var lastRegisteredDeviceToken: String?
     var lastRegisteredUserId: String?
+    var inFlightDeviceInstallationId: String?
     var inFlightDeviceToken: String?
     var inFlightDeviceTokenUserId: String?
     var devicePresenceReporter: DevicePresenceReporter?

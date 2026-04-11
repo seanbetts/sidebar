@@ -20,6 +20,7 @@ class DeviceTokenRegisterRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    installation_id: str | None = None
     token: str
     platform: str
     environment: str
@@ -31,7 +32,8 @@ class DeviceTokenDisableRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    token: str
+    installation_id: str | None = None
+    token: str | None = None
 
 
 class DeviceTokenPresenceRequest(BaseModel):
@@ -39,7 +41,8 @@ class DeviceTokenPresenceRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    token: str
+    installation_id: str | None = None
+    token: str | None = None
     is_foreground: bool
     last_seen_at: datetime | None = None
 
@@ -47,6 +50,7 @@ class DeviceTokenPresenceRequest(BaseModel):
 def _token_payload(record) -> dict:
     return {
         "id": str(record.id),
+        "installationId": record.installation_id,
         "token": record.token,
         "platform": record.platform,
         "environment": record.environment,
@@ -71,6 +75,7 @@ def register_device_token(
     record = DeviceTokenService.register_token(
         db,
         user_id,
+        installation_id=request.installation_id,
         token=request.token,
         platform=request.platform,
         environment=request.environment,
@@ -89,13 +94,15 @@ def disable_device_token(
 ):
     """Disable a device token for push notifications."""
     set_session_user_id(db, user_id)
-    record = DeviceTokenService.disable_token(db, user_id, request.token)
+    record = DeviceTokenService.disable_token(
+        db,
+        user_id,
+        request.token or "",
+        installation_id=request.installation_id,
+    )
     db.commit()
     return {
         "disabled": bool(record),
-        "disabledAt": record.disabled_at.isoformat()
-        if record and record.disabled_at
-        else None,
     }
 
 
@@ -111,6 +118,7 @@ def update_device_token_presence(
     record = DeviceTokenService.update_presence(
         db,
         user_id,
+        installation_id=request.installation_id,
         token=request.token,
         is_foreground=request.is_foreground,
         last_seen_at=request.last_seen_at,

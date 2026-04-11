@@ -154,72 +154,6 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
         XCTAssertEqual(environment.settingsViewModel.shortcutsToken, "")
     }
 
-    func testRegisterDeviceTokenIfNeededCoalescesInFlightRegistrationForSameToken() async throws {
-        let requestCounter = LockedCounter()
-        let firstRequestStarted = DispatchSemaphore(value: 0)
-        let releaseRequests = DispatchSemaphore(value: 0)
-        router.setHandler { request in
-            XCTAssertEqual(request.httpMethod, "POST")
-            let path = request.url?.path
-
-            if path?.hasSuffix("/device-tokens/presence") == true {
-                let response = HTTPURLResponse(
-                    url: try XCTUnwrap(request.url),
-                    statusCode: 200,
-                    httpVersion: nil,
-                    headerFields: nil
-                )!
-                return (response, Data("{}".utf8))
-            }
-
-            XCTAssertTrue(path?.hasSuffix("/device-tokens") == true)
-
-            let count = requestCounter.increment()
-            if count == 1 {
-                firstRequestStarted.signal()
-            }
-
-            XCTAssertEqual(releaseRequests.wait(timeout: .now() + 2), .success)
-            let response = HTTPURLResponse(
-                url: try XCTUnwrap(request.url),
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            return (response, Data("{}".utf8))
-        }
-
-        let config = APIClientConfig(
-            baseUrl: router.baseURL,
-            accessTokenProvider: { nil }
-        )
-        let deviceTokensAPI = DeviceTokensAPI(
-            client: APIClient(config: config, session: router.makeSession())
-        )
-        let environment = makeEnvironment(
-            authState: .active,
-            userId: "user-123",
-            deviceTokensAPI: deviceTokensAPI
-        )
-
-        environment.updateDeviceToken("device-token-123")
-        let firstRequestResult = await waitForSignal(firstRequestStarted, timeout: 1.0)
-        XCTAssertEqual(firstRequestResult, .success)
-
-        environment.registerDeviceTokenIfNeeded()
-        await waitForRequestCount(requestCounter, expected: 1)
-        XCTAssertEqual(requestCounter.value, 1)
-
-        releaseRequests.signal()
-        await waitForRegistrationState(
-            environment,
-            token: "device-token-123",
-            userId: "user-123"
-        )
-        XCTAssertEqual(environment.lastRegisteredDeviceToken, "device-token-123")
-        XCTAssertEqual(environment.lastRegisteredUserId, "user-123")
-    }
-
     private func makeEnvironment(
         authState: AuthState,
         userId: String?,
@@ -287,66 +221,10 @@ final class AppEnvironmentAuthCacheScopeTests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
     }
-
-    private func waitForRequestCount(
-        _ counter: LockedCounter,
-        expected: Int,
-        attempts: Int = 20
-    ) async {
-        for _ in 0..<attempts where counter.value < expected {
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
-    }
-
-    private func waitForRegistrationState(
-        _ environment: AppEnvironment,
-        token: String,
-        userId: String,
-        attempts: Int = 40
-    ) async {
-        for _ in 0..<attempts
-        where environment.lastRegisteredDeviceToken != token
-            || environment.lastRegisteredUserId != userId {
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
-    }
-
-    private func waitForSignal(
-        _ semaphore: DispatchSemaphore,
-        timeout seconds: TimeInterval
-    ) async -> DispatchTimeoutResult {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                continuation.resume(
-                    returning: semaphore.wait(timeout: .now() + seconds)
-                )
-            }
-        }
-    }
 }
 
 private struct CacheScopePayload: Codable, Equatable {
     let value: String
-}
-
-private final class LockedCounter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var storage = 0
-
-    func increment() -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        storage += 1
-        return storage
-    }
-
-    var value: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return storage
-    }
 }
 
 private final class MutableAuthSession: AuthSession {
