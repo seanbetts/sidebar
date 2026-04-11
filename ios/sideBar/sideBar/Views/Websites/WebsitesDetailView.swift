@@ -114,7 +114,7 @@ struct WebsitesDetailView: View {
             if isCompact, viewModel.active != nil, isPhone {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     if shouldShowExpandButton {
-                        expandButton
+                        expandButton(chromeStyle: .plain)
                     }
                     websiteToolbarMenu
                 }
@@ -147,7 +147,7 @@ extension WebsitesDetailView {
             if viewModel.active != nil {
                 HeaderActionRow {
                     if shouldShowExpandButton {
-                        expandButton
+                        expandButton(chromeStyle: Self.actionControlChromeStyle)
                     }
                     websiteActionsMenu
                     closeButton
@@ -326,17 +326,14 @@ extension WebsitesDetailView {
         .keyboardShortcut(.escape, modifiers: [])
     }
 
-    private var expandButton: some View {
-        Button(action: expandWebsiteView) {
-            Image(systemName: expandButtonIconName)
-                .appFont(.labelMd)
-                .frame(width: 28, height: 20)
-                .imageScale(.medium)
-        }
-        .buttonStyle(.plain)
-        .headerActionControlChrome(Self.actionControlChromeStyle)
-        .accessibilityLabel(expandButtonLabel)
-        .disabled(viewModel.active == nil)
+    private func expandButton(chromeStyle: HeaderActionControlChromeStyle) -> some View {
+        HeaderActionButton(
+            systemName: expandButtonIconName,
+            accessibilityLabel: expandButtonLabel,
+            action: expandWebsiteView,
+            isDisabled: viewModel.active == nil,
+            chromeStyle: chromeStyle
+        )
     }
 
     private var shouldShowExpandButton: Bool {

@@ -13,7 +13,7 @@ extension NotesDetailView {
             accessibilityLabel: "Note options",
             items: noteSidebarMenuItems,
             isCompact: isCompact,
-            chromeStyle: Self.actionControlChromeStyle
+            chromeStyle: .plain
         )
         .disabled(viewModel.activeNote == nil)
     }

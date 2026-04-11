@@ -127,6 +127,22 @@ final class HeaderActionChromeTests: XCTestCase {
 
         XCTAssertFalse(normalized.contains("NoteActionsMenuButton("))
     }
+
+    func testCompactPhoneToolbarMenusUsePlainChrome() throws {
+        let notesNormalized = try headerActionSource(named: "NotesDetailView+MenuActions.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let websitesNormalized = try headerActionSource(named: "WebsitesDetailView+MenuActions.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let filesNormalized = try headerActionSource(named: "FilesHeaderActions.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(notesNormalized.contains("varnoteToolbarMenu:someView{HeaderActionMenuButton("))
+        XCTAssertTrue(notesNormalized.contains("chromeStyle:.plain"))
+        XCTAssertTrue(websitesNormalized.contains("varwebsiteToolbarMenu:someView{HeaderActionMenuButton("))
+        XCTAssertTrue(websitesNormalized.contains("chromeStyle:.plain"))
+        XCTAssertTrue(filesNormalized.contains("compactPhoneToolbarChromeStyle"))
+        XCTAssertTrue(filesNormalized.contains("returnisCompact&&isPhone?.plain:Self.actionControlChromeStyle"))
+    }
 }
 
 private func headerActionSource(

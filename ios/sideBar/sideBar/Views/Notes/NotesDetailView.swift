@@ -173,7 +173,7 @@ extension NotesDetailView {
                     HeaderActionRow {
                         #if os(iOS)
                         if shouldShowExpandButton {
-                            expandButton
+                            expandButton(chromeStyle: Self.actionControlChromeStyle)
                         }
                         #endif
                         noteActionsMenu
@@ -457,17 +457,14 @@ extension NotesDetailView {
         )
     }
 
-    private var expandButton: some View {
-        Button(action: expandNoteView) {
-            Image(systemName: expandButtonIconName)
-                .appFont(.labelMd)
-                .frame(width: 28, height: 20)
-                .imageScale(.medium)
-        }
-        .buttonStyle(.plain)
-        .headerActionControlChrome(Self.actionControlChromeStyle)
-        .accessibilityLabel(expandButtonLabel)
-        .disabled(viewModel.activeNote == nil)
+    private func expandButton(chromeStyle: HeaderActionControlChromeStyle) -> some View {
+        HeaderActionButton(
+            systemName: expandButtonIconName,
+            accessibilityLabel: expandButtonLabel,
+            action: expandNoteView,
+            isDisabled: viewModel.activeNote == nil,
+            chromeStyle: chromeStyle
+        )
     }
 
     private var expandButtonIconName: String {

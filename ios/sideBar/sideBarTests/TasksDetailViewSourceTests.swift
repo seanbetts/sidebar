@@ -18,6 +18,27 @@ final class TasksDetailViewSourceTests: XCTestCase {
         )
     }
 
+    func testCompactTasksHeaderUsesSharedHeaderActionButtonForNewTask() throws {
+        let normalized = try tasksDetailViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "privatefunccompactHeader(state:TasksViewState)->someView{"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "HeaderActionButton(systemName:\"plus\",accessibilityLabel:\"Newtask\""
+            )
+        )
+        XCTAssertFalse(
+            normalized.contains(
+                "Image(systemName:\"plus\").appFont(.subheadline).foregroundStyle(DesignTokens.Colors.textSecondary).frame(width:28,height:28)"
+            )
+        )
+    }
+
     private func tasksDetailViewSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {
         let fileURL = URL(fileURLWithPath: "\(file)")
         let sideBarRoot = fileURL

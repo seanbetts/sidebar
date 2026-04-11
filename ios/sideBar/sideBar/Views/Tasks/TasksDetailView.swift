@@ -232,16 +232,14 @@ extension TasksDetailView {
                 expandButton
             }
             if state.selection != .completed && shouldShowCompactAddButton {
-                Button {
-                    viewModel.startNewTask()
-                } label: {
-                    Image(systemName: "plus")
-                        .appFont(.subheadline)
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("New task")
+                HeaderActionButton(
+                    systemName: "plus",
+                    accessibilityLabel: "New task",
+                    action: {
+                        viewModel.startNewTask()
+                    },
+                    chromeStyle: Self.expandButtonChromeStyle
+                )
             }
         }
         .padding(DesignTokens.Spacing.md)

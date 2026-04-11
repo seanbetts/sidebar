@@ -80,7 +80,7 @@ extension WebsitesDetailView {
             accessibilityLabel: "Website options",
             items: websiteHeaderMenuItems,
             isCompact: isCompact,
-            chromeStyle: Self.actionControlChromeStyle
+            chromeStyle: .plain
         )
         .disabled(viewModel.active == nil)
     }

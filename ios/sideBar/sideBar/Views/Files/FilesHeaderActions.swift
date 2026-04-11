@@ -134,7 +134,7 @@ struct FilesHeaderActions: View {
                 }
             ],
             isCompact: isCompact,
-            chromeStyle: Self.actionControlChromeStyle
+            chromeStyle: compactPhoneToolbarChromeStyle
         )
         .disabled(viewModel.selectedFileId == nil)
         #endif
@@ -158,7 +158,7 @@ struct FilesHeaderActions: View {
             systemName: expandButtonIconName,
             accessibilityLabel: expandButtonLabel,
             action: expandFilesView,
-            chromeStyle: Self.actionControlChromeStyle
+            chromeStyle: compactPhoneToolbarChromeStyle
         )
     }
 
@@ -190,6 +190,14 @@ struct FilesHeaderActions: View {
         return false
         #else
         return horizontalSizeClass == .compact
+        #endif
+    }
+
+    private var compactPhoneToolbarChromeStyle: HeaderActionControlChromeStyle {
+        #if os(iOS)
+        return isCompact && isPhone ? .plain : Self.actionControlChromeStyle
+        #else
+        return Self.actionControlChromeStyle
         #endif
     }
 
