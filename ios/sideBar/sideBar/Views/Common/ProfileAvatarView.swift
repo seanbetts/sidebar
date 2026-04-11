@@ -76,6 +76,7 @@ struct SettingsAvatarButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Settings")
+        .sidebarHover()
     }
 }
 
@@ -100,6 +101,7 @@ struct GlobalAvatarRegionControls: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Scratchpad")
+            .sidebarHover()
             .popover(
                 isPresented: $isScratchpadPresented,
                 attachmentAnchor: .rect(.bounds),

@@ -1,12 +1,11 @@
 import SwiftUI
-#if os(macOS)
-import AppKit
-#endif
 
 public struct SidebarRail: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Binding private var selection: AppSection?
     @State private var hoveredSection: AppSection?
+    @State private var isLogoHovered = false
+    @State private var isSettingsHovered = false
     private let onTogglePanel: (() -> Void)?
     private let onShowSettings: (() -> Void)?
     private let onSelectSection: ((AppSection) -> Void)?
@@ -36,10 +35,18 @@ public struct SidebarRail: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 26, height: 26)
+                        .frame(width: 32, height: 32)
+                        .background {
+                            SidebarRailButtonBackground(
+                                chrome: Self.buttonChrome(isActive: false, isHovered: isLogoHovered),
+                                opacity: Self.buttonChromeOpacity(isActive: false, isHovered: isLogoHovered)
+                            )
+                        }
                 }
             )
             .buttonStyle(.plain)
             .accessibilityLabel("Toggle sidebar")
+            .sidebarHover($isLogoHovered)
 
             VStack(spacing: 12) {
                 ForEach(sections) { section in
@@ -55,10 +62,17 @@ public struct SidebarRail: View {
                 action: { onShowSettings?() },
                 label: {
                     ProfileAvatarView(size: 32)
+                        .background {
+                            SidebarRailButtonBackground(
+                                chrome: Self.buttonChrome(isActive: false, isHovered: isSettingsHovered),
+                                opacity: Self.buttonChromeOpacity(isActive: false, isHovered: isSettingsHovered)
+                            )
+                        }
                 }
             )
             .buttonStyle(.plain)
             .accessibilityLabel("Settings")
+            .sidebarHover($isSettingsHovered)
         }
         .frame(width: 56)
         .frame(maxHeight: .infinity)
@@ -115,11 +129,14 @@ public struct SidebarRail: View {
         .accessibilityLabel(section.title)
         .accessibilityValue(isActive ? "Selected" : "")
         .accessibilityAddTraits(isActive ? .isSelected : [])
-        #if os(macOS)
-        .onHover { isHovering in
-            hoveredSection = isHovering ? section : nil
-        }
-        #endif
+        .sidebarHover(
+            Binding(
+                get: { hoveredSection == section },
+                set: { isHovering in
+                    hoveredSection = isHovering ? section : nil
+                }
+            )
+        )
     }
 
     private func iconName(for section: AppSection) -> String {

@@ -191,6 +191,15 @@ final class HeaderActionChromeTests: XCTestCase {
             normalized.contains("privatevarexpandButton:someView{Button(action:expandWorkspaceView)")
         )
     }
+
+    func testSharedHeaderActionControlsUseSharedHoverModifier() throws {
+        let normalized = try headerActionComponentSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("@StateprivatevarisHovered=false"))
+        XCTAssertTrue(normalized.contains(".sidebarHover($isHovered)"))
+        XCTAssertTrue(normalized.contains("style.appliesChrome&&isHovered"))
+    }
 }
 
 private func headerActionSource(

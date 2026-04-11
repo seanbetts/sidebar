@@ -82,15 +82,17 @@ struct HeaderActionButton: View {
     let action: () -> Void
     var isDisabled: Bool = false
     var chromeStyle: HeaderActionControlChromeStyle = .plain
+    @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
             HeaderActionIcon(systemName: systemName)
         }
         .buttonStyle(.plain)
-        .headerActionControlChrome(chromeStyle)
+        .headerActionControlChrome(chromeStyle, isHovered: isHovered)
         .accessibilityLabel(accessibilityLabel)
         .disabled(isDisabled)
+        .sidebarHover($isHovered)
     }
 }
 
@@ -99,6 +101,7 @@ struct HeaderActionMenuControl<MenuContent: View>: View {
     let accessibilityLabel: String
     var chromeStyle: HeaderActionControlChromeStyle = .plain
     let menuContent: MenuContent
+    @State private var isHovered = false
 
     init(
         systemName: String,
@@ -117,13 +120,14 @@ struct HeaderActionMenuControl<MenuContent: View>: View {
             menuContent
         } label: {
             HeaderActionIcon(systemName: systemName)
-                .headerActionControlChrome(chromeStyle)
+                .headerActionControlChrome(chromeStyle, isHovered: isHovered)
         }
         .buttonStyle(.plain)
 #if os(macOS)
         .menuIndicator(.hidden)
 #endif
         .accessibilityLabel(accessibilityLabel)
+        .sidebarHover($isHovered)
     }
 }
 
@@ -221,12 +225,14 @@ struct HeaderActionMenuButton: View {
 
 private struct HeaderActionControlChromeModifier: ViewModifier {
     let style: HeaderActionControlChromeStyle
+    let isHovered: Bool
 
     func body(content: Content) -> some View {
-        if style.appliesChrome {
+        if style.appliesChrome || isHovered {
             content
                 .padding(HeaderActionControlMetrics.chromePadding)
                 .glassChrome(style.kind)
+                .opacity(style.appliesChrome && isHovered ? 0.96 : 1)
         } else {
             content
         }
@@ -234,7 +240,10 @@ private struct HeaderActionControlChromeModifier: ViewModifier {
 }
 
 extension View {
-    func headerActionControlChrome(_ style: HeaderActionControlChromeStyle) -> some View {
-        modifier(HeaderActionControlChromeModifier(style: style))
+    func headerActionControlChrome(
+        _ style: HeaderActionControlChromeStyle,
+        isHovered: Bool = false
+    ) -> some View {
+        modifier(HeaderActionControlChromeModifier(style: style, isHovered: isHovered))
     }
 }

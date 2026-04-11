@@ -291,6 +291,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         .onTapGesture(count: 2) {
             onDoubleTap?()
         }
+        .sidebarHover(cursor: .resizeLeftRight)
     }
 
     private func toggleLeftPanel() {

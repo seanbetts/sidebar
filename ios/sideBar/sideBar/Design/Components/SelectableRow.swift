@@ -9,6 +9,7 @@ struct SelectableRow<Content: View>: View {
     private let verticalPadding: CGFloat
     private let customRowBackground: Color?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isHovered = false
 
     var usesButtonBackedPrimaryAction: Bool {
         primaryAction != nil
@@ -60,17 +61,25 @@ struct SelectableRow<Content: View>: View {
             interactiveRowContent
                 .listRowInsets(rowInsets)
                 .listRowBackground(selectedRowBackground)
+                .sidebarHover($isHovered)
         } else {
             interactiveRowContent
                 .padding(.leading, rowInsets.leading)
                 .padding(.trailing, rowInsets.trailing)
                 .background(selectedRowBackground)
                 .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
+                .sidebarHover($isHovered)
         }
     }
 
     private var selectedRowBackground: Color {
-        isSelected ? DesignTokens.Colors.selection : rowBackground
+        if isSelected {
+            return DesignTokens.Colors.selection
+        }
+        if isHovered && !isSelected {
+            return DesignTokens.Colors.selection.opacity(0.42)
+        }
+        return rowBackground
     }
 
     private var rowBackground: Color {

@@ -38,6 +38,14 @@ final class GlobalAvatarRegionControlsSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("ScratchpadPopoverSurface("))
     }
 
+    func testGlobalAvatarRegionButtonsUseSharedHoverModifier() throws {
+        let normalized = try profileAvatarSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SettingsAvatarButton"))
+        XCTAssertEqual(normalized.components(separatedBy: ".sidebarHover(").count - 1, 2)
+    }
+
     private func profileAvatarSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {
         let fileURL = URL(fileURLWithPath: "\(file)")
         let sideBarRoot = fileURL

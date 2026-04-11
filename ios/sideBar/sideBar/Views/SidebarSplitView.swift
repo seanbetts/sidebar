@@ -69,6 +69,7 @@ public struct SidebarSplitView<Detail: View>: View {
                     dragWidth = nil
                 }
         )
+        .sidebarHover(cursor: .resizeLeftRight)
     }
 
     private func currentPanelWidth(for proxy: GeometryProxy) -> Double {

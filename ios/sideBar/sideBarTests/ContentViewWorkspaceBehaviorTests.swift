@@ -316,4 +316,56 @@ final class ContentViewWorkspaceBehaviorTests: XCTestCase {
             )
         )
     }
+
+    func testWorkspaceResizeHandlesUseSharedHoverCursorModifier() throws {
+        let workspaceNormalized = try workspaceLayoutSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let splitNormalized = try sidebarSplitViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(workspaceNormalized.contains(".sidebarHover(cursor:.resizeLeftRight)"))
+        XCTAssertTrue(splitNormalized.contains(".sidebarHover(cursor:.resizeLeftRight)"))
+    }
+}
+
+private func workspaceLayoutSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("WorkspaceLayout.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read WorkspaceLayout.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func sidebarSplitViewSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("SidebarSplitView.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read SidebarSplitView.swift: \(error)", file: file, line: line)
+        throw error
+    }
 }
