@@ -1,8 +1,11 @@
-"""Helpers for web search tool payloads and status."""
+"""Helpers for provider web search payloads and result normalization."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
+
+from google.genai import types
 
 
 def build_web_search_location(
@@ -60,6 +63,84 @@ def build_web_search_location(
     if timezone:
         location["timezone"] = timezone
     return location if len(location) > 1 else None
+
+
+def build_openai_web_search_tool(
+    *,
+    current_location_levels: Any,
+    timezone: str | None,
+) -> dict[str, Any]:
+    """Build an OpenAI Responses API web search tool payload."""
+    tool: dict[str, Any] = {"type": "web_search"}
+    user_location = build_web_search_location(current_location_levels, timezone)
+    if user_location:
+        tool["user_location"] = user_location
+    return tool
+
+
+def build_google_web_search_tool(
+    function_declarations: list[types.FunctionDeclaration],
+) -> types.Tool:
+    """Build a Gemini tool declaration combining search and custom functions."""
+    tool_kwargs: dict[str, Any] = {"google_search": types.GoogleSearch()}
+    if function_declarations:
+        tool_kwargs["function_declarations"] = function_declarations
+    return types.Tool(**tool_kwargs)
+
+
+def extract_openai_response_text(response: Any) -> str:
+    """Extract text from an OpenAI Responses API response."""
+    output_text = getattr(response, "output_text", None)
+    if isinstance(output_text, str) and output_text:
+        return output_text
+
+    output = getattr(response, "output", None) or []
+    text_parts: list[str] = []
+    for item in output:
+        item_type = getattr(item, "type", None)
+        if item_type != "message":
+            continue
+        content = getattr(item, "content", None) or []
+        for part in content:
+            part_text = getattr(part, "text", None)
+            if isinstance(part_text, str) and part_text:
+                text_parts.append(part_text)
+    return "".join(text_parts)
+
+
+def parse_openai_response_function_calls(response: Any) -> list[dict[str, Any]]:
+    """Extract custom function calls from an OpenAI Responses API response."""
+    parsed: list[dict[str, Any]] = []
+    for item in getattr(response, "output", None) or []:
+        item_type = getattr(item, "type", None)
+        if item_type != "function_call":
+            continue
+
+        name = getattr(item, "name", None)
+        if not isinstance(name, str) or not name:
+            continue
+
+        call_id = getattr(item, "call_id", None) or getattr(item, "id", None)
+        if not isinstance(call_id, str) or not call_id:
+            continue
+
+        arguments_raw = getattr(item, "arguments", None) or "{}"
+        if isinstance(arguments_raw, str):
+            try:
+                decoded = json.loads(arguments_raw)
+            except json.JSONDecodeError:
+                decoded = {}
+        else:
+            decoded = arguments_raw
+
+        parsed.append(
+            {
+                "call_id": call_id,
+                "name": name,
+                "arguments": decoded if isinstance(decoded, dict) else {},
+            }
+        )
+    return parsed
 
 
 def serialize_web_search_result(content_block: Any) -> dict[str, Any]:

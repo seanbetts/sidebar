@@ -356,6 +356,185 @@ async def test_gateway_stream_chat_openai_executes_tools(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_gateway_stream_chat_openai_uses_responses_api_for_web_search(
+    monkeypatch,
+) -> None:
+    captured_calls: list[dict[str, Any]] = []
+
+    class FakeResponses:
+        async def create(self, **kwargs):
+            captured_calls.append(kwargs)
+            return SimpleNamespace(output_text="Search answer", output=[])
+
+    class ForbiddenCompletions:
+        async def create(self, **_kwargs):
+            raise AssertionError(
+                "Chat Completions should not be used for OpenAI web search"
+            )
+
+    class FakeChat:
+        def __init__(self):
+            self.completions = ForbiddenCompletions()
+
+    class FakeOpenAIClient:
+        def __init__(self):
+            self.chat = FakeChat()
+            self.responses = FakeResponses()
+
+    gateway = AIProviderGateway(
+        settings,
+        openai_client_factory=lambda **_kwargs: FakeOpenAIClient(),
+    )
+    monkeypatch.setattr(
+        gateway,
+        "_get_tool_mapper",
+        lambda: SimpleNamespace(
+            get_claude_tools=lambda _allowed: [],
+            get_tool_display_name=lambda name: name,
+            execute_tool=None,
+        ),
+    )
+
+    events = [
+        event
+        async for event in gateway.stream_chat_with_tools(
+            message="What's the latest Python release?",
+            conversation_history=[],
+            system_prompt="Be concise",
+            allowed_skills=["web-search"],
+            tool_context={
+                "current_location_levels": {
+                    "locality": "London",
+                    "administrative_area_level_1": "England",
+                    "country": "GB",
+                },
+                "current_timezone": "Europe/London",
+            },
+            settings_record=SimpleNamespace(ai_primary_provider="openai"),
+            provider_key_lookup=lambda _provider: "sk-openai-test",
+        )
+    ]
+
+    assert events == [{"type": "token", "content": "Search answer"}]
+    assert len(captured_calls) == 1
+    assert captured_calls[0]["model"] == "gpt-5.3-chat-latest"
+    assert captured_calls[0]["include"] == ["web_search_call.action.sources"]
+    assert any(
+        tool.get("type") == "web_search" for tool in captured_calls[0]["tools"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_gateway_stream_chat_openai_web_search_can_execute_custom_tools(
+    monkeypatch,
+) -> None:
+    captured_calls: list[dict[str, Any]] = []
+
+    class FakeResponses:
+        def __init__(self):
+            self._responses = [
+                SimpleNamespace(
+                    output_text="",
+                    output=[
+                        SimpleNamespace(
+                            type="function_call",
+                            call_id="call-1",
+                            name="create_note",
+                            arguments='{"title":"From search"}',
+                        )
+                    ],
+                ),
+                SimpleNamespace(output_text="Done", output=[]),
+            ]
+
+        async def create(self, **kwargs):
+            captured_calls.append(kwargs)
+            return self._responses.pop(0)
+
+    class ForbiddenCompletions:
+        async def create(self, **_kwargs):
+            raise AssertionError(
+                "Chat Completions should not be used for OpenAI web search"
+            )
+
+    class FakeChat:
+        def __init__(self):
+            self.completions = ForbiddenCompletions()
+
+    class FakeOpenAIClient:
+        def __init__(self):
+            self.chat = FakeChat()
+            self.responses = FakeResponses()
+
+    class FakeToolMapper:
+        def get_claude_tools(self, _allowed):
+            return [
+                {
+                    "name": "create_note",
+                    "description": "Create a note",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {"title": {"type": "string"}},
+                    },
+                }
+            ]
+
+        def get_tool_display_name(self, name):
+            return "Create Note" if name == "create_note" else name
+
+        def get_tool_skill_id(self, name):
+            return "notes" if name == "create_note" else None
+
+        def get_tool_icon_key(self, name):
+            return "notes" if name == "create_note" else None
+
+        async def execute_tool(
+            self, name, parameters, allowed_skills=None, context=None
+        ):
+            assert name == "create_note"
+            assert parameters == {"title": "From search"}
+            assert allowed_skills == ["web-search", "notes"]
+            assert context == {"user_id": "user-1"}
+            return {
+                "success": True,
+                "data": {"id": "note-search", "title": "From search"},
+            }
+
+    gateway = AIProviderGateway(
+        settings,
+        openai_client_factory=lambda **_kwargs: FakeOpenAIClient(),
+    )
+    monkeypatch.setattr(gateway, "_get_tool_mapper", lambda: FakeToolMapper())
+
+    events = [
+        event
+        async for event in gateway.stream_chat_with_tools(
+            message="Search the web and save the result as a note",
+            conversation_history=[],
+            system_prompt=None,
+            allowed_skills=["web-search", "notes"],
+            tool_context={"user_id": "user-1"},
+            settings_record=SimpleNamespace(ai_primary_provider="openai"),
+            provider_key_lookup=lambda _provider: "sk-openai-test",
+        )
+    ]
+
+    assert any(event["type"] == "tool_call" for event in events)
+    assert any(event["type"] == "tool_result" for event in events)
+    assert any(event["type"] == "note_created" for event in events)
+    assert any(
+        event["type"] == "token" and event["content"] == "Done" for event in events
+    )
+    assert any(
+        tool.get("type") == "web_search" for tool in captured_calls[0]["tools"]
+    )
+    assert any(
+        tool.get("type") == "function" and tool.get("name") == "create_note"
+        for tool in captured_calls[0]["tools"]
+    )
+
+
+@pytest.mark.asyncio
 async def test_gateway_stream_chat_google_emits_tokens_and_uses_model(monkeypatch) -> None:
     captured: dict[str, Any] = {}
 
@@ -473,6 +652,98 @@ async def test_gateway_stream_chat_google_executes_tools(monkeypatch) -> None:
     assert any(
         event["type"] == "token" and event["content"] == "Completed" for event in events
     )
+
+
+@pytest.mark.asyncio
+async def test_gateway_stream_chat_google_web_search_combines_builtin_and_custom_tools(
+    monkeypatch,
+) -> None:
+    captured_configs: list[Any] = []
+
+    class FakeModels:
+        def __init__(self):
+            self._responses = [
+                SimpleNamespace(
+                    text="",
+                    function_calls=[
+                        SimpleNamespace(
+                            id="google-call-search-1",
+                            name="create_note",
+                            args={"title": "Grounded note"},
+                        )
+                    ],
+                    candidates=[
+                        SimpleNamespace(content=types.Content(role="model", parts=[]))
+                    ],
+                ),
+                SimpleNamespace(text="Completed", function_calls=[], candidates=[]),
+            ]
+
+        def generate_content(self, **kwargs):
+            captured_configs.append(kwargs.get("config"))
+            return self._responses.pop(0)
+
+    class FakeGoogleClient:
+        def __init__(self):
+            self.models = FakeModels()
+
+    class FakeToolMapper:
+        def get_claude_tools(self, _allowed):
+            return [
+                {
+                    "name": "create_note",
+                    "description": "Create a note",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {"title": {"type": "string"}},
+                    },
+                }
+            ]
+
+        def get_tool_display_name(self, name):
+            return "Create Note" if name == "create_note" else name
+
+        async def execute_tool(
+            self, name, parameters, allowed_skills=None, context=None
+        ):
+            assert name == "create_note"
+            assert parameters == {"title": "Grounded note"}
+            assert allowed_skills == ["web-search", "notes"]
+            assert context == {"user_id": "user-1"}
+            return {
+                "success": True,
+                "data": {"id": "note-grounded", "title": "Grounded note"},
+            }
+
+    gateway = AIProviderGateway(
+        settings,
+        google_client_factory=lambda **_kwargs: FakeGoogleClient(),
+    )
+    monkeypatch.setattr(gateway, "_get_tool_mapper", lambda: FakeToolMapper())
+    events = [
+        event
+        async for event in gateway.stream_chat_with_tools(
+            message="Search the web and save the result as a note",
+            conversation_history=[],
+            system_prompt=None,
+            allowed_skills=["web-search", "notes"],
+            tool_context={"user_id": "user-1"},
+            settings_record=SimpleNamespace(ai_primary_provider="google"),
+            provider_key_lookup=lambda _provider: "sk-google-test",
+        )
+    ]
+
+    assert any(event["type"] == "tool_call" for event in events)
+    assert any(event["type"] == "tool_result" for event in events)
+    assert any(event["type"] == "note_created" for event in events)
+    assert any(
+        event["type"] == "token" and event["content"] == "Completed" for event in events
+    )
+    first_config = captured_configs[0]
+    assert first_config.tools
+    first_tool = first_config.tools[0]
+    assert getattr(first_tool, "google_search", None) is not None
+    assert getattr(first_tool, "function_declarations", None)
 
 
 @pytest.mark.asyncio

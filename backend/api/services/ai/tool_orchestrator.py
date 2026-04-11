@@ -17,6 +17,12 @@ from api.services.ai.tool_event_mapper import (
     tool_result_content,
     tool_side_effect_events,
 )
+from api.services.web_search_builder import (
+    build_google_web_search_tool,
+    build_openai_web_search_tool,
+    extract_openai_response_text,
+    parse_openai_response_function_calls,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +53,12 @@ class ProviderToolOrchestrator:
         self._tool_definitions = list(tool_definitions or [])
         self._tool_context = tool_context
 
+    def _web_search_enabled(self) -> bool:
+        """Return whether the current provider turn allows built-in web search."""
+        return isinstance(self._allowed_skills, list) and (
+            "web-search" in self._allowed_skills
+        )
+
     async def run_openai(
         self,
         *,
@@ -58,6 +70,18 @@ class ProviderToolOrchestrator:
     ) -> AsyncIterator[dict[str, Any]]:
         """Run OpenAI chat with multi-turn function calling."""
         tools = self._resolved_tool_definitions()
+        if self._web_search_enabled():
+            async for event in self._run_openai_with_web_search(
+                client=client,
+                model=model,
+                message=message,
+                conversation_history=conversation_history,
+                system_prompt=system_prompt,
+                tools=tools,
+            ):
+                yield event
+            return
+
         openai_tools = [
             {
                 "type": "function",
@@ -119,6 +143,8 @@ class ProviderToolOrchestrator:
                 if isinstance(event, dict) and event.get("_openai_tool_message"):
                     messages.append(event["payload"])
                     continue
+                if isinstance(event, dict) and event.get("_openai_responses_input"):
+                    continue
                 if isinstance(event, dict) and event.get("_google_tool_part"):
                     continue
                 yield event
@@ -141,9 +167,15 @@ class ProviderToolOrchestrator:
         """Run Google chat with multi-turn function calling."""
         tools = self._resolved_tool_definitions()
         function_declarations = self._build_google_function_declarations(tools)
-        google_tools: list[Any] = [
-            types.Tool(function_declarations=function_declarations)
-        ]
+        google_tools: list[Any] = []
+        if self._web_search_enabled():
+            google_tools.append(
+                build_google_web_search_tool(
+                    function_declarations=function_declarations
+                )
+            )
+        else:
+            google_tools.append(types.Tool(function_declarations=function_declarations))
         contents = self._build_google_contents(
             message=message,
             conversation_history=conversation_history,
@@ -236,10 +268,96 @@ class ProviderToolOrchestrator:
                     continue
                 if isinstance(event, dict) and event.get("_openai_tool_message"):
                     continue
+                if isinstance(event, dict) and event.get("_openai_responses_input"):
+                    continue
                 yield event
 
             if response_parts:
                 contents.append(types.Content(role="user", parts=response_parts))
+            continue
+
+        yield {
+            "type": "error",
+            "error": "Maximum tool rounds reached before completion",
+        }
+
+    async def _run_openai_with_web_search(
+        self,
+        *,
+        client: Any,
+        model: str,
+        message: str,
+        conversation_history: list[dict[str, Any]] | None,
+        system_prompt: str | None,
+        tools: list[dict[str, Any]],
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Run OpenAI chat via Responses API when built-in web search is enabled."""
+        response_input: Any = self._build_openai_messages(
+            message=message,
+            conversation_history=conversation_history,
+            system_prompt=None,
+        )
+        response_id: str | None = None
+
+        openai_tools: list[dict[str, Any]] = [
+            build_openai_web_search_tool(
+                current_location_levels=(self._tool_context or {}).get(
+                    "current_location_levels"
+                ),
+                timezone=(self._tool_context or {}).get("current_timezone"),
+            )
+        ]
+        openai_tools.extend(
+            {
+                "type": "function",
+                "name": tool["name"],
+                "description": tool["description"],
+                "parameters": tool["input_schema"],
+            }
+            for tool in tools
+        )
+
+        for _ in range(ChatConstants.MAX_TOOL_ROUNDS):
+            request_kwargs: dict[str, Any] = {
+                "model": model,
+                "tools": openai_tools,
+                "tool_choice": "auto",
+                "include": ["web_search_call.action.sources"],
+                "input": response_input,
+            }
+            if isinstance(system_prompt, str) and system_prompt.strip():
+                request_kwargs["instructions"] = system_prompt.strip()
+            if response_id:
+                request_kwargs["previous_response_id"] = response_id
+
+            response = await client.responses.create(**request_kwargs)
+            response_id = getattr(response, "id", None) or response_id
+
+            content_text = extract_openai_response_text(response)
+            if content_text:
+                yield {"type": "token", "content": content_text}
+
+            tool_calls = [
+                LLMToolCall(
+                    call_id=tool_call["call_id"],
+                    name=tool_call["name"],
+                    arguments=tool_call["arguments"],
+                )
+                for tool_call in parse_openai_response_function_calls(response)
+            ]
+            if not tool_calls:
+                return
+
+            response_input = []
+            async for event in self._execute_tool_calls(tool_calls):
+                if isinstance(event, dict) and event.get("_openai_responses_input"):
+                    response_input.append(event["payload"])
+                    continue
+                if isinstance(event, dict) and event.get("_openai_tool_message"):
+                    continue
+                if isinstance(event, dict) and event.get("_google_tool_part"):
+                    continue
+                yield event
             continue
 
         yield {
@@ -588,6 +706,14 @@ class ProviderToolOrchestrator:
                     "role": "tool",
                     "tool_call_id": tool_call.call_id,
                     "content": content_value,
+                },
+            }
+            yield {
+                "_openai_responses_input": True,
+                "payload": {
+                    "type": "function_call_output",
+                    "call_id": tool_call.call_id,
+                    "output": content_value,
                 },
             }
             yield {
