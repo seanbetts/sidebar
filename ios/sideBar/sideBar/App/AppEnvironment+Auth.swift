@@ -112,9 +112,8 @@ extension AppEnvironment {
             biometricBackgroundedAt = nil
             return
         }
-
-        isBiometricUnlocked = false
-        biometricBackgroundedAt = nil
+        // Preserve the local biometric gate across token refreshes and
+        // stale/active auth transitions within the same signed-in session.
     }
 
     func updateBiometricUnlockPreference(isEnabled: Bool) {
