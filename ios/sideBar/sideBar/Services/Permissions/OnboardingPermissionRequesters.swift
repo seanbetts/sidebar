@@ -123,22 +123,20 @@ public final class NotificationPermissionRequester: NotificationPermissionReques
     }
 
     public func refreshCurrentState() async -> OnboardingPermissionState {
-        let status = await withCheckedContinuation { continuation in
-            center.getNotificationSettings { settings in
-                continuation.resume(returning: settings.authorizationStatus)
-            }
-        }
+        let status = await loadAuthorizationStatus()
         let state = Self.map(status)
         cachedState = state
         return state
     }
 
     public func requestPermission() async -> OnboardingPermissionState {
-        let state = await refreshCurrentState()
-        guard state == .notAsked else {
-            if state == .granted {
-                registerForRemoteNotifications()
-            }
+        let status = await loadAuthorizationStatus()
+        let state = Self.map(status)
+        cachedState = state
+
+        guard NotificationAuthorizationPolicy.shouldRequestVisibleRemoteNotificationAuthorization(
+            for: status
+        ) else {
             return state
         }
 
@@ -148,14 +146,21 @@ public final class NotificationPermissionRequester: NotificationPermissionReques
             }
         }
 
-        if isGranted {
+        let updatedState = await refreshCurrentState()
+        if isGranted || updatedState == .granted {
             cachedState = .granted
             registerForRemoteNotifications()
             return .granted
         }
-
-        let updatedState = await refreshCurrentState()
         return updatedState == .notAsked ? .denied : updatedState
+    }
+
+    private func loadAuthorizationStatus() async -> UNAuthorizationStatus {
+        await withCheckedContinuation { continuation in
+            center.getNotificationSettings { settings in
+                continuation.resume(returning: settings.authorizationStatus)
+            }
+        }
     }
 
     private static func map(_ status: UNAuthorizationStatus) -> OnboardingPermissionState {

@@ -82,7 +82,7 @@ extension AppEnvironmentDeepLinkTests {
         XCTAssertEqual(registerCount, 1)
     }
 
-    func testEnableNotificationsRegistersImmediatelyWhenAlreadyAuthorized() async {
+    func testEnableNotificationsReRequestsAuthorizationWhenAlreadyAuthorized() async {
         let environment = requireEnvironment()
         var requestCount = 0
         var registerCount = 0
@@ -99,7 +99,7 @@ extension AppEnvironmentDeepLinkTests {
         )
 
         XCTAssertTrue(isEnabled)
-        XCTAssertEqual(requestCount, 0)
+        XCTAssertEqual(requestCount, 1)
         XCTAssertEqual(registerCount, 1)
     }
 

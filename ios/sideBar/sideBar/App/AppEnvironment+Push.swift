@@ -52,30 +52,36 @@ extension AppEnvironment {
 #endif
         }
     ) async -> Bool {
-        let status = await withCheckedContinuation { continuation in
-            notificationSettings { currentStatus in
-                continuation.resume(returning: currentStatus)
+        let loadStatus = {
+            await withCheckedContinuation { (continuation: CheckedContinuation<UNAuthorizationStatus, Never>) in
+                notificationSettings { currentStatus in
+                    continuation.resume(returning: currentStatus)
+                }
             }
         }
 
-        switch status {
-        case .authorized, .provisional, .ephemeral:
-            registerForRemoteNotifications()
-            return true
-        case .notDetermined:
-            let isGranted = await withCheckedContinuation { continuation in
-                requestAuthorization { granted in
-                    continuation.resume(returning: granted)
-                }
-            }
-            guard isGranted else { return false }
-            registerForRemoteNotifications()
-            return true
-        case .denied:
-            return false
-        @unknown default:
+        let status = await loadStatus()
+        guard NotificationAuthorizationPolicy.shouldRequestVisibleRemoteNotificationAuthorization(
+            for: status
+        ) else {
             return false
         }
+
+        let isGranted = await withCheckedContinuation { continuation in
+            requestAuthorization { granted in
+                continuation.resume(returning: granted)
+            }
+        }
+        let resolvedStatus = isGranted ? status : await loadStatus()
+        guard isGranted
+                || NotificationAuthorizationPolicy.isVisibleRemoteNotificationAuthorized(
+                    resolvedStatus
+                ) else {
+            return false
+        }
+
+        registerForRemoteNotifications()
+        return true
     }
 #endif
 
