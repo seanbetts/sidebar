@@ -1160,6 +1160,7 @@ private final class SelectableNoteReadTextView: UITextView {
     override var contentSize: CGSize {
         didSet {
             guard contentSize != oldValue else { return }
+            rearmInitialViewportAnchorRestorationIfNeeded()
             pendingInitialViewportStabilitySignature = nil
             if isAwaitingPostRestorationStability {
                 pendingPostRestorationStabilitySignature = nil
@@ -1180,6 +1181,7 @@ private final class SelectableNoteReadTextView: UITextView {
         updateTextContainerInsets()
         updateViewportInsets()
         updateCodeBlockBackgroundLayoutState()
+        rearmInitialViewportAnchorRestorationIfNeeded()
         applyInitialViewportOffsetIfNeeded()
         reportViewportOffsetIfNeeded()
     }
@@ -1276,6 +1278,39 @@ private final class SelectableNoteReadTextView: UITextView {
         guard force || lastReportedViewportOffset != contentOffset else { return }
         lastReportedViewportOffset = contentOffset
         onViewportOffsetChange?(contentOffset)
+    }
+
+    private func rearmInitialViewportAnchorRestorationIfNeeded() {
+        guard hasPendingInitialViewportRestoration == false,
+              hasAppliedInitialViewportOffset,
+              let initialViewportAnchorTarget,
+              let initialViewportAnchorY,
+              let lastAppliedInitialViewportOffset,
+              abs(contentOffset.x - lastAppliedInitialViewportOffset.x) <= 0.5,
+              abs(contentOffset.y - lastAppliedInitialViewportOffset.y) <= 0.5,
+              let requestedOffset = SelectableNoteReadView.contentOffset(
+                forViewportAnchorY: initialViewportAnchorY,
+                in: self,
+                target: initialViewportAnchorTarget
+              ) else {
+            return
+        }
+
+        let clampedOffset = clampedContentOffset(for: requestedOffset)
+        guard abs(clampedOffset.x - contentOffset.x) > 0.5
+                || abs(clampedOffset.y - contentOffset.y) > 0.5 else {
+            return
+        }
+
+        pendingInitialViewportOffset = initialViewportOffset
+        pendingInitialViewportAnchorTarget = initialViewportAnchorTarget
+        pendingInitialViewportAnchorY = initialViewportAnchorY
+        pendingInitialViewportStabilitySignature = nil
+        pendingPostRestorationStabilitySignature = nil
+        isAwaitingPostRestorationStability = false
+        isAwaitingPostRestorationQuietPeriod = false
+        hasAppliedInitialViewportOffset = false
+        lastRequestedInitialViewportOffset = nil
     }
 
     fileprivate func applyInitialViewportOffsetIfNeeded() {
