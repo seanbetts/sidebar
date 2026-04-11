@@ -21,180 +21,284 @@
   <div class="page-inner">
     <header>
       <h1>Privacy Policy</h1>
-      <p class="meta">Last updated: March 8, 2026</p>
+      <p class="meta">Last updated: 11 April 2026</p>
     </header>
 
     <section>
       <p>
-        This Privacy Policy explains how sideBar ("we", "us", "our") collects, uses, and discloses
-        information when you use the sideBar web app, iOS app, and related services.
+        This Privacy Policy explains how sideBar Labs Limited ("sideBar", "we", "us", "our")
+        collects, uses, and shares information when you use the sideBar iOS, iPadOS, and macOS apps,
+        the sideBar web app at trysidebar.ai, and our related services (together, the "Service").
       </p>
       <p>
-        By using sideBar, you agree to the practices described in this policy. If you do not agree,
-        please do not use the service.
+        sideBar Labs Limited is a company registered in England and Wales (company number
+        17137829) and acts as the data controller for personal data processed through the Service.
+        We are registered with the UK Information Commissioner's Office (ICO) under registration
+        number ZC116277.
+      </p>
+      <p>
+        By using sideBar you agree to the practices described in this policy. If you do not agree,
+        please do not use the Service.
       </p>
     </section>
 
     <section>
       <h2>1. Information We Collect</h2>
-      <h3>Account Information</h3>
+
+      <h3>Account information</h3>
       <ul>
         <li>Email address and authentication identifiers</li>
-        <li>Profile preferences and settings</li>
+        <li>Display name and profile preferences</li>
+        <li>Subscription status and plan (Free, Plus, Pro, or BYOK)</li>
       </ul>
-      <h3>Content You Provide</h3>
+
+      <h3>Content you create or upload</h3>
       <ul>
-        <li>Prompts, chat history, tasks, notes, files, and saved website content</li>
-        <li>Workspace metadata (such as titles, tags, and organisation choices)</li>
+        <li>Chat prompts, conversations, and AI responses</li>
+        <li>Notes, tasks, files, and saved website content</li>
+        <li>Workspace metadata such as titles, tags, and folder structure</li>
         <li>
-          Memories: persistent reference documents created automatically by sideBar during
-          conversations to improve future responses, as well as any memories you add or edit
-          manually
+          Memories: reference documents created automatically by sideBar during conversations to
+          improve future responses, plus any memories you add or edit manually
         </li>
       </ul>
-      <h3>Technical and Usage Data</h3>
+
+      <h3>Payment information</h3>
       <ul>
-        <li>Device, browser, and app version details</li>
-        <li>Operational logs, error diagnostics, and performance telemetry</li>
+        <li>
+          Web subscriptions are processed by Stripe. We do not receive or store full card details.
+          We receive limited information such as your billing country, the last four digits of your
+          card, and subscription status.
+        </li>
+        <li>
+          iOS and macOS subscriptions are processed by Apple through In-App Purchase. Apple handles
+          payment data and shares only the receipt and subscription status we need to unlock your
+          plan.
+        </li>
+      </ul>
+
+      <h3>Technical and usage data</h3>
+      <ul>
+        <li>Device type, operating system, browser, and app version</li>
+        <li>Operational logs, crash reports, and performance telemetry</li>
         <li>IP address and approximate location derived from network requests</li>
         <li>
-          Precise device location, if you grant location permission, used to provide local weather
-          and location context to the assistant
+          Precise device location, if you grant permission, used only to provide local weather and
+          location context to the assistant
         </li>
+      </ul>
+
+      <h3>Communications</h3>
+      <ul>
+        <li>Support emails and messages you send us</li>
+        <li>Transactional emails we send you via Resend (for example, sign-in links and receipts)</li>
       </ul>
     </section>
 
     <section>
       <h2>2. How We Use Information</h2>
       <ul>
-        <li>Provide, maintain, and secure sideBar functionality</li>
-        <li>Process AI features and tool execution you request</li>
-        <li>Sync your account data across supported clients</li>
-        <li>Respond to support requests and service communications</li>
-        <li>Improve product reliability, safety, and performance</li>
+        <li>Provide, maintain, and secure the Service</li>
+        <li>Process AI features, tool calls, and skills you request</li>
+        <li>Sync your account across your devices and clients</li>
+        <li>Process subscriptions, receipts, and renewals</li>
+        <li>Send transactional messages (sign-in links, receipts, important service notices)</li>
+        <li>Respond to support requests</li>
+        <li>Diagnose crashes and improve product reliability, safety, and performance</li>
         <li>Comply with legal obligations and enforce our terms</li>
       </ul>
+      <p>
+        We do not use your chats, notes, tasks, files, or other content to train our own AI models,
+        and we do not sell your personal data.
+      </p>
     </section>
 
     <section>
-      <h2>3. AI Processing and Third-Party Services</h2>
+      <h2>3. AI Processing</h2>
       <p>
-        sideBar uses a bring-your-own-key (BYOK) model for AI. You choose an AI provider (Anthropic,
-        OpenAI, or Google) and supply your own API key in Settings. Your key is encrypted before
-        being stored. When you use sideBar, your content is sent to the provider you have configured,
-        not to all providers.
+        sideBar uses AI models provided by third-party vendors, currently Anthropic, OpenAI, and
+        Google. How your content reaches those vendors depends on the plan you are on.
       </p>
+
+      <h3>Bundled AI (Free, Plus, and Pro plans)</h3>
       <p>
-        To provide sideBar, we also use infrastructure and service providers that may process data
-        on our behalf, including hosting, authentication, storage, and analytics. This can include
-        providers such as Supabase, Cloudflare R2, Vercel, and Sentry. We require vendors to handle
-        data under contractual and security controls appropriate for their role.
+        On our bundled plans, sideBar sends the prompts, conversation context, and any tool inputs
+        needed to answer your request to the AI provider on your behalf using our own API accounts.
+        Your content is processed under the AI provider's enterprise or API terms and is not used by
+        them to train their foundation models.
       </p>
-      <h3>Store Skills and Third-Party Integrations</h3>
+
+      <h3>Bring Your Own Key (BYOK)</h3>
       <p>
-        Some Store skills connect to external services (such as Gmail or Spotify). When you install
-        and use such a skill, relevant data may be sent to that third-party service to fulfil your
-        request. Each skill's requirements are shown before installation.
+        On the BYOK plan you supply your own API key for an AI provider. Your key is encrypted
+        before it is stored. When you use sideBar, your prompts and context are sent directly to the
+        provider you chose using your key. That interaction is governed by your own agreement with
+        that provider, and sideBar is not a party to it. We still handle the surrounding account,
+        sync, and storage functions as described in this policy.
       </p>
-      <h3>Bug Reports and Feedback</h3>
+
+      <h3>Store skills and third-party integrations</h3>
+      <p>
+        Some Store skills connect sideBar to external services (for example, Gmail, Google Calendar,
+        or Spotify). When you install and use such a skill, relevant data is sent to that service to
+        fulfil your request. Each skill's permissions are shown before installation, and you can
+        disconnect it at any time in Settings.
+      </p>
+
+      <h3>Bug reports and feedback</h3>
       <p>
         When you report a bug or request a feature via sideBar's built-in feedback tool, we collect
         a summary of your report along with technical metadata (such as your conversation ID and
-        device information) and file it as an issue in our development tracker. No full conversation
-        content is included.
+        device information) and file it as an issue in our development tracker. Full conversation
+        content is not included unless you paste it in yourself.
       </p>
     </section>
 
     <section>
-      <h2>4. Legal Bases (EEA/UK Users)</h2>
-      <p>Where applicable, we process personal data under one or more of these legal bases:</p>
+      <h2>4. Service Providers and Sub-processors</h2>
+      <p>
+        We use a small number of infrastructure and service providers to run sideBar. Each is bound
+        by contractual and security controls appropriate to its role.
+      </p>
       <ul>
-        <li>Contract: to provide the service you requested</li>
-        <li>Legitimate interests: to secure and improve sideBar</li>
-        <li>Consent: where you provide optional permissions</li>
-        <li>Legal obligation: where required by law</li>
+        <li><strong>Supabase</strong>: authentication, database, and realtime sync</li>
+        <li><strong>Fly.io</strong>: backend API hosting</li>
+        <li><strong>Cloudflare</strong>: marketing site hosting, CDN, and DDoS protection</li>
+        <li><strong>Cloudflare R2</strong>: file and object storage</li>
+        <li><strong>Stripe</strong>: web subscription billing</li>
+        <li><strong>Apple</strong>: iOS and macOS In-App Purchase billing</li>
+        <li><strong>Resend</strong>: transactional email delivery</li>
+        <li><strong>Sentry</strong>: crash and error reporting</li>
+        <li><strong>Anthropic, OpenAI, Google</strong>: AI model providers</li>
+      </ul>
+      <p>
+        This list may change as sideBar evolves. We will keep this page up to date when we add or
+        change material sub-processors.
+      </p>
+    </section>
+
+    <section>
+      <h2>5. Legal Bases (UK and EEA Users)</h2>
+      <p>Where UK or EU data protection law applies, we process personal data under these bases:</p>
+      <ul>
+        <li><strong>Contract</strong>: to provide the Service you signed up for</li>
+        <li><strong>Legitimate interests</strong>: to secure, maintain, and improve sideBar</li>
+        <li><strong>Consent</strong>: where you grant optional permissions such as location access</li>
+        <li><strong>Legal obligation</strong>: where required by applicable law</li>
       </ul>
     </section>
 
     <section>
-      <h2>5. Data Retention</h2>
+      <h2>6. Data Retention</h2>
       <p>
-        We retain data for as long as needed to provide the service, meet legal obligations, resolve
-        disputes, and enforce agreements. Retention periods vary by data type and operational need.
+        We keep personal data only as long as needed for the purposes described in this policy or as
+        required by law.
       </p>
+      <ul>
+        <li>Account data is kept for as long as your account is active.</li>
+        <li>
+          Content you create (chats, notes, tasks, files) is kept until you delete it or close your
+          account.
+        </li>
+        <li>Operational logs and crash reports are typically kept for up to 90 days.</li>
+        <li>
+          Billing records are kept for as long as required by tax and accounting law (generally up
+          to 7 years in the UK).
+        </li>
+      </ul>
       <p>
-        When data is no longer required, we delete or de-identify it. Backup copies may persist for
-        a limited period under standard disaster-recovery policies.
+        Backup copies may persist for a limited period under standard disaster-recovery policies
+        before being overwritten.
       </p>
     </section>
 
     <section>
-      <h2>6. Data Sharing and Transfers</h2>
+      <h2>7. Data Sharing and International Transfers</h2>
       <p>
-        We do not sell your personal data. We may share data with service providers, affiliates, or
-        legal authorities where necessary to operate sideBar, protect users, or comply with law.
+        We do not sell your personal data. We share data with the service providers listed above,
+        and with legal authorities where we are required by law or to protect the rights, property,
+        or safety of sideBar, our users, or others.
       </p>
       <p>
-        Your data may be processed in countries outside your own. Where required, we use appropriate
-        transfer safeguards.
+        Some of our providers are based outside the UK and EEA, including in the United States.
+        Where we transfer personal data outside the UK or EEA, we rely on appropriate safeguards
+        such as the UK International Data Transfer Agreement (IDTA), the UK Addendum to the EU
+        Standard Contractual Clauses, or an adequacy decision.
       </p>
     </section>
 
     <section>
-      <h2>7. Your Rights and Choices</h2>
-      <p>Depending on your location, you may have rights to:</p>
+      <h2>8. Security</h2>
+      <p>
+        We use industry-standard measures to protect your data, including encryption in transit
+        (TLS), encryption at rest for sensitive data, certificate pinning on our apps, encrypted
+        storage of BYOK API keys, and access controls on our infrastructure. No online service can
+        be completely secure, but we work to reduce risk and respond quickly to incidents.
+      </p>
+    </section>
+
+    <section>
+      <h2>9. Your Rights</h2>
+      <p>Depending on where you live, you may have the right to:</p>
       <ul>
         <li>Access the personal data we hold about you</li>
         <li>Request correction or deletion of your data</li>
         <li>Object to or restrict certain processing</li>
-        <li>Request data portability where applicable</li>
+        <li>Request data portability</li>
         <li>Withdraw consent where processing is based on consent</li>
       </ul>
       <p>
-        To exercise these rights, contact us at
-        <a href="mailto:support@trysidebar.ai">support@trysidebar.ai</a>.
-      </p>
-    </section>
-
-    <section>
-      <h2>8. Account and Data Deletion</h2>
-      <p>
-        You can request deletion of your account and associated data by emailing
+        To exercise any of these rights, email
         <a href="mailto:support@trysidebar.ai">support@trysidebar.ai</a> from your account email.
+        We may ask you to verify your identity before we act.
       </p>
       <p>
-        We may request verification before deleting data and may retain limited records where
-        required for legal, security, or fraud-prevention reasons.
+        If you are in the UK or EEA and you are not happy with how we have handled your data, you
+        have the right to complain to your local data protection authority. In the UK this is the
+        Information Commissioner's Office (<a href="https://ico.org.uk">ico.org.uk</a>).
       </p>
     </section>
 
     <section>
-      <h2>9. Children's Privacy</h2>
+      <h2>10. Account and Data Deletion</h2>
       <p>
-        sideBar is intended for users who meet the minimum age requirement in their region. Based on
-        our current App Store ratings, sideBar is intended for users age 16+ in most regions, and
-        15+ in Australia and the Republic of Korea.
+        You can request deletion of your account and associated content by emailing
+        <a href="mailto:support@trysidebar.ai">support@trysidebar.ai</a> from your account email.
+        We may retain limited records where required for legal, security, tax, or fraud-prevention
+        reasons.
+      </p>
+    </section>
+
+    <section>
+      <h2>11. Children's Privacy</h2>
+      <p>
+        sideBar is intended for users aged 18 and over. It is not designed for children or
+        teenagers, and we do not knowingly collect personal data from anyone under 18.
       </p>
       <p>
-        We do not knowingly collect personal data from children below the applicable minimum age. If
-        you believe a child has provided personal data, contact
+        If you believe someone under 18 has provided personal data to us, contact
         <a href="mailto:support@trysidebar.ai">support@trysidebar.ai</a> and we will investigate
-        and take appropriate action.
+        and delete the data where appropriate.
       </p>
     </section>
 
     <section>
-      <h2>10. Changes to This Policy</h2>
+      <h2>12. Changes to This Policy</h2>
       <p>
         We may update this Privacy Policy from time to time. If we make material changes, we will
-        post the updated policy here and revise the "Last updated" date above.
+        post the updated policy here and revise the "Last updated" date above. For significant
+        changes we will also give you a reasonable in-app or email notice where appropriate.
       </p>
     </section>
 
     <section>
-      <h2>11. Contact</h2>
+      <h2>13. Contact</h2>
       <p>
-        For privacy questions or requests, contact:
+        sideBar Labs Limited, a company registered in England and Wales under company number
+        17137829. ICO registration number ZC116277.
+      </p>
+      <p>
+        Privacy questions or requests:
         <a href="mailto:support@trysidebar.ai">support@trysidebar.ai</a>
       </p>
       <p>

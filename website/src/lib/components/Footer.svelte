@@ -1,10 +1,12 @@
 <footer class="footer">
   <div class="footer-inner">
     <p class="copy">
-      &copy; {new Date().getFullYear()} sideBar. All rights reserved.
+      &copy; {new Date().getFullYear()} sideBar Labs Limited. All rights reserved.
     </p>
     <nav class="footer-links" aria-label="Footer navigation">
       <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms of Service</a>
+      <a href="/eula">EULA</a>
       <a href="mailto:support@trysidebar.ai">Contact</a>
     </nav>
     <p class="made-with">
