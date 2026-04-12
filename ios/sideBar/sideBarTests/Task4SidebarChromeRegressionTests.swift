@@ -57,13 +57,13 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertTrue(normalized.contains("ifletprimaryAction"))
     }
 
-    func testMacSidebarPanelsUsePlainListStyleForFullWidthSelectionChrome() throws {
+    func testMacSidebarPanelsUseSidebarListStyle() throws {
         let normalized = try source(
             at: ["sideBar", "Views", "SidebarPanels", "PanelComponents.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("#ifos(macOS)self.listStyle(.plain)"))
-        XCTAssertFalse(normalized.contains("#ifos(macOS)self.listStyle(.sidebar)"))
+        XCTAssertTrue(normalized.contains("#ifos(macOS)self.listStyle(.sidebar)"))
+        XCTAssertFalse(normalized.contains("#ifos(macOS)self.listStyle(.plain)"))
     }
 
     func testMacFileAndNoteRowsUseExplicitPrimaryActions() throws {

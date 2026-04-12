@@ -14,6 +14,7 @@ final class SidebarHoverModifierTests: XCTestCase {
         XCTAssertTrue(normalized.contains("@StateprivatevarisCursorActive=false"))
         XCTAssertTrue(normalized.contains(".environment(\\.sidebarIsHovered,resolvedIsHovered)"))
         XCTAssertTrue(normalized.contains(".onHover{hoveringin"))
+        XCTAssertFalse(normalized.contains("simultaneousGesture(DragGesture(minimumDistance:0)"))
         XCTAssertTrue(normalized.contains("case.pointingHand:return.pointingHand"))
         XCTAssertTrue(normalized.contains("case.resizeLeftRight:return.resizeLeftRight"))
         XCTAssertTrue(normalized.contains("funcsidebarHover(cursor:SidebarHoverCursor?=.pointingHand)->someView"))

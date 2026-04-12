@@ -48,10 +48,6 @@ struct SidebarHoverModifier: ViewModifier {
     func body(content: Content) -> some View {
         hoverTrackedContent(content)
             .environment(\.sidebarIsHovered, resolvedIsHovered)
-            .refreshCursorAfterInteraction(
-                isHovered: resolvedIsHovered,
-                refresh: { updateCursor(active: true, refresh: true) }
-            )
             .onDisappear {
                 updateCursor(active: false)
             }
@@ -121,25 +117,5 @@ extension View {
         cursor: SidebarHoverCursor? = .pointingHand
     ) -> some View {
         modifier(SidebarHoverModifier(isHovered: isHovered, cursor: cursor))
-    }
-
-    @ViewBuilder
-    fileprivate func refreshCursorAfterInteraction(
-        isHovered: Bool,
-        refresh: @escaping () -> Void
-    ) -> some View {
-        #if os(macOS)
-        simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onEnded { _ in
-                    guard isHovered else { return }
-                    DispatchQueue.main.async {
-                        refresh()
-                    }
-                }
-        )
-        #else
-        self
-        #endif
     }
 }
