@@ -201,6 +201,29 @@ extension WebsitesStore {
         updateListItem(item, persist: true)
     }
 
+    func applySyncItems(_ items: [WebsiteItem]) {
+        guard !items.isEmpty else { return }
+        for item in items {
+            if item.deletedAt != nil {
+                removeItem(
+                    id: item.id,
+                    persistList: false,
+                    clearPersistedDetailCache: true,
+                    updateWidgets: false
+                )
+            } else {
+                updateListItem(
+                    item,
+                    persistList: false,
+                    persistDetailCache: true,
+                    updateWidgets: false
+                )
+            }
+        }
+        persistListCache()
+        updateWidgetData(from: self.items)
+    }
+
     private func applyLocalUpdate(id: String, update: (WebsiteItem) -> WebsiteItem) {
         guard let current = websiteItem(for: id) else { return }
         let updated = update(current)

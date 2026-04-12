@@ -25,4 +25,11 @@ protocol TasksWriteQueueApplying {
 @MainActor
 protocol WebsitesWriteQueueApplying {
     func applySyncItem(_ item: WebsiteItem)
+    func applySyncItems(_ items: [WebsiteItem])
+}
+
+extension WebsitesWriteQueueApplying {
+    func applySyncItems(_ items: [WebsiteItem]) {
+        items.forEach(applySyncItem)
+    }
 }

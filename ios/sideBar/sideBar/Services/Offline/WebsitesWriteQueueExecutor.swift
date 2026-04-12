@@ -23,7 +23,7 @@ final class WebsitesWriteQueueExecutor: WriteQueueExecutor {
                 serverSnapshot: encoded
             )
         }
-        response.websites.forEach { store.applySyncItem($0) }
-        response.updates?.items.forEach { store.applySyncItem($0) }
+        let syncedItems = response.websites + (response.updates?.items ?? [])
+        store.applySyncItems(syncedItems)
     }
 }

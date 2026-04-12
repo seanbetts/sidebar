@@ -151,6 +151,20 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     }
 
     public func updateListItem(_ item: WebsiteItem, persist: Bool = true) {
+        updateListItem(
+            item,
+            persistList: persist,
+            persistDetailCache: persist,
+            updateWidgets: true
+        )
+    }
+
+    func updateListItem(
+        _ item: WebsiteItem,
+        persistList: Bool,
+        persistDetailCache: Bool,
+        updateWidgets: Bool
+    ) {
         if let index = items.firstIndex(where: { $0.id == item.id }) {
             items[index] = item
         } else {
@@ -159,7 +173,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         if let active, active.id == item.id {
             let updated = updateDetail(active, with: item)
             self.active = updated
-            if persist {
+            if persistDetailCache {
                 if shouldPersistDetail(updated) {
                     persistDetail(updated)
                 } else {
@@ -167,10 +181,12 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
                 }
             }
         }
-        if persist {
+        if persistList {
             persistListCache()
         }
-        updateWidgetData(from: items)
+        if updateWidgets {
+            updateWidgetData(from: items)
+        }
     }
 
     public func insertItemAtTop(_ item: WebsiteItem, persist: Bool = true) {
@@ -195,16 +211,34 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     }
 
     public func removeItem(id: String, persist: Bool = true) {
+        removeItem(
+            id: id,
+            persistList: persist,
+            clearPersistedDetailCache: true,
+            updateWidgets: true
+        )
+    }
+
+    func removeItem(
+        id: String,
+        persistList: Bool,
+        clearPersistedDetailCache: Bool,
+        updateWidgets: Bool
+    ) {
         reconciliationState.expirations.removeValue(forKey: id)
         items.removeAll { $0.id == id }
         if active?.id == id {
             active = nil
         }
-        if persist {
+        if persistList {
             persistListCache()
         }
-        offlineStore?.remove(key: CacheKeys.websiteDetail(id: id))
-        updateWidgetData(from: items)
+        if clearPersistedDetailCache {
+            offlineStore?.remove(key: CacheKeys.websiteDetail(id: id))
+        }
+        if updateWidgets {
+            updateWidgetData(from: items)
+        }
         removeWebsiteFromSpotlight(id: id)
     }
 
