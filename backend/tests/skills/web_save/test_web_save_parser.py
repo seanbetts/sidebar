@@ -518,6 +518,113 @@ def test_parse_url_local_reuters_article_uses_domain_extractor(monkeypatch):
     assert "Report Ad" not in parsed.content
     assert "About Reuters" not in parsed.content
     assert "LSEG Products" not in parsed.content
+
+
+def test_parse_url_local_forbes_article_cleans_shell_markdown(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>Here’s The Most Affordable Humanoid Robot You Can Buy Now - Forbes</title>
+        <meta property="og:title" content="Here’s The Most Affordable Humanoid Robot You Can Buy Now" />
+        <meta property="article:published_time" content="2026-04-12T01:39:00-04:00" />
+        <link rel="canonical" href="https://www.forbes.com/sites/johnkoetsier/2026/04/12/heres-the-most-affordable-humanoid-robot-you-can-buy-now/" />
+      </head>
+      <body>
+        <article><p>Placeholder body</p></article>
+      </body>
+    </html>
+    """
+
+    noisy_markdown = """
+*   [Forbes Asia](https://www.forbes.com/forbesasia/)
+        *   [Free Issue of Forbes](https://w1.buysub.com/pubs/B4/FRB/free.jsp)
+
+Today's Highlights
+
+[Innovation](https://www.forbes.com/innovation/)[Consumer Tech](https://www.forbes.com/consumer-tech/)
+
+# Here’s The Most Affordable Humanoid Robot You Can Buy Now
+
+By[John Koetsier](https://www.forbes.com/sites/johnkoetsier/),
+
+Senior Contributor.
+
+Forbes contributors publish independent expert analyses and insights.
+
+Apr 12, 2026, 01:39am EDT
+
+![Image 12: Screenshot of some of the Unitree R1's features](https://imageio.forbes.com/robot-1.jpg)
+
+Starting next week, you’re going to be able to buy the world’s cheapest humanoid robot.
+
+Here’s what you can expect from a Unitree R1 humanoid robot:
+
+*   Height: four feet tall (1.2 meters)
+*   Weight: 60 pounds (27 kilograms)
+
+PROMOTED
+
+Within the EDU series of R1 robots, there are various options:
+
+*   EDU Pro A ships with 7 DOF agile hands but no touch sensors
+
+MORE FOR YOU
+
+### [‘No Deal’— Bitcoin Braces For Crash After Fruitless Vance Iran Talks](http://www.forbes.com/sites/digital-assets/2026/04/11/example/)
+
+More importantly, if this is the current standard for a low-end humanoid robot, we should be able to purchase much more capable and useful models within a year or two.
+
+![Image 13: 1X says Neo will do your housework for $20,000, or $500/month.](https://imageio.forbes.com/robot-2.jpg)
+
+1X says Neo will do your housework for $20,000, or $500/month.
+
+[Explore More Newsletters](https://account.forbes.com/newsletters)
+
+1X’s Neo, for instance, is currently available for pre-order.
+
+FORBES’ FEATURED Video
+
+[Editorial Standards](https://www.forbes.com/sites/forbesstaff/article/forbes-editorial-values-and-standards/)[Reprints & Permissions](https://www.parsintl.com/publications/forbes/)
+"""
+
+    class DummyDocument:
+        def __init__(self, _html: str) -> None:
+            pass
+
+        def summary(self, html_partial: bool = True) -> str:
+            return "<article><p>Placeholder body</p></article>"
+
+        def short_title(self) -> str:
+            return "Here’s The Most Affordable Humanoid Robot You Can Buy Now"
+
+        def title(self) -> str:
+            return "Here’s The Most Affordable Humanoid Robot You Can Buy Now"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return (
+            html,
+            "https://www.forbes.com/sites/johnkoetsier/2026/04/12/heres-the-most-affordable-humanoid-robot-you-can-buy-now/",
+            False,
+        )
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "ReadabilityDocument", DummyDocument)
+    monkeypatch.setattr(web_save_parser, "html_to_markdown", lambda _html: noisy_markdown)
+    monkeypatch.setattr(
+        web_save_parser, "_favicon_exists", lambda url, timeout=8: False
+    )
+
+    parsed = web_save_parser.parse_url_local(
+        "https://www.forbes.com/sites/johnkoetsier/2026/04/12/heres-the-most-affordable-humanoid-robot-you-can-buy-now/"
+    )
+
+    assert "Today's Highlights" not in parsed.content
+    assert "MORE FOR YOU" not in parsed.content
+    assert "FORBES’ FEATURED Video" not in parsed.content
+    assert "[Explore More Newsletters]" not in parsed.content
+    assert "[Editorial Standards]" not in parsed.content
+    assert "Starting next week" in parsed.content
+    assert "1X’s Neo, for instance, is currently available for pre-order." in parsed.content
     assert "sp.analytics.yahoo.com" not in parsed.content
     assert "blob:http://localhost" not in parsed.content
 

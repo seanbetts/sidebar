@@ -49,12 +49,10 @@ from api.services.web_save_parser_fallback import (
     LocalParseFallbackError,
     raise_antibot_fallback_if_needed,
 )
+from api.services.web_save_parser_forbes import extract_forbes_article_markdown
 from api.services.web_save_parser_github import cleanup_github_markdown
 from api.services.web_save_parser_hbr import extract_hbr_body_html
-from api.services.web_save_parser_html import (
-    _safe_html_tostring,
-    _safe_html_tree,
-)
+from api.services.web_save_parser_html import _safe_html_tostring, _safe_html_tree
 from api.services.web_save_parser_metadata import extract_metadata
 from api.services.web_save_parser_openai import cleanup_openai_markdown
 from api.services.web_save_parser_patreon import extract_patreon_post_snapshot
@@ -65,9 +63,7 @@ from api.services.web_save_parser_paywall import (
 )
 from api.services.web_save_parser_reuters import extract_reuters_payload
 from api.services.web_save_parser_sidebar_docs import extract_sidebar_docs_body_html
-from api.services.web_save_parser_snapshots import (
-    maybe_build_snapshot_render,
-)
+from api.services.web_save_parser_snapshots import maybe_build_snapshot_render
 from api.services.web_save_parser_steam import extract_steamcommunity_payload_for_url
 from api.services.web_save_parser_substack import (
     cleanup_substack_markdown,
@@ -696,6 +692,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if domain.endswith("theverge.com"):
         markdown = simplify_linked_images(markdown)
         markdown = cleanup_verge_markdown(markdown)
+    if domain.endswith("forbes.com"):
+        markdown = (
+            extract_forbes_article_markdown(markdown, source=source_url) or markdown
+        )
     if domain.endswith("gizmodo.com"):
         markdown = cleanup_gizmodo_markdown(markdown)
     if domain.endswith("youtube.com"):
