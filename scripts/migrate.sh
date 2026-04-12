@@ -117,6 +117,30 @@ print(quote_plus(sys.argv[1]))
 PY
 }
 
+resolve_ipv4() {
+  python3 - <<'PY' "$1" "$2"
+import socket
+import sys
+
+host = sys.argv[1]
+port = int(sys.argv[2])
+
+try:
+    infos = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+except socket.gaierror:
+    print("")
+    raise SystemExit(0)
+
+for info in infos:
+    address = info[4][0]
+    if address:
+        print(address)
+        raise SystemExit(0)
+
+print("")
+PY
+}
+
 prompt_supabase_url() {
   local url
   read -r -p "Supabase pooler URL (no password): " url
@@ -158,6 +182,7 @@ configure_supabase() {
   local pooler_port
   local direct_host
   local direct_user
+  local direct_hostaddr
   local db_name
   local sslmode
   local pooler_url
@@ -225,15 +250,22 @@ configure_supabase() {
   direct_user="${direct_user:-postgres}"
   export DATABASE_URL="postgresql://${pooler_user}:${password_encoded}@${pooler_host}:${pooler_port}/${db_name}?sslmode=${sslmode}"
   if [[ -n "${direct_host}" ]]; then
-    export DATABASE_URL_DIRECT="postgresql://${direct_user}:${password_encoded}@${direct_host}:5432/${db_name}?sslmode=${sslmode}"
+    direct_hostaddr=$(resolve_ipv4 "${direct_host}" 5432)
+    if [[ -n "${direct_hostaddr}" ]]; then
+      export DATABASE_URL_DIRECT="postgresql://${direct_user}:${password_encoded}@${direct_host}:5432/${db_name}?sslmode=${sslmode}&hostaddr=${direct_hostaddr}"
+    else
+      export DATABASE_URL_DIRECT="${DATABASE_URL}"
+    fi
   else
     export DATABASE_URL_DIRECT="${DATABASE_URL}"
   fi
   export APP_ENV="production"
   echo
   echo "Using Supabase pooler: user=${pooler_user} host=${pooler_host} port=${pooler_port} db=${db_name}"
-  if [[ -n "${direct_host}" ]]; then
-    echo "Using direct migration host: user=${direct_user} host=${direct_host} port=5432 db=${db_name}"
+  if [[ -n "${direct_host}" && -n "${direct_hostaddr}" ]]; then
+    echo "Using direct migration host: user=${direct_user} host=${direct_host} hostaddr=${direct_hostaddr} port=5432 db=${db_name}"
+  elif [[ -n "${direct_host}" ]]; then
+    echo "Direct migration host has no reachable IPv4 route, falling back to pooler"
   fi
   use_doppler=0
 }
