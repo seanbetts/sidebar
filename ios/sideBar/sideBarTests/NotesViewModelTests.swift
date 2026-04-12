@@ -255,7 +255,10 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertNil(created)
         XCTAssertEqual(toastCenter.toast?.message, "Failed to create note")
     }
+}
 
+@MainActor
+final class NotesViewModelMutationTests: XCTestCase {
     func testSearchSuccessClearsPreviousSearchError() async throws {
         let match = FileNode(
             name: "Cafe.md",
