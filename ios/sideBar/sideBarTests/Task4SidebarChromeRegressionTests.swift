@@ -38,13 +38,38 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertFalse(normalized.contains("top:DesignTokens.Spacing.xxl"))
     }
 
-    func testWebsitesPanelAvoidsSystemListSelectionAndUsesExplicitRowAction() throws {
-        let normalized = try source(
+    func testMacContentPanelsUseExplicitPlainListActivationPath() throws {
+        let conversations = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "ConversationsPanelView+Helpers.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let notes = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+Helpers.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let files = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "FilesPanel+Helpers.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let websites = try source(
             at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel+ListSections.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertFalse(normalized.contains("List(selection:$selection)"))
-        XCTAssertFalse(normalized.contains("#ifos(macOS)nil#else{open(item:item)}#endif"))
+        XCTAssertTrue(conversations.contains("sidebarPanelList{content()}"))
+        XCTAssertFalse(conversations.contains("sidebarPanelList(selection:conversationSelectionBinding){content()}"))
+        XCTAssertFalse(conversations.contains(".tag(conversation.id)"))
+        XCTAssertTrue(conversations.contains("return{Task{awaitviewModel.selectConversation(id:conversation.id)}}"))
+
+        XCTAssertTrue(notes.contains("sidebarPanelList{content()}"))
+        XCTAssertFalse(notes.contains("sidebarPanelList(selection:noteSelectionBinding){content()}"))
+        XCTAssertFalse(notes.contains("row.tag(selectionID)"))
+        XCTAssertFalse(notes.contains(".tag(node.path)"))
+
+        XCTAssertTrue(files.contains("sidebarPanelList{content()}"))
+        XCTAssertFalse(files.contains("sidebarPanelList(selection:fileSelectionBinding){content()}"))
+        XCTAssertFalse(files.contains("#ifos(macOS)returnnil#else"))
+
+        XCTAssertTrue(websites.contains("sidebarPanelList{content()}"))
+        XCTAssertFalse(websites.contains("sidebarPanelList(selection:websiteSelectionBinding){content()}"))
+        XCTAssertFalse(websites.contains("row.tag(item.id)"))
+        XCTAssertTrue(websites.contains("return{open(item:item)}"))
     }
 
     func testSelectableRowAvoidsButtonBackedPrimaryActionChrome() throws {
@@ -55,27 +80,85 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertFalse(normalized.contains("Button(action:primaryAction)"))
         XCTAssertFalse(normalized.contains(".onTapGesture{primaryAction?()}"))
         XCTAssertTrue(normalized.contains("ifletprimaryAction"))
+        XCTAssertTrue(normalized.contains(".contentShape(Rectangle())"))
     }
 
-    func testMacSidebarPanelsUseSidebarListStyle() throws {
+    func testMacSidebarPanelsUseSidebarListChromeAndSharedListWrapper() throws {
         let normalized = try source(
             at: ["sideBar", "Views", "SidebarPanels", "PanelComponents.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let selectionListSignature =
+            "funcsidebarPanelList<SelectionValue:Hashable,Content:View>("
+            + "selection:Binding<SelectionValue?>?=nil,@ViewBuildercontent:()->Content)"
+            + "->someView"
 
+        XCTAssertTrue(
+            normalized.contains(selectionListSignature)
+        )
+        XCTAssertTrue(normalized.contains("funcsidebarPanelList<Content:View>(@ViewBuildercontent:()->Content)->someView"))
         XCTAssertTrue(normalized.contains("#ifos(macOS)self.listStyle(.sidebar)"))
         XCTAssertFalse(normalized.contains("#ifos(macOS)self.listStyle(.plain)"))
     }
 
-    func testMacFileAndNoteRowsUseExplicitPrimaryActions() throws {
+    func testMacSelectableContentRowsUseExplicitPrimaryActions() throws {
         let notes = try source(
             at: ["sideBar", "Views", "SidebarPanels", "NotesPanelComponents.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let files = try source(
             at: ["sideBar", "Views", "SidebarPanels", "FilesPanel+Helpers.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let conversations = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "ConversationsPanelView+Helpers.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertFalse(notes.contains("#ifos(macOS)returnnil#elsereturnonSelect#endif"))
-        XCTAssertFalse(files.contains("#ifos(macOS)returnnil#elsereturn{open(item:item)}#endif"))
+        XCTAssertFalse(notes.contains("#ifos(macOS)ifitem.isFile{returnnil}#endif"))
+        XCTAssertFalse(files.contains("#ifos(macOS)returnnil#else"))
+        XCTAssertFalse(conversations.contains("#ifos(macOS)nil#else"))
+    }
+
+    func testSelectableRowOwnsSidebarPanelRowBackgroundChrome() throws {
+        let conversations = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "ConversationsPanelView+Helpers.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let filesList = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "FilesPanel.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let pinnedFiles = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "FilesPanel+PinnedReorder.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let notes = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+PinnedReorder.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let noteSearch = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+Helpers.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let websites = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel+ListSections.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(
+            conversations.contains(
+                ".listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected:viewModel.selectedConversationId==conversation.id))"
+            )
+        )
+        XCTAssertFalse(filesList.contains(".listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected:isSelected))"))
+        XCTAssertFalse(pinnedFiles.contains(".listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected:isSelected))"))
+        XCTAssertFalse(notes.contains(".listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected:isSelected))"))
+        XCTAssertFalse(noteSearch.contains(".tag(node.path)"))
+        XCTAssertFalse(websites.contains(".listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected:isSelected))"))
+    }
+
+    func testMacPinnedReorderRowsDoNotReintroduceSelectionTags() throws {
+        let notes = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+PinnedReorder.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let files = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "FilesPanel+PinnedReorder.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(notes.contains("letbaseRow=NotesTreeRow("))
+        XCTAssertFalse(notes.contains(".tag(item.id)"))
+        XCTAssertFalse(files.contains(".tag(item.file.id)"))
     }
 
     func testSettingsEditorsUseSharedInputChrome() throws {

@@ -157,14 +157,6 @@ extension ConversationsPanelView {
                             onDelete: { presentDelete(conversation) }
                         )
                         .platformContextMenu(items: conversationContextMenuItemsList(for: conversation))
-                        .listRowBackground(
-                            DesignTokens.Colors.sidebarRowBackground(
-                                isSelected: viewModel.selectedConversationId == conversation.id
-                            )
-                        )
-                        #if os(macOS)
-                        .tag(conversation.id)
-                        #endif
                     }
                 } header: {
                     sidebarProminentSectionHeader(group.title)
@@ -192,33 +184,13 @@ extension ConversationsPanelView {
     private func conversationsPanelList<Content: View>(
         @ViewBuilder content: () -> Content
     ) -> some View {
-        #if os(macOS)
-        List(selection: conversationSelectionBinding) {
+        sidebarPanelList {
             content()
         }
-        #else
-        List {
-            content()
-        }
-        #endif
-    }
-
-    private var conversationSelectionBinding: Binding<String?> {
-        Binding(
-            get: { viewModel.selectedConversationId },
-            set: { newValue in
-                guard let newValue, newValue != viewModel.selectedConversationId else { return }
-                Task { await viewModel.selectConversation(id: newValue) }
-            }
-        )
     }
 
     private func conversationRowPrimaryAction(for conversation: Conversation) -> (() -> Void)? {
-        #if os(macOS)
-        nil
-        #else
-        { Task { await viewModel.selectConversation(id: conversation.id) } }
-        #endif
+        return { Task { await viewModel.selectConversation(id: conversation.id) } }
     }
 
     func navigateConversationList(direction: ShortcutListDirection) {

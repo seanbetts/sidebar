@@ -155,7 +155,6 @@ extension FilesPanelView {
                 onDelete: deleteAction(for: item)
             )
             .platformContextMenu(items: fileContextMenuItemsList(for: item))
-            .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
             .staggeredAppear(index: index, isActive: listAppeared)
             pinnedReorderableRow(row, itemID: item.file.id)
         } else {
@@ -167,10 +166,6 @@ extension FilesPanelView {
                 onDelete: deleteAction(for: item)
             )
             .platformContextMenu(items: fileContextMenuItemsList(for: item))
-            .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
-            #if os(macOS)
-            .tag(item.file.id)
-            #endif
             .staggeredAppear(index: index, isActive: listAppeared)
             pinnedReorderableRow(row, itemID: item.file.id)
         }

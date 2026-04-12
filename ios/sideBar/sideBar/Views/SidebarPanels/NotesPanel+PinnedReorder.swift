@@ -166,8 +166,7 @@ extension NotesPanelView {
             }
         )
         .platformContextMenu(items: noteContextMenuItemsList(for: item))
-        .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
-        let row = noteSelectableRow(baseRow, item: item)
+        let row = baseRow
 
         #if os(iOS)
         row

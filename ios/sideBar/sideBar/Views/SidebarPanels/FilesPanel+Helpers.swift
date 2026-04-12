@@ -6,15 +6,9 @@ import UniformTypeIdentifiers
 extension FilesPanelView {
     @ViewBuilder
     func filesPanelList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        #if os(macOS)
-        List(selection: fileSelectionBinding) {
+        sidebarPanelList {
             content()
         }
-        #else
-        List {
-            content()
-        }
-        #endif
     }
 
     var pinnedItems: [IngestionListItem] {
@@ -40,25 +34,6 @@ extension FilesPanelView {
 
     func open(fileId: String) {
         Task { await viewModel.selectFile(fileId: fileId) }
-    }
-
-    var fileSelectionBinding: Binding<String?> {
-        Binding(
-            get: { viewModel.selectedFileId },
-            set: { newValue in
-                guard let selectionID = fileListSelectionID(for: newValue),
-                      selectionID != viewModel.selectedFileId else {
-                    return
-                }
-                open(fileId: selectionID)
-            }
-        )
-    }
-
-    func fileListSelectionID(for selectionID: String?) -> String? {
-        guard let selectionID else { return nil }
-        guard let item = viewModel.items.first(where: { $0.file.id == selectionID }) else { return nil }
-        return isFolder(item) ? nil : selectionID
     }
 
     func fileRowPrimaryAction(for item: IngestionListItem) -> (() -> Void)? {

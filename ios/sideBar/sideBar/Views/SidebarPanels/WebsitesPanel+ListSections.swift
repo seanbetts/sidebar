@@ -100,7 +100,7 @@ extension WebsitesPanelView {
 
     @ViewBuilder
     func websitesPanelList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        List {
+        sidebarPanelList {
             content()
         }
     }
@@ -144,7 +144,6 @@ extension WebsitesPanelView {
         )
         .staggeredAppear(index: index, isActive: listAppeared)
         .platformContextMenu(items: websiteContextMenuItemsList(for: item))
-        .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
         row
     }
 
@@ -285,7 +284,7 @@ extension WebsitesPanelView {
     }
 
     private func websiteRowPrimaryAction(for item: WebsiteItem) -> (() -> Void)? {
-        { open(item: item) }
+        return { open(item: item) }
     }
 
     var isSaveErrorPresented: Binding<Bool> {

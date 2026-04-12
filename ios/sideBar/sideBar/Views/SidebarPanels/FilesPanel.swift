@@ -296,15 +296,11 @@ extension FilesPanelView {
                         onDelete: deleteAction(for: item)
                     )
                     .platformContextMenu(items: fileContextMenuItemsList(for: item))
-                    .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
                     if isFolder(item) {
                         row
                             .staggeredAppear(index: index, isActive: listAppeared)
                     } else {
                         row
-                            #if os(macOS)
-                            .tag(item.file.id)
-                            #endif
                             .staggeredAppear(index: index, isActive: listAppeared)
                     }
                 }
@@ -368,9 +364,6 @@ extension FilesPanelView {
                                                 )
                                         } else {
                                             row
-                                                #if os(macOS)
-                                                .tag(item.file.id)
-                                                #endif
                                                 .staggeredAppear(
                                                     index: index,
                                                     isActive: listAppeared

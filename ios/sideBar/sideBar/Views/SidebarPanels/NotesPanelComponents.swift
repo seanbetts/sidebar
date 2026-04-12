@@ -221,14 +221,6 @@ struct NotesTreeRow: View {
     }
 
     private var primaryAction: (() -> Void)? {
-        #if os(macOS)
-        if item.isFile {
-            return nil
-        }
-        #endif
-        if item.isFile {
-            return onSelect
-        }
         return onSelect
     }
 }

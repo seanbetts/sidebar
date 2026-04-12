@@ -28,6 +28,43 @@ func sidebarProminentSectionHeader(_ title: String) -> some View {
         .textCase(nil)
 }
 
+@ViewBuilder
+func sidebarPanelList<SelectionValue: Hashable, Content: View>(
+    selection: Binding<SelectionValue?>? = nil,
+    @ViewBuilder content: () -> Content
+) -> some View {
+#if os(macOS)
+    if let selection {
+        List(selection: selection) {
+            content()
+        }
+    } else {
+        List {
+            content()
+        }
+    }
+#else
+    List {
+        content()
+    }
+#endif
+}
+
+@ViewBuilder
+func sidebarPanelList<Content: View>(
+    @ViewBuilder content: () -> Content
+) -> some View {
+#if os(macOS)
+    List {
+        content()
+    }
+#else
+    List {
+        content()
+    }
+#endif
+}
+
 extension View {
     func sidebarPanelScaffoldBackground() -> some View {
         background(PlatformTokens.sidebarPanelBackground)

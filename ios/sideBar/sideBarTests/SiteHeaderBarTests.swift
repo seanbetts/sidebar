@@ -55,13 +55,24 @@ final class SiteHeaderBarTests: XCTestCase {
     func testSiteHeaderBarHandlesScratchpadShortcutWithoutIOSGuard() throws {
         let normalized = try siteHeaderBarSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let scratchpadShortcutHandler =
+            ".onReceive(environment.navigation.$shortcutActionEvent){eventin"
+            + "guardletevent,event.action==.openScratchpad,"
+            + "scratchpadPresentationStyle==.anchoredPopoverelse{return}"
+            + "isScratchpadPresented=true}"
 
         XCTAssertTrue(
-            normalized.contains(
-                ".onReceive(environment.navigation.$shortcutActionEvent){eventinguardletevent,event.action==.openScratchpad,scratchpadPresentationStyle==.anchoredPopoverelse{return}isScratchpadPresented=true}"
-            )
+            normalized.contains(scratchpadShortcutHandler)
         )
         XCTAssertFalse(normalized.contains("#ifos(iOS).onReceive(environment.navigation.$shortcutActionEvent)"))
+    }
+
+    func testSyncStatusSourceDistinguishesFailedWritesFromPendingWrites() throws {
+        let normalized = try siteHeaderBarSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("return\"SyncError\""))
+        XCTAssertTrue(normalized.contains("return\"Syncerrorsneedattention\""))
     }
 }
 

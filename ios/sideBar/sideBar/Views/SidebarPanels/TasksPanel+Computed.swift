@@ -6,15 +6,9 @@ import UIKit
 extension TasksPanelView {
     @ViewBuilder
     func tasksPanelList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        #if os(macOS)
-        List(selection: taskSelectionBinding) {
+        sidebarPanelList(selection: taskSelectionBinding) {
             content()
         }
-        #else
-        List {
-            content()
-        }
-        #endif
     }
 
     var groupsSorted: [TaskGroup] {

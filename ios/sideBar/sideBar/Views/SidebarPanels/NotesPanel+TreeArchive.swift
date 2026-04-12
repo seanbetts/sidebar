@@ -144,7 +144,7 @@ extension NotesPanelView {
                 }
             )
             .platformContextMenu(items: noteContextMenuItemsList(for: item))
-            noteSelectableRow(row, item: item)
+            row
         }
     }
 

@@ -28,46 +28,9 @@ extension NotesPanelView {
 
     @ViewBuilder
     func notesPanelList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        #if os(macOS)
-        List(selection: noteSelectionBinding) {
+        sidebarPanelList {
             content()
         }
-        #else
-        List {
-            content()
-        }
-        #endif
-    }
-
-    var noteSelectionBinding: Binding<String?> {
-        Binding(
-            get: { viewModel.selectedNoteId },
-            set: { newValue in
-                guard let newValue,
-                      newValue != viewModel.selectedNoteId,
-                      noteNavigationItems().contains(newValue) else {
-                    return
-                }
-                requestNoteSelection(id: newValue)
-            }
-        )
-    }
-
-    func noteListSelectionID(for item: FileNodeItem) -> String? {
-        item.isFile ? item.id : nil
-    }
-
-    @ViewBuilder
-    func noteSelectableRow<Row: View>(_ row: Row, item: FileNodeItem) -> some View {
-        #if os(macOS)
-        if let selectionID = noteListSelectionID(for: item) {
-            row.tag(selectionID)
-        } else {
-            row
-        }
-        #else
-        row
-        #endif
     }
 
     var header: some View {
@@ -341,9 +304,6 @@ extension NotesPanelView {
             }
         )
         .platformContextMenu(items: noteContextMenuItemsList(for: item))
-        #if os(macOS)
-        .tag(node.path)
-        #endif
     }
 
     var notesPanelContent: some View {

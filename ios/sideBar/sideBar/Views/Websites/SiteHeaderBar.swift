@@ -90,7 +90,7 @@ public struct SiteHeaderBar: View {
                     .appFont(.caption2Semibold)
                     .foregroundStyle(.secondary)
             }
-            if environment.writeQueue.pendingCount > 0 {
+            if environment.writeQueue.pendingCount > 0 || environment.writeQueue.failedCount > 0 {
                 syncStatusPill
             }
             if shouldShowIngestionStatus {
@@ -242,9 +242,9 @@ public struct SiteHeaderBar: View {
     private var syncStatusPill: some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(environment.writeQueue.isProcessing ? DesignTokens.Colors.success : DesignTokens.Colors.warning)
+                .fill(syncStatusColor)
                 .frame(width: 8, height: 8)
-            Text(environment.writeQueue.isProcessing ? "Syncing" : "Pending")
+            Text(syncStatusText)
                 .appFont(.captionSemibold)
                 .foregroundStyle(.secondary)
         }
@@ -252,8 +252,34 @@ public struct SiteHeaderBar: View {
         .accessibilityLabel(syncAccessibilityLabel)
     }
 
+    private var syncStatusText: String {
+        if environment.writeQueue.isProcessing {
+            return "Syncing"
+        }
+        if environment.writeQueue.activePendingCount > 0 {
+            return "Pending"
+        }
+        return "Sync Error"
+    }
+
+    private var syncStatusColor: Color {
+        if environment.writeQueue.isProcessing {
+            return DesignTokens.Colors.success
+        }
+        if environment.writeQueue.activePendingCount > 0 {
+            return DesignTokens.Colors.warning
+        }
+        return DesignTokens.Colors.error
+    }
+
     private var syncAccessibilityLabel: String {
-        environment.writeQueue.isProcessing ? "Syncing pending changes" : "Pending changes"
+        if environment.writeQueue.isProcessing {
+            return "Syncing pending changes"
+        }
+        if environment.writeQueue.activePendingCount > 0 {
+            return "Pending changes"
+        }
+        return "Sync errors need attention"
     }
 
     private var ingestionStatusText: String {

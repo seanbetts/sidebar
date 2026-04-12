@@ -96,7 +96,7 @@ struct UserSettingsView: View {
     }
 
     var queuedChangeFailureRefreshSignature: String {
-        "\(environment.writeQueue.pendingCount)-\(environment.writeQueue.isProcessing)"
+        "\(environment.writeQueue.pendingCount)-\(environment.writeQueue.failedCount)-\(environment.writeQueue.isProcessing)"
     }
 
     func reloadFailedQueuedChangeCount() async {
