@@ -170,6 +170,20 @@ struct ChatInputAppKitView: NSViewRepresentable {
         if textView.string != text {
             textView.string = text
         }
+        if context.coordinator.syncCollapsedStateIfNeeded(for: textView, text: text) {
+            textView.isEditable = isEnabled
+            let canSend = isSendEnabled && !text.trimmed.isEmpty
+            button.isEnabled = canSend
+            button.alphaValue = canSend ? 1.0 : 0.45
+            let tintColor: NSColor = .labelColor
+            button.layer?.backgroundColor = NSColor.clear.cgColor
+            button.contentTintColor = canSend ? tintColor : NSColor.secondaryLabelColor
+            attachButton.isEnabled = isAttachEnabled
+            attachButton.alphaValue = isAttachEnabled ? 1.0 : 0.45
+            attachButton.contentTintColor = isAttachEnabled ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor
+            placeholderLabel.isHidden = !text.trimmed.isEmpty
+            return
+        }
         textView.isEditable = isEnabled
         let canSend = isSendEnabled && !text.trimmed.isEmpty
         button.isEnabled = canSend
@@ -262,13 +276,37 @@ struct ChatInputAppKitView: NSViewRepresentable {
             onAttach()
         }
 
+        func syncCollapsedStateIfNeeded(for textView: NSTextView, text: String) -> Bool {
+            guard text.trimmed.isEmpty else { return false }
+            deferredHeightState.cancelPending()
+            if measuredHeight.wrappedValue != 0 {
+                measuredHeight.wrappedValue = 0
+            }
+            if let scrollView = textView.enclosingScrollView ?? textScrollView {
+                if scrollView.hasVerticalScroller {
+                    scrollView.hasVerticalScroller = false
+                }
+                if scrollView.contentView.bounds.origin != .zero {
+                    scrollView.contentView.scroll(to: .zero)
+                    scrollView.reflectScrolledClipView(scrollView.contentView)
+                }
+            }
+            return true
+        }
+
         func applySizing(for textView: NSTextView, deferStateMutation: Bool) {
             guard let layoutManager = textView.layoutManager, let textContainer = textView.textContainer else {
                 return
             }
             layoutManager.ensureLayout(for: textContainer)
             let usedRect = layoutManager.usedRect(for: textContainer)
-            let contentHeight = usedRect.height + textView.textContainerInset.height * 2
+            let textContentHeight: CGFloat
+            if textView.string.trimmed.isEmpty {
+                textContentHeight = 0
+            } else {
+                textContentHeight = usedRect.height
+            }
+            let contentHeight = textContentHeight + textView.textContainerInset.height * 2
             let sizing = ChatInputSizing.resolve(
                 contentHeight: contentHeight + controlBarHeight,
                 minHeight: minHeight,
@@ -278,33 +316,43 @@ struct ChatInputAppKitView: NSViewRepresentable {
                 for: sizing.measuredHeight,
                 minHeight: minHeight
             )
-            if measuredHeight.wrappedValue != stateMeasuredHeight {
-                if deferStateMutation {
-                    guard deferredHeightState.shouldSchedule(
-                        currentMeasuredHeight: measuredHeight.wrappedValue,
-                        targetMeasuredHeight: stateMeasuredHeight
-                    ) else {
-                        return
-                    }
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self else { return }
-                        if self.measuredHeight.wrappedValue == stateMeasuredHeight {
-                            self.deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
-                            return
-                        }
-                        self.measuredHeight.wrappedValue = stateMeasuredHeight
-                        self.deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
-                    }
-                } else {
-                    measuredHeight.wrappedValue = stateMeasuredHeight
-                    deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
+            if deferStateMutation {
+                guard deferredHeightState.shouldSchedule(
+                    currentMeasuredHeight: measuredHeight.wrappedValue,
+                    targetMeasuredHeight: stateMeasuredHeight
+                ) else {
+                    updateOverflowState(for: textView, isOverflowing: sizing.isOverflowing)
+                    return
                 }
+                scheduleMeasuredHeightUpdate(targetMeasuredHeight: stateMeasuredHeight)
+            } else if measuredHeight.wrappedValue != stateMeasuredHeight {
+                measuredHeight.wrappedValue = stateMeasuredHeight
+                deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
             }
+            updateOverflowState(for: textView, isOverflowing: sizing.isOverflowing)
+        }
+
+        private func scheduleMeasuredHeightUpdate(targetMeasuredHeight: CGFloat) {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                guard self.deferredHeightState.shouldApplyScheduled(measuredHeight: targetMeasuredHeight) else {
+                    return
+                }
+                if self.measuredHeight.wrappedValue == targetMeasuredHeight {
+                    self.deferredHeightState.didApply(measuredHeight: targetMeasuredHeight)
+                    return
+                }
+                self.measuredHeight.wrappedValue = targetMeasuredHeight
+                self.deferredHeightState.didApply(measuredHeight: targetMeasuredHeight)
+            }
+        }
+
+        private func updateOverflowState(for textView: NSTextView, isOverflowing: Bool) {
             if let scrollView = textView.enclosingScrollView ?? textScrollView,
-               scrollView.hasVerticalScroller != sizing.isOverflowing {
-                scrollView.hasVerticalScroller = sizing.isOverflowing
+               scrollView.hasVerticalScroller != isOverflowing {
+                scrollView.hasVerticalScroller = isOverflowing
             }
-            if sizing.isOverflowing {
+            if isOverflowing {
                 textView.scrollRangeToVisible(textView.selectedRange())
             }
         }

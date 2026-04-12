@@ -20,6 +20,14 @@ struct ChatInputDeferredHeightState {
         return true
     }
 
+    func shouldApplyScheduled(measuredHeight: CGFloat) -> Bool {
+        pendingMeasuredHeight == measuredHeight
+    }
+
+    mutating func cancelPending() {
+        pendingMeasuredHeight = nil
+    }
+
     mutating func didApply(measuredHeight: CGFloat) {
         guard pendingMeasuredHeight == measuredHeight else { return }
         pendingMeasuredHeight = nil

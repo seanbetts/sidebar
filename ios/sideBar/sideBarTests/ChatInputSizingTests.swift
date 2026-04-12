@@ -152,6 +152,15 @@ final class ChatInputSizingTests: XCTestCase {
         XCTAssertTrue(state.shouldSchedule(currentMeasuredHeight: 0, targetMeasuredHeight: 72))
         XCTAssertEqual(state.pendingMeasuredHeight, 72)
     }
+
+    func testDeferredHeightStateCancelsStalePendingTargetWhenCurrentStateAlreadyMatchesNewTarget() {
+        var state = ChatInputDeferredHeightState()
+
+        XCTAssertTrue(state.shouldSchedule(currentMeasuredHeight: 0, targetMeasuredHeight: 96))
+        XCTAssertFalse(state.shouldSchedule(currentMeasuredHeight: 0, targetMeasuredHeight: 0))
+        XCTAssertNil(state.pendingMeasuredHeight)
+        XCTAssertFalse(state.shouldApplyScheduled(measuredHeight: 96))
+    }
 }
 
 private func chatInputSource(

@@ -289,6 +289,11 @@ private struct ChatDetailView: View {
         .onChange(of: environment.settingsViewModel.onboardingState) { _, state in
             viewModel.syncSoulCalibration(from: state)
         }
+        .onChange(of: draftMessage) { _, newValue in
+            if newValue.trimmed.isEmpty, inputMeasuredHeight != .zero {
+                inputMeasuredHeight = .zero
+            }
+        }
     }
 
     private var messageListBottomInset: CGFloat {

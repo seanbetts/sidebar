@@ -166,6 +166,26 @@ struct ChatInputUIKitView: UIViewRepresentable {
         if textView.text != text {
             textView.text = text
         }
+        if context.coordinator.syncCollapsedStateIfNeeded(for: textView, text: text) {
+            let shouldAllowEditing = ChatInputInteractivity.textViewIsEditable(
+                isEnabled: isEnabled,
+                isFirstResponder: textView.isFirstResponder
+            )
+            if textView.isEditable != shouldAllowEditing {
+                textView.isEditable = shouldAllowEditing
+            }
+            let canSend = isSendEnabled && !text.trimmed.isEmpty
+            button.isEnabled = canSend
+            button.alpha = canSend ? 1.0 : 0.45
+            let tintColor: UIColor = .label
+            button.backgroundColor = .clear
+            button.tintColor = canSend ? tintColor : UIColor.secondaryLabel
+            attachButton.isEnabled = isAttachEnabled
+            attachButton.alpha = isAttachEnabled ? 1.0 : 0.45
+            attachButton.tintColor = isAttachEnabled ? UIColor.secondaryLabel : UIColor.tertiaryLabel
+            placeholderLabel.isHidden = !text.trimmed.isEmpty
+            return
+        }
         let shouldAllowEditing = ChatInputInteractivity.textViewIsEditable(
             isEnabled: isEnabled,
             isFirstResponder: textView.isFirstResponder
@@ -261,6 +281,21 @@ struct ChatInputUIKitView: UIViewRepresentable {
             onAttach()
         }
 
+        func syncCollapsedStateIfNeeded(for textView: UITextView, text: String) -> Bool {
+            guard text.trimmed.isEmpty else { return false }
+            deferredHeightState.cancelPending()
+            if measuredHeight.wrappedValue != 0 {
+                measuredHeight.wrappedValue = 0
+            }
+            if textView.isScrollEnabled {
+                textView.isScrollEnabled = false
+            }
+            if textView.contentOffset != .zero {
+                textView.setContentOffset(.zero, animated: false)
+            }
+            return true
+        }
+
         func applySizing(for textView: UITextView, deferStateMutation: Bool) {
             let fittingWidth = max(textView.bounds.width, 1)
             let size = textView.sizeThatFits(CGSize(width: fittingWidth, height: .greatestFiniteMagnitude))
@@ -273,27 +308,34 @@ struct ChatInputUIKitView: UIViewRepresentable {
                 for: sizing.measuredHeight,
                 minHeight: minHeight
             )
-            if measuredHeight.wrappedValue != stateMeasuredHeight {
-                if deferStateMutation {
-                    guard deferredHeightState.shouldSchedule(
-                        currentMeasuredHeight: measuredHeight.wrappedValue,
-                        targetMeasuredHeight: stateMeasuredHeight
-                    ) else {
+            if deferStateMutation {
+                guard deferredHeightState.shouldSchedule(
+                    currentMeasuredHeight: measuredHeight.wrappedValue,
+                    targetMeasuredHeight: stateMeasuredHeight
+                ) else {
+                    if textView.isScrollEnabled != sizing.isOverflowing {
+                        textView.isScrollEnabled = sizing.isOverflowing
+                    }
+                    if sizing.isOverflowing {
+                        textView.scrollRangeToVisible(textView.selectedRange)
+                    }
+                    return
+                }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    guard self.deferredHeightState.shouldApplyScheduled(measuredHeight: stateMeasuredHeight) else {
                         return
                     }
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self else { return }
-                        if self.measuredHeight.wrappedValue == stateMeasuredHeight {
-                            self.deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
-                            return
-                        }
-                        self.measuredHeight.wrappedValue = stateMeasuredHeight
+                    if self.measuredHeight.wrappedValue == stateMeasuredHeight {
                         self.deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
+                        return
                     }
-                } else {
-                    measuredHeight.wrappedValue = stateMeasuredHeight
-                    deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
+                    self.measuredHeight.wrappedValue = stateMeasuredHeight
+                    self.deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
                 }
+            } else if measuredHeight.wrappedValue != stateMeasuredHeight {
+                measuredHeight.wrappedValue = stateMeasuredHeight
+                deferredHeightState.didApply(measuredHeight: stateMeasuredHeight)
             }
             if textView.isScrollEnabled != sizing.isOverflowing {
                 textView.isScrollEnabled = sizing.isOverflowing

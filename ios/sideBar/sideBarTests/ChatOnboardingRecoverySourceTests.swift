@@ -185,6 +185,18 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         XCTAssertFalse(normalized.contains("applyResetIfNeeded("))
     }
 
+    func testClearingDraftCollapsesComposerHeightOutsideHandleSend() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".onChange(of:draftMessage){_,newValuein"))
+        XCTAssertTrue(
+            normalized.contains(
+                "ifnewValue.trimmed.isEmpty,inputMeasuredHeight!=.zero{inputMeasuredHeight=.zero}"
+            )
+        )
+    }
+
     func testChatInputWrappersDoNotForceResponderResignationWhenDisablingInput() throws {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
