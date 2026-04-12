@@ -175,6 +175,10 @@ class Settings(BaseSettings):
     website_worker_poll_seconds: int = 2
     website_worker_heartbeat_seconds: int = 15
     website_worker_lease_seconds: int = 180
+    data_retention_poll_seconds: int = int(
+        os.getenv("DATA_RETENTION_POLL_SECONDS", "3600")
+    )
+    data_retention_batch_size: int = int(os.getenv("DATA_RETENTION_BATCH_SIZE", "100"))
 
     # Storage
     storage_backend: str = "local"  # local or r2

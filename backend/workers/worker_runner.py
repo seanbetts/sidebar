@@ -3,6 +3,7 @@
 import logging
 import threading
 
+from workers.data_retention_worker import worker_loop as data_retention_loop
 from workers.ingestion_worker import worker_loop as ingestion_loop
 from workers.notification_schedule_worker import worker_loop as notification_loop
 
@@ -35,8 +36,13 @@ def _run_notification_schedule() -> None:
             time.sleep(2)
 
 
+def _run_data_retention() -> None:
+    """Run the data retention worker loop."""
+    data_retention_loop()
+
+
 def main() -> None:
-    """Start shared ingestion and notification workers in a single process."""
+    """Start shared ingestion, notification, and retention workers."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
@@ -52,6 +58,13 @@ def main() -> None:
     )
     notification_thread.start()
     logger.info("Notification schedule worker started in background thread")
+
+    retention_thread = threading.Thread(
+        target=_run_data_retention,
+        daemon=True,
+    )
+    retention_thread.start()
+    logger.info("Data retention worker started in background thread")
 
     notification_thread.join()
 
