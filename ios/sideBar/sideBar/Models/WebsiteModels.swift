@@ -3,7 +3,7 @@ import Combine
 import sideBarShared
 
 /// Represents a website item struct.
-public struct WebsiteItem: Codable, Identifiable {
+public nonisolated struct WebsiteItem: Codable, Identifiable {
     /// The id value.
     public let id: String
     /// The title value.
@@ -96,7 +96,7 @@ public struct WebsiteItem: Codable, Identifiable {
 }
 
 /// Represents a websites response struct.
-public struct WebsitesResponse: Codable {
+public nonisolated struct WebsitesResponse: Codable {
     /// The items value.
     public let items: [WebsiteItem]
     /// The archived count value.
@@ -118,7 +118,7 @@ public struct WebsitesResponse: Codable {
 }
 
 /// Represents a website detail struct.
-public struct WebsiteDetail: Codable, Identifiable {
+public nonisolated struct WebsiteDetail: Codable, Identifiable {
     /// The id value.
     public let id: String
     /// The title value.
@@ -158,7 +158,7 @@ public struct WebsiteDetail: Codable, Identifiable {
 }
 
 /// Represents a website transcript response struct.
-public struct WebsiteTranscriptResponse: Decodable {
+public nonisolated struct WebsiteTranscriptResponse: Decodable {
     /// The ready website value.
     public let readyWebsite: WebsiteDetail?
     /// The queued status value.
@@ -190,18 +190,18 @@ public struct WebsiteTranscriptResponse: Decodable {
     }
 }
 
-private struct TranscriptQueueEnvelope: Decodable {
+private nonisolated struct TranscriptQueueEnvelope: Decodable {
     let success: Bool
     let data: TranscriptQueueData?
 }
 
-private struct TranscriptQueueData: Decodable {
+private nonisolated struct TranscriptQueueData: Decodable {
     let status: String?
     let fileId: String?
 }
 
 /// Represents an async website save job response.
-public struct WebsiteSaveJobResponse: Codable {
+public nonisolated struct WebsiteSaveJobResponse: Codable {
     /// The job identifier.
     public let jobId: String
     /// The job status (queued, processing, completed, failed).
@@ -209,7 +209,7 @@ public struct WebsiteSaveJobResponse: Codable {
 }
 
 /// Represents a job status poll response.
-public struct WebsiteJobStatusResponse: Codable {
+public nonisolated struct WebsiteJobStatusResponse: Codable {
     /// The job identifier.
     public let jobId: String
     /// The job status.
@@ -221,13 +221,13 @@ public struct WebsiteJobStatusResponse: Codable {
 }
 
 /// Represents a job error response.
-public struct WebsiteJobError: Codable {
+public nonisolated struct WebsiteJobError: Codable {
     /// The error message.
     public let message: String
 }
 
 /// Represents a website sync response struct.
-public struct WebsiteSyncResponse: Codable {
+public nonisolated struct WebsiteSyncResponse: Codable {
     /// The applied value.
     public let applied: [String]
     /// The websites value.
@@ -241,13 +241,13 @@ public struct WebsiteSyncResponse: Codable {
 }
 
 /// Represents a website sync updates struct.
-public struct WebsiteSyncUpdates: Codable {
+public nonisolated struct WebsiteSyncUpdates: Codable {
     /// The items value.
     public let items: [WebsiteItem]
 }
 
 /// Represents a website sync conflict struct.
-public struct WebsiteSyncConflict: Codable {
+public nonisolated struct WebsiteSyncConflict: Codable {
     /// The operation id value.
     public let operationId: String
     /// The op value.
