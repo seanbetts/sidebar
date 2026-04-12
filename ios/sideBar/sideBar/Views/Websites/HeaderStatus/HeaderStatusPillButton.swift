@@ -35,7 +35,10 @@ struct HeaderStatusPillButton: View {
         .buttonStyle(.plain)
         .accessibilityLabel(pill.accessibilityLabel)
         .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
-            MacPopoverShell {
+            MacPopoverShell(
+                type: headerStatusPopoverPanelType(),
+                presentationBackground: .appBackground
+            ) {
                 HeaderStatusPopover(
                     model: pill.popover,
                     actionState: actionState,
@@ -44,6 +47,10 @@ struct HeaderStatusPillButton: View {
                 )
             }
             .presentationCompactAdaptation(.sheet)
+        }
+        .onChange(of: pill.popover) { _, _ in
+            actionState = HeaderStatusActionPresentationState()
+            popoverState = HeaderStatusPopoverState(rows: pill.popover.rows)
         }
     }
 

@@ -47,6 +47,7 @@ extension IngestionViewModel {
         guard canCancelIngestion(fileId: item.file.id) else { return nil }
 
         return HeaderStatusRowModel(
+            tone: .progress,
             id: item.file.id,
             title: item.file.filenameOriginal,
             detail: ingestionStatusLabel(for: item.job),

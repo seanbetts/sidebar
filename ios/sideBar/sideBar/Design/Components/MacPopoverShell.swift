@@ -1,11 +1,22 @@
 import SwiftUI
 
+enum MacPopoverPresentationBackground {
+    case clear
+    case appBackground
+}
+
 struct MacPopoverShell<Content: View>: View {
     let type: MacPanelType
+    let presentationBackground: MacPopoverPresentationBackground
     let content: Content
 
-    init(type: MacPanelType = .compactPopover, @ViewBuilder content: () -> Content) {
+    init(
+        type: MacPanelType = .compactPopover,
+        presentationBackground: MacPopoverPresentationBackground = .clear,
+        @ViewBuilder content: () -> Content
+    ) {
         self.type = type
+        self.presentationBackground = presentationBackground
         self.content = content()
     }
 
@@ -19,7 +30,7 @@ struct MacPopoverShell<Content: View>: View {
                 alignment: .topLeading
             )
             .glassChrome(Self.chromeKind)
-            .presentationBackground(.clear)
+            .modifier(PresentationBackgroundModifier(background: presentationBackground))
     }
 
     private var minWidth: CGFloat {
@@ -59,5 +70,18 @@ struct MacPopoverShell<Content: View>: View {
 
     static func maximumWidth(for type: MacPanelType) -> CGFloat {
         max(minimumWidth(for: type), macModalFrameWidth(for: type))
+    }
+}
+
+private struct PresentationBackgroundModifier: ViewModifier {
+    let background: MacPopoverPresentationBackground
+
+    func body(content: Content) -> some View {
+        switch background {
+        case .clear:
+            content.presentationBackground(.clear)
+        case .appBackground:
+            content.presentationBackground(DesignTokens.Colors.background)
+        }
     }
 }

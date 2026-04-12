@@ -1,6 +1,7 @@
 import CoreData
 import Foundation
 import OSLog
+import sideBarShared
 
 private struct HeaderQueueState {
     let pendingCount: Int
@@ -82,9 +83,10 @@ extension WriteQueue {
 
     private func makeHeaderRow(summary: PendingWriteSummary) -> HeaderStatusRowModel {
         HeaderStatusRowModel(
+            tone: .error,
             id: summary.id.uuidString,
             title: headerTitle(for: summary),
-            detail: summary.lastError,
+            detail: headerDetail(for: summary),
             actions: [
                 HeaderStatusActionModel(id: "retry", title: "Retry", role: .default),
                 HeaderStatusActionModel(id: "cancel", title: "Cancel", role: .destructive)
@@ -96,6 +98,54 @@ extension WriteQueue {
         let operation = summary.operationType.replacingOccurrences(of: "_", with: " ").capitalized
         let entity = summary.entityType.replacingOccurrences(of: "_", with: " ").lowercased()
         return "\(operation) \(entity)"
+    }
+
+    private func headerDetail(for summary: PendingWriteSummary) -> String? {
+        if let conflictReason = summary.conflictReason?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !conflictReason.isEmpty {
+            return conflictReason
+        }
+
+        guard let lastError = summary.lastError?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !lastError.isEmpty else {
+            return nil
+        }
+
+        if let apiError = storedAPIClientError(from: lastError) {
+            return ErrorMapping.message(for: apiError)
+        }
+
+        return lastError
+    }
+
+    private func storedAPIClientError(from description: String) -> APIClientError? {
+        switch description {
+        case "invalidUrl":
+            return .invalidUrl
+        case "missingToken":
+            return .missingToken
+        case "decodingFailed":
+            return .decodingFailed
+        case "unknown":
+            return .unknown
+        default:
+            break
+        }
+
+        if description.hasPrefix("requestFailed("), description.hasSuffix(")"),
+           let status = Int(description.dropFirst("requestFailed(".count).dropLast()) {
+            return .requestFailed(status)
+        }
+
+        if description.hasPrefix("apiError(\""), description.hasSuffix("\")") {
+            let quotedMessage = description
+                .dropFirst("apiError(\"".count)
+                .dropLast(2)
+            let message = quotedMessage.replacingOccurrences(of: "\\\"", with: "\"")
+            return .apiError(message)
+        }
+
+        return nil
     }
 
     private func refreshHeaderState() async {

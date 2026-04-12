@@ -55,8 +55,42 @@ final class HeaderStatusPopoverTests: XCTestCase {
         let normalized = try headerStatusPillButtonSource().normalizedForSourceAssertions()
 
         XCTAssertTrue(normalized.contains("HeaderStatusPopover(model:pill.popover"))
-        XCTAssertTrue(normalized.contains("MacPopoverShell{"))
+        XCTAssertTrue(normalized.contains("MacPopoverShell(type:headerStatusPopoverPanelType(),presentationBackground:.appBackground){"))
         XCTAssertTrue(normalized.contains(".presentationCompactAdaptation(.sheet)"))
+    }
+
+    func testPillButtonResynchronizesPopoverRowsWhenPillContentChanges() throws {
+        let normalized = try headerStatusPillButtonSource().normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains(".onChange(of:pill.popover){_,_in"))
+        XCTAssertTrue(normalized.contains("popoverState=HeaderStatusPopoverState(rows:pill.popover.rows)"))
+        XCTAssertTrue(normalized.contains("actionState=HeaderStatusActionPresentationState()"))
+    }
+
+    func testPopoverActionButtonsUseSharedIconChromeInsteadOfTextLabels() throws {
+        let normalized = try headerStatusPopoverSource().normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains(".buttonStyle(HeaderStatusRowActionButtonStyle(role:action.role,isPrimary:isPrimaryAction(action)))"))
+        XCTAssertFalse(normalized.contains(".buttonStyle(.borderless)"))
+        XCTAssertTrue(normalized.contains("Image(systemName:actionSymbolName(action))"))
+        XCTAssertFalse(normalized.contains("Text(action.title)"))
+        XCTAssertTrue(normalized.contains(".accessibilityLabel(action.title)"))
+    }
+
+    func testPopoverRowsUseResponsiveLayoutWithoutNestedRowCardsOrDuplicateIcons() throws {
+        let normalized = try headerStatusPopoverSource().normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("ViewThatFits(in:.horizontal)"))
+        XCTAssertTrue(normalized.contains(".lineLimit(2)"))
+        XCTAssertFalse(normalized.contains("HeaderStatusRowLeadingAccessory("))
+        XCTAssertFalse(normalized.contains(".fill(DesignTokens.Colors.muted)"))
+    }
+
+    func testPopoverSuppressesRedundantErrorSummaryWhenRowsArePresent() throws {
+        let normalized = try headerStatusPopoverSource().normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("privatevareffectiveMessage:String?"))
+        XCTAssertTrue(normalized.contains("case(.error,false):returnnil"))
     }
 
     func testPopoverActionStateDisablesRowWhileInFlight() {

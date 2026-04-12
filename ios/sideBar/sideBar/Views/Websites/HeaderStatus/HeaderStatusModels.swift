@@ -24,16 +24,44 @@ struct HeaderStatusPillModel: Identifiable, Equatable {
 }
 
 struct HeaderStatusPopoverModel: Equatable {
+    let tone: HeaderStatusTone
     let title: String
     let message: String?
     let rows: [HeaderStatusRowModel]
+
+    init(
+        tone: HeaderStatusTone = .warning,
+        title: String,
+        message: String?,
+        rows: [HeaderStatusRowModel]
+    ) {
+        self.tone = tone
+        self.title = title
+        self.message = message
+        self.rows = rows
+    }
 }
 
 struct HeaderStatusRowModel: Identifiable, Equatable {
+    let tone: HeaderStatusTone
     let id: String
     let title: String
     let detail: String?
     let actions: [HeaderStatusActionModel]
+
+    init(
+        tone: HeaderStatusTone = .warning,
+        id: String,
+        title: String,
+        detail: String?,
+        actions: [HeaderStatusActionModel]
+    ) {
+        self.tone = tone
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.actions = actions
+    }
 }
 
 struct HeaderStatusActionModel: Identifiable, Equatable {

@@ -109,6 +109,7 @@ final class HeaderStatusController: ObservableObject {
                 isActionable: false,
                 expiresAfter: nil,
                 popover: HeaderStatusPopoverModel(
+                    tone: .progress,
                     title: "Syncing",
                     message: "Changes are syncing now.",
                     rows: []
@@ -124,6 +125,7 @@ final class HeaderStatusController: ObservableObject {
                 isActionable: false,
                 expiresAfter: nil,
                 popover: HeaderStatusPopoverModel(
+                    tone: .warning,
                     title: "Pending",
                     message: "Changes are queued and will sync automatically.",
                     rows: []
@@ -139,6 +141,7 @@ final class HeaderStatusController: ObservableObject {
                 isActionable: rows.contains(where: { !$0.actions.isEmpty }),
                 expiresAfter: nil,
                 popover: HeaderStatusPopoverModel(
+                    tone: .error,
                     title: "Sync error",
                     message: "Some changes failed to sync.",
                     rows: rows
@@ -159,6 +162,7 @@ final class HeaderStatusController: ObservableObject {
                 isActionable: rows.contains(where: { !$0.actions.isEmpty }),
                 expiresAfter: nil,
                 popover: HeaderStatusPopoverModel(
+                    tone: .progress,
                     title: "Processing",
                     message: rows.count == 1 ? "1 file is still processing." : "\(rows.count) files are still processing.",
                     rows: rows
@@ -174,6 +178,7 @@ final class HeaderStatusController: ObservableObject {
                 isActionable: false,
                 expiresAfter: .seconds(5),
                 popover: HeaderStatusPopoverModel(
+                    tone: .success,
                     title: title,
                     message: message,
                     rows: []
@@ -189,6 +194,7 @@ final class HeaderStatusController: ObservableObject {
                 isActionable: false,
                 expiresAfter: .seconds(5),
                 popover: HeaderStatusPopoverModel(
+                    tone: .error,
                     title: title,
                     message: message,
                     rows: []

@@ -76,6 +76,25 @@ final class WriteQueueHeaderStatusTests: XCTestCase {
         processingTask.cancel()
     }
 
+    func testQueueHeaderSnapshotMapsStoredAPIClientErrorsToUserFacingDetail() async throws {
+        let queue = try await makeQueue(
+            writes: [
+                makeWrite(
+                    id: UUID(),
+                    status: .failed,
+                    lastError: "decodingFailed",
+                    createdAt: Date(timeIntervalSince1970: 1)
+                )
+            ]
+        )
+
+        guard case let .error(rows)? = queue.headerStatusSnapshot else {
+            return XCTFail("Expected sync error snapshot")
+        }
+
+        XCTAssertEqual(rows.first?.detail, "Unexpected response from server.")
+    }
+
     private func makeQueue(
         writes: [PendingWriteFixture]
     ) async throws -> WriteQueue {

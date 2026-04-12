@@ -62,6 +62,10 @@ func chatErrorPopoverPanelType() -> MacPanelType {
     .compactPopover
 }
 
+func headerStatusPopoverPanelType() -> MacPanelType {
+    .compactSheet
+}
+
 func queuedChangeResolutionPanelType() -> MacPanelType {
     .decisionSheet
 }
