@@ -18,42 +18,40 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Add retention-tracking columns and cleanup-supporting indexes."""
-    op.add_column(
-        "notes",
-        sa.Column("payload_purged_at", sa.DateTime(timezone=True), nullable=True),
+    op.execute("SET statement_timeout TO '20min'")
+    op.execute(
+        "ALTER TABLE notes "
+        "ADD COLUMN IF NOT EXISTS payload_purged_at TIMESTAMP WITH TIME ZONE"
     )
-    op.create_index(
-        "ix_notes_payload_purged_at",
-        "notes",
-        ["payload_purged_at"],
-        unique=False,
-    )
-
-    op.add_column(
-        "websites",
-        sa.Column("payload_purged_at", sa.DateTime(timezone=True), nullable=True),
-    )
-    op.create_index(
-        "ix_websites_payload_purged_at",
-        "websites",
-        ["payload_purged_at"],
-        unique=False,
+    op.execute(
+        "ALTER TABLE websites "
+        "ADD COLUMN IF NOT EXISTS payload_purged_at TIMESTAMP WITH TIME ZONE"
     )
 
-    op.create_index(
-        "idx_website_jobs_updated_at",
-        "website_processing_jobs",
-        ["updated_at"],
-        unique=False,
-    )
+    with op.get_context().autocommit_block():
+        op.execute(
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS "
+            "ix_notes_payload_purged_at ON notes (payload_purged_at)"
+        )
+        op.execute(
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS "
+            "ix_websites_payload_purged_at ON websites (payload_purged_at)"
+        )
+        op.execute(
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS "
+            "idx_website_jobs_updated_at ON website_processing_jobs (updated_at)"
+        )
+    op.execute("SET statement_timeout TO DEFAULT")
 
 
 def downgrade() -> None:
     """Remove retention-tracking columns and cleanup-supporting indexes."""
-    op.drop_index("idx_website_jobs_updated_at", table_name="website_processing_jobs")
+    with op.get_context().autocommit_block():
+        op.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_website_jobs_updated_at")
+        op.execute("DROP INDEX CONCURRENTLY IF EXISTS ix_websites_payload_purged_at")
+        op.execute("DROP INDEX CONCURRENTLY IF EXISTS ix_notes_payload_purged_at")
 
-    op.drop_index("ix_websites_payload_purged_at", table_name="websites")
-    op.drop_column("websites", "payload_purged_at")
-
-    op.drop_index("ix_notes_payload_purged_at", table_name="notes")
-    op.drop_column("notes", "payload_purged_at")
+    op.execute(
+        "ALTER TABLE websites DROP COLUMN IF EXISTS payload_purged_at"
+    )
+    op.execute("ALTER TABLE notes DROP COLUMN IF EXISTS payload_purged_at")

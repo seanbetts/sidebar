@@ -27,56 +27,78 @@ def _load_migration_module():
 
 def test_upgrade_adds_payload_purged_at_to_notes_and_websites() -> None:
     migration = _load_migration_module()
-    added_columns: list[tuple[str, str]] = []
+    executed_sql: list[str] = []
+
+    class _AutocommitBlock:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
 
     class FakeOp:
         @staticmethod
-        def add_column(table_name, column) -> None:
-            added_columns.append((table_name, column.name))
+        def execute(statement, *_args, **_kwargs) -> None:
+            executed_sql.append(str(statement))
 
         @staticmethod
-        def create_index(*_args, **_kwargs) -> None:
-            return None
+        def get_context():
+            class _Context:
+                @staticmethod
+                def autocommit_block():
+                    return _AutocommitBlock()
 
-        @staticmethod
-        def drop_index(*_args, **_kwargs) -> None:
-            return None
-
-        @staticmethod
-        def drop_column(*_args, **_kwargs) -> None:
-            return None
-
-        @staticmethod
-        def execute(*_args, **_kwargs) -> None:
-            return None
+            return _Context()
 
     migration.op = FakeOp()
 
     migration.upgrade()
 
-    assert ("notes", "payload_purged_at") in added_columns
-    assert ("websites", "payload_purged_at") in added_columns
+    assert any(
+        "ALTER TABLE notes ADD COLUMN IF NOT EXISTS payload_purged_at" in statement
+        for statement in executed_sql
+    )
+    assert any(
+        "ALTER TABLE websites ADD COLUMN IF NOT EXISTS payload_purged_at"
+        in statement
+        for statement in executed_sql
+    )
 
 
 def test_upgrade_creates_cleanup_indexes_for_operational_pruning() -> None:
     migration = _load_migration_module()
-    created_indexes: list[tuple[str, str]] = []
+    executed_sql: list[str] = []
+
+    class _AutocommitBlock:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
 
     class FakeOp:
         @staticmethod
-        def add_column(*_args, **_kwargs) -> None:
-            return None
+        def execute(statement, *_args, **_kwargs) -> None:
+            executed_sql.append(str(statement))
 
         @staticmethod
-        def create_index(name, table_name, *_args, **_kwargs) -> None:
-            created_indexes.append((name, table_name))
+        def get_context():
+            class _Context:
+                @staticmethod
+                def autocommit_block():
+                    return _AutocommitBlock()
 
-        @staticmethod
-        def execute(*_args, **_kwargs) -> None:
-            return None
+            return _Context()
 
     migration.op = FakeOp()
 
     migration.upgrade()
 
-    assert ("idx_website_jobs_updated_at", "website_processing_jobs") in created_indexes
+    assert any(
+        "SET statement_timeout TO '20min'" in statement for statement in executed_sql
+    )
+    assert any(
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_website_jobs_updated_at "
+        "ON website_processing_jobs (updated_at)" in statement
+        for statement in executed_sql
+    )
