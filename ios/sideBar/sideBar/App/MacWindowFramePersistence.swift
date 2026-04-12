@@ -115,6 +115,18 @@ enum MacWindowFramePersistence {
         )
     }
 
+    nonisolated static func preferredLaunchWindowSize(
+        savedWindowFrame: CGRect?,
+        fallbackSize: CGSize
+    ) -> CGSize {
+        guard let savedWindowFrame else { return fallbackSize }
+        guard savedWindowFrame.width > 0, savedWindowFrame.height > 0 else {
+            return fallbackSize
+        }
+
+        return CGSize(width: savedWindowFrame.width, height: savedWindowFrame.height)
+    }
+
     @MainActor
     static func restoreSavedWindowFrameIfNeeded(
         _ window: NSWindow,

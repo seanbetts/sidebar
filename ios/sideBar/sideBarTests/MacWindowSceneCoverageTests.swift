@@ -13,6 +13,8 @@ final class MacWindowSceneCoverageTests: XCTestCase {
         XCTAssertTrue(normalized.contains("MacStateRestorationGuard.purgeSavedApplicationState()"))
         XCTAssertTrue(normalized.contains(".restorationBehavior(.disabled)"))
         XCTAssertTrue(normalized.contains("CommandGroup(replacing:.newItem){}"))
+        XCTAssertTrue(normalized.contains("MacWindowConfiguration.preferredMainWindowLaunchSize"))
+        XCTAssertFalse(normalized.contains(".defaultSize(width:1200,height:820)"))
         XCTAssertFalse(normalized.contains("Settings{"))
     }
 

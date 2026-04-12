@@ -216,12 +216,33 @@ final class MacWindowFramePersistenceTests: XCTestCase {
         XCTAssertNil(frame)
     }
 
+    func testPreferredLaunchWindowSizeUsesSavedFrameDimensionsWhenAvailable() {
+        let preferredSize = MacWindowFramePersistence.preferredLaunchWindowSize(
+            savedWindowFrame: CGRect(x: 428, y: 187, width: 2344, height: 1426),
+            fallbackSize: CGSize(width: 1200, height: 820)
+        )
+
+        XCTAssertEqual(preferredSize.width, 2344)
+        XCTAssertEqual(preferredSize.height, 1426)
+    }
+
+    func testPreferredLaunchWindowSizeFallsBackWhenSavedFrameDimensionsAreInvalid() {
+        let preferredSize = MacWindowFramePersistence.preferredLaunchWindowSize(
+            savedWindowFrame: CGRect(x: 428, y: 187, width: 0, height: -1),
+            fallbackSize: CGSize(width: 1200, height: 820)
+        )
+
+        XCTAssertEqual(preferredSize.width, 1200)
+        XCTAssertEqual(preferredSize.height, 820)
+    }
+
     func testPersistWindowFrameHelperIsDefined() throws {
         let source = try macWindowFramePersistenceSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(source.contains("staticfuncautosaveKey(forautosaveName:String)->String"))
         XCTAssertTrue(source.contains("staticfuncsavedWindowFrame("))
+        XCTAssertTrue(source.contains("staticfuncpreferredLaunchWindowSize("))
         XCTAssertTrue(source.contains("staticfuncrestoreSavedWindowFrameIfNeeded("))
         XCTAssertTrue(source.contains("window.setFrame(savedFrame,display:false)"))
         XCTAssertTrue(source.contains("staticfuncpersistWindowFrameIfNeeded("))

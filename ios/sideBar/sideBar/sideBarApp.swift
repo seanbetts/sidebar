@@ -17,6 +17,18 @@ import AppKit
 enum MacWindowConfiguration {
     static let mainWindowID = "main"
     static let mainWindowTitle = "sideBar"
+    #if os(macOS)
+    static let defaultMainWindowSize = CGSize(width: 1200, height: 820)
+
+    static var preferredMainWindowLaunchSize: CGSize {
+        MacWindowFramePersistence.preferredLaunchWindowSize(
+            savedWindowFrame: MacWindowFramePersistence.savedWindowFrame(
+                autosaveName: mainWindowID
+            ),
+            fallbackSize: defaultMainWindowSize
+        )
+    }
+    #endif
 }
 
 #if os(macOS)
@@ -149,7 +161,10 @@ struct SideBarApp: App {
         Window(MacWindowConfiguration.mainWindowTitle, id: MacWindowConfiguration.mainWindowID) {
             rootContentView
         }
-        .defaultSize(width: 1200, height: 820)
+        .defaultSize(
+            width: MacWindowConfiguration.preferredMainWindowLaunchSize.width,
+            height: MacWindowConfiguration.preferredMainWindowLaunchSize.height
+        )
         .restorationBehavior(.disabled)
         .commands {
             SidebarCommands(environment: environment)
