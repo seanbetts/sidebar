@@ -65,6 +65,9 @@ class Website(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
+    payload_purged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
 
     def __repr__(self):
         """Return a readable representation for debugging."""

@@ -18,6 +18,7 @@ class WebsiteProcessingJob(Base):
         Index("idx_website_jobs_user_id", "user_id"),
         Index("idx_website_jobs_status", "status"),
         Index("idx_website_jobs_status_lease", "status", "lease_expires_at"),
+        Index("idx_website_jobs_updated_at", "updated_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
