@@ -29,13 +29,17 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
         "files",
         "notes",
         "tasks",
+        "conversations",
         "web-save",
+        "web-crawler-policy",
+        "subdomain-discover",
         "audio-transcribe",
         "youtube-download",
         "youtube-transcribe",
         "onboarding-coach",
         "prompt-preview",
         "settings-other-preferences",
+        "settings-profile-user",
         "assistant-identity",
         "assistant-soul",
     ]:
@@ -84,14 +88,18 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
         "assistant-identity",
         "assistant-soul",
         "audio-transcribe",
+        "conversations",
         "files",
         "memory",
         "notes",
         "onboarding-coach",
         "prompt-preview",
         "settings-other-preferences",
+        "settings-profile-user",
+        "subdomain-discover",
         "tasks",
         "ui-theme",
+        "web-crawler-policy",
         "web-save",
         "web-search",
         "youtube-download",
@@ -132,16 +140,10 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
     )
     assert str(by_id["ui-theme"]["description"]) == "Allow {name} to switch between light and dark mode"
     assert str(by_id["memory"]["description"]) == "Store and manage persistent memories"
-    assert by_id["onboarding-coach"]["tier"] == "standard"
-    assert by_id["onboarding-coach"]["installable"] is False
+    assert by_id["onboarding-coach"]["status"] == "hidden"
     assert by_id["onboarding-coach"]["default_enabled"] is True
-    assert (
-        str(by_id["onboarding-coach"]["name"]) == "Onboarding Coach"
-    )
-    assert (
-        str(by_id["onboarding-coach"]["description"])
-        == "Guide incomplete users through setup recovery and first outcomes"
-    )
+    assert by_id["onboarding-coach"]["user_toggleable"] is False
+    assert by_id["conversations"]["category"] == "Productivity"
 
     assert bool(by_id["assistant-identity"]["user_toggleable"]) is False
     assert bool(by_id["assistant-soul"]["user_toggleable"]) is False
@@ -149,7 +151,7 @@ def test_list_skills_uses_updated_display_metadata(tmp_path) -> None:
 
 
 def test_catalog_version_exposed() -> None:
-    assert SkillCatalogService.catalog_version() == 10
+    assert SkillCatalogService.catalog_version() == 11
 
 
 def test_capability_registry_exposes_code_backed_contract() -> None:

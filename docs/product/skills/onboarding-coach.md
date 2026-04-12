@@ -38,7 +38,7 @@ real outcome or finish the discovery follow-up after setup.
 - **Tier:** Standard (included, no installation needed)
 - **API key:** None required for the guidance itself
 
-## How to enable
+## Availability
 
-The Onboarding Coach is enabled by default. To toggle it, go to
-**Settings → Skills**.
+The Onboarding Coach is managed automatically while onboarding is incomplete.
+It is not shown as a toggle in **Settings → Skills**.

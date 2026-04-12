@@ -101,15 +101,10 @@ struct ProfileDateOfBirthField: View {
                 Button {
                     isDatePickerPresented = true
                 } label: {
-                    HStack(spacing: 4) {
-                        Text(dateOfBirth.formatted(date: .abbreviated, time: .omitted))
-                            .appFont(.body)
-                            .foregroundStyle(DesignTokens.Colors.textPrimary)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .appFont(.caption2)
-                            .foregroundStyle(DesignTokens.Colors.textSecondary)
-                    }
-                    .sidebarTextEntryControl()
+                    SidebarSelectionTriggerLabel(
+                        title: dateOfBirth.formatted(date: .abbreviated, time: .omitted)
+                    )
+                    .profileIOSControlFrame()
                 }
                 .buttonStyle(.plain)
 
@@ -123,12 +118,18 @@ struct ProfileDateOfBirthField: View {
                 .foregroundStyle(.secondary)
                 .accessibilityLabel("Clear date of birth")
             } else {
-                Button("Set") {
+                Button {
                     dateOfBirth = Date()
                     dateOfBirthEnabled = true
                     isDatePickerPresented = true
+                } label: {
+                    SidebarSelectionTriggerLabel(
+                        title: "Not set",
+                        isPlaceholder: true
+                    )
+                    .profileIOSControlFrame()
                 }
-                .appFont(.body)
+                .buttonStyle(.plain)
             }
         }
     }

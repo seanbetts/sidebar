@@ -34,7 +34,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert response.status_code == 200
 
     payload = response.json()
-    assert payload["catalog_version"] == 10
+    assert payload["catalog_version"] == 11
     assert isinstance(payload["skills"], list)
     assert payload["skills"]
 
@@ -42,6 +42,7 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert "conversations" in by_id
     assert by_id["conversations"]["tier"] == "standard"
     assert by_id["conversations"]["installable"] is False
+    assert by_id["conversations"]["category"] == "Productivity"
     assert "files" in by_id
     assert "fs" not in by_id
     assert by_id["files"]["legacy_ids"] == []
@@ -69,14 +70,8 @@ def test_list_skills_includes_catalog_version_and_v2_fields(test_client) -> None
     assert by_id["product-feedback"]["tier"] == "required"
     assert by_id["product-feedback"]["installable"] is False
     assert "onboarding-coach" in by_id
-    assert by_id["onboarding-coach"]["tier"] == "standard"
-    assert by_id["onboarding-coach"]["installable"] is False
-    assert by_id["onboarding-coach"]["default_enabled"] is True
-    assert by_id["onboarding-coach"]["name"] == "Onboarding Coach"
-    assert (
-        by_id["onboarding-coach"]["description"]
-        == "Guide incomplete users through setup recovery and first outcomes"
-    )
+    assert by_id["onboarding-coach"]["status"] == "hidden"
+    assert by_id["onboarding-coach"]["user_toggleable"] is False
     expected_ids = {
         "assistant-identity",
         "assistant-soul",

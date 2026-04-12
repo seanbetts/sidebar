@@ -298,13 +298,14 @@ struct SkillsSettingsView: View {
 
     private var filteredSkills: [SkillItem] {
         viewModel.skills.filter { skill in
+            guard skill.status != "hidden" else {
+                return false
+            }
             switch selectedTier {
             case .standard:
                 return skill.tier == .standard
             case .store:
-                return skill.tier == .store
-                    && skill.status != "hidden"
-                    && isStoreSkillInstalled(skill)
+                return skill.tier == .store && isStoreSkillInstalled(skill)
             case .required:
                 return skill.tier == .required
             }

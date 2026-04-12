@@ -8,6 +8,7 @@ enum SkillIconResolver {
         "assistant-identity": "person.crop.circle.badge.checkmark",
         "assistant-soul": "sparkles",
         "audio-transcribe": "waveform",
+        "conversations": "bubble.left.and.bubble.right",
         "files": "doc.on.doc",
         "memory": "brain",
         "notes": "note.text",

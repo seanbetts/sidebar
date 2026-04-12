@@ -17,6 +17,7 @@ from api.services.tools.skill_metadata import (
     get_credential_requirements,
     get_legacy_skill_ids,
     get_provider_dependency,
+    get_skill_status,
     get_skill_tier,
     is_skill_default_enabled,
     is_skill_installable,
@@ -153,7 +154,7 @@ class SkillCatalogService:
             "user_toggleable": user_toggleable,
             "default_enabled": is_skill_default_enabled(skill_id),
             "installable": is_skill_installable(skill_id),
-            "status": "active",
+            "status": get_skill_status(skill_id),
             "long_description": long_description,
             "how_it_works": how_it_works,
             "requirements": requirements,
@@ -292,6 +293,7 @@ class SkillCatalogService:
     def _category_map() -> dict[str, str]:
         """Return the static skill category map."""
         return {
+            "conversations": "Productivity",
             "files": "Documents",
             "notes": "Productivity",
             "tasks": "Productivity",

@@ -44,4 +44,15 @@ final class SkillIconResolverTests: XCTestCase {
 
         XCTAssertEqual(SkillIconResolver.iconName(for: legacyToolCall), "note.text")
     }
+
+    func testConversationsSkillUsesConversationIcon() {
+        let skill = SkillItem(
+            id: "conversations",
+            name: "Conversations",
+            description: "Search and rename saved conversations",
+            category: "Productivity"
+        )
+
+        XCTAssertEqual(SkillIconResolver.iconName(for: skill), "bubble.left.and.bubble.right")
+    }
 }

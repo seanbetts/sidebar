@@ -831,6 +831,13 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(normalized.contains("SettingsMacSectionIntro(title:\"SkillType\""))
     }
 
+    func testSkillsSettingsSourceFiltersHiddenSkillsAcrossAllTiers() throws {
+        let normalized = try skillsSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("guardskill.status!=\"hidden\"else{returnfalse}"))
+    }
+
     func testProfileStringSelectorSourceUsesMenuInsteadOfPicker() throws {
         let normalized = try profileStringSelectorSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -856,6 +863,30 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(profileSupportNormalized.contains("FormField(\"Gender\")"))
         XCTAssertTrue(profileSupportNormalized.contains("FormField(\"Pronouns\")"))
         XCTAssertTrue(dateOfBirthNormalized.contains("FormField(\"DateofBirth\")"))
+    }
+
+    func testProfileIOSControlWidthUsesSharedTrailingWidthCap() throws {
+        let settingsNormalized = try profileSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let dateOfBirthNormalized = try profileDateOfBirthFieldSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let profileRowNormalized = try profileIOSFieldRowSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertEqual(settingsNormalized.components(separatedBy: ".profileIOSControlFrame()").count - 1, 4)
+        XCTAssertTrue(dateOfBirthNormalized.contains(".profileIOSControlFrame()"))
+        XCTAssertTrue(profileRowNormalized.contains("funcprofileIOSControlMaxWidth()->CGFloat"))
+        XCTAssertTrue(profileRowNormalized.contains("funcprofileIOSControlFrame()->someView"))
+    }
+
+    func testProfileSelectorTriggerUsesTrailingTextAlignment() throws {
+        let normalized = try formFieldSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Spacer(minLength:DesignTokens.Spacing.xs)"))
+        XCTAssertTrue(normalized.contains("Text(title).appFont(.subheadline)"))
+        XCTAssertTrue(normalized.contains(".multilineTextAlignment(.trailing)"))
+        XCTAssertTrue(normalized.contains(".frame(maxWidth:.infinity,alignment:.trailing)"))
     }
 
     func testSettingsSaveStatusPillUsesDirectPillChromeWithoutPlatformIndirection() throws {

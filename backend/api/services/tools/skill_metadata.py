@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-CATALOG_VERSION = 10
+CATALOG_VERSION = 11
 
 SkillTier = Literal["required", "standard", "store"]
 
@@ -133,9 +133,10 @@ STORE_SKILLS = {
 
 EXPOSED_SKILLS = REQUIRED_SKILLS | STANDARD_SKILLS | STORE_SKILLS
 
-NON_TOGGLEABLE_SKILLS = set(REQUIRED_SKILLS)
+NON_TOGGLEABLE_SKILLS = set(REQUIRED_SKILLS) | {"onboarding-coach"}
 INSTALLABLE_SKILLS = set(STORE_SKILLS)
 DEFAULT_ENABLED_SKILLS = REQUIRED_SKILLS | STANDARD_SKILLS
+HIDDEN_SKILLS = {"onboarding-coach"}
 
 SKILL_PROVIDER_DEPENDENCY: dict[str, str] = {
     "audio-transcribe": "openai",
@@ -302,6 +303,14 @@ def is_skill_installable(skill_id: str) -> bool:
 def is_skill_default_enabled(skill_id: str) -> bool:
     """Return whether a skill defaults to enabled."""
     return canonicalize_skill_id(skill_id) in DEFAULT_ENABLED_SKILLS
+
+
+def get_skill_status(skill_id: str) -> str:
+    """Return catalog visibility status for a skill."""
+    canonical = canonicalize_skill_id(skill_id)
+    if canonical in HIDDEN_SKILLS:
+        return "hidden"
+    return "active"
 
 
 def get_provider_dependency(skill_id: str) -> str:

@@ -294,6 +294,7 @@ struct ProfileSettingsView: View {
                 TextField("Not set", text: $name)
                     .multilineTextAlignment(.trailing)
                     .sidebarTextEntryField()
+                    .profileIOSControlFrame()
                     #if os(iOS)
                     .textInputAutocapitalization(.words)
                     #endif
@@ -302,11 +303,13 @@ struct ProfileSettingsView: View {
                 TextField("Not set", text: $jobTitle)
                     .multilineTextAlignment(.trailing)
                     .sidebarTextEntryField()
+                    .profileIOSControlFrame()
             }
             FormField("Employer") {
                 TextField("Not set", text: $employer)
                     .multilineTextAlignment(.trailing)
                     .sidebarTextEntryField()
+                    .profileIOSControlFrame()
             }
             genderField
             pronounsField
@@ -314,6 +317,7 @@ struct ProfileSettingsView: View {
                 TextField("Not set", text: $location)
                     .multilineTextAlignment(.trailing)
                     .sidebarTextEntryField()
+                    .profileIOSControlFrame()
             }
             ProfileDateOfBirthField(
                 dateOfBirthEnabled: $dateOfBirthEnabled,

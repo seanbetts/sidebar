@@ -226,6 +226,7 @@ struct SidebarSelectionTriggerLabel: View {
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
+            Spacer(minLength: DesignTokens.Spacing.xs)
             Text(title)
                 .appFont(.subheadline)
                 .foregroundStyle(
@@ -233,13 +234,14 @@ struct SidebarSelectionTriggerLabel: View {
                         ? DesignTokens.Colors.textSecondary
                         : DesignTokens.Colors.textPrimary
                 )
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)
                 .lineLimit(1)
-            Spacer(minLength: DesignTokens.Spacing.xs)
             Image(systemName: "chevron.up.chevron.down")
                 .appFont(.caption2)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .trailing)
         .sidebarTextEntryControl()
     }
 }

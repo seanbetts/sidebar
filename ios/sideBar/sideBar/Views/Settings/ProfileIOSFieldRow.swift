@@ -4,6 +4,10 @@ func profileIOSRowMinHeight() -> CGFloat {
     FormFieldLayoutMetrics.settingsIOSMinHeight
 }
 
+func profileIOSControlMaxWidth() -> CGFloat {
+    320
+}
+
 struct ProfileIOSFieldRow<Content: View>: View {
     let label: String
     private let content: Content
@@ -17,5 +21,11 @@ struct ProfileIOSFieldRow<Content: View>: View {
         FormField(label) {
             content
         }
+    }
+}
+
+extension View {
+    func profileIOSControlFrame() -> some View {
+        frame(maxWidth: profileIOSControlMaxWidth(), alignment: .trailing)
     }
 }
