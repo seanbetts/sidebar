@@ -228,14 +228,22 @@ private struct HeaderActionControlChromeModifier: ViewModifier {
     let isHovered: Bool
 
     func body(content: Content) -> some View {
-        if style.appliesChrome || isHovered {
-            content
-                .padding(HeaderActionControlMetrics.chromePadding)
-                .glassChrome(style.kind)
-                .opacity(style.appliesChrome && isHovered ? 0.96 : 1)
-        } else {
+        ZStack {
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                .fill(isHovered ? DesignTokens.Colors.sidebarHoverBackground : .clear)
+
+            if style.appliesChrome {
+                Color.clear
+                    .glassChrome(style.kind)
+                    .opacity(isHovered ? 0.96 : 1)
+            }
+
             content
         }
+        .frame(
+            width: HeaderActionControlMetrics.chromeWidth,
+            height: HeaderActionControlMetrics.chromeHeight
+        )
     }
 }
 

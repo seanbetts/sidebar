@@ -44,6 +44,7 @@ final class GlobalAvatarRegionControlsSourceTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("SettingsAvatarButton"))
         XCTAssertEqual(normalized.components(separatedBy: ".sidebarHover(").count - 1, 2)
+        XCTAssertTrue(normalized.contains("DesignTokens.Colors.sidebarHoverBackground"))
     }
 
     private func profileAvatarSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {

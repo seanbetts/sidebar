@@ -21,6 +21,8 @@ struct NotesDetailViewTestContext {
             editorViewModel: editorViewModel,
             isMoveSheetPresented: .constant(false),
             moveSelection: .constant(""),
+            isRenameAlertPresented: .constant(false),
+            renameValue: .constant(""),
             isDeleteAlertPresented: .constant(false),
             isExporting: .constant(false),
             exportDocument: .constant(nil),
@@ -334,6 +336,12 @@ final class NotesDetailViewRecordingNotesAPI: NotesProviding {
 
     func createNote(request: NoteCreateRequest) async throws -> NotePayload {
         _ = request
+        throw NotesDetailViewTestError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
         throw NotesDetailViewTestError.forced
     }
 

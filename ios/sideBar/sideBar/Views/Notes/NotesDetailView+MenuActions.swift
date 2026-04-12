@@ -58,6 +58,9 @@ extension NotesDetailView {
             .pin(isPinned: isPinned) {
                 togglePinnedForActiveNote()
             },
+            .rename {
+                beginRenameForActiveNote()
+            },
             .move {
                 moveSelection = currentFolderPath
                 isMoveSheetPresented = true
@@ -86,6 +89,11 @@ extension NotesDetailView {
             togglePinnedForActiveNote()
         } label: {
             Label(pinActionTitle, systemImage: pinIconName)
+        }
+        Button {
+            beginRenameForActiveNote()
+        } label: {
+            Label("Rename", systemImage: "pencil")
         }
         Button {
             moveSelection = currentFolderPath
@@ -132,5 +140,10 @@ extension NotesDetailView {
             chromeStyle: Self.actionControlChromeStyle
         )
         .keyboardShortcut(.escape, modifiers: [])
+    }
+
+    func beginRenameForActiveNote() {
+        renameValue = displayTitle
+        isRenameAlertPresented = true
     }
 }

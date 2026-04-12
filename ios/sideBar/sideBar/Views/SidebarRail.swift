@@ -199,11 +199,18 @@ private struct SidebarRailButtonBackground: View {
     let opacity: Double
 
     var body: some View {
-        if let chrome {
-            Color.clear
+        if chrome != nil {
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                .fill(backgroundColor)
                 .frame(width: 32, height: 32)
-                .glassChrome(chrome)
                 .opacity(opacity)
         }
+    }
+
+    private var backgroundColor: Color {
+        if opacity >= 1 {
+            return DesignTokens.Colors.selection
+        }
+        return DesignTokens.Colors.sidebarHoverBackground
     }
 }

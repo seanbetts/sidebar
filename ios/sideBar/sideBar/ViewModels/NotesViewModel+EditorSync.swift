@@ -77,6 +77,20 @@ extension NotesViewModel {
         }
     }
 
+    public func renameNote(id: String, newName: String) async {
+        guard let trimmed = newName.trimmedOrNil else { return }
+
+        do {
+            let updated = try await api.renameNote(id: id, newName: trimmed)
+            store.applyEditorUpdate(updated)
+            tree = store.tree
+            archivedTree = store.archivedTree
+            activeNote = store.activeNote
+        } catch {
+            toastCenter.show(message: "Failed to rename note")
+        }
+    }
+
     public func moveNote(id: String, folder: String) async {
         if !networkStatus.isNetworkAvailable {
             do {

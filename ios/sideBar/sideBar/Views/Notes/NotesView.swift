@@ -15,6 +15,8 @@ public struct NotesView: View {
     #endif
     @State private var isMoveSheetPresented = false
     @State private var moveSelection: String = ""
+    @State private var isRenameAlertPresented = false
+    @State private var renameValue = ""
     @State private var isDeleteAlertPresented = false
     @State private var isExporting = false
     @State private var exportDocument: PlainTextFileDocument?
@@ -29,6 +31,8 @@ public struct NotesView: View {
             editorViewModel: environment.notesRuntime.editorViewModel,
             isMoveSheetPresented: $isMoveSheetPresented,
             moveSelection: $moveSelection,
+            isRenameAlertPresented: $isRenameAlertPresented,
+            renameValue: $renameValue,
             isDeleteAlertPresented: $isDeleteAlertPresented,
             isExporting: $isExporting,
             exportDocument: $exportDocument,
@@ -69,6 +73,15 @@ public struct NotesView: View {
                 )
                 .phoneSheetGrabBarVisible()
             }
+            .alert("Rename note", isPresented: $isRenameAlertPresented) {
+                TextField("Note name", text: $renameValue)
+                Button("Rename") {
+                    Task {
+                        await renameActiveNote()
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            }
             .deleteConfirmationAlert(
                 title: "Delete note",
                 isPresented: $isDeleteAlertPresented,
@@ -98,6 +111,13 @@ public struct NotesView: View {
         #endif
     }
 
+    private func renameActiveNote() async {
+        guard let noteId = environment.notesRuntime.viewModel.activeNote?.path else { return }
+        let updatedName = renameValue
+        renameValue = ""
+        await environment.notesRuntime.viewModel.renameNote(id: noteId, newName: updatedName)
+    }
+
     private var isCompact: Bool {
         #if os(macOS)
         return false
@@ -114,6 +134,10 @@ public struct NotesView: View {
             items: [
                 .pin(isPinned: isPinned) {
                     togglePinnedForActiveNote()
+                },
+                .rename {
+                    renameValue = displayTitle
+                    isRenameAlertPresented = true
                 },
                 .move {
                     moveSelection = currentFolderPath

@@ -449,6 +449,11 @@ private final class SemanticSyncNotesAPISpy: NotesProviding {
         _ = request
         throw SemanticSyncMockError.forced
     }
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw SemanticSyncMockError.forced
+    }
     func moveNote(id: String, folder: String) async throws -> NotePayload {
         _ = id
         _ = folder

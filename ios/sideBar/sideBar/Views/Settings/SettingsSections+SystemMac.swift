@@ -134,7 +134,7 @@ extension AgentSettingsView {
                     } else {
                         FormField("API key") {
                             SecureField("Enter \(selectedPrimaryProvider.displayName) API key", text: $providerKeyInput)
-                                .textFieldStyle(.roundedBorder)
+                                .sidebarTextEntryField()
                                 .frame(maxWidth: 320)
                                 .disabled(viewModel.isSavingPrimaryProvider)
                                 .onSubmit {

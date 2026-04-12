@@ -720,6 +720,8 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("TextField(text:$jobTitle,prompt:Text(\"Notset\"))"))
         XCTAssertTrue(normalized.contains("TextField(text:$employer,prompt:Text(\"Notset\"))"))
         XCTAssertTrue(normalized.contains("TextField(text:$location,prompt:Text(\"Notset\"))"))
+        XCTAssertEqual(normalized.components(separatedBy: ".sidebarTextEntryField()").count - 1, 8)
+        XCTAssertFalse(normalized.contains(".textFieldStyle(.roundedBorder)"))
     }
 
     func testProfileSettingsSourceUsesHomeLocationLabel() throws {
@@ -754,6 +756,8 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("LabeledContent{"))
         XCTAssertTrue(normalized.contains("Text(label).appFont(.body)"))
         XCTAssertTrue(normalized.contains("minHeight:FormFieldLayoutMetrics.settingsIOSMinHeight"))
+        XCTAssertTrue(normalized.contains("DesignTokens.Colors.input"))
+        XCTAssertTrue(normalized.contains("funcsidebarTextEntryField()->someView"))
     }
 
     func testGeneralSettingsMacSourceUsesInspectorSectionIntrosAndCalmerWeatherControl() throws {
@@ -761,7 +765,6 @@ final class SettingsSectionsTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("SettingsMacSectionIntro("))
-        XCTAssertTrue(normalized.contains("SettingsMacActionSection("))
         XCTAssertTrue(normalized.contains("settingsMacWeatherPickerStyle()"))
         XCTAssertFalse(normalized.contains(".pickerStyle(.radioGroup)"))
     }
@@ -782,6 +785,14 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("Text(\"Changepassword\")"))
         XCTAssertTrue(normalized.contains("SettingsPasswordChangeView("))
         XCTAssertTrue(normalized.contains("startPasswordChangeFlow()"))
+    }
+
+    func testGeneralSettingsMacSourceKeepsSecurityControlsFlushWithPanelCardContent() throws {
+        let normalized = try generalSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("title:\"Security\""))
+        XCTAssertFalse(normalized.contains("SettingsMacActionSection(title:\"Security\""))
     }
 
     func testGeneralSettingsSourceIncludesPermissionRecoveryRows() throws {

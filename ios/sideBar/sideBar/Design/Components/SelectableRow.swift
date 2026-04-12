@@ -77,7 +77,7 @@ struct SelectableRow<Content: View>: View {
             return DesignTokens.Colors.selection
         }
         if isHovered && !isSelected {
-            return DesignTokens.Colors.selection.opacity(0.42)
+            return DesignTokens.Colors.sidebarHoverBackground
         }
         return rowBackground
     }

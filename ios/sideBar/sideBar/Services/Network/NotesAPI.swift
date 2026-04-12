@@ -9,6 +9,7 @@ public protocol NotesProviding {
     func search(query: String, limit: Int) async throws -> [FileNode]
     func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload
     func createNote(request: NoteCreateRequest) async throws -> NotePayload
+    func renameNote(id: String, newName: String) async throws -> NotePayload
     func moveNote(id: String, folder: String) async throws -> NotePayload
     func archiveNote(id: String, archived: Bool) async throws -> NotePayload
     func pinNote(id: String, pinned: Bool) async throws -> NotePayload
@@ -69,6 +70,18 @@ public struct NotesAPI {
             "notes",
             method: "POST",
             body: request.canonicalized()
+        )
+    }
+
+    public func renameNote(id: String, newName: String) async throws -> NotePayload {
+        struct RenameRequest: Codable {
+            let newName: String
+        }
+
+        return try await client.request(
+            "notes/\(id)/rename",
+            method: "PATCH",
+            body: RenameRequest(newName: newName)
         )
     }
 

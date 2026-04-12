@@ -185,6 +185,12 @@ private final class NotesPinnedOrderAPISpy: NotesProviding {
         throw NotesPinnedOrderMockError.forced
     }
 
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw NotesPinnedOrderMockError.forced
+    }
+
     func moveNote(id: String, folder: String) async throws -> NotePayload {
         _ = id
         _ = folder

@@ -160,7 +160,7 @@ struct MemoriesSettingsDetailView: View {
         .padding(.vertical, DesignTokens.Spacing.xs)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(DesignTokens.Colors.background)
+                .fill(DesignTokens.Colors.input)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -215,7 +215,7 @@ struct MemoriesSettingsDetailView: View {
             .appFont(.subheadline)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(DesignTokens.Colors.settingsFormBackground)
+                    .fill(DesignTokens.Colors.input)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)

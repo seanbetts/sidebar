@@ -321,9 +321,30 @@ extension FilesPanelView {
                     Section {
                         ForEach(categoryOrder, id: \.self) { category in
                             if let items = categorizedItems[category], !items.isEmpty {
-                                DisclosureGroup(
-                                    isExpanded: bindingForCategory(category)
-                                ) {
+                                let isExpanded = bindingForCategory(category).wrappedValue
+
+                                SelectableRow(
+                                    isSelected: false,
+                                    primaryAction: {
+                                        toggleCategoryExpansion(category)
+                                    },
+                                    content: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: categoryIconName(category))
+                                            .foregroundStyle(.secondary)
+                                            .frame(width: 20, alignment: .center)
+                                        Text(categoryLabels[category] ?? "Files")
+                                        Spacer()
+                                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                                            .appFont(.captionSemibold)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .appFont(SidebarTypography.primary)
+                                }
+                                .accessibilityLabel(categoryLabels[category] ?? "Files")
+                                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+
+                                if isExpanded {
                                     ForEach(items, id: \.file.id) { item in
                                         let index = staggerIndex(
                                             for: item.file.id,
@@ -354,16 +375,7 @@ extension FilesPanelView {
                                                 )
                                         }
                                     }
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: categoryIconName(category))
-                                            .foregroundStyle(.secondary)
-                                            .frame(width: 20, alignment: .center)
-                                        Text(categoryLabels[category] ?? "Files")
-                                    }
-                                    .appFont(SidebarTypography.primary)
-                                }
-                                .listRowBackground(DesignTokens.Colors.sidebarRowBackground)
+                                })
                             }
                         }
                     } header: {

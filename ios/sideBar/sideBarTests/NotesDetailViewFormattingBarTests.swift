@@ -122,6 +122,8 @@ final class NotesDetailViewFormattingBarTests: NotesDetailViewHostingTestCase {
             editorViewModel: context.editorViewModel,
             isMoveSheetPresented: .constant(false),
             moveSelection: .constant(""),
+            isRenameAlertPresented: .constant(false),
+            renameValue: .constant(""),
             isDeleteAlertPresented: .constant(false),
             isExporting: .constant(false),
             exportDocument: .constant(nil),

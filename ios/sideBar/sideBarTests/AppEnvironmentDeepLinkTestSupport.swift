@@ -143,6 +143,11 @@ private struct NoNetworkNotesAPI: NotesProviding {
         _ = request
         throw NoNetworkAppEnvironmentError.unused
     }
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        throw NoNetworkAppEnvironmentError.unused
+    }
     func moveNote(id: String, folder: String) async throws -> NotePayload {
         _ = id
         _ = folder

@@ -74,6 +74,7 @@ enum DesignTokens {
         static let settingsBackground = Color.appSettingsBackground
         /// Inner form/list surface for settings panels.
         static let settingsFormBackground = Color.appSettingsFormBackground
+        static let sidebarHoverBackground = selection.opacity(0.42)
 
         static var sidebarRowBackground: Color {
             .clear

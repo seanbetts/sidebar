@@ -180,6 +180,20 @@ extension FilesPanelView {
         )
     }
 
+    func toggleCategoryExpansion(_ category: String) {
+        expandedCategories = Self.toggledExpandedCategories(expandedCategories, category: category)
+    }
+
+    static func toggledExpandedCategories(_ expandedCategories: Set<String>, category: String) -> Set<String> {
+        var nextExpandedCategories = expandedCategories
+        if nextExpandedCategories.contains(category) {
+            nextExpandedCategories.remove(category)
+        } else {
+            nextExpandedCategories.insert(category)
+        }
+        return nextExpandedCategories
+    }
+
     func initializeExpandedCategoriesIfNeeded() {
         if expandedCategories.isEmpty {
             expandedCategories = []

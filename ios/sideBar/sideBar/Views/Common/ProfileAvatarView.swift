@@ -63,6 +63,7 @@ struct ProfileAvatarView: View {
 struct SettingsAvatarButton: View {
     @EnvironmentObject private var environment: AppEnvironment
     let size: CGFloat
+    @State private var isHovered = false
 
     init(size: CGFloat = 28) {
         self.size = size
@@ -73,16 +74,24 @@ struct SettingsAvatarButton: View {
             environment.commandSelection = .settings
         } label: {
             ProfileAvatarView(size: size)
+                .padding(DesignTokens.Spacing.xxs)
+                .background(hoverBackground)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Settings")
-        .sidebarHover()
+        .sidebarHover($isHovered)
+    }
+
+    private var hoverBackground: some View {
+        RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+            .fill(isHovered ? DesignTokens.Colors.sidebarHoverBackground : .clear)
     }
 }
 
 struct GlobalAvatarRegionControls: View {
     @EnvironmentObject private var environment: AppEnvironment
     @State private var isScratchpadPresented = false
+    @State private var isScratchpadHovered = false
     let avatarSize: CGFloat
 
     init(avatarSize: CGFloat = 28) {
@@ -98,10 +107,15 @@ struct GlobalAvatarRegionControls: View {
                         weight: .regular
                     )
                     .frame(width: avatarSize, height: avatarSize)
+                    .padding(DesignTokens.Spacing.xxs)
+                    .background(
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                            .fill(isScratchpadHovered ? DesignTokens.Colors.sidebarHoverBackground : .clear)
+                    )
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Scratchpad")
-            .sidebarHover()
+            .sidebarHover($isScratchpadHovered)
             .popover(
                 isPresented: $isScratchpadPresented,
                 attachmentAnchor: .rect(.bounds),

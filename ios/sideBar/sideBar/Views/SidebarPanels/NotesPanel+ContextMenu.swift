@@ -72,6 +72,7 @@ extension NotesPanelView {
         if item.isFile {
             return [
                 .pin,
+                .rename,
                 .move,
                 .copyText,
                 .shareText,

@@ -117,6 +117,14 @@ final class HeaderActionChromeTests: XCTestCase {
         )
     }
 
+    func testNotesDetailMenusRestoreSharedRenameAction() throws {
+        let normalized = try headerActionSource(named: "NotesDetailView+MenuActions.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".rename{beginRenameForActiveNote()}"))
+        XCTAssertTrue(normalized.contains("Label(\"Rename\",systemImage:\"pencil\")"))
+    }
+
     func testMacOSWebsitesMenuAppliesChromeToMenuControl() throws {
         let normalized = try headerActionSource(named: "WebsitesDetailView+MenuActions.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -198,7 +206,7 @@ final class HeaderActionChromeTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("@StateprivatevarisHovered=false"))
         XCTAssertTrue(normalized.contains(".sidebarHover($isHovered)"))
-        XCTAssertTrue(normalized.contains("style.appliesChrome&&isHovered"))
+        XCTAssertTrue(normalized.contains("DesignTokens.Colors.sidebarHoverBackground"))
     }
 }
 

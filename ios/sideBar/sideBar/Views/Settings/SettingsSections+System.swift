@@ -181,6 +181,7 @@ struct AgentSettingsView: View {
                     }
                 } else {
                     SecureField("Enter \(selectedPrimaryProvider.displayName) API key", text: $providerKeyInput)
+                        .sidebarTextEntryField()
                     #if os(iOS)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)

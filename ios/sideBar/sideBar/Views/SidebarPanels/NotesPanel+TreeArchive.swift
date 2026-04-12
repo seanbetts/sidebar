@@ -97,7 +97,7 @@ extension NotesPanelView {
                                             requestNoteSelection(id: item.id)
                                         }
                                     },
-                                    onRename: item.isFile ? nil : { beginRename(for: item) },
+                                    onRename: { beginRename(for: item) },
                                     onDelete: {
                                         confirmDelete(for: item)
                                     }
@@ -147,7 +147,7 @@ extension NotesPanelView {
                         requestNoteSelection(id: item.id)
                     }
                 },
-                onRename: item.isFile ? nil : { beginRename(for: item) },
+                onRename: { beginRename(for: item) },
                 onDelete: {
                     confirmDelete(for: item)
                 }

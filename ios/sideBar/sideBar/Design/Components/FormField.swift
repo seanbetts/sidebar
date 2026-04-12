@@ -106,7 +106,7 @@ struct FormField<Content: View, Trailing: View>: View {
         .appFont(.subheadline)
         .padding(.vertical, LoginFieldChromeMetrics.fieldVerticalPadding)
         .padding(.horizontal, LoginFieldChromeMetrics.fieldHorizontalPadding)
-        .glassChrome(LoginChrome.fieldKind)
+        .sidebarTextEntrySurface()
     }
 }
 
@@ -153,6 +153,7 @@ public struct FormFieldSecureInput<Field: Hashable>: View {
         #if canImport(UIKit)
             .textInputAutocapitalization(.never)
         #endif
+            .textFieldStyle(.plain)
             .focused(focus, equals: field)
             .submitLabel(submitLabel)
             .onSubmit { onSubmit?() }
@@ -173,5 +174,39 @@ public struct FormFieldSecureInput<Field: Hashable>: View {
             .buttonStyle(.plain)
             .accessibilityLabel(isSecure ? "Show password" : "Hide password")
         }
+    }
+}
+
+private struct SidebarTextEntrySurfaceModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                    .fill(DesignTokens.Colors.input)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                    .stroke(DesignTokens.Colors.border.opacity(0.65), lineWidth: 1)
+            )
+    }
+}
+
+private struct SidebarTextEntryFieldModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .textFieldStyle(.plain)
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .sidebarTextEntrySurface()
+    }
+}
+
+extension View {
+    func sidebarTextEntrySurface() -> some View {
+        modifier(SidebarTextEntrySurfaceModifier())
+    }
+
+    func sidebarTextEntryField() -> some View {
+        modifier(SidebarTextEntryFieldModifier())
     }
 }

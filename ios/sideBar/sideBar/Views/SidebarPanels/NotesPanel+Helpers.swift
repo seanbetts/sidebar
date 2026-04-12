@@ -237,7 +237,9 @@ extension NotesPanelView {
         renameValue = ""
         guard let target else { return }
         Task {
-            if !target.isFile {
+            if target.isFile {
+                await viewModel.renameNote(id: target.id, newName: updated)
+            } else {
                 await viewModel.renameFolder(path: target.id, newName: updated)
             }
         }

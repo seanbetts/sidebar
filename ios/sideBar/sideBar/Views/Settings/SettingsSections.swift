@@ -198,19 +198,19 @@ struct ProfileSettingsView: View {
             FormField("Name") {
                 TextField(text: $name, prompt: Text("Not set")) {
                 }
-                    .textFieldStyle(.roundedBorder)
+                    .sidebarTextEntryField()
                     .frame(maxWidth: 320)
             }
             FormField("Job Title") {
                 TextField(text: $jobTitle, prompt: Text("Not set")) {
                 }
-                    .textFieldStyle(.roundedBorder)
+                    .sidebarTextEntryField()
                     .frame(maxWidth: 320)
             }
             FormField("Employer") {
                 TextField(text: $employer, prompt: Text("Not set")) {
                 }
-                    .textFieldStyle(.roundedBorder)
+                    .sidebarTextEntryField()
                     .frame(maxWidth: 320)
             }
             genderField
@@ -218,7 +218,7 @@ struct ProfileSettingsView: View {
             FormField("Home location") {
                 TextField(text: $location, prompt: Text("Not set")) {
                 }
-                    .textFieldStyle(.roundedBorder)
+                    .sidebarTextEntryField()
                     .frame(maxWidth: 320)
             }
             ProfileDateOfBirthField(
@@ -293,6 +293,7 @@ struct ProfileSettingsView: View {
             FormField("Name") {
                 TextField("Not set", text: $name)
                     .multilineTextAlignment(.trailing)
+                    .sidebarTextEntryField()
                     #if os(iOS)
                     .textInputAutocapitalization(.words)
                     #endif
@@ -300,16 +301,19 @@ struct ProfileSettingsView: View {
             FormField("Job Title") {
                 TextField("Not set", text: $jobTitle)
                     .multilineTextAlignment(.trailing)
+                    .sidebarTextEntryField()
             }
             FormField("Employer") {
                 TextField("Not set", text: $employer)
                     .multilineTextAlignment(.trailing)
+                    .sidebarTextEntryField()
             }
             genderField
             pronounsField
             FormField("Home location") {
                 TextField("Not set", text: $location)
                     .multilineTextAlignment(.trailing)
+                    .sidebarTextEntryField()
             }
             ProfileDateOfBirthField(
                 dateOfBirthEnabled: $dateOfBirthEnabled,

@@ -15,10 +15,6 @@ final class LoginGlassChromeTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertEqual(
-            normalized.components(separatedBy: ".glassChrome(LoginChrome.fieldKind)").count - 1,
-            1
-        )
-        XCTAssertEqual(
             normalized.components(separatedBy: ".glassChrome(LoginChrome.noticeKind)").count - 1,
             3
         )
@@ -58,7 +54,8 @@ final class LoginGlassChromeTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("spacing:LoginFieldChromeMetrics.trailingControlSpacing"))
-        XCTAssertTrue(normalized.contains(".glassChrome(LoginChrome.fieldKind)"))
+        XCTAssertTrue(normalized.contains(".sidebarTextEntrySurface()"))
+        XCTAssertTrue(normalized.contains("DesignTokens.Colors.input"))
         XCTAssertTrue(normalized.contains("structFormFieldSecureInput<Field:Hashable>:View{"))
         XCTAssertTrue(normalized.contains(".font(.system(size:LoginFieldChromeMetrics.trailingSymbolPointSize))"))
     }

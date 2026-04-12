@@ -14,6 +14,8 @@ struct NotesDetailView: View {
     @EnvironmentObject var environment: AppEnvironment
     @Binding var isMoveSheetPresented: Bool
     @Binding var moveSelection: String
+    @Binding var isRenameAlertPresented: Bool
+    @Binding var renameValue: String
     @Binding var isDeleteAlertPresented: Bool
     @Binding var isExporting: Bool
     @Binding var exportDocument: PlainTextFileDocument?
@@ -43,6 +45,8 @@ struct NotesDetailView: View {
         editorViewModel: NotesEditorViewModel,
         isMoveSheetPresented: Binding<Bool>,
         moveSelection: Binding<String>,
+        isRenameAlertPresented: Binding<Bool>,
+        renameValue: Binding<String>,
         isDeleteAlertPresented: Binding<Bool>,
         isExporting: Binding<Bool>,
         exportDocument: Binding<PlainTextFileDocument?>,
@@ -53,6 +57,8 @@ struct NotesDetailView: View {
         self.editorViewModel = editorViewModel
         self._isMoveSheetPresented = isMoveSheetPresented
         self._moveSelection = moveSelection
+        self._isRenameAlertPresented = isRenameAlertPresented
+        self._renameValue = renameValue
         self._isDeleteAlertPresented = isDeleteAlertPresented
         self._isExporting = isExporting
         self._exportDocument = exportDocument
@@ -65,6 +71,8 @@ struct NotesDetailView: View {
         editorViewModel: NotesEditorViewModel,
         isMoveSheetPresented: Binding<Bool>,
         moveSelection: Binding<String>,
+        isRenameAlertPresented: Binding<Bool>,
+        renameValue: Binding<String>,
         isDeleteAlertPresented: Binding<Bool>,
         isExporting: Binding<Bool>,
         exportDocument: Binding<PlainTextFileDocument?>,
@@ -74,6 +82,8 @@ struct NotesDetailView: View {
         self.editorViewModel = editorViewModel
         self._isMoveSheetPresented = isMoveSheetPresented
         self._moveSelection = moveSelection
+        self._isRenameAlertPresented = isRenameAlertPresented
+        self._renameValue = renameValue
         self._isDeleteAlertPresented = isDeleteAlertPresented
         self._isExporting = isExporting
         self._exportDocument = exportDocument

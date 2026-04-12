@@ -68,27 +68,27 @@ struct GeneralSettingsView: View {
                 }
 
                 SettingsMacPanelCard {
-                    SettingsMacActionSection(
+                    SettingsMacSectionIntro(
                         title: "Security",
                         message: "Protect the app when your Mac supports biometric authentication."
-                    ) {
-                        Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
-                            .disabled(!canUseDeviceAuth)
+                    )
 
-                        Button {
-                            startPasswordChangeFlow()
-                        } label: {
-                            Text("Change password")
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(isStartingPasswordChange || environment.authState != .active)
+                    Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
+                        .disabled(!canUseDeviceAuth)
 
-                        if !canUseDeviceAuth {
-                            SettingsMacStatusBanner(
-                                message: "Set up Face ID or Touch ID to enable biometric unlock.",
-                                tone: .info
-                            )
-                        }
+                    Button {
+                        startPasswordChangeFlow()
+                    } label: {
+                        Text("Change password")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isStartingPasswordChange || environment.authState != .active)
+
+                    if !canUseDeviceAuth {
+                        SettingsMacStatusBanner(
+                            message: "Set up Face ID or Touch ID to enable biometric unlock.",
+                            tone: .info
+                        )
                     }
                 }
 

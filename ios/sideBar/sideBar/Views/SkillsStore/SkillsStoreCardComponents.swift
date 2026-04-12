@@ -43,6 +43,7 @@ struct SkillsStoreFilterChip: View {
     let iconName: String
     let isSelected: Bool
     let onTap: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
         Button(action: onTap) {
@@ -58,12 +59,13 @@ struct SkillsStoreFilterChip: View {
                 Capsule().fill(
                     isSelected
                         ? Color.accentColor.opacity(0.18)
-                        : DesignTokens.Colors.surface
+                        : (isHovered ? DesignTokens.Colors.sidebarHoverBackground : DesignTokens.Colors.surface)
                 )
             )
             .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
         }
         .buttonStyle(.plain)
+        .sidebarHover($isHovered)
     }
 }
 
@@ -80,6 +82,7 @@ struct SkillsStoreCard: View {
     let onInstalledTap: () -> Void
 
     private let cardHeight: CGFloat = 96
+    @State private var isHovered = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -126,13 +129,14 @@ struct SkillsStoreCard: View {
         .frame(height: cardHeight, alignment: .center)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(DesignTokens.Colors.surface)
+                .fill(isHovered ? DesignTokens.Colors.sidebarHoverBackground : DesignTokens.Colors.surface)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
         )
         .accessibilityAddTraits(.isButton)
+        .sidebarHover($isHovered)
     }
 
     private var installButton: some View {

@@ -26,6 +26,7 @@ final class SidebarRailTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains(".sidebarHover(Binding("))
         XCTAssertTrue(normalized.contains("hoveredSection==section"))
+        XCTAssertTrue(normalized.contains("DesignTokens.Colors.sidebarHoverBackground"))
         XCTAssertFalse(normalized.contains(".onHover{"))
         XCTAssertFalse(normalized.contains("#ifos(macOS).onHover"))
     }

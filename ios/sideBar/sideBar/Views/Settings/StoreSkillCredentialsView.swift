@@ -79,6 +79,7 @@ struct StoreSkillCredentialsView: View {
                     "Enter \(providerDisplayName(prompt.provider)) API key",
                     text: $credentialEditorDraft
                 )
+                .sidebarTextEntryField()
                 #if os(iOS)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)

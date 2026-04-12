@@ -257,13 +257,13 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertEqual(panel.listSectionLayout, [.mainNotes])
     }
 
-    func testNoteContextMenuIncludesShareTextForFileItems() {
+    func testNoteContextMenuIncludesRenameAndShareTextForFileItems() {
         let item = FileNodeItem(id: "note-1", name: "Note.md", type: .file)
 
         let actions = NotesPanelView.noteContextMenuActions(for: item)
 
+        XCTAssertTrue(actions.contains(.rename))
         XCTAssertTrue(actions.contains(.shareText))
-        XCTAssertFalse(actions.contains(.rename))
     }
 
     func testPinnedNoteContextMenuDoesNotIncludeReorderWhenHandlesAreAlwaysVisible() async {

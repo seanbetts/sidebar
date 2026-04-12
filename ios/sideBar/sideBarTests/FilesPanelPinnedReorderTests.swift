@@ -186,6 +186,25 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
         XCTAssertNil(view.fileListSelectionID(for: "folder-a"))
     }
 
+    func testToggleCategoryExpansionAddsAndRemovesExpandedState() {
+        let expanded = FilesPanelView.toggledExpandedCategories([], category: "documents")
+        let collapsed = FilesPanelView.toggledExpandedCategories(expanded, category: "documents")
+
+        XCTAssertEqual(expanded, ["documents"])
+        XCTAssertEqual(collapsed, [])
+    }
+
+    func testFilesPanelSourceUsesHoverableSelectableCategoryRows() throws {
+        let normalized = try filesPanelSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("SelectableRow("))
+        XCTAssertTrue(normalized.contains("toggleCategoryExpansion(category)"))
+        XCTAssertTrue(normalized.contains("chevron.down"))
+        XCTAssertTrue(normalized.contains("chevron.right"))
+        XCTAssertFalse(normalized.contains("DisclosureGroup("))
+    }
+
     private func makeView(
         isNetworkAvailable: Bool = true,
         items: [IngestionListItem]? = nil
@@ -273,6 +292,27 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
             ),
             recommendedViewer: "text_original"
         )
+    }
+}
+
+private func filesPanelSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sourceURL = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("SidebarPanels")
+        .appendingPathComponent("FilesPanel.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read FilesPanel.swift: \(error)", file: file, line: line)
+        throw error
     }
 }
 
