@@ -50,6 +50,24 @@ enum NotesSemanticDocumentProjection {
         return NotesSemanticDocument(blocks: blocks)
     }
 
+    static func renamingTitle(
+        in document: NotesSemanticDocument,
+        to newTitle: String
+    ) -> NotesSemanticDocument {
+        let titleBlock = NotesSemanticDocument.Block(
+            type: .title,
+            content: [.init(text: newTitle, marks: [])]
+        )
+
+        guard !document.blocks.isEmpty else {
+            return NotesSemanticDocument(blocks: [titleBlock])
+        }
+
+        var blocks = document.blocks
+        blocks[0] = titleBlock
+        return NotesSemanticDocument(version: document.version, blocks: blocks)
+    }
+
     private static func projectedLines(
         for blocks: [NotesSemanticDocument.Block],
         quotePrefix: String = ""

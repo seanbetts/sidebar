@@ -4,6 +4,7 @@ import SwiftUI
 struct FilesIngestionRow: View, Equatable {
     let item: IngestionListItem
     let isSelected: Bool
+    let nestingLevel: Int
     let onSelect: (() -> Void)?
     let onPinToggle: (() -> Void)?
     let onDelete: (() -> Void)?
@@ -11,12 +12,14 @@ struct FilesIngestionRow: View, Equatable {
     init(
         item: IngestionListItem,
         isSelected: Bool,
+        nestingLevel: Int = 0,
         onSelect: (() -> Void)? = nil,
         onPinToggle: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil
     ) {
         self.item = item
         self.isSelected = isSelected
+        self.nestingLevel = nestingLevel
         self.onSelect = onSelect
         self.onPinToggle = onPinToggle
         self.onDelete = onDelete
@@ -175,6 +178,7 @@ struct FilesIngestionRow: View, Equatable {
 
     private var rowInsets: EdgeInsets {
         let horizontalPadding: CGFloat
+        let indent = CGFloat(nestingLevel) * DesignTokens.Spacing.lg
         #if os(macOS)
         horizontalPadding = DesignTokens.Spacing.xs
         #else
@@ -182,7 +186,7 @@ struct FilesIngestionRow: View, Equatable {
         #endif
         return EdgeInsets(
             top: 0,
-            leading: horizontalPadding,
+            leading: horizontalPadding + indent,
             bottom: 0,
             trailing: horizontalPadding
         )

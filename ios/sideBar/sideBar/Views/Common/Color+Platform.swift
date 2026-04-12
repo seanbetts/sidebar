@@ -37,7 +37,7 @@ private enum MacOSPalette {
     )
     static let input = makeDynamicNSColor(
         name: "macosInput",
-        light: NSColor(srgbRed: 0.898, green: 0.898, blue: 0.898, alpha: 1),
+        light: NSColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
         dark: NSColor(white: 1, alpha: 0.15)
     )
 }

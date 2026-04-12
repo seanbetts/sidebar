@@ -63,11 +63,7 @@ extension FilesPanelView {
 
     func fileRowPrimaryAction(for item: IngestionListItem) -> (() -> Void)? {
         guard !isFolder(item) else { return nil }
-        #if os(macOS)
-        return nil
-        #else
         return { open(item: item) }
-        #endif
     }
 
     func pinAction(for item: IngestionListItem) -> (() -> Void)? {

@@ -158,6 +158,7 @@ struct AgentSettingsView: View {
                     }
                 }
                 .appFont(.body)
+                .sidebarTextEntryControl()
                 if selectedProviderHasKey {
                     HStack(spacing: DesignTokens.Spacing.sm) {
                         Text(maskedProviderKeyText)

@@ -306,20 +306,6 @@ extension ProfileSettingsView {
 
     @ViewBuilder
     var genderField: some View {
-        #if os(macOS)
-        FormField("Gender") {
-            Picker("Gender", selection: $gender) {
-                Text("Not set").tag("")
-                ForEach(genderPickerOptions, id: \.self) { option in
-                    Text(option).tag(option)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(maxWidth: 320, alignment: .trailing)
-        }
-        .appFont(.body)
-        #else
         FormField("Gender") {
             ProfileStringSelectorMenu(
                 selection: $gender,
@@ -327,25 +313,10 @@ extension ProfileSettingsView {
                 selectionLabel: "Gender"
             )
         }
-        #endif
     }
 
     @ViewBuilder
     var pronounsField: some View {
-        #if os(macOS)
-        FormField("Pronouns") {
-            Picker("Pronouns", selection: $pronouns) {
-                Text("Not set").tag("")
-                ForEach(pronounPickerOptions, id: \.self) { option in
-                    Text(option).tag(option)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(maxWidth: 320, alignment: .trailing)
-        }
-        .appFont(.body)
-        #else
         FormField("Pronouns") {
             ProfileStringSelectorMenu(
                 selection: $pronouns,
@@ -353,7 +324,6 @@ extension ProfileSettingsView {
                 selectionLabel: "Pronouns"
             )
         }
-        #endif
     }
 
     func handleProfilePhotoSelection(_ item: PhotosPickerItem) async {

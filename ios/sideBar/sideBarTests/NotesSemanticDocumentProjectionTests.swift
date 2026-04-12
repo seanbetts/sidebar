@@ -174,6 +174,25 @@ final class NotesSemanticDocumentProjectionTests: XCTestCase {
         XCTAssertEqual(NotesSemanticDocumentProjection.title(from: document), "Semantic Title")
     }
 
+    func testRenamingTitleRewritesLeadingTitleBlockAndPreservesBodyBlocks() {
+        let document = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Original", marks: [.bold])]),
+                .paragraph([.init(text: "Body text", marks: [])])
+            ]
+        )
+
+        let renamed = NotesSemanticDocumentProjection.renamingTitle(in: document, to: "Renamed")
+
+        XCTAssertEqual(
+            renamed.blocks.first,
+            .init(type: .title, content: [.init(text: "Renamed", marks: [])])
+        )
+        XCTAssertEqual(Array(renamed.blocks.dropFirst()), Array(document.blocks.dropFirst()))
+        XCTAssertEqual(NotesSemanticDocumentProjection.plainText(from: renamed), "Renamed\nBody text")
+    }
+
     func testSemanticDocumentCodecDecodesLegacyTaskListAliasAsChecklist() throws {
         let json = """
         {

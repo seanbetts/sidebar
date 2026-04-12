@@ -98,6 +98,7 @@ struct NewFolderSheet: View {
 struct NotesTreeRow: View {
     let item: FileNodeItem
     let isSelected: Bool
+    let isExpanded: Bool?
     let onSelect: () -> Void
     let onRename: (() -> Void)?
     let onDelete: (() -> Void)?
@@ -106,6 +107,7 @@ struct NotesTreeRow: View {
     init(
         item: FileNodeItem,
         isSelected: Bool,
+        isExpanded: Bool? = nil,
         useListStyling: Bool = true,
         onSelect: @escaping () -> Void,
         onRename: (() -> Void)? = nil,
@@ -113,6 +115,7 @@ struct NotesTreeRow: View {
     ) {
         self.item = item
         self.isSelected = isSelected
+        self.isExpanded = isExpanded
         self.useListStyling = useListStyling
         self.onSelect = onSelect
         self.onRename = onRename
@@ -148,6 +151,10 @@ struct NotesTreeRow: View {
                         .appFont(SidebarTypography.primary)
                         .lineLimit(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                    Spacer()
+                    Image(systemName: (isExpanded ?? false) ? "chevron.down" : "chevron.right")
+                        .appFont(.captionSemibold)
+                        .foregroundStyle(secondaryTextColor)
                 }
             }
         }
@@ -190,6 +197,7 @@ struct NotesTreeRow: View {
 
     private var rowInsets: EdgeInsets {
         let horizontalPadding: CGFloat
+        let indent = CGFloat(item.depth) * DesignTokens.Spacing.lg
         #if os(macOS)
         horizontalPadding = DesignTokens.Spacing.sm
         #else
@@ -197,7 +205,7 @@ struct NotesTreeRow: View {
         #endif
         return EdgeInsets(
             top: 0,
-            leading: horizontalPadding,
+            leading: horizontalPadding + indent,
             bottom: 0,
             trailing: horizontalPadding
         )
@@ -212,12 +220,10 @@ struct NotesTreeRow: View {
     }
 
     private var primaryAction: (() -> Void)? {
-        guard item.isFile else { return nil }
-        #if os(macOS)
-        return nil
-        #else
+        if item.isFile {
+            return onSelect
+        }
         return onSelect
-        #endif
     }
 }
 
@@ -229,6 +235,7 @@ struct FileNodeItem: Identifiable {
     let pinned: Bool
     let archived: Bool
     let created: Double?
+    let depth: Int
 
     init(
         id: String,
@@ -237,7 +244,8 @@ struct FileNodeItem: Identifiable {
         children: [FileNodeItem]? = nil,
         pinned: Bool = false,
         archived: Bool = false,
-        created: Double? = nil
+        created: Double? = nil,
+        depth: Int = 0
     ) {
         self.id = id
         self.name = name
@@ -246,6 +254,7 @@ struct FileNodeItem: Identifiable {
         self.pinned = pinned
         self.archived = archived
         self.created = created
+        self.depth = depth
     }
 
     var isFile: Bool { type == .file }

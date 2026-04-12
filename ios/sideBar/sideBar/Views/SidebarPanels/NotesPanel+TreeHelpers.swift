@@ -254,4 +254,55 @@ extension NotesPanelView {
             return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
         }
     }
+
+    var folderExpansionSeed: [String] {
+        let mainFolderIDs = Self.folderIDs(from: buildItems(from: mainNodes))
+        let archivedFolderIDs = Self.folderIDs(from: buildItems(from: archivedNodes))
+        return Array(mainFolderIDs.union(archivedFolderIDs)).sorted()
+    }
+
+    static func folderIDs(from items: [FileNodeItem]) -> Set<String> {
+        var ids = Set(items.filter { !$0.isFile }.map(\.id))
+        for item in items {
+            ids.formUnion(folderIDs(from: item.children ?? []))
+        }
+        return ids
+    }
+
+    static func visibleItems(
+        from items: [FileNodeItem],
+        expandedFolderIDs: Set<String>
+    ) -> [FileNodeItem] {
+        items.flatMap { item -> [FileNodeItem] in
+            guard !item.isFile else { return [item] }
+
+            let children = expandedFolderIDs.contains(item.id)
+                ? visibleItems(from: item.children ?? [], expandedFolderIDs: expandedFolderIDs)
+                : []
+            return [item] + children
+        }
+    }
+
+    static func nextExpandedFolderIDs(
+        currentFolderIDs: Set<String>,
+        expandedFolderIDs: Set<String>
+    ) -> Set<String> {
+        expandedFolderIDs.intersection(currentFolderIDs)
+    }
+
+    func synchronizeExpandedFolderState() {
+        let currentFolderIDs = Set(folderExpansionSeed)
+        expandedFolderIDs = Self.nextExpandedFolderIDs(
+            currentFolderIDs: currentFolderIDs,
+            expandedFolderIDs: expandedFolderIDs
+        )
+    }
+
+    func toggleFolderExpansion(_ folderID: String) {
+        if expandedFolderIDs.contains(folderID) {
+            expandedFolderIDs.remove(folderID)
+        } else {
+            expandedFolderIDs.insert(folderID)
+        }
+    }
 }

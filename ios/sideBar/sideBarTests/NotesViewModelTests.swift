@@ -369,6 +369,94 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.selectedNoteId)
     }
 
+    func testRenameNoteUsesSemanticDocumentUpdateAndOptimisticallyMirrorsRenamedTitle() async throws {
+        let initialDocument = NotesSemanticDocument(
+            version: NotesSemanticDocument.currentVersion,
+            blocks: [
+                .init(type: .title, content: [.init(text: "Original", marks: [])]),
+                .paragraph([.init(text: "Body", marks: [])])
+            ]
+        )
+        let initialNote = NotePayload(
+            id: "note-id",
+            name: "Original",
+            document: initialDocument,
+            plainText: "Original\nBody",
+            path: "note-id",
+            modified: 10,
+            created: 5
+        )
+        let initialTree = FileTree(children: [
+            FileNode(
+                name: "Original",
+                path: "note-id",
+                type: .file,
+                size: nil,
+                modified: 10,
+                created: 5,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+        let api = ControlledSemanticRenameNotesAPI(
+            renamedNote: NotePayload(
+                id: "note-id",
+                name: "Renamed",
+                document: NotesSemanticDocument(
+                    version: NotesSemanticDocument.currentVersion,
+                    blocks: [
+                        .init(type: .title, content: [.init(text: "Renamed", marks: [])]),
+                        .paragraph([.init(text: "Body", marks: [])])
+                    ]
+                ),
+                plainText: "Renamed\nBody",
+                path: "note-id",
+                modified: 11,
+                created: 5
+            )
+        )
+        let cache = InMemoryCacheClient()
+        let store = NotesStore(api: api, cache: cache)
+        store.applyTreeUpdate(initialTree, persist: false)
+        store.applyEditorUpdate(initialNote)
+        let viewModel = NotesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        try await waitUntil(timeoutSeconds: 0.2) {
+            viewModel.activeNote?.id == "note-id"
+        }
+
+        let renameTask = Task {
+            await viewModel.renameNote(id: "note-id", newName: "Renamed")
+        }
+
+        try await waitUntil(timeoutSeconds: 0.2) {
+            api.updateNoteCallCount == 1
+        }
+
+        XCTAssertEqual(api.renameNoteCallCount, 0)
+        XCTAssertEqual(viewModel.activeNote?.name, "Renamed")
+        XCTAssertEqual(viewModel.tree?.children.first?.name, "Renamed")
+        XCTAssertEqual(
+            api.lastUpdatedDocument?.blocks.first,
+            .init(type: .title, content: [.init(text: "Renamed", marks: [])])
+        )
+
+        api.resumeUpdate()
+        await renameTask.value
+
+        XCTAssertEqual(viewModel.activeNote?.name, "Renamed")
+        XCTAssertEqual(viewModel.tree?.children.first?.name, "Renamed")
+    }
+
     func testSetPinnedOnlineOptimisticallyUpdatesTreeWithoutReload() async throws {
         let initialTree = FileTree(children: [
             FileNode(
@@ -1161,6 +1249,117 @@ private final class ControlledPinNotesAPI: NotesProviding {
         guard let pinContinuation else { return }
         self.pinContinuation = nil
         pinContinuation.resume(returning: pinResult)
+    }
+}
+
+@MainActor
+private final class ControlledSemanticRenameNotesAPI: NotesProviding {
+    private let renamedNote: NotePayload
+    private var updateContinuation: CheckedContinuation<NotePayload, Error>?
+    private(set) var updateNoteCallCount = 0
+    private(set) var renameNoteCallCount = 0
+    private(set) var lastUpdatedDocument: NotesSemanticDocument?
+
+    init(renamedNote: NotePayload) {
+        self.renamedNote = renamedNote
+    }
+
+    func listTree() async throws -> FileTree {
+        FileTree(children: [])
+    }
+
+    func listArchivedTree(limit: Int, offset: Int) async throws -> FileTree {
+        _ = limit
+        _ = offset
+        return FileTree(children: [])
+    }
+
+    func getNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
+    }
+
+    func updateNote(id: String, content: String) async throws -> NotePayload {
+        _ = id
+        _ = content
+        throw MockError.forced
+    }
+
+    func updateNote(id: String, document: NotesSemanticDocument) async throws -> NotePayload {
+        updateNoteCallCount += 1
+        lastUpdatedDocument = document
+        return try await withCheckedThrowingContinuation { continuation in
+            updateContinuation = continuation
+        }
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        throw MockError.forced
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        renameNoteCallCount += 1
+        throw MockError.forced
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        throw MockError.forced
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        throw MockError.forced
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        throw MockError.forced
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        throw MockError.forced
+    }
+
+    func createFolder(path: String) async throws {
+        _ = path
+    }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = path
+    }
+
+    func resumeUpdate() {
+        guard let updateContinuation else { return }
+        self.updateContinuation = nil
+        updateContinuation.resume(returning: renamedNote)
     }
 }
 

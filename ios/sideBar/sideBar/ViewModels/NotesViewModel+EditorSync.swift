@@ -79,14 +79,41 @@ extension NotesViewModel {
 
     public func renameNote(id: String, newName: String) async {
         guard let trimmed = newName.trimmedOrNil else { return }
+        guard let current = store.notePayload(forPath: id) ?? store.notePayload(forId: id) else {
+            toastCenter.show(message: "Failed to rename note")
+            return
+        }
+
+        let renamedDocument = NotesSemanticDocumentProjection.renamingTitle(
+            in: current.document,
+            to: trimmed
+        )
+        let optimistic = NotePayload(
+            id: current.id,
+            name: NotesSemanticDocumentProjection.title(from: renamedDocument),
+            document: renamedDocument,
+            plainText: NotesSemanticDocumentProjection.plainText(from: renamedDocument),
+            path: current.path,
+            modified: current.modified,
+            created: current.created
+        )
+
+        store.applyNoteUpdate(optimistic, persist: false, activeNoteMode: .force)
+        tree = store.tree
+        archivedTree = store.archivedTree
+        activeNote = store.activeNote
 
         do {
-            let updated = try await api.renameNote(id: id, newName: trimmed)
-            store.applyEditorUpdate(updated)
+            let updated = try await api.updateNote(id: current.id, document: renamedDocument)
+            applySavedNoteAcknowledgement(serverNote: updated, document: renamedDocument)
             tree = store.tree
             archivedTree = store.archivedTree
             activeNote = store.activeNote
         } catch {
+            store.applyNoteUpdate(current, persist: false, activeNoteMode: .force)
+            tree = store.tree
+            archivedTree = store.archivedTree
+            activeNote = store.activeNote
             toastCenter.show(message: "Failed to rename note")
         }
     }

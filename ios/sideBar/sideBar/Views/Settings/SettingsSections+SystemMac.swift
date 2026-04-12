@@ -32,14 +32,7 @@ extension UserSettingsView {
                     )
                     SettingsMacPlainTextEditor(text: $communicationStyle, minHeight: 160)
                         .padding(DesignTokens.Spacing.sm)
-                        .background(
-                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                                .fill(.clear)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-                        )
+                        .sidebarTextEntrySurface()
                 }
 
                 SettingsMacPanelCard {
@@ -49,14 +42,7 @@ extension UserSettingsView {
                     )
                     SettingsMacPlainTextEditor(text: $workingRelationship, minHeight: 160)
                         .padding(DesignTokens.Spacing.sm)
-                        .background(
-                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                                .fill(.clear)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                                .stroke(DesignTokens.Colors.border, lineWidth: 1)
-                        )
+                        .sidebarTextEntrySurface()
                 }
 
             }
@@ -101,14 +87,12 @@ extension AgentSettingsView {
                         message: "Choose the primary model provider sideBar should use for assistant responses."
                     )
                     FormField("Provider") {
-                        Picker("Provider", selection: $selectedPrimaryProvider) {
-                            ForEach(viewModel.supportedPrimaryProviders) { provider in
-                                Text(provider.displayName).tag(provider)
-                            }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .frame(maxWidth: 320, alignment: .trailing)
+                        SidebarSelectionMenu(
+                            selection: $selectedPrimaryProvider,
+                            options: viewModel.supportedPrimaryProviders,
+                            accessibilityLabel: "Provider",
+                            title: { $0.displayName }
+                        )
                     }
 
                     if selectedProviderHasKey {

@@ -177,6 +177,73 @@ public struct FormFieldSecureInput<Field: Hashable>: View {
     }
 }
 
+struct SidebarSelectionMenu<Option: Hashable>: View {
+    @Binding private var selection: Option
+    private let options: [Option]
+    private let accessibilityLabel: String
+    private let title: (Option) -> String
+    private let isPlaceholder: (Option) -> Bool
+    private let maxWidth: CGFloat?
+
+    init(
+        selection: Binding<Option>,
+        options: [Option],
+        accessibilityLabel: String,
+        maxWidth: CGFloat? = 320,
+        title: @escaping (Option) -> String,
+        isPlaceholder: @escaping (Option) -> Bool = { _ in false }
+    ) {
+        _selection = selection
+        self.options = options
+        self.accessibilityLabel = accessibilityLabel
+        self.maxWidth = maxWidth
+        self.title = title
+        self.isPlaceholder = isPlaceholder
+    }
+
+    var body: some View {
+        Menu {
+            ForEach(options, id: \.self) { option in
+                Button(title(option)) {
+                    selection = option
+                }
+            }
+        } label: {
+            SidebarSelectionTriggerLabel(
+                title: title(selection),
+                isPlaceholder: isPlaceholder(selection)
+            )
+        }
+        .frame(maxWidth: maxWidth, alignment: .trailing)
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+struct SidebarSelectionTriggerLabel: View {
+    let title: String
+    var isPlaceholder = false
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            Text(title)
+                .appFont(.body)
+                .foregroundStyle(
+                    isPlaceholder
+                        ? DesignTokens.Colors.textSecondary
+                        : DesignTokens.Colors.textPrimary
+                )
+                .lineLimit(1)
+            Spacer(minLength: DesignTokens.Spacing.xs)
+            Image(systemName: "chevron.up.chevron.down")
+                .appFont(.caption2)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .sidebarTextEntryControl()
+    }
+}
+
 private struct SidebarTextEntrySurfaceModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -201,6 +268,15 @@ private struct SidebarTextEntryFieldModifier: ViewModifier {
     }
 }
 
+private struct SidebarTextEntryControlModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .sidebarTextEntrySurface()
+    }
+}
+
 extension View {
     func sidebarTextEntrySurface() -> some View {
         modifier(SidebarTextEntrySurfaceModifier())
@@ -208,5 +284,9 @@ extension View {
 
     func sidebarTextEntryField() -> some View {
         modifier(SidebarTextEntryFieldModifier())
+    }
+
+    func sidebarTextEntryControl() -> some View {
+        modifier(SidebarTextEntryControlModifier())
     }
 }

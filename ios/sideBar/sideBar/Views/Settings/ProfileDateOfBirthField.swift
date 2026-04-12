@@ -3,9 +3,7 @@ import SwiftUI
 struct ProfileDateOfBirthField: View {
     @Binding var dateOfBirthEnabled: Bool
     @Binding var dateOfBirth: Date
-    #if os(iOS)
     @State private var isDatePickerPresented = false
-    #endif
 
     var body: some View {
         #if os(macOS)
@@ -21,13 +19,32 @@ struct ProfileDateOfBirthField: View {
     private var macContent: some View {
         HStack(spacing: 8) {
             if dateOfBirthEnabled {
-                DatePicker(
-                    "Date of Birth",
-                    selection: $dateOfBirth,
-                    displayedComponents: .date
-                )
-                .labelsHidden()
-                .appFont(.body)
+                Button {
+                    isDatePickerPresented = true
+                } label: {
+                    SidebarSelectionTriggerLabel(
+                        title: dateOfBirth.formatted(date: .abbreviated, time: .omitted)
+                    )
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $isDatePickerPresented, arrowEdge: .bottom) {
+                    VStack(alignment: .trailing, spacing: DesignTokens.Spacing.sm) {
+                        DatePicker(
+                            "Date of Birth",
+                            selection: $dateOfBirth,
+                            displayedComponents: .date
+                        )
+                        .labelsHidden()
+                        .datePickerStyle(.graphical)
+
+                        Button("Done") {
+                            isDatePickerPresented = false
+                        }
+                        .keyboardShortcut(.defaultAction)
+                    }
+                    .padding(DesignTokens.Spacing.md)
+                    .frame(minWidth: 280)
+                }
 
                 Button {
                     dateOfBirthEnabled = false
@@ -92,6 +109,7 @@ struct ProfileDateOfBirthField: View {
                             .appFont(.caption2)
                             .foregroundStyle(DesignTokens.Colors.textSecondary)
                     }
+                    .sidebarTextEntryControl()
                 }
                 .buttonStyle(.plain)
 

@@ -36,6 +36,27 @@ final class AppEnvironmentAuthSessionInterfaceTests: XCTestCase {
         XCTAssertEqual(authSession.clearAuthErrorCallCount, 1)
     }
 
+    func testConfigureSubscriptionsForwardsToastCenterObjectWillChange() async {
+        let authSession = ObservableAuthSessionDouble(authState: .active)
+        let environment = makeEnvironment(authSession: authSession)
+        var forwardedChangeCount = 0
+        let forwardedChange = expectation(description: "AppEnvironment forwards toast center changes")
+        forwardedChange.assertForOverFulfill = false
+
+        environment.configureSubscriptions()
+        let cancellable = environment.objectWillChange.sink {
+            forwardedChangeCount += 1
+            forwardedChange.fulfill()
+        }
+
+        environment.toastCenter.show(message: "Text copied", style: .success)
+
+        await fulfillment(of: [forwardedChange], timeout: 1.0)
+
+        XCTAssertGreaterThan(forwardedChangeCount, 0)
+        withExtendedLifetime(cancellable) {}
+    }
+
     private func makeEnvironment(authSession: AuthSession) -> AppEnvironment {
         let container = ServiceContainer(
             config: .fallbackForTesting(),

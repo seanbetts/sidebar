@@ -133,6 +133,12 @@ extension AppEnvironment {
             }
             .store(in: &cancellables)
 
+        toastCenter.objectWillChange
+            .sink { [weak self] _ in
+                self?.scheduleForwardedObjectWillChange()
+            }
+            .store(in: &cancellables)
+
         weatherViewModel.objectWillChange
             .sink { [weak self] _ in
                 self?.scheduleForwardedObjectWillChange()

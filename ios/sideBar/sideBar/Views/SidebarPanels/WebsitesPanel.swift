@@ -97,9 +97,6 @@ struct WebsitesPanelView: View {
         .onChange(of: viewModel.active?.id) { _, newValue in
             selection = newValue
         }
-        .onChange(of: selection) { _, newValue in
-            handleWebsiteListSelectionChange(newValue)
-        }
         .onChange(of: viewModel.isLoading) { _, isLoading in
             listAppeared = !isLoading
         }
@@ -343,12 +340,15 @@ extension WebsitesPanelView {
                         SelectableRow(
                             isSelected: false,
                             insets: EdgeInsets(
-                                top: DesignTokens.Spacing.xxl,
+                                top: 0,
                                 leading: archiveRowHorizontalInset,
                                 bottom: 0,
                                 trailing: archiveRowHorizontalInset
-                            )
-                        ) {
+                            ),
+                            primaryAction: {
+                                isArchiveExpanded.toggle()
+                            },
+                            content: {
                             HStack(spacing: DesignTokens.Spacing.xs) {
                                 Label("Archive", systemImage: "archivebox")
                                     .appFont(SidebarTypography.primary)
@@ -360,10 +360,8 @@ extension WebsitesPanelView {
                                     .appFont(SidebarTypography.secondary)
                                     .foregroundStyle(.secondary)
                             }
-                        }
-                        .onTapGesture {
-                            isArchiveExpanded.toggle()
-                        }
+                            }
+                        )
 
                         if isArchiveExpanded {
                             if showArchiveLoadingPlaceholder {

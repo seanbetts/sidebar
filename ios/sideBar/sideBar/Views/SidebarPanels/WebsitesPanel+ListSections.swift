@@ -100,25 +100,9 @@ extension WebsitesPanelView {
 
     @ViewBuilder
     func websitesPanelList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        #if os(macOS)
-        List(selection: $selection) {
-            content()
-        }
-        #else
         List {
             content()
         }
-        #endif
-    }
-
-    func handleWebsiteListSelectionChange(_ newSelection: String?) {
-        #if os(macOS)
-        guard let item = Self.selectedWebsiteItem(for: newSelection, items: viewModel.items),
-              viewModel.active?.id != item.id else {
-            return
-        }
-        open(item: item)
-        #endif
     }
 
     func navigateWebsitesList(direction: ShortcutListDirection) {
@@ -161,12 +145,7 @@ extension WebsitesPanelView {
         .staggeredAppear(index: index, isActive: listAppeared)
         .platformContextMenu(items: websiteContextMenuItemsList(for: item))
         .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
-
-        #if os(macOS)
-        row.tag(item.id)
-        #else
         row
-        #endif
     }
 
     @ViewBuilder
@@ -306,11 +285,7 @@ extension WebsitesPanelView {
     }
 
     private func websiteRowPrimaryAction(for item: WebsiteItem) -> (() -> Void)? {
-        #if os(macOS)
-        nil
-        #else
         { open(item: item) }
-        #endif
     }
 
     var isSaveErrorPresented: Binding<Bool> {

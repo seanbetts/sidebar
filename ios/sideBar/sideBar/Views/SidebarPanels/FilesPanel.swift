@@ -329,18 +329,19 @@ extension FilesPanelView {
                                         toggleCategoryExpansion(category)
                                     },
                                     content: {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: categoryIconName(category))
-                                            .foregroundStyle(.secondary)
-                                            .frame(width: 20, alignment: .center)
-                                        Text(categoryLabels[category] ?? "Files")
-                                        Spacer()
-                                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                                            .appFont(.captionSemibold)
-                                            .foregroundStyle(.secondary)
+                                        HStack(spacing: 8) {
+                                            Image(systemName: categoryIconName(category))
+                                                .foregroundStyle(.secondary)
+                                                .frame(width: 20, alignment: .center)
+                                            Text(categoryLabels[category] ?? "Files")
+                                            Spacer()
+                                            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                                                .appFont(.captionSemibold)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .appFont(SidebarTypography.primary)
                                     }
-                                    .appFont(SidebarTypography.primary)
-                                }
+                                )
                                 .accessibilityLabel(categoryLabels[category] ?? "Files")
                                 .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
 
@@ -353,6 +354,7 @@ extension FilesPanelView {
                                         let row = FilesIngestionRow(
                                             item: item,
                                             isSelected: viewModel.selectedFileId == item.file.id,
+                                            nestingLevel: 1,
                                             onSelect: fileRowPrimaryAction(for: item),
                                             onPinToggle: pinAction(for: item),
                                             onDelete: deleteAction(for: item)
@@ -375,7 +377,7 @@ extension FilesPanelView {
                                                 )
                                         }
                                     }
-                                })
+                                }
                             }
                         }
                     } header: {

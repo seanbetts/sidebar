@@ -322,6 +322,97 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         XCTAssertEqual(panel.noteListSelectionID(for: fileItem), "note-1")
         XCTAssertNil(panel.noteListSelectionID(for: folderItem))
     }
+
+    func testBuildItemsAssignsDepthForNestedFoldersAndFiles() {
+        let panel = NotesPanelView(viewModel: makeViewModel(tree: FileTree(children: [])))
+        let nodes = [
+            FileNode(
+                name: "Projects",
+                path: "folder:Projects",
+                type: .directory,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: [
+                    FileNode(
+                        name: "Planning",
+                        path: "folder:Projects/Planning",
+                        type: .directory,
+                        size: nil,
+                        modified: nil,
+                        created: nil,
+                        children: [
+                            makeFile(path: "Projects/Planning/Plan.md", name: "Plan.md", created: 10)
+                        ],
+                        expanded: nil,
+                        pinned: nil,
+                        pinnedOrder: nil,
+                        archived: nil,
+                        folderMarker: nil
+                    )
+                ],
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ]
+
+        let items = panel.buildItems(from: nodes)
+
+        XCTAssertEqual(items.first?.depth, 0)
+        XCTAssertEqual(items.first?.children?.first?.depth, 1)
+        XCTAssertEqual(items.first?.children?.first?.children?.first?.depth, 2)
+    }
+
+    func testVisibleItemsShowsChildrenOnlyForExpandedFolders() {
+        let items = [
+            FileNodeItem(
+                id: "folder:Projects",
+                name: "Projects",
+                type: .directory,
+                children: [
+                    FileNodeItem(
+                        id: "Projects/Plan.md",
+                        name: "Plan.md",
+                        type: .file,
+                        depth: 1
+                    )
+                ],
+                depth: 0
+            )
+        ]
+
+        XCTAssertEqual(
+            NotesPanelView.visibleItems(from: items, expandedFolderIDs: []).map(\.id),
+            ["folder:Projects"]
+        )
+        XCTAssertEqual(
+            NotesPanelView.visibleItems(
+                from: items,
+                expandedFolderIDs: ["folder:Projects"]
+            ).map(\.id),
+            ["folder:Projects", "Projects/Plan.md"]
+        )
+    }
+
+    func testNextExpandedFolderIDsDoesNotAutoExpandNewFolders() {
+        XCTAssertEqual(
+            NotesPanelView.nextExpandedFolderIDs(
+                currentFolderIDs: ["folder:Projects", "folder:Archive"],
+                expandedFolderIDs: []
+            ),
+            []
+        )
+        XCTAssertEqual(
+            NotesPanelView.nextExpandedFolderIDs(
+                currentFolderIDs: ["folder:Projects", "folder:Archive"],
+                expandedFolderIDs: ["folder:Projects", "folder:Missing"]
+            ),
+            ["folder:Projects"]
+        )
+    }
 }
 
 @MainActor

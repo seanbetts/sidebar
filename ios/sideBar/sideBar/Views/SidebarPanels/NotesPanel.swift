@@ -35,6 +35,7 @@ struct NotesPanelView: View {
     let pinnedReorderState: NotesPanelPinnedReorderState
     @State var hasLoaded = false
     @State var isArchiveExpanded = false
+    @State var expandedFolderIDs: Set<String> = []
     @State var isNewFolderPresented = false
     @State var newFolderName: String = ""
     @State var newFolderParent: String = ""
@@ -80,6 +81,7 @@ struct NotesPanelView: View {
                 hasLoaded = true
                 Task { await viewModel.loadTree() }
             }
+            synchronizeExpandedFolderState()
             consumePendingNewNoteDeepLinkIfNeeded()
         }
         .onChange(of: environment.pendingNewNoteDeepLink) { _, isPending in
@@ -93,6 +95,9 @@ struct NotesPanelView: View {
             if expanded {
                 Task { await viewModel.loadArchivedTree() }
             }
+        }
+        .onChange(of: folderExpansionSeed) { _, _ in
+            synchronizeExpandedFolderState()
         }
         .sheet(isPresented: $isNewFolderPresented) {
             NewFolderSheet(
