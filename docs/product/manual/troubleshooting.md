@@ -66,9 +66,8 @@ content but cannot read image-only PDFs.
 ## Sync isn't working
 
 **Changes aren't appearing on another device**
-Check that both devices have an internet connection. Pull to refresh on the
-relevant section. If changes still aren't showing, go to **Settings → User**
-and check for queued changes in the Sync status panel.
+Check your connection first. If the header shows a sync pill, click or tap it
+to review the current state and retry or cancel failed items in place.
 
 **"Pending changes" in Settings**
 You made changes while offline. They will sync automatically when your
