@@ -9,6 +9,14 @@ final class ToastCenterSuccessStyleSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("returnDesignTokens.Colors.successBorder"))
     }
 
+    func testSuccessToastDoesNotUseHardcodedContrastBadge() throws {
+        let normalized = try toastCenterSource()
+
+        XCTAssertFalse(normalized.contains("SuccessCheckBadge"))
+        XCTAssertFalse(normalized.contains("colorScheme==.dark?.white:.black"))
+        XCTAssertFalse(normalized.contains("colorScheme==.dark?.black:.white"))
+    }
+
     func testSuccessTokensAreNotNeutralMutedColors() throws {
         let normalized = try designTokensSource()
 

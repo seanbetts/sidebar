@@ -108,7 +108,12 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(dateOfBirth.contains(".popover("))
-        XCTAssertFalse(dateOfBirth.contains("DatePicker(\"DateofBirth\",selection:$dateOfBirth,displayedComponents:.date).labelsHidden().appFont(.body).sidebarTextEntryControl()"))
+        XCTAssertFalse(
+            dateOfBirth.contains(
+                "DatePicker(\"DateofBirth\",selection:$dateOfBirth,displayedComponents:.date)"
+                    + ".labelsHidden().appFont(.body).sidebarTextEntryControl()"
+            )
+        )
     }
 
     private func source(

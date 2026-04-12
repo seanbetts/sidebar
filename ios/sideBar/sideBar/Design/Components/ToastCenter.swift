@@ -69,7 +69,7 @@ public enum ToastStyle {
         case .error:
             return "exclamationmark.triangle.fill"
         case .success:
-            return "checkmark.circle.fill"
+            return "checkmark.circle"
         }
     }
 }
@@ -103,38 +103,7 @@ public struct ToastBanner: View {
 
     @ViewBuilder
     private var iconView: some View {
-        switch toast.style {
-        case .success:
-            SuccessCheckBadge(size: 16, symbolSize: 9)
-        case .error:
-            Image(systemName: toast.style.iconName)
-                .appFont(.labelMd)
-        }
-    }
-}
-
-struct SuccessCheckBadge: View {
-    let size: CGFloat
-    let symbolSize: CGFloat
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(backgroundColor)
-            Image(systemName: "checkmark")
-                .appScaledFont(size: symbolSize, weight: .bold)
-                .foregroundStyle(foregroundColor)
-        }
-        .frame(width: size, height: size)
-    }
-
-    private var backgroundColor: Color {
-        colorScheme == .dark ? .white : .black
-    }
-
-    private var foregroundColor: Color {
-        colorScheme == .dark ? .black : .white
+        Image(systemName: toast.style.iconName)
+            .appFont(.labelMd)
     }
 }
