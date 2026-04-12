@@ -57,7 +57,7 @@ struct SidebarCommands: Commands {
                 Button("Toggle Sidebar") {
                     environment.emitShortcutAction(.toggleSidebar)
                 }
-                .keyboardShortcut("s", modifiers: [.command, .shift])
+                .keyboardShortcut("s", modifiers: [.command, .option])
             }
 
             CommandGroup(after: .sidebar) {

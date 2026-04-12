@@ -163,7 +163,7 @@ final class AppCommandsTests: XCTestCase {
         XCTAssertTrue(
             normalized.contains(
                 "Button(\"ToggleSidebar\"){environment.emitShortcutAction(.toggleSidebar)}"
-                    + ".keyboardShortcut(\"s\",modifiers:[.command,.shift])"
+                    + ".keyboardShortcut(\"s\",modifiers:[.command,.option])"
             )
         )
         XCTAssertTrue(
