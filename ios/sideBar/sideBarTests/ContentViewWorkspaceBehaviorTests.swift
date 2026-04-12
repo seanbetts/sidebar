@@ -326,6 +326,23 @@ final class ContentViewWorkspaceBehaviorTests: XCTestCase {
         XCTAssertTrue(workspaceNormalized.contains(".sidebarHover(cursor:.resizeLeftRight)"))
         XCTAssertTrue(splitNormalized.contains(".sidebarHover(cursor:.resizeLeftRight)"))
     }
+
+    func testSignedInContentHandlesSidebarToggleAndScratchpadShortcutsOnMacOS() throws {
+        let normalized = try signedInContentSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                ".onReceive(environment.navigation.$shortcutActionEvent){eventinguardleteventelse{return}switchevent.action{"
+            )
+        )
+        XCTAssertTrue(normalized.contains("case.toggleSidebar:#ifos(macOS)isLeftPanelExpanded.toggle()"))
+        XCTAssertTrue(
+            normalized.contains(
+                "case.openScratchpad:switchWorkspaceBehaviorPolicy.scratchpadPresentationStyle(isPhoneIdiom:isPhoneIdiom){"
+            )
+        )
+    }
 }
 
 private func workspaceLayoutSource(
@@ -366,6 +383,27 @@ private func sidebarSplitViewSource(
         return try String(contentsOf: sourceURL, encoding: .utf8)
     } catch {
         XCTFail("Failed to read SidebarSplitView.swift: \(error)", file: file, line: line)
+        throw error
+    }
+}
+
+private func signedInContentSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = sideBarRoot
+        .appendingPathComponent("sideBar")
+        .appendingPathComponent("Views")
+        .appendingPathComponent("ContentView+SignedIn.swift")
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read ContentView+SignedIn.swift: \(error)", file: file, line: line)
         throw error
     }
 }

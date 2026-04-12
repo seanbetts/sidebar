@@ -336,25 +336,32 @@ extension ContentView {
                 await refreshWeatherIfPossible()
             }
         })
-        #if os(iOS)
         content = AnyView(content.onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event else { return }
             switch event.action {
             case .showShortcuts:
+                #if os(iOS)
                 isShortcutsPresented = true
+                #endif
             case .toggleSidebar:
+                #if os(macOS)
+                isLeftPanelExpanded.toggle()
+                #else
                 if horizontalSizeClass != .compact {
                     isLeftPanelExpanded.toggle()
                 }
+                #endif
             case .openScratchpad:
-                if WorkspaceBehaviorPolicy.scratchpadPresentationStyle(isPhoneIdiom: isPhoneIdiom) == .sheet {
+                switch WorkspaceBehaviorPolicy.scratchpadPresentationStyle(isPhoneIdiom: isPhoneIdiom) {
+                case .sheet:
                     isPhoneScratchpadPresented = true
+                case .anchoredPopover:
+                    break
                 }
             default:
                 break
             }
         })
-        #endif
         content = AnyView(content.task {
             applyInitialSelectionIfNeeded()
             triggerSignedInProtectedContentLoadIfNeeded()

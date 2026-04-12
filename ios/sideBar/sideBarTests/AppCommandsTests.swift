@@ -157,7 +157,9 @@ final class AppCommandsTests: XCTestCase {
     func testMacCommandsExposeViewMenuForSidebarAndScratchpad() throws {
         let normalized = try normalizedAppCommandsSource()
 
-        XCTAssertTrue(normalized.contains("CommandMenu(\"View\")"))
+        XCTAssertFalse(normalized.contains("CommandMenu(\"View\")"))
+        XCTAssertTrue(normalized.contains("CommandGroup(replacing:.sidebar){"))
+        XCTAssertTrue(normalized.contains("CommandGroup(after:.sidebar){"))
         XCTAssertTrue(
             normalized.contains(
                 "Button(\"ToggleSidebar\"){environment.emitShortcutAction(.toggleSidebar)}"

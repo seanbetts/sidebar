@@ -59,14 +59,12 @@ public struct SiteHeaderBar: View {
         .background(barBackground)
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
-        #if os(iOS)
         .onReceive(environment.navigation.$shortcutActionEvent) { event in
             guard let event,
                   event.action == .openScratchpad,
                   scratchpadPresentationStyle == .anchoredPopover else { return }
             isScratchpadPresented = true
         }
-        #endif
     }
 
     private var brandView: some View {

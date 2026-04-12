@@ -51,6 +51,18 @@ final class SiteHeaderBarTests: XCTestCase {
         XCTAssertTrue(normalized.contains("ScratchpadPopoverSurface("))
         XCTAssertFalse(normalized.contains("MacPopoverShell(type:scratchpadPopoverPanelType())"))
     }
+
+    func testSiteHeaderBarHandlesScratchpadShortcutWithoutIOSGuard() throws {
+        let normalized = try siteHeaderBarSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                ".onReceive(environment.navigation.$shortcutActionEvent){eventinguardletevent,event.action==.openScratchpad,scratchpadPresentationStyle==.anchoredPopoverelse{return}isScratchpadPresented=true}"
+            )
+        )
+        XCTAssertFalse(normalized.contains("#ifos(iOS).onReceive(environment.navigation.$shortcutActionEvent)"))
+    }
 }
 
 private func siteHeaderBarSource(
