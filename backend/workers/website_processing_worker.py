@@ -225,6 +225,9 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
 
     from api.services.agent.skills.executor import SkillExecutor
 
+    job_id = job.id
+    job_user_id = job.user_id
+    job_url = job.url
     db.refresh(job)
     if job.status == "canceled":
         logger.info("Skipping canceled job %s before execution", job.id)
@@ -232,11 +235,15 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
     existing_website_snapshot = _snapshot_website_state(
         WebsitesService.get_by_url(
             db,
-            job.user_id,
-            job.url,
+            job_user_id,
+            job_url,
             include_deleted=True,
         )
     )
+    # End the preflight read transaction before the external save work begins.
+    # Otherwise the worker can sit idle in transaction while waiting on I/O.
+    if db.in_transaction():
+        db.rollback()
 
     try:
         executor = SkillExecutor(settings.skills_dir, settings.workspace_base)
@@ -244,30 +251,30 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
             executor.execute(
                 "web-save",
                 "save_url.py",
-                [job.url, "--database", "--user-id", job.user_id],
-                user_id=job.user_id,
+                [job_url, "--database", "--user-id", job_user_id],
+                user_id=job_user_id,
                 env_overrides={
                     "SKILL_TIMEOUT_SECONDS": str(settings.website_save_timeout_seconds),
                 },
             )
         )
     except Exception as exc:
-        logger.exception("Job %s failed with exception", job.id)
+        logger.exception("Job %s failed with exception", job_id)
         WebsiteProcessingService.update_job(
-            db, job.id, status="failed", error_message=str(exc)
+            db, job_id, status="failed", error_message=str(exc)
         )
         return
 
     if not result.get("success"):
         normalized_error = classify_web_save_result(
-            result, url=job.url, target_url=job.url
+            result, url=job_url, target_url=job_url
         )
         error_msg = normalized_error.get(
             "message", result.get("error", "Unknown error")
         )
-        logger.error("Job %s failed: %s", job.id, error_msg)
+        logger.error("Job %s failed: %s", job_id, error_msg)
         WebsiteProcessingService.update_job(
-            db, job.id, status="failed", error_message=error_msg
+            db, job_id, status="failed", error_message=error_msg
         )
         return
 
@@ -275,7 +282,7 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
     if not raw_website_id:
         WebsiteProcessingService.update_job(
             db,
-            job.id,
+            job_id,
             status="failed",
             error_message="No website ID returned",
         )
@@ -286,7 +293,7 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
     except ValueError:
         WebsiteProcessingService.update_job(
             db,
-            job.id,
+            job_id,
             status="failed",
             error_message="Invalid website ID returned",
         )
@@ -301,27 +308,27 @@ def _process_job(db, job: WebsiteProcessingJob) -> None:
             _restore_website_state(db, existing_website_snapshot)
             logger.info(
                 "Job %s finished after cancellation; restored website_id=%s",
-                job.id,
+                job_id,
                 raw_website_id,
             )
         else:
             WebsitesService.soft_delete_website(
                 db,
-                job.user_id,
+                job_user_id,
                 website_uuid,
                 allow_missing=True,
             )
             logger.info(
                 "Job %s finished after cancellation; soft-deleted website_id=%s",
-                job.id,
+                job_id,
                 raw_website_id,
             )
         return
 
     WebsiteProcessingService.update_job(
-        db, job.id, status="completed", website_id=website_uuid
+        db, job_id, status="completed", website_id=website_uuid
     )
-    logger.info("Job %s completed (website_id=%s)", job.id, raw_website_id)
+    logger.info("Job %s completed (website_id=%s)", job_id, raw_website_id)
 
 
 def _run_worker_loop(worker_id: str) -> None:

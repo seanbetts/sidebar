@@ -148,6 +148,63 @@ def test_process_job_initializes_executor_with_configured_paths(test_db, monkeyp
     assert job.website_id == website_id
 
 
+def test_process_job_closes_preflight_transaction_before_external_save(
+    test_db, monkeypatch
+):
+    """Worker should not hold a DB transaction open while the save script runs."""
+    from api.services.agent.skills import executor as executor_module
+    from workers import website_processing_worker
+
+    website_id = uuid4()
+    observed: dict[str, bool] = {}
+
+    existing_website = Website(
+        id=website_id,
+        user_id="test-user",
+        url="https://example.com/preflight",
+        url_full="https://example.com/preflight",
+        domain="example.com",
+        title="Existing",
+        content="Existing content",
+        source="web",
+        metadata_={"pinned": False, "archived": False},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        last_opened_at=None,
+        deleted_at=None,
+    )
+    job = WebsiteProcessingJob(
+        user_id="test-user",
+        url="https://example.com/preflight",
+        status="processing",
+        worker_id="worker-1",
+        lease_expires_at=datetime.now(UTC) + timedelta(minutes=1),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add_all([existing_website, job])
+    test_db.commit()
+
+    class FakeExecutor:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def execute(self, *_args, **_kwargs):
+            observed["in_transaction"] = test_db.in_transaction()
+            return {"success": True, "data": {"id": str(existing_website.id)}}
+
+    monkeypatch.setattr(executor_module, "SkillExecutor", FakeExecutor)
+
+    assert test_db.in_transaction() is False
+
+    website_processing_worker._process_job(test_db, job)
+    test_db.refresh(job)
+
+    assert observed["in_transaction"] is False
+    assert job.status == "completed"
+    assert job.website_id == existing_website.id
+
+
 def test_process_job_marks_failed_when_executor_init_raises(test_db, monkeypatch):
     """Worker should fail the claimed job when executor setup crashes."""
     from api.services.agent.skills import executor as executor_module
