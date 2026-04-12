@@ -146,7 +146,17 @@ jobs:
       - name: Authenticate Docker to Fly registry
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl auth docker
+        run: |
+          for attempt in 1 2 3; do
+            if flyctl auth docker; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Failed to authenticate Docker to Fly registry after 3 attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
 
       - name: Push image to Fly registry
         run: docker push "${{ steps.image.outputs.ref }}"

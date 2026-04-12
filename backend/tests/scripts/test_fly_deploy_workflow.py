@@ -112,8 +112,26 @@ def test_fly_deploy_workflow_authenticates_with_flyctl_before_push() -> None:
     )
 
     assert install_index < auth_index < push_index
-    assert deploy_steps[auth_index]["run"] == "flyctl auth docker"
+    assert "flyctl auth docker" in deploy_steps[auth_index]["run"]
     assert "${{ secrets.FLY_API_TOKEN }}" in str(deploy_steps[auth_index]["env"])
+
+
+def test_fly_deploy_workflow_retries_registry_authentication() -> None:
+    """Fly deploy should retry transient registry auth failures before giving up."""
+    workflow = _workflow()
+    deploy_steps = workflow["jobs"]["deploy"]["steps"]
+
+    auth_step = next(
+        step
+        for step in deploy_steps
+        if step.get("name") == "Authenticate Docker to Fly registry"
+    )
+    run_script = auth_step["run"]
+
+    assert "for attempt in 1 2 3" in run_script
+    assert "flyctl auth docker" in run_script
+    assert 'if [ "$attempt" -eq 3 ]' in run_script
+    assert "sleep $((attempt * 5))" in run_script
 
 
 def test_fly_deploy_workflow_builds_before_registry_push() -> None:
