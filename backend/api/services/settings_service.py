@@ -87,6 +87,10 @@ MAX_ASSISTANT_SOUL_TEXT_CHARS = max(
 storage_backend = get_storage_backend()
 
 
+class ProfileImageDeletionError(RuntimeError):
+    """Raised when profile image storage cleanup fails."""
+
+
 class SettingsService:
     """High-level settings operations for the API layer."""
 
@@ -725,12 +729,41 @@ class SettingsService:
         Raises:
             HTTPException: 404 if no image exists, 500 on storage errors.
         """
-        settings_record = UserSettingsService.get_settings(db, user_id)
-        if not settings_record or not settings_record.profile_image_path:
+        deleted = False
+        try:
+            deleted = SettingsService.clear_profile_image(db, user_id)
+        except ProfileImageDeletionError as exc:
+            raise HTTPException(
+                status_code=500, detail="Failed to delete profile image"
+            ) from exc
+
+        if not deleted:
             raise HTTPException(status_code=404, detail="Profile image not found")
 
+        return {"success": True}
+
+    @staticmethod
+    def clear_profile_image(
+        db,
+        user_id: str,
+        *,
+        storage=None,
+    ) -> bool:
+        """Delete profile image storage and clear the settings pointer.
+
+        Returns:
+            True when an image existed and was removed, else False.
+
+        Raises:
+            ProfileImageDeletionError: Storage deletion failed.
+        """
+        settings_record = UserSettingsService.get_settings(db, user_id)
+        if not settings_record or not settings_record.profile_image_path:
+            return False
+
+        backend = storage or storage_backend
         try:
-            storage_backend.delete_object(settings_record.profile_image_path)
+            backend.delete_object(settings_record.profile_image_path)
         except Exception as exc:
             logger.error(
                 "Failed to delete profile image from storage",
@@ -740,16 +773,14 @@ class SettingsService:
                     "storage_key": settings_record.profile_image_path,
                 },
             )
-            raise HTTPException(
-                status_code=500, detail="Failed to delete profile image"
-            ) from exc
+            raise ProfileImageDeletionError("Failed to delete profile image") from exc
 
         UserSettingsService.upsert_settings(
             db,
             user_id,
             profile_image_path=None,
         )
-        return {"success": True}
+        return True
 
     @staticmethod
     def get_or_create_shortcuts_pat(db, user_id: str) -> str:
