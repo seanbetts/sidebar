@@ -539,6 +539,9 @@ sideBar implements multiple security layers:
 
 ### Backend Metrics
 - **Prometheus:** `/metrics` exposes HTTP, chat, tool, storage, and DB pool metrics (`backend/api/metrics.py`).
+- **Retention cleanup:** The shared worker process now runs a retention-cleanup thread that prunes soft-deleted content, operational job exhaust, and expired credentials in bounded batches (`backend/workers/data_retention_worker.py`).
+- **Deleted-user purge:** `backend/scripts/purge_user_data.py` is the internal operational entry point for immediate account-scoped purge before a public delete-account flow exists.
+- **Cleanup observability:** Prometheus now exposes cleanup action counters, cleanup duration, and per-table backlog-age gauges for retention work (`backend/api/metrics.py`).
 - **Ingestion:** `backend/api/routers/metrics.py` accepts web-vitals and chat metrics from the frontend.
 
 ### Error Monitoring
