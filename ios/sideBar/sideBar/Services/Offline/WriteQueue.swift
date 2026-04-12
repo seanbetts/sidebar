@@ -561,13 +561,44 @@ private extension WriteQueue {
 
     private func loadQueueCounts() async {
         do {
-            async let queuedCount = countQueuedWrites()
-            async let failedWriteCount = countFailedWrites()
-            async let failedHeaderRows = fetchFailedHeaderRows()
+            let snapshot = try await performBackgroundTask { context in
+                let queuedRequest = PendingWrite.fetchRequest()
+                queuedRequest.predicate = NSPredicate(
+                    format: "status == %@ OR status == %@",
+                    WriteQueueStatus.pending.rawValue,
+                    WriteQueueStatus.failed.rawValue
+                )
+
+                let failedRequest = PendingWrite.fetchRequest()
+                failedRequest.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
+                failedRequest.sortDescriptors = [
+                    NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
+                ]
+
+                let pendingCount = try context.count(for: queuedRequest)
+                let failedWrites = try context.fetch(failedRequest)
+                let failedRows = failedWrites.map { write in
+                    PendingWriteSummary(
+                        id: write.id,
+                        operationType: write.operationType,
+                        entityType: write.entityType,
+                        entityId: write.entityId,
+                        status: write.status,
+                        attempts: write.attempts,
+                        lastError: write.lastError,
+                        conflictReason: write.conflictReason,
+                        createdAt: write.createdAt,
+                        lastAttemptAt: write.lastAttemptAt
+                    )
+                }
+
+                return (pendingCount, failedRows)
+            }
+
             applyHeaderQueueState(
-                pendingCount: try await queuedCount,
-                failedCount: try await failedWriteCount,
-                failedHeaderRows: try await failedHeaderRows
+                pendingCount: snapshot.0,
+                failedCount: snapshot.1.count,
+                failedHeaderRows: snapshot.1
             )
         } catch {
             logger.error("Failed to load queue counts: \(error.localizedDescription, privacy: .public)")
