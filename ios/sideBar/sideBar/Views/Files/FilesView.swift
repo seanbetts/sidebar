@@ -47,15 +47,13 @@ public struct FilesView: View {
             pdfController.reset()
         }
         .onChange(of: isWorkspaceExpanded) { _, _ in
-            schedulePDFRefitAfterWorkspaceResize(reason: "workspaceExpanded=\(isWorkspaceExpanded)")
+            schedulePDFRefitAfterWorkspaceResize()
         }
         .onChange(of: isWorkspaceExpandedByRotation) { _, _ in
-            schedulePDFRefitAfterWorkspaceResize(
-                reason: "workspaceExpandedByRotation=\(isWorkspaceExpandedByRotation)"
-            )
+            schedulePDFRefitAfterWorkspaceResize()
         }
         .onChange(of: rightSidebarWidth) { _, _ in
-            schedulePDFRefitAfterWorkspaceResize(reason: "rightSidebarWidth=\(rightSidebarWidth)")
+            schedulePDFRefitAfterWorkspaceResize()
         }
         .onDisappear {
             pendingPDFRefitTask?.cancel()
@@ -153,17 +151,8 @@ public struct FilesView: View {
         return environment.ingestionViewModel.items.first { $0.file.id == selectedId }?.file.mimeOriginal
     }
 
-    private func schedulePDFRefitAfterWorkspaceResize(reason: String) {
+    private func schedulePDFRefitAfterWorkspaceResize() {
         guard shouldShowPdfControls else { return }
-
-        PDFResizeDebugTrace.log(
-            "FilesView.schedulePDFRefitAfterWorkspaceResize",
-            details: [
-                "reason=\(reason)",
-                "mime=\(selectedMimeOriginal ?? "nil")",
-                "rightSidebarWidth=\(rightSidebarWidth)"
-            ].joined(separator: " ")
-        )
 
         pendingPDFRefitTask?.cancel()
         pdfController.scheduleFitAndRefresh()
@@ -174,10 +163,6 @@ public struct FilesView: View {
                 if Task.isCancelled {
                     return
                 }
-                PDFResizeDebugTrace.log(
-                    "FilesView.schedulePDFRefitAfterWorkspaceResize.retry",
-                    details: "delayMs=\(delay)"
-                )
                 pdfController.scheduleFitAndRefresh()
             }
         }

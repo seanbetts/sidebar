@@ -146,7 +146,6 @@ public final class PDFViewerController: ObservableObject {
     private var fitRetryWorkItem: DispatchWorkItem?
     private var containerSize: CGSize = .zero
     private var animateNextFit = false
-    private var fitRequestSequence = 0
 
     deinit {
         cleanupObservers()
@@ -156,13 +155,6 @@ public final class PDFViewerController: ObservableObject {
     func attach(pdfView: PDFView) {
         if self.pdfView === pdfView { return }
         self.pdfView = pdfView
-        PDFResizeDebugTrace.log(
-            "PDFViewerController.attach",
-            details: [
-                "pdfBounds=\(PDFResizeDebugTrace.describe(pdfView.bounds))",
-                "document=\(pdfView.document?.pageCount ?? 0)"
-            ].joined(separator: " ")
-        )
         configure(pdfView: pdfView)
         observe(pdfView: pdfView)
         scheduleFitAndRefresh()
@@ -214,19 +206,8 @@ public final class PDFViewerController: ObservableObject {
     private func scheduleFitAndRefresh(animated: Bool) {
         fitRetryWorkItem?.cancel()
         animateNextFit = animated
-        fitRequestSequence += 1
-        let requestID = fitRequestSequence
-        PDFResizeDebugTrace.log(
-            "PDFViewerController.scheduleFitAndRefresh",
-            details: [
-                "request=\(requestID)",
-                "animated=\(animated)",
-                "containerSize=\(PDFResizeDebugTrace.describe(containerSize))",
-                describePDFViewState()
-            ].joined(separator: " ")
-        )
         let workItem = DispatchWorkItem { [weak self] in
-            self?.applyFitWithRetry(attempt: 0, requestID: requestID)
+            self?.applyFitWithRetry(attempt: 0)
         }
         fitRetryWorkItem = workItem
         DispatchQueue.main.async(execute: workItem)
@@ -237,14 +218,6 @@ public final class PDFViewerController: ObservableObject {
         if abs(containerSize.width - size.width) < 0.5, abs(containerSize.height - size.height) < 0.5 {
             return
         }
-        PDFResizeDebugTrace.log(
-            "PDFViewerController.updateContainerSize",
-            details: [
-                "old=\(PDFResizeDebugTrace.describe(containerSize))",
-                "new=\(PDFResizeDebugTrace.describe(size))",
-                describePDFViewState()
-            ].joined(separator: " ")
-        )
         containerSize = size
         scheduleFitAndRefresh(animated: false)
     }
@@ -270,15 +243,6 @@ public final class PDFViewerController: ObservableObject {
             pdfView.minScaleFactor = max(baseScale * 0.5, 0.1)
             pdfView.maxScaleFactor = max(baseScale * 4.0, pdfView.minScaleFactor)
         }
-        PDFResizeDebugTrace.log(
-            "PDFViewerController.configure",
-            details: [
-                "scaleFactorForSizeToFit=\(PDFResizeDebugTrace.rounded(baseScale))",
-                "minScale=\(PDFResizeDebugTrace.rounded(pdfView.minScaleFactor))",
-                "maxScale=\(PDFResizeDebugTrace.rounded(pdfView.maxScaleFactor))",
-                describePDFViewState()
-            ].joined(separator: " ")
-        )
         scheduleFitAndRefresh()
     }
 
@@ -317,39 +281,21 @@ public final class PDFViewerController: ObservableObject {
         scale = pdfView.scaleFactor
     }
 
-    private func applyFitWithRetry(attempt: Int, requestID: Int) {
+    private func applyFitWithRetry(attempt: Int) {
         if attempt > 0 {
             animateNextFit = false
         }
         guard applyScaleForCurrentPage() else {
-            PDFResizeDebugTrace.log(
-                "PDFViewerController.applyFitWithRetry.retrying",
-                details: [
-                    "request=\(requestID)",
-                    "attempt=\(attempt)",
-                    "containerSize=\(PDFResizeDebugTrace.describe(containerSize))",
-                    describePDFViewState()
-                ].joined(separator: " ")
-            )
             if attempt < 5 {
                 let delay = 0.1 * Double(attempt + 1)
                 let workItem = DispatchWorkItem { [weak self] in
-                    self?.applyFitWithRetry(attempt: attempt + 1, requestID: requestID)
+                    self?.applyFitWithRetry(attempt: attempt + 1)
                 }
                 fitRetryWorkItem = workItem
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
             }
             return
         }
-        PDFResizeDebugTrace.log(
-            "PDFViewerController.applyFitWithRetry.success",
-            details: [
-                "request=\(requestID)",
-                "attempt=\(attempt)",
-                "scale=\(PDFResizeDebugTrace.rounded(scale))",
-                describePDFViewState()
-            ].joined(separator: " ")
-        )
         refreshState()
     }
 
@@ -381,14 +327,6 @@ public final class PDFViewerController: ObservableObject {
             return false
         }
         if abs(liveBounds.width - targetContainerSize.width) > 1 || abs(liveBounds.height - targetContainerSize.height) > 1 {
-            PDFResizeDebugTrace.log(
-                "PDFViewerController.applyScaleForCurrentPage.waitingForLayout",
-                details: [
-                    "targetContainerSize=\(PDFResizeDebugTrace.describe(targetContainerSize))",
-                    "liveBounds=\(PDFResizeDebugTrace.describe(liveBounds))",
-                    describePDFViewState()
-                ].joined(separator: " ")
-            )
             return false
         }
         guard let baseScale = baseScaleForCurrentPage() else { return false }
@@ -397,18 +335,6 @@ public final class PDFViewerController: ObservableObject {
         let maxScale = max(pdfView.maxScaleFactor, minScale)
         let clamped = min(max(targetScale, minScale), maxScale)
         guard clamped.isFinite, clamped > 0 else { return false }
-        PDFResizeDebugTrace.log(
-            "PDFViewerController.applyScaleForCurrentPage",
-            details: [
-                "pageBounds=\(PDFResizeDebugTrace.describe(pageBounds.size))",
-                "containerSize=\(PDFResizeDebugTrace.describe(targetContainerSize))",
-                "liveBounds=\(PDFResizeDebugTrace.describe(liveBounds))",
-                "baseScale=\(PDFResizeDebugTrace.rounded(baseScale))",
-                "targetScale=\(PDFResizeDebugTrace.rounded(targetScale))",
-                "clamped=\(PDFResizeDebugTrace.rounded(clamped))",
-                describePDFViewState()
-            ].joined(separator: " ")
-        )
         applyScale(clamped, animated: animateNextFit)
         animateNextFit = false
         scale = clamped
@@ -457,23 +383,4 @@ public final class PDFViewerController: ObservableObject {
         return baseScale
     }
 
-    private func describePDFViewState() -> String {
-        guard let pdfView else {
-            return "pdfView=nil"
-        }
-        var parts = [
-            "pdfBounds=\(PDFResizeDebugTrace.describe(pdfView.bounds))",
-            "pdfScale=\(PDFResizeDebugTrace.rounded(pdfView.scaleFactor))"
-        ]
-        #if os(iOS)
-        if let scrollView = pdfView.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView {
-            parts.append("scrollBounds=\(PDFResizeDebugTrace.describe(scrollView.bounds))")
-            parts.append("scrollContentSize=\(PDFResizeDebugTrace.describe(scrollView.contentSize))")
-            if let documentView = scrollView.subviews.first {
-                parts.append("docFrame=\(PDFResizeDebugTrace.describe(documentView.frame))")
-            }
-        }
-        #endif
-        return parts.joined(separator: " ")
-    }
 }

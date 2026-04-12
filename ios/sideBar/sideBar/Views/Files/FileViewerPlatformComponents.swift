@@ -184,17 +184,9 @@ struct PDFViewerContainer: View {
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 .clipped()
                 .onChange(of: proxy.size) { _, _ in
-                    PDFResizeDebugTrace.log(
-                        "PDFViewerContainer.sizeChanged",
-                        details: "size=\(PDFResizeDebugTrace.describe(proxy.size)) url=\(url.lastPathComponent)"
-                    )
                     controller.updateContainerSize(proxy.size)
                 }
                 .onAppear {
-                    PDFResizeDebugTrace.log(
-                        "PDFViewerContainer.appear",
-                        details: "size=\(PDFResizeDebugTrace.describe(proxy.size)) url=\(url.lastPathComponent)"
-                    )
                     controller.updateContainerSize(proxy.size)
                 }
         }
@@ -203,7 +195,6 @@ struct PDFViewerContainer: View {
 
 final class ClippedPDFHostView: UIView {
     let pdfView = PDFView()
-    private var lastLayoutSummary: String?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -224,37 +215,6 @@ final class ClippedPDFHostView: UIView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        guard PDFResizeDebugTrace.isEnabled else { return }
-
-        let summary = [
-            "host=\(PDFResizeDebugTrace.describe(bounds))",
-            "pdf=\(PDFResizeDebugTrace.describe(pdfView.bounds))",
-            describeScrollViewState()
-        ].joined(separator: " ")
-
-        guard summary != lastLayoutSummary else { return }
-        lastLayoutSummary = summary
-        PDFResizeDebugTrace.log("ClippedPDFHostView.layoutSubviews", details: summary)
-    }
-
-    private func describeScrollViewState() -> String {
-        guard let scrollView = pdfView.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView else {
-            return "scroll=nil"
-        }
-        let documentView = scrollView.subviews.first
-        return [
-            "scrollClass=\(NSStringFromClass(type(of: scrollView)))",
-            "scrollBounds=\(PDFResizeDebugTrace.describe(scrollView.bounds))",
-            "contentSize=\(PDFResizeDebugTrace.describe(scrollView.contentSize))",
-            "contentOffset=\(PDFResizeDebugTrace.describe(scrollView.contentOffset))",
-            "zoomScale=\(PDFResizeDebugTrace.rounded(scrollView.zoomScale))",
-            "docClass=\(documentView.map { NSStringFromClass(type(of: $0)) } ?? "nil")",
-            "docFrame=\(documentView.map { PDFResizeDebugTrace.describe($0.frame) } ?? "nil")"
-        ].joined(separator: " ")
     }
 }
 
