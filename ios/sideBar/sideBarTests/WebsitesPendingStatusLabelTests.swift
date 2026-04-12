@@ -44,7 +44,7 @@ final class WebsitesPendingStatusLabelTests: XCTestCase {
         XCTAssertEqual(pending.statusLabel, "Queued")
     }
 
-    func testStatusLabelUsesSavedForLaterForQueuedShareRows() {
+    func testStatusLabelUsesQueuedForQueuedShareRows() {
         let pending = WebsitesViewModel.PendingWebsiteItem(
             id: "pending-queued-share",
             title: "Reading...",
@@ -55,7 +55,7 @@ final class WebsitesPendingStatusLabelTests: XCTestCase {
             status: .queued
         )
 
-        XCTAssertEqual(pending.statusLabel, "Saved for later")
+        XCTAssertEqual(pending.statusLabel, "Queued")
     }
 
     func testProgressMessageUsesQueuedToReadForPendingWebsite() {

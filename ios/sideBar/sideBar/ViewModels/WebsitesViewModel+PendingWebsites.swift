@@ -68,9 +68,6 @@ extension WebsitesViewModel {
 
         /// User-facing status label with YouTube-specific wording for active processing.
         public var statusLabel: String {
-            if status == .queued, source == .queuedShare {
-                return "Saved for later"
-            }
             if status == .reading, YouTubeURLPolicy.extractVideoId(from: url) != nil {
                 return "Watching..."
             }
