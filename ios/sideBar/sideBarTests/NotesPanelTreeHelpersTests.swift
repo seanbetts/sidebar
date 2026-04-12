@@ -314,13 +314,12 @@ final class NotesPanelTreeHelpersTests: XCTestCase {
         )
     }
 
-    func testNoteListSelectionIDReturnsIDForFilesOnly() async {
-        let panel = await makeView()
+    func testFileNodeItemsDistinguishNotesFromFolders() async {
         let fileItem = FileNodeItem(id: "note-1", name: "Note.md", type: .file)
         let folderItem = FileNodeItem(id: "folder:notes", name: "Notes", type: .directory)
 
-        XCTAssertEqual(panel.noteListSelectionID(for: fileItem), "note-1")
-        XCTAssertNil(panel.noteListSelectionID(for: folderItem))
+        XCTAssertTrue(fileItem.isFile)
+        XCTAssertFalse(folderItem.isFile)
     }
 
     func testBuildItemsAssignsDepthForNestedFoldersAndFiles() {

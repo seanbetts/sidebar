@@ -80,7 +80,7 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
 
         XCTAssertNil(viewModel.selectedFileId)
 
-        view.fileSelectionBinding.wrappedValue = "file-a"
+        view.open(fileId: "file-a")
 
         XCTAssertNil(viewModel.selectedFileId)
 
@@ -170,20 +170,20 @@ final class FilesPanelPinnedReorderTests: XCTestCase {
         #endif
     }
 
-    func testFileListSelectionIDReturnsFileIDForSelectableRows() {
+    func testFileRowPrimaryActionExistsForSelectableRows() {
         let view = makeView(
             items: [makeItem(id: "file-a", pinned: false)]
         )
 
-        XCTAssertEqual(view.fileListSelectionID(for: "file-a"), "file-a")
+        XCTAssertNotNil(view.fileRowPrimaryAction(for: makeItem(id: "file-a", pinned: false)))
     }
 
-    func testFileListSelectionIDReturnsNilForFolders() {
+    func testFileRowPrimaryActionReturnsNilForFolders() {
         let view = makeView(
             items: [makeItem(id: "folder-a", pinned: false, category: "folder")]
         )
 
-        XCTAssertNil(view.fileListSelectionID(for: "folder-a"))
+        XCTAssertNil(view.fileRowPrimaryAction(for: makeItem(id: "folder-a", pinned: false, category: "folder")))
     }
 
     func testToggleCategoryExpansionAddsAndRemovesExpandedState() {

@@ -838,14 +838,15 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertTrue(normalized.contains("guardskill.status!=\"hidden\"else{returnfalse}"))
     }
 
-    func testProfileStringSelectorSourceUsesMenuInsteadOfPicker() throws {
+    func testProfileStringSelectorSourceUsesSidebarSelectionMenu() throws {
         let normalized = try profileStringSelectorSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("Menu{"))
-        XCTAssertTrue(normalized.contains("Button(\"Notset\")"))
-        XCTAssertTrue(normalized.contains("Image(systemName:\"chevron.up.chevron.down\")"))
-        XCTAssertFalse(normalized.contains("Picker(selectionLabel,selection:$selection)"))
+        XCTAssertTrue(normalized.contains("SidebarSelectionMenu("))
+        XCTAssertTrue(normalized.contains("options:[\"\"]+options"))
+        XCTAssertTrue(normalized.contains("option.isEmpty?\"Notset\":option"))
+        XCTAssertTrue(normalized.contains("isPlaceholder:{$0.isEmpty}"))
+        XCTAssertFalse(normalized.contains("Picker("))
     }
 
     func testProfileSettingsIOSSourceUsesStandardizedProfileRows() throws {
@@ -902,10 +903,13 @@ final class SettingsSectionsTests: XCTestCase {
     func testUserSettingsMacSourceUsesTransparentEditors() throws {
         let normalized = try systemMacSettingsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let editorNormalized = try settingsMacPlainTextEditorSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("SettingsMacPlainTextEditor(text:$communicationStyle,minHeight:160)"))
         XCTAssertTrue(normalized.contains("SettingsMacPlainTextEditor(text:$workingRelationship,minHeight:160)"))
-        XCTAssertTrue(normalized.contains(".fill(.clear)"))
+        XCTAssertTrue(editorNormalized.contains("textView.drawsBackground=false"))
+        XCTAssertTrue(editorNormalized.contains("scrollView.drawsBackground=false"))
         XCTAssertFalse(normalized.contains(".scrollContentBackground(.hidden)"))
     }
 
@@ -1346,6 +1350,13 @@ private func systemMacSettingsSource(
     line: UInt = #line
 ) throws -> String {
     try settingsSourceFile("SettingsSections+SystemMac.swift", file: file, line: line)
+}
+
+private func settingsMacPlainTextEditorSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try settingsSourceFile("SettingsMacPlainTextEditor.swift", file: file, line: line)
 }
 
 private func utilitiesSettingsSource(
