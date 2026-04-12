@@ -194,6 +194,36 @@ def _ensure_user_settings_columns(connection) -> None:
     )
     connection.execute(
         text(
+            "CREATE INDEX IF NOT EXISTS idx_website_jobs_updated_at "
+            "ON website_processing_jobs (updated_at)"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE notes "
+            "ADD COLUMN IF NOT EXISTS payload_purged_at timestamptz"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_notes_payload_purged_at "
+            "ON notes (payload_purged_at)"
+        )
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE websites "
+            "ADD COLUMN IF NOT EXISTS payload_purged_at timestamptz"
+        )
+    )
+    connection.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_websites_payload_purged_at "
+            "ON websites (payload_purged_at)"
+        )
+    )
+    connection.execute(
+        text(
             "ALTER TABLE user_settings "
             "ADD COLUMN IF NOT EXISTS ai_primary_provider text"
         )

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from api.exceptions import BadRequestError, ConflictError, NoteNotFoundError
 from api.models.note import Note
-from api.services.notes_document_types import note_document_from_plain_text
+from api.services.notes_helpers import sync_safe_note_document
 from api.services.notes_service import NotesService
 from api.services.notes_write_contract import parse_note_write_payload
 from api.utils.timestamps import parse_client_timestamp
@@ -330,7 +330,7 @@ class NotesSyncService:
     def sync_payload(note: Note) -> dict[str, object]:
         """Build the canonical note payload for sync update streams."""
         folder = (note.folder_path or "").strip("/")
-        document = note.document or note_document_from_plain_text(note.plain_text or "")
+        document = sync_safe_note_document(note)
         return {
             "id": str(note.id),
             "title": note.title,

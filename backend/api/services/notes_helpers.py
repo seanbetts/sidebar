@@ -11,6 +11,15 @@ from api.services.notes_document_types import note_document_from_plain_text
 from api.services.scratchpad_identity import is_scratchpad_title
 
 
+def sync_safe_note_document(note: Note) -> dict[str, object]:
+    """Return a note document that remains valid after payload degradation."""
+    if note.document:
+        return note.document
+
+    fallback_text = note.plain_text or note.title or ""
+    return note_document_from_plain_text(fallback_text)
+
+
 def build_notes_tree(notes: Iterable[Note]) -> dict[str, object]:
     """Build a hierarchical notes tree for UI payloads."""
     root: dict[str, object] = {
@@ -90,8 +99,7 @@ def _conflict_server_note_payload(note: Note) -> dict[str, object]:
     return {
         "id": str(note.id),
         "title": note.title,
-        "document": note.document
-        or note_document_from_plain_text(note.plain_text or ""),
+        "document": sync_safe_note_document(note),
         "document_version": note.document_version,
         "plain_text": note.plain_text or "",
         "folder": (note.folder_path or "").strip("/"),

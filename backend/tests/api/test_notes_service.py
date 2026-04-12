@@ -14,6 +14,7 @@ from api.services.notes_document_types import (
     validate_note_document,
 )
 from api.schemas.filters import NoteFilters
+from api.services.notes_sync_service import NotesSyncService
 from api.services.notes_service import NotesService
 
 
@@ -116,6 +117,25 @@ def test_update_note_title(db_session):
     assert updated.document == _document("# New Title\n\nBody")
     assert updated.document_version == NOTE_DOCUMENT_VERSION
     assert updated.plain_text == "# New Title\n\nBody"
+
+
+def test_note_sync_payload_handles_payload_purged_rows(db_session):
+    note = NotesService.create_note(
+        db_session,
+        "user-1",
+        note_document_from_plain_text("# Title\n\nBody"),
+    )
+    note.deleted_at = datetime.now(UTC)
+    note.payload_purged_at = datetime.now(UTC)
+    note.document = note_document_from_plain_text("# Title")
+    note.plain_text = ""
+    db_session.commit()
+
+    payload = NotesSyncService.sync_payload(note)
+
+    assert payload["title"] == "# Title"
+    assert payload["deleted_at"] is not None
+    assert payload["document"]["blocks"][0]["type"] == "title"
 
 
 def test_update_note_missing_raises_single_formatted_not_found(db_session):
