@@ -7,6 +7,7 @@ import OSLog
 /// Queues offline write operations and retries them when online.
 public final class WriteQueue: ObservableObject {
     @Published private(set) var pendingCount: Int = 0
+    @Published private(set) var failedCount: Int = 0
     @Published private(set) var isProcessing: Bool = false
     @Published private(set) var isPausedForConflict: Bool = false
     public let maxPendingWrites: Int
@@ -19,6 +20,11 @@ public final class WriteQueue: ObservableObject {
     let logger = Logger(subsystem: "sideBar", category: "WriteQueue")
     var hasRecoveredStuckWrites = false
     var hasRecoveredConflictWrites = false
+
+    var activePendingCount: Int {
+        max(pendingCount - failedCount, 0)
+    }
+
     init(
         container: NSPersistentContainer,
         connectivityMonitor: ConnectivityMonitor,
@@ -34,7 +40,7 @@ public final class WriteQueue: ObservableObject {
         Task { [weak self] in
             await self?.recoverStuckWritesIfNeeded()
             await self?.recoverConflictWritesIfNeeded()
-            await self?.loadPendingCount()
+            await self?.loadQueueCounts()
             if let self, self.autoProcessEnabled, self.executor != nil, !self.connectivityMonitor.isOffline {
                 await self.processQueue()
             }
@@ -55,7 +61,7 @@ public final class WriteQueue: ObservableObject {
            entityType == .note,
            let entityId,
            try await coalesceNoteUpdate(entityId: entityId, payload: payloadData) {
-            await loadPendingCount()
+            await loadQueueCounts()
             if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
                 Task { [weak self] in
                     await self?.processQueue()
@@ -65,7 +71,7 @@ public final class WriteQueue: ObservableObject {
         }
         if operation == .update, entityType == .task, let entityId,
            try await coalesceTaskNotesUpdate(entityId: entityId, payload: payloadData) {
-            await loadPendingCount()
+            await loadQueueCounts()
             if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
                 Task { [weak self] in
                     await self?.processQueue()
@@ -74,7 +80,7 @@ public final class WriteQueue: ObservableObject {
             return
         }
 
-        let currentCount = try await countPendingWrites()
+        let currentCount = try await countQueuedWrites()
         if currentCount >= maxPendingWrites {
             throw WriteQueueError.queueFull
         }
@@ -92,7 +98,7 @@ public final class WriteQueue: ObservableObject {
             write.serverSnapshot = snapshotData
         }
 
-        await loadPendingCount()
+        await loadQueueCounts()
 
         if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
             Task { [weak self] in
@@ -105,6 +111,7 @@ public final class WriteQueue: ObservableObject {
         guard !isProcessing, executor != nil, !connectivityMonitor.isOffline else { return }
         await recoverStuckWritesIfNeeded()
         await recoverConflictWritesIfNeeded()
+        await recoverRetryableFailedWrites()
         isProcessing = true
         defer { isProcessing = false }
 
@@ -126,7 +133,7 @@ public final class WriteQueue: ObservableObject {
             await Task.yield()
         }
 
-        await loadPendingCount()
+        await loadQueueCounts()
     }
 
     func fetchPendingWrites() async throws -> [PendingWriteSummary] {
@@ -208,7 +215,7 @@ public final class WriteQueue: ObservableObject {
             logger.error("Failed to delete writes by id: \(error.localizedDescription, privacy: .public)")
             return
         }
-        await loadPendingCount()
+        await loadQueueCounts()
     }
 
     func deleteWrites(entityType: WriteEntityType, entityId: String) async {
@@ -231,7 +238,7 @@ public final class WriteQueue: ObservableObject {
             )
             return
         }
-        await loadPendingCount()
+        await loadQueueCounts()
     }
 
     public func pruneOldestWrites(keeping maxCount: Int) async {
@@ -254,7 +261,7 @@ public final class WriteQueue: ObservableObject {
                     context.delete(write)
                 }
             }
-            await loadPendingCount()
+            await loadQueueCounts()
         } catch {
             logger.error("Failed to prune oldest writes: \(error.localizedDescription, privacy: .public)")
             return
@@ -271,7 +278,7 @@ public final class WriteQueue: ObservableObject {
     func retryAllWrites() async {
         await retryFailedWrites()
         await processQueue()
-        await loadPendingCount()
+        await loadQueueCounts()
     }
 
     func setConflictPauseState(_ isPaused: Bool) { isPausedForConflict = isPaused }
@@ -305,7 +312,7 @@ public final class WriteQueue: ObservableObject {
             logger.error("Failed to resolve write conflict: \(error.localizedDescription, privacy: .public)")
             return
         }
-        await loadPendingCount()
+        await loadQueueCounts()
         resumeProcessing()
     }
 }
@@ -475,7 +482,7 @@ private extension WriteQueue {
         }
     }
 
-    private func countPendingWrites() async throws -> Int {
+    private func countQueuedWrites() async throws -> Int {
         try await performBackgroundTask { context in
             let request = PendingWrite.fetchRequest()
             request.predicate = NSPredicate(
@@ -487,12 +494,24 @@ private extension WriteQueue {
         }
     }
 
-    private func loadPendingCount() async {
+    private func countFailedWrites() async throws -> Int {
+        try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
+            return try context.count(for: request)
+        }
+    }
+
+    private func loadQueueCounts() async {
         do {
-            pendingCount = try await countPendingWrites()
+            async let queuedCount = countQueuedWrites()
+            async let failedWriteCount = countFailedWrites()
+            pendingCount = try await queuedCount
+            failedCount = try await failedWriteCount
         } catch {
-            logger.error("Failed to load pending count: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to load queue counts: \(error.localizedDescription, privacy: .public)")
             pendingCount = 0
+            failedCount = 0
         }
     }
 
@@ -501,17 +520,105 @@ private extension WriteQueue {
             .removeDuplicates()
             .filter { !$0 }
             .sink { [weak self] _ in
-                guard let self, self.autoProcessEnabled else { return }
-                Task { [weak self] in
-                    await self?.processQueue()
-                }
+                self?.scheduleQueueProcessingIfNeeded()
             }
             .store(in: &cancellables)
+
+        connectivityMonitor.$isServerReachable
+            .removeDuplicates()
+            .filter { $0 }
+            .sink { [weak self] _ in
+                self?.scheduleQueueProcessingIfNeeded()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func scheduleQueueProcessingIfNeeded() {
+        guard autoProcessEnabled else { return }
+        Task { [weak self] in
+            await self?.processQueue()
+        }
     }
 
     private func encodeSnapshot(_ snapshot: ServerSnapshot?) throws -> Data? {
         guard let snapshot else { return nil }
         return try encoder.encode(snapshot)
+    }
+
+    private func recoverRetryableFailedWrites() async {
+        do {
+            let recoveredCount = try await performBackgroundTask { context in
+                let request = PendingWrite.fetchRequest()
+                request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
+                let writes = try context.fetch(request)
+                var recoveredCount = 0
+                for write in writes where self.shouldReplayFailedWrite(write) {
+                    write.status = WriteQueueStatus.pending.rawValue
+                    write.attempts = 0
+                    write.lastError = nil
+                    write.lastAttemptAt = nil
+                    recoveredCount += 1
+                }
+                return recoveredCount
+            }
+            if recoveredCount > 0 {
+                logger.info("Recovered \(recoveredCount, privacy: .public) retryable failed write(s)")
+            }
+        } catch {
+            logger.error("Failed to recover retryable failed writes: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func shouldReplayFailedWrite(_ write: PendingWrite) -> Bool {
+        guard write.conflictReason == nil, let lastError = write.lastError else {
+            return false
+        }
+
+        if let statusCode = retryableHTTPStatusCode(from: lastError) {
+            return statusCode == 408 || statusCode == 429 || statusCode >= 500
+        }
+
+        guard let urlErrorCode = urlErrorCode(from: lastError) else {
+            return false
+        }
+
+        switch urlErrorCode {
+        case URLError.notConnectedToInternet.rawValue,
+             URLError.networkConnectionLost.rawValue,
+             URLError.timedOut.rawValue,
+             URLError.cannotFindHost.rawValue,
+             URLError.cannotConnectToHost.rawValue,
+             URLError.dnsLookupFailed.rawValue:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func retryableHTTPStatusCode(from errorDescription: String) -> Int? {
+        let prefix = "requestFailed("
+        guard let range = errorDescription.range(of: prefix) else {
+            return nil
+        }
+        let suffix = errorDescription[range.upperBound...]
+        guard let endIndex = suffix.firstIndex(of: ")") else {
+            return nil
+        }
+        return Int(suffix[..<endIndex])
+    }
+
+    private func urlErrorCode(from errorDescription: String) -> Int? {
+        let marker = "Code="
+        guard errorDescription.contains("NSURLErrorDomain"),
+              let codeRange = errorDescription.range(of: marker) else {
+            return nil
+        }
+        let suffix = errorDescription[codeRange.upperBound...]
+        let numericPrefix = suffix.prefix { $0 == "-" || $0.isNumber }
+        guard !numericPrefix.isEmpty else {
+            return nil
+        }
+        return Int(numericPrefix)
     }
 
     func performBackgroundTask<T>(
