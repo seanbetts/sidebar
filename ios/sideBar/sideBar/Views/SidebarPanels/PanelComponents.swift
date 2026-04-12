@@ -58,7 +58,7 @@ extension View {
         reducesCompactPhoneSectionHeaderGap: Bool = false
     ) -> some View {
 #if os(macOS)
-        self.listStyle(.sidebar)
+        self.listStyle(.plain)
 #else
         if reducesCompactPhoneSectionHeaderGap {
             self

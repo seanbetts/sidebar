@@ -227,7 +227,7 @@ struct SidebarSelectionTriggerLabel: View {
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Text(title)
-                .appFont(.body)
+                .appFont(.subheadline)
                 .foregroundStyle(
                     isPlaceholder
                         ? DesignTokens.Colors.textSecondary

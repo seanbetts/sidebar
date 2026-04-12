@@ -53,7 +53,17 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertFalse(normalized.contains("Button(action:primaryAction)"))
-        XCTAssertTrue(normalized.contains(".onTapGesture{primaryAction?()}"))
+        XCTAssertFalse(normalized.contains(".onTapGesture{primaryAction?()}"))
+        XCTAssertTrue(normalized.contains("ifletprimaryAction"))
+    }
+
+    func testMacSidebarPanelsUsePlainListStyleForFullWidthSelectionChrome() throws {
+        let normalized = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "PanelComponents.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("#ifos(macOS)self.listStyle(.plain)"))
+        XCTAssertFalse(normalized.contains("#ifos(macOS)self.listStyle(.sidebar)"))
     }
 
     func testMacFileAndNoteRowsUseExplicitPrimaryActions() throws {
@@ -100,6 +110,15 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertTrue(systemMac.contains("SidebarSelectionMenu"))
         XCTAssertFalse(profileSupport.contains(".pickerStyle(.menu)"))
         XCTAssertFalse(systemMac.contains(".pickerStyle(.menu)"))
+    }
+
+    func testMacSettingsSelectorTriggerUsesControlSizedTypography() throws {
+        let normalized = try source(
+            at: ["sideBar", "Design", "Components", "FormField.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Text(title).appFont(.subheadline)"))
+        XCTAssertFalse(normalized.contains("Text(title).appFont(.body)"))
     }
 
     func testMacDateOfBirthUsesPopoverTriggerInsteadOfWrappedInlineDatePicker() throws {

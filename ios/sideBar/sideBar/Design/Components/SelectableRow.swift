@@ -45,18 +45,26 @@ struct SelectableRow<Content: View>: View {
             .contentShape(Rectangle())
             .animation(Motion.quick(reduceMotion: reduceMotion), value: isSelected)
             .accessibilityAddTraits(isSelected ? .isSelected : [])
-            .accessibilityAddTraits(usesButtonBackedPrimaryAction ? .isButton : [])
-            .onTapGesture {
-                primaryAction?()
+
+        let interactiveRowContent = Group {
+            if let primaryAction {
+                rowContent
+                    .accessibilityAddTraits(.isButton)
+                    .onTapGesture {
+                        primaryAction()
+                    }
+            } else {
+                rowContent
             }
+        }
 
         if useListStyling {
-            rowContent
+            interactiveRowContent
                 .listRowInsets(rowInsets)
                 .listRowBackground(selectedRowBackground)
                 .sidebarHover($isHovered)
         } else {
-            rowContent
+            interactiveRowContent
                 .padding(.leading, rowInsets.leading)
                 .padding(.trailing, rowInsets.trailing)
                 .background(selectedRowBackground)
