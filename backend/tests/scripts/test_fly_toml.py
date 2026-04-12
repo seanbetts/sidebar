@@ -23,3 +23,17 @@ def test_fly_sets_production_apns_environment() -> None:
     contents = FLY_TOML.read_text(encoding="utf-8")
 
     assert 'APNS_ENV = "prod"' in contents
+
+
+def test_fly_declares_dedicated_website_process_group() -> None:
+    """Fly should run website processing in its own process group."""
+    contents = FLY_TOML.read_text(encoding="utf-8")
+
+    assert 'website = "python -m workers.website_processing_worker"' in contents
+
+
+def test_fly_sets_initial_website_worker_concurrency_to_two() -> None:
+    """Fly should cap initial website worker concurrency at two."""
+    contents = FLY_TOML.read_text(encoding="utf-8")
+
+    assert 'WEBSITE_WORKER_CONCURRENCY = "2"' in contents

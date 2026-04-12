@@ -4,6 +4,7 @@ primary_region = "lhr"
 [processes]
   app = "uvicorn api.main:app --host 0.0.0.0 --port 8001"
   ingestion = "python -m workers.worker_runner"
+  website = "python -m workers.website_processing_worker"
 
 [build]
   dockerfile = "docker/Dockerfile.skills-api"
@@ -26,6 +27,7 @@ primary_region = "lhr"
   STORAGE_BACKEND = "r2"
   YT_DLP_JS_RUNTIMES = "deno,node"
   PLAYWRIGHT_RENDER_CONCURRENCY = "1"
+  WEBSITE_WORKER_CONCURRENCY = "2"
 
 [http_service]
   internal_port = 8001
