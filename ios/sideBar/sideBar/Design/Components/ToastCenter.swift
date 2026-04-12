@@ -60,7 +60,7 @@ public enum ToastStyle {
         case .error:
             return DesignTokens.Colors.errorBorder
         case .success:
-            return DesignTokens.Colors.success.opacity(0.3)
+            return DesignTokens.Colors.successBorder
         }
     }
 
