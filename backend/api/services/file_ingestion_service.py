@@ -393,6 +393,15 @@ class FileIngestionService:
         return record
 
     @staticmethod
+    def hard_delete_file_metadata(db: Session, file_id: uuid.UUID) -> None:
+        """Remove file metadata rows and dependent job records."""
+        db.query(FileProcessingJob).filter(
+            FileProcessingJob.file_id == file_id
+        ).delete()
+        db.query(FileDerivative).filter(FileDerivative.file_id == file_id).delete()
+        db.query(IngestedFile).filter(IngestedFile.id == file_id).delete()
+
+    @staticmethod
     def update_pinned(
         db: Session,
         user_id: str,
