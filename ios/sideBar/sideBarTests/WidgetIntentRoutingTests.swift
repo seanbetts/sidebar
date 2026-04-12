@@ -70,6 +70,19 @@ final class WidgetIntentRoutingTests: XCTestCase {
         XCTAssertTrue(source.contains("Image(\"AppLogo\")"))
         XCTAssertFalse(source.contains("\"doc.badge.gearshape\""))
     }
+
+    func testIngestionLiveActivityUsesApprovedCompactStateSymbols() throws {
+        let source = try normalizedWidgetSource(named: "IngestionProgressLiveActivity.swift")
+
+        XCTAssertTrue(source.contains("case\"uploading\":return\"arrow.up.circle.fill\""))
+        XCTAssertTrue(source.contains("case\"queued\":return\"clock.fill\""))
+        XCTAssertTrue(source.contains("case\"validating\",\"converting\",\"extracting\":return\"gearshape.fill\""))
+        XCTAssertTrue(source.contains("case\"ai_md\",\"transcribing\":return\"pencil.line\""))
+        XCTAssertTrue(source.contains("case\"thumb\",\"finalizing\":return\"tray.and.arrow.down.fill\""))
+        XCTAssertTrue(source.contains("case\"ready\":return\"checkmark.circle.fill\""))
+        XCTAssertTrue(source.contains("case\"failed\":return\"exclamationmark.triangle.fill\""))
+        XCTAssertTrue(source.contains("case\"canceled\":return\"xmark.circle.fill\""))
+    }
 }
 
 private func assertOpensIntent<Result: OpensIntent>(_: Result) {}

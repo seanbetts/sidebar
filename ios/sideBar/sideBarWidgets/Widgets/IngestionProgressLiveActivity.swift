@@ -164,19 +164,49 @@ private struct IngestionActivityStatusGlyph: View {
     let status: String
 
     var body: some View {
-        switch status {
-        case "failed":
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
-        case "canceled":
-            Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(.secondary)
-        default:
+        if let symbolName = symbolName {
+            Image(systemName: symbolName)
+                .foregroundStyle(symbolColor)
+        } else {
             Image("AppLogo")
                 .resizable()
                 .widgetAccentedRenderingMode(.accentedDesaturated)
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 16, height: 16)
+        }
+    }
+
+    private var symbolName: String? {
+        switch status {
+        case "uploading":
+            return "arrow.up.circle.fill"
+        case "queued":
+            return "clock.fill"
+        case "validating", "converting", "extracting":
+            return "gearshape.fill"
+        case "ai_md", "transcribing":
+            return "pencil.line"
+        case "thumb", "finalizing":
+            return "tray.and.arrow.down.fill"
+        case "ready":
+            return "checkmark.circle.fill"
+        case "failed":
+            return "exclamationmark.triangle.fill"
+        case "canceled":
+            return "xmark.circle.fill"
+        default:
+            return nil
+        }
+    }
+
+    private var symbolColor: Color {
+        switch status {
+        case "failed":
+            return .orange
+        case "canceled":
+            return .secondary
+        default:
+            return .primary
         }
     }
 }
