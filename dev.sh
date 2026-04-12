@@ -6,7 +6,7 @@
 #
 # Common commands:
 #   ./dev.sh start
-#     Start backend, frontend, ingestion worker, product docs, internal design docs, website, and Caddy proxy,
+#     Start backend, frontend, ingestion worker, website processing worker, product docs, internal design docs, website, and Caddy proxy,
 #     restart the local GitHub Actions runner, and ensure local test Postgres availability.
 #     Proxy URLs (requires: brew install caddy):
 #       - Website: http://trysidebar.localhost:8080
@@ -25,7 +25,7 @@
 #     Restart all services, including the local GitHub Actions runner.
 #   ./dev.sh status
 #     Show running status, including the local GitHub Actions runner, URLs, and log file locations.
-#   ./dev.sh logs [backend|frontend|ingestion|docs|design-docs|website|caddy]
+#   ./dev.sh logs [backend|frontend|ingestion|website-worker|docs|design-docs|website|caddy]
 #     Tail logs for one service or all services.
 #
 # Notes:
@@ -38,12 +38,14 @@ set -euo pipefail
 BACKEND_LOG="/tmp/sidebar-backend.log"
 FRONTEND_LOG="/tmp/sidebar-frontend.log"
 INGESTION_LOG="/tmp/sidebar-ingestion-worker.log"
+WEBSITE_WORKER_LOG="/tmp/sidebar-website-processing-worker.log"
 DOCS_LOG="/tmp/sidebar-docs.log"
 DESIGN_DOCS_LOG="/tmp/sidebar-design-docs.log"
 WEBSITE_LOG="/tmp/sidebar-website.log"
 BACKEND_PID="/tmp/sidebar-backend.pid"
 FRONTEND_PID="/tmp/sidebar-frontend.pid"
 INGESTION_PID="/tmp/sidebar-ingestion-worker.pid"
+WEBSITE_WORKER_PID="/tmp/sidebar-website-processing-worker.pid"
 DOCS_PID="/tmp/sidebar-docs.pid"
 DESIGN_DOCS_PID="/tmp/sidebar-design-docs.pid"
 WEBSITE_PID="/tmp/sidebar-website.pid"
@@ -515,6 +517,11 @@ is_ingestion_process() {
   [[ "${command}" == *"workers/ingestion_worker.py"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]
 }
 
+is_website_worker_process() {
+  local command="$1"
+  [[ "${command}" == *"workers/website_processing_worker.py"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]
+}
+
 is_docs_process() {
   local command="$1"
   [[ "${command}" == *"mintlify"* ]] && [[ "${command}" == *"${REPO_ROOT}/docs/product"* ]]
@@ -551,6 +558,9 @@ role_matches_command() {
       ;;
     ingestion)
       is_ingestion_process "${command}"
+      ;;
+    website-worker)
+      is_website_worker_process "${command}"
       ;;
     docs)
       is_docs_process "${command}"
@@ -649,6 +659,40 @@ resolve_ingestion_pid() {
       return 0
     fi
   done < <(pgrep -f "workers/ingestion_worker.py" || true)
+  return 1
+}
+
+wait_for_website_worker_process() {
+  local pid_file="$1"
+  local pid
+  local attempt
+
+  for ((attempt = 1; attempt <= STARTUP_DETECT_ATTEMPTS; attempt++)); do
+    pid=$(resolve_website_worker_pid || true)
+    if [[ -n "${pid}" ]]; then
+      echo "${pid}" >"${pid_file}"
+      return 0
+    fi
+    sleep "${STARTUP_DETECT_INTERVAL_SECONDS}"
+  done
+
+  return 1
+}
+
+resolve_website_worker_pid() {
+  if ! command -v pgrep >/dev/null 2>&1; then
+    return 1
+  fi
+  local pid
+  local command
+  while read -r pid; do
+    [[ -z "${pid}" ]] && continue
+    command=$(pid_command "${pid}")
+    if is_website_worker_process "${command}"; then
+      echo "${pid}"
+      return 0
+    fi
+  done < <(pgrep -f "workers/website_processing_worker.py" || true)
   return 1
 }
 
@@ -920,6 +964,55 @@ cleanup_ingestion_workers() {
   fi
 }
 
+start_website_worker() {
+  if [[ "${command}" == "start" ]]; then
+    local existing_pid
+    existing_pid=$(resolve_website_worker_pid || true)
+    if [[ -n "${existing_pid}" ]]; then
+      echo "Website processing worker already running (PID ${existing_pid})."
+      echo "${existing_pid}" >"${WEBSITE_WORKER_PID}"
+      return
+    fi
+  fi
+  cleanup_website_workers
+  echo "Starting website processing worker..."
+  (cd backend && {
+    if [[ ${use_doppler} -eq 1 ]]; then
+      doppler run --preserve-env="SUPABASE_URL,LOG_REQUESTS" -- env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/website_processing_worker.py
+    else
+      env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/website_processing_worker.py
+    fi
+  } || {
+    echo "uv run failed; falling back to venv for website processing worker..."
+    install_backend_deps_fallback
+    if [[ ${use_doppler} -eq 1 ]]; then
+      doppler run --preserve-env="SUPABASE_URL,LOG_REQUESTS" -- env PYTHONPATH=. PYTHONUNBUFFERED=1 "${REPO_ROOT}/backend/.venv/bin/python" workers/website_processing_worker.py
+    else
+      env PYTHONPATH=. PYTHONUNBUFFERED=1 "${REPO_ROOT}/backend/.venv/bin/python" workers/website_processing_worker.py
+    fi
+  }) >"${WEBSITE_WORKER_LOG}" 2>&1 </dev/null &
+  echo $! >"${WEBSITE_WORKER_PID}"
+  if ! wait_for_website_worker_process "${WEBSITE_WORKER_PID}"; then
+    echo "Website processing worker did not stay running. Check logs: ${WEBSITE_WORKER_LOG}"
+  fi
+}
+
+cleanup_website_workers() {
+  local pid
+  local command
+
+  if command -v pgrep >/dev/null 2>&1; then
+    while read -r pid; do
+      [[ -z "${pid}" ]] && continue
+      command=$(pid_command "${pid}")
+      if [[ "${command}" == *"workers/website_processing_worker.py"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]; then
+        echo "Cleaning website processing worker (PID ${pid})..."
+        stop_pid "${pid}"
+      fi
+    done < <(pgrep -f "workers/website_processing_worker.py" || true)
+  fi
+}
+
 stop_service() {
   local pid_file="$1"
   local name="$2"
@@ -1054,6 +1147,15 @@ cleanup_services() {
     rm -f "${INGESTION_PID}"
   fi
 
+  if [[ -f "${WEBSITE_WORKER_PID}" ]]; then
+    pid=$(cat "${WEBSITE_WORKER_PID}")
+    if kill -0 "${pid}" >/dev/null 2>&1; then
+      echo "Cleaning website processing worker (PID ${pid})..."
+      stop_pid "${pid}"
+    fi
+    rm -f "${WEBSITE_WORKER_PID}"
+  fi
+
 }
 
 status_service() {
@@ -1083,6 +1185,8 @@ status_service() {
       pid=$(resolve_pid_for_port 3000 frontend || true)
     elif [[ "${role}" == "ingestion" ]]; then
       pid=$(resolve_ingestion_pid || true)
+    elif [[ "${role}" == "website-worker" ]]; then
+      pid=$(resolve_website_worker_pid || true)
     elif [[ "${role}" == "docs" ]]; then
       pid=$(resolve_pid_for_port 3001 docs || true)
     elif [[ "${role}" == "design-docs" ]]; then
@@ -1137,6 +1241,9 @@ show_logs() {
     ingestion)
       tail -n 200 "${INGESTION_LOG}" || true
       ;;
+    website-worker)
+      tail -n 200 "${WEBSITE_WORKER_LOG}" || true
+      ;;
     docs)
       tail -n 200 "${DOCS_LOG}" || true
       ;;
@@ -1156,6 +1263,8 @@ show_logs() {
       tail -n 200 "${FRONTEND_LOG}" || true
       echo "--- Ingestion worker logs (${INGESTION_LOG}) ---"
       tail -n 200 "${INGESTION_LOG}" || true
+      echo "--- Website processing worker logs (${WEBSITE_WORKER_LOG}) ---"
+      tail -n 200 "${WEBSITE_WORKER_LOG}" || true
       echo "--- Docs logs (${DOCS_LOG}) ---"
       tail -n 200 "${DOCS_LOG}" || true
       echo "--- Design docs logs (${DESIGN_DOCS_LOG}) ---"
@@ -1182,6 +1291,7 @@ case "${command}" in
     start_backend
     start_frontend
     start_ingestion_worker
+    start_website_worker
     start_docs
     start_design_docs
     start_website
@@ -1192,6 +1302,7 @@ case "${command}" in
     stop_service "${BACKEND_PID}" "backend" "backend" "8001"
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
+    stop_service "${WEBSITE_WORKER_PID}" "website processing worker" "website-worker"
     stop_service "${DOCS_PID}" "docs" "docs" "3001"
     stop_service "${DESIGN_DOCS_PID}" "design docs" "design-docs" "3002"
     stop_service "${WEBSITE_PID}" "website" "website" "5173"
@@ -1203,6 +1314,7 @@ case "${command}" in
     stop_service "${BACKEND_PID}" "backend" "backend" "8001"
     stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
     stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
+    stop_service "${WEBSITE_WORKER_PID}" "website processing worker" "website-worker"
     stop_service "${DOCS_PID}" "docs" "docs" "3001"
     stop_service "${DESIGN_DOCS_PID}" "design docs" "design-docs" "3002"
     stop_service "${WEBSITE_PID}" "website" "website" "5173"
@@ -1212,6 +1324,7 @@ case "${command}" in
     start_backend
     start_frontend
     start_ingestion_worker
+    start_website_worker
     start_docs
     start_design_docs
     start_website
@@ -1225,6 +1338,7 @@ case "${command}" in
     status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}" "backend"
     status_service "${FRONTEND_PID}" "Frontend" "http://app.trysidebar.localhost:3000" "${FRONTEND_LOG}" "frontend"
     status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}" "ingestion"
+    status_service "${WEBSITE_WORKER_PID}" "Website processing worker" "n/a" "${WEBSITE_WORKER_LOG}" "website-worker"
     status_service "${DOCS_PID}" "Docs" "http://localhost:3001" "${DOCS_LOG}" "docs"
     status_service "${DESIGN_DOCS_PID}" "Design docs" "http://localhost:3002" "${DESIGN_DOCS_LOG}" "design-docs"
     status_service "${WEBSITE_PID}" "Website" "http://localhost:5173" "${WEBSITE_LOG}" "website"

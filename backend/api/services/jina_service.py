@@ -11,6 +11,7 @@ import httpx
 
 from api.config import settings
 from api.services.jina_cleanup import clean_markdown_universal, clean_markdown_verge
+from api.services.web_save_parser_forbes import extract_forbes_article_markdown
 from api.services.website_title_service import resolve_website_title
 
 logger = logging.getLogger(__name__)
@@ -159,6 +160,14 @@ class JinaService:
             cleaned = JinaService._cleanup_wsj_markdown(cleaned)
         elif domain == "theverge.com" or domain.endswith(".theverge.com"):
             cleaned = clean_markdown_verge(cleaned)
+        elif domain == "forbes.com" or domain.endswith(".forbes.com"):
+            cleaned = (
+                extract_forbes_article_markdown(
+                    cleaned,
+                    source=source_url,
+                )
+                or cleaned
+            )
         cleaned = clean_markdown_universal(cleaned)
         return cleaned.strip()
 

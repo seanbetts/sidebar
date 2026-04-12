@@ -287,6 +287,75 @@ Meet the One Woman Anthropic Trusts to Teach AI Morals
     assert cleaned.count(repeated) == 1
 
 
+def test_clean_markdown_for_source_forbes_extracts_article_body():
+    markdown = """
+*   [Forbes Asia](https://www.forbes.com/forbesasia/)
+        *   [Free Issue of Forbes](https://w1.buysub.com/pubs/B4/FRB/free.jsp)
+
+Today's Highlights
+
+[Tax Breaks: The Final Countdown To Tax Day Edition](http://www.forbes.com/sites/tax-breaks/2026/04/11/example/)
+
+[Innovation](https://www.forbes.com/innovation/)[Consumer Tech](https://www.forbes.com/consumer-tech/)
+
+# Here’s The Most Affordable Humanoid Robot You Can Buy Now
+
+By[John Koetsier](https://www.forbes.com/sites/johnkoetsier/),
+
+Senior Contributor.
+
+Forbes contributors publish independent expert analyses and insights.
+
+Apr 12, 2026, 01:39am EDT
+
+![Image 12: Screenshot of some of the Unitree R1's features](https://imageio.forbes.com/robot-1.jpg)
+
+Starting next week, you’re going to be able to buy the world’s cheapest humanoid robot.
+
+Here’s what you can expect from a Unitree R1 humanoid robot:
+
+*   Height: four feet tall (1.2 meters)
+*   Weight: 60 pounds (27 kilograms)
+
+PROMOTED
+
+Within the EDU series of R1 robots, there are various options:
+
+*   EDU Pro A ships with 7 DOF agile hands but no touch sensors
+
+More importantly, if this is the current standard for a low-end humanoid robot, we should be able to purchase much more capable and useful models within a year or two.
+
+![Image 13: 1X says Neo will do your housework for $20,000, or $500/month.](https://imageio.forbes.com/robot-2.jpg)
+
+1X says Neo will do your housework for $20,000, or $500/month.
+
+[Explore More Newsletters](https://account.forbes.com/newsletters)
+
+[Explore More Newsletters](https://account.forbes.com/newsletters)
+
+1X’s Neo, for instance, is currently available for pre-order.
+
+FORBES’ FEATURED Video
+
+[Editorial Standards](https://www.forbes.com/sites/forbesstaff/article/forbes-editorial-values-and-standards/)[Reprints & Permissions](https://www.parsintl.com/publications/forbes/)
+"""
+
+    cleaned = JinaService.clean_markdown_for_source(
+        markdown,
+        "https://www.forbes.com/sites/johnkoetsier/2026/04/12/heres-the-most-affordable-humanoid-robot-you-can-buy-now/",
+    )
+
+    assert cleaned.startswith("# Here’s The Most Affordable Humanoid Robot You Can Buy Now")
+    assert "Today's Highlights" not in cleaned
+    assert "[Forbes Asia]" not in cleaned
+    assert "PROMOTED" not in cleaned
+    assert "FORBES’ FEATURED Video" not in cleaned
+    assert "[Explore More Newsletters]" not in cleaned
+    assert "[Editorial Standards]" not in cleaned
+    assert "Starting next week" in cleaned
+    assert "1X’s Neo, for instance, is currently available for pre-order." in cleaned
+
+
 def _status_response(status_code: int, url: str, text: str = "") -> httpx.Response:
     request = httpx.Request("GET", url)
     return httpx.Response(status_code, request=request, text=text)
