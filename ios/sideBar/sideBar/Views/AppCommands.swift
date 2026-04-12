@@ -53,14 +53,12 @@ struct SidebarCommands: Commands {
                 }
             }
 
-            CommandGroup(replacing: .sidebar) {
+            CommandGroup(before: .toolbar) {
                 Button("Toggle Sidebar") {
                     environment.emitShortcutAction(.toggleSidebar)
                 }
                 .keyboardShortcut("s", modifiers: [.command, .option])
-            }
 
-            CommandGroup(after: .sidebar) {
                 Button("Scratchpad") {
                     environment.emitShortcutAction(.openScratchpad)
                 }

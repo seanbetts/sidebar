@@ -158,8 +158,7 @@ final class AppCommandsTests: XCTestCase {
         let normalized = try normalizedAppCommandsSource()
 
         XCTAssertFalse(normalized.contains("CommandMenu(\"View\")"))
-        XCTAssertTrue(normalized.contains("CommandGroup(replacing:.sidebar){"))
-        XCTAssertTrue(normalized.contains("CommandGroup(after:.sidebar){"))
+        XCTAssertTrue(normalized.contains("CommandGroup(before:.toolbar){"))
         XCTAssertTrue(
             normalized.contains(
                 "Button(\"ToggleSidebar\"){environment.emitShortcutAction(.toggleSidebar)}"
