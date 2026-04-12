@@ -38,7 +38,7 @@ extension IngestionViewModel {
             mimeType: item.file.mimeOriginal,
             derivativeKind: item.recommendedViewer
         )
-        return inferredKind.supportsCopyText
+        return inferredKind.supportsCopyText || inferredKind == .pdf
     }
 
     func loadCopyTextContent(fileId: String) async -> String? {

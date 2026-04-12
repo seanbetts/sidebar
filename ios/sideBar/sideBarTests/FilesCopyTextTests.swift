@@ -42,6 +42,18 @@ final class FilesCopyTextTests: XCTestCase {
         )
     }
 
+    func testCanCopyTextReturnsTrueForPdfItemWithoutCachedMeta() {
+        let fixture = makeFixture(items: [
+            makeItem(id: "pdf-file", mimeType: "application/pdf", recommendedViewer: "viewer_pdf")
+        ])
+
+        XCTAssertTrue(
+            fixture.viewModel.canCopyText(
+                for: makeItem(id: "pdf-file", mimeType: "application/pdf", recommendedViewer: "viewer_pdf")
+            )
+        )
+    }
+
     func testLoadCopyTextContentReturnsViewerTextWithoutRefetching() async {
         let file = makeFile(id: "text-file", mimeType: "text/plain")
         let meta = makeMeta(
@@ -164,6 +176,16 @@ final class FilesCopyTextTests: XCTestCase {
 
         XCTAssertTrue(textTitles.contains("Copy Text"))
         XCTAssertFalse(imageTitles.contains("Copy Text"))
+    }
+
+    func testFilesPanelContextMenuShowsCopyTextForPdfItems() {
+        let pdfItem = makeItem(id: "pdf-file", mimeType: "application/pdf", recommendedViewer: "viewer_pdf")
+        let fixture = makeFixture(items: [pdfItem])
+        let view = FilesPanelView(viewModel: fixture.viewModel, showsHeader: false)
+
+        let pdfTitles = view.fileContextMenuItemsList(for: pdfItem).map(\.title)
+
+        XCTAssertTrue(pdfTitles.contains("Copy Text"))
     }
 
     func testFilesPanelCopyTextActionDoesNotSelectFileBeforeCopying() throws {
