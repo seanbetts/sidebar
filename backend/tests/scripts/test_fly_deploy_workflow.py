@@ -55,6 +55,41 @@ def test_fly_deploy_workflow_verifies_ingestion_machine_is_started() -> None:
     assert 'machine.get("state") == "started"' in run_script
 
 
+def test_fly_deploy_workflow_scales_website_process_group() -> None:
+    """Fly deploy should explicitly keep one website worker machine running."""
+    workflow = _workflow()
+    deploy_steps = workflow["jobs"]["deploy"]["steps"]
+
+    matching_steps = [
+        step
+        for step in deploy_steps
+        if step.get("name") == "Ensure website worker machine is running"
+    ]
+
+    assert matching_steps, "Missing website worker scale step"
+    assert (
+        "flyctl -c fly.toml scale count 1 --process-group website --region lhr"
+        in matching_steps[0]["run"]
+    )
+
+
+def test_fly_deploy_workflow_verifies_website_machine_is_started() -> None:
+    """Fly deploy should fail fast if the website worker machine is not started."""
+    workflow = _workflow()
+    deploy_steps = workflow["jobs"]["deploy"]["steps"]
+
+    matching_steps = [
+        step
+        for step in deploy_steps
+        if step.get("name") == "Verify website worker machine state"
+    ]
+
+    assert matching_steps, "Missing website worker verification step"
+    run_script = matching_steps[0]["run"]
+    assert 'machine_process_group(machine) == "website"' in run_script
+    assert 'machine.get("state") == "started"' in run_script
+
+
 def test_fly_deploy_workflow_authenticates_with_flyctl_before_push() -> None:
     """Fly deploy should refresh registry auth right before pushing the image."""
     workflow = _workflow()
