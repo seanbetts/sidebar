@@ -6,7 +6,6 @@ import asyncio
 import json
 import subprocess
 import threading
-import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -258,12 +257,11 @@ class TestSkillExecutorExecution:
         """Long-running script execution should not block unrelated loop callbacks."""
         callback_fired = threading.Event()
         callback_seen_during_run: list[bool] = []
+        to_thread_called = False
 
         def fake_run(*args, **kwargs):
             del args, kwargs
-            time.sleep(0.05)
             callback_seen_during_run.append(callback_fired.is_set())
-            time.sleep(0.05)
             return subprocess.CompletedProcess(
                 args=["python", "echo.py"],
                 returncode=0,
@@ -273,12 +271,24 @@ class TestSkillExecutorExecution:
 
         monkeypatch.setattr(subprocess, "run", fake_run)
 
+        async def fake_to_thread(func, *args, **kwargs):
+            nonlocal to_thread_called
+            to_thread_called = True
+            await asyncio.sleep(0)
+            return func(*args, **kwargs)
+
+        monkeypatch.setattr(
+            "api.services.agent.skills.executor.asyncio.to_thread",
+            fake_to_thread,
+        )
+
         loop = asyncio.get_running_loop()
-        loop.call_later(0.02, callback_fired.set)
+        loop.call_soon(callback_fired.set)
 
         result = await executor.execute("test-skill", "echo.py", ["hello"])
 
         assert result["success"] is True
+        assert to_thread_called is True
         assert callback_seen_during_run == [True]
 
     @pytest.mark.asyncio
