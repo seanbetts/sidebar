@@ -126,7 +126,6 @@ public final class WidgetDataManager {
   public func updateAuthState(isAuthenticated: Bool) {
     guard let defaults = userDefaults else { return }
     defaults.set(isAuthenticated, forKey: authKey)
-    defaults.synchronize()
     recordDiagnostics(
       stage: "update_auth_state",
       message: "Updated widget auth state.",
@@ -149,7 +148,6 @@ public final class WidgetDataManager {
     defaults.removeObject(forKey: legacyPendingCompletionsKey)
     defaults.removeObject(forKey: legacyPendingAddTaskKey)
     defaults.removeObject(forKey: Self.pendingQuickSaveKey)
-    defaults.synchronize()
     recordDiagnostics(
       stage: "clear_all_for_sign_out",
       message: "Cleared widget bridge data for sign-out."
@@ -173,7 +171,6 @@ public final class WidgetDataManager {
     setOptionalString(r2Endpoint?.absoluteString, forKey: faviconR2EndpointKey, in: defaults)
     setOptionalString(r2FaviconBucket, forKey: faviconR2BucketKey, in: defaults)
     setOptionalString(r2FaviconPublicBaseUrl?.absoluteString, forKey: faviconR2PublicBaseUrlKey, in: defaults)
-    defaults.synchronize()
     recordDiagnostics(
       stage: "update_favicon_configuration",
       message: "Updated widget favicon configuration.",
@@ -222,7 +219,6 @@ public final class WidgetDataManager {
     }
 
     defaults.set(true, forKey: migrationKey)
-    defaults.synchronize()
   }
 
   /// Removes invalid pending task completion operations that can never be applied server-side.
@@ -246,7 +242,6 @@ public final class WidgetDataManager {
     } else if let encoded = try? Self.makeEncoder().encode(filtered) {
       defaults.set(encoded, forKey: WidgetContentType.tasks.pendingKey)
     }
-    defaults.synchronize()
   }
 
   // MARK: - Widget Reload
@@ -332,7 +327,6 @@ extension WidgetDataManager {
   public func recordPendingQuickSave(url: URL) {
     guard let defaults = userDefaults else { return }
     defaults.set(url.absoluteString, forKey: Self.pendingQuickSaveKey)
-    defaults.synchronize()
     recordDiagnostics(
       stage: "record_pending_quick_save",
       message: "Recorded widget quick save URL.",
@@ -354,7 +348,6 @@ extension WidgetDataManager {
       return nil
     }
     defaults.removeObject(forKey: Self.pendingQuickSaveKey)
-    defaults.synchronize()
     recordDiagnostics(
       stage: "consume_pending_quick_save",
       message: "Consumed widget quick save URL.",

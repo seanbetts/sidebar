@@ -39,6 +39,8 @@ public final class ExternalSurfaceDiagnosticsStore: ExternalSurfaceDiagnosticsRe
 
     private let key = "externalSurfaceDiagnostics"
     private let maxEntries = 200
+    private let stateLock = NSLock()
+    private var cachedEntries: [ExternalSurfaceDiagnosticEntry]?
 
     private init() {}
 
@@ -60,8 +62,7 @@ public final class ExternalSurfaceDiagnosticsStore: ExternalSurfaceDiagnosticsRe
     }
 
     public func recentEntries(limit: Int = 50) -> [ExternalSurfaceDiagnosticEntry] {
-        guard let defaults = userDefaults else { return [] }
-        let entries = loadEntries(defaults: defaults)
+        let entries = loadEntries()
         guard limit > 0 else { return entries }
         return Array(entries.suffix(limit))
     }
@@ -88,34 +89,55 @@ public final class ExternalSurfaceDiagnosticsStore: ExternalSurfaceDiagnosticsRe
     }
 
     public func clear() {
+        stateLock.lock()
+        cachedEntries = []
+        stateLock.unlock()
         guard let defaults = userDefaults else { return }
         defaults.removeObject(forKey: key)
-        defaults.synchronize()
     }
 
     private func append(_ entry: ExternalSurfaceDiagnosticEntry) -> Bool {
-        guard let defaults = userDefaults else { return false }
-        var entries = loadEntries(defaults: defaults)
+        var entries = loadEntries()
         entries.append(entry)
         if entries.count > maxEntries {
             entries.removeFirst(entries.count - maxEntries)
         }
+        stateLock.lock()
+        cachedEntries = entries
+        stateLock.unlock()
 
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(entries) {
-            defaults.set(data, forKey: key)
-            defaults.synchronize()
-            return true
+        guard let defaults = userDefaults,
+              let data = try? encoder.encode(entries) else {
+            return false
         }
-        return false
+        defaults.set(data, forKey: key)
+        return true
     }
 
-    private func loadEntries(defaults: UserDefaults) -> [ExternalSurfaceDiagnosticEntry] {
-        guard let data = defaults.data(forKey: key) else { return [] }
+    private func loadEntries() -> [ExternalSurfaceDiagnosticEntry] {
+        stateLock.lock()
+        if let cachedEntries {
+            stateLock.unlock()
+            return cachedEntries
+        }
+        stateLock.unlock()
+
+        guard let defaults = userDefaults,
+              let data = defaults.data(forKey: key) else {
+            stateLock.lock()
+            cachedEntries = []
+            stateLock.unlock()
+            return []
+        }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return (try? decoder.decode([ExternalSurfaceDiagnosticEntry].self, from: data)) ?? []
+        let decoded = (try? decoder.decode([ExternalSurfaceDiagnosticEntry].self, from: data)) ?? []
+        stateLock.lock()
+        cachedEntries = decoded
+        stateLock.unlock()
+        return decoded
     }
 
     private var userDefaults: UserDefaults? {

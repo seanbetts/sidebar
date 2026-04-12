@@ -463,7 +463,7 @@ final class SupabaseAuthAdapterTests: XCTestCase {
         XCTAssertNil(try store.loadSessionData(forKey: "supabase.session"))
     }
 
-    private func makeUserDefaults() -> UserDefaults {
+    func makeUserDefaults() -> UserDefaults {
         let isolated = TestIsolation.makeUserDefaults(prefix: "SupabaseAuthAdapterTests")
         isolatedDefaults.append(isolated)
         return isolated.defaults

@@ -36,6 +36,10 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     var archivedSyncLoaded = false
     let archivedRefreshWaitTimeoutNanoseconds: UInt64
     let archivedRefreshPollIntervalNanoseconds: UInt64
+    let persistenceQueue = DispatchQueue(
+        label: "ai.sidebar.sidebar.websites-persistence",
+        qos: .utility
+    )
 
     public init(
         api: any WebsitesProviding,

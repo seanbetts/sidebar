@@ -136,3 +136,71 @@ extension SupabaseAuthAdapterTests {
         }
     }
 }
+
+final class BlockingAuthStateStore: AuthStateStore, @unchecked Sendable {
+    private let lock = NSLock()
+    private let writeSemaphore = DispatchSemaphore(value: 0)
+    private var shouldBlockWrites = false
+
+    private(set) var persistedAccessToken: String?
+    private(set) var persistedUserId: String?
+
+    func blockWrites() {
+        lock.lock()
+        shouldBlockWrites = true
+        lock.unlock()
+    }
+
+    func releaseWrites() {
+        lock.lock()
+        let wasBlocking = shouldBlockWrites
+        shouldBlockWrites = false
+        lock.unlock()
+        if wasBlocking {
+            writeSemaphore.signal()
+            writeSemaphore.signal()
+        }
+    }
+
+    func saveAccessToken(_ token: String?) throws {
+        waitIfNeeded()
+        lock.lock()
+        persistedAccessToken = token
+        lock.unlock()
+    }
+
+    func saveUserId(_ userId: String?) throws {
+        waitIfNeeded()
+        lock.lock()
+        persistedUserId = userId
+        lock.unlock()
+    }
+
+    func loadAccessToken() throws -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return persistedAccessToken
+    }
+
+    func loadUserId() throws -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return persistedUserId
+    }
+
+    func clear() throws {
+        lock.lock()
+        persistedAccessToken = nil
+        persistedUserId = nil
+        lock.unlock()
+    }
+
+    private func waitIfNeeded() {
+        lock.lock()
+        let shouldWait = shouldBlockWrites
+        lock.unlock()
+        if shouldWait {
+            _ = writeSemaphore.wait(timeout: .now() + 5)
+        }
+    }
+}

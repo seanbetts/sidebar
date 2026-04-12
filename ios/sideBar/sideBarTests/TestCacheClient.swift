@@ -29,11 +29,7 @@ final class TestCacheClient: CacheClient, @unchecked Sendable {
         return try? decoder.decode(T.self, from: entry.data)
     }
 
-    func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval) {
-        let encoder = JSONEncoder()
-        guard let data = try? encoder.encode(value) else {
-            return
-        }
+    func setEncoded(key: String, payload data: Data, typeName _: String, ttlSeconds: TimeInterval) {
         lock.lock()
         storage[key] = Entry(expiresAt: Date().addingTimeInterval(ttlSeconds), data: data)
         lock.unlock()

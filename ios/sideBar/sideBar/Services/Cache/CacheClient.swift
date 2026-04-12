@@ -5,12 +5,28 @@ import OSLog
 /// Defines the requirements for CacheClient.
 public protocol CacheClient: AnyObject {
     func get<T: Codable>(key: String) -> T?
-    func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval)
+    func setEncoded(key: String, payload: Data, typeName: String, ttlSeconds: TimeInterval)
     func remove(key: String)
     func clear()
 }
 
 public extension CacheClient {
+    func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval) {
+        let encoder = JSONEncoder()
+        do {
+            let payload = try encoder.encode(value)
+            setEncoded(
+                key: key,
+                payload: payload,
+                typeName: String(reflecting: T.self),
+                ttlSeconds: ttlSeconds
+            )
+        } catch {
+            Logger(subsystem: "sideBar", category: "Cache")
+                .error("Cache encode failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     /// Invalidate a list cache and optionally a related detail cache.
     func invalidateList(
         listKey: String,
@@ -66,16 +82,8 @@ public final class InMemoryCacheClient: CacheClient {
         }
     }
 
-    public func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval) {
-        let data: Data
-        do {
-            let encoder = JSONEncoder()
-            data = try encoder.encode(value)
-        } catch {
-            logger.error("Cache encode failed: \(error.localizedDescription, privacy: .public)")
-            return
-        }
-        let entry = Entry(expiresAt: Date().addingTimeInterval(ttlSeconds), data: data)
+    public func setEncoded(key: String, payload: Data, typeName _: String, ttlSeconds: TimeInterval) {
+        let entry = Entry(expiresAt: Date().addingTimeInterval(ttlSeconds), data: payload)
         queue.sync {
             storage[key] = entry
         }

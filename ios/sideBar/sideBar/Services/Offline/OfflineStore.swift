@@ -35,7 +35,6 @@ public struct OfflineSnapshotRetention: Sendable {
 
 }
 
-@MainActor
 /// Durable Core Data-backed storage for offline snapshots.
 public final class OfflineStore {
     private let container: NSPersistentContainer
@@ -63,10 +62,14 @@ public final class OfflineStore {
     public func set<T: Encodable>(key: String, entityType: String, value: T, lastSyncAt: Date?) {
         do {
             let data = try encoder.encode(value)
-            upsertEntry(key: key, entityType: entityType, payload: data, lastSyncAt: lastSyncAt)
+            setEncoded(key: key, entityType: entityType, payload: data, lastSyncAt: lastSyncAt)
         } catch {
             logger.error("OfflineStore set failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    public func setEncoded(key: String, entityType: String, payload: Data, lastSyncAt: Date?) {
+        upsertEntry(key: key, entityType: entityType, payload: payload, lastSyncAt: lastSyncAt)
     }
 
     public func lastSyncAt(for key: String) -> Date? {

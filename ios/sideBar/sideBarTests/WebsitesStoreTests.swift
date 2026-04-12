@@ -782,6 +782,38 @@ extension WebsitesStoreTests {
         XCTAssertEqual(store.active?.youtubeTranscripts?[videoId]?.status, "ready")
         XCTAssertEqual(store.active?.youtubeTranscripts?[videoId]?.fileId, "file-1")
     }
+
+    func testApplySyncItemReturnsBeforeCachePersistenceCompletesAndKeepsWidgetSnapshotCurrent() async throws {
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
+        let cache = BlockingCacheClient()
+        cache.blockSet()
+        defer { cache.releaseSet() }
+        let widgetDataManager = makeWidgetDataManager()
+        let store = WebsitesStore(
+            api: api,
+            cache: cache,
+            widgetDataManager: widgetDataManager
+        )
+        let item = makeWebsiteItem(
+            id: "website-1",
+            archived: false,
+            updatedAt: "2026-04-11T19:57:06Z"
+        )
+
+        let applyReturned = expectation(description: "apply sync item returned")
+        Task { @MainActor in
+            store.applySyncItem(item)
+            applyReturned.fulfill()
+        }
+
+        await fulfillment(of: [applyReturned], timeout: 0.2)
+
+        let snapshot: WidgetWebsiteData = widgetDataManager.load(for: .websites)
+        XCTAssertEqual(snapshot.websites.map(\.id), ["website-1"])
+    }
 }
 
 @MainActor
@@ -927,5 +959,50 @@ actor WebsitesStoreRequestedDetailIDStore {
 
     var current: [String] {
         ids
+    }
+}
+
+final class BlockingCacheClient: CacheClient, @unchecked Sendable {
+    private let lock = NSLock()
+    private let setSemaphore = DispatchSemaphore(value: 0)
+    private let backing = TestCacheClient()
+    private var shouldBlockSet = false
+
+    func blockSet() {
+        lock.lock()
+        shouldBlockSet = true
+        lock.unlock()
+    }
+
+    func releaseSet() {
+        lock.lock()
+        let wasBlocking = shouldBlockSet
+        shouldBlockSet = false
+        lock.unlock()
+        if wasBlocking {
+            setSemaphore.signal()
+        }
+    }
+
+    func get<T: Codable>(key: String) -> T? {
+        backing.get(key: key)
+    }
+
+    func setEncoded(key: String, payload data: Data, typeName: String, ttlSeconds: TimeInterval) {
+        lock.lock()
+        let shouldWait = shouldBlockSet
+        lock.unlock()
+        if shouldWait {
+            _ = setSemaphore.wait(timeout: .now() + 5)
+        }
+        backing.setEncoded(key: key, payload: data, typeName: typeName, ttlSeconds: ttlSeconds)
+    }
+
+    func remove(key: String) {
+        backing.remove(key: key)
+    }
+
+    func clear() {
+        backing.clear()
     }
 }

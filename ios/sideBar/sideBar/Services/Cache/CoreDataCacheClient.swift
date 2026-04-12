@@ -69,18 +69,9 @@ public final class CoreDataCacheClient: CacheClient {
         return decoded
     }
 
-    public func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval) {
-        let data: Data
-        do {
-            data = try JSONEncoder().encode(value)
-        } catch {
-            logger.error("Cache encode failed: \(error.localizedDescription, privacy: .public)")
-            return
-        }
-
+    public func setEncoded(key: String, payload data: Data, typeName: String, ttlSeconds: TimeInterval) {
         let now = Date()
         let expiresAt = now.addingTimeInterval(ttlSeconds)
-        let typeName = String(reflecting: T.self)
 
         backgroundContext.performAndWait {
             let context = backgroundContext

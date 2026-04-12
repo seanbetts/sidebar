@@ -403,14 +403,29 @@ extension WebsitesStore {
             archivedCount: archivedSummary?.count,
             archivedLastUpdated: archivedSummary?.lastUpdated
         )
-        cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: CachePolicy.websitesList)
         let lastSyncAt = Date()
-        offlineStore?.set(
-            key: CacheKeys.websitesList,
-            entityType: "websitesList",
-            value: response,
-            lastSyncAt: lastSyncAt
-        )
+        let payload: Data
+        do {
+            payload = try JSONEncoder().encode(response)
+        } catch {
+            return
+        }
+        let cache = self.cache
+        let offlineStore = self.offlineStore
+        persistenceQueue.async {
+            cache.setEncoded(
+                key: CacheKeys.websitesList,
+                payload: payload,
+                typeName: String(reflecting: WebsitesResponse.self),
+                ttlSeconds: CachePolicy.websitesList
+            )
+            offlineStore?.setEncoded(
+                key: CacheKeys.websitesList,
+                entityType: "websitesList",
+                payload: payload,
+                lastSyncAt: lastSyncAt
+            )
+        }
     }
 
     // MARK: - Spotlight

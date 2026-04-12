@@ -88,7 +88,6 @@ public final class WidgetDataBridge {
 
         if let encoded = try? Self.makeEncoder().encode(data) {
             defaults.set(encoded, forKey: contentType.dataKey)
-            defaults.synchronize()
             diagnosticsRecorder(
                 "store",
                 "Stored widget data snapshot.",
@@ -116,7 +115,6 @@ public final class WidgetDataBridge {
             pending.append(operation)
             if let encoded = try? Self.makeEncoder().encode(pending) {
                 defaults.set(encoded, forKey: contentType.pendingKey)
-                defaults.synchronize()
                 diagnosticsRecorder(
                     "record_pending_operation",
                     "Recorded widget pending operation.",
@@ -136,7 +134,6 @@ public final class WidgetDataBridge {
         guard let defaults = userDefaultsProvider() else { return [] }
         let pending = loadPendingOperations(for: contentType, actionType: actionType)
         defaults.removeObject(forKey: contentType.pendingKey)
-        defaults.synchronize()
         diagnosticsRecorder(
             "consume_pending_operations",
             "Consumed widget pending operations.",
@@ -165,7 +162,6 @@ public final class WidgetDataBridge {
         } else if let encoded = try? Self.makeEncoder().encode(remainingOperations) {
             defaults.set(encoded, forKey: contentType.pendingKey)
         }
-        defaults.synchronize()
         diagnosticsRecorder(
             "consume_matching_pending_operations",
             "Consumed matching widget pending operations.",
@@ -206,7 +202,6 @@ public final class WidgetDataBridge {
         } else if let encoded = try? Self.makeEncoder().encode(filtered) {
             defaults.set(encoded, forKey: contentType.pendingKey)
         }
-        defaults.synchronize()
         diagnosticsRecorder(
             "remove_pending_operation",
             "Removed widget pending operation.",

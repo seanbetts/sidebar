@@ -1,5 +1,5 @@
 import Foundation
-import sideBarShared
+@preconcurrency import sideBarShared
 import Combine
 import Supabase
 import os
@@ -65,6 +65,10 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     private var signInTask: Task<Void, Error>?
     let userDefaults: UserDefaults
     let logger = Logger(subsystem: "sideBar", category: "Auth")
+    private let statePersistenceQueue = DispatchQueue(
+        label: "ai.sidebar.sidebar.auth-state-persistence",
+        qos: .utility
+    )
     private let sessionRefreshLeadTime: TimeInterval = 600  // 10 min before expiry
     private let refreshCooldown: TimeInterval = 60
     let offlineAccessWindow: TimeInterval = 60 * 60 * 24
@@ -277,12 +281,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     public func restoreSession(accessToken: String?, userId: String?) {
         self.accessToken = accessToken
         self.userId = userId
-        do {
-            try stateStore.saveAccessToken(accessToken)
-            try stateStore.saveUserId(userId)
-        } catch {
-            recordError("Unable to save authentication state.")
-        }
+        persistAuthState(accessToken: accessToken, userId: userId)
     }
 
     func applySession(_ session: SupabaseSessionInfo?) {
@@ -416,6 +415,22 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     private func isAuthInvalid(_ error: Error) -> Bool {
         SupabaseAuthRecovery.isAuthInvalid(error)
     }
+
+    private func persistAuthState(accessToken: String?, userId: String?) {
+        let stateStore = self.stateStore
+        statePersistenceQueue.async { [weak self] in
+            do {
+                try stateStore.saveAccessToken(accessToken)
+                try stateStore.saveUserId(userId)
+            } catch {
+                self?.logger.error("Failed to persist auth state: \(error.localizedDescription, privacy: .public)")
+                Task { @MainActor [weak self] in
+                    self?.recordError("Unable to save authentication state.")
+                }
+            }
+        }
+    }
+
     private func clearPersistedAuthState() throws {
         try SupabaseAuthRecovery.clearPersistedAuthState(stateStore: stateStore)
     }
