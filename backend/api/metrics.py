@@ -94,3 +94,22 @@ web_vitals_value = Histogram(
     "Web Vitals measurement values",
     ["name", "rating"],
 )
+
+# Data cleanup metrics
+data_cleanup_actions_total = Counter(
+    "data_cleanup_actions_total",
+    "Total cleanup actions by table and action type",
+    ["table", "action", "status"],
+)
+
+data_cleanup_duration_seconds = Histogram(
+    "data_cleanup_duration_seconds",
+    "Duration of retention cleanup runs",
+    ["phase"],
+)
+
+data_cleanup_backlog_age_seconds = Gauge(
+    "data_cleanup_backlog_age_seconds",
+    "Age of the oldest row past retention cutoff",
+    ["table"],
+)
