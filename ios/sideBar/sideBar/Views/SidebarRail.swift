@@ -140,22 +140,7 @@ public struct SidebarRail: View {
     }
 
     private func iconName(for section: AppSection) -> String {
-        switch section {
-        case .chat:
-            return "bubble"
-        case .notes:
-            return "text.document"
-        case .files:
-            return "folder"
-        case .websites:
-            return "globe"
-        case .tasks:
-            return "checkmark.square"
-        case .skillsStore:
-            return "command.circle"
-        default:
-            return "square.grid.2x2"
-        }
+        section.iconName
     }
 
     static func buttonChrome(isActive: Bool, isHovered: Bool) -> GlassChrome.Kind? {

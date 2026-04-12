@@ -185,7 +185,7 @@ struct SkillsSettingsView: View {
     private func skillLabel(_ skill: SkillItem) -> some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             SkillSymbolIcon(
-                systemName: SkillIconResolver.iconName(for: skill),
+                systemName: SkillIconResolver.settingsIconName(for: skill),
                 appFontStyle: .subheadline,
                 foreground: DesignTokens.Colors.textSecondary
             )
@@ -208,7 +208,7 @@ struct SkillsSettingsView: View {
         SettingsMacSkillRow(
             title: viewModel.displayName(for: skill),
             subtitle: viewModel.displayDescription(for: skill),
-            systemImage: SkillIconResolver.iconName(for: skill)
+            systemImage: SkillIconResolver.settingsIconName(for: skill)
         ) {
             Toggle("", isOn: Binding(
                 get: { isSkillEnabled(skill.id) },
@@ -246,7 +246,7 @@ struct SkillsSettingsView: View {
         SettingsMacSkillRow(
             title: viewModel.displayName(for: skill),
             subtitle: viewModel.displayDescription(for: skill),
-            systemImage: SkillIconResolver.iconName(for: skill)
+            systemImage: SkillIconResolver.settingsIconName(for: skill)
         ) {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 Button("Details") {

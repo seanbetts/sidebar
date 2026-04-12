@@ -110,6 +110,21 @@ enum SkillIconResolver {
         )
     }
 
+    static func settingsIconName(for skill: SkillItem) -> String {
+        switch normalized(skill.id) {
+        case "conversations":
+            return AppSection.chat.iconName
+        case "notes":
+            return AppSection.notes.iconName
+        case "files":
+            return AppSection.files.iconName
+        case "web-save", "websites":
+            return AppSection.websites.iconName
+        default:
+            return iconName(for: skill)
+        }
+    }
+
     static func iconName(skillId: String?, iconKey: String?) -> String {
         if let iconKey, let icon = skillSymbols[normalized(iconKey)] {
             return icon

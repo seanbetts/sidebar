@@ -47,22 +47,7 @@ extension ContentView {
     }
 
     func phoneIconName(for section: AppSection) -> String {
-        switch section {
-        case .notes:
-            return "text.document"
-        case .tasks:
-            return "checkmark.square"
-        case .websites:
-            return "globe"
-        case .files:
-            return "folder"
-        case .skillsStore:
-            return "command.circle"
-        case .chat:
-            return "bubble"
-        default:
-            return "square.grid.2x2"
-        }
+        section.iconName
     }
 
     @ViewBuilder

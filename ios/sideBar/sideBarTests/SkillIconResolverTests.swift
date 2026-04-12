@@ -55,4 +55,36 @@ final class SkillIconResolverTests: XCTestCase {
 
         XCTAssertEqual(SkillIconResolver.iconName(for: skill), "bubble.left.and.bubble.right")
     }
+
+    func testSettingsIconsUseSidebarRailIconsForSectionSkills() {
+        let conversations = SkillItem(
+            id: "conversations",
+            name: "Conversations",
+            description: "Search and rename saved conversations",
+            category: "Productivity"
+        )
+        let notes = SkillItem(
+            id: "notes",
+            name: "Notes",
+            description: "Create and edit notes",
+            category: "Productivity"
+        )
+        let files = SkillItem(
+            id: "files",
+            name: "Files",
+            description: "Read and manage files",
+            category: "Productivity"
+        )
+        let websites = SkillItem(
+            id: "web-save",
+            name: "Websites",
+            description: "Save websites to read later",
+            category: "Productivity"
+        )
+
+        XCTAssertEqual(SkillIconResolver.settingsIconName(for: conversations), AppSection.chat.iconName)
+        XCTAssertEqual(SkillIconResolver.settingsIconName(for: notes), AppSection.notes.iconName)
+        XCTAssertEqual(SkillIconResolver.settingsIconName(for: files), AppSection.files.iconName)
+        XCTAssertEqual(SkillIconResolver.settingsIconName(for: websites), AppSection.websites.iconName)
+    }
 }
