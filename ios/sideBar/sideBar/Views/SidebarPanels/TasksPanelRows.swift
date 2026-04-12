@@ -78,11 +78,9 @@ struct TaskPanelRow: View, Equatable {
         )
         if contextMenuItems.isEmpty {
             row
-                .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
         } else {
             row
                 .platformContextMenu(items: contextMenuItems)
-                .listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected: isSelected))
         }
     }
 
@@ -129,10 +127,6 @@ struct TaskPanelRow: View, Equatable {
     }
 
     private var rowPrimaryAction: (() -> Void)? {
-        #if os(macOS)
-        nil
-        #else
         primaryAction
-        #endif
     }
 }

@@ -6,7 +6,7 @@ import UIKit
 extension TasksPanelView {
     @ViewBuilder
     func tasksPanelList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        sidebarPanelList(selection: taskSelectionBinding) {
+        sidebarPanelList {
             content()
         }
     }
@@ -56,16 +56,6 @@ extension TasksPanelView {
 
     var isCompactPhone: Bool {
         isCompact && isPhone
-    }
-
-    var taskSelectionBinding: Binding<TaskSelection?> {
-        Binding(
-            get: { self.viewModel.selection },
-            set: { newValue in
-                guard let newValue, newValue != self.viewModel.selection else { return }
-                self.activateTaskSelection(newValue)
-            }
-        )
     }
 
     private var isPhone: Bool {

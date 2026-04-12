@@ -266,9 +266,6 @@ extension TasksPanelView {
             onRename: onRename,
             onDelete: onDelete
         )
-        #if os(macOS)
-        .tag(selection)
-        #endif
     }
 
     func activateTaskSelection(_ selection: TaskSelection) {

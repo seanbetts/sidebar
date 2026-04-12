@@ -48,6 +48,12 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         let files = try source(
             at: ["sideBar", "Views", "SidebarPanels", "FilesPanel+Helpers.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let tasks = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "TasksPanel+Computed.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let tasksPanel = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "TasksPanel.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let websites = try source(
             at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel+ListSections.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -65,6 +71,10 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertTrue(files.contains("sidebarPanelList{content()}"))
         XCTAssertFalse(files.contains("sidebarPanelList(selection:fileSelectionBinding){content()}"))
         XCTAssertFalse(files.contains("#ifos(macOS)returnnil#else"))
+
+        XCTAssertTrue(tasks.contains("sidebarPanelList{content()}"))
+        XCTAssertFalse(tasks.contains("sidebarPanelList(selection:taskSelectionBinding){content()}"))
+        XCTAssertFalse(tasksPanel.contains(".tag(selection)"))
 
         XCTAssertTrue(websites.contains("sidebarPanelList{content()}"))
         XCTAssertFalse(websites.contains("sidebarPanelList(selection:websiteSelectionBinding){content()}"))
@@ -110,10 +120,14 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         let conversations = try source(
             at: ["sideBar", "Views", "SidebarPanels", "ConversationsPanelView+Helpers.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let tasks = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "TasksPanelRows.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertFalse(notes.contains("#ifos(macOS)ifitem.isFile{returnnil}#endif"))
         XCTAssertFalse(files.contains("#ifos(macOS)returnnil#else"))
         XCTAssertFalse(conversations.contains("#ifos(macOS)nil#else"))
+        XCTAssertFalse(tasks.contains("#ifos(macOS)nil#else"))
     }
 
     func testSelectableRowOwnsSidebarPanelRowBackgroundChrome() throws {
@@ -132,6 +146,9 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         let noteSearch = try source(
             at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+Helpers.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let tasks = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "TasksPanelRows.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let websites = try source(
             at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel+ListSections.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -145,6 +162,7 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertFalse(pinnedFiles.contains(".listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected:isSelected))"))
         XCTAssertFalse(notes.contains(".listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected:isSelected))"))
         XCTAssertFalse(noteSearch.contains(".tag(node.path)"))
+        XCTAssertFalse(tasks.contains(".listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected:isSelected))"))
         XCTAssertFalse(websites.contains(".listRowBackground(DesignTokens.Colors.sidebarRowBackground(isSelected:isSelected))"))
     }
 
