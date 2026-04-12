@@ -156,6 +156,8 @@ configure_supabase() {
   local project_id
   local pooler_user
   local pooler_port
+  local direct_host
+  local direct_user
   local db_name
   local sslmode
   local pooler_url
@@ -215,11 +217,24 @@ configure_supabase() {
   password="${password//$'\n'/}"
   password="${password//$'\r'/}"
   password_encoded=$(urlencode "${password}")
+  direct_host=$(get_env_value SUPABASE_DB_HOST)
+  if [[ -z "${direct_host}" && -n "${project_id}" ]]; then
+    direct_host="db.${project_id}.supabase.co"
+  fi
+  direct_user=$(get_env_value SUPABASE_DB_USER)
+  direct_user="${direct_user:-postgres}"
   export DATABASE_URL="postgresql://${pooler_user}:${password_encoded}@${pooler_host}:${pooler_port}/${db_name}?sslmode=${sslmode}"
-  export DATABASE_URL_DIRECT="${DATABASE_URL//%/%%}"
+  if [[ -n "${direct_host}" ]]; then
+    export DATABASE_URL_DIRECT="postgresql://${direct_user}:${password_encoded}@${direct_host}:5432/${db_name}?sslmode=${sslmode}"
+  else
+    export DATABASE_URL_DIRECT="${DATABASE_URL}"
+  fi
   export APP_ENV="production"
   echo
   echo "Using Supabase pooler: user=${pooler_user} host=${pooler_host} port=${pooler_port} db=${db_name}"
+  if [[ -n "${direct_host}" ]]; then
+    echo "Using direct migration host: user=${direct_user} host=${direct_host} port=5432 db=${db_name}"
+  fi
   use_doppler=0
 }
 

@@ -28,6 +28,7 @@ def _load_migration_module():
 def test_upgrade_adds_payload_purged_at_to_notes_and_websites() -> None:
     migration = _load_migration_module()
     executed_sql: list[str] = []
+    sleep_calls: list[float] = []
 
     class _AutocommitBlock:
         def __enter__(self):
@@ -36,10 +37,15 @@ def test_upgrade_adds_payload_purged_at_to_notes_and_websites() -> None:
         def __exit__(self, exc_type, exc, tb) -> None:
             return None
 
-    class FakeOp:
+    class FakeBind:
         @staticmethod
         def execute(statement, *_args, **_kwargs) -> None:
             executed_sql.append(str(statement))
+
+    class FakeOp:
+        @staticmethod
+        def get_bind():
+            return FakeBind()
 
         @staticmethod
         def get_context():
@@ -51,6 +57,7 @@ def test_upgrade_adds_payload_purged_at_to_notes_and_websites() -> None:
             return _Context()
 
     migration.op = FakeOp()
+    migration.time.sleep = lambda seconds: sleep_calls.append(seconds)
 
     migration.upgrade()
 
@@ -63,6 +70,7 @@ def test_upgrade_adds_payload_purged_at_to_notes_and_websites() -> None:
         in statement
         for statement in executed_sql
     )
+    assert sleep_calls == []
 
 
 def test_upgrade_creates_cleanup_indexes_for_operational_pruning() -> None:
@@ -76,10 +84,15 @@ def test_upgrade_creates_cleanup_indexes_for_operational_pruning() -> None:
         def __exit__(self, exc_type, exc, tb) -> None:
             return None
 
-    class FakeOp:
+    class FakeBind:
         @staticmethod
         def execute(statement, *_args, **_kwargs) -> None:
             executed_sql.append(str(statement))
+
+    class FakeOp:
+        @staticmethod
+        def get_bind():
+            return FakeBind()
 
         @staticmethod
         def get_context():
