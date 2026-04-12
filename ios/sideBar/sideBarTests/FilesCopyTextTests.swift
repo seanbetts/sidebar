@@ -180,6 +180,20 @@ final class FilesCopyTextTests: XCTestCase {
 
         XCTAssertTrue(normalized.contains("ifviewModel.canCopyTextForSelectedFile{"))
     }
+
+    func testFilesCopyTextShowsSuccessToastAfterClipboardWrite() throws {
+        let headerSource = try filesSource(named: "FilesHeaderActions.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let panelSource = try filesSource(named: "FilesPanel+ContextMenu.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            headerSource.contains("environment.toastCenter.show(message:\"Textcopied\",style:.success")
+        )
+        XCTAssertTrue(
+            panelSource.contains("self.appEnvironment.toastCenter.show(message:\"Textcopied\",style:.success")
+        )
+    }
 }
 
 private struct FilesCopyTextFixture {

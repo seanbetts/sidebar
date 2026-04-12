@@ -99,6 +99,7 @@ extension FilesPanelView {
         let pasteboard = UIPasteboard.general
         pasteboard.string = text
         #endif
+        self.appEnvironment.toastCenter.show(message: "Text copied", style: .success)
         DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
             #if os(macOS)
             let pasteboard = NSPasteboard.general

@@ -284,6 +284,7 @@ struct FilesHeaderActions: View {
         let pasteboard = UIPasteboard.general
         pasteboard.string = text
         #endif
+        environment.toastCenter.show(message: "Text copied", style: .success)
         DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
             #if os(macOS)
             let pasteboard = NSPasteboard.general
