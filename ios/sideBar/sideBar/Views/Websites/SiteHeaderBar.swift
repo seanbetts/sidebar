@@ -13,8 +13,8 @@ public struct SiteHeaderBar: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
     @AppStorage(AppStorageKeys.weatherUsesFahrenheit) private var weatherUsesFahrenheit = false
+    @StateObject private var headerStatusController = HeaderStatusController()
     @State private var isScratchpadPresented = false
-    @State private var isIngestionCenterPresented = false
     private let onSwapContent: (() -> Void)?
     private let onToggleSidebar: (() -> Void)?
     private let onShowSettings: (() -> Void)?
@@ -65,6 +65,28 @@ public struct SiteHeaderBar: View {
                   scratchpadPresentationStyle == .anchoredPopover else { return }
             isScratchpadPresented = true
         }
+        .onReceive(
+            Publishers.CombineLatest4(
+                environment.writeQueue.$failedHeaderRows,
+                environment.writeQueue.$isProcessing,
+                environment.writeQueue.$pendingCount,
+                environment.writeQueue.$failedCount
+            )
+        ) { _ in
+            refreshSyncHeaderStatus()
+        }
+        .onReceive(
+            Publishers.CombineLatest(
+                environment.ingestionViewModel.$itemsVersion,
+                environment.ingestionViewModel.$latestHeaderReadyEvent
+            )
+        ) { _ in
+            refreshIngestionHeaderStatus()
+        }
+        .onAppear {
+            refreshSyncHeaderStatus()
+            refreshIngestionHeaderStatus()
+        }
     }
 
     private var brandView: some View {
@@ -90,46 +112,7 @@ public struct SiteHeaderBar: View {
                     .appFont(.caption2Semibold)
                     .foregroundStyle(.secondary)
             }
-            if environment.writeQueue.pendingCount > 0 || environment.writeQueue.failedCount > 0 {
-                syncStatusPill
-            }
-            if shouldShowIngestionStatus {
-                Button {
-                    isIngestionCenterPresented = true
-                } label: {
-                    HStack(spacing: 6) {
-                        if !environment.ingestionViewModel.activeUploadItems.isEmpty {
-                            LoadingIndicatorView(size: LoadingIndicatorSize.inline)
-                        } else if environment.ingestionViewModel.lastReadyMessage != nil {
-                            SuccessCheckBadge(size: 14, symbolSize: 8)
-                        } else {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .appFont(.caption)
-                                .foregroundStyle(DesignTokens.Colors.error)
-                        }
-                        Text(ingestionStatusText)
-                            .appFont(.captionSemibold)
-                            .foregroundStyle(.secondary)
-                    }
-                    .pillStyle()
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, DesignTokens.Spacing.xxsPlus)
-                .accessibilityLabel("Show uploads")
-                #if os(macOS)
-                .popover(isPresented: $isIngestionCenterPresented, arrowEdge: .top) {
-                    MacPopoverShell(type: ingestionCenterPanelType()) {
-                        IngestionCenterView(viewModel: environment.ingestionViewModel)
-                    }
-                }
-                #else
-                .sheet(isPresented: $isIngestionCenterPresented) {
-                    IngestionCenterView(viewModel: environment.ingestionViewModel)
-                        .phoneSheetGrabBarVisible()
-                        .presentationDetents([.medium, .large])
-                }
-                #endif
-            }
+            headerStatusCluster
         }
         .animation(shouldAnimateSidebar ? .smooth(duration: 0.3) : nil, value: isLeftPanelExpanded)
         .contentShape(Rectangle())
@@ -233,73 +216,15 @@ public struct SiteHeaderBar: View {
         return "\(city), \(country)"
     }
 
-    private var shouldShowIngestionStatus: Bool {
-        !environment.ingestionViewModel.activeUploadItems.isEmpty ||
-            !environment.ingestionViewModel.failedUploadItems.isEmpty ||
-            environment.ingestionViewModel.lastReadyMessage != nil
-    }
-
-    private var syncStatusPill: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(syncStatusColor)
-                .frame(width: 8, height: 8)
-            Text(syncStatusText)
-                .appFont(.captionSemibold)
-                .foregroundStyle(.secondary)
+    private var headerStatusCluster: some View {
+        HStack(spacing: DesignTokens.Spacing.xxsPlus) {
+            ForEach(headerStatusController.visiblePills) { pill in
+                HeaderStatusPillButton(pill: pill) { row, action in
+                    await performHeaderAction(for: pill, row: row, action: action)
+                }
+            }
         }
-        .pillStyle()
-        .accessibilityLabel(syncAccessibilityLabel)
-    }
-
-    private var syncStatusText: String {
-        if environment.writeQueue.isProcessing {
-            return "Syncing"
-        }
-        if environment.writeQueue.activePendingCount > 0 {
-            return "Pending"
-        }
-        return "Sync Error"
-    }
-
-    private var syncStatusColor: Color {
-        if environment.writeQueue.isProcessing {
-            return DesignTokens.Colors.success
-        }
-        if environment.writeQueue.activePendingCount > 0 {
-            return DesignTokens.Colors.warning
-        }
-        return DesignTokens.Colors.error
-    }
-
-    private var syncAccessibilityLabel: String {
-        if environment.writeQueue.isProcessing {
-            return "Syncing pending changes"
-        }
-        if environment.writeQueue.activePendingCount > 0 {
-            return "Pending changes"
-        }
-        return "Sync errors need attention"
-    }
-
-    private var ingestionStatusText: String {
-        let activeItems = environment.ingestionViewModel.activeUploadItems
-        if let label = activeItems
-            .map({ ingestionStatusLabel(for: $0.job) ?? "Processing" })
-            .first(where: { $0 != "Processing" }) {
-            return label
-        }
-        if !activeItems.isEmpty {
-            return "Processing"
-        }
-        let failedCount = environment.ingestionViewModel.failedUploadItems.count
-        if failedCount > 0 {
-            return failedCount == 1 ? "1 Failed" : "\(failedCount) Failed"
-        }
-        if environment.ingestionViewModel.lastReadyMessage != nil {
-            return "Ready"
-        }
-        return ""
+        .padding(.leading, headerStatusController.visiblePills.isEmpty ? 0 : DesignTokens.Spacing.xxsPlus)
     }
 
     static var desktopTrailingActionChrome: GlassChrome.Kind {
@@ -352,6 +277,68 @@ public struct SiteHeaderBar: View {
 
     private var compactTrailingActionControls: some View {
         GlobalAvatarRegionControls()
+    }
+
+    private func refreshSyncHeaderStatus() {
+        headerStatusController.applySync(snapshot: environment.writeQueue.headerStatusSnapshot)
+    }
+
+    private func refreshIngestionHeaderStatus() {
+        headerStatusController.applyIngestion(snapshot: environment.ingestionViewModel.headerStatusSnapshot)
+    }
+
+    private func performHeaderAction(
+        for pill: HeaderStatusPillModel,
+        row: HeaderStatusRowModel,
+        action: HeaderStatusActionModel
+    ) async -> HeaderStatusRowActionResult {
+        switch pill.kind {
+        case .sync:
+            return await performSyncHeaderAction(row: row, action: action)
+        case .ingestion:
+            return await performIngestionHeaderAction(row: row, action: action)
+        }
+    }
+
+    private func performSyncHeaderAction(
+        row: HeaderStatusRowModel,
+        action: HeaderStatusActionModel
+    ) async -> HeaderStatusRowActionResult {
+        guard let writeID = UUID(uuidString: row.id) else {
+            return .failed("This sync item is no longer available.")
+        }
+
+        do {
+            switch action.id {
+            case "retry":
+                try await environment.writeQueue.retryWrite(id: writeID)
+            case "cancel":
+                try await environment.writeQueue.cancelWrite(id: writeID)
+            default:
+                return .failed("This sync action isn't supported.")
+            }
+            return .resolved
+        } catch {
+            refreshSyncHeaderStatus()
+            return .failed("Failed to \(action.title.lowercased()).")
+        }
+    }
+
+    private func performIngestionHeaderAction(
+        row: HeaderStatusRowModel,
+        action: HeaderStatusActionModel
+    ) async -> HeaderStatusRowActionResult {
+        guard action.id == "cancel" else {
+            return .failed("This upload action isn't supported.")
+        }
+
+        do {
+            try await environment.ingestionViewModel.cancelHeaderIngestion(fileId: row.id)
+            return .resolved
+        } catch {
+            refreshIngestionHeaderStatus()
+            return .failed(error.localizedDescription)
+        }
     }
 }
 

@@ -384,35 +384,12 @@ extension IngestionViewModel {
     }
 
     public func cancelIngestion(fileId: String) {
-        guard items.contains(where: { $0.file.id == fileId }) else { return }
-        guard canCancelIngestion(fileId: fileId) else { return }
-
-        if fileId.hasPrefix("local-") {
-            cancelUpload(fileId: fileId)
-            return
-        }
-        guard IdentifierValidation.isServerFileID(fileId) else {
-            store.removeLocalUpload(fileId: fileId)
-            toastCenter.show(message: "Can't cancel this file yet")
-            return
-        }
-
-        if isOfflineForIngestion() {
-            toastCenter.show(message: "Can't cancel while offline")
-            return
-        }
-
         Task { [weak self] in
             guard let self else { return }
             do {
-                try await self.api.cancel(fileId: fileId)
-                if self.selectedFileId == fileId {
-                    self.clearSelection()
-                }
-                self.store.removeItem(fileId: fileId)
-                self.cancelJobPolling(fileId: fileId)
+                try await self.cancelHeaderIngestion(fileId: fileId)
             } catch {
-                self.toastCenter.show(message: "Failed to cancel ingestion")
+                self.toastCenter.show(message: error.localizedDescription)
             }
         }
     }

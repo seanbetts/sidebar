@@ -54,7 +54,7 @@ final class SiteHeaderBarTests: XCTestCase {
 
     func testSiteHeaderBarHandlesScratchpadShortcutWithoutIOSGuard() throws {
         let normalized = try siteHeaderBarSource()
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+            .normalizedForSourceAssertions()
         let scratchpadShortcutHandler =
             ".onReceive(environment.navigation.$shortcutActionEvent){eventin"
             + "guardletevent,event.action==.openScratchpad,"
@@ -67,12 +67,23 @@ final class SiteHeaderBarTests: XCTestCase {
         XCTAssertFalse(normalized.contains("#ifos(iOS).onReceive(environment.navigation.$shortcutActionEvent)"))
     }
 
-    func testSyncStatusSourceDistinguishesFailedWritesFromPendingWrites() throws {
-        let normalized = try siteHeaderBarSource()
-            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+    func testSiteHeaderBarSourceUsesSharedHeaderStatusControllerAndPopover() throws {
+        let normalized = try siteHeaderBarSource().normalizedForSourceAssertions()
 
-        XCTAssertTrue(normalized.contains("return\"SyncError\""))
-        XCTAssertTrue(normalized.contains("return\"Syncerrorsneedattention\""))
+        XCTAssertTrue(normalized.contains("@StateObjectprivatevarheaderStatusController=HeaderStatusController()"))
+        XCTAssertTrue(normalized.contains("privatevarheaderStatusCluster:someView"))
+        XCTAssertTrue(normalized.contains("HeaderStatusPillButton("))
+        XCTAssertFalse(normalized.contains("privatevarsyncStatusPill"))
+        XCTAssertFalse(normalized.contains("privatevarsyncStatusText"))
+        XCTAssertFalse(normalized.contains("privatevaringestionStatusText"))
+        XCTAssertFalse(normalized.contains("environment.writeQueue.pendingCount>0||environment.writeQueue.failedCount>0"))
+        XCTAssertFalse(normalized.contains("IngestionCenterView(viewModel:environment.ingestionViewModel)"))
+    }
+}
+
+private extension String {
+    func normalizedForSourceAssertions() -> String {
+        replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
     }
 }
 

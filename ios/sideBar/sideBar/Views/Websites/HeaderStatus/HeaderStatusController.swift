@@ -9,6 +9,7 @@ final class HeaderStatusController: ObservableObject {
     private var syncSnapshot: HeaderSyncStatusSnapshot?
     private var ingestionSnapshot: HeaderIngestionStatusSnapshot?
     private var expiryTasks: [HeaderStatusKind: Task<Void, Never>] = [:]
+    private var suppressedInformationalPillIDs: [HeaderStatusKind: String] = [:]
 
     convenience init(clock: some Clock<Duration> = ContinuousClock()) {
         self.init(
@@ -40,7 +41,12 @@ final class HeaderStatusController: ObservableObject {
         expiryTasks[kind]?.cancel()
         expiryTasks[kind] = nil
 
-        if let pill = pill(for: kind), let expiresAfter = pill.expiresAfter {
+        let nextPill = pill(for: kind)
+        if nextPill?.expiresAfter == nil || suppressedInformationalPillIDs[kind] != nextPill?.id {
+            suppressedInformationalPillIDs[kind] = nil
+        }
+
+        if let pill = displayedPill(for: kind), let expiresAfter = pill.expiresAfter {
             let pillID = pill.id
             expiryTasks[kind] = Task { [weak self, sleepFor] in
                 await sleepFor(expiresAfter)
@@ -57,6 +63,7 @@ final class HeaderStatusController: ObservableObject {
     private func expire(kind: HeaderStatusKind, pillID: String) {
         guard pill(for: kind)?.id == pillID else { return }
 
+        suppressedInformationalPillIDs[kind] = pillID
         switch kind {
         case .sync:
             syncSnapshot = nil
@@ -70,7 +77,15 @@ final class HeaderStatusController: ObservableObject {
     }
 
     private func recomputeVisiblePills() {
-        visiblePills = HeaderStatusKind.allCases.compactMap { pill(for: $0) }
+        visiblePills = HeaderStatusKind.allCases.compactMap { displayedPill(for: $0) }
+    }
+
+    private func displayedPill(for kind: HeaderStatusKind) -> HeaderStatusPillModel? {
+        guard let candidate = pill(for: kind) else { return nil }
+        if candidate.expiresAfter != nil, suppressedInformationalPillIDs[kind] == candidate.id {
+            return nil
+        }
+        return candidate
     }
 
     private func pill(for kind: HeaderStatusKind) -> HeaderStatusPillModel? {
