@@ -171,13 +171,13 @@ jobs:
         working-directory: backend
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl -c fly.toml scale count 1 --process-group ingestion --region lhr
+        run: flyctl -c fly.toml scale count 1 --yes --process-group ingestion --region lhr
 
       - name: Ensure website worker machine is running
         working-directory: backend
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl -c fly.toml scale count 1 --process-group website --region lhr
+        run: flyctl -c fly.toml scale count 1 --yes --process-group website --region lhr
 
       - name: Verify ingestion worker machine state
         working-directory: backend

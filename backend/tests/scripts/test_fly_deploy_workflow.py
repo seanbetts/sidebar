@@ -29,7 +29,7 @@ def test_fly_deploy_workflow_scales_ingestion_process_group() -> None:
     assert matching_steps, "Missing ingestion worker scale step"
     run_script = matching_steps[0]["run"]
     assert (
-        "flyctl -c fly.toml scale count 1 --process-group ingestion --region lhr"
+        "flyctl -c fly.toml scale count 1 --yes --process-group ingestion --region lhr"
         in run_script
     )
 
@@ -68,7 +68,7 @@ def test_fly_deploy_workflow_scales_website_process_group() -> None:
 
     assert matching_steps, "Missing website worker scale step"
     assert (
-        "flyctl -c fly.toml scale count 1 --process-group website --region lhr"
+        "flyctl -c fly.toml scale count 1 --yes --process-group website --region lhr"
         in matching_steps[0]["run"]
     )
 
