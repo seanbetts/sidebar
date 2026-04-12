@@ -632,6 +632,185 @@ def test_save_url_database_antibot_jina_fastcompany_shell_content_is_rejected(
     assert "upsert_kwargs" not in captured
 
 
+def test_save_url_database_jina_forbes_article_is_cleaned(monkeypatch):
+    module = _load_save_url_module()
+    captured = _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        LocalParseFallbackError(
+            fallback="jina",
+            rule_id="antibot-playwright-challenge",
+            antibot_detection=AntibotDetection(
+                "generic", "captcha-delivery.com challenge"
+            ),
+            stage="playwright",
+        )
+    )
+    article_content = (
+        "* [Forbes Asia](https://www.forbes.com/forbesasia/)\n\n"
+        "Today's Highlights\n\n"
+        "[Tax Breaks: The Final Countdown To Tax Day Edition]"
+        "(https://www.forbes.com/sites/tax-breaks/2026/04/11/example/)\n\n"
+        "Subscribe to the Daily Newsletter\n\n"
+        "[Innovation](https://www.forbes.com/innovation/)"
+        "[Consumer Tech](https://www.forbes.com/consumer-tech/)\n\n"
+        "# Here’s The Most Affordable Humanoid Robot You Can Buy Now\n\n"
+        "By[John Koetsier](https://www.forbes.com/sites/johnkoetsier/),\n\n"
+        "Senior Contributor.\n\n"
+        "Apr 12, 2026, 01:39am EDT\n\n"
+        "![Image 12: Screenshot of some of the Unitree R1's features]"
+        "(https://imageio.forbes.com/robot-1.jpg)\n\n"
+        "Screenshot of some of the Unitree R1's features\n\n"
+        "John Koetsier\n\n"
+        "Starting next week, you’re going to be able to buy the world’s cheapest humanoid robot.\n\n"
+        "Here’s what you can expect from a Unitree R1 humanoid robot:\n\n"
+        "* Height: four feet tall (1.2 meters)\n"
+        "* Weight: 60 pounds (27 kilograms)\n\n"
+        "PROMOTED\n\n"
+        "Within the EDU series of R1 robots, there are various options:\n\n"
+        "* EDU Pro A ships with 7 DOF agile hands\n"
+        "* EDU Pro B has the same hands but tactile sensors\n\n"
+        "MORE FOR YOU\n\n"
+        "### [‘No Deal’— Bitcoin Braces For Crash After Fruitless Vance Iran Talks]"
+        "(http://www.forbes.com/sites/digital-assets/2026/04/11/example/)\n\n"
+        "More importantly, if this is the current standard for a low-end humanoid robot, "
+        "we should be able to purchase much more capable models within a year or two.\n\n"
+        "![Image 13: 1X says Neo will do your housework for $20,000, or $500/month.]"
+        "(https://imageio.forbes.com/robot-2.jpg)\n\n"
+        "1X says Neo will do your housework for $20,000, or $500/month.\n\n"
+        "The Prompt: Get the week’s biggest AI news on the buzziest companies and boldest breakthroughs, in your inbox.\n\n"
+        "1X’s Neo, for instance, is currently available for pre-order.\n\n"
+        "Whether 1X makes its goal, or Unitree makes a more useful robot next year that it sells for $10,000, "
+        "we’re getting close to the reality of being able to have a humanoid robot of our own.\n\n"
+        "[Editorial Standards](https://www.forbes.com/sites/forbesstaff/article/forbes-editorial-values-and-standards/)"
+        "[Reprints & Permissions](https://www.parsintl.com/publications/forbes/)\n\n"
+        "## Join The Conversation\n\n"
+        "Comments\n\n"
+        "LOADING VIDEO PLAYER...\n\n"
+        "NEWSLETTERS\n\n"
+        "Become a Forbes Member\n\n"
+        "![Image 21](https://t.co/i/adsct?x=1)\n"
+    )
+    module.get_markdown_content = lambda _url, _key: (
+        "Title: Here’s The Most Affordable Humanoid Robot You Can Buy Now\n"
+        "URL Source: https://www.forbes.com/sites/johnkoetsier/2026/04/12/heres-the-most-affordable-humanoid-robot-you-can-buy-now/\n"
+        "Markdown Content:\n"
+        f"{article_content}"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Here’s The Most Affordable Humanoid Robot You Can Buy Now",
+            "url_source": (
+                "https://www.forbes.com/sites/johnkoetsier/2026/04/12/"
+                "heres-the-most-affordable-humanoid-robot-you-can-buy-now/"
+            ),
+            "published_time": None,
+        },
+        article_content,
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    module.save_url_database(
+        "https://www.forbes.com/sites/johnkoetsier/2026/04/12/heres-the-most-affordable-humanoid-robot-you-can-buy-now/",
+        "user-1",
+    )
+
+    saved_content = captured["upsert_kwargs"]["content"]
+    assert "Today's Highlights" not in saved_content
+    assert "Subscribe to the Daily Newsletter" not in saved_content
+    assert "PROMOTED" not in saved_content
+    assert "MORE FOR YOU" not in saved_content
+    assert "Join The Conversation" not in saved_content
+    assert "LOADING VIDEO PLAYER" not in saved_content
+    assert "Become a Forbes Member" not in saved_content
+    assert "t.co/i/adsct" not in saved_content
+    assert "# Here’s The Most Affordable Humanoid Robot You Can Buy Now" in saved_content
+    assert "By [John Koetsier]" in saved_content
+    assert "Starting next week, you’re going to be able to buy the world’s cheapest humanoid robot." in saved_content
+    assert "* Height: four feet tall (1.2 meters)" in saved_content
+    assert "More importantly, if this is the current standard for a low-end humanoid robot" in saved_content
+    assert "1X’s Neo, for instance, is currently available for pre-order." in saved_content
+    assert "Whether 1X makes its goal" in saved_content
+    assert "![Image 12: Screenshot of some of the Unitree R1's features]" in saved_content
+    assert "![Image 13: 1X says Neo will do your housework for $20,000, or $500/month.]" in saved_content
+
+
+def test_save_url_database_antibot_jina_forbes_shell_content_is_rejected(
+    monkeypatch,
+):
+    module = _load_save_url_module()
+    captured = _stub_db_dependencies(module)
+
+    monkeypatch.setenv("WEB_SAVE_MODE", "local")
+    monkeypatch.setenv("JINA_API_KEY", "test-key")
+    module.resolve_apple_news_source_url = lambda url: url
+
+    module.parse_url_local = lambda _url: (_ for _ in ()).throw(
+        LocalParseFallbackError(
+            fallback="jina",
+            rule_id="antibot-playwright-challenge",
+            antibot_detection=AntibotDetection(
+                "generic", "captcha-delivery.com challenge"
+            ),
+            stage="playwright",
+        )
+    )
+    shell_content = (
+        "* [Forbes Asia](https://www.forbes.com/forbesasia/)\n\n"
+        "Today's Highlights\n\n"
+        "Subscribe to the Daily Newsletter\n\n"
+        "Games\n\n"
+        "* [Advertise with Forbes](https://www.forbes.com/connect/)\n\n"
+        "[Subscribe: Less than $1.50/wk](https://account.forbes.com/subscribe)\n\n"
+        "My Account Notifications\n\n"
+        "### Get Custom Alerts With Member Perks\n\n"
+        "FORBES’ FEATURED Video\n\n"
+        "NEWSLETTERS\n\n"
+        "Become a Forbes Member\n\n"
+        "PREMIUM\n\n"
+        "Want to save more articles? Subscribe today.\n\n"
+        "![Image 21](https://t.co/i/adsct?x=1)\n"
+    )
+    module.get_markdown_content = lambda _url, _key: (
+        "Title: Forbes shell\n"
+        "URL Source: https://www.forbes.com/sites/johnkoetsier/2026/04/12/heres-the-most-affordable-humanoid-robot-you-can-buy-now/\n"
+        "Markdown Content:\n"
+        f"{shell_content}"
+    )
+    module.parse_jina_metadata = lambda _content: (
+        {
+            "title": "Forbes shell",
+            "url_source": (
+                "https://www.forbes.com/sites/johnkoetsier/2026/04/12/"
+                "heres-the-most-affordable-humanoid-robot-you-can-buy-now/"
+            ),
+            "published_time": None,
+        },
+        shell_content,
+    )
+    module.resolve_website_title = lambda title, url: title
+    module.compute_word_count = lambda content: len(content.split())
+    module.calculate_reading_time = lambda _count: "1 min"
+    module.extract_tags = lambda *_args, **_kwargs: []
+
+    with pytest.raises(module.WebSaveScriptError) as exc_info:
+        module.save_url_database(
+            "https://www.forbes.com/sites/johnkoetsier/2026/04/12/heres-the-most-affordable-humanoid-robot-you-can-buy-now/",
+            "user-1",
+        )
+
+    err = exc_info.value
+    assert err.payload["code"] == "WEB_SAVE_BLOCKED_SITE"
+    assert "upsert_kwargs" not in captured
+
+
 def test_save_url_database_antibot_jina_timeout(monkeypatch):
     module = _load_save_url_module()
     _stub_db_dependencies(module)
