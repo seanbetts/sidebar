@@ -415,14 +415,17 @@ extension WebsitesDetailView {
 
     func shareWebsiteURL() {
         guard let url = sourceURL else { return }
-        SystemSharePresenter.share(url: url)
+        SystemSharePresenter.share(url: url, anchorID: SystemShareAnchorID.websitesHeaderActionsMenu)
     }
 
     func shareWebsiteText() {
         guard let content = viewModel.active?.content, !content.isEmpty else { return }
         let plainText = MarkdownRendering.plainTextForWebsiteShare(content)
         guard !plainText.isEmpty else { return }
-        SystemSharePresenter.share(text: plainText)
+        SystemSharePresenter.share(
+            text: plainText,
+            anchorID: SystemShareAnchorID.websitesHeaderActionsMenu
+        )
     }
 
     func archiveActiveWebsite() {

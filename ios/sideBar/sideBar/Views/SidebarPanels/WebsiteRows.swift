@@ -182,6 +182,7 @@ struct WebsiteRow: View, Equatable {
                 Spacer()
             }
         }
+        .systemShareAnchor(id: SystemShareAnchorID.websitesSidebarRow(item.id))
     }
 
     private static func formatSubtitle(domain: String, readingTime: String?) -> String {

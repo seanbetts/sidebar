@@ -243,7 +243,7 @@ public struct NotesView: View {
     private func shareNoteText() {
         let text = environment.notesRuntime.editorViewModel.currentPlainTextSnapshot()
         guard !text.isEmpty else { return }
-        SystemSharePresenter.share(text: text)
+        SystemSharePresenter.share(text: text, anchorID: SystemShareAnchorID.notesToolbarActionsMenu)
     }
 
     private func archiveActiveNote() {

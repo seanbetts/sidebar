@@ -15,6 +15,7 @@ extension NotesDetailView {
             isCompact: isCompact,
             chromeStyle: .plain
         )
+        .systemShareAnchor(id: SystemShareAnchorID.notesToolbarActionsMenu)
         .disabled(viewModel.activeNote == nil)
     }
     #endif
@@ -29,6 +30,7 @@ extension NotesDetailView {
         ) {
             noteActionsMenuItems
         }
+        .systemShareAnchor(id: SystemShareAnchorID.notesHeaderActionsMenu)
         .disabled(viewModel.activeNote == nil)
         #else
         if isCompact {
@@ -39,6 +41,7 @@ extension NotesDetailView {
                 isCompact: isCompact,
                 chromeStyle: Self.actionControlChromeStyle
             )
+            .systemShareAnchor(id: SystemShareAnchorID.notesHeaderActionsMenu)
             .disabled(viewModel.activeNote == nil)
         } else {
             HeaderActionMenuButton(
@@ -48,6 +51,7 @@ extension NotesDetailView {
                 isCompact: isCompact,
                 chromeStyle: Self.actionControlChromeStyle
             )
+            .systemShareAnchor(id: SystemShareAnchorID.notesHeaderActionsMenu)
             .disabled(viewModel.activeNote == nil)
         }
         #endif

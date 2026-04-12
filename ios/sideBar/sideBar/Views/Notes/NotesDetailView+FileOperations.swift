@@ -98,7 +98,7 @@ extension NotesDetailView {
     func shareNoteText() {
         let text = editorViewModel.currentPlainTextSnapshot()
         guard !text.isEmpty else { return }
-        SystemSharePresenter.share(text: text)
+        SystemSharePresenter.share(text: text, anchorID: SystemShareAnchorID.notesHeaderActionsMenu)
     }
 
 }

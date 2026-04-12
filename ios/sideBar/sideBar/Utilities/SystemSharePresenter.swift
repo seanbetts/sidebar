@@ -12,40 +12,62 @@ enum SystemSharePresenter {
     private static var activePicker: NSSharingServicePicker?
     #endif
 
-    static func share(url: URL) {
-        share(items: [url])
+    static func share(url: URL, anchorID: String? = nil) {
+        share(items: [url], anchorID: anchorID)
     }
 
-    static func share(text: String) {
-        share(items: [text])
+    static func share(text: String, anchorID: String? = nil) {
+        share(items: [text], anchorID: anchorID)
     }
 
-    private static func share(items: [Any]) {
+    private static func share(items: [Any], anchorID: String?) {
         #if os(iOS)
-        guard let presenter = topViewController() else { return }
+        guard let target = iOSPresentationTarget(anchorID: anchorID) else { return }
         let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
         if let popover = controller.popoverPresentationController {
-            popover.sourceView = presenter.view
-            popover.sourceRect = CGRect(
-                x: presenter.view.bounds.midX,
-                y: presenter.view.bounds.midY,
-                width: 1,
-                height: 1
-            )
-            popover.permittedArrowDirections = []
+            popover.sourceView = target.sourceView
+            popover.sourceRect = target.sourceRect
+            if !target.usesExplicitAnchor {
+                popover.permittedArrowDirections = []
+            }
         }
-        presenter.present(controller, animated: true)
+        target.presenter.present(controller, animated: true)
         #elseif os(macOS)
-        guard let window = NSApp.keyWindow ?? NSApp.mainWindow,
-              let anchorView = window.contentView else { return }
+        guard let target = macOSPresentationTarget(anchorID: anchorID) else { return }
         let picker = NSSharingServicePicker(items: items)
         activePicker = picker
-        let anchorRect = NSRect(x: anchorView.bounds.midX, y: anchorView.bounds.midY, width: 1, height: 1)
-        picker.show(relativeTo: anchorRect, of: anchorView, preferredEdge: .minY)
+        picker.show(relativeTo: target.sourceRect, of: target.sourceView, preferredEdge: .minY)
         #endif
     }
 
     #if os(iOS)
+    struct IOSPresentationTarget {
+        let presenter: UIViewController
+        let sourceView: UIView
+        let sourceRect: CGRect
+        let usesExplicitAnchor: Bool
+    }
+
+    static func iOSPresentationTarget(anchorID: String?) -> IOSPresentationTarget? {
+        guard let presenter = topViewController() else { return nil }
+        if let anchorID,
+           let anchorView = SystemShareAnchorRegistry.view(for: anchorID),
+           anchorView.window != nil {
+            return IOSPresentationTarget(
+                presenter: presenter,
+                sourceView: anchorView,
+                sourceRect: resolvedAnchorRect(in: anchorView.bounds),
+                usesExplicitAnchor: true
+            )
+        }
+        return IOSPresentationTarget(
+            presenter: presenter,
+            sourceView: presenter.view,
+            sourceRect: centeredPresentationRect(in: presenter.view.bounds),
+            usesExplicitAnchor: false
+        )
+    }
+
     private static func topViewController() -> UIViewController? {
         guard let root = keyWindow()?.rootViewController else { return nil }
         return topViewController(from: root)
@@ -72,5 +94,42 @@ enum SystemSharePresenter {
         }
         return viewController
     }
+    #elseif os(macOS)
+    struct MacOSPresentationTarget {
+        let sourceView: NSView
+        let sourceRect: NSRect
+        let usesExplicitAnchor: Bool
+    }
+
+    static func macOSPresentationTarget(
+        anchorID: String?,
+        fallbackWindow: NSWindow? = nil
+    ) -> MacOSPresentationTarget? {
+        if let anchorID,
+           let anchorView = SystemShareAnchorRegistry.view(for: anchorID),
+           anchorView.window != nil {
+            return MacOSPresentationTarget(
+                sourceView: anchorView,
+                sourceRect: resolvedAnchorRect(in: anchorView.bounds),
+                usesExplicitAnchor: true
+            )
+        }
+        let resolvedFallbackWindow = fallbackWindow ?? NSApp.keyWindow ?? NSApp.mainWindow
+        guard let anchorView = resolvedFallbackWindow?.contentView else { return nil }
+        return MacOSPresentationTarget(
+            sourceView: anchorView,
+            sourceRect: centeredPresentationRect(in: anchorView.bounds),
+            usesExplicitAnchor: false
+        )
+    }
     #endif
+
+    static func centeredPresentationRect(in bounds: CGRect) -> CGRect {
+        CGRect(x: bounds.midX, y: bounds.midY, width: 1, height: 1)
+    }
+
+    private static func resolvedAnchorRect(in bounds: CGRect) -> CGRect {
+        let hasSize = bounds.width > 1 || bounds.height > 1
+        return hasSize ? bounds : centeredPresentationRect(in: bounds)
+    }
 }

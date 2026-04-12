@@ -160,7 +160,7 @@ extension WebsitesPanelView {
             appEnvironment.toastCenter.show(message: "Share unavailable")
             return
         }
-        SystemSharePresenter.share(url: url)
+        SystemSharePresenter.share(url: url, anchorID: SystemShareAnchorID.websitesSidebarRow(item.id))
     }
 
     @MainActor
@@ -175,7 +175,10 @@ extension WebsitesPanelView {
             appEnvironment.toastCenter.show(message: "Share unavailable")
             return
         }
-        SystemSharePresenter.share(text: plainText)
+        SystemSharePresenter.share(
+            text: plainText,
+            anchorID: SystemShareAnchorID.websitesSidebarRow(item.id)
+        )
     }
 
     private func copyWebsiteTitle(for item: WebsiteItem) {

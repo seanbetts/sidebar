@@ -167,7 +167,7 @@ extension NotesPanelView {
             environment.toastCenter.show(message: "Share unavailable")
             return
         }
-        SystemSharePresenter.share(text: content)
+        SystemSharePresenter.share(text: content, anchorID: SystemShareAnchorID.notesSidebarRow(item.id))
     }
 
     @MainActor

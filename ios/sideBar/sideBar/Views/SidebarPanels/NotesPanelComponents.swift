@@ -162,6 +162,7 @@ struct NotesTreeRow: View {
         Group {
             row
         }
+        .systemShareAnchor(id: item.isFile ? SystemShareAnchorID.notesSidebarRow(item.id) : nil)
         #if os(macOS)
         .sidebarListSwipeActions(
             leadingTitle: onRename == nil ? nil : "Rename",
@@ -220,6 +221,11 @@ struct NotesTreeRow: View {
     }
 
     private var primaryAction: (() -> Void)? {
+        #if os(macOS)
+        if item.isFile {
+            return nil
+        }
+        #endif
         if item.isFile {
             return onSelect
         }

@@ -352,7 +352,10 @@ struct AgentWorkspaceSurfaceView: View {
 
     private func shareSurfaceText() {
         guard let text = sharableTextPayload else { return }
-        SystemSharePresenter.share(text: text)
+        SystemSharePresenter.share(
+            text: text,
+            anchorID: SystemShareAnchorID.workspaceSurfaceActionsMenu(surface.surfaceId)
+        )
     }
 
     private func downloadMarkdownPayload() {
@@ -432,6 +435,7 @@ private extension AgentWorkspaceSurfaceView {
             HeaderActionIcon(systemName: "ellipsis")
         }
         .buttonStyle(.plain)
+        .systemShareAnchor(id: SystemShareAnchorID.workspaceSurfaceActionsMenu(surface.surfaceId))
         .accessibilityLabel("Workspace options")
         .disabled(contextMenuItems.isEmpty)
         #else
@@ -441,6 +445,7 @@ private extension AgentWorkspaceSurfaceView {
             items: contextMenuItems,
             isCompact: true
         )
+        .systemShareAnchor(id: SystemShareAnchorID.workspaceSurfaceActionsMenu(surface.surfaceId))
         .disabled(contextMenuItems.isEmpty)
         #endif
     }

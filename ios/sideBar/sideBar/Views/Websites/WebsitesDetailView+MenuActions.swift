@@ -10,6 +10,7 @@ extension WebsitesDetailView {
         ) {
             sidebarMenuItemsView(websiteHeaderMenuItems)
         }
+        .systemShareAnchor(id: SystemShareAnchorID.websitesHeaderActionsMenu)
         .disabled(viewModel.active == nil)
         #else
         HeaderActionMenuButton(
@@ -19,6 +20,7 @@ extension WebsitesDetailView {
             isCompact: isCompact,
             chromeStyle: Self.actionControlChromeStyle
         )
+        .systemShareAnchor(id: SystemShareAnchorID.websitesHeaderActionsMenu)
         .disabled(viewModel.active == nil)
         #endif
     }
@@ -32,6 +34,7 @@ extension WebsitesDetailView {
             isCompact: isCompact,
             chromeStyle: .plain
         )
+        .systemShareAnchor(id: SystemShareAnchorID.websitesToolbarActionsMenu)
         .disabled(viewModel.active == nil)
     }
     #endif
