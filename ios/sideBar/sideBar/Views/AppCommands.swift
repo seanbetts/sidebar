@@ -57,7 +57,7 @@ struct SidebarCommands: Commands {
                 Button("Toggle Sidebar") {
                     environment.emitShortcutAction(.toggleSidebar)
                 }
-                .keyboardShortcut("s", modifiers: [.command, .option])
+                .keyboardShortcut("s", modifiers: [.command, .control])
 
                 Button("Scratchpad") {
                     environment.emitShortcutAction(.openScratchpad)
