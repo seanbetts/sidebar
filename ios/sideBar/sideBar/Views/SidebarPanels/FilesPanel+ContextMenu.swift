@@ -13,7 +13,7 @@ extension FilesPanelView {
     }
 
     func fileContextMenuItemsList(for item: IngestionListItem) -> [SidebarMenuItem] {
-        [
+        var items: [SidebarMenuItem] = [
             .pin(isPinned: item.file.pinned ?? false) {
                 Haptics.selection()
                 Task {
@@ -22,12 +22,6 @@ extension FilesPanelView {
             },
             .rename {
                 beginRename(for: item)
-            },
-            .copyText {
-                Task {
-                    await selectFileForAction(item)
-                    copySelectedFileContent()
-                }
             },
             .download {
                 Task {
@@ -40,6 +34,15 @@ extension FilesPanelView {
                 isDeleteAlertPresented = true
             }
         ]
+        if viewModel.canCopyText(for: item) {
+            items.insert(
+                .copyText {
+                    Task { await copyTextContent(for: item) }
+                },
+                at: 2
+            )
+        }
+        return items
     }
 
     @MainActor
@@ -82,9 +85,10 @@ extension FilesPanelView {
         return normalized + fileExtension
     }
 
-    private func copySelectedFileContent() {
-        guard let text = viewModel.viewerState?.text, !text.isEmpty else {
-            self.appEnvironment.toastCenter.show(message: "Copy unavailable for this file")
+    @MainActor
+    private func copyTextContent(for item: IngestionListItem) async {
+        guard let text = await viewModel.loadCopyTextContent(fileId: item.file.id) else {
+            self.appEnvironment.toastCenter.show(message: "Text unavailable for this file")
             return
         }
         #if os(macOS)

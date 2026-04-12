@@ -101,15 +101,12 @@ struct FilesHeaderActions: View {
     }
 
     private var fileHeaderMenuItems: [SidebarMenuItem] {
-        [
+        var items: [SidebarMenuItem] = [
             .pin(isPinned: isPinned) {
                 Task { await togglePin() }
             },
             .rename {
                 beginRename()
-            },
-            .copyText {
-                copyFileContent()
             },
             .download {
                 Task { await downloadFile() }
@@ -118,6 +115,15 @@ struct FilesHeaderActions: View {
                 isDeleteAlertPresented = true
             }
         ]
+        if viewModel.canCopyTextForSelectedFile {
+            items.insert(
+                .copyText {
+                    Task { await copySelectedFileContent() }
+                },
+                at: 2
+            )
+        }
+        return items
     }
 
     private var shouldShowExpandButton: Bool {
@@ -264,9 +270,10 @@ struct FilesHeaderActions: View {
         }
     }
 
-    private func copyFileContent() {
-        guard let text = viewModel.viewerState?.text, !text.isEmpty else {
-            environment.toastCenter.show(message: "Copy unavailable for this file")
+    private func copySelectedFileContent() async {
+        guard let fileId = viewModel.selectedFileId,
+              let text = await viewModel.loadCopyTextContent(fileId: fileId) else {
+            environment.toastCenter.show(message: "Text unavailable for this file")
             return
         }
         #if os(macOS)
