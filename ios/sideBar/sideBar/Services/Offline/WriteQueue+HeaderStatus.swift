@@ -1,0 +1,164 @@
+import CoreData
+import Foundation
+import OSLog
+
+private struct HeaderQueueState {
+    let pendingCount: Int
+    let failedCount: Int
+    let failedRows: [PendingWriteSummary]
+}
+
+@MainActor
+extension WriteQueue {
+    var headerStatusSnapshot: HeaderSyncStatusSnapshot? {
+        if !failedHeaderRows.isEmpty {
+            return .error(rows: failedHeaderRows.map(makeHeaderRow))
+        }
+
+        if isProcessing {
+            return .syncing
+        }
+
+        if activePendingCount > 0 {
+            return .pending
+        }
+
+        return nil
+    }
+
+    func retryWrite(id: UUID) async throws {
+        try await runHeaderBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+            guard let write = try context.fetch(request).first else { return }
+            write.status = WriteQueueStatus.pending.rawValue
+            write.attempts = 0
+            write.lastError = nil
+            write.lastAttemptAt = nil
+            write.conflictReason = nil
+        }
+
+        await refreshHeaderState()
+        await processRetriedWrite(id: id)
+        await refreshHeaderState()
+    }
+
+    func cancelWrite(id: UUID) async throws {
+        try await runHeaderBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+            guard let write = try context.fetch(request).first else { return }
+            context.delete(write)
+        }
+
+        await refreshHeaderState()
+    }
+
+    func fetchFailedHeaderRows() async throws -> [PendingWriteSummary] {
+        try await runHeaderBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
+            request.sortDescriptors = [
+                NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
+            ]
+            return try context.fetch(request).map { write in
+                return PendingWriteSummary(
+                    id: write.id,
+                    operationType: write.operationType,
+                    entityType: write.entityType,
+                    entityId: write.entityId,
+                    status: write.status,
+                    attempts: write.attempts,
+                    lastError: write.lastError,
+                    conflictReason: write.conflictReason,
+                    createdAt: write.createdAt,
+                    lastAttemptAt: write.lastAttemptAt
+                )
+            }
+        }
+    }
+
+    private func makeHeaderRow(summary: PendingWriteSummary) -> HeaderStatusRowModel {
+        HeaderStatusRowModel(
+            id: summary.id.uuidString,
+            title: headerTitle(for: summary),
+            detail: summary.lastError,
+            actions: [
+                HeaderStatusActionModel(id: "retry", title: "Retry", role: .default),
+                HeaderStatusActionModel(id: "cancel", title: "Cancel", role: .destructive)
+            ]
+        )
+    }
+
+    private func headerTitle(for summary: PendingWriteSummary) -> String {
+        let operation = summary.operationType.replacingOccurrences(of: "_", with: " ").capitalized
+        let entity = summary.entityType.replacingOccurrences(of: "_", with: " ").lowercased()
+        return "\(operation) \(entity)"
+    }
+
+    private func refreshHeaderState() async {
+        do {
+            let snapshot = try await runHeaderBackgroundTask { context -> HeaderQueueState in
+                let queuedRequest = PendingWrite.fetchRequest()
+                let failedRequest = PendingWrite.fetchRequest()
+                failedRequest.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.failed.rawValue)
+                failedRequest.sortDescriptors = [
+                    NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)
+                ]
+
+                let queuedCount = try context.count(for: queuedRequest)
+                let failedWrites = try context.fetch(failedRequest)
+                let failedRows = failedWrites.map { write in
+                    return PendingWriteSummary(
+                        id: write.id,
+                        operationType: write.operationType,
+                        entityType: write.entityType,
+                        entityId: write.entityId,
+                        status: write.status,
+                        attempts: write.attempts,
+                        lastError: write.lastError,
+                        conflictReason: write.conflictReason,
+                        createdAt: write.createdAt,
+                        lastAttemptAt: write.lastAttemptAt
+                    )
+                }
+
+                return HeaderQueueState(
+                    pendingCount: queuedCount,
+                    failedCount: failedRows.count,
+                    failedRows: failedRows
+                )
+            }
+
+            applyHeaderQueueState(
+                pendingCount: snapshot.pendingCount,
+                failedCount: snapshot.failedCount,
+                failedHeaderRows: snapshot.failedRows
+            )
+        } catch {
+            applyHeaderQueueState(pendingCount: 0, failedCount: 0, failedHeaderRows: [])
+            logger.error("Failed to refresh header state: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func runHeaderBackgroundTask<T>(
+        _ work: @escaping (NSManagedObjectContext) throws -> T
+    ) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            container.performBackgroundTask { context in
+                context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+                do {
+                    let result = try work(context)
+                    if context.hasChanges {
+                        try context.save()
+                    }
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+}

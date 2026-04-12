@@ -197,13 +197,7 @@ extension IngestionViewModel {
     }
 
     func registerReadyMessage(_ notification: ReadyFileNotification) {
-        lastReadyMessage = notification
-        readyMessageTask.runDebounced(delay: 6) { [weak self] in
-            guard let self, self.lastReadyMessage?.id == notification.id else {
-                return
-            }
-            self.lastReadyMessage = nil
-        }
+        registerHeaderReadyEvent(notification)
     }
 
     func loadDerivativeContent(meta: IngestionMetaResponse, derivative: IngestionDerivative) async {

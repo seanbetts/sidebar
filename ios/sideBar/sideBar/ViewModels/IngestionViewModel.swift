@@ -92,6 +92,7 @@ public final class IngestionViewModel: ObservableObject {
     @Published public var errorMessage: String?
     @Published public var isIngestingYouTube: Bool = false
     @Published public var readyFileNotification: ReadyFileNotification?
+    @Published public var latestHeaderReadyEvent: ReadyFileNotification?
     @Published public var lastReadyMessage: ReadyFileNotification?
 
     let api: any IngestionProviding
@@ -124,7 +125,6 @@ public final class IngestionViewModel: ObservableObject {
     var listPollingConsecutiveFailures = 0
     var nextListPollAttemptAt: Date?
     var statusCache: [String: String] = [:]
-    let readyMessageTask = ManagedTask()
     let ingestionProgressActivityTask = ManagedTask()
     private let teardownBag = IngestionViewModelTeardownBag()
 

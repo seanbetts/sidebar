@@ -8,6 +8,7 @@ import OSLog
 public final class WriteQueue: ObservableObject {
     @Published private(set) var pendingCount: Int = 0
     @Published private(set) var failedCount: Int = 0
+    @Published private(set) var failedHeaderRows: [PendingWriteSummary] = []
     @Published private(set) var isProcessing: Bool = false
     @Published private(set) var isPausedForConflict: Bool = false
     public let maxPendingWrites: Int
@@ -23,6 +24,16 @@ public final class WriteQueue: ObservableObject {
 
     var activePendingCount: Int {
         max(pendingCount - failedCount, 0)
+    }
+
+    func applyHeaderQueueState(
+        pendingCount: Int,
+        failedCount: Int,
+        failedHeaderRows: [PendingWriteSummary]
+    ) {
+        self.pendingCount = pendingCount
+        self.failedCount = failedCount
+        self.failedHeaderRows = failedHeaderRows
     }
 
     init(
@@ -315,6 +326,25 @@ public final class WriteQueue: ObservableObject {
         await loadQueueCounts()
         resumeProcessing()
     }
+
+    func processRetriedWrite(id: UUID) async {
+        guard !isProcessing, executor != nil, !connectivityMonitor.isOffline else { return }
+
+        isProcessing = true
+        defer { isProcessing = false }
+
+        do {
+            guard let write = try await fetchPendingWrite(id: id) else {
+                await loadQueueCounts()
+                return
+            }
+            _ = await processWrite(write)
+        } catch {
+            logger.error("Failed to process retried write: \(error.localizedDescription, privacy: .public)")
+        }
+
+        await loadQueueCounts()
+    }
 }
 
 private extension WriteQueue {
@@ -363,6 +393,33 @@ private extension WriteQueue {
             request.predicate = NSPredicate(format: "status == %@", WriteQueueStatus.pending.rawValue)
             request.sortDescriptors = [NSSortDescriptor(keyPath: \PendingWrite.createdAt, ascending: true)]
             request.fetchLimit = 1
+            guard let write = try context.fetch(request).first else {
+                return nil
+            }
+            write.status = WriteQueueStatus.inProgress.rawValue
+            write.attempts += 1
+            write.lastAttemptAt = Date()
+            return PendingWriteRecord(
+                id: write.id,
+                operationType: write.operationType,
+                entityType: write.entityType,
+                entityId: write.entityId,
+                payload: write.payload,
+                serverSnapshot: write.serverSnapshot,
+                attempts: write.attempts
+            )
+        }
+    }
+
+    private func fetchPendingWrite(id: UUID) async throws -> PendingWriteRecord? {
+        try await performBackgroundTask { context in
+            let request = PendingWrite.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(
+                format: "id == %@ AND status == %@",
+                id as CVarArg,
+                WriteQueueStatus.pending.rawValue
+            )
             guard let write = try context.fetch(request).first else {
                 return nil
             }
@@ -506,12 +563,15 @@ private extension WriteQueue {
         do {
             async let queuedCount = countQueuedWrites()
             async let failedWriteCount = countFailedWrites()
-            pendingCount = try await queuedCount
-            failedCount = try await failedWriteCount
+            async let failedHeaderRows = fetchFailedHeaderRows()
+            applyHeaderQueueState(
+                pendingCount: try await queuedCount,
+                failedCount: try await failedWriteCount,
+                failedHeaderRows: try await failedHeaderRows
+            )
         } catch {
             logger.error("Failed to load queue counts: \(error.localizedDescription, privacy: .public)")
-            pendingCount = 0
-            failedCount = 0
+            applyHeaderQueueState(pendingCount: 0, failedCount: 0, failedHeaderRows: [])
         }
     }
 
