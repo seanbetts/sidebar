@@ -63,6 +63,13 @@ final class WidgetIntentRoutingTests: XCTestCase {
             2
         )
     }
+
+    func testIngestionLiveActivityUsesBrandedAppLogoInsteadOfGenericDocumentSymbol() throws {
+        let source = try normalizedWidgetSource(named: "IngestionProgressLiveActivity.swift")
+
+        XCTAssertTrue(source.contains("Image(\"AppLogo\")"))
+        XCTAssertFalse(source.contains("\"doc.badge.gearshape\""))
+    }
 }
 
 private func assertOpensIntent<Result: OpensIntent>(_: Result) {}
