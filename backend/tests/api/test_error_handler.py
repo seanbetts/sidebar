@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from types import SimpleNamespace
 
 from fastapi import Request
 from sqlalchemy.exc import OperationalError

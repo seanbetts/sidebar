@@ -1,6 +1,3 @@
-from api.config import settings
-
-
 def test_password_reset_request_accepts_email_without_auth(test_client, monkeypatch):
     observed_emails: list[str] = []
 

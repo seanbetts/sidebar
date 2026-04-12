@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
@@ -20,7 +22,7 @@ def test_get_db_does_not_fail_request_when_close_raises_operational_error(
     app.dependency_overrides[db_session.get_current_user_id] = lambda: "user-123"
 
     @app.get("/probe")
-    def probe(_db=Depends(db_session.get_db)):
+    def probe(_db: Annotated[object, Depends(db_session.get_db)]):
         return {"ok": True}
 
     monkeypatch.setattr(db_session, "SessionLocal", lambda: _CloseFailingSession())

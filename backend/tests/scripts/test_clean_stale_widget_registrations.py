@@ -57,7 +57,7 @@ def test_widget_registration_parsing_and_classification():
         / "fixtures"
         / "widget_registration_pluginkit_sample.txt"
     )
-    lines = [line for line in fixture.read_text().splitlines()]
+    lines = list(fixture.read_text().splitlines())
 
     block_sample = [
         "+    ai.sidebar.sidebar.sideBarWidgets(1.0)",
