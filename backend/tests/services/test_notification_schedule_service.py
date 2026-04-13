@@ -148,3 +148,26 @@ def test_due_results_are_deduped_within_same_scheduled_window(test_db):
 
     assert [recipient.user_id for recipient in first_due] == ["user-london"]
     assert second_due == []
+
+
+def test_task_reminders_stay_due_for_a_short_catch_up_window(test_db):
+    NotificationScheduleService.clear_due_windows()
+    test_db.add(
+        _settings_record(
+            user_id="user-london",
+            notification_preferences={
+                "task_reminders_enabled": True,
+                "task_reminder_time": "09:00",
+                "schedule_timezone": "Europe/London",
+            },
+        )
+    )
+    test_db.commit()
+
+    due = NotificationScheduleService.find_due_users(
+        test_db,
+        NotificationCategory.TASK_REMINDER,
+        now=datetime(2026, 1, 15, 9, 2, tzinfo=UTC),
+    )
+
+    assert [recipient.user_id for recipient in due] == ["user-london"]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy.orm import Session
@@ -31,6 +31,8 @@ class _ScheduledCategoryConfig:
 
 class NotificationScheduleService:
     """Evaluate which users are due for scheduled notification categories."""
+
+    DELIVERY_GRACE_PERIOD = timedelta(minutes=5)
 
     SCHEDULED_CATEGORY_CONFIG = {
         NotificationCategory.TASK_REMINDER: _ScheduledCategoryConfig(
@@ -126,9 +128,17 @@ class NotificationScheduleService:
         local_now: datetime,
         scheduled_time: str,
     ) -> bool:
-        """Return whether the current local wall-clock minute matches the schedule."""
+        """Return whether local time is still within the delivery catch-up window."""
         hour_text, minute_text = scheduled_time.split(":", 1)
-        return local_now.hour == int(hour_text) and local_now.minute == int(minute_text)
+        scheduled_at = local_now.replace(
+            hour=int(hour_text),
+            minute=int(minute_text),
+            second=0,
+            microsecond=0,
+        )
+        if local_now < scheduled_at:
+            return False
+        return local_now - scheduled_at < cls.DELIVERY_GRACE_PERIOD
 
     @classmethod
     def _was_emitted_in_window(
