@@ -94,21 +94,17 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_CONFIG
 
     session = requests.Session()
-    session.headers.update(
-        {
-            "Authorization": f"Bearer {os.environ['OPS_FLY_API_TOKEN']}",
-            "Accept": "application/json",
-        }
-    )
+    session.headers.update({"Accept": "application/json"})
+    token = os.environ["OPS_FLY_API_TOKEN"]
     app_name = os.environ["OPS_FLY_APP"]
     region = os.environ.get("OPS_FLY_REGION", "").strip()
 
     try:
         if args.command == "summary":
-            app = _fetch_app(session, app_name)
-            machines = _fetch_machines(session, app_name)
+            app = _fetch_app(session, app_name, token=token)
+            machines = _fetch_machines(session, app_name, token=token)
             try:
-                logs = _fetch_logs(session, app_name, region=region)
+                logs = _fetch_logs(session, app_name, region=region, token=token)
             except Exception:
                 logs = []
             result = build_fly_summary(app=app, machines=machines, logs=logs)
@@ -117,28 +113,32 @@ def main(argv: list[str] | None = None) -> int:
                 target="fly",
                 command=args.command,
                 status="ok",
-                data={"app": _fetch_app(session, app_name)},
+                data={"app": _fetch_app(session, app_name, token=token)},
             )
         elif args.command == "deploys":
             result = build_result(
                 target="fly",
                 command=args.command,
                 status="ok",
-                data={"deploys": _build_deploy_rows(_fetch_machines(session, app_name))},
+                data={
+                    "deploys": _build_deploy_rows(
+                        _fetch_machines(session, app_name, token=token)
+                    )
+                },
             )
         elif args.command == "machines":
             result = build_result(
                 target="fly",
                 command=args.command,
                 status="ok",
-                data={"machines": _fetch_machines(session, app_name)},
+                data={"machines": _fetch_machines(session, app_name, token=token)},
             )
         else:
             result = build_result(
                 target="fly",
                 command=args.command,
                 status="ok",
-                data={"logs": _fetch_logs(session, app_name, region=region)},
+                data={"logs": _fetch_logs(session, app_name, region=region, token=token)},
             )
     except Exception as exc:
         result = build_result(
@@ -154,18 +154,31 @@ def main(argv: list[str] | None = None) -> int:
     return EXIT_OK
 
 
-def _fetch_app(session: requests.Session, app_name: str) -> dict[str, Any]:
+def _auth_headers(token: str, *, use_bearer: bool) -> dict[str, str]:
+    """Build endpoint-specific Fly auth headers."""
+    if use_bearer:
+        return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": token}
+
+
+def _fetch_app(
+    session: requests.Session, app_name: str, *, token: str
+) -> dict[str, Any]:
     response = session.get(
         f"{FLY_MACHINES_API}/apps/{app_name}",
+        headers=_auth_headers(token, use_bearer=True),
         timeout=15,
     )
     response.raise_for_status()
     return dict(response.json())
 
 
-def _fetch_machines(session: requests.Session, app_name: str) -> list[dict[str, Any]]:
+def _fetch_machines(
+    session: requests.Session, app_name: str, *, token: str
+) -> list[dict[str, Any]]:
     response = session.get(
         f"{FLY_MACHINES_API}/apps/{app_name}/machines",
+        headers=_auth_headers(token, use_bearer=True),
         timeout=15,
     )
     response.raise_for_status()
@@ -180,12 +193,14 @@ def _fetch_logs(
     app_name: str,
     *,
     region: str,
+    token: str,
 ) -> list[dict[str, Any]]:
     params: dict[str, str] = {}
     if region:
         params["region"] = region
     response = session.get(
         f"{FLY_API}/apps/{app_name}/logs",
+        headers=_auth_headers(token, use_bearer=False),
         params=params,
         timeout=15,
     )
