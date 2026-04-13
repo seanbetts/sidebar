@@ -148,6 +148,20 @@ You are connecting to production Supabase and R2.
 ./dev.sh restart
 ```
 
+## Ops Diagnostics
+
+For terminal-only production diagnostics, add dedicated `OPS_...` credentials to `.env.local`, then use:
+
+```bash
+./scripts/ops-diagnostics.sh db summary
+./scripts/ops-diagnostics.sh app summary
+./scripts/ops-diagnostics.sh sentry summary
+./scripts/ops-diagnostics.sh fly summary
+./scripts/ops-diagnostics.sh all
+```
+
+The diagnostics toolkit is read-only and uses separate credentials from normal runtime app configuration.
+
 
 ## Troubleshooting
 
