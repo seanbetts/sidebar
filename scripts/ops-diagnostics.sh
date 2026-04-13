@@ -6,6 +6,9 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PYTHON_BIN="${OPS_DIAGNOSTICS_PYTHON:-python}"
 
 load_env() {
+  if [[ "${OPS_DIAGNOSTICS_SKIP_ENV_LOAD:-}" == "1" ]]; then
+    return
+  fi
   if [[ -f "${REPO_ROOT}/.env.local" ]]; then
     set -a
     source "${REPO_ROOT}/.env.local"

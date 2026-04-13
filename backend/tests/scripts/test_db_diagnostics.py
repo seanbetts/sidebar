@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from scripts.db_diagnostics import build_db_summary
+import pytest
+
+from scripts.db_diagnostics import (
+    _execute_read_only_sql,
+    _validate_read_only_sql,
+    build_db_summary,
+)
 
 
 def test_summary_warns_on_idle_transactions() -> None:
@@ -52,3 +58,77 @@ def test_summary_marks_top_queries_unavailable_without_failing_whole_command() -
     assert result["status"] == "ok"
     assert result["data"]["top_queries_available"] is False
     assert result["warnings"] == ["pg_stat_statements unavailable"]
+
+
+def test_validate_read_only_sql_accepts_single_select_statement() -> None:
+    """A single SELECT statement should be accepted."""
+    sql = _validate_read_only_sql("select id, url from websites limit 5")
+
+    assert sql == "select id, url from websites limit 5"
+
+
+def test_validate_read_only_sql_rejects_mutating_statement() -> None:
+    """Mutating SQL should be rejected before execution."""
+    with pytest.raises(ValueError, match="read-only"):
+        _validate_read_only_sql("delete from websites where id = '123'")
+
+
+def test_validate_read_only_sql_rejects_multiple_statements() -> None:
+    """Only one statement should be allowed."""
+    with pytest.raises(ValueError, match="single statement"):
+        _validate_read_only_sql("select 1; select 2")
+
+
+def test_execute_read_only_sql_sets_transaction_read_only() -> None:
+    """Execution should switch the transaction to read-only before the query."""
+
+    class FakeResult:
+        def mappings(self) -> "FakeResult":
+            return self
+
+        def __iter__(self):
+            yield {"database_name": "postgres", "database_user": "sidebar_app"}
+
+    class FakeTransaction:
+        def __init__(self, events: list[tuple[str, str]]) -> None:
+            self.events = events
+
+        def __enter__(self) -> "FakeTransaction":
+            self.events.append(("transaction", "begin"))
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            self.events.append(("transaction", "end"))
+            return None
+
+    class FakeConnection:
+        def __init__(self) -> None:
+            self.events: list[tuple[str, str]] = []
+
+        def begin(self) -> FakeTransaction:
+            return FakeTransaction(self.events)
+
+        def exec_driver_sql(self, statement: str) -> None:
+            self.events.append(("driver_sql", statement))
+
+        def execute(self, statement):  # noqa: ANN001
+            self.events.append(("execute", str(statement)))
+            return FakeResult()
+
+    connection = FakeConnection()
+
+    rows = _execute_read_only_sql(
+        connection,
+        "select current_database() as database_name, current_user as database_user",
+    )
+
+    assert rows == [{"database_name": "postgres", "database_user": "sidebar_app"}]
+    assert connection.events == [
+        ("transaction", "begin"),
+        ("driver_sql", "SET TRANSACTION READ ONLY"),
+        (
+            "execute",
+            "select current_database() as database_name, current_user as database_user",
+        ),
+        ("transaction", "end"),
+    ]

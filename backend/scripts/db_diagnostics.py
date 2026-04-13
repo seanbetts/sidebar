@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,19 @@ from scripts.ops_diagnostics_common import (  # noqa: E402
     print_json_result,
     print_text_result,
 )
+
+SQL_ROW_LIMIT = 100
+SQL_VALUE_PREVIEW_LIMIT = 500
+_READ_ONLY_START_RE = re.compile(r"^\s*(select|with)\b", re.IGNORECASE | re.DOTALL)
+_MUTATING_SQL_RE = re.compile(
+    r"\b("
+    r"insert|update|delete|merge|alter|create|drop|truncate|grant|revoke|comment|"
+    r"vacuum|reindex|refresh|analyze|set|reset|begin|start|commit|rollback|copy|"
+    r"call|do|lock|discard|prepare|execute|deallocate|notify|listen|unlisten"
+    r")\b",
+    re.IGNORECASE | re.DOTALL,
+)
+_SELECT_INTO_RE = re.compile(r"^\s*select\b[\s\S]*\binto\b", re.IGNORECASE)
 
 
 def build_db_summary(
@@ -75,9 +89,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "blockers",
             "top-queries",
             "table-locks",
+            "sql",
         ],
     )
     parser.add_argument("--table", help="Table name for table-locks output.")
+    parser.add_argument("--file", dest="sql_file", help="Path to a SQL file for db sql.")
     parser.add_argument("--json", action="store_true", dest="as_json")
     return parser.parse_args(argv)
 
@@ -98,7 +114,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         engine = create_engine(database_url, pool_pre_ping=True)
         with engine.connect() as connection:
-            result = _run_command(connection, args.command, table=args.table)
+            result = _run_command(
+                connection,
+                args.command,
+                table=args.table,
+                sql_file=args.sql_file,
+            )
     except Exception as exc:
         result = build_result(
             target="db",
@@ -116,7 +137,13 @@ def main(argv: list[str] | None = None) -> int:
     return EXIT_OK
 
 
-def _run_command(connection, command: str, *, table: str | None) -> dict[str, object]:
+def _run_command(
+    connection,
+    command: str,
+    *,
+    table: str | None,
+    sql_file: str | None,
+) -> dict[str, object]:
     if command == "summary":
         top_queries: list[dict[str, Any]] | None
         try:
@@ -177,7 +204,73 @@ def _run_command(connection, command: str, *, table: str | None) -> dict[str, ob
             status="ok",
             data={"rows": _fetch_table_locks(connection, table)},
         )
+    if command == "sql":
+        if not sql_file:
+            raise ValueError("--file is required for sql")
+        sql = _load_sql_file(sql_file)
+        rows = _execute_read_only_sql(connection, sql)
+        shaped_rows, was_truncated = _shape_sql_rows(rows)
+        warnings = ["SQL result rows truncated"] if was_truncated else []
+        return build_result(
+            target="db",
+            command=command,
+            status="ok",
+            data={
+                "sql": sql,
+                "row_count": len(rows),
+                "returned_row_count": len(shaped_rows),
+                "rows": shaped_rows,
+            },
+            warnings=warnings,
+        )
     raise ValueError(f"Unsupported command: {command}")
+
+
+def _load_sql_file(sql_file: str) -> str:
+    raw_sql = Path(sql_file).read_text(encoding="utf-8")
+    return _validate_read_only_sql(raw_sql)
+
+
+def _validate_read_only_sql(raw_sql: str) -> str:
+    sql = raw_sql.strip()
+    if not sql:
+        raise ValueError("SQL file is empty")
+    if not _READ_ONLY_START_RE.match(sql):
+        raise ValueError("Only read-only SELECT queries are allowed")
+    stripped = sql.rstrip().rstrip(";").strip()
+    if ";" in stripped:
+        raise ValueError("SQL must be a single statement")
+    if _SELECT_INTO_RE.search(stripped):
+        raise ValueError("SELECT INTO is not allowed in read-only SQL")
+    if _MUTATING_SQL_RE.search(stripped):
+        raise ValueError("Only read-only SQL is allowed")
+    return stripped
+
+
+def _execute_read_only_sql(connection, sql: str) -> list[dict[str, Any]]:
+    with connection.begin():
+        connection.exec_driver_sql("SET TRANSACTION READ ONLY")
+        rows = connection.execute(text(sql)).mappings()
+        return [dict(row) for row in rows]
+
+
+def _shape_sql_rows(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], bool]:
+    limited_rows = rows[:SQL_ROW_LIMIT]
+    shaped_rows = [_shape_sql_row(row) for row in limited_rows]
+    return shaped_rows, len(rows) > SQL_ROW_LIMIT
+
+
+def _shape_sql_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: _shape_sql_value(value)
+        for key, value in row.items()
+    }
+
+
+def _shape_sql_value(value: Any) -> Any:
+    if isinstance(value, str) and len(value) > SQL_VALUE_PREVIEW_LIMIT:
+        return f"{value[:SQL_VALUE_PREVIEW_LIMIT]}..."
+    return value
 
 
 def _fetch_activity(connection) -> list[dict[str, Any]]:

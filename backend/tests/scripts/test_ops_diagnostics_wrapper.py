@@ -47,6 +47,37 @@ def test_wrapper_forwards_json_flag_to_backend_command(tmp_path: Path) -> None:
     assert "--json" in (tmp_path / "invocations.log").read_text(encoding="utf-8")
 
 
+def test_wrapper_forwards_db_sql_file_arguments(tmp_path: Path) -> None:
+    """Wrapper should pass db sql file arguments through to db_diagnostics.py."""
+    env = _env_with_fake_runner(tmp_path)
+    env["OPS_DB_URL"] = "postgresql://user:pass@example.com:6543/postgres"
+    sql_file = tmp_path / "query.sql"
+    sql_file.write_text("select 1\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            "bash",
+            str(SCRIPT_PATH),
+            "db",
+            "sql",
+            "--file",
+            str(sql_file),
+            "--json",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    invocation_log = (tmp_path / "invocations.log").read_text(encoding="utf-8")
+    assert result.returncode == 0
+    assert "db_diagnostics.py sql --file" in invocation_log
+    assert str(sql_file) in invocation_log
+    assert "--json" in invocation_log
+
+
 def test_wrapper_all_runs_all_targets_without_aborting_on_failure(tmp_path: Path) -> None:
     """All mode should keep going when one backend command fails."""
     env = _env_with_fake_runner(tmp_path)
@@ -84,6 +115,7 @@ def _base_env(tmp_path: Path) -> dict[str, str]:
     env = os.environ.copy()
     env["TMPDIR"] = str(tmp_path)
     env["HOME"] = str(tmp_path)
+    env["OPS_DIAGNOSTICS_SKIP_ENV_LOAD"] = "1"
     return env
 
 
