@@ -384,6 +384,14 @@ extension IngestionViewModel {
     }
 
     public func cancelIngestion(fileId: String) {
+        guard items.contains(where: { $0.file.id == fileId }) else { return }
+        guard canCancelIngestion(fileId: fileId) else { return }
+
+        if fileId.hasPrefix("local-") {
+            cancelUpload(fileId: fileId)
+            return
+        }
+
         Task { [weak self] in
             guard let self else { return }
             do {

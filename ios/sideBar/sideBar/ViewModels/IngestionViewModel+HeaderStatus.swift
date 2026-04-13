@@ -63,11 +63,11 @@ extension IngestionViewModel {
 
     func cancelHeaderIngestion(fileId: String) async throws {
         guard items.contains(where: { $0.file.id == fileId }) else {
-            throw IngestionHeaderActionError.unavailable("This file is no longer available.")
+            throw IngestionHeaderActionError.unavailable("This file is no longer available")
         }
 
         guard canCancelIngestion(fileId: fileId) else {
-            throw IngestionHeaderActionError.unavailable("This file can't be canceled here.")
+            throw IngestionHeaderActionError.unavailable("This file can't be canceled here")
         }
 
         if fileId.hasPrefix("local-") {
@@ -76,11 +76,11 @@ extension IngestionViewModel {
         }
 
         guard IdentifierValidation.isServerFileID(fileId) else {
-            throw IngestionHeaderActionError.unavailable("Can't cancel this file yet.")
+            throw IngestionHeaderActionError.unavailable("Can't cancel this file yet")
         }
 
         if isOfflineForIngestion() {
-            throw IngestionHeaderActionError.unavailable("Can't cancel while offline.")
+            throw IngestionHeaderActionError.unavailable("Can't cancel while offline")
         }
 
         do {
@@ -91,7 +91,7 @@ extension IngestionViewModel {
             store.removeItem(fileId: fileId)
             cancelJobPolling(fileId: fileId)
         } catch {
-            throw IngestionHeaderActionError.unavailable("Failed to cancel ingestion.")
+            throw IngestionHeaderActionError.unavailable("Failed to cancel ingestion")
         }
     }
 }

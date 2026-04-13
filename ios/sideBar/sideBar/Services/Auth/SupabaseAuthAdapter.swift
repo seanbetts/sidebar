@@ -380,6 +380,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         refreshInFlightTask?.cancel()
         if clearPersistedState {
             do {
+                flushStatePersistenceQueue()
                 try clearPersistedAuthState()
             } catch {
                 logger.error("Failed to clear auth state: \(error.localizedDescription, privacy: .public)")
@@ -433,5 +434,9 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
 
     private func clearPersistedAuthState() throws {
         try SupabaseAuthRecovery.clearPersistedAuthState(stateStore: stateStore)
+    }
+
+    private func flushStatePersistenceQueue() {
+        statePersistenceQueue.sync {}
     }
 }
