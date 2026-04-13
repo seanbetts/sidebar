@@ -10,6 +10,7 @@ import { getCachedData, invalidateCache, setCachedData } from '$lib/utils/cache'
 import { logError } from '$lib/utils/errorHandling';
 
 const CACHE_KEY = 'websites.list';
+const LAST_SYNC_CACHE_KEY = 'websites.lastSync';
 const CACHE_TTL = 15 * 60 * 1000;
 const CACHE_VERSION = '1.1';
 
@@ -127,6 +128,33 @@ const parseAsyncSaveResponse = (value: unknown): WebsiteAsyncSaveResponse | null
 	return { job_id: payload.job_id as string, status: payload.status as string };
 };
 
+const getWebsiteSyncTimestamp = (
+	item: Pick<WebsiteItem, 'updated_at' | 'saved_at' | 'deleted_at'>
+): string | null => item.updated_at ?? item.saved_at ?? item.deleted_at ?? null;
+
+const mergeSyncCursor = (current: string | null, candidate: string | null): string | null => {
+	if (!current) return candidate;
+	if (!candidate) return current;
+	const currentTime = new Date(current).getTime();
+	const candidateTime = new Date(candidate).getTime();
+	if (!Number.isFinite(currentTime)) return candidate;
+	if (!Number.isFinite(candidateTime)) return current;
+	return candidateTime > currentTime ? candidate : current;
+};
+
+const deriveSyncCursor = (items: WebsiteItem[]): string | null =>
+	items.reduce<string | null>(
+		(cursor, item) => mergeSyncCursor(cursor, getWebsiteSyncTimestamp(item)),
+		null
+	);
+
+const persistWebsiteCache = (items: WebsiteItem[], lastSync: string | null) => {
+	setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
+	if (lastSync) {
+		setCachedData(LAST_SYNC_CACHE_KEY, lastSync, { ttl: CACHE_TTL, version: CACHE_VERSION });
+	}
+};
+
 const stripWwwPrefix = (value: string): string => value.replace(/^www\./i, '');
 
 const normalizeWebsiteUrl = (url: string): URL | null => {
@@ -218,6 +246,7 @@ function createWebsitesStore() {
 		loadingDetail: boolean;
 		searchQuery: string;
 		loaded: boolean;
+		lastSync: string | null;
 		archivedLoaded: boolean;
 		archivedLoading: boolean;
 		isSavingWebsite: boolean;
@@ -231,6 +260,7 @@ function createWebsitesStore() {
 		loadingDetail: false,
 		searchQuery: '',
 		loaded: false,
+		lastSync: null,
 		archivedLoaded: false,
 		archivedLoading: false,
 		isSavingWebsite: false,
@@ -249,16 +279,23 @@ function createWebsitesStore() {
 					version: CACHE_VERSION
 				});
 				if (cached) {
+					const cachedLastSync =
+						getCachedData<string>(LAST_SYNC_CACHE_KEY, {
+							ttl: CACHE_TTL,
+							version: CACHE_VERSION
+						}) ?? deriveSyncCursor(cached);
 					const cachedActive = cached.filter((item) => !isArchivedWebsite(item));
 					const currentArchived = currentState.items.filter((item) => isArchivedWebsite(item));
 					const mergedItems = mergeWebsiteCollections(cachedActive, currentArchived);
+					persistWebsiteCache(mergedItems, cachedLastSync);
 					update((state) => ({
 						...state,
 						items: mergedItems,
 						loading: false,
 						error: null,
 						searchQuery: '',
-						loaded: true
+						loaded: true,
+						lastSync: mergeSyncCursor(state.lastSync, cachedLastSync)
 					}));
 					this.revalidateInBackground();
 					return;
@@ -278,14 +315,16 @@ function createWebsitesStore() {
 					activeItems,
 					currentState.items.filter((item) => isArchivedWebsite(item))
 				);
-				setCachedData(CACHE_KEY, mergedItems, { ttl: CACHE_TTL, version: CACHE_VERSION });
+				const nextLastSync = mergeSyncCursor(currentState.lastSync, deriveSyncCursor(mergedItems));
+				persistWebsiteCache(mergedItems, nextLastSync);
 				update((state) => ({
 					...state,
 					items: mergedItems,
 					loading: false,
 					error: null,
 					searchQuery: '',
-					loaded: true
+					loaded: true,
+					lastSync: nextLastSync
 				}));
 			} catch (error) {
 				logError('Failed to load websites', error, { scope: 'websitesStore.load' });
@@ -314,10 +353,12 @@ function createWebsitesStore() {
 				update((state) => {
 					const activeItems = state.items.filter((item) => !isArchivedWebsite(item));
 					const mergedItems = mergeWebsiteCollections(activeItems, archivedItems);
-					setCachedData(CACHE_KEY, mergedItems, { ttl: CACHE_TTL, version: CACHE_VERSION });
+					const nextLastSync = mergeSyncCursor(state.lastSync, deriveSyncCursor(mergedItems));
+					persistWebsiteCache(mergedItems, nextLastSync);
 					return {
 						...state,
 						items: mergedItems,
+						lastSync: nextLastSync,
 						archivedLoaded: true,
 						archivedLoading: false
 					};
@@ -403,8 +444,51 @@ function createWebsitesStore() {
 
 		async revalidateInBackground() {
 			try {
-				const data = await websitesAPI.list();
 				const currentState = get({ subscribe });
+				if (currentState.lastSync) {
+					const response = await websitesAPI.sync({
+						last_sync: currentState.lastSync,
+						operations: []
+					});
+					const syncItems = extractWebsiteItems(response.updates);
+					const nextLastSync = mergeSyncCursor(
+						currentState.lastSync,
+						response.serverUpdatedSince ?? deriveSyncCursor(syncItems)
+					);
+					update((state) => {
+						const existingById = new Map(state.items.map((item) => [item.id, item]));
+						for (const syncItem of syncItems) {
+							if (syncItem.deleted_at) {
+								existingById.delete(syncItem.id);
+								continue;
+							}
+							const existing = existingById.get(syncItem.id);
+							existingById.set(syncItem.id, existing ? { ...existing, ...syncItem } : syncItem);
+						}
+						const orderedExisting = state.items
+							.map((item) => existingById.get(item.id))
+							.filter((item): item is WebsiteItem => Boolean(item));
+						const newItems = syncItems.filter(
+							(item) => !item.deleted_at && !state.items.some((existing) => existing.id === item.id)
+						);
+						const allItems = [...newItems, ...orderedExisting];
+						const nextActive =
+							state.active &&
+							syncItems.some((item) => item.id === state.active?.id && item.deleted_at)
+								? null
+								: state.active;
+						persistWebsiteCache(allItems, nextLastSync);
+						return {
+							...state,
+							items: allItems,
+							active: nextActive,
+							lastSync: nextLastSync
+						};
+					});
+					return;
+				}
+
+				const data = await websitesAPI.list();
 				const freshItems = mergeActiveItems(
 					extractWebsiteItems(data).filter((item) => !isArchivedWebsite(item)),
 					currentState.items.filter((item) => !isArchivedWebsite(item))
@@ -437,8 +521,9 @@ function createWebsitesStore() {
 					);
 
 					const allItems = [...mergedItems, ...newItems];
-					setCachedData(CACHE_KEY, allItems, { ttl: CACHE_TTL, version: CACHE_VERSION });
-					return { ...state, items: allItems };
+					const nextLastSync = mergeSyncCursor(state.lastSync, deriveSyncCursor(allItems));
+					persistWebsiteCache(allItems, nextLastSync);
+					return { ...state, items: allItems, lastSync: nextLastSync };
 				});
 			} catch (error) {
 				logError('Background revalidation failed', error, {
@@ -449,6 +534,7 @@ function createWebsitesStore() {
 
 		reset() {
 			invalidateCache(CACHE_KEY);
+			invalidateCache(LAST_SYNC_CACHE_KEY);
 			freshWebsiteExpirations.clear();
 			set({
 				items: [],
@@ -458,6 +544,7 @@ function createWebsitesStore() {
 				loadingDetail: false,
 				searchQuery: '',
 				loaded: false,
+				lastSync: null,
 				archivedLoaded: false,
 				archivedLoading: false,
 				isSavingWebsite: false,
@@ -585,12 +672,13 @@ function createWebsitesStore() {
 							existingItem.id === item.id ? { ...existingItem, ...item } : existingItem
 						)
 					: [item, ...state.items];
-				setCachedData(CACHE_KEY, nextItems, { ttl: CACHE_TTL, version: CACHE_VERSION });
+				const nextLastSync = mergeSyncCursor(state.lastSync, getWebsiteSyncTimestamp(item));
+				persistWebsiteCache(nextItems, nextLastSync);
 
 				const nextActive =
 					state.active && state.active.id === item.id ? { ...state.active, ...item } : state.active;
 
-				return { ...state, items: nextItems, active: nextActive };
+				return { ...state, items: nextItems, active: nextActive, lastSync: nextLastSync };
 			});
 		},
 

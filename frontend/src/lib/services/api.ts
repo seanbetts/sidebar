@@ -400,6 +400,32 @@ class WebsitesAPI {
 	}
 
 	/**
+	 * Pull website deltas since the last sync cursor.
+	 *
+	 * @param payload - Sync cursor and queued operations.
+	 * @returns Sync response with updated website items.
+	 * @throws Error when the request fails.
+	 */
+	async sync(payload: {
+		last_sync: string | null;
+		operations: Record<string, unknown>[];
+	}): Promise<{
+		applied: string[];
+		websites: unknown[];
+		conflicts: unknown[];
+		updates: { items: unknown[] };
+		serverUpdatedSince: string | null;
+	}> {
+		const response = await fetch(`${this.baseUrl}/sync`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload)
+		});
+		if (!response.ok) throw new Error('Failed to sync websites');
+		return response.json();
+	}
+
+	/**
 	 * Save a website URL (async job).
 	 *
 	 * @param url - Website URL to save.

@@ -7,6 +7,7 @@ const cacheState = new Map<string, unknown>();
 const { websitesAPI } = vi.hoisted(() => ({
 	websitesAPI: {
 		list: vi.fn(),
+		sync: vi.fn(),
 		get: vi.fn(),
 		search: vi.fn(),
 		listArchived: vi.fn(),
@@ -94,12 +95,12 @@ describe('websitesStore', () => {
 				{
 					id: '2',
 					title: 'Live',
-					url: '',
-					domain: '',
-					saved_at: null,
+					url: 'https://example.com/live',
+					domain: 'example.com',
+					saved_at: '2026-03-13T10:00:00Z',
 					published_at: null,
 					pinned: false,
-					updated_at: null,
+					updated_at: '2026-03-13T10:00:00Z',
 					last_opened_at: null
 				}
 			]
@@ -109,6 +110,122 @@ describe('websitesStore', () => {
 
 		expect(websitesAPI.list).toHaveBeenCalled();
 		expect(get(websitesStore).items[0].id).toBe('2');
+		expect(get(websitesStore).lastSync).toBe('2026-03-13T10:00:00Z');
+	});
+
+	it('revalidates cached websites with sync when a cached sync cursor exists', async () => {
+		const cachedItems = [
+			{
+				id: '1',
+				title: 'Cached',
+				url: 'https://example.com',
+				domain: 'example.com',
+				saved_at: '2026-03-13T10:00:00Z',
+				published_at: null,
+				pinned: false,
+				updated_at: '2026-03-13T10:00:00Z',
+				last_opened_at: null
+			}
+		];
+		cacheState.set('websites.list', cachedItems);
+		cacheState.set('websites.lastSync', '2026-03-13T10:00:00Z');
+		websitesAPI.sync.mockResolvedValue({
+			applied: [],
+			websites: [],
+			conflicts: [],
+			updates: {
+				items: [
+					{
+						id: '1',
+						title: 'Fresh',
+						url: 'https://example.com',
+						domain: 'example.com',
+						saved_at: '2026-03-13T10:00:00Z',
+						published_at: null,
+						pinned: false,
+						updated_at: '2026-03-14T10:00:00Z',
+						deleted_at: null
+					}
+				]
+			},
+			serverUpdatedSince: '2026-03-14T10:00:00Z'
+		});
+
+		await websitesStore.load();
+		await Promise.resolve();
+
+		expect(websitesAPI.list).not.toHaveBeenCalled();
+		expect(websitesAPI.sync).toHaveBeenCalledWith({
+			last_sync: '2026-03-13T10:00:00Z',
+			operations: []
+		});
+		expect(get(websitesStore).items[0].title).toBe('Fresh');
+		expect(get(websitesStore).lastSync).toBe('2026-03-14T10:00:00Z');
+	});
+
+	it('revalidates loaded websites with sync deltas after initial fetch', async () => {
+		websitesAPI.list.mockResolvedValue({
+			items: [
+				{
+					id: '2',
+					title: 'Live',
+					url: 'https://example.com/live',
+					domain: 'example.com',
+					saved_at: '2026-03-13T10:00:00Z',
+					published_at: null,
+					pinned: false,
+					updated_at: '2026-03-13T10:00:00Z',
+					last_opened_at: null
+				}
+			]
+		});
+		websitesAPI.sync.mockResolvedValue({
+			applied: [],
+			websites: [],
+			conflicts: [],
+			updates: {
+				items: [
+					{
+						id: '2',
+						title: 'Live Updated',
+						url: 'https://example.com/live',
+						domain: 'example.com',
+						saved_at: '2026-03-13T10:00:00Z',
+						published_at: null,
+						pinned: true,
+						updated_at: '2026-03-14T12:00:00Z',
+						deleted_at: null
+					},
+					{
+						id: '3',
+						title: 'New Website',
+						url: 'https://example.com/new',
+						domain: 'example.com',
+						saved_at: '2026-03-14T12:00:00Z',
+						published_at: null,
+						pinned: false,
+						updated_at: '2026-03-14T12:00:00Z',
+						deleted_at: null
+					}
+				]
+			},
+			serverUpdatedSince: '2026-03-14T12:00:00Z'
+		});
+
+		await websitesStore.load(true);
+		await websitesStore.revalidateInBackground();
+
+		expect(websitesAPI.sync).toHaveBeenCalledWith({
+			last_sync: '2026-03-13T10:00:00Z',
+			operations: []
+		});
+		expect(get(websitesStore).items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: '2', title: 'Live Updated', pinned: true }),
+				expect.objectContaining({ id: '3', title: 'New Website' })
+			])
+		);
+		expect(get(websitesStore).lastSync).toBe('2026-03-14T12:00:00Z');
 	});
 
 	it('ignores realtime updates older than current item', () => {

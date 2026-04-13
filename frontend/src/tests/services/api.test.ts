@@ -127,6 +127,30 @@ describe('api services', () => {
 		expect(data.items).toHaveLength(1);
 	});
 
+	it('websitesAPI.sync posts operations', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(
+			okJson({
+				applied: [],
+				websites: [],
+				conflicts: [],
+				updates: { items: [] },
+				serverUpdatedSince: '2026-04-13T08:00:00Z'
+			})
+		);
+
+		const data = await websitesAPI.sync({ last_sync: null, operations: [{ op: 'noop' }] });
+
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/v1/websites/sync',
+			expect.objectContaining({ method: 'POST' })
+		);
+		expect(data.serverUpdatedSince).toBe('2026-04-13T08:00:00Z');
+		expect(JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body))).toEqual({
+			last_sync: null,
+			operations: [{ op: 'noop' }]
+		});
+	});
+
 	it('ingestionAPI.list throws on failure', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(failJson());
 
