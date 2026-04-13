@@ -81,6 +81,12 @@ struct ChatMessageListView: View {
                         visibleMessageCount = newValue
                     }
                     let shouldJump = shouldScrollToBottom
+                    let shouldScheduleDeferredScroll = ChatMessageListScrollBehavior
+                        .shouldScheduleDeferredBottomScroll(
+                            previousMessageCount: oldValue,
+                            messageCount: newValue,
+                            scrollMode: scrollMode
+                        )
                     if !shouldJump {
                         scrollToBottom(
                             proxy: proxy,
@@ -89,7 +95,7 @@ struct ChatMessageListView: View {
                     } else {
                         scrollToBottom(proxy: proxy, animated: false)
                     }
-                    if shouldJump {
+                    if shouldJump || shouldScheduleDeferredScroll {
                         scheduleDeferredBottomScroll(proxy: proxy)
                     }
                     shouldScrollToBottom = false

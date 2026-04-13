@@ -1,4 +1,5 @@
 import XCTest
+import sideBarShared
 @testable import sideBar
 
 @MainActor
@@ -116,6 +117,72 @@ final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
         XCTAssertFalse(shouldScroll)
     }
 
+    func testWorkspaceSurfaceResultChangeScrollsBottom() {
+        let oldMessage = makeMessage(
+            content: "Answer",
+            status: .complete,
+            toolCalls: [
+                ToolCall(
+                    id: "tool-1",
+                    name: "Generate Prompts",
+                    parameters: [:],
+                    status: .success,
+                    skillId: "prompt-preview",
+                    iconKey: "prompt-preview"
+                )
+            ]
+        )
+        let newMessage = makeMessage(
+            content: "Answer",
+            status: .complete,
+            toolCalls: [
+                ToolCall(
+                    id: "tool-1",
+                    name: "Generate Prompts",
+                    parameters: [:],
+                    status: .success,
+                    result: AnyCodable([
+                        "data": [
+                            "workspace_patch": [
+                                "version": 1,
+                                "operations": [
+                                    [
+                                        "op": "upsert_agent_surface",
+                                        "pane": "primary",
+                                        "surface": [
+                                            "type": "markdown",
+                                            "surface_id": "surface-1",
+                                            "title": "Preview"
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]),
+                    skillId: "prompt-preview",
+                    iconKey: "prompt-preview"
+                )
+            ]
+        )
+
+        let oldSignature = ChatMessageScrollSignature(message: oldMessage)
+        let newSignature = ChatMessageScrollSignature(message: newMessage)
+
+        XCTAssertNotEqual(
+            oldSignature.visibleWorkspaceTargetsSignature,
+            newSignature.visibleWorkspaceTargetsSignature
+        )
+
+        let shouldScroll = ChatMessageListScrollBehavior.shouldScrollForLastMessageChange(
+            from: oldSignature,
+            to: newSignature,
+            isStreaming: false,
+            shouldScrollToBottom: false
+        )
+
+        XCTAssertTrue(shouldScroll)
+    }
+
     func testActiveToolChangesDoNotScrollChatList() {
         XCTAssertFalse(ChatMessageListScrollBehavior.shouldScrollForActiveToolChange())
     }
@@ -152,6 +219,26 @@ final class ChatMessageListViewScrollBehaviorTests: XCTestCase {
                 activeToolChanged: false
             ),
             .pinBottomWithoutAnimation
+        )
+    }
+
+    func testMessageAppendSchedulesDeferredBottomScroll() {
+        XCTAssertTrue(
+            ChatMessageListScrollBehavior.shouldScheduleDeferredBottomScroll(
+                previousMessageCount: 2,
+                messageCount: 4,
+                scrollMode: .pinBottomWithAnimation
+            )
+        )
+    }
+
+    func testNoScrollModeDoesNotScheduleDeferredBottomScroll() {
+        XCTAssertFalse(
+            ChatMessageListScrollBehavior.shouldScheduleDeferredBottomScroll(
+                previousMessageCount: 2,
+                messageCount: 4,
+                scrollMode: .noScroll
+            )
         )
     }
 

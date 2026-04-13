@@ -106,6 +106,7 @@ enum ChatMessageListScrollBehavior {
         let changedVisibleContent = oldSignature.id != newSignature.id
             || oldSignature.content != newSignature.content
             || oldSignature.status != newSignature.status
+            || oldSignature.visibleWorkspaceTargetsSignature != newSignature.visibleWorkspaceTargetsSignature
             || oldSignature.needsNewline != newSignature.needsNewline
             || oldSignature.error != newSignature.error
         return changedVisibleContent
@@ -129,6 +130,22 @@ enum ChatMessageListScrollBehavior {
 
     static func shouldScrollForActiveToolChange() -> Bool {
         false
+    }
+
+    static func shouldScheduleDeferredBottomScroll(
+        previousMessageCount: Int,
+        messageCount: Int,
+        scrollMode: ChatMessageListScrollMode
+    ) -> Bool {
+        guard messageCount > previousMessageCount else {
+            return false
+        }
+        switch scrollMode {
+        case .noScroll:
+            return false
+        case .pinBottomWithAnimation, .pinBottomWithoutAnimation:
+            return true
+        }
     }
 
     private static func isRetryAppend(
@@ -183,6 +200,7 @@ struct ChatMessageScrollSignature: Equatable {
     let content: String
     let status: MessageStatus
     let toolCallsSignature: String
+    let visibleWorkspaceTargetsSignature: String
     let needsNewline: Bool
     let error: String
     let errorDetails: String
@@ -194,6 +212,7 @@ struct ChatMessageScrollSignature: Equatable {
             content = ""
             status = .complete
             toolCallsSignature = ""
+            visibleWorkspaceTargetsSignature = ""
             needsNewline = false
             error = ""
             errorDetails = ""
@@ -206,9 +225,19 @@ struct ChatMessageScrollSignature: Equatable {
         toolCallsSignature = (message.toolCalls ?? []).map {
             "\($0.id):\($0.name):\($0.status.rawValue):\($0.skillId ?? ""):\($0.iconKey ?? "")"
         }.joined(separator: "|")
+        visibleWorkspaceTargetsSignature = ChatMessageListScrollBehavior
+            .visibleWorkspaceTargetsSignature(for: message.toolCalls)
         needsNewline = message.needsNewline ?? false
         error = message.error ?? ""
         errorDetails = message.errorDetails ?? ""
+    }
+}
+
+private extension ChatMessageListScrollBehavior {
+    static func visibleWorkspaceTargetsSignature(for toolCalls: [ToolCall]?) -> String {
+        ToolResultWorkspaceSurfaceParser.parse(toolCalls: toolCalls ?? []).map {
+            "\($0.id):\($0.label):\($0.iconName)"
+        }.joined(separator: "|")
     }
 }
 
