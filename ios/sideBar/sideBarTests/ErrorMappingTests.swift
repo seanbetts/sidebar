@@ -2,6 +2,7 @@ import XCTest
 import sideBarShared
 @testable import sideBar
 
+@MainActor
 final class ErrorMappingTests: XCTestCase {
     func testMapsOverloadedChatStreamErrorAsRetryable() {
         let presentation = ErrorMapping.chatStreamPresentation(

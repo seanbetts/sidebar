@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class OnboardingModelsTests: XCTestCase {
     func testPrimaryProviderExposesOnboardingLogoAssetNames() {
         XCTAssertEqual(AIPrimaryProvider.anthropic.onboardingLogoAssetName, "ProviderAnthropicLogo")

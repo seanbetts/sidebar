@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class NotificationRouteTests: XCTestCase {
     func testTaskReminderPayloadRoutesToTasksToday() throws {
         let route = try XCTUnwrap(

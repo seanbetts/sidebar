@@ -94,7 +94,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                 width: Self.baseTextContainerInset.width + extraHorizontalInset,
                 height: Self.baseTextContainerInset.height
             )
-            let previousInset = textContainerInset
             let fallbackContainerWidth = max(
                 maxReadableContentWidth - (Self.baseTextContainerInset.width * 2),
                 0
@@ -460,7 +459,7 @@ extension AppKitNoteTextEditorSurface.EditorTextView {
         }
     }
 
-    private func currentInitialPresentationStabilitySignature() -> InitialPresentationStabilitySignature? {
+    private func currentInitialPresentationStabilitySignature() -> AppKitNoteTextEditorSurface.InitialPresentationStabilitySignature? {
         guard let textContainer,
               let layoutManager else {
             return nil
@@ -468,7 +467,7 @@ extension AppKitNoteTextEditorSurface.EditorTextView {
         layoutManager.ensureLayout(for: textContainer)
         let visibleRect = enclosingScrollView?.contentView.documentVisibleRect ?? .zero
         let usedRect = layoutManager.usedRect(for: textContainer)
-        return InitialPresentationStabilitySignature(
+        return AppKitNoteTextEditorSurface.InitialPresentationStabilitySignature(
             boundsSize: bounds.size,
             visibleRect: visibleRect,
             textContainerInset: textContainerInset,

@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class ChatInputSizingTests: XCTestCase {
     func testChatInputUsesSharedFieldChrome() {
         XCTAssertEqual(ChatInputBar.chromeKind, .field)

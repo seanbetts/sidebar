@@ -44,6 +44,7 @@ final class TasksViewModelAPIStub: TasksProviding {
     var deleteProjectResult: Result<Void, Error> = .failure(TasksTestStubError.unused)
     private var queuedListResponsesByScope: [String: [TaskListResponse]] = [:]
     private var suspendedApplyResult: Result<TaskSyncResponse, Error>?
+    private var pendingResumedApplyResult: Result<TaskSyncResponse, Error>?
     private var applyContinuation: CheckedContinuation<TaskSyncResponse, Error>?
 
     func enqueueListResponse(scope: String, tasks: [TaskItem], groups: [TaskGroup]? = nil, projects: [TaskProject]? = nil) {
@@ -136,6 +137,7 @@ final class TasksViewModelAPIStub: TasksProviding {
         lastApplyPayload = payload
         applyCallCount += 1
         if let suspendedApplyResult {
+            pendingResumedApplyResult = suspendedApplyResult
             self.suspendedApplyResult = nil
             return try await withCheckedThrowingContinuation { continuation in
                 applyContinuation = continuation
@@ -156,7 +158,9 @@ final class TasksViewModelAPIStub: TasksProviding {
     func resumeApply() {
         guard let applyContinuation else { return }
         self.applyContinuation = nil
-        applyContinuation.resume(with: suspendedApplyResult ?? applyResult)
+        let result = pendingResumedApplyResult ?? applyResult
+        pendingResumedApplyResult = nil
+        applyContinuation.resume(with: result)
     }
 }
 

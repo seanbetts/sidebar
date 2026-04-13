@@ -183,8 +183,6 @@ extension NotesEditorViewModel {
             target: liveEditorSelectionTarget,
             viewportAnchorY: liveEditorSelectionViewportAnchorY
         )
-        isHoldingEditorSurfaceDuringReadExit = true
-        pendingReadExitHoldTargetOffset = restoration.offset
         #if os(iOS)
         if #available(iOS 26.0, *),
            let textView = nativeEditorTextView as? UIKitNoteTextEditorSurface.AccessoryTextView {

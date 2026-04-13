@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class TasksDetailViewTests: XCTestCase {
     func testExpandButtonUsesSharedGlassChrome() {
         XCTAssertEqual(TasksDetailView.expandButtonChromeStyle, .glass)

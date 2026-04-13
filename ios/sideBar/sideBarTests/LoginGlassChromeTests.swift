@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class LoginGlassChromeTests: XCTestCase {
     func testLoginFieldChromeUsesSharedFieldKind() {
         XCTAssertEqual(LoginChrome.fieldKind, .field)

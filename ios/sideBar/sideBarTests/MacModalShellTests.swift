@@ -2,6 +2,7 @@ import SwiftUI
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class MacModalShellTests: XCTestCase {
     func testMacModalShellUsesSharedModalChrome() {
         XCTAssertEqual(MacModalShell<EmptyView>.chromeKind, .modalShell)

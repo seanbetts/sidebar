@@ -44,7 +44,7 @@ final class MacWebsiteQueueBackgroundHostTests: XCTestCase {
             .appendingPathComponent("App")
             .appendingPathComponent("AppEnvironment.swift")
         do {
-            return try String(contentsOf: url)
+            return try String(contentsOf: url, encoding: .utf8)
         } catch {
             XCTFail("Failed to read AppEnvironment.swift: \(error)")
             throw error
@@ -59,7 +59,7 @@ final class MacWebsiteQueueBackgroundHostTests: XCTestCase {
             .appendingPathComponent("App")
             .appendingPathComponent(fileName)
         do {
-            return try String(contentsOf: url)
+            return try String(contentsOf: url, encoding: .utf8)
         } catch {
             XCTFail("Failed to read \(fileName): \(error)", file: file, line: line)
             throw error

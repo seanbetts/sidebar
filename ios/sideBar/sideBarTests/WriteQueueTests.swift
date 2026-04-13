@@ -552,13 +552,13 @@ private func waitUntilWriteQueueState(
 ) async {
     let start = DispatchTime.now().uptimeNanoseconds
     while DispatchTime.now().uptimeNanoseconds - start < timeoutNanoseconds {
-        if await condition() {
+        if condition() {
             return
         }
         await Task.yield()
     }
 
-    let isSatisfied = await condition()
+    let isSatisfied = condition()
     if !isSatisfied {
         XCTFail("Condition was not met before timeout")
     }

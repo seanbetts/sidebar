@@ -2,6 +2,7 @@ import SwiftUI
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class PanelHeaderTests: XCTestCase {
     func testHeaderChromeSkipsContainerGlassOnIOSInLightMode() {
         let chrome = PanelHeader<EmptyView>.chrome(

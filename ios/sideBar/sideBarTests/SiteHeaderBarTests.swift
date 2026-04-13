@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class SiteHeaderBarTests: XCTestCase {
     func testDesktopTrailingActionChromeUsesSharedHeaderActionButtonStyle() {
         XCTAssertEqual(SiteHeaderBar.desktopTrailingActionChromeStyle, .glass)

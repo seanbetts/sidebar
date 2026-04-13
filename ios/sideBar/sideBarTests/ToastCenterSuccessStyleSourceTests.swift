@@ -42,7 +42,7 @@ final class ToastCenterSuccessStyleSourceTests: XCTestCase {
             throw NSError(domain: "ToastCenterSuccessStyleSourceTests", code: 1)
         }
         let url = root.appendingPathComponent(relativePath)
-        return try String(contentsOf: url)
+        return try String(contentsOf: url, encoding: .utf8)
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
     }
 }

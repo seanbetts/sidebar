@@ -2,6 +2,7 @@ import SwiftUI
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class SettingsMacStylesTests: XCTestCase {
     func testStatusBannerUsesSharedCardChrome() {
         XCTAssertEqual(SettingsMacStatusBanner.chromeKind, .card)

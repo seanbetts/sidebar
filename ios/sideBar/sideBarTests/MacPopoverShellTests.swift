@@ -2,6 +2,7 @@ import SwiftUI
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class MacPopoverShellTests: XCTestCase {
     func testMacPopoverShellUsesSharedPopoverChrome() {
         XCTAssertEqual(MacPopoverShell<EmptyView>.chromeKind, .popoverShell)

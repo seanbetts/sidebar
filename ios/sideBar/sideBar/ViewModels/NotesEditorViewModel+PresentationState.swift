@@ -64,6 +64,8 @@ extension NotesEditorViewModel {
         pendingExitEditPresentationTask = Task { @MainActor [weak self] in
             await Task.yield()
             guard let self, Task.isCancelled == false else { return }
+            self.isHoldingEditorSurfaceDuringReadExit = true
+            self.pendingReadExitHoldTargetOffset = offset
             self.readSurfacePresentationGeneration &+= 1
             self.pendingReadSurfaceViewportOffset = offset
             self.pendingReadSurfaceViewportAnchorTarget = target
