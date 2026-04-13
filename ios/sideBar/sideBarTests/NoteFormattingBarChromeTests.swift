@@ -29,6 +29,7 @@ final class NoteFormattingBarChromeTests: XCTestCase {
         XCTAssertTrue(swiftUIViewSource.contains("HeaderActionMenuControl("))
         XCTAssertTrue(swiftUIViewSource.contains("systemName: \"textformat\""))
         XCTAssertTrue(detailFormattingBarSource.contains("formattingBarPresentation == .floatingTopTrailing"))
+        XCTAssertTrue(detailFormattingBarSource.contains("ZStack(alignment: .topTrailing)"))
         XCTAssertTrue(detailFormattingBarSource.contains("NoteFormattingBar(configuration: configuration)"))
         XCTAssertTrue(detailFormattingBarSource.contains(".allowsHitTesting(false)"))
         XCTAssertTrue(detailFormattingBarSource.contains("showsVisibleChrome: false"))

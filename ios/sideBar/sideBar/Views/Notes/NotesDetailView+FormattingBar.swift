@@ -13,7 +13,7 @@ extension NotesDetailView {
         #if os(iOS)
         if formattingBarPresentation == .floatingTopTrailing {
             return AnyView(
-                ZStack {
+                ZStack(alignment: .topTrailing) {
                     NoteFormattingBar(configuration: configuration)
                         .disabled(!configuration.isEnabled)
                         .allowsHitTesting(false)
@@ -37,7 +37,7 @@ extension NotesDetailView {
         )
         #elseif os(macOS)
         return AnyView(
-            ZStack {
+            ZStack(alignment: .topTrailing) {
                 NoteFormattingBar(configuration: configuration)
                     .disabled(!configuration.isEnabled)
                     .allowsHitTesting(false)

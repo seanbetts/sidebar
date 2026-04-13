@@ -10,7 +10,7 @@ struct PdfViewerFloatingControls: View {
         Group {
 #if os(iOS)
             if #available(iOS 26.0, *) {
-                ZStack {
+                ZStack(alignment: .topTrailing) {
                     PDFControlBar(configuration: configuration)
                         .disabled(!configuration.isEnabled)
                         .allowsHitTesting(false)
@@ -27,7 +27,7 @@ struct PdfViewerFloatingControls: View {
             }
 #elseif os(macOS)
             if #available(macOS 26.0, *) {
-                ZStack {
+                ZStack(alignment: .topTrailing) {
                     PDFControlBar(configuration: configuration)
                         .disabled(!configuration.isEnabled)
                         .allowsHitTesting(false)

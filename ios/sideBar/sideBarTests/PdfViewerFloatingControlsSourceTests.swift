@@ -6,6 +6,9 @@ final class PdfViewerFloatingControlsSourceTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(
+            normalized.contains("ZStack(alignment:.topTrailing){")
+        )
+        XCTAssertTrue(
             normalized.contains(
                 "UIKitPDFControlBarRepresentable(configuration:configuration,showsVisibleChrome:false)"
             )
