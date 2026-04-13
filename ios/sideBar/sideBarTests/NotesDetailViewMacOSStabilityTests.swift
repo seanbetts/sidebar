@@ -185,6 +185,61 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
         )
     }
 
+    func testMountedDetailEntryTransitionKeepsLongParagraphWrappedOnMacOS() async throws {
+        let longParagraph = Array(repeating: "Long wrapped segment", count: 80).joined(separator: " ")
+        let lastCharacterIndex = max(longParagraph.utf16.count - 1, 0)
+        let context = await makeNotesDetailViewTestContext(
+            note: makeTestNote(id: "entry-wrap-note", plainText: longParagraph)
+        )
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(
+            context.makeView().environmentObject(environment),
+            frame: CGRect(x: 0, y: 0, width: 420, height: 700)
+        )
+        let mountedView = controller.view
+        mountedView.layoutSubtreeIfNeeded()
+        mountedView.window?.contentView?.layoutSubtreeIfNeeded()
+        drainNotesHostingRunLoop()
+
+        context.makeView().activateReadSurfaceEditing(at: .characterOffset(0))
+
+        try assertMountedVisibleTextViewsStayWrapped(
+            in: mountedView,
+            lastCharacterIndex: lastCharacterIndex,
+            samples: 24
+        )
+    }
+
+    func testMountedDetailExitTransitionKeepsLongParagraphWrappedOnMacOS() async throws {
+        let longParagraph = Array(repeating: "Long wrapped segment", count: 80).joined(separator: " ")
+        let lastCharacterIndex = max(longParagraph.utf16.count - 1, 0)
+        let context = await makeNotesDetailViewTestContext(
+            note: makeTestNote(id: "exit-wrap-note", plainText: longParagraph)
+        )
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(
+            context.makeView().environmentObject(environment),
+            frame: CGRect(x: 0, y: 0, width: 420, height: 700)
+        )
+        let mountedView = controller.view
+        mountedView.layoutSubtreeIfNeeded()
+        mountedView.window?.contentView?.layoutSubtreeIfNeeded()
+        drainNotesHostingRunLoop()
+
+        context.makeView().activateReadSurfaceEditing(at: .characterOffset(0))
+        _ = try await waitForMountedTextView(in: mountedView) { textView in
+            textView.isEditable
+        }
+
+        context.makeView().handleCloseShortcut()
+
+        try assertMountedVisibleTextViewsStayWrapped(
+            in: mountedView,
+            lastCharacterIndex: lastCharacterIndex,
+            samples: 24
+        )
+    }
+
     @available(iOS 26.0, macOS 26.0, *)
     func testMountedEscapeAfterTypedBlockquoteLeavesEditModeOnMacOS() async throws {
         let document = NotesSemanticDocument(
@@ -313,5 +368,68 @@ private func assertMountedTextViewWrapsLongParagraph(
         file: file,
         line: line
     )
+}
+
+@MainActor
+private func assertMountedVisibleTextViewsStayWrapped(
+    in rootView: NSView,
+    lastCharacterIndex: Int,
+    samples: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws {
+    for sampleIndex in 0..<samples {
+        rootView.layoutSubtreeIfNeeded()
+        rootView.window?.contentView?.layoutSubtreeIfNeeded()
+        if sampleIndex > 0 {
+            drainNotesHostingRunLoop()
+        }
+
+        let visibleTextViews = findDescendantTextViews(in: rootView)
+            .filter(mountedTextViewIsVisible(_:))
+        XCTAssertFalse(
+            visibleTextViews.isEmpty,
+            "Expected at least one visible text view during transition sample \(sampleIndex).",
+            file: file,
+            line: line
+        )
+        for textView in visibleTextViews {
+            try assertMountedTextViewWrapsLongParagraph(
+                textView,
+                lastCharacterIndex: lastCharacterIndex,
+                file: file,
+                line: line
+            )
+        }
+    }
+}
+
+@MainActor
+private func findDescendantTextViews(in view: NSView) -> [NSTextView] {
+    let matchingSubviewTextViews = view.subviews.flatMap(findDescendantTextViews(in:))
+    if let textView = view as? NSTextView {
+        return [textView] + matchingSubviewTextViews
+    }
+    return matchingSubviewTextViews
+}
+
+@MainActor
+private func mountedTextViewIsVisible(_ textView: NSTextView) -> Bool {
+    guard textView.window != nil, textView.isHidden == false else { return false }
+    return effectiveMountedAlpha(of: textView) > 0.1
+}
+
+@MainActor
+private func effectiveMountedAlpha(of view: NSView) -> CGFloat {
+    var resolvedAlpha = view.alphaValue
+    var currentAncestor = view.superview
+    while let ancestor = currentAncestor {
+        if ancestor.isHidden {
+            return 0
+        }
+        resolvedAlpha *= ancestor.alphaValue
+        currentAncestor = ancestor.superview
+    }
+    return resolvedAlpha
 }
 #endif

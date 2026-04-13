@@ -5,6 +5,9 @@ import UIKit
 #elseif os(macOS)
 import AppKit
 #endif
+
+// swiftlint:disable file_length
+
 struct NotesDetailView: View {
     static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
 
@@ -113,6 +116,10 @@ struct NotesDetailView: View {
             }
         }
         .onChange(of: editorViewModel.currentNoteId) { _, _ in
+            NotesTransitionDebugTrace.log(
+                "detail.currentNoteChanged",
+                details: "note=\(editorViewModel.currentNoteId ?? "nil")"
+            )
             resetSavedIndicator()
             #if os(iOS)
             activeFormattingBarPresentation = nil
@@ -120,7 +127,17 @@ struct NotesDetailView: View {
             pendingReadExitHoldTargetOffset = nil
             #endif
         }
-        .onChange(of: editorViewModel.presentationMode) { _, newMode in
+        .onChange(of: editorViewModel.presentationMode) { oldMode, newMode in
+            NotesTransitionDebugTrace.log(
+                "detail.presentationModeChanged",
+                details: [
+                    "oldMode=\(String(describing: oldMode))",
+                    "mode=\(String(describing: newMode))",
+                    "holdReadDuringEntry=\(editorViewModel.isHoldingReadSurfaceDuringEditEntry)",
+                    "holdEditorDuringExit=\(isHoldingEditorSurfaceDuringReadExit)",
+                    "pendingReadOffset=\(NotesTransitionDebugTrace.format(editorViewModel.pendingReadSurfaceViewportOffset))"
+                ].joined(separator: " ")
+            )
             #if os(iOS)
             if newMode != .edit {
                 activeFormattingBarPresentation = nil
@@ -136,16 +153,35 @@ struct NotesDetailView: View {
             }
             #endif
         }
-        #if os(iOS)
         .onChange(of: editorViewModel.pendingReadSurfaceViewportOffset) { _, newOffset in
+            NotesTransitionDebugTrace.log(
+                "detail.pendingReadViewportOffsetChanged",
+                details: "offset=\(NotesTransitionDebugTrace.format(newOffset))"
+            )
+            #if os(iOS)
             if let newOffset {
                 pendingReadExitHoldTargetOffset = newOffset
                 if isHoldingEditorSurfaceDuringReadExit {
                     isHoldingEditorSurfaceDuringReadExit = true
                 }
             }
+            #endif
         }
-        #endif
+        .onChange(of: editorViewModel.isHoldingReadSurfaceDuringEditEntry) { _, isHolding in
+            NotesTransitionDebugTrace.log(
+                "detail.readSurfaceHoldChanged",
+                details: "isHolding=\(isHolding)"
+            )
+        }
+        .onChange(of: isHoldingEditorSurfaceDuringReadExit) { _, isHolding in
+            NotesTransitionDebugTrace.log(
+                "detail.editorSurfaceExitHoldChanged",
+                details: [
+                    "isHolding=\(isHolding)",
+                    "pendingTargetOffset=\(NotesTransitionDebugTrace.format(pendingReadExitHoldTargetOffset))"
+                ].joined(separator: " ")
+            )
+        }
         .onDisappear {
             savedIndicatorTask?.cancel()
         }

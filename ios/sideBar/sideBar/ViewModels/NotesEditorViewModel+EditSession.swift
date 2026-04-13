@@ -50,6 +50,16 @@ extension NotesEditorViewModel {
         viewportAnchorY: CGFloat? = nil
     ) {
         guard currentNoteId != nil, unsupportedContent == nil else { return }
+        NotesTransitionDebugTrace.log(
+            "enterEditMode.request",
+            details: [
+                "note=\(currentNoteId ?? "nil")",
+                "target=\(String(describing: target))",
+                "viewportAnchorY=\(NotesTransitionDebugTrace.format(viewportAnchorY))",
+                "heldReadOffset=\(NotesTransitionDebugTrace.format(heldReadSurfaceViewportOffset))",
+                "presentation=\(String(describing: presentationMode))"
+            ].joined(separator: " ")
+        )
         cancelPendingPresentationMirrorTasks()
         pendingEditSelectionTarget = target
         pendingEditViewportOffset = viewportAnchorY == nil ? nil : heldReadSurfaceViewportOffset
@@ -71,6 +81,16 @@ extension NotesEditorViewModel {
         heldReadSurfaceViewportAnchorY = viewportAnchorY
         #endif
         presentationMode = .edit
+        NotesTransitionDebugTrace.log(
+            "enterEditMode.applied",
+            details: [
+                "holdRead=\(isHoldingReadSurfaceDuringEditEntry)",
+                "pendingEditOffset=\(NotesTransitionDebugTrace.format(pendingEditViewportOffset))",
+                "pendingEditAnchorY=\(NotesTransitionDebugTrace.format(pendingEditViewportAnchorY))",
+                "autofocus=\(requestsEditorAutofocus)",
+                "presentation=\(String(describing: presentationMode))"
+            ].joined(separator: " ")
+        )
     }
 
     func pendingEditSelectionTargetForCurrentEditSession() -> PendingEditSelectionTarget? {
@@ -147,6 +167,17 @@ extension NotesEditorViewModel {
     }
 
     public func exitEditModeToRead(captureAttachedTextViewSnapshot: Bool = true) {
+        NotesTransitionDebugTrace.log(
+            "exitEditModeToRead.request",
+            details: [
+                "note=\(currentNoteId ?? "nil")",
+                "captureAttachedSnapshot=\(captureAttachedTextViewSnapshot)",
+                "liveEditorOffset=\(NotesTransitionDebugTrace.format(liveEditorViewportOffset))",
+                "liveSelectionTarget=\(String(describing: liveEditorSelectionTarget))",
+                "liveSelectionAnchorY=\(NotesTransitionDebugTrace.format(liveEditorSelectionViewportAnchorY))",
+                "presentation=\(String(describing: presentationMode))"
+            ].joined(separator: " ")
+        )
         requestsEditorAutofocus = false
         isTransitioningEditExitToRead = true
         pendingEditSelectionTarget = nil
@@ -194,6 +225,14 @@ extension NotesEditorViewModel {
         #endif
         pendingReadViewportRestoration = restoration
         debugLastExitReadViewportRestoration = restoration
+        NotesTransitionDebugTrace.log(
+            "exitEditModeToRead.restorationPrepared",
+            details: [
+                "offset=\(NotesTransitionDebugTrace.format(restoration.offset))",
+                "target=\(String(describing: restoration.target))",
+                "anchorY=\(NotesTransitionDebugTrace.format(restoration.viewportAnchorY))"
+            ].joined(separator: " ")
+        )
         liveEditorViewportOffset = nil
         liveEditorSelectionTarget = nil
         liveEditorSelectionViewportAnchorY = nil

@@ -72,6 +72,14 @@ extension NotesDetailView {
         viewportAnchorY: CGFloat?
     ) {
         guard currentUnsupportedContent == nil else { return }
+        NotesTransitionDebugTrace.log(
+            "readSurface.activateEditing",
+            details: [
+                "target=\(String(describing: target))",
+                "viewportAnchorY=\(NotesTransitionDebugTrace.format(viewportAnchorY))",
+                "heldReadOffset=\(NotesTransitionDebugTrace.format(editorViewModel.heldReadSurfaceViewportOffset))"
+            ].joined(separator: " ")
+        )
         #if os(iOS)
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),
@@ -97,6 +105,14 @@ extension NotesDetailView {
     }
 
     func handleReadViewportOffsetChange(_ offset: CGPoint) {
+        NotesTransitionDebugTrace.log(
+            "readSurface.viewportOffsetChanged",
+            details: [
+                "offset=\(NotesTransitionDebugTrace.format(offset))",
+                "pendingOffset=\(NotesTransitionDebugTrace.format(editorViewModel.pendingReadSurfaceViewportOffset))",
+                "holdEditorDuringExit=\(isHoldingEditorSurfaceDuringReadExit)"
+            ].joined(separator: " ")
+        )
         #if os(iOS)
         if editorViewModel.isHoldingReadSurfaceDuringEditEntry {
             return
@@ -125,12 +141,17 @@ extension NotesDetailView {
             }
             isHoldingEditorSurfaceDuringReadExit = false
             pendingReadExitHoldTargetOffset = nil
+            NotesTransitionDebugTrace.log("readSurface.exitHoldReleasedFromViewportMatch")
         }
         editorViewModel.heldReadSurfaceViewportOffset = offset
     }
 
     func handleReadInitialViewportRestorationApplied() {
         let restoredOffset = editorViewModel.pendingReadSurfaceViewportOffset
+        NotesTransitionDebugTrace.log(
+            "readSurface.initialViewportRestorationApplied",
+            details: "offset=\(NotesTransitionDebugTrace.format(restoredOffset))"
+        )
         DispatchQueue.main.async {
             if let restoredOffset {
                 editorViewModel.heldReadSurfaceViewportOffset = restoredOffset
@@ -145,6 +166,14 @@ extension NotesDetailView {
 
     func handleCloseShortcut(editedDocument: NotesSemanticDocument? = nil) {
         guard viewModel.activeNote != nil else { return }
+        NotesTransitionDebugTrace.log(
+            "detail.closeShortcut",
+            details: [
+                "hasEditedDocument=\(editedDocument != nil)",
+                "isEditing=\(editorViewModel.isEditingNote)",
+                "presentation=\(String(describing: editorViewModel.presentationMode))"
+            ].joined(separator: " ")
+        )
         guard editedDocument != nil || editorViewModel.isEditingNote else {
             requestCloseNote()
             return

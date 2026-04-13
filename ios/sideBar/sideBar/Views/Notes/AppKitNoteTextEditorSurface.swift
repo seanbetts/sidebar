@@ -9,7 +9,7 @@ private struct AppKitNoteTextEditorUndoSnapshot {
 
 @available(iOS 26.0, macOS 26.0, *)
 struct AppKitNoteTextEditorSurface: NSViewRepresentable {
-    fileprivate struct RenderSignature: Equatable {
+    struct RenderSignature: Equatable {
         let renderGeneration: UInt64
         let baseFontSize: CGFloat
     }
@@ -32,6 +32,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             updateTextContainerInset()
+            emitTransitionTrace("viewDidMoveToWindow")
             scheduleAutofocusIfNeeded()
             scheduleInitialPresentationReadyIfNeeded()
         }
@@ -39,6 +40,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         override func layout() {
             super.layout()
             updateTextContainerInset()
+            emitTransitionTrace("layout")
             scheduleInitialPresentationReadyIfNeeded()
             needsDisplay = true
         }
@@ -62,6 +64,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         func scheduleAutofocusIfNeeded() {
             guard shouldAutofocus, !didScheduleAutofocus, let window else { return }
             didScheduleAutofocus = true
+            emitTransitionTrace("scheduleAutofocusIfNeeded.queued")
             DispatchQueue.main.async { [weak self, weak window] in
                 guard let self,
                       self.shouldAutofocus,
@@ -71,6 +74,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                     return
                 }
                 window.makeFirstResponder(self)
+                self.emitTransitionTrace("scheduleAutofocusIfNeeded.applied")
                 self.scheduleInitialPresentationReadyIfNeeded()
             }
         }
@@ -82,7 +86,17 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                 height: Self.baseTextContainerInset.height
             )
             guard textContainerInset != resolvedInset else { return }
+            let previousInset = textContainerInset
             textContainerInset = resolvedInset
+            NotesTransitionDebugTrace.log(
+                "appkitEditor.textContainerInsetUpdated",
+                details: [
+                    "previous=\(NotesTransitionDebugTrace.format(previousInset))",
+                    "resolved=\(NotesTransitionDebugTrace.format(resolvedInset))",
+                    "bounds=\(NotesTransitionDebugTrace.format(bounds))",
+                    "maxReadableWidth=\(NotesTransitionDebugTrace.format(maxReadableContentWidth))"
+                ].joined(separator: " ")
+            )
         }
 
         private func drawCodeBlockBackgrounds(in dirtyRect: NSRect) {
@@ -131,100 +145,12 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         self.onEscape = onEscape
     }
 
-    func makeNSView(context: Context) -> NSScrollView {
-        let textView = EditorTextView()
-        textView.drawsBackground = false
-        textView.isEditable = isEditable
-        textView.isSelectable = true
-        textView.isRichText = true
-        textView.importsGraphics = false
-        textView.allowsUndo = true
-        textView.shouldAutofocus = isEditable && shouldAutofocus
-        textView.onEscapeCommand = onEscape
-        textView.onInitialPresentationReady = onInitialPresentationReady
-        textView.maxReadableContentWidth = maxContentWidth
-        textView.textColor = .labelColor
-        textView.insertionPointColor = NoteTextAppearance.caretTintColor
-        textView.textContainer?.lineFragmentPadding = 0
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.heightTracksTextView = false
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.minSize = .zero
-        textView.maxSize = NSSize(
-            width: CGFloat.greatestFiniteMagnitude,
-            height: CGFloat.greatestFiniteMagnitude
-        )
-        textView.autoresizingMask = [.width]
-        textView.delegate = context.coordinator
-        textView.setAccessibilityLabel("Notes editor")
-
-        let scrollView = NSScrollView()
-        scrollView.drawsBackground = false
-        scrollView.borderType = .noBorder
-        scrollView.hasHorizontalScroller = false
-        scrollView.hasVerticalScroller = true
-        scrollView.autohidesScrollers = true
-        scrollView.documentView = textView
-
-        context.coordinator.textView = textView
-        return scrollView
-    }
-
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let textView = scrollView.documentView as? EditorTextView else { return }
-
-        textView.isEditable = isEditable
-        textView.shouldAutofocus = isEditable && shouldAutofocus
-        textView.onEscapeCommand = onEscape
-        textView.onInitialPresentationReady = onInitialPresentationReady
-        textView.maxReadableContentWidth = maxContentWidth
-
-        let renderSignature = RenderSignature(
-            renderGeneration: viewModel.renderGeneration,
-            baseFontSize: viewModel.baseFontSize
-        )
-        if context.coordinator.lastAppliedRenderSignature != renderSignature {
-            let attributedText = bridgedAttributedText(from: viewModel.attributedContent)
-            context.coordinator.isApplyingProgrammaticText = true
-            textView.textStorage?.setAttributedString(attributedText)
-            context.coordinator.isApplyingProgrammaticText = false
-            context.coordinator.lastAppliedRenderSignature = renderSignature
-        }
-
-        let selectedRange = viewModel.utf16SelectedRange(in: viewModel.attributedContent)
-        let displaySelectedRange = SelectableNoteReadView.editorDisplaySelectedRange(
-            in: viewModel.currentPersistenceSnapshot().document,
-            logicalSelectedRange: selectedRange
-        )
-        if textView.selectedRange() != displaySelectedRange {
-            context.coordinator.isApplyingProgrammaticSelection = true
-            textView.setSelectedRange(displaySelectedRange)
-            context.coordinator.isApplyingProgrammaticSelection = false
-        }
-
-        textView.scheduleAutofocusIfNeeded()
-        textView.scheduleInitialPresentationReadyIfNeeded()
-
-        let typingAttributes = bridgedTypingAttributes(from: viewModel.attributedContent)
-        if NSDictionary(dictionary: textView.typingAttributes).isEqual(to: typingAttributes) == false {
-            textView.typingAttributes = typingAttributes
-        }
-    }
-
-    static func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
-        if let textView = scrollView.documentView as? NSTextView,
-           textView.window?.firstResponder === textView {
-            textView.window?.makeFirstResponder(nil)
-        }
-    }
-
     final class Coordinator: NSObject, NSTextViewDelegate {
         let viewModel: NativeNoteEditorViewModel
         weak var textView: NSTextView?
         var isApplyingProgrammaticText = false
         var isApplyingProgrammaticSelection = false
-        fileprivate var lastAppliedRenderSignature: RenderSignature?
+        var lastAppliedRenderSignature: RenderSignature?
 
         init(viewModel: NativeNoteEditorViewModel) {
             self.viewModel = viewModel
@@ -450,32 +376,66 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         }
     }
 }
-
 extension AppKitNoteTextEditorSurface {
     func makeCoordinator() -> Coordinator {
         Coordinator(viewModel: viewModel)
     }
 }
 
-private extension AppKitNoteTextEditorSurface.EditorTextView {
+extension AppKitNoteTextEditorSurface.EditorTextView {
     func scheduleInitialPresentationReadyIfNeeded() {
         guard !didReportInitialPresentationReady,
               window != nil,
               bounds.width > 0,
               bounds.height > 0 else {
+            NotesTransitionDebugTrace.log(
+                "appkitEditor.initialPresentationReady.deferred",
+                details: transitionTraceSummary()
+            )
             return
         }
         if shouldAutofocus, window?.firstResponder !== self {
+            NotesTransitionDebugTrace.log(
+                "appkitEditor.initialPresentationReady.waitingForFocus",
+                details: transitionTraceSummary()
+            )
             DispatchQueue.main.async { [weak self] in
                 self?.scheduleInitialPresentationReadyIfNeeded()
             }
             return
         }
         didReportInitialPresentationReady = true
+        NotesTransitionDebugTrace.log(
+            "appkitEditor.initialPresentationReady.reported",
+            details: transitionTraceSummary()
+        )
         DispatchQueue.main.async { [weak self] in
             guard let self, self.window != nil else { return }
             self.onInitialPresentationReady?()
         }
+    }
+
+    func emitTransitionTrace(_ event: String) {
+        NotesTransitionDebugTrace.log(
+            "appkitEditor.\(event)",
+            details: transitionTraceSummary()
+        )
+    }
+
+    func transitionTraceSummary() -> String {
+        let containerSize = textContainer?.containerSize
+        let visibleRect = enclosingScrollView?.contentView.documentVisibleRect
+        return [
+            "bounds=\(NotesTransitionDebugTrace.format(bounds))",
+            "visibleRect=\(NotesTransitionDebugTrace.format(visibleRect))",
+            "inset=\(NotesTransitionDebugTrace.format(textContainerInset))",
+            "containerSize=\(NotesTransitionDebugTrace.format(containerSize))",
+            "windowAttached=\(window != nil)",
+            "isFirstResponder=\(window?.firstResponder === self)",
+            "shouldAutofocus=\(shouldAutofocus)",
+            "didScheduleAutofocus=\(didScheduleAutofocus)",
+            "didReportReady=\(didReportInitialPresentationReady)"
+        ].joined(separator: " ")
     }
 }
 #endif
