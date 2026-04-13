@@ -5,10 +5,11 @@ import { createSearchActions } from '$lib/stores/tree/actions/search';
 import { createMutationActions } from '$lib/stores/tree/actions/mutations';
 import { createResetAction } from '$lib/stores/tree/actions/reset';
 
-const cacheState = new Map<string, FileNode[]>();
+const cacheState = new Map<string, unknown>();
 
-const { getCachedData, isCacheStale, invalidateCache } = vi.hoisted(() => ({
+const { getCachedData, setCachedData, isCacheStale, invalidateCache } = vi.hoisted(() => ({
 	getCachedData: vi.fn((key: string) => cacheState.get(key) ?? null),
+	setCachedData: vi.fn((key: string, value: unknown) => cacheState.set(key, value)),
 	isCacheStale: vi.fn(() => false),
 	invalidateCache: vi.fn()
 }));
@@ -22,12 +23,14 @@ const { cacheTree, cacheExpanded, getExpandedCache } = vi.hoisted(() => ({
 const { notesAPI } = vi.hoisted(() => ({
 	notesAPI: {
 		listTree: vi.fn(),
+		sync: vi.fn(),
 		search: vi.fn()
 	}
 }));
 
 vi.mock('$lib/utils/cache', () => ({
 	getCachedData,
+	setCachedData,
 	isCacheStale,
 	invalidateCache
 }));
@@ -70,15 +73,15 @@ describe('tree actions', () => {
 	});
 
 	it('loads tree from API when cache is missing', async () => {
-		vi.spyOn(global, 'fetch').mockResolvedValue({
-			ok: true,
-			json: async () => ({ children: [{ name: 'File', path: 'file', type: 'file' }] })
-		} as Response);
+		notesAPI.listTree.mockResolvedValue({
+			children: [{ name: 'File', path: 'file', type: 'file', modified: '2026-04-13T09:00:00Z' }]
+		});
 		const { load } = createLoadActions({ update, set, getState });
 
 		await load('notes');
 
 		expect(state.trees.notes?.loaded).toBe(true);
+		expect(state.trees.notes?.lastSync).toBe('2026-04-13T09:00:00.000Z');
 	});
 
 	it('searches notes via API', async () => {
@@ -122,5 +125,65 @@ describe('tree actions', () => {
 		resetTree();
 
 		expect(state.trees.notes).toBeUndefined();
+	});
+
+	it('revalidates stale notes tree with sync deltas', async () => {
+		cacheState.set('tree.notes', [
+			{
+				name: 'Cached',
+				path: 'note-1',
+				type: 'file',
+				modified: '2026-04-13T09:00:00Z'
+			}
+		]);
+		cacheState.set('notes.tree.lastSync', '2026-04-13T09:00:00Z');
+		isCacheStale.mockReturnValue(true);
+		notesAPI.sync.mockResolvedValue({
+			applied: [],
+			notes: [],
+			conflicts: [],
+			updates: {
+				items: [
+					{
+						id: 'note-1',
+						title: 'Cached Updated',
+						folder: '',
+						pinned: true,
+						pinned_order: 1,
+						archived: false,
+						updated_at: '2026-04-13T09:05:00Z',
+						deleted_at: null
+					},
+					{
+						id: 'note-2',
+						title: 'New Note',
+						folder: 'Projects',
+						pinned: false,
+						pinned_order: null,
+						archived: false,
+						updated_at: '2026-04-13T09:10:00Z',
+						deleted_at: null
+					}
+				]
+			},
+			serverUpdatedSince: '2026-04-13T09:10:00Z'
+		});
+		const { load } = createLoadActions({ update, set, getState });
+
+		await load('notes');
+		await Promise.resolve();
+
+		expect(notesAPI.listTree).not.toHaveBeenCalled();
+		expect(notesAPI.sync).toHaveBeenCalledWith({
+			last_sync: '2026-04-13T09:00:00Z',
+			operations: []
+		});
+		expect(state.trees.notes?.children).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ path: 'note-1', name: 'Cached Updated', pinned: true }),
+				expect.objectContaining({ path: 'folder:Projects', type: 'directory' })
+			])
+		);
+		expect(state.trees.notes?.lastSync).toBe('2026-04-13T09:10:00Z');
 	});
 });

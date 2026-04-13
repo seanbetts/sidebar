@@ -27,6 +27,7 @@ export interface SingleFileTree {
 	loaded?: boolean;
 	archivedLoading?: boolean;
 	archivedLoaded?: boolean;
+	lastSync?: string | null;
 }
 
 export interface FileTreeState {

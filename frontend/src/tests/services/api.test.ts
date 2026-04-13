@@ -256,6 +256,30 @@ describe('api services', () => {
 		expect(data.children).toHaveLength(1);
 	});
 
+	it('notesAPI.sync posts operations', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(
+			okJson({
+				applied: [],
+				notes: [],
+				conflicts: [],
+				updates: { items: [] },
+				serverUpdatedSince: '2026-04-13T09:10:00Z'
+			})
+		);
+
+		const data = await notesAPI.sync({ last_sync: null, operations: [{ op: 'noop' }] });
+
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/v1/notes/sync',
+			expect.objectContaining({ method: 'POST' })
+		);
+		expect(data.serverUpdatedSince).toBe('2026-04-13T09:10:00Z');
+		expect(JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body))).toEqual({
+			last_sync: null,
+			operations: [{ op: 'noop' }]
+		});
+	});
+
 	it('tasksAPI.search returns list data', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(okJson({ tasks: [] }));
 

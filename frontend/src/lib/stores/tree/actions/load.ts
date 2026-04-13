@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
-import { getCachedData, isCacheStale } from '$lib/utils/cache';
+import { getCachedData, isCacheStale, setCachedData } from '$lib/utils/cache';
 import { editorStore } from '$lib/stores/editor';
+import { notesAPI } from '$lib/services/api';
 import type { FileNode } from '$lib/types/file';
 import type { TreeStoreContext } from '$lib/stores/tree/types';
 import {
@@ -10,12 +11,107 @@ import {
 	getExpandedCache,
 	getTreeCacheKey
 } from '$lib/stores/tree/cache';
-import { applyExpandedPaths, hasFilePath, sortNodes } from '$lib/stores/tree/nodes';
+import {
+	applyExpandedPaths,
+	hasFilePath,
+	insertNoteIntoFolder,
+	removeNodeFromTree,
+	sortNodes
+} from '$lib/stores/tree/nodes';
 import { handleFetchError, logError } from '$lib/utils/errorHandling';
 
 export function createLoadActions(context: TreeStoreContext) {
 	const ARCHIVE_FOLDER = 'Archive';
 	const ARCHIVE_FOLDER_PATH = `folder:${ARCHIVE_FOLDER}`;
+	const LAST_SYNC_CACHE_KEY = 'notes.tree.lastSync';
+
+	type NoteSyncItem = {
+		id: string;
+		title: string;
+		folder: string;
+		pinned: boolean;
+		pinned_order?: number | null;
+		archived: boolean;
+		is_folder_marker?: boolean;
+		updated_at?: string | null;
+		deleted_at?: string | null;
+	};
+
+	const mergeSyncCursor = (current: string | null, candidate: string | null): string | null => {
+		if (!current) return candidate;
+		if (!candidate) return current;
+		const currentTime = new Date(current).getTime();
+		const candidateTime = new Date(candidate).getTime();
+		if (!Number.isFinite(currentTime)) return candidate;
+		if (!Number.isFinite(candidateTime)) return current;
+		return candidateTime > currentTime ? candidate : current;
+	};
+
+	const normalizeNodeTimestamp = (value: unknown): string | null => {
+		if (typeof value !== 'string' && typeof value !== 'number') {
+			return null;
+		}
+		const timestamp = new Date(value).getTime();
+		if (!Number.isFinite(timestamp)) {
+			return null;
+		}
+		return new Date(timestamp).toISOString();
+	};
+
+	const deriveSyncCursorFromTree = (nodes: FileNode[]): string | null => {
+		let cursor: string | null = null;
+		const visit = (items: FileNode[]) => {
+			for (const item of items) {
+				if (item.type === 'file') {
+					cursor = mergeSyncCursor(cursor, normalizeNodeTimestamp(item.modified));
+				}
+				if (item.children) {
+					visit(item.children);
+				}
+			}
+		};
+		visit(nodes);
+		return cursor;
+	};
+
+	const getCachedLastSync = (): string | null =>
+		getCachedData<string>(LAST_SYNC_CACHE_KEY, {
+			ttl: TREE_CACHE_TTL,
+			version: TREE_CACHE_VERSION
+		});
+
+	const setCachedLastSync = (lastSync: string | null) => {
+		if (!lastSync) return;
+		setCachedData(LAST_SYNC_CACHE_KEY, lastSync, {
+			ttl: TREE_CACHE_TTL,
+			version: TREE_CACHE_VERSION
+		});
+	};
+
+	const isNoteSyncItem = (value: unknown): value is NoteSyncItem => {
+		if (!value || typeof value !== 'object') return false;
+		const item = value as Record<string, unknown>;
+		return (
+			typeof item.id === 'string' &&
+			typeof item.title === 'string' &&
+			typeof item.folder === 'string'
+		);
+	};
+
+	const extractSyncItems = (value: unknown): NoteSyncItem[] => {
+		const items = (value as { items?: unknown[] } | null)?.items;
+		return Array.isArray(items) ? items.filter(isNoteSyncItem) : [];
+	};
+
+	const toFileNode = (item: NoteSyncItem): FileNode => ({
+		name: item.title,
+		path: item.id,
+		type: 'file',
+		modified: item.updated_at ?? undefined,
+		pinned: item.pinned,
+		pinned_order: item.pinned_order ?? null,
+		archived: item.archived
+	});
 
 	const isArchiveDirectory = (node: FileNode): boolean =>
 		node.type === 'directory' && node.path === ARCHIVE_FOLDER_PATH;
@@ -128,15 +224,88 @@ export function createLoadActions(context: TreeStoreContext) {
 		return result;
 	};
 
-	const revalidateInBackground = async (basePath: string, expandedPaths: Set<string>) => {
+	const applyNoteDeltaUpdates = (
+		children: FileNode[],
+		syncItems: NoteSyncItem[],
+		includeArchived: boolean
+	): { children: FileNode[]; requiresFullReload: boolean } => {
+		let nextChildren = children;
+		for (const item of syncItems) {
+			if (item.is_folder_marker) {
+				return { children, requiresFullReload: true };
+			}
+			nextChildren = removeNodeFromTree(nextChildren, item.id).nodes;
+			if (item.deleted_at || (item.archived && !includeArchived)) {
+				continue;
+			}
+			const targetFolder = item.archived ? ARCHIVE_FOLDER : item.folder;
+			nextChildren = insertNoteIntoFolder(nextChildren, toFileNode(item), targetFolder);
+		}
+		return { children: nextChildren, requiresFullReload: false };
+	};
+
+	const revalidateInBackground = async (
+		basePath: string,
+		expandedPaths: Set<string>,
+		lastSync: string | null = null
+	) => {
 		if (basePath !== 'notes') {
 			return;
 		}
 
 		try {
-			const response = await fetch('/api/v1/notes/tree');
-			if (!response.ok) return;
-			const data = await response.json();
+			if (lastSync) {
+				const response = await notesAPI.sync({
+					last_sync: lastSync,
+					operations: []
+				});
+				const syncItems = extractSyncItems(response.updates);
+				let shouldReloadFully = false;
+
+				context.update((state) => {
+					const existingTree = state.trees[basePath];
+					const includeArchived =
+						Boolean(existingTree?.archivedLoaded) ||
+						Boolean(existingTree?.children?.some((node) => isArchiveDirectory(node)));
+					const deltaResult = applyNoteDeltaUpdates(
+						existingTree?.children || [],
+						syncItems,
+						includeArchived
+					);
+					if (deltaResult.requiresFullReload) {
+						shouldReloadFully = true;
+						return state;
+					}
+
+					const finalChildren = applyExpandedPaths(deltaResult.children, expandedPaths);
+					const nextLastSync = mergeSyncCursor(lastSync, response.serverUpdatedSince ?? null);
+					cacheTree(basePath, finalChildren);
+					setCachedLastSync(nextLastSync);
+
+					return {
+						trees: {
+							...state.trees,
+							[basePath]: {
+								...(state.trees[basePath] || { expandedPaths }),
+								children: finalChildren,
+								expandedPaths,
+								loading: false,
+								archivedLoading: state.trees[basePath]?.archivedLoading ?? false,
+								archivedLoaded: state.trees[basePath]?.archivedLoaded ?? false,
+								error: null,
+								loaded: true,
+								lastSync: nextLastSync
+							}
+						}
+					};
+				});
+
+				if (!shouldReloadFully) {
+					return;
+				}
+			}
+
+			const data = await notesAPI.listTree();
 			const freshChildren: FileNode[] = data.children || [];
 
 			context.update((state) => {
@@ -152,7 +321,9 @@ export function createLoadActions(context: TreeStoreContext) {
 				const mergedChildren = mergeArchivedNodesIntoTree(mergedActiveChildren, archivedChildren);
 
 				const finalChildren = applyExpandedPaths(mergedChildren, expandedPaths);
+				const nextLastSync = deriveSyncCursorFromTree(finalChildren);
 				cacheTree(basePath, finalChildren);
+				setCachedLastSync(nextLastSync);
 
 				return {
 					trees: {
@@ -163,7 +334,8 @@ export function createLoadActions(context: TreeStoreContext) {
 							expandedPaths,
 							loading: false,
 							error: null,
-							loaded: true
+							loaded: true,
+							lastSync: nextLastSync
 						}
 					}
 				};
@@ -197,6 +369,8 @@ export function createLoadActions(context: TreeStoreContext) {
 				version: TREE_CACHE_VERSION
 			});
 			if (cached) {
+				const cachedLastSync = getCachedLastSync() ?? deriveSyncCursorFromTree(cached);
+				setCachedLastSync(cachedLastSync);
 				context.update((state) => ({
 					trees: {
 						...state.trees,
@@ -209,12 +383,13 @@ export function createLoadActions(context: TreeStoreContext) {
 							archivedLoaded: state.trees[basePath]?.archivedLoaded ?? false,
 							error: null,
 							searchQuery: '',
-							loaded: true
+							loaded: true,
+							lastSync: mergeSyncCursor(state.trees[basePath]?.lastSync ?? null, cachedLastSync)
 						}
 					}
 				}));
 				if (isCacheStale(cacheKey, TREE_CACHE_TTL)) {
-					revalidateInBackground(basePath, cachedExpandedPaths);
+					revalidateInBackground(basePath, cachedExpandedPaths, cachedLastSync);
 				}
 				return;
 			}
@@ -244,18 +419,15 @@ export function createLoadActions(context: TreeStoreContext) {
 		}));
 
 		try {
-			const response = await fetch('/api/v1/notes/tree');
-			if (!response.ok) {
-				await handleFetchError(response);
-			}
-
-			const data = await response.json();
+			const data = await notesAPI.listTree();
 			const children: FileNode[] = data.children || [];
 			context.update((state) => {
 				const currentChildren = state.trees[basePath]?.children || [];
 				const archivedChildren = archivedChildrenFromNodes(currentChildren);
 				const mergedChildren = mergeArchivedNodesIntoTree(children, archivedChildren);
+				const nextLastSync = deriveSyncCursorFromTree(mergedChildren);
 				cacheTree(basePath, mergedChildren);
+				setCachedLastSync(nextLastSync);
 				return {
 					trees: {
 						...state.trees,
@@ -268,7 +440,8 @@ export function createLoadActions(context: TreeStoreContext) {
 							archivedLoaded: state.trees[basePath]?.archivedLoaded ?? false,
 							error: null,
 							searchQuery: '',
-							loaded: true
+							loaded: true,
+							lastSync: nextLastSync
 						}
 					}
 				};

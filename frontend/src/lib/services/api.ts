@@ -338,6 +338,25 @@ class NotesAPI {
 		};
 	}
 
+	async sync(payload: {
+		last_sync: string | null;
+		operations: Record<string, unknown>[];
+	}): Promise<{
+		applied: string[];
+		notes: unknown[];
+		conflicts: unknown[];
+		updates: { items: unknown[] };
+		serverUpdatedSince: string | null;
+	}> {
+		const response = await fetch(`${this.baseUrl}/sync`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload)
+		});
+		if (!response.ok) throw new Error('Failed to sync notes');
+		return response.json();
+	}
+
 	/**
 	 * Search notes by query string.
 	 *
