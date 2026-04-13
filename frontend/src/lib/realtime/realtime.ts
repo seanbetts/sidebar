@@ -7,13 +7,16 @@ import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 import { scratchpadStore } from '$lib/stores/scratchpad';
 import { get } from 'svelte/store';
 import { session } from '$lib/stores/auth';
+import { sidebarSectionStore } from '$lib/stores/sidebar-section';
+import type { SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
 
 const SCRATCHPAD_TITLE = '✏️ Scratchpad';
 let activeUserId: string | null = null;
 let activeAccessToken: string | null = null;
-let channels: RealtimeChannel[] = [];
+let channels = new Map<string, RealtimeChannel>();
 let ingestionRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let sessionListener: (() => void) | null = null;
+let sectionListener: (() => void) | null = null;
 
 function stopIngestionRefreshTimer() {
 	if (ingestionRefreshTimer) {
@@ -26,6 +29,13 @@ function stopSessionListener() {
 	if (sessionListener) {
 		sessionListener();
 		sessionListener = null;
+	}
+}
+
+function stopSectionListener() {
+	if (sectionListener) {
+		sectionListener();
+		sectionListener = null;
 	}
 }
 
@@ -210,22 +220,122 @@ function handleFileJobChange(payload: RealtimePostgresChangesPayload<any>) {
  * Stop realtime subscriptions and timers.
  */
 export function stopRealtime() {
-	if (!channels.length) {
+	if (!channels.size) {
 		activeUserId = null;
 		activeAccessToken = null;
 		stopIngestionRefreshTimer();
 		stopSessionListener();
+		stopSectionListener();
 		return;
 	}
 	const supabase = getSupabaseClient();
 	channels.forEach((channel) => {
 		supabase.removeChannel(channel);
 	});
-	channels = [];
+	channels = new Map();
 	activeUserId = null;
 	activeAccessToken = null;
 	stopIngestionRefreshTimer();
 	stopSessionListener();
+	stopSectionListener();
+}
+
+function desiredChannelKeys(section: SidebarSection): string[] {
+	switch (section) {
+		case 'notes':
+			return ['notes'];
+		case 'websites':
+			return ['websites'];
+		case 'files':
+			return ['ingested-files', 'file-jobs'];
+		default:
+			return [];
+	}
+}
+
+function ensureChannel(
+	key: string,
+	userId: string,
+	supabase: ReturnType<typeof getSupabaseClient>
+) {
+	if (channels.has(key)) {
+		return;
+	}
+
+	let channel: RealtimeChannel | null = null;
+	if (key === 'notes') {
+		channel = supabase.channel(`notes-${userId}`).on(
+			'postgres_changes',
+			{
+				event: '*',
+				schema: 'public',
+				table: 'notes',
+				filter: `user_id=eq.${userId}`
+			},
+			handleNoteChange
+		);
+	} else if (key === 'websites') {
+		channel = supabase.channel(`websites-${userId}`).on(
+			'postgres_changes',
+			{
+				event: '*',
+				schema: 'public',
+				table: 'websites',
+				filter: `user_id=eq.${userId}`
+			},
+			handleWebsiteChange
+		);
+	} else if (key === 'ingested-files') {
+		channel = supabase.channel(`ingested-files-${userId}`).on(
+			'postgres_changes',
+			{
+				event: '*',
+				schema: 'public',
+				table: 'ingested_files',
+				filter: `user_id=eq.${userId}`
+			},
+			handleIngestedFileChange
+		);
+	} else if (key === 'file-jobs') {
+		channel = supabase.channel(`file-jobs-${userId}`).on(
+			'postgres_changes',
+			{
+				event: '*',
+				schema: 'public',
+				table: 'file_processing_jobs',
+				filter: `user_id=eq.${userId}`
+			},
+			handleFileJobChange
+		);
+	}
+
+	if (!channel) {
+		return;
+	}
+
+	channels.set(key, channel);
+	channel.subscribe();
+}
+
+function syncChannelsForSection(section: SidebarSection) {
+	if (!activeUserId || !activeAccessToken) {
+		return;
+	}
+
+	const desired = new Set(desiredChannelKeys(section));
+	const supabase = getSupabaseClient();
+
+	for (const [key, channel] of channels.entries()) {
+		if (desired.has(key)) {
+			continue;
+		}
+		supabase.removeChannel(channel);
+		channels.delete(key);
+	}
+
+	for (const key of desired) {
+		ensureChannel(key, activeUserId, supabase);
+	}
 }
 
 /**
@@ -246,7 +356,7 @@ export async function startRealtime(userId: string | null) {
 		return;
 	}
 
-	if (activeUserId === userId && token === activeAccessToken && channels.length) {
+	if (activeUserId === userId && token === activeAccessToken && sectionListener) {
 		return;
 	}
 
@@ -256,53 +366,9 @@ export async function startRealtime(userId: string | null) {
 
 	const supabase = getSupabaseClient();
 	supabase.realtime.setAuth(token);
-
-	const notesChannel = supabase.channel(`notes-${userId}`).on(
-		'postgres_changes',
-		{
-			event: '*',
-			schema: 'public',
-			table: 'notes',
-			filter: `user_id=eq.${userId}`
-		},
-		handleNoteChange
-	);
-
-	const websitesChannel = supabase.channel(`websites-${userId}`).on(
-		'postgres_changes',
-		{
-			event: '*',
-			schema: 'public',
-			table: 'websites',
-			filter: `user_id=eq.${userId}`
-		},
-		handleWebsiteChange
-	);
-
-	const ingestedFilesChannel = supabase.channel(`ingested-files-${userId}`).on(
-		'postgres_changes',
-		{
-			event: '*',
-			schema: 'public',
-			table: 'ingested_files',
-			filter: `user_id=eq.${userId}`
-		},
-		handleIngestedFileChange
-	);
-
-	const jobsChannel = supabase.channel(`file-jobs-${userId}`).on(
-		'postgres_changes',
-		{
-			event: '*',
-			schema: 'public',
-			table: 'file_processing_jobs',
-			filter: `user_id=eq.${userId}`
-		},
-		handleFileJobChange
-	);
-
-	channels = [notesChannel, websitesChannel, ingestedFilesChannel, jobsChannel];
-	channels.forEach((channel) => {
-		channel.subscribe();
+	stopSectionListener();
+	sectionListener = sidebarSectionStore.subscribe((section) => {
+		syncChannelsForSection(section);
 	});
+	syncChannelsForSection(get(sidebarSectionStore));
 }
