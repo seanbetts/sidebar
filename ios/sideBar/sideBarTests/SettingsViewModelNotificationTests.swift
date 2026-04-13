@@ -361,9 +361,10 @@ final class SettingsViewModelNotificationTests: XCTestCase {
     }
 
     private func makeSettings(
-        notificationPreferences: NotificationPreferencesSettings = .defaults
+        notificationPreferences: NotificationPreferencesSettings? = nil
     ) -> UserSettings {
-        UserSettings(
+        let resolvedNotificationPreferences = notificationPreferences ?? .defaults
+        return UserSettings(
             userId: "user-1",
             communicationStyle: nil,
             workingRelationship: nil,
@@ -375,7 +376,7 @@ final class SettingsViewModelNotificationTests: XCTestCase {
             pronouns: nil,
             location: nil,
             profileImageUrl: nil,
-            notificationPreferences: notificationPreferences,
+            notificationPreferences: resolvedNotificationPreferences,
             enabledSkills: []
         )
     }

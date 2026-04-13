@@ -454,8 +454,8 @@ private enum FilesCopyTextError: Error {
 private final class FilesCopyTextUploadManager: IngestionUploadManaging {
     func startUpload(
         request: UploadRequest,
-        onProgress: @escaping @Sendable (Double) -> Void,
-        onCompletion: @escaping @Sendable (Result<String, Error>) -> Void
+        onProgress: @escaping (Double) -> Void,
+        onCompletion: @escaping (Result<String, Error>) -> Void
     ) {
         _ = request
         _ = onProgress
