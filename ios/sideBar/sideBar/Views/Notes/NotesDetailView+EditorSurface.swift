@@ -2,7 +2,7 @@ import SwiftUI
 
 extension NotesDetailView {
     var supportedNoteSurface: some View {
-        ZStack {
+        ZStack(alignment: .topLeading) {
             if viewModel.activeNote != nil && currentUnsupportedContent == nil {
                 configuredReadSurface()
                     .zIndex(isHoldingEditorSurfaceDuringReadExit ? 0 : 0)
@@ -34,6 +34,7 @@ extension NotesDetailView {
                     )
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     var readSurface: some View {

@@ -141,6 +141,50 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
         harness.dispose()
     }
 
+    func testMountedDetailToggleKeepsLongParagraphWrappedOnMacOS() async throws {
+        let longParagraph = Array(repeating: "Long wrapped segment", count: 80).joined(separator: " ")
+        let lastCharacterIndex = max(longParagraph.utf16.count - 1, 0)
+        let context = await makeNotesDetailViewTestContext(
+            note: makeTestNote(id: "wrapping-note", plainText: longParagraph)
+        )
+        let environment = makeNotesDetailTestEnvironment()
+        let controller = mount(
+            context.makeView().environmentObject(environment),
+            frame: CGRect(x: 0, y: 0, width: 420, height: 700)
+        )
+        let mountedView = controller.view
+        mountedView.layoutSubtreeIfNeeded()
+        mountedView.window?.contentView?.layoutSubtreeIfNeeded()
+        drainNotesHostingRunLoop()
+
+        let initialReadTextView = try XCTUnwrap(findDescendantTextView(in: mountedView))
+        XCTAssertFalse(initialReadTextView.isEditable)
+        try assertMountedTextViewWrapsLongParagraph(
+            initialReadTextView,
+            lastCharacterIndex: lastCharacterIndex
+        )
+
+        context.makeView().activateReadSurfaceEditing(at: .characterOffset(0))
+
+        let editorTextView = try await waitForMountedTextView(in: mountedView) { textView in
+            textView.isEditable
+        }
+        try assertMountedTextViewWrapsLongParagraph(
+            editorTextView,
+            lastCharacterIndex: lastCharacterIndex
+        )
+
+        context.makeView().handleCloseShortcut()
+
+        let restoredReadTextView = try await waitForMountedTextView(in: mountedView) { textView in
+            textView.isEditable == false
+        }
+        try assertMountedTextViewWrapsLongParagraph(
+            restoredReadTextView,
+            lastCharacterIndex: lastCharacterIndex
+        )
+    }
+
     @available(iOS 26.0, macOS 26.0, *)
     func testMountedEscapeAfterTypedBlockquoteLeavesEditModeOnMacOS() async throws {
         let document = NotesSemanticDocument(
@@ -229,5 +273,45 @@ final class NotesDetailViewMacOSStabilityTests: NotesDetailViewHostingTestCase {
         XCTAssertFalse(harness.mountedWindow.firstResponder === editorTextView)
     }
 
+}
+
+@MainActor
+private func waitForMountedTextView(
+    in rootView: NSView,
+    matching predicate: @escaping (NSTextView) -> Bool
+) async throws -> NSTextView {
+    var resolvedTextView: NSTextView?
+    await waitUntil(timeout: .seconds(2)) {
+        guard let textView = findDescendantTextView(in: rootView), predicate(textView) else {
+            return false
+        }
+        resolvedTextView = textView
+        return true
+    }
+    return try XCTUnwrap(resolvedTextView)
+}
+
+@MainActor
+private func assertMountedTextViewWrapsLongParagraph(
+    _ textView: NSTextView,
+    lastCharacterIndex: Int,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws {
+    textView.layoutSubtreeIfNeeded()
+    textView.enclosingScrollView?.layoutSubtreeIfNeeded()
+    textView.window?.contentView?.layoutSubtreeIfNeeded()
+    drainNotesHostingRunLoop()
+
+    let firstCharacterRect = try glyphRect(in: textView, characterIndex: 0)
+    let lastCharacterRect = try glyphRect(in: textView, characterIndex: lastCharacterIndex)
+
+    XCTAssertGreaterThan(
+        lastCharacterRect.minY,
+        firstCharacterRect.minY + 1,
+        "Expected the mounted note surface to wrap long paragraphs instead of laying them out on one overflowing line.",
+        file: file,
+        line: line
+    )
 }
 #endif
