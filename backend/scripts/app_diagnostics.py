@@ -28,6 +28,7 @@ from scripts.ops_diagnostics_common import (  # noqa: E402
 
 
 STALE_JOB_MINUTES = 15
+ACTIVE_JOB_STATUSES = {"queued", "processing"}
 
 
 def build_app_summary(
@@ -36,7 +37,12 @@ def build_app_summary(
     stale_jobs: list[dict[str, Any]],
 ) -> dict[str, object]:
     """Build the top-level queue-health summary payload."""
-    stale_job_count = sum(int(item.get("stale_count", 0)) for item in stale_jobs)
+    active_stale_jobs = [
+        item
+        for item in stale_jobs
+        if str(item.get("status")) in ACTIVE_JOB_STATUSES
+    ]
+    stale_job_count = sum(int(item.get("stale_count", 0)) for item in active_stale_jobs)
     warnings: list[str] = []
     status = "ok"
     if stale_job_count > 0:
@@ -49,7 +55,7 @@ def build_app_summary(
         status=status,
         data={
             "queue_counts": queue_counts,
-            "stale_jobs": stale_jobs,
+            "stale_jobs": active_stale_jobs,
             "stale_job_count": stale_job_count,
         },
         warnings=warnings,
@@ -158,13 +164,14 @@ def _fetch_stale_jobs(connection) -> list[dict[str, Any]]:
                   status,
                   count(*) as stale_count
                 from {table_name}
-                where (
-                  status in ('queued', 'processing')
-                  and updated_at < now() - make_interval(mins => :stale_minutes)
-                ) or (
-                  lease_expires_at is not null
-                  and lease_expires_at < now()
-                )
+                where status in ('queued', 'processing')
+                  and (
+                    updated_at < now() - make_interval(mins => :stale_minutes)
+                    or (
+                      lease_expires_at is not null
+                      and lease_expires_at < now()
+                    )
+                  )
                 group by status
                 order by status
                 """

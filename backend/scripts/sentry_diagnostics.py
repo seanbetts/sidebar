@@ -28,13 +28,15 @@ from scripts.ops_diagnostics_common import (  # noqa: E402
 
 
 SENTRY_BASE_URL = "https://sentry.io/api/0"
+RELEASE_PAGE_SIZE = 25
 
 
 def build_sentry_summary(
     *,
     issues: list[dict[str, Any]],
     events: list[dict[str, Any]],
-    releases: list[dict[str, Any]] | None,
+    releases: list[dict[str, Any]],
+    release_warning: str | None = None,
 ) -> dict[str, object]:
     """Build the top-level Sentry summary payload."""
     warnings: list[str] = []
@@ -42,8 +44,8 @@ def build_sentry_summary(
     if issues:
         status = "warn"
         warnings.append("unresolved issues detected")
-    if releases is None:
-        warnings.append("release data unavailable")
+    if release_warning:
+        warnings.append(release_warning)
 
     return build_result(
         target="sentry",
@@ -52,7 +54,7 @@ def build_sentry_summary(
         data={
             "unresolved_issue_count": len(issues),
             "recent_event_count": len(events),
-            "release_count": len(releases or []),
+            "release_count": len(releases),
         },
         warnings=warnings,
     )
@@ -101,14 +103,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "summary":
             issues = _fetch_issues(session, org, project)
             events = _fetch_events(session, org, project)
+            releases: list[dict[str, Any]] = []
+            release_warning: str | None = None
             try:
                 releases = _fetch_releases(session, org, project)
-            except Exception:
-                releases = None
+            except Exception as exc:
+                release_warning = _format_release_fetch_error(exc)
             result = build_sentry_summary(
                 issues=issues,
                 events=events,
                 releases=releases,
+                release_warning=release_warning,
             )
         elif args.command == "issues":
             result = build_result(
@@ -180,11 +185,52 @@ def _fetch_releases(
 ) -> list[dict[str, Any]]:
     response = session.get(
         f"{SENTRY_BASE_URL}/organizations/{org}/releases/",
-        params={"project": project, "per_page": 10},
+        params={"per_page": RELEASE_PAGE_SIZE},
         timeout=15,
     )
     response.raise_for_status()
-    return list(response.json())
+    releases = list(response.json())
+    return [
+        release
+        for release in releases
+        if _release_includes_project(release, project)
+    ]
+
+
+def _release_includes_project(release: dict[str, Any], project: str) -> bool:
+    target = str(project)
+    for project_data in release.get("projects", []):
+        slug = str(project_data.get("slug", ""))
+        project_id = str(project_data.get("id", ""))
+        if slug == target or project_id == target:
+            return True
+    return False
+
+
+def _format_release_fetch_error(exc: Exception) -> str:
+    if isinstance(exc, requests.HTTPError) and exc.response is not None:
+        response = exc.response
+        detail = _response_error_detail(response)
+        if detail:
+            return (
+                f"release data unavailable "
+                f"(HTTP {response.status_code}: {detail})"
+            )
+        return f"release data unavailable (HTTP {response.status_code})"
+    return "release data unavailable"
+
+
+def _response_error_detail(response: requests.Response) -> str | None:
+    try:
+        payload = response.json()
+    except ValueError:
+        text = response.text.strip()
+        return text or None
+
+    detail = payload.get("detail")
+    if isinstance(detail, str) and detail.strip():
+        return detail.strip()
+    return None
 
 
 def _print_result(result: dict[str, object], *, as_json: bool) -> None:

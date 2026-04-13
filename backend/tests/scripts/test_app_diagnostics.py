@@ -39,3 +39,25 @@ def test_summary_keeps_ok_status_when_queues_are_healthy() -> None:
     assert result["status"] == "ok"
     assert result["data"]["stale_job_count"] == 0
     assert result["warnings"] == []
+
+
+def test_summary_ignores_terminal_job_statuses_in_stale_results() -> None:
+    """Terminal statuses should not be counted as stalled work."""
+    result = build_app_summary(
+        queue_counts={
+            "website_processing_jobs": {"completed": 10, "failed": 3},
+            "file_processing_jobs": {"ready": 7},
+        },
+        stale_jobs=[
+            {
+                "queue": "website_processing_jobs",
+                "status": "failed",
+                "stale_count": 4,
+            }
+        ],
+    )
+
+    assert result["status"] == "ok"
+    assert result["data"]["stale_job_count"] == 0
+    assert result["data"]["stale_jobs"] == []
+    assert result["warnings"] == []
