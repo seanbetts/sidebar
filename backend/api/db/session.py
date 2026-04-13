@@ -84,13 +84,21 @@ def _apply_session_settings(
     user_id: str | None,
     force_public_search_path: bool,
     website_worker_scope: str | None = None,
+    retention_worker_scope: str | None = None,
 ) -> None:
     if user_id:
         connection.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
+    else:
+        connection.execute(text("SELECT set_config('app.user_id', '', false)"))
     if website_worker_scope:
         connection.execute(
             text("SET LOCAL app.website_worker_scope = :worker_scope"),
             {"worker_scope": website_worker_scope},
+        )
+    if retention_worker_scope:
+        connection.execute(
+            text("SET LOCAL app.retention_worker_scope = :worker_scope"),
+            {"worker_scope": retention_worker_scope},
         )
     timeout_ms = settings.db_statement_timeout_ms
     if timeout_ms > 0:
@@ -107,6 +115,7 @@ def _apply_session_settings_with_retry(
     user_id: str | None,
     force_public_search_path: bool,
     website_worker_scope: str | None = None,
+    retention_worker_scope: str | None = None,
 ) -> None:
     """Apply session settings and invalidate dropped connections for caller retry."""
     try:
@@ -115,6 +124,7 @@ def _apply_session_settings_with_retry(
             user_id,
             force_public_search_path,
             website_worker_scope,
+            retention_worker_scope,
         )
     except OperationalError as exc:
         connection.invalidate(exc)
@@ -153,11 +163,13 @@ def _set_app_user_id(session: Session, transaction, connection) -> None:
         session.info.get("skip_search_path")
     )
     website_worker_scope = session.info.get("website_worker_scope")
+    retention_worker_scope = session.info.get("retention_worker_scope")
     _apply_session_settings_with_retry(
         connection,
         user_id,
         force_public,
         website_worker_scope,
+        retention_worker_scope,
     )
 
 
@@ -259,6 +271,11 @@ def set_session_user_id(db: Session, user_id: str | None) -> None:
     """
     if not user_id:
         db.info.pop("app_user_id", None)
+        _retry_session_bootstrap_operation(
+            db,
+            "RESET app.user_id",
+            lambda: db.execute(text("SELECT set_config('app.user_id', '', false)")),
+        )
         return
     db.info["app_user_id"] = user_id
     _retry_session_bootstrap_operation(
@@ -288,3 +305,25 @@ def set_website_worker_scope(db: Session, enabled: bool) -> None:
         return
 
     db.info.pop("website_worker_scope", None)
+
+
+def set_retention_worker_scope(db: Session, enabled: bool) -> None:
+    """Set retention-worker scope for the current and future transactions.
+
+    Args:
+        db: Active database session.
+        enabled: Whether cross-user retention scope should be enabled.
+    """
+    if enabled:
+        db.info["retention_worker_scope"] = "all"
+        _retry_session_bootstrap_operation(
+            db,
+            "SET LOCAL app.retention_worker_scope",
+            lambda: db.execute(
+                text("SET LOCAL app.retention_worker_scope = :worker_scope"),
+                {"worker_scope": "all"},
+            ),
+        )
+        return
+
+    db.info.pop("retention_worker_scope", None)

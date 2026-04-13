@@ -11,7 +11,7 @@ from sqlalchemy import or_
 
 from api import metrics
 from api.config import settings
-from api.db.session import SessionLocal
+from api.db.session import SessionLocal, set_retention_worker_scope
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from api.models.note import Note
 from api.models.task import Task
@@ -238,6 +238,7 @@ def run_once() -> CleanupRunSummary:
     try:
         session_factory = _session_factory()
         with session_factory() as db:
+            set_retention_worker_scope(db, enabled=True)
             summary = run_retention_cycle(
                 db,
                 now=current_now,

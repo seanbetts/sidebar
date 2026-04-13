@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import io
 import json
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 from scripts.ops_diagnostics_common import (
@@ -68,6 +70,31 @@ def test_print_json_result_serializes_envelope() -> None:
     parsed = json.loads(stream.getvalue())
     assert parsed["target"] == "fly"
     assert parsed["data"]["machines"] == 2
+
+
+def test_print_json_result_serializes_datetime_and_uuid_values() -> None:
+    """JSON printer should stringify common DB result scalar types."""
+    result = build_result(
+        target="db",
+        command="sql",
+        status="ok",
+        data={
+            "rows": [
+                {
+                    "id": uuid.UUID("12345678-1234-5678-1234-567812345678"),
+                    "created_at": datetime(2026, 4, 13, 18, 0, tzinfo=UTC),
+                }
+            ]
+        },
+        generated_at="2026-04-13T12:00:00Z",
+    )
+
+    stream = io.StringIO()
+    print_json_result(result, stream=stream)
+
+    parsed = json.loads(stream.getvalue())
+    assert parsed["data"]["rows"][0]["id"] == "12345678-1234-5678-1234-567812345678"
+    assert parsed["data"]["rows"][0]["created_at"] == "2026-04-13T18:00:00+00:00"
 
 
 def test_exit_codes_are_stable() -> None:

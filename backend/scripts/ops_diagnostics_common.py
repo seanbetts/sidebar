@@ -6,10 +6,11 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TextIO
 from urllib.parse import urlparse
+from uuid import UUID
 
 
 EXIT_OK = 0
@@ -84,7 +85,7 @@ def build_result(
 def print_json_result(result: dict[str, object], stream: TextIO | None = None) -> None:
     """Serialize a diagnostics result to JSON."""
     output = stream or sys.stdout
-    json.dump(result, output, indent=2, sort_keys=True)
+    json.dump(result, output, indent=2, sort_keys=True, default=_json_default)
     output.write("\n")
 
 
@@ -130,3 +131,12 @@ def config_error_result(
 
 def _now_iso() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
+
+
+def _json_default(value: object) -> str:
+    """Serialize common database scalar types for diagnostics JSON output."""
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    raise TypeError(f"Object of type {value.__class__.__name__} is not JSON serializable")

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import uuid
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -124,6 +124,7 @@ def test_after_begin_invalidates_and_reraises_disconnect(
         _user_id,
         _force_public_search_path,
         _website_worker_scope=None,
+        _retention_worker_scope=None,
     ) -> None:
         nonlocal apply_calls
         apply_calls += 1
@@ -162,6 +163,7 @@ def test_after_begin_does_not_retry_disconnects_in_same_transaction(
         user_id,
         _force_public_search_path,
         _website_worker_scope=None,
+        _retention_worker_scope=None,
     ) -> None:
         nonlocal apply_calls
         apply_calls += 1
@@ -204,6 +206,7 @@ def test_after_begin_never_rolls_back_connection_directly(
         _user_id,
         _force_public_search_path,
         _website_worker_scope=None,
+        _retention_worker_scope=None,
     ) -> None:
         nonlocal apply_calls
         apply_calls += 1
@@ -241,10 +244,12 @@ def test_after_begin_applies_worker_scope_from_session_info(
         user_id,
         force_public_search_path,
         website_worker_scope,
+        retention_worker_scope,
     ) -> None:
         captured["user_id"] = user_id
         captured["force_public_search_path"] = force_public_search_path
         captured["website_worker_scope"] = website_worker_scope
+        captured["retention_worker_scope"] = retention_worker_scope
 
     monkeypatch.setattr(session_module, "_apply_session_settings", fake_apply)
 
@@ -258,6 +263,7 @@ def test_after_begin_applies_worker_scope_from_session_info(
         "user_id": None,
         "force_public_search_path": False,
         "website_worker_scope": "all",
+        "retention_worker_scope": None,
     }
 
 
@@ -317,6 +323,26 @@ def test_set_session_user_id_reraises_after_exhausting_bootstrap_retries() -> No
     assert db.invalidate_calls == session_module._SESSION_BOOTSTRAP_MAX_ATTEMPTS - 1
 
 
+def test_set_session_user_id_none_clears_current_connection_scope() -> None:
+    """Unscoped sessions should clear any stale tenant GUC on the connection."""
+
+    class _RecordingSession:
+        def __init__(self) -> None:
+            self.info = {"app_user_id": "stale-user"}
+            self.executed: list[tuple[str, dict[str, str] | None]] = []
+
+        def execute(self, statement, params=None):
+            self.executed.append((str(statement), params))
+            return None
+
+    db = _RecordingSession()
+
+    session_module.set_session_user_id(db, None)
+
+    assert "app_user_id" not in db.info
+    assert db.executed == [("SELECT set_config('app.user_id', '', false)", None)]
+
+
 def test_set_website_worker_scope_retries_bootstrap_disconnects_on_fresh_connections() -> None:
     """Worker scope setup should survive multiple stale pooled connections."""
     db = _BootstrapDisconnectingSession(failures_before_success=2)
@@ -327,3 +353,44 @@ def test_set_website_worker_scope_retries_bootstrap_disconnects_on_fresh_connect
     assert db.execute_calls == 3
     assert db.rollback_calls == 2
     assert db.invalidate_calls == 2
+
+
+def test_set_retention_worker_scope_retries_bootstrap_disconnects_on_fresh_connections() -> None:
+    """Retention scope setup should survive multiple stale pooled connections."""
+    db = _BootstrapDisconnectingSession(failures_before_success=2)
+
+    session_module.set_retention_worker_scope(db, enabled=True)
+
+    assert db.info["retention_worker_scope"] == "all"
+    assert db.execute_calls == 3
+    assert db.rollback_calls == 2
+    assert db.invalidate_calls == 2
+
+
+def test_apply_session_settings_clears_stale_user_scope_and_sets_retention_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Session bootstrap should clear stale tenant scope and apply retention scope."""
+    executed: list[tuple[str, dict[str, object] | None]] = []
+
+    class _RecordingConnection:
+        def execute(self, statement, params=None):
+            executed.append((str(statement), params))
+            return None
+
+    monkeypatch.setattr(session_module.settings, "db_statement_timeout_ms", 0)
+
+    session_module._apply_session_settings(
+        _RecordingConnection(),
+        None,
+        False,
+        retention_worker_scope="all",
+    )
+
+    assert executed == [
+        ("SELECT set_config('app.user_id', '', false)", None),
+        (
+            "SET LOCAL app.retention_worker_scope = :worker_scope",
+            {"worker_scope": "all"},
+        ),
+    ]
