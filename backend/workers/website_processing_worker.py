@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 _CLEANUP_INTERVAL_SECONDS = 3600
 _JOB_RETENTION_DAYS = 7
+_MAX_IDLE_POLL_SECONDS = 10
 
 
 def _now() -> datetime:
@@ -212,6 +213,13 @@ def _requeue_stalled_jobs(db) -> None:
         db.commit()
 
 
+def _compute_idle_poll_seconds(idle_polls: int) -> int:
+    """Increase idle sleeps after repeated empty polls, up to a small cap."""
+    base = max(settings.website_worker_poll_seconds, 1)
+    exponent = max(idle_polls - 1, 0)
+    return min(base * (2**exponent), _MAX_IDLE_POLL_SECONDS)
+
+
 def _process_job(db, job: WebsiteProcessingJob) -> None:
     """Run the web-save script for a job and update status.
 
@@ -335,6 +343,7 @@ def _run_worker_loop(worker_id: str) -> None:
     """Main worker loop: poll, claim, process."""
     logger.info("Website worker %s starting", worker_id)
     last_cleanup = 0.0
+    idle_polls = 0
 
     while True:
         try:
@@ -348,9 +357,11 @@ def _run_worker_loop(worker_id: str) -> None:
 
                 job = _claim_job(db, worker_id)
                 if not job:
-                    time.sleep(settings.website_worker_poll_seconds)
+                    idle_polls += 1
+                    time.sleep(_compute_idle_poll_seconds(idle_polls))
                     continue
 
+                idle_polls = 0
                 stop_heartbeat = _start_heartbeat(job.id, job.user_id)
                 try:
                     _process_job(db, job)
@@ -358,6 +369,7 @@ def _run_worker_loop(worker_id: str) -> None:
                     stop_heartbeat()
         except Exception:
             logger.exception("Worker loop error")
+            idle_polls = 0
             time.sleep(settings.website_worker_poll_seconds)
 
 

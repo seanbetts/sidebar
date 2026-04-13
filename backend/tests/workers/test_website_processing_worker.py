@@ -70,6 +70,64 @@ def test_requeue_stalled_jobs(test_db):
     assert job.worker_id is None
 
 
+def test_compute_idle_poll_seconds_uses_bounded_backoff(monkeypatch):
+    """Idle polls should back off without growing unbounded."""
+    from workers import website_processing_worker
+
+    monkeypatch.setattr(
+        website_processing_worker.settings,
+        "website_worker_poll_seconds",
+        2,
+    )
+
+    assert website_processing_worker._compute_idle_poll_seconds(1) == 2
+    assert website_processing_worker._compute_idle_poll_seconds(2) == 4
+    assert website_processing_worker._compute_idle_poll_seconds(3) == 8
+    assert website_processing_worker._compute_idle_poll_seconds(4) == 10
+    assert website_processing_worker._compute_idle_poll_seconds(8) == 10
+
+
+def test_worker_loop_backs_off_after_consecutive_idle_polls(monkeypatch):
+    """Idle worker loops should progressively sleep longer between empty claims."""
+    from workers import website_processing_worker
+
+    class StopLoop(BaseException):
+        pass
+
+    class FakeSession:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    sleep_calls: list[int] = []
+
+    def fake_sleep(seconds: int) -> None:
+        sleep_calls.append(seconds)
+        if len(sleep_calls) >= 3:
+            raise StopLoop()
+
+    monkeypatch.setattr(website_processing_worker, "SessionLocal", lambda: FakeSession())
+    monkeypatch.setattr(website_processing_worker, "_set_worker_scope", lambda _db: None)
+    monkeypatch.setattr(website_processing_worker, "_cleanup_old_jobs", lambda _db: 0)
+    monkeypatch.setattr(website_processing_worker, "_requeue_stalled_jobs", lambda _db: None)
+    monkeypatch.setattr(website_processing_worker, "_claim_job", lambda _db, _worker_id: None)
+    monkeypatch.setattr(website_processing_worker.time, "sleep", fake_sleep)
+    monkeypatch.setattr(
+        website_processing_worker.settings,
+        "website_worker_poll_seconds",
+        2,
+    )
+
+    try:
+        website_processing_worker._run_worker_loop("worker-1")
+    except StopLoop:
+        pass
+
+    assert sleep_calls == [2, 4, 8]
+
+
 def test_main_initializes_sentry_with_worker_script_name(monkeypatch):
     """Website worker main should initialize Sentry with a worker script name."""
     from workers import website_processing_worker
