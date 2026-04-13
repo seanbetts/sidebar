@@ -40,6 +40,61 @@ def test_conversation_create_and_list(test_client):
     assert any(item["id"] == body["id"] for item in items)
 
 
+def test_conversation_list_with_updated_since_returns_changed_active_and_archived_items(
+    test_client, test_db
+):
+    older_conversation = Conversation(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        title="Older",
+        messages=[],
+        message_count=0,
+        first_message=None,
+        created_at=datetime(2026, 4, 13, 8, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 4, 13, 8, 0, tzinfo=UTC),
+        is_archived=False,
+    )
+    updated_conversation = Conversation(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        title="Updated",
+        messages=[],
+        message_count=0,
+        first_message=None,
+        created_at=datetime(2026, 4, 13, 8, 30, tzinfo=UTC),
+        updated_at=datetime(2026, 4, 13, 9, 30, tzinfo=UTC),
+        is_archived=False,
+    )
+    archived_conversation = Conversation(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        title="Archived",
+        messages=[],
+        message_count=0,
+        first_message=None,
+        created_at=datetime(2026, 4, 13, 8, 45, tzinfo=UTC),
+        updated_at=datetime(2026, 4, 13, 9, 45, tzinfo=UTC),
+        is_archived=True,
+    )
+    test_db.add_all([older_conversation, updated_conversation, archived_conversation])
+    test_db.commit()
+
+    response = test_client.get(
+        "/api/conversations/",
+        params={"updated_since": "2026-04-13T09:00:00+00:00"},
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["id"] for item in payload] == [
+        str(archived_conversation.id),
+        str(updated_conversation.id),
+    ]
+    assert payload[0]["isArchived"] is True
+    assert payload[1]["isArchived"] is False
+
+
 def test_conversation_update_and_search(test_client, test_db):
     conversation_id = uuid.uuid4()
     conversation = Conversation(

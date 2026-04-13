@@ -27,6 +27,16 @@ describe('api services', () => {
 		expect(data).toEqual([{ id: '1' }]);
 	});
 
+	it('conversationsAPI.list includes updated_since when provided', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson([{ id: '1' }]));
+
+		await conversationsAPI.list('2026-04-13T09:00:00Z');
+
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/v1/conversations/?updated_since=2026-04-13T09%3A00%3A00Z'
+		);
+	});
+
 	it('conversationsAPI.create posts a title', async () => {
 		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson({ id: 'c1' }));
 

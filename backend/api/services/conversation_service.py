@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -67,35 +68,52 @@ class ConversationService:
         return conversation
 
     @staticmethod
-    def list_conversations(db: Session, user_id: str) -> list[Conversation]:
+    def list_conversations(
+        db: Session,
+        user_id: str,
+        *,
+        updated_since: datetime | None = None,
+        include_archived: bool = False,
+    ) -> list[Conversation]:
         """List all active conversations for a user.
 
         Args:
             db: Database session.
             user_id: Current user ID.
+            updated_since: Optional cursor for delta updates.
+            include_archived: Whether to include archived conversations in results.
 
         Returns:
             List of conversation records.
         """
-        return (
-            db.query(Conversation)
-            .options(
-                load_only(
-                    Conversation.id,
-                    Conversation.title,
-                    Conversation.title_generated,
-                    Conversation.created_at,
-                    Conversation.updated_at,
-                    Conversation.message_count,
-                    Conversation.first_message,
+        query = db.query(Conversation).options(
+            load_only(
+                Conversation.id,
+                Conversation.title,
+                Conversation.title_generated,
+                Conversation.created_at,
+                Conversation.updated_at,
+                Conversation.message_count,
+                Conversation.first_message,
+                Conversation.is_archived,
+            )
+        )
+        filters = [Conversation.user_id == user_id]
+        if updated_since is not None:
+            filters.append(Conversation.updated_at > updated_since)
+            if not include_archived:
+                filters.append(Conversation.is_archived.is_(False))
+        elif include_archived:
+            filters.append(
+                or_(
+                    Conversation.is_archived.is_(False),
+                    Conversation.is_archived.is_(True),
                 )
             )
-            .filter(
-                Conversation.user_id == user_id, Conversation.is_archived.is_(False)
-            )
-            .order_by(Conversation.updated_at.desc())
-            .all()
-        )
+        else:
+            filters.append(Conversation.is_archived.is_(False))
+
+        return query.filter(*filters).order_by(Conversation.updated_at.desc()).all()
 
     @staticmethod
     def get_conversation(
@@ -224,6 +242,7 @@ class ConversationService:
             conversation.title_generated = title_generated
         if is_archived is not None:
             conversation.is_archived = is_archived
+        if title is not None or title_generated is not None or is_archived is not None:
             conversation.updated_at = datetime.now(UTC)
 
         db.commit()

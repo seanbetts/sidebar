@@ -14,6 +14,7 @@ from api.services.agent.conversation_compaction_service import (
     ConversationCompactionService,
 )
 from api.services.conversation_service import ConversationService
+from api.utils.timestamps import parse_client_timestamp
 
 
 # Pydantic models for request/response
@@ -54,6 +55,7 @@ class ConversationResponse(BaseModel):
     updatedAt: str
     messageCount: int
     firstMessage: str | None
+    isArchived: bool = False
 
 
 class ConversationWithMessages(ConversationResponse):
@@ -75,6 +77,7 @@ def _conversation_response(conversation) -> ConversationResponse:
         updatedAt=conversation.updated_at.isoformat(),
         messageCount=conversation.message_count,
         firstMessage=conversation.first_message,
+        isArchived=conversation.is_archived,
     )
 
 
@@ -94,10 +97,21 @@ def create_conversation(
 @router.get("", response_model=list[ConversationResponse])
 @router.get("/", response_model=list[ConversationResponse])
 def list_conversations(
-    user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)
+    updated_since: str | None = None,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
 ):
     """List all conversations for the current user."""
-    conversations = ConversationService.list_conversations(db, user_id)
+    parsed_updated_since = parse_client_timestamp(
+        updated_since,
+        field_name="updated_since",
+    )
+    conversations = ConversationService.list_conversations(
+        db,
+        user_id,
+        updated_since=parsed_updated_since,
+        include_archived=parsed_updated_since is not None,
+    )
 
     return [_conversation_response(c) for c in conversations]
 

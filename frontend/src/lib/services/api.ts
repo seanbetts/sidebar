@@ -41,8 +41,13 @@ class ConversationsAPI {
 	 * @returns Array of conversation summaries.
 	 * @throws Error when the request fails.
 	 */
-	async list(): Promise<Conversation[]> {
-		const response = await fetch(`${this.baseUrl}/`);
+	async list(updatedSince: string | null = null): Promise<Conversation[]> {
+		const params = new URLSearchParams();
+		if (updatedSince) {
+			params.set('updated_since', updatedSince);
+		}
+		const url = params.size ? `${this.baseUrl}/?${params.toString()}` : `${this.baseUrl}/`;
+		const response = await fetch(url);
 		if (!response.ok) throw new Error('Failed to list conversations');
 		return response.json();
 	}

@@ -9,8 +9,32 @@ import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { logError } from '$lib/utils/errorHandling';
 
 const CACHE_KEY = 'conversations.list';
+const LAST_SYNC_CACHE_KEY = 'conversations.lastSync';
 const CACHE_TTL = 10 * 60 * 1000;
 const CACHE_VERSION = '1.0';
+
+const mergeSyncCursor = (current: string | null, candidate: string | null): string | null => {
+	if (!current) return candidate;
+	if (!candidate) return current;
+	const currentTime = new Date(current).getTime();
+	const candidateTime = new Date(candidate).getTime();
+	if (!Number.isFinite(currentTime)) return candidate;
+	if (!Number.isFinite(candidateTime)) return current;
+	return candidateTime > currentTime ? candidate : current;
+};
+
+const deriveSyncCursor = (conversations: Conversation[]): string | null =>
+	conversations.reduce<string | null>(
+		(cursor, conversation) => mergeSyncCursor(cursor, conversation.updatedAt ?? null),
+		null
+	);
+
+const persistConversationCache = (conversations: Conversation[], lastSync: string | null) => {
+	setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
+	if (lastSync) {
+		setCachedData(LAST_SYNC_CACHE_KEY, lastSync, { ttl: CACHE_TTL, version: CACHE_VERSION });
+	}
+};
 
 interface ConversationListState {
 	conversations: Conversation[];
@@ -18,6 +42,7 @@ interface ConversationListState {
 	searchQuery: string;
 	generatingTitleIds: Set<string>;
 	loaded: boolean;
+	lastSync: string | null;
 }
 
 function createConversationListStore() {
@@ -26,7 +51,8 @@ function createConversationListStore() {
 		loading: false,
 		searchQuery: '',
 		generatingTitleIds: new Set(),
-		loaded: false
+		loaded: false,
+		lastSync: null
 	});
 
 	return {
@@ -44,11 +70,18 @@ function createConversationListStore() {
 					version: CACHE_VERSION
 				});
 				if (cached) {
+					const cachedLastSync =
+						getCachedData<string>(LAST_SYNC_CACHE_KEY, {
+							ttl: CACHE_TTL,
+							version: CACHE_VERSION
+						}) ?? deriveSyncCursor(cached);
+					persistConversationCache(cached, cachedLastSync);
 					update((state) => ({
 						...state,
 						conversations: cached,
 						loading: false,
-						loaded: true
+						loaded: true,
+						lastSync: mergeSyncCursor(state.lastSync, cachedLastSync)
 					}));
 					if (isCacheStale(CACHE_KEY, CACHE_TTL)) {
 						this.revalidateInBackground();
@@ -62,8 +95,18 @@ function createConversationListStore() {
 			update((state) => ({ ...state, loading: true }));
 			try {
 				const conversations = await conversationsAPI.list();
-				setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
-				update((state) => ({ ...state, conversations, loading: false, loaded: true }));
+				const nextLastSync = mergeSyncCursor(
+					currentState.lastSync,
+					deriveSyncCursor(conversations)
+				);
+				persistConversationCache(conversations, nextLastSync);
+				update((state) => ({
+					...state,
+					conversations,
+					loading: false,
+					loaded: true,
+					lastSync: nextLastSync
+				}));
 			} catch (error) {
 				logError('Failed to load conversations', error, { scope: 'conversationsStore.load' });
 				update((state) => ({ ...state, loading: false, loaded: false }));
@@ -76,9 +119,51 @@ function createConversationListStore() {
 
 		async revalidateInBackground() {
 			try {
+				const currentState = get({ subscribe });
+				if (currentState.lastSync) {
+					const deltaConversations = await conversationsAPI.list(currentState.lastSync);
+					const nextLastSync = mergeSyncCursor(
+						currentState.lastSync,
+						deriveSyncCursor(deltaConversations)
+					);
+					update((state) => {
+						const byId = new Map(
+							state.conversations.map((conversation) => [conversation.id, conversation])
+						);
+						for (const conversation of deltaConversations) {
+							if (conversation.isArchived) {
+								byId.delete(conversation.id);
+								continue;
+							}
+							const existing = byId.get(conversation.id);
+							byId.set(conversation.id, existing ? { ...existing, ...conversation } : conversation);
+						}
+						const orderedExisting = state.conversations
+							.map((conversation) => byId.get(conversation.id))
+							.filter((conversation): conversation is Conversation => Boolean(conversation));
+						const newConversations = deltaConversations.filter(
+							(conversation) =>
+								!conversation.isArchived &&
+								!state.conversations.some((existing) => existing.id === conversation.id)
+						);
+						const mergedConversations = [...newConversations, ...orderedExisting];
+						persistConversationCache(mergedConversations, nextLastSync);
+						return {
+							...state,
+							conversations: mergedConversations,
+							lastSync: nextLastSync
+						};
+					});
+					return;
+				}
+
 				const conversations = await conversationsAPI.list();
-				setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
-				update((state) => ({ ...state, conversations }));
+				const nextLastSync = mergeSyncCursor(
+					currentState.lastSync,
+					deriveSyncCursor(conversations)
+				);
+				persistConversationCache(conversations, nextLastSync);
+				update((state) => ({ ...state, conversations, lastSync: nextLastSync }));
 			} catch (error) {
 				logError('Background revalidation failed', error, {
 					scope: 'conversationsStore.revalidateInBackground'
@@ -110,6 +195,7 @@ function createConversationListStore() {
 					conversations: state.conversations.filter((c) => c.id !== id)
 				}));
 				invalidateCache(CACHE_KEY);
+				invalidateCache(LAST_SYNC_CACHE_KEY);
 				dispatchCacheEvent('conversation.deleted');
 			} catch (error) {
 				logError('Failed to delete conversation', error, {
@@ -130,10 +216,10 @@ function createConversationListStore() {
 			}));
 			const nextState = get({ subscribe });
 			if (!nextState.searchQuery) {
-				setCachedData(CACHE_KEY, nextState.conversations, {
-					ttl: CACHE_TTL,
-					version: CACHE_VERSION
-				});
+				persistConversationCache(
+					nextState.conversations,
+					mergeSyncCursor(nextState.lastSync, conversation.updatedAt ?? null)
+				);
 			}
 		},
 
@@ -155,10 +241,10 @@ function createConversationListStore() {
 			}));
 			const nextState = get({ subscribe });
 			if (!nextState.searchQuery) {
-				setCachedData(CACHE_KEY, nextState.conversations, {
-					ttl: CACHE_TTL,
-					version: CACHE_VERSION
-				});
+				persistConversationCache(
+					nextState.conversations,
+					mergeSyncCursor(nextState.lastSync, updates.updatedAt ?? null)
+				);
 			}
 		},
 
@@ -208,11 +294,24 @@ function createConversationListStore() {
 			});
 			const nextState = get({ subscribe });
 			if (!nextState.searchQuery) {
-				setCachedData(CACHE_KEY, nextState.conversations, {
-					ttl: CACHE_TTL,
-					version: CACHE_VERSION
-				});
+				persistConversationCache(
+					nextState.conversations,
+					mergeSyncCursor(nextState.lastSync, updatedAt ?? null)
+				);
 			}
+		},
+
+		reset() {
+			invalidateCache(CACHE_KEY);
+			invalidateCache(LAST_SYNC_CACHE_KEY);
+			update(() => ({
+				conversations: [],
+				loading: false,
+				searchQuery: '',
+				generatingTitleIds: new Set(),
+				loaded: false,
+				lastSync: null
+			}));
 		}
 	};
 }

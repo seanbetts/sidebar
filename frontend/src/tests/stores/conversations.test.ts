@@ -12,16 +12,20 @@ const { conversationsAPI } = vi.hoisted(() => ({
 	}
 }));
 
+const { cacheUtils } = vi.hoisted(() => ({
+	cacheUtils: {
+		getCachedData: vi.fn((key: string) => cacheState.get(key) ?? null),
+		setCachedData: vi.fn((key: string, value: unknown) => cacheState.set(key, value)),
+		isCacheStale: vi.fn(() => false),
+		invalidateCache: vi.fn()
+	}
+}));
+
 vi.mock('$lib/services/api', () => ({
 	conversationsAPI
 }));
 
-vi.mock('$lib/utils/cache', () => ({
-	getCachedData: vi.fn((key: string) => cacheState.get(key) ?? null),
-	setCachedData: vi.fn((key: string, value: unknown) => cacheState.set(key, value)),
-	isCacheStale: vi.fn(() => false),
-	invalidateCache: vi.fn()
-}));
+vi.mock('$lib/utils/cache', () => cacheUtils);
 
 vi.mock('$lib/utils/cacheEvents', () => ({
 	dispatchCacheEvent: vi.fn()
@@ -31,6 +35,7 @@ describe('conversationListStore', () => {
 	beforeEach(() => {
 		cacheState.clear();
 		vi.clearAllMocks();
+		conversationListStore.reset();
 	});
 
 	it('loads conversations from cache when available', async () => {
@@ -60,7 +65,7 @@ describe('conversationListStore', () => {
 				title: 'Remote',
 				titleGenerated: true,
 				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
+				updatedAt: '2026-04-13T09:00:00Z',
 				messageCount: 2
 			}
 		];
@@ -71,6 +76,7 @@ describe('conversationListStore', () => {
 		const state = get(conversationListStore);
 		expect(conversationsAPI.list).toHaveBeenCalled();
 		expect(state.conversations).toEqual(remote);
+		expect(state.lastSync).toBe('2026-04-13T09:00:00Z');
 	});
 
 	it('adds conversation locally', () => {
@@ -181,5 +187,74 @@ describe('conversationListStore', () => {
 		await conversationListStore.revalidateInBackground();
 
 		expect(get(conversationListStore).conversations).toHaveLength(1);
+	});
+
+	it('revalidates stale cached conversations with deltas', async () => {
+		cacheState.set('conversations.list', [
+			{
+				id: '1',
+				title: 'Cached',
+				titleGenerated: false,
+				createdAt: '2026-04-13T08:00:00Z',
+				updatedAt: '2026-04-13T09:00:00Z',
+				messageCount: 1
+			}
+		]);
+		cacheState.set('conversations.lastSync', '2026-04-13T09:00:00Z');
+		cacheUtils.isCacheStale.mockReturnValue(true);
+		conversationsAPI.list.mockResolvedValue([
+			{
+				id: '2',
+				title: 'New',
+				titleGenerated: false,
+				createdAt: '2026-04-13T09:10:00Z',
+				updatedAt: '2026-04-13T09:10:00Z',
+				messageCount: 1,
+				isArchived: false
+			}
+		]);
+
+		await conversationListStore.load();
+		await Promise.resolve();
+
+		expect(conversationsAPI.list).toHaveBeenCalledWith('2026-04-13T09:00:00Z');
+		expect(get(conversationListStore).conversations).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: '1', title: 'Cached' }),
+				expect.objectContaining({ id: '2', title: 'New' })
+			])
+		);
+		expect(get(conversationListStore).lastSync).toBe('2026-04-13T09:10:00Z');
+	});
+
+	it('removes archived conversations from delta refreshes', async () => {
+		conversationsAPI.list.mockResolvedValueOnce([
+			{
+				id: '1',
+				title: 'Cached',
+				titleGenerated: false,
+				createdAt: '2026-04-13T08:00:00Z',
+				updatedAt: '2026-04-13T09:00:00Z',
+				messageCount: 1
+			}
+		]);
+		conversationsAPI.list.mockResolvedValueOnce([
+			{
+				id: '1',
+				title: 'Cached',
+				titleGenerated: false,
+				createdAt: '2026-04-13T08:00:00Z',
+				updatedAt: '2026-04-13T09:30:00Z',
+				messageCount: 1,
+				isArchived: true
+			}
+		]);
+
+		await conversationListStore.load(true);
+		await conversationListStore.revalidateInBackground();
+
+		expect(conversationsAPI.list).toHaveBeenNthCalledWith(2, '2026-04-13T09:00:00Z');
+		expect(get(conversationListStore).conversations).toEqual([]);
+		expect(get(conversationListStore).lastSync).toBe('2026-04-13T09:30:00Z');
 	});
 });
