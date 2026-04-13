@@ -451,7 +451,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
     }
 }
 
-private extension AppKitNoteTextEditorSurface {
+extension AppKitNoteTextEditorSurface {
     func makeCoordinator() -> Coordinator {
         Coordinator(viewModel: viewModel)
     }
