@@ -20,6 +20,25 @@ final class NotesDetailViewEditorSurfaceSourceTests: XCTestCase {
             "Expected the notes read/edit handoff container to stay stretched to the full note pane during transitions."
         )
     }
+
+    func testConfiguredEditorSurfaceCompletesEditEntryHoldOnMacOS() throws {
+        let normalized = try notesDetailViewEditorSurfaceSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            normalized.contains(
+                "#elseAttributedNoteEditorContainer("
+                    + "editorViewModel:editorViewModel,"
+                    + "maxContentWidth:contentMaxWidth,"
+                    + "onInitialPresentationReady:{"
+                    + "editorViewModel.completeEditEntryPresentationHold()"
+                    + "},onEscape:handleEscapeKey)"
+            ),
+            "Expected the macOS editor surface to release the read-surface "
+                + "hold only after the AppKit editor reports its first stable "
+                + "presentation."
+        )
+    }
 }
 
 private func notesDetailViewEditorSurfaceSource(

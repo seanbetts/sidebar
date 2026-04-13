@@ -22,7 +22,9 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
 
         var shouldAutofocus = false
         var onEscapeCommand: (() -> Void)?
+        var onInitialPresentationReady: (() -> Void)?
         private var didScheduleAutofocus = false
+        private var didReportInitialPresentationReady = false
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { needsLayout = true }
         }
@@ -31,11 +33,13 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             super.viewDidMoveToWindow()
             updateTextContainerInset()
             scheduleAutofocusIfNeeded()
+            scheduleInitialPresentationReadyIfNeeded()
         }
 
         override func layout() {
             super.layout()
             updateTextContainerInset()
+            scheduleInitialPresentationReadyIfNeeded()
             needsDisplay = true
         }
 
@@ -67,6 +71,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                     return
                 }
                 window.makeFirstResponder(self)
+                self.scheduleInitialPresentationReadyIfNeeded()
             }
         }
 
@@ -107,6 +112,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
     let maxContentWidth: CGFloat
     let isEditable: Bool
     let shouldAutofocus: Bool
+    let onInitialPresentationReady: (() -> Void)?
     let onEscape: (() -> Void)?
 
     init(
@@ -114,17 +120,15 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         maxContentWidth: CGFloat,
         isEditable: Bool,
         shouldAutofocus: Bool = true,
+        onInitialPresentationReady: (() -> Void)? = nil,
         onEscape: (() -> Void)? = nil
     ) {
         self.viewModel = viewModel
         self.maxContentWidth = maxContentWidth
         self.isEditable = isEditable
         self.shouldAutofocus = shouldAutofocus
+        self.onInitialPresentationReady = onInitialPresentationReady
         self.onEscape = onEscape
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(viewModel: viewModel)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -137,6 +141,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         textView.allowsUndo = true
         textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.onEscapeCommand = onEscape
+        textView.onInitialPresentationReady = onInitialPresentationReady
         textView.maxReadableContentWidth = maxContentWidth
         textView.textColor = .labelColor
         textView.insertionPointColor = NoteTextAppearance.caretTintColor
@@ -172,6 +177,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         textView.isEditable = isEditable
         textView.shouldAutofocus = isEditable && shouldAutofocus
         textView.onEscapeCommand = onEscape
+        textView.onInitialPresentationReady = onInitialPresentationReady
         textView.maxReadableContentWidth = maxContentWidth
 
         let renderSignature = RenderSignature(
@@ -198,6 +204,7 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         }
 
         textView.scheduleAutofocusIfNeeded()
+        textView.scheduleInitialPresentationReadyIfNeeded()
 
         let typingAttributes = bridgedTypingAttributes(from: viewModel.attributedContent)
         if NSDictionary(dictionary: textView.typingAttributes).isEqual(to: typingAttributes) == false {
@@ -440,6 +447,34 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
             )
             registerUndoSnapshot(redoSnapshot, on: textView)
             applyCurrentEditorState(to: textView)
+        }
+    }
+}
+
+private extension AppKitNoteTextEditorSurface {
+    func makeCoordinator() -> Coordinator {
+        Coordinator(viewModel: viewModel)
+    }
+}
+
+private extension AppKitNoteTextEditorSurface.EditorTextView {
+    func scheduleInitialPresentationReadyIfNeeded() {
+        guard !didReportInitialPresentationReady,
+              window != nil,
+              bounds.width > 0,
+              bounds.height > 0 else {
+            return
+        }
+        if shouldAutofocus, window?.firstResponder !== self {
+            DispatchQueue.main.async { [weak self] in
+                self?.scheduleInitialPresentationReadyIfNeeded()
+            }
+            return
+        }
+        didReportInitialPresentationReady = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.window != nil else { return }
+            self.onInitialPresentationReady?()
         }
     }
 }

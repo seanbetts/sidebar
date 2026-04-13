@@ -66,9 +66,9 @@ extension NotesEditorViewModel {
         heldReadSurfaceActivationTarget = viewportAnchorY == nil ? nil : target
         heldReadSurfaceViewportAnchorY = viewportAnchorY
         #else
-        isHoldingReadSurfaceDuringEditEntry = false
-        heldReadSurfaceActivationTarget = nil
-        heldReadSurfaceViewportAnchorY = nil
+        isHoldingReadSurfaceDuringEditEntry = true
+        heldReadSurfaceActivationTarget = target
+        heldReadSurfaceViewportAnchorY = viewportAnchorY
         #endif
         presentationMode = .edit
     }

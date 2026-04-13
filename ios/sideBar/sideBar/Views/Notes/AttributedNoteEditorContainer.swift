@@ -313,6 +313,11 @@ struct AttributedNoteEditorContainer: View {
             maxContentWidth: maxContentWidth,
             isEditable: true,
             shouldAutofocus: autofocusEnabled,
+            onInitialPresentationReady: {
+                if editorViewModel.isHoldingReadSurfaceDuringEditEntry {
+                    onInitialPresentationReady?()
+                }
+            },
             onEscape: {
                 _ = handleEscapeKey(
                     document: nativeViewModel.currentPersistenceSnapshot().document

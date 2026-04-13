@@ -95,6 +95,9 @@ extension NotesDetailView {
         AttributedNoteEditorContainer(
             editorViewModel: editorViewModel,
             maxContentWidth: contentMaxWidth,
+            onInitialPresentationReady: {
+                editorViewModel.completeEditEntryPresentationHold()
+            },
             onEscape: handleEscapeKey
         )
         #endif
