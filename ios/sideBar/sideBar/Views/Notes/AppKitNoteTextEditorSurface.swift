@@ -14,6 +14,15 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         let baseFontSize: CGFloat
     }
 
+    private struct InitialPresentationStabilitySignature: Equatable {
+        let boundsSize: CGSize
+        let visibleRect: CGRect
+        let textContainerInset: CGSize
+        let textContainerSize: CGSize
+        let usedRectSize: CGSize
+        let isFirstResponder: Bool
+    }
+
     final class EditorTextView: NSTextView {
         private static let baseTextContainerInset = NSSize(
             width: NoteTextLayout.horizontalPadding,
@@ -25,6 +34,9 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         var onInitialPresentationReady: (() -> Void)?
         private var didScheduleAutofocus = false
         private var didReportInitialPresentationReady = false
+        private var isAwaitingInitialPresentationStability = false
+        private var isAwaitingInitialPresentationQuietPeriod = false
+        private var pendingInitialPresentationStabilitySignature: InitialPresentationStabilitySignature?
         var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
             didSet { needsLayout = true }
         }
@@ -32,7 +44,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             updateTextContainerInset()
-            emitTransitionTrace("viewDidMoveToWindow")
             scheduleAutofocusIfNeeded()
             scheduleInitialPresentationReadyIfNeeded()
         }
@@ -40,7 +51,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         override func layout() {
             super.layout()
             updateTextContainerInset()
-            emitTransitionTrace("layout")
             scheduleInitialPresentationReadyIfNeeded()
             needsDisplay = true
         }
@@ -64,7 +74,6 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
         func scheduleAutofocusIfNeeded() {
             guard shouldAutofocus, !didScheduleAutofocus, let window else { return }
             didScheduleAutofocus = true
-            emitTransitionTrace("scheduleAutofocusIfNeeded.queued")
             DispatchQueue.main.async { [weak self, weak window] in
                 guard let self,
                       self.shouldAutofocus,
@@ -74,29 +83,41 @@ struct AppKitNoteTextEditorSurface: NSViewRepresentable {
                     return
                 }
                 window.makeFirstResponder(self)
-                self.emitTransitionTrace("scheduleAutofocusIfNeeded.applied")
                 self.scheduleInitialPresentationReadyIfNeeded()
             }
         }
 
         private func updateTextContainerInset() {
+            guard let textContainer else { return }
             let extraHorizontalInset = max((bounds.width - maxReadableContentWidth) / 2, 0)
             let resolvedInset = NSSize(
                 width: Self.baseTextContainerInset.width + extraHorizontalInset,
                 height: Self.baseTextContainerInset.height
             )
-            guard textContainerInset != resolvedInset else { return }
             let previousInset = textContainerInset
-            textContainerInset = resolvedInset
-            NotesTransitionDebugTrace.log(
-                "appkitEditor.textContainerInsetUpdated",
-                details: [
-                    "previous=\(NotesTransitionDebugTrace.format(previousInset))",
-                    "resolved=\(NotesTransitionDebugTrace.format(resolvedInset))",
-                    "bounds=\(NotesTransitionDebugTrace.format(bounds))",
-                    "maxReadableWidth=\(NotesTransitionDebugTrace.format(maxReadableContentWidth))"
-                ].joined(separator: " ")
+            let fallbackContainerWidth = max(
+                maxReadableContentWidth - (Self.baseTextContainerInset.width * 2),
+                0
             )
+            let resolvedContainerWidth =
+                bounds.width > 0
+                ? max(bounds.width - (resolvedInset.width * 2), 0)
+                : fallbackContainerWidth
+            let resolvedContainerSize = NSSize(
+                width: resolvedContainerWidth,
+                height: CGFloat.greatestFiniteMagnitude
+            )
+            let needsInsetUpdate = textContainerInset != resolvedInset
+            let needsContainerResize =
+                textContainer.widthTracksTextView
+                || abs(textContainer.containerSize.width - resolvedContainerSize.width) > 0.5
+                || abs(textContainer.containerSize.height - resolvedContainerSize.height) > 0.5
+
+            guard needsInsetUpdate || needsContainerResize else { return }
+            textContainer.widthTracksTextView = false
+            textContainer.heightTracksTextView = false
+            textContainer.containerSize = resolvedContainerSize
+            textContainerInset = resolvedInset
         }
 
         private func drawCodeBlockBackgrounds(in dirtyRect: NSRect) {
@@ -388,54 +409,73 @@ extension AppKitNoteTextEditorSurface.EditorTextView {
               window != nil,
               bounds.width > 0,
               bounds.height > 0 else {
-            NotesTransitionDebugTrace.log(
-                "appkitEditor.initialPresentationReady.deferred",
-                details: transitionTraceSummary()
-            )
             return
         }
         if shouldAutofocus, window?.firstResponder !== self {
-            NotesTransitionDebugTrace.log(
-                "appkitEditor.initialPresentationReady.waitingForFocus",
-                details: transitionTraceSummary()
-            )
             DispatchQueue.main.async { [weak self] in
                 self?.scheduleInitialPresentationReadyIfNeeded()
             }
             return
         }
-        didReportInitialPresentationReady = true
-        NotesTransitionDebugTrace.log(
-            "appkitEditor.initialPresentationReady.reported",
-            details: transitionTraceSummary()
-        )
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.window != nil else { return }
-            self.onInitialPresentationReady?()
+        guard let stabilitySignature = currentInitialPresentationStabilitySignature() else {
+            return
+        }
+        if isAwaitingInitialPresentationStability == false {
+            isAwaitingInitialPresentationStability = true
+            pendingInitialPresentationStabilitySignature = stabilitySignature
+            isAwaitingInitialPresentationQuietPeriod = false
+            DispatchQueue.main.async { [weak self] in
+                self?.scheduleInitialPresentationReadyIfNeeded()
+            }
+            return
+        }
+        if pendingInitialPresentationStabilitySignature != stabilitySignature {
+            pendingInitialPresentationStabilitySignature = stabilitySignature
+            isAwaitingInitialPresentationQuietPeriod = false
+            DispatchQueue.main.async { [weak self] in
+                self?.scheduleInitialPresentationReadyIfNeeded()
+            }
+            return
+        }
+        guard isAwaitingInitialPresentationQuietPeriod == false else { return }
+        isAwaitingInitialPresentationQuietPeriod = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self else { return }
+            guard self.didReportInitialPresentationReady == false,
+                  self.isAwaitingInitialPresentationStability,
+                  self.isAwaitingInitialPresentationQuietPeriod,
+                  let currentSignature = self.currentInitialPresentationStabilitySignature(),
+                  self.pendingInitialPresentationStabilitySignature == stabilitySignature,
+                  currentSignature == stabilitySignature else {
+                return
+            }
+            self.isAwaitingInitialPresentationStability = false
+            self.isAwaitingInitialPresentationQuietPeriod = false
+            self.pendingInitialPresentationStabilitySignature = nil
+            self.didReportInitialPresentationReady = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.window != nil else { return }
+                self.onInitialPresentationReady?()
+            }
         }
     }
 
-    func emitTransitionTrace(_ event: String) {
-        NotesTransitionDebugTrace.log(
-            "appkitEditor.\(event)",
-            details: transitionTraceSummary()
+    private func currentInitialPresentationStabilitySignature() -> InitialPresentationStabilitySignature? {
+        guard let textContainer,
+              let layoutManager else {
+            return nil
+        }
+        layoutManager.ensureLayout(for: textContainer)
+        let visibleRect = enclosingScrollView?.contentView.documentVisibleRect ?? .zero
+        let usedRect = layoutManager.usedRect(for: textContainer)
+        return InitialPresentationStabilitySignature(
+            boundsSize: bounds.size,
+            visibleRect: visibleRect,
+            textContainerInset: textContainerInset,
+            textContainerSize: textContainer.containerSize,
+            usedRectSize: usedRect.size,
+            isFirstResponder: window?.firstResponder === self
         )
-    }
-
-    func transitionTraceSummary() -> String {
-        let containerSize = textContainer?.containerSize
-        let visibleRect = enclosingScrollView?.contentView.documentVisibleRect
-        return [
-            "bounds=\(NotesTransitionDebugTrace.format(bounds))",
-            "visibleRect=\(NotesTransitionDebugTrace.format(visibleRect))",
-            "inset=\(NotesTransitionDebugTrace.format(textContainerInset))",
-            "containerSize=\(NotesTransitionDebugTrace.format(containerSize))",
-            "windowAttached=\(window != nil)",
-            "isFirstResponder=\(window?.firstResponder === self)",
-            "shouldAutofocus=\(shouldAutofocus)",
-            "didScheduleAutofocus=\(didScheduleAutofocus)",
-            "didReportReady=\(didReportInitialPresentationReady)"
-        ].joined(separator: " ")
     }
 }
 #endif

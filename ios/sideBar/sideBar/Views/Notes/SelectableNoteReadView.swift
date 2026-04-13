@@ -31,6 +31,7 @@ struct SelectableNoteReadView: View {
     var initialViewportOffset: CGPoint?
     var initialViewportAnchorTarget: ReadActivationTarget?
     var initialViewportAnchorY: CGFloat?
+    var presentationGeneration: UInt64 = 0
     var onActivateEditing: ((ReadActivationTarget) -> Void)?
     var onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)?
     var onToggleChecklistItem: ChecklistToggleHandler?
@@ -44,6 +45,7 @@ struct SelectableNoteReadView: View {
         initialViewportOffset: CGPoint? = nil,
         initialViewportAnchorTarget: ReadActivationTarget? = nil,
         initialViewportAnchorY: CGFloat? = nil,
+        presentationGeneration: UInt64 = 0,
         onActivateEditing: ((ReadActivationTarget) -> Void)? = nil,
         onActivateEditingWithViewport: ((ReadActivationTarget, CGFloat?) -> Void)? = nil,
         onToggleChecklistItem: ChecklistToggleHandler? = nil,
@@ -55,6 +57,7 @@ struct SelectableNoteReadView: View {
         self.initialViewportOffset = initialViewportOffset
         self.initialViewportAnchorTarget = initialViewportAnchorTarget
         self.initialViewportAnchorY = initialViewportAnchorY
+        self.presentationGeneration = presentationGeneration
         self.onActivateEditing = onActivateEditing
         self.onActivateEditingWithViewport = onActivateEditingWithViewport
         self.onToggleChecklistItem = onToggleChecklistItem
@@ -82,6 +85,7 @@ struct SelectableNoteReadView: View {
             initialViewportOffset: initialViewportOffset,
             initialViewportAnchorTarget: initialViewportAnchorTarget,
             initialViewportAnchorY: initialViewportAnchorY,
+            presentationGeneration: presentationGeneration,
             onActivateEditing: onActivateEditing,
             onActivateEditingWithViewport: onActivateEditingWithViewport,
             onToggleChecklistItem: onToggleChecklistItem,
@@ -661,7 +665,9 @@ struct SelectableNoteReadView: View {
         textView.importsGraphics = false
         textView.allowsUndo = false
         textView.usesAdaptiveColorMappingForDarkAppearance = true
-        textView.textContainer?.widthTracksTextView = true
+        textView.identifier = NSUserInterfaceItemIdentifier("notes-read-text-view")
+        textView.setAccessibilityLabel("Notes read surface")
+        textView.textContainer?.widthTracksTextView = false
         textView.textContainer?.heightTracksTextView = false
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
@@ -726,6 +732,7 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
     let initialViewportOffset: CGPoint?
     let initialViewportAnchorTarget: SelectableNoteReadView.ReadActivationTarget?
     let initialViewportAnchorY: CGFloat?
+    let presentationGeneration: UInt64
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     let onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     let onToggleChecklistItem: SelectableNoteReadView.ChecklistToggleHandler?
@@ -743,6 +750,9 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
             preconditionFailure("Expected SelectableNoteReadTextView for macOS read surface")
         }
         readTextView.maxReadableContentWidth = maxReadableContentWidth
+        readTextView.presentationGeneration = presentationGeneration
+        readTextView.onViewportOffsetChange = onViewportOffsetChange
+        readTextView.onInitialViewportRestorationApplied = onInitialViewportRestorationApplied
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
@@ -758,9 +768,12 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
             return
         }
         textView.maxReadableContentWidth = maxReadableContentWidth
+        textView.presentationGeneration = presentationGeneration
         textView.document = document
         textView.onActivateEditing = onActivateEditing
         textView.onToggleChecklistItem = onToggleChecklistItem
+        textView.onViewportOffsetChange = onViewportOffsetChange
+        textView.onInitialViewportRestorationApplied = onInitialViewportRestorationApplied
         if textView.textStorage?.isEqual(to: attributedContent) == false {
             textView.textStorage?.setAttributedString(attributedContent)
         }
@@ -773,6 +786,8 @@ private struct PlatformSelectableNoteReadView: NSViewRepresentable {
         textView.document = NotesSemanticDocument(version: NotesSemanticDocument.currentVersion, blocks: [])
         textView.onActivateEditing = nil
         textView.onToggleChecklistItem = nil
+        textView.onViewportOffsetChange = nil
+        textView.onInitialViewportRestorationApplied = nil
         scrollView.documentView = nil
     }
 }
@@ -787,15 +802,48 @@ private final class SelectableNoteReadTextView: NSTextView {
     var document = NotesSemanticDocument(version: NotesSemanticDocument.currentVersion, blocks: [])
     var onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     var onToggleChecklistItem: SelectableNoteReadView.ChecklistToggleHandler?
+    var onViewportOffsetChange: ((CGPoint) -> Void)?
+    var onInitialViewportRestorationApplied: (() -> Void)?
     var maxReadableContentWidth: CGFloat = .greatestFiniteMagnitude {
-        didSet { needsLayout = true }
+        didSet {
+            updateTextContainerInset()
+            needsLayout = true
+        }
+    }
+    var presentationGeneration: UInt64 = 0 {
+        didSet {
+            guard presentationGeneration != oldValue else { return }
+            rearmInitialPresentationReporting()
+        }
     }
     private var didDragSelectionGesture = false
     private var lastActivationTimestamp: TimeInterval = 0
+    private var lastReportedViewportOffset: CGPoint?
+    private var didReportInitialPresentationReady = false
+    private var isAwaitingInitialPresentationStability = false
+    private var isAwaitingInitialPresentationQuietPeriod = false
+    private var pendingInitialPresentationStabilitySignature: InitialPresentationStabilitySignature?
+
+    private struct InitialPresentationStabilitySignature: Equatable {
+        let boundsSize: CGSize
+        let visibleRect: CGRect
+        let textContainerInset: CGSize
+        let textContainerSize: CGSize
+        let usedRectSize: CGSize
+        let viewportOffset: CGPoint
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        reportViewportOffsetIfNeeded()
+        scheduleInitialViewportRestorationAppliedIfNeeded()
+    }
 
     override func layout() {
         super.layout()
         updateTextContainerInset()
+        reportViewportOffsetIfNeeded()
+        scheduleInitialViewportRestorationAppliedIfNeeded()
         needsDisplay = true
     }
 
@@ -869,12 +917,34 @@ private final class SelectableNoteReadTextView: NSTextView {
     }
 
     private func updateTextContainerInset() {
+        guard let textContainer else { return }
         let extraHorizontalInset = max((bounds.width - maxReadableContentWidth) / 2, 0)
         let resolvedInset = NSSize(
             width: Self.baseTextContainerInset.width + extraHorizontalInset,
             height: Self.baseTextContainerInset.height
         )
-        guard textContainerInset != resolvedInset else { return }
+        let fallbackContainerWidth = max(
+            maxReadableContentWidth - (Self.baseTextContainerInset.width * 2),
+            0
+        )
+        let resolvedContainerWidth =
+            bounds.width > 0
+            ? max(bounds.width - (resolvedInset.width * 2), 0)
+            : fallbackContainerWidth
+        let resolvedContainerSize = NSSize(
+            width: resolvedContainerWidth,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        let needsInsetUpdate = textContainerInset != resolvedInset
+        let needsContainerResize =
+            textContainer.widthTracksTextView
+            || abs(textContainer.containerSize.width - resolvedContainerSize.width) > 0.5
+            || abs(textContainer.containerSize.height - resolvedContainerSize.height) > 0.5
+
+        guard needsInsetUpdate || needsContainerResize else { return }
+        textContainer.widthTracksTextView = false
+        textContainer.heightTracksTextView = false
+        textContainer.containerSize = resolvedContainerSize
         textContainerInset = resolvedInset
     }
 
@@ -905,6 +975,92 @@ private final class SelectableNoteReadTextView: NSTextView {
                 yRadius: NoteTextAppearance.codeBlockCornerRadius
                 ).fill()
         }
+    }
+
+    private func reportViewportOffsetIfNeeded() {
+        let offset = enclosingScrollView?.contentView.bounds.origin ?? .zero
+        guard lastReportedViewportOffset != offset else { return }
+        lastReportedViewportOffset = offset
+        onViewportOffsetChange?(offset)
+    }
+
+    private func rearmInitialPresentationReporting() {
+        didReportInitialPresentationReady = false
+        isAwaitingInitialPresentationStability = false
+        isAwaitingInitialPresentationQuietPeriod = false
+        pendingInitialPresentationStabilitySignature = nil
+        DispatchQueue.main.async { [weak self] in
+            self?.scheduleInitialViewportRestorationAppliedIfNeeded()
+        }
+    }
+
+    private func scheduleInitialViewportRestorationAppliedIfNeeded() {
+        guard !didReportInitialPresentationReady,
+              window != nil,
+              bounds.width > 0,
+              bounds.height > 0 else {
+            return
+        }
+        guard let stabilitySignature = currentInitialPresentationStabilitySignature() else {
+            return
+        }
+        if isAwaitingInitialPresentationStability == false {
+            isAwaitingInitialPresentationStability = true
+            pendingInitialPresentationStabilitySignature = stabilitySignature
+            isAwaitingInitialPresentationQuietPeriod = false
+            DispatchQueue.main.async { [weak self] in
+                self?.scheduleInitialViewportRestorationAppliedIfNeeded()
+            }
+            return
+        }
+        if pendingInitialPresentationStabilitySignature != stabilitySignature {
+            pendingInitialPresentationStabilitySignature = stabilitySignature
+            isAwaitingInitialPresentationQuietPeriod = false
+            DispatchQueue.main.async { [weak self] in
+                self?.scheduleInitialViewportRestorationAppliedIfNeeded()
+            }
+            return
+        }
+        guard isAwaitingInitialPresentationQuietPeriod == false else { return }
+        isAwaitingInitialPresentationQuietPeriod = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self else { return }
+            guard self.didReportInitialPresentationReady == false,
+                  self.isAwaitingInitialPresentationStability,
+                  self.isAwaitingInitialPresentationQuietPeriod,
+                  let currentSignature = self.currentInitialPresentationStabilitySignature(),
+                  self.pendingInitialPresentationStabilitySignature == stabilitySignature,
+                  currentSignature == stabilitySignature else {
+                return
+            }
+            self.didReportInitialPresentationReady = true
+            self.isAwaitingInitialPresentationStability = false
+            self.isAwaitingInitialPresentationQuietPeriod = false
+            self.pendingInitialPresentationStabilitySignature = nil
+            self.reportViewportOffsetIfNeeded()
+            DispatchQueue.main.async { [weak self] in
+                self?.onInitialViewportRestorationApplied?()
+            }
+        }
+    }
+
+    private func currentInitialPresentationStabilitySignature() -> InitialPresentationStabilitySignature? {
+        guard let textContainer,
+              let layoutManager else {
+            return nil
+        }
+        layoutManager.ensureLayout(for: textContainer)
+        let visibleRect = enclosingScrollView?.contentView.documentVisibleRect ?? .zero
+        let viewportOffset = enclosingScrollView?.contentView.bounds.origin ?? .zero
+        let usedRect = layoutManager.usedRect(for: textContainer)
+        return InitialPresentationStabilitySignature(
+            boundsSize: bounds.size,
+            visibleRect: visibleRect,
+            textContainerInset: textContainerInset,
+            textContainerSize: textContainer.containerSize,
+            usedRectSize: usedRect.size,
+            viewportOffset: viewportOffset
+        )
     }
 
     private func drawBlockquoteRules(in dirtyRect: NSRect) {
@@ -1000,6 +1156,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
     let initialViewportOffset: CGPoint?
     let initialViewportAnchorTarget: SelectableNoteReadView.ReadActivationTarget?
     let initialViewportAnchorY: CGFloat?
+    let presentationGeneration: UInt64
     let onActivateEditing: ((SelectableNoteReadView.ReadActivationTarget) -> Void)?
     let onActivateEditingWithViewport: ((SelectableNoteReadView.ReadActivationTarget, CGFloat?) -> Void)?
     let onToggleChecklistItem: SelectableNoteReadView.ChecklistToggleHandler?
@@ -1023,6 +1180,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
         textView.initialViewportOffset = initialViewportOffset
         textView.initialViewportAnchorTarget = initialViewportAnchorTarget
         textView.initialViewportAnchorY = initialViewportAnchorY
+        textView.presentationGeneration = presentationGeneration
         textView.accessibilityIdentifier = "notes-read-text-view"
         textView.linkTextAttributes = [
             .foregroundColor: UIColor.link,
@@ -1048,6 +1206,7 @@ private struct PlatformSelectableNoteReadView: UIViewRepresentable {
         readTextView.initialViewportOffset = initialViewportOffset
         readTextView.initialViewportAnchorTarget = initialViewportAnchorTarget
         readTextView.initialViewportAnchorY = initialViewportAnchorY
+        readTextView.presentationGeneration = presentationGeneration
         readTextView.onActivateEditing = onActivateEditing
         readTextView.onActivateEditingWithViewport = onActivateEditingWithViewport
         readTextView.onToggleChecklistItem = onToggleChecklistItem
@@ -1085,6 +1244,7 @@ private final class SelectableNoteReadTextView: UITextView {
     var onToggleChecklistItem: SelectableNoteReadView.ChecklistToggleHandler?
     var onViewportOffsetChange: ((CGPoint) -> Void)?
     var onInitialViewportRestorationApplied: (() -> Void)?
+    var presentationGeneration: UInt64 = 0
     var initialViewportOffset: CGPoint? {
         didSet {
             guard initialViewportOffset != oldValue else { return }

@@ -29,8 +29,6 @@ struct NotesDetailView: View {
     @State private var showSavedIndicator = false
     @State private var lastSavedTimestamp: TimeInterval = 0
     @State private var savedIndicatorTask: Task<Void, Never>?
-    @State var isHoldingEditorSurfaceDuringReadExit = false
-    @State var pendingReadExitHoldTargetOffset: CGPoint?
     #if os(iOS)
     @State private var activeFormattingBarPresentation: NoteFormattingBarPresentation?
     #endif
@@ -116,71 +114,47 @@ struct NotesDetailView: View {
             }
         }
         .onChange(of: editorViewModel.currentNoteId) { _, _ in
-            NotesTransitionDebugTrace.log(
-                "detail.currentNoteChanged",
-                details: "note=\(editorViewModel.currentNoteId ?? "nil")"
-            )
             resetSavedIndicator()
             #if os(iOS)
             activeFormattingBarPresentation = nil
-            isHoldingEditorSurfaceDuringReadExit = false
-            pendingReadExitHoldTargetOffset = nil
             #endif
+            editorViewModel.isHoldingEditorSurfaceDuringReadExit = false
+            editorViewModel.pendingReadExitHoldTargetOffset = nil
         }
         .onChange(of: editorViewModel.presentationMode) { oldMode, newMode in
-            NotesTransitionDebugTrace.log(
-                "detail.presentationModeChanged",
-                details: [
-                    "oldMode=\(String(describing: oldMode))",
-                    "mode=\(String(describing: newMode))",
-                    "holdReadDuringEntry=\(editorViewModel.isHoldingReadSurfaceDuringEditEntry)",
-                    "holdEditorDuringExit=\(isHoldingEditorSurfaceDuringReadExit)",
-                    "pendingReadOffset=\(NotesTransitionDebugTrace.format(editorViewModel.pendingReadSurfaceViewportOffset))"
-                ].joined(separator: " ")
-            )
             #if os(iOS)
             if newMode != .edit {
                 activeFormattingBarPresentation = nil
             }
-            if newMode == .read {
-                pendingReadExitHoldTargetOffset = editorViewModel.pendingReadSurfaceViewportOffset
-                if pendingReadExitHoldTargetOffset != nil {
-                    isHoldingEditorSurfaceDuringReadExit = true
-                }
-            } else {
-                isHoldingEditorSurfaceDuringReadExit = false
-                pendingReadExitHoldTargetOffset = nil
-            }
             #endif
+            if oldMode == .edit, newMode == .read {
+                editorViewModel.pendingReadExitHoldTargetOffset = editorViewModel.pendingReadSurfaceViewportOffset
+            } else if newMode != .read {
+                editorViewModel.isHoldingEditorSurfaceDuringReadExit = false
+                editorViewModel.pendingReadExitHoldTargetOffset = nil
+            }
         }
         .onChange(of: editorViewModel.pendingReadSurfaceViewportOffset) { _, newOffset in
-            NotesTransitionDebugTrace.log(
-                "detail.pendingReadViewportOffsetChanged",
-                details: "offset=\(NotesTransitionDebugTrace.format(newOffset))"
-            )
-            #if os(iOS)
             if let newOffset {
-                pendingReadExitHoldTargetOffset = newOffset
-                if isHoldingEditorSurfaceDuringReadExit {
-                    isHoldingEditorSurfaceDuringReadExit = true
+                editorViewModel.pendingReadExitHoldTargetOffset = newOffset
+                if editorViewModel.isHoldingEditorSurfaceDuringReadExit {
+                    editorViewModel.isHoldingEditorSurfaceDuringReadExit = true
                 }
             }
+        }
+        .onChange(of: editorViewModel.isHoldingEditorSurfaceDuringReadExit) { _, isHolding in
+            #if os(macOS)
+            guard isHolding else { return }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 250_000_000)
+                guard editorViewModel.isHoldingEditorSurfaceDuringReadExit,
+                      editorViewModel.presentationMode == .read else {
+                    return
+                }
+                editorViewModel.isHoldingEditorSurfaceDuringReadExit = false
+                editorViewModel.pendingReadExitHoldTargetOffset = nil
+            }
             #endif
-        }
-        .onChange(of: editorViewModel.isHoldingReadSurfaceDuringEditEntry) { _, isHolding in
-            NotesTransitionDebugTrace.log(
-                "detail.readSurfaceHoldChanged",
-                details: "isHolding=\(isHolding)"
-            )
-        }
-        .onChange(of: isHoldingEditorSurfaceDuringReadExit) { _, isHolding in
-            NotesTransitionDebugTrace.log(
-                "detail.editorSurfaceExitHoldChanged",
-                details: [
-                    "isHolding=\(isHolding)",
-                    "pendingTargetOffset=\(NotesTransitionDebugTrace.format(pendingReadExitHoldTargetOffset))"
-                ].joined(separator: " ")
-            )
         }
         .onDisappear {
             savedIndicatorTask?.cancel()

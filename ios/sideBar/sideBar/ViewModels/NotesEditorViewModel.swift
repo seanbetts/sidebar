@@ -43,9 +43,12 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var isQueuedForSync: Bool = false
     public internal(set) var isHoldingReadSurfaceDuringEditEntry: Bool = false
     public internal(set) var isTransitioningEditExitToRead: Bool = false
+    @Published public internal(set) var isHoldingEditorSurfaceDuringReadExit: Bool = false
+    @Published public internal(set) var readSurfacePresentationGeneration: UInt64 = 0
     @Published public internal(set) var pendingReadSurfaceViewportOffset: CGPoint?
     @Published public internal(set) var pendingReadSurfaceViewportAnchorTarget: PendingEditSelectionTarget?
     @Published public internal(set) var pendingReadSurfaceViewportAnchorY: CGFloat?
+    @Published public internal(set) var pendingReadExitHoldTargetOffset: CGPoint?
     @Published private(set) var unsupportedContent: NotesUnsupportedContent?
     var heldReadSurfaceViewportOffset: CGPoint = .zero
     var heldReadSurfaceActivationTarget: PendingEditSelectionTarget?
@@ -410,6 +413,8 @@ extension NotesEditorViewModel {
         requestsEditorAutofocus = false
         isHoldingReadSurfaceDuringEditEntry = false
         isTransitioningEditExitToRead = false
+        isHoldingEditorSurfaceDuringReadExit = false
+        readSurfacePresentationGeneration = 0
         heldReadSurfaceViewportOffset = .zero
         heldReadSurfaceActivationTarget = nil
         heldReadSurfaceViewportAnchorY = nil
@@ -420,6 +425,7 @@ extension NotesEditorViewModel {
         pendingReadSurfaceViewportOffset = nil
         pendingReadSurfaceViewportAnchorTarget = nil
         pendingReadSurfaceViewportAnchorY = nil
+        pendingReadExitHoldTargetOffset = nil
         debugLastExitReadViewportRestoration = nil
     }
 
@@ -441,6 +447,8 @@ extension NotesEditorViewModel {
             && requestsEditorAutofocus == false
             && isHoldingReadSurfaceDuringEditEntry == false
             && isTransitioningEditExitToRead == false
+            && isHoldingEditorSurfaceDuringReadExit == false
+            && readSurfacePresentationGeneration == 0
             && heldReadSurfaceViewportOffset == .zero
             && heldReadSurfaceActivationTarget == nil
             && heldReadSurfaceViewportAnchorY == nil
@@ -451,6 +459,7 @@ extension NotesEditorViewModel {
             && pendingReadSurfaceViewportOffset == nil
             && pendingReadSurfaceViewportAnchorTarget == nil
             && pendingReadSurfaceViewportAnchorY == nil
+            && pendingReadExitHoldTargetOffset == nil
             && debugLastExitReadViewportRestoration == nil
             && syncRequestedWhileSaving == false
             && nativeEditorViewModel == nil

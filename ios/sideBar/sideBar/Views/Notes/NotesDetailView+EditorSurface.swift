@@ -1,21 +1,32 @@
 import SwiftUI
 
 extension NotesDetailView {
+    private var hiddenSurfaceOffscreenOffset: CGFloat { 20_000 }
+
     var supportedNoteSurface: some View {
         ZStack(alignment: .topLeading) {
             if viewModel.activeNote != nil && currentUnsupportedContent == nil {
                 configuredReadSurface()
-                    .zIndex(isHoldingEditorSurfaceDuringReadExit ? 0 : 0)
-                    .opacity(isReadSurfaceVisibleForCurrentPresentation ? (isHoldingEditorSurfaceDuringReadExit ? 0 : 1) : 0)
+                    .zIndex(editorViewModel.isHoldingEditorSurfaceDuringReadExit ? 0 : 0)
+                    .opacity(
+                        isReadSurfaceVisibleForCurrentPresentation
+                            ? (editorViewModel.isHoldingEditorSurfaceDuringReadExit ? 0 : 1)
+                            : 0
+                    )
                     .allowsHitTesting(
                         isShowingReadSurface
                             && !editorViewModel.isHoldingReadSurfaceDuringEditEntry
-                            && !isHoldingEditorSurfaceDuringReadExit
+                            && !editorViewModel.isHoldingEditorSurfaceDuringReadExit
+                    )
+                    .offset(
+                        x: editorViewModel.isHoldingEditorSurfaceDuringReadExit
+                            ? hiddenSurfaceOffscreenOffset
+                            : 0
                     )
                     .accessibilityHidden(!isReadSurfaceVisibleForCurrentPresentation)
             }
 
-            if isShowingEditorSurface || isHoldingEditorSurfaceDuringReadExit {
+            if isShowingEditorSurface || editorViewModel.isHoldingEditorSurfaceDuringReadExit {
                 configuredEditorSurface
                     .zIndex(1)
                     .opacity(
@@ -26,11 +37,16 @@ extension NotesDetailView {
                     .allowsHitTesting(
                         isShowingEditorSurface
                             && !editorViewModel.isHoldingReadSurfaceDuringEditEntry
-                            && !isHoldingEditorSurfaceDuringReadExit
+                            && !editorViewModel.isHoldingEditorSurfaceDuringReadExit
+                    )
+                    .offset(
+                        x: editorViewModel.isHoldingReadSurfaceDuringEditEntry
+                            ? hiddenSurfaceOffscreenOffset
+                            : 0
                     )
                     .accessibilityHidden(
                         editorViewModel.isHoldingReadSurfaceDuringEditEntry
-                            || isHoldingEditorSurfaceDuringReadExit
+                            || editorViewModel.isHoldingEditorSurfaceDuringReadExit
                     )
             }
         }
@@ -60,6 +76,7 @@ extension NotesDetailView {
             initialViewportOffset: resolvedInitialViewportOffset,
             initialViewportAnchorTarget: resolvedInitialViewportAnchorTarget,
             initialViewportAnchorY: resolvedInitialViewportAnchorY,
+            presentationGeneration: editorViewModel.readSurfacePresentationGeneration,
             onActivateEditing: activateReadSurfaceEditing,
             onActivateEditingWithViewport: activateReadSurfaceEditing,
             onToggleChecklistItem: handleReadSurfaceChecklistToggle,
@@ -76,7 +93,7 @@ extension NotesDetailView {
     var isReadSurfaceVisibleForCurrentPresentation: Bool {
         isShowingReadSurface
             || editorViewModel.isHoldingReadSurfaceDuringEditEntry
-            || isHoldingEditorSurfaceDuringReadExit
+            || editorViewModel.isHoldingEditorSurfaceDuringReadExit
     }
 
     @ViewBuilder

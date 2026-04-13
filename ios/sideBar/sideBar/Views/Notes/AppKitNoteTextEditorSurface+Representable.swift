@@ -19,8 +19,12 @@ extension AppKitNoteTextEditorSurface {
         textView.textColor = .labelColor
         textView.insertionPointColor = NoteTextAppearance.caretTintColor
         textView.textContainer?.lineFragmentPadding = 0
-        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.widthTracksTextView = false
         textView.textContainer?.heightTracksTextView = false
+        textView.textContainer?.containerSize = NSSize(
+            width: max(maxContentWidth - (NoteTextLayout.horizontalPadding * 2), 0),
+            height: CGFloat.greatestFiniteMagnitude
+        )
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.minSize = .zero
@@ -30,15 +34,8 @@ extension AppKitNoteTextEditorSurface {
         )
         textView.autoresizingMask = [.width]
         textView.delegate = context.coordinator
+        textView.identifier = NSUserInterfaceItemIdentifier("notes-editor-text-view")
         textView.setAccessibilityLabel("Notes editor")
-        NotesTransitionDebugTrace.log(
-            "appkitEditor.makeNSView",
-            details: [
-                "editable=\(isEditable)",
-                "shouldAutofocus=\(textView.shouldAutofocus)",
-                "maxContentWidth=\(NotesTransitionDebugTrace.format(maxContentWidth))"
-            ].joined(separator: " ")
-        )
 
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
@@ -91,17 +88,6 @@ extension AppKitNoteTextEditorSurface {
         if NSDictionary(dictionary: textView.typingAttributes).isEqual(to: typingAttributes) == false {
             textView.typingAttributes = typingAttributes
         }
-        NotesTransitionDebugTrace.log(
-            "appkitEditor.updateNSView",
-            details: [
-                "editable=\(isEditable)",
-                "shouldAutofocus=\(textView.shouldAutofocus)",
-                "selectedRange=\(NotesTransitionDebugTrace.format(textView.selectedRange()))",
-                "renderGeneration=\(viewModel.renderGeneration)",
-                "textBounds=\(NotesTransitionDebugTrace.format(textView.bounds))",
-                "textInset=\(NotesTransitionDebugTrace.format(textView.textContainerInset))"
-            ].joined(separator: " ")
-        )
     }
 
     static func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
