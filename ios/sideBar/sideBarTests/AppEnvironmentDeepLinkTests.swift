@@ -178,15 +178,16 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         XCTAssertEqual(environment.chatViewModel.selectedConversationId, conversationID)
     }
 
-    func testConsumeWidgetAddTaskStartsTaskImmediatelyWhenTasksFocused() async {
+    func testReplayedTaskDeepLinkStartsTaskImmediatelyWhenTasksFocused() async {
         let environment = requireEnvironment()
-        environment.authState = .active
+        environment.authState = .signedOut
         environment.isTasksFocused = true
 
-        let operation = WidgetPendingOperation(itemId: "", action: TaskWidgetAction.addNew)
-        storage.widgetDataManager.recordPendingOperation(operation, for: .tasks)
+        environment.handleDeepLink(URL(string: "sidebar://tasks/new")!)
+        XCTAssertEqual(environment.queuedProtectedDeepLinks.count, 1)
 
-        environment.consumeWidgetAddTask()
+        environment.authState = .active
+        await environment.replayProtectedDeferredActionsIfReady()
 
         XCTAssertEqual(environment.commandSelection, .tasks)
         XCTAssertFalse(environment.pendingNewTaskDeepLink)
@@ -197,11 +198,44 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
         )
     }
 
-    func testConsumeWidgetCompletionsPreservesPendingAddTaskOperation() async {
+    func testConsumeWidgetCompletionsPreservesLegacyPendingAddTaskOperation() async {
         let environment = requireEnvironment()
+        environment.authState = .active
+
+        let taskId = UUID().uuidString
+        let task = TaskItem(
+            id: taskId,
+            title: "Offline completion task",
+            status: "todo",
+            updatedAt: "2026-04-01T12:00:00Z"
+        )
+        environment.container.cacheClient.set(
+            key: CacheKeys.tasksList(selectionKey: TaskSelection.today.cacheKey),
+            value: TaskListResponse(
+                scope: "today",
+                generatedAt: nil,
+                tasks: [task],
+                projects: nil,
+                groups: nil
+            ),
+            ttlSeconds: 60
+        )
+        environment.container.cacheClient.set(
+            key: CacheKeys.tasksCounts,
+            value: TaskCountsResponse(
+                generatedAt: nil,
+                counts: TaskCounts(today: 1, upcoming: 0, completed: 0),
+                projects: [],
+                groups: []
+            ),
+            ttlSeconds: 60
+        )
+
+        await forceTasksOffline(in: environment)
+        await environment.tasksViewModel.load(selection: .today)
 
         storage.widgetDataManager.recordPendingOperation(
-            WidgetPendingOperation(itemId: "task-complete", action: TaskWidgetAction.complete),
+            WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete),
             for: .tasks
         )
         storage.widgetDataManager.recordPendingOperation(
@@ -209,16 +243,16 @@ final class AppEnvironmentDeepLinkTests: XCTestCase {
             for: .tasks
         )
 
-        // Signed out avoids any server completion sync while validating queue behavior.
-        environment.authState = .signedOut
         await environment.consumeWidgetCompletions()
 
-        environment.authState = .active
-        environment.isTasksFocused = false
-        environment.consumeWidgetAddTask()
+        let remaining = storage.widgetDataManager.consumePendingOperations(
+            for: .tasks,
+            actionType: TaskWidgetAction.self
+        )
 
-        XCTAssertEqual(environment.commandSelection, .tasks)
-        XCTAssertTrue(environment.pendingNewTaskDeepLink)
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.action, .addNew)
+        XCTAssertEqual(remaining.first?.itemId, "")
     }
     func testConsumeWidgetCompletionsPreservesPendingCompletionWhenSignedOut() async {
         let environment = requireEnvironment()

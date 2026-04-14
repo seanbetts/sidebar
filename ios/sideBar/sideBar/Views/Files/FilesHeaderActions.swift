@@ -103,7 +103,6 @@ struct FilesHeaderActions: View {
             systemImage: "ellipsis",
             accessibilityLabel: "File options",
             items: fileHeaderMenuItems,
-            items: fileHeaderMenuItems,
             isCompact: isCompact,
             chromeStyle: compactPhoneToolbarChromeStyle
         )
