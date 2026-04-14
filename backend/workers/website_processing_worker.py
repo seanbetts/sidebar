@@ -357,6 +357,8 @@ def _run_worker_loop(worker_id: str) -> None:
 
                 job = _claim_job(db, worker_id)
                 if not job:
+                    if db.in_transaction():
+                        db.rollback()
                     idle_polls += 1
                     time.sleep(_compute_idle_poll_seconds(idle_polls))
                     continue

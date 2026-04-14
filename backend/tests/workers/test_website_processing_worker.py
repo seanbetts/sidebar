@@ -96,10 +96,16 @@ def test_worker_loop_backs_off_after_consecutive_idle_polls(monkeypatch):
 
     class FakeSession:
         def __enter__(self):
-            return object()
+            return self
 
         def __exit__(self, exc_type, exc, tb):
             return False
+
+        def in_transaction(self) -> bool:
+            return False
+
+        def rollback(self) -> None:
+            return None
 
     sleep_calls: list[int] = []
 
@@ -126,6 +132,61 @@ def test_worker_loop_backs_off_after_consecutive_idle_polls(monkeypatch):
         pass
 
     assert sleep_calls == [2, 4, 8]
+
+
+def test_worker_loop_rolls_back_before_sleeping_on_empty_queue(monkeypatch):
+    """Empty queue polls should not leave the session idle in transaction."""
+    from workers import website_processing_worker
+
+    class StopLoop(BaseException):
+        pass
+
+    class FakeSession:
+        def __init__(self) -> None:
+            self.transaction_open = False
+            self.rollback_calls = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def in_transaction(self) -> bool:
+            return self.transaction_open
+
+        def rollback(self) -> None:
+            self.rollback_calls += 1
+            self.transaction_open = False
+
+    fake_session = FakeSession()
+    observed: dict[str, int | bool] = {}
+
+    def fake_claim_job(db, _worker_id):
+        db.transaction_open = True
+        return None
+
+    def fake_sleep(_seconds: int) -> None:
+        observed["in_transaction_during_sleep"] = fake_session.in_transaction()
+        observed["rollback_calls"] = fake_session.rollback_calls
+        raise StopLoop()
+
+    monkeypatch.setattr(website_processing_worker, "SessionLocal", lambda: fake_session)
+    monkeypatch.setattr(website_processing_worker, "_set_worker_scope", lambda _db: None)
+    monkeypatch.setattr(website_processing_worker, "_cleanup_old_jobs", lambda _db: 0)
+    monkeypatch.setattr(website_processing_worker, "_requeue_stalled_jobs", lambda _db: None)
+    monkeypatch.setattr(website_processing_worker, "_claim_job", fake_claim_job)
+    monkeypatch.setattr(website_processing_worker.time, "sleep", fake_sleep)
+
+    try:
+        website_processing_worker._run_worker_loop("worker-1")
+    except StopLoop:
+        pass
+
+    assert observed == {
+        "in_transaction_during_sleep": False,
+        "rollback_calls": 1,
+    }
 
 
 def test_main_initializes_sentry_with_worker_script_name(monkeypatch):
