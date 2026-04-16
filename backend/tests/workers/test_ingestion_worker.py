@@ -99,6 +99,55 @@ def test_retryable_error_requeues_with_backoff(test_db):
     assert job.lease_expires_at > ingestion_worker._now()
 
 
+def test_compute_idle_poll_seconds_uses_bounded_backoff():
+    assert ingestion_worker._compute_idle_poll_seconds(1) == 2
+    assert ingestion_worker._compute_idle_poll_seconds(2) == 4
+    assert ingestion_worker._compute_idle_poll_seconds(3) == 8
+    assert ingestion_worker._compute_idle_poll_seconds(4) == 10
+    assert ingestion_worker._compute_idle_poll_seconds(8) == 10
+
+
+def test_worker_loop_backs_off_after_consecutive_idle_polls(monkeypatch):
+    class StopLoop(BaseException):
+        pass
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def rollback(self) -> None:
+            return None
+
+    sleep_calls: list[int] = []
+
+    def fake_sleep(seconds: int) -> None:
+        sleep_calls.append(seconds)
+        if len(sleep_calls) >= 3:
+            raise StopLoop()
+
+    monkeypatch.setattr(ingestion_worker, "SessionLocal", lambda: FakeSession())
+    monkeypatch.setattr(ingestion_worker, "_resolve_worker_user_id", lambda: None)
+    monkeypatch.setattr(
+        ingestion_worker, "_enforce_safe_dev_worker_configuration", lambda _user_id: None
+    )
+    monkeypatch.setattr(
+        ingestion_worker, "_set_worker_claim_scope", lambda _db, _worker_user_id: None
+    )
+    monkeypatch.setattr(ingestion_worker, "_requeue_stalled_jobs", lambda _db: None)
+    monkeypatch.setattr(ingestion_worker, "_claim_job", lambda _db, _worker_id: None)
+    monkeypatch.setattr(ingestion_worker.time, "sleep", fake_sleep)
+
+    try:
+        ingestion_worker.worker_loop()
+    except StopLoop:
+        pass
+
+    assert sleep_calls == [2, 4, 8]
+
+
 def test_retryable_error_exhausts_attempts(test_db):
     file_id = uuid4()
     _make_ingested_file(test_db, file_id)

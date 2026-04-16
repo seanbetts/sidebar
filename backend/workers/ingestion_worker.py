@@ -28,13 +28,6 @@ from uuid import uuid4
 
 import pdfplumber
 import sentry_sdk
-from api.config import settings
-from api.db.session import SessionLocal, set_session_user_id
-from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
-from api.services.file_ingestion_service import FileIngestionService
-from api.services.script_sentry import initialize_script_sentry
-from api.services.storage.service import get_storage_backend
-from api.services.website_transcript_service import WebsiteTranscriptService
 from botocore import exceptions as botocore_exceptions
 from docx import Document
 from pdfminer.high_level import extract_pages
@@ -48,9 +41,18 @@ from sqlalchemy import and_, or_, text
 from sqlalchemy.orm.attributes import flag_modified
 from tabulate import tabulate
 
+from api.config import settings
+from api.db.session import SessionLocal, set_session_user_id
+from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
+from api.services.file_ingestion_service import FileIngestionService
+from api.services.script_sentry import initialize_script_sentry
+from api.services.storage.service import get_storage_backend
+from api.services.website_transcript_service import WebsiteTranscriptService
+
 LEASE_SECONDS = 180
 HEARTBEAT_SECONDS = 15
 SLEEP_SECONDS = 2
+_MAX_IDLE_POLL_SECONDS = 10
 MAX_ATTEMPTS = 3
 BACKOFF_BASE_SECONDS = 2
 BACKOFF_MAX_SECONDS = 60
@@ -609,6 +611,13 @@ def _compute_backoff_seconds(attempts: int) -> int:
         return 0
     delay = BACKOFF_BASE_SECONDS * (2 ** (attempts - 1))
     return min(delay, BACKOFF_MAX_SECONDS)
+
+
+def _compute_idle_poll_seconds(idle_polls: int) -> int:
+    if idle_polls <= 0:
+        return SLEEP_SECONDS
+    delay = SLEEP_SECONDS * (2 ** (idle_polls - 1))
+    return min(delay, _MAX_IDLE_POLL_SECONDS)
 
 
 def _retry_or_fail(db, job: FileProcessingJob, error: IngestionError) -> None:
@@ -2262,6 +2271,7 @@ def worker_loop() -> None:
     _initialize_worker_sentry()
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = _resolve_worker_user_id()
+    idle_polls = 0
     _enforce_safe_dev_worker_configuration(worker_user_id)
     _ensure_stdio()
     if shutil.which("soffice") is None:
@@ -2305,9 +2315,11 @@ def worker_loop() -> None:
                 job = _claim_job(db, worker_id)
                 if not job:
                     db.rollback()
-                    time.sleep(SLEEP_SECONDS)
+                    idle_polls += 1
+                    time.sleep(_compute_idle_poll_seconds(idle_polls))
                     continue
 
+                idle_polls = 0
                 record: IngestedFile | None = None
                 try:
                     record = _get_file(db, job)
