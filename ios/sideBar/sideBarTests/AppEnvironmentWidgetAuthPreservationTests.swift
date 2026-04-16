@@ -100,6 +100,9 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
         environment.authState = .active
         await environment.replayProtectedDeferredActionsIfReady()
 
+        await waitForWebsiteSave(url: savedURL, in: websitesAPI)
+
+        XCTAssertEqual(websitesAPI.saveCallCount, 1)
         XCTAssertEqual(websitesAPI.lastSavedURL, savedURL)
     }
 
@@ -147,6 +150,17 @@ final class AppEnvWidgetAuthPreservationTests: XCTestCase {
         environment.tasksViewModel.reset()
         environment.chatViewModel.reset()
         environment.websitesViewModel.pendingWebsite = nil
+    }
+
+    private func waitForWebsiteSave(
+        url: String,
+        in websitesAPI: DeepLinkWebsitesAPI,
+        attempts: Int = 40
+    ) async {
+        for _ in 0..<attempts where websitesAPI.lastSavedURL != url {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
     }
 
     private static func quickSaveDeepLink(url: String) -> URL {
