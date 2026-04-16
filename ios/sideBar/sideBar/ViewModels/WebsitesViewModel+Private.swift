@@ -14,14 +14,23 @@ extension WebsitesViewModel {
         return normalized
     }
 
-    func enqueueOfflineWebsiteSave(for normalizedURL: URL) -> Bool {
+    func enqueueOfflineWebsiteSave(
+        for normalizedURL: URL,
+        selectAfterSave: Bool
+    ) -> Bool {
         if let queuedItem = PendingShareStore.shared.enqueueWebsite(url: normalizedURL.absoluteString) {
-            _ = upsertPendingWebsite(
+            let previousSelectedId = selectedWebsiteId
+            let pending = upsertPendingWebsite(
                 from: normalizedURL,
-                source: .queuedShare,
+                source: selectAfterSave ? .directSave : .queuedShare,
                 queueItemId: queuedItem.id,
-                status: .queued
+                status: .queued,
+                selectionFallbackId: selectAfterSave ? previousSelectedId : nil
             )
+            if selectAfterSave {
+                selectedWebsiteId = pending.id
+                store.clearActive()
+            }
             saveErrorMessage = nil
             toastCenter.show(message: "Saved for later", style: .success)
             return true
@@ -39,6 +48,7 @@ extension WebsitesViewModel {
             selectionFallbackId: previousSelectedId
         )
         selectedWebsiteId = pending.id
+        store.clearActive()
         saveErrorMessage = nil
         isSavingWebsite = true
         isLoadingDetail = true

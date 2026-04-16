@@ -216,11 +216,11 @@ public final class WebsitesViewModel: ObservableObject {
 
     public func saveWebsite(url: String, selectAfterSave: Bool = true) async -> Bool {
         guard let normalized = normalizedWebsiteURL(from: url) else { return false }
-        if networkStatus.isOffline {
-            if selectAfterSave {
-                return enqueueOfflineWebsiteSave(for: normalized)
-            }
-            return false
+        if networkStatus.offlineCapabilityPolicy.shouldQueueWrites {
+            return enqueueOfflineWebsiteSave(
+                for: normalized,
+                selectAfterSave: selectAfterSave
+            )
         }
 
         if !selectAfterSave {

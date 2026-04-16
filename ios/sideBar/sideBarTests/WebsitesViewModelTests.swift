@@ -1136,6 +1136,56 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isSavingWebsite)
     }
 
+    func testSaveWebsiteQueuesSelectedPendingRowWhenOffline() async {
+        let existing = makeItem(id: "site-existing")
+        let existingDetail = makeDetail(id: "site-existing", content: "Existing content")
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        store.updateListItem(existing, persist: false)
+        store.applyDetailUpdate(existingDetail, persist: false)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+        )
+        viewModel.selectedWebsiteId = existing.id
+
+        let saved = await viewModel.saveWebsite(url: "https://queued.example/path")
+
+        XCTAssertTrue(saved)
+        XCTAssertNil(api.lastSavedUrl)
+        XCTAssertEqual(viewModel.pendingWebsites.count, 1)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.source, .directSave)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.status, .queued)
+        XCTAssertEqual(viewModel.selectedWebsiteId, viewModel.pendingWebsites.first?.id)
+        XCTAssertNil(viewModel.active)
+    }
+
+    func testSaveWebsiteTreatsServerUnreachableAsOfflineQueueing() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(
+                isNetworkAvailable: true,
+                isOffline: false,
+                isServerReachable: false
+            )
+        )
+
+        let saved = await viewModel.saveWebsite(url: "https://queued.example/path")
+
+        XCTAssertTrue(saved)
+        XCTAssertNil(api.lastSavedUrl)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.status, .queued)
+        XCTAssertEqual(viewModel.pendingWebsites.first?.source, .directSave)
+    }
+
     func testSaveWebsiteWithoutSelectionFailsWhenSaveRequestFailsEvenIfListCouldContainWebsite() async {
         let savedItem = makeItem(
             id: "site-queued-1",
@@ -1784,10 +1834,12 @@ private final class ControlledTranscriptRequest {
 private struct TestNetworkStatus: NetworkStatusProviding {
     let isNetworkAvailable: Bool
     let isOffline: Bool
+    let isServerReachable: Bool
 
-    init(isNetworkAvailable: Bool, isOffline: Bool = false) {
+    init(isNetworkAvailable: Bool, isOffline: Bool = false, isServerReachable: Bool = true) {
         self.isNetworkAvailable = isNetworkAvailable
         self.isOffline = isOffline
+        self.isServerReachable = isServerReachable
     }
 }
 

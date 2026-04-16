@@ -8,6 +8,9 @@ extension WebsitesStore {
     // MARK: - Background Refresh
 
     func refreshList() async {
+        guard canAttemptServerRead else {
+            return
+        }
         guard canAttemptBackgroundRefresh() else {
             return
         }
@@ -29,6 +32,9 @@ extension WebsitesStore {
 
     func refreshArchivedList(force: Bool = false) async {
         if !force {
+            guard canAttemptServerRead else {
+                return
+            }
             guard canAttemptBackgroundRefresh() else {
                 return
             }
@@ -66,6 +72,9 @@ extension WebsitesStore {
     }
 
     func refreshDetail(id: String) async {
+        guard canAttemptServerRead else {
+            return
+        }
         guard canAttemptBackgroundRefresh() else {
             return
         }
@@ -270,7 +279,7 @@ extension WebsitesStore {
 
     func prefetchArchivedDetails(from items: [WebsiteItem]) async {
         guard archivedDetailPrefetchLimit > 0 else { return }
-        guard !(networkStatus?.isOffline ?? false) else { return }
+        guard canAttemptServerRead else { return }
         var pending: [WebsiteItem] = []
         pending.reserveCapacity(min(items.count, archivedDetailPrefetchLimit))
 

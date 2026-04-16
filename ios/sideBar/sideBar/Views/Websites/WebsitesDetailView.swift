@@ -218,6 +218,15 @@ extension WebsitesDetailView {
                 guard let selectedId = viewModel.selectedWebsiteId else { return }
                 Task { await viewModel.loadById(id: selectedId) }
             }
+        } else if viewModel.selectedWebsiteId != nil {
+            PlaceholderView(
+                title: "Unable to load website",
+                subtitle: "This website isn't available on this device yet.",
+                actionTitle: "Retry"
+            ) {
+                guard let selectedId = viewModel.selectedWebsiteId else { return }
+                Task { await viewModel.loadById(id: selectedId) }
+            }
         } else if viewModel.isLoading && viewModel.items.isEmpty {
             LoadingView(message: "Loading websites…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

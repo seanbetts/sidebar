@@ -82,6 +82,10 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         await refreshArchivedList()
     }
 
+    var canAttemptServerRead: Bool {
+        networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true
+    }
+
     // MARK: - Public API
 
     public func loadList(force: Bool = false) async throws {
@@ -91,28 +95,33 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
                 updateArchivedSummary(from: cached, persist: false)
                 applyListUpdate(cached.items, persist: false)
                 Task { [weak self] in
-                    await self?.refreshList()
-                    await self?.refreshArchivedList()
+                    guard let self, self.canAttemptServerRead else { return }
+                    await self.refreshList()
+                    await self.refreshArchivedList()
                 }
                 return
             }
             if let offline = offlineStore?.get(key: cacheKey, as: WebsitesResponse.self) {
                 updateArchivedSummary(from: offline, persist: false)
                 applyListUpdate(offline.items, persist: false)
-                if !(networkStatus?.isOffline ?? false) {
+                if canAttemptServerRead {
                     Task { [weak self] in
-                        await self?.refreshList()
-                        await self?.refreshArchivedList()
+                        guard let self else { return }
+                        await self.refreshList()
+                        await self.refreshArchivedList()
                     }
                 }
                 return
             }
         }
+        guard canAttemptServerRead else {
+            throw WebsiteDetailOfflineError(message: "Websites aren't available offline yet.")
+        }
         let remote = try await fetchFromAPI()
         updateArchivedSummary(from: remote, persist: true)
         applyListUpdate(remote.items, persist: true)
         cache.set(key: cacheKey, value: remote, ttlSeconds: cacheTTL)
-        if !(networkStatus?.isOffline ?? false) {
+        if canAttemptServerRead {
             Task { [weak self] in
                 await self?.refreshArchivedList()
             }
@@ -127,14 +136,14 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
         }
         if !force, let offline = offlineStore?.get(key: cacheKey, as: WebsiteDetail.self) {
             applyDetailUpdate(offline, persist: false)
-            if !(networkStatus?.isOffline ?? false) {
+            if canAttemptServerRead {
                 Task { [weak self] in
                     await self?.refreshDetail(id: id)
                 }
             }
             return
         }
-        if networkStatus?.isOffline ?? false {
+        if !canAttemptServerRead {
             throw offlineDetailError(for: id)
         }
         let response = try await api.get(id: id)
@@ -142,7 +151,7 @@ public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     }
 
     public func loadArchivedList(force: Bool = false) async {
-        guard !(networkStatus?.isOffline ?? false) else { return }
+        guard canAttemptServerRead else { return }
         if !force, isRefreshingArchived {
             await waitForArchivedRefresh()
             return

@@ -118,52 +118,6 @@ final class WebsitesStoreTests: XCTestCase {
         XCTAssertEqual(store.items.first?.id, "w1")
     }
 
-    func testLoadDetailOfflineArchivedShowsError() async {
-        let item = WebsiteItem(
-            id: "w1",
-            title: "Archived",
-            url: "https://example.com",
-            domain: "example.com",
-            savedAt: nil,
-            publishedAt: nil,
-            pinned: false,
-            pinnedOrder: nil,
-            archived: true,
-            faviconUrl: nil,
-            faviconR2Key: nil,
-            youtubeTranscripts: nil,
-            readingTime: nil,
-            updatedAt: ISO8601DateFormatter().string(from: Date()),
-            lastOpenedAt: nil,
-            deletedAt: nil
-        )
-        let cache = TestCacheClient()
-        let api = WebsitesStoreMockWebsitesAPI(
-            listResult: .failure(WebsitesStoreMockError.forced),
-            getResult: .failure(WebsitesStoreMockError.forced)
-        )
-        let persistence = PersistenceController(inMemory: true)
-        let offlineStore = OfflineStore(container: persistence.container)
-        let store = WebsitesStore(
-            api: api,
-            cache: cache,
-            widgetDataManager: makeWidgetDataManager(),
-            offlineStore: offlineStore,
-            networkStatus: WebsitesStoreTestNetworkStatus(isNetworkAvailable: false, isOffline: true)
-        )
-        store.updateListItem(item, persist: false)
-
-        do {
-            try await store.loadDetail(id: "w1")
-            XCTFail("Expected offline detail error")
-        } catch {
-            XCTAssertEqual(
-                error.localizedDescription,
-                "This archived website hasn't been cached yet. Go online to load it."
-            )
-        }
-    }
-
     func testConcurrentArchivedRefreshTimesOutInsteadOfWaitingIndefinitely() async {
         let item = WebsiteItem(
             id: "w1",
@@ -850,6 +804,13 @@ enum WebsitesStoreMockError: Error {
 struct WebsitesStoreTestNetworkStatus: NetworkStatusProviding {
     let isNetworkAvailable: Bool
     let isOffline: Bool
+    let isServerReachable: Bool
+
+    init(isNetworkAvailable: Bool, isOffline: Bool, isServerReachable: Bool = true) {
+        self.isNetworkAvailable = isNetworkAvailable
+        self.isOffline = isOffline
+        self.isServerReachable = isServerReachable
+    }
 }
 
 final class WebsitesStoreMockWebsitesAPI: WebsitesProviding {
