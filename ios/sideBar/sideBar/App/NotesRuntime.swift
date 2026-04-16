@@ -41,6 +41,26 @@ public final class NotesRuntime: ObservableObject {
         viewModel.selectedNoteId
     }
 
+    /// Creates a blank note, then enters edit mode once the editor has hydrated it.
+    @discardableResult
+    public func createBlankNoteAndEnterEditMode() async -> NotePayload? {
+        guard let createdNote = await viewModel.createBlankNote() else { return nil }
+
+        let hydrationAttempts = 10
+        for _ in 0..<hydrationAttempts {
+            guard editorViewModel.currentNoteId != createdNote.id else {
+                editorViewModel.enterEditMode()
+                return createdNote
+            }
+            await Task.yield()
+        }
+
+        if editorViewModel.currentNoteId == createdNote.id {
+            editorViewModel.enterEditMode()
+        }
+        return createdNote
+    }
+
     /// Build canonical open-note context for prompt requests.
     public func openNoteContext() -> [String: Any]? {
         guard let activeNote else { return nil }

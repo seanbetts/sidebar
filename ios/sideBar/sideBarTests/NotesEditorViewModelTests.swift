@@ -1608,6 +1608,34 @@ extension NotesEditorViewModelTests {
         XCTAssertNil(contextPayload?["content_format"])
     }
 
+    func testNotesRuntimeCreateBlankNoteBeginsEditingAndRequestsAutofocus() async throws {
+        let createdNote = NotePayload(
+            id: "created-note",
+            name: "New Note",
+            content: "",
+            path: "/created-note.md",
+            modified: nil,
+            created: nil
+        )
+        let api = NotesAPISpy(
+            updateResult: .failure(MockError.forced),
+            createResult: .success(createdNote)
+        )
+        let context = makeNotesEditorViewModelTestContext(api: api)
+        let runtime = NotesRuntime(
+            viewModel: context.notesViewModel,
+            editorViewModel: context.viewModel
+        )
+
+        let created = await runtime.createBlankNoteAndEnterEditMode()
+
+        XCTAssertEqual(created?.id, createdNote.id)
+        await waitUntilNoteHydrated(context.viewModel, note: createdNote)
+        XCTAssertEqual(context.notesViewModel.selectedNoteId, createdNote.path)
+        XCTAssertEqual(context.viewModel.presentationMode, .edit)
+        XCTAssertTrue(context.viewModel.shouldAutofocusEditorSurface)
+    }
+
     func testAppliesUnsyncedDraftWithoutConflictResolution() async throws {
         let nonCanonical = "- [x] Done"
         let canonical = canonicalSnapshotOutput(nonCanonical)
