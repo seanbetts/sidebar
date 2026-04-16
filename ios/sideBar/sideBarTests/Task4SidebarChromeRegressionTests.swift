@@ -38,7 +38,7 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertFalse(normalized.contains("top:DesignTokens.Spacing.xxl"))
     }
 
-    func testArchiveSectionsUseExplicitSpacerHeadersForVerticalSeparation() throws {
+    func testArchiveSectionsUseHiddenProminentHeadersForMatchedSpacing() throws {
         let notes = try source(
             at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+TreeArchive.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -46,17 +46,19 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
             at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(notes.contains("header:{sidebarSectionSpacerHeader()}"))
-        XCTAssertTrue(websites.contains("header:{sidebarSectionSpacerHeader()}"))
+        XCTAssertTrue(notes.contains("header:{sidebarHiddenProminentSectionHeader(\"Archive\")}"))
+        XCTAssertTrue(websites.contains("header:{sidebarHiddenProminentSectionHeader(\"Archive\")}"))
+        XCTAssertFalse(notes.contains("top:DesignTokens.Spacing.sm"))
+        XCTAssertFalse(websites.contains("top:DesignTokens.Spacing.sm"))
     }
 
-    func testSidebarSectionSpacerHeaderUsesTokenBackedHeight() throws {
+    func testPanelComponentsDefinesHiddenProminentSectionHeader() throws {
         let normalized = try source(
             at: ["sideBar", "Views", "SidebarPanels", "PanelComponents.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("funcsidebarSectionSpacerHeader()->someView"))
-        XCTAssertTrue(normalized.contains("Color.clear.frame(height:DesignTokens.Spacing.xs)"))
+        XCTAssertTrue(normalized.contains("funcsidebarHiddenProminentSectionHeader(_title:String)->someView"))
+        XCTAssertTrue(normalized.contains("sidebarProminentSectionHeader(title).hidden().accessibilityHidden(true)"))
     }
 
     func testMacContentPanelsUseExplicitPlainListActivationPath() throws {

@@ -96,7 +96,7 @@ extension NotesPanelView {
                         }
                     }
                 } header: {
-                    sidebarSectionSpacerHeader()
+                    sidebarHiddenProminentSectionHeader("Archive")
                 }
             }
         }

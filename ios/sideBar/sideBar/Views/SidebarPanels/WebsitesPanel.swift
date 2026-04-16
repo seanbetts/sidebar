@@ -382,7 +382,7 @@ extension WebsitesPanelView {
                             }
                         }
                     } header: {
-                        sidebarSectionSpacerHeader()
+                        sidebarHiddenProminentSectionHeader("Archive")
                     }
                 }
             }

@@ -28,9 +28,9 @@ func sidebarProminentSectionHeader(_ title: String) -> some View {
         .textCase(nil)
 }
 
-func sidebarSectionSpacerHeader() -> some View {
-    Color.clear
-        .frame(height: DesignTokens.Spacing.xs)
+func sidebarHiddenProminentSectionHeader(_ title: String) -> some View {
+    sidebarProminentSectionHeader(title)
+        .hidden()
         .accessibilityHidden(true)
 }
 
