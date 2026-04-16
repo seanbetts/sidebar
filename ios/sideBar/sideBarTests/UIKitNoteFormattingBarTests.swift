@@ -227,6 +227,23 @@ final class UIKitNoteFormattingBarTests: NotesDetailViewHostingTestCase {
         XCTAssertEqual(size.height, NoteFormattingBarChrome.entryControlHeight)
     }
 
+    func testBarUsesIntrinsicHeightWithoutSelfOwnedFixedHeightConstraint() throws {
+        guard #available(iOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26")
+        }
+
+        let bar = UIKitNoteFormattingBar(configuration: .disabled)
+
+        XCTAssertFalse(
+            bar.constraints.contains(where: { constraint in
+                constraint.firstItem === bar
+                    && constraint.secondItem == nil
+                    && constraint.firstAttribute == .height
+                    && constraint.relation == .equal
+            })
+        )
+    }
+
     func testBarIntrinsicWidthMatchesCompressedLayoutWidth() throws {
         guard #available(iOS 26.0, *) else {
             throw XCTSkip("Requires iOS 26")

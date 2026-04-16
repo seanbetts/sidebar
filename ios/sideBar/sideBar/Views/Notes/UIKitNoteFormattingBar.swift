@@ -444,8 +444,7 @@ extension UIKitNoteFormattingBar {
             stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.horizontalPadding),
             stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.horizontalPadding),
             stackView.topAnchor.constraint(equalTo: topAnchor, constant: Self.verticalPadding),
-            stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.verticalPadding),
-            heightAnchor.constraint(equalToConstant: Self.barHeight)
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.verticalPadding)
         ])
 
         stackView.addArrangedSubview(menuButton)

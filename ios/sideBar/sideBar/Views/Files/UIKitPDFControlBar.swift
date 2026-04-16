@@ -379,8 +379,7 @@ extension UIKitPDFControlBar {
             backgroundEffectView.leadingAnchor.constraint(equalTo: leadingAnchor),
             backgroundEffectView.trailingAnchor.constraint(equalTo: trailingAnchor),
             backgroundEffectView.topAnchor.constraint(equalTo: topAnchor),
-            backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            heightAnchor.constraint(equalToConstant: Self.barHeight)
+            backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
 
         menuButton.translatesAutoresizingMaskIntoConstraints = false
