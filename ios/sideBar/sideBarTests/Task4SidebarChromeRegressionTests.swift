@@ -22,22 +22,6 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         )
     }
 
-    func testArchiveRowDoesNotUseExtraTallTopInset() throws {
-        let normalized = try source(
-            at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+TreeArchive.swift"]
-        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-
-        XCTAssertFalse(normalized.contains("top:DesignTokens.Spacing.xxl"))
-    }
-
-    func testWebsitesArchiveRowDoesNotUseExtraTallTopInset() throws {
-        let normalized = try source(
-            at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"]
-        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-
-        XCTAssertFalse(normalized.contains("top:DesignTokens.Spacing.xxl"))
-    }
-
     func testArchiveRowsUseXXLTopInsetWithoutHiddenHeaders() throws {
         let notes = try source(
             at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+TreeArchive.swift"]

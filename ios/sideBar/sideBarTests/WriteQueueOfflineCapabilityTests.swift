@@ -8,9 +8,11 @@ import sideBarShared
 final class WriteQueueOfflineCapabilityTests: XCTestCase {
     func testProcessQueueDoesNotExecuteWhenServerUnreachable() async throws {
         let persistence = PersistenceController(inMemory: true)
+        let notificationCenter = NotificationCenter()
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
+            startMonitoring: false,
+            notificationCenter: notificationCenter
         )
         let executor = OfflineCapabilityTestWriteExecutor()
         let queue = WriteQueue(
@@ -21,7 +23,7 @@ final class WriteQueueOfflineCapabilityTests: XCTestCase {
         )
 
         try await enqueuePendingWrite(in: queue)
-        await forceServerUnreachable(connectivityMonitor)
+        await forceServerUnreachable(connectivityMonitor, notificationCenter: notificationCenter)
         await queue.processQueue()
 
         XCTAssertTrue(executor.executedIds.isEmpty)
@@ -33,12 +35,14 @@ final class WriteQueueOfflineCapabilityTests: XCTestCase {
 
     func testEnqueueDoesNotAutoProcessUntilServerReachable() async throws {
         let persistence = PersistenceController(inMemory: true)
+        let notificationCenter = NotificationCenter()
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
+            startMonitoring: false,
+            notificationCenter: notificationCenter
         )
         let executor = OfflineCapabilityTestWriteExecutor()
-        await forceServerUnreachable(connectivityMonitor)
+        await forceServerUnreachable(connectivityMonitor, notificationCenter: notificationCenter)
 
         let queue = WriteQueue(
             container: persistence.container,
@@ -51,8 +55,8 @@ final class WriteQueueOfflineCapabilityTests: XCTestCase {
         await waitForQueueDrain()
         XCTAssertTrue(executor.executedIds.isEmpty)
 
-        NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
-        NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
+        notificationCenter.post(name: .apiClientRequestSucceeded, object: nil)
+        notificationCenter.post(name: .apiClientRequestSucceeded, object: nil)
         await waitForQueueExecution { !executor.executedIds.isEmpty }
 
         XCTAssertEqual(executor.executedIds.count, 1)
@@ -76,9 +80,13 @@ private extension WriteQueueOfflineCapabilityTests {
         )
     }
 
-    func forceServerUnreachable(_ connectivityMonitor: ConnectivityMonitor, attempts: Int = 20) async {
+    func forceServerUnreachable(
+        _ connectivityMonitor: ConnectivityMonitor,
+        notificationCenter: NotificationCenter,
+        attempts: Int = 20
+    ) async {
         for _ in 0..<2 {
-            NotificationCenter.default.post(
+            notificationCenter.post(
                 name: .apiClientRequestFailed,
                 object: nil,
                 userInfo: ["error": URLError(.cannotConnectToHost)]

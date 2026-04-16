@@ -14,6 +14,7 @@ final class ConnectivityMonitor: ObservableObject {
     private let baseUrl: URL
     private let internetProbeUrl: URL
     private let session: URLSession
+    private let notificationCenter: NotificationCenter
     private let allowsHealthProbes: Bool
     private var probeTask: Task<Void, Never>?
     private var schedulerTask: Task<Void, Never>?
@@ -34,10 +35,12 @@ final class ConnectivityMonitor: ObservableObject {
         baseUrl: URL,
         startMonitoring: Bool = !EnvironmentConfig.isRunningTestsOrPreviews(),
         session: URLSession = .shared,
+        notificationCenter: NotificationCenter = .default,
         internetProbeUrl: URL = URL(string: "https://www.apple.com/library/test/success.html")!
     ) {
         self.baseUrl = baseUrl
         self.session = session
+        self.notificationCenter = notificationCenter
         self.internetProbeUrl = internetProbeUrl
         self.allowsHealthProbes = startMonitoring
         self.monitor = NWPathMonitor()
@@ -73,14 +76,14 @@ final class ConnectivityMonitor: ObservableObject {
     }
 
     private func observeRequestFailures() {
-        NotificationCenter.default.publisher(for: .apiClientRequestFailed)
+        notificationCenter.publisher(for: .apiClientRequestFailed)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] notification in
                 self?.handleRequestFailure(notification)
             }
             .store(in: &cancellables)
 
-        NotificationCenter.default.publisher(for: .apiClientRequestSucceeded)
+        notificationCenter.publisher(for: .apiClientRequestSucceeded)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.handleRequestSuccess()
