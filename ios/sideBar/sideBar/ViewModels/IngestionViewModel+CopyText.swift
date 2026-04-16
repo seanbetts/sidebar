@@ -59,6 +59,20 @@ extension IngestionViewModel {
         }
     }
 
+    func loadFileTransferPayload(fileId: String) async throws -> (data: Data, filename: String) {
+        let meta = try await metaForFileTransfer(fileId: fileId)
+        guard let derivative = preferredDownloadDerivative(for: meta) else {
+            throw FileTransferPayloadError.unavailable
+        }
+        let data = try await api.getContent(fileId: fileId, kind: derivative.kind, range: nil)
+        let filename = makeFilename(
+            base: meta.file.filenameOriginal,
+            mimeType: derivative.mime,
+            fallback: derivative.kind
+        )
+        return (data, filename)
+    }
+
     private func canCopyText(for meta: IngestionMetaResponse) -> Bool {
         preferredCopyTextDerivative(for: meta) != nil
     }
@@ -83,6 +97,20 @@ extension IngestionViewModel {
     private func metaForCopyText(fileId: String) async throws -> IngestionMetaResponse {
         if let cached = cachedMetaForCopyText(fileId: fileId) {
             return cached
+        }
+        return try await api.getMeta(fileId: fileId)
+    }
+
+    private func metaForFileTransfer(fileId: String) async throws -> IngestionMetaResponse {
+        if let activeMeta, activeMeta.file.id == fileId {
+            return activeMeta
+        }
+        let cacheKey = CacheKeys.ingestionMeta(fileId: fileId)
+        if let cached: IngestionMetaResponse = store.cache.get(key: cacheKey) {
+            return cached
+        }
+        if let offline = store.offlineStore?.get(key: cacheKey, as: IngestionMetaResponse.self) {
+            return offline
         }
         return try await api.getMeta(fileId: fileId)
     }
@@ -170,4 +198,8 @@ extension IngestionViewModel {
             || normalizedMime.hasPrefix("audio/")
             || normalizedMime.hasPrefix("video/")
     }
+}
+
+private enum FileTransferPayloadError: Error {
+    case unavailable
 }

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - ConversationsPanel
 
@@ -37,6 +38,9 @@ struct ConversationsPanelView: View {
     @State var renameValue: String = ""
     @State var deleteConversationId: String?
     @State var deleteConversationTitle: String = ""
+    @State var exportDocument: PlainTextFileDocument?
+    @State var exportFilename: String = "Chat.txt"
+    @State var isExporting: Bool = false
     @Environment(\.colorScheme) var colorScheme
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
@@ -113,6 +117,14 @@ struct ConversationsPanelView: View {
             },
             onCancel: clearDeleteTarget
         )
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: .plainText,
+            defaultFilename: exportFilename
+        ) { _ in
+            exportDocument = nil
+        }
         .onChange(of: searchQuery) { _, newValue in
             updateConversationSearch(query: newValue)
         }

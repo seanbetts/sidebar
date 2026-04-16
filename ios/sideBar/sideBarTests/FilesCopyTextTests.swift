@@ -188,6 +188,16 @@ final class FilesCopyTextTests: XCTestCase {
         XCTAssertTrue(pdfTitles.contains("Copy Text"))
     }
 
+    func testFilesPanelContextMenuIncludesShareAction() {
+        let item = makeItem(id: "text-file", mimeType: "text/plain", recommendedViewer: "text_original")
+        let fixture = makeFixture(items: [item])
+        let view = FilesPanelView(viewModel: fixture.viewModel, showsHeader: false)
+
+        let titles = view.fileContextMenuItemsList(for: item).map(\.title)
+
+        XCTAssertTrue(titles.contains("Share"))
+    }
+
     func testFilesPanelCopyTextActionDoesNotSelectFileBeforeCopying() throws {
         let normalized = try filesSource(named: "FilesPanel+ContextMenu.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

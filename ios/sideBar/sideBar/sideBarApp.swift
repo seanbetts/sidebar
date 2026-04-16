@@ -151,9 +151,6 @@ struct SideBarApp: App {
     private var rootContentView: some View {
         ContentView()
             .environmentObject(environment)
-            .onOpenURL { url in
-                environment.handleDeepLink(url)
-            }
     }
 
     var body: some Scene {

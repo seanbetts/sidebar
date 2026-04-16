@@ -126,6 +126,14 @@ final class AppCommandsTests: XCTestCase {
         )
     }
 
+    func testAppRootContentViewDoesNotHandleDeepLinksDirectly() throws {
+        let normalized = try normalizedSideBarAppSource()
+
+        XCTAssertFalse(
+            normalized.contains(".onOpenURL{urlinenvironment.handleDeepLink(url)}")
+        )
+    }
+
     func testMacSectionCommandsUseDynamicContextualMenu() throws {
         let normalized = try normalizedAppCommandsSource()
 

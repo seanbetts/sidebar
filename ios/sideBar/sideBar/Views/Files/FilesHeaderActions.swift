@@ -314,8 +314,12 @@ struct FilesHeaderActions: View {
     }
 
     private func downloadFile() async {
+        guard let selectedId = viewModel.selectedFileId else {
+            environment.toastCenter.show(message: "Failed to download file")
+            return
+        }
         do {
-            let payload = try await fileTransferPayload()
+            let payload = try await viewModel.loadFileTransferPayload(fileId: selectedId)
             exportDocument = BinaryFileDocument(data: payload.data)
             exportFilename = payload.filename
             isExporting = true
@@ -325,8 +329,12 @@ struct FilesHeaderActions: View {
     }
 
     private func shareFile() async {
+        guard let selectedId = viewModel.selectedFileId else {
+            environment.toastCenter.show(message: "Failed to share file")
+            return
+        }
         do {
-            let payload = try await fileTransferPayload()
+            let payload = try await viewModel.loadFileTransferPayload(fileId: selectedId)
             let url = try FileShareAction.makeTemporaryShareURL(
                 data: payload.data,
                 filename: payload.filename
@@ -337,26 +345,6 @@ struct FilesHeaderActions: View {
         } catch {
             environment.toastCenter.show(message: "Failed to share file")
         }
-    }
-
-    private func fileTransferPayload() async throws -> (data: Data, filename: String) {
-        guard let meta = viewModel.activeMeta else {
-            throw FileTransferError.unavailable
-        }
-        guard let derivative = viewModel.preferredDownloadDerivative(for: meta) else {
-            throw FileTransferError.unavailable
-        }
-        let data = try await environment.container.ingestionAPI.getContent(
-            fileId: meta.file.id,
-            kind: derivative.kind,
-            range: nil
-        )
-        let filename = viewModel.makeFilename(
-            base: meta.file.filenameOriginal,
-            mimeType: derivative.mime,
-            fallback: derivative.kind
-        )
-        return (data, filename)
     }
 
     private func deleteActiveFile() async {
@@ -378,8 +366,4 @@ struct FilesHeaderActions: View {
         return newName + ext
     }
 
-}
-
-private enum FileTransferError: Error {
-    case unavailable
 }

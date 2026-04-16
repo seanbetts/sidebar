@@ -371,6 +371,12 @@ extension ConversationsPanelView {
             .copyTranscript {
                 Task { await copyConversation(conversation) }
             },
+            SidebarMenuItem(title: "Share Transcript", systemImage: "square.and.arrow.up", role: nil) {
+                Task { await shareConversation(conversation) }
+            },
+            SidebarMenuItem(title: "Export Transcript", systemImage: "square.and.arrow.down", role: nil) {
+                Task { await exportConversation(conversation) }
+            },
             .delete {
                 presentDelete(conversation)
             }
@@ -379,22 +385,46 @@ extension ConversationsPanelView {
 
     @MainActor
     private func copyConversation(_ conversation: Conversation) async {
-        guard let text = await transcriptText(for: conversation), !text.isEmpty else {
+        guard let payload = await transcriptPayload(for: conversation) else {
             environment.toastCenter.show(message: "Copy unavailable")
             return
         }
-        copyConversationTextToClipboard(text)
+        copyConversationTextToClipboard(payload.text)
     }
 
     @MainActor
-    private func transcriptText(for conversation: Conversation) async -> String? {
+    private func shareConversation(_ conversation: Conversation) async {
+        guard let payload = await transcriptPayload(for: conversation) else {
+            environment.toastCenter.show(message: "Share unavailable")
+            return
+        }
+        SystemSharePresenter.share(text: payload.text)
+    }
+
+    @MainActor
+    private func exportConversation(_ conversation: Conversation) async {
+        guard let payload = await transcriptPayload(for: conversation) else {
+            environment.toastCenter.show(message: "Export unavailable")
+            return
+        }
+        exportDocument = PlainTextFileDocument(text: payload.text)
+        exportFilename = ConversationCopyFormatter.exportFilename(title: payload.title)
+        isExporting = true
+    }
+
+    @MainActor
+    private func transcriptPayload(for conversation: Conversation) async -> ConversationTranscriptPayload? {
         let assistantName = environment.settingsViewModel.assistantDisplayName
         if viewModel.selectedConversationId == conversation.id && !viewModel.messages.isEmpty {
-            return ConversationCopyFormatter.formattedTranscript(
+            let text = ConversationCopyFormatter.formattedTranscript(
                 title: conversation.title,
                 messages: viewModel.messages,
                 assistantName: assistantName
             )
+            guard !text.isEmpty else {
+                return nil
+            }
+            return ConversationTranscriptPayload(title: conversation.title, text: text)
         }
 
         do {
@@ -406,11 +436,15 @@ extension ConversationsPanelView {
         guard let detail = viewModel.chatStore.conversationDetails[conversation.id] else {
             return nil
         }
-        return ConversationCopyFormatter.formattedTranscript(
+        let text = ConversationCopyFormatter.formattedTranscript(
             title: detail.title,
             messages: detail.messages,
             assistantName: assistantName
         )
+        guard !text.isEmpty else {
+            return nil
+        }
+        return ConversationTranscriptPayload(title: detail.title, text: text)
     }
 
     private func copyConversationTextToClipboard(_ text: String) {
@@ -436,4 +470,9 @@ extension ConversationsPanelView {
             #endif
         }
     }
+}
+
+private struct ConversationTranscriptPayload {
+    let title: String
+    let text: String
 }

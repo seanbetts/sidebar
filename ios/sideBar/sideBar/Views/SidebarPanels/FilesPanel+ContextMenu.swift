@@ -29,6 +29,9 @@ extension FilesPanelView {
                     self.appEnvironment.emitShortcutAction(.openInDefaultApp)
                 }
             },
+            SidebarMenuItem(title: "Share", systemImage: "square.and.arrow.up", role: nil) {
+                Task { await shareFile(item) }
+            },
             .delete {
                 deleteTarget = item
                 isDeleteAlertPresented = true
@@ -112,6 +115,21 @@ extension FilesPanelView {
                 pasteboard.string = ""
             }
             #endif
+        }
+    }
+
+    @MainActor
+    private func shareFile(_ item: IngestionListItem) async {
+        do {
+            let payload = try await viewModel.loadFileTransferPayload(fileId: item.file.id)
+            let url = try FileShareAction.makeTemporaryShareURL(
+                data: payload.data,
+                filename: payload.filename,
+                temporaryStore: viewModel.temporaryStore
+            )
+            SystemSharePresenter.share(url: url)
+        } catch {
+            self.appEnvironment.toastCenter.show(message: "Failed to share file")
         }
     }
 }
