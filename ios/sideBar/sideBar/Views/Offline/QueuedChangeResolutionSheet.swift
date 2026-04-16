@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct QueuedChangeResolutionSheet: View {
+    @Environment(\.dismiss) private var dismiss
     let queuedChange: PendingWriteSummary
-    let onResolveQueuedChange: (WriteQueueConflictResolution) -> Void
 
     var body: some View {
         MacModalShell(type: queuedChangeResolutionPanelType()) {
@@ -22,7 +22,7 @@ struct QueuedChangeResolutionSheet: View {
                     actionsRow
                 }
                 .padding(DesignTokens.Spacing.lg)
-                .navigationTitle("Queued Change")
+                .navigationTitle("Sync Issue")
                 #if !os(macOS)
                 .navigationBarTitleDisplayMode(.inline)
                 #endif
@@ -35,7 +35,7 @@ struct QueuedChangeResolutionSheet: View {
             Image(systemName: "arrow.triangle.2.circlepath")
                 .appFont(.subheadlineSemibold)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
-            Text("Resolve Queued Change")
+            Text("Review Sync Issue")
                 .appFont(.title3Semibold)
         }
     }
@@ -60,21 +60,20 @@ struct QueuedChangeResolutionSheet: View {
     private var actionsRow: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Spacer(minLength: 0)
-            Button("Keep Queued Change") {
-                onResolveQueuedChange(.keepLocal)
-            }
-            .buttonStyle(ConflictActionButtonStyle())
-            Button("Use Server Version") {
-                onResolveQueuedChange(.keepServer)
+            Button("Done") {
+                dismiss()
             }
             .buttonStyle(ConflictActionButtonStyle())
         }
     }
 
     private var subtitleText: String? {
-        queuedChange.conflictReason == nil
-            ? "This queued change couldn't sync because the server has newer data."
-            : nil
+        if let conflictReason = queuedChange.conflictReason,
+           !conflictReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return conflictReason
+        }
+
+        return "Retry or cancel this change from the sync status pill or queued changes view."
     }
 
     private var operationLabel: String {

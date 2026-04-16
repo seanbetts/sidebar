@@ -83,13 +83,17 @@ struct FilesDetailContainer: View {
                   FilesWorkspaceDisplayPolicy.shouldShowProcessingStateInMainWorkspace(for: selectedItem) {
             FilesProcessingView(item: selectedItem)
         } else if let message = viewModel.errorMessage {
-            PlaceholderView(
-                title: "Unable to load file",
-                subtitle: message,
-                actionTitle: viewModel.selectedFileId == nil ? nil : "Retry"
-            ) {
-                guard let selectedId = viewModel.selectedFileId else { return }
-                Task { await viewModel.selectFile(fileId: selectedId) }
+            if viewModel.selectedFileId != nil && !canAttemptServerRead {
+                DetailOfflineUnavailablePlaceholder(resource: .file)
+            } else {
+                PlaceholderView(
+                    title: "Unable to load file",
+                    subtitle: message,
+                    actionTitle: viewModel.selectedFileId == nil ? nil : "Retry"
+                ) {
+                    guard let selectedId = viewModel.selectedFileId else { return }
+                    Task { await viewModel.selectFile(fileId: selectedId) }
+                }
             }
         } else if viewModel.isSelecting || viewModel.selectedFileId != nil {
             LoadingView(message: "Loading file…")
@@ -100,6 +104,10 @@ struct FilesDetailContainer: View {
         } else {
             WelcomeEmptyView()
         }
+    }
+
+    private var canAttemptServerRead: Bool {
+        viewModel.networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true
     }
 
 }

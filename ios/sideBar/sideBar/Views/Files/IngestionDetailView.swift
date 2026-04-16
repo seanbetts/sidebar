@@ -41,16 +41,20 @@ public struct IngestionDetailView: View {
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state, pdfController: pdfController)
             } else if let error = viewModel.errorMessage {
-                PlaceholderView(
-                    title: "Unable to load preview",
-                    subtitle: error,
-                    actionTitle: "Retry"
-                ) {
-                    Task {
-                        if let kind = viewModel.selectedDerivativeKind {
-                            await viewModel.selectDerivative(kind: kind)
-                        } else {
-                            await viewModel.loadMeta(fileId: meta.file.id)
+                if !canAttemptServerRead {
+                    DetailOfflineUnavailablePlaceholder(resource: .file)
+                } else {
+                    PlaceholderView(
+                        title: "Unable to load preview",
+                        subtitle: error,
+                        actionTitle: "Retry"
+                    ) {
+                        Task {
+                            if let kind = viewModel.selectedDerivativeKind {
+                                await viewModel.selectDerivative(kind: kind)
+                            } else {
+                                await viewModel.loadMeta(fileId: meta.file.id)
+                            }
                         }
                     }
                 }
@@ -117,4 +121,7 @@ public struct IngestionDetailView: View {
         return "Processing failed. Please retry in a few minutes."
     }
 
+    private var canAttemptServerRead: Bool {
+        viewModel.networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true
+    }
 }

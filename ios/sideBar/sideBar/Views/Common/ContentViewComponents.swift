@@ -250,3 +250,52 @@ public struct PlaceholderView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 }
+
+enum DetailOfflineUnavailableResource: Equatable {
+    case note
+    case website
+    case file
+    case chat
+
+    var title: String {
+        switch self {
+        case .note:
+            return "This note isn't available offline yet"
+        case .website:
+            return "This website isn't available offline yet"
+        case .file:
+            return "This file isn't available offline yet"
+        case .chat:
+            return "This chat isn't available offline yet"
+        }
+    }
+
+    var subtitle: String {
+        "Open it while online on this device to keep it available here."
+    }
+
+    var iconName: String {
+        switch self {
+        case .note:
+            return "note.text"
+        case .website:
+            return "globe"
+        case .file:
+            return "doc"
+        case .chat:
+            return "bubble.left.and.bubble.right"
+        }
+    }
+}
+
+struct DetailOfflineUnavailablePlaceholder: View {
+    let resource: DetailOfflineUnavailableResource
+
+    var body: some View {
+        PlaceholderView(
+            title: resource.title,
+            subtitle: resource.subtitle,
+            iconName: resource.iconName
+        )
+    }
+}

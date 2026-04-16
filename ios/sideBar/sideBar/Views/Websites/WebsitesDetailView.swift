@@ -160,6 +160,7 @@ extension WebsitesDetailView {
 
     @ViewBuilder
     private var content: some View {
+        let canAttemptServerRead = viewModel.networkStatus.offlineCapabilityPolicy.canAttemptServerRead
         if let website = viewModel.active {
             ScrollView {
                 SideBarMarkdownContainer(
@@ -209,23 +210,27 @@ extension WebsitesDetailView {
             } else {
                 pendingWebsiteLoadingView
             }
-        } else if let error = viewModel.errorMessage, viewModel.selectedWebsiteId != nil {
-            PlaceholderView(
-                title: "Unable to load website",
-                subtitle: error,
-                actionTitle: "Retry"
-            ) {
-                guard let selectedId = viewModel.selectedWebsiteId else { return }
-                Task { await viewModel.loadById(id: selectedId) }
-            }
         } else if viewModel.selectedWebsiteId != nil {
-            PlaceholderView(
-                title: "Unable to load website",
-                subtitle: "This website isn't available on this device yet.",
-                actionTitle: "Retry"
-            ) {
-                guard let selectedId = viewModel.selectedWebsiteId else { return }
-                Task { await viewModel.loadById(id: selectedId) }
+            if !canAttemptServerRead {
+                DetailOfflineUnavailablePlaceholder(resource: .website)
+            } else if let error = viewModel.errorMessage {
+                PlaceholderView(
+                    title: "Unable to load website",
+                    subtitle: error,
+                    actionTitle: "Retry"
+                ) {
+                    guard let selectedId = viewModel.selectedWebsiteId else { return }
+                    Task { await viewModel.loadById(id: selectedId) }
+                }
+            } else {
+                PlaceholderView(
+                    title: "Unable to load website",
+                    subtitle: "This website isn't available on this device yet.",
+                    actionTitle: "Retry"
+                ) {
+                    guard let selectedId = viewModel.selectedWebsiteId else { return }
+                    Task { await viewModel.loadById(id: selectedId) }
+                }
             }
         } else if viewModel.isLoading && viewModel.items.isEmpty {
             LoadingView(message: "Loading websites…")
@@ -392,6 +397,7 @@ extension WebsitesDetailView {
 
     private var isShowingWelcomeHome: Bool {
         viewModel.active == nil
+            && viewModel.selectedWebsiteId == nil
             && !viewModel.isLoadingDetail
             && viewModel.pendingWebsites.isEmpty
             && !(viewModel.errorMessage != nil && viewModel.selectedWebsiteId != nil)

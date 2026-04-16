@@ -223,23 +223,20 @@ private struct ChatDetailView: View {
                         EmptyView()
                     }
                 } else if let errorMessage = viewModel.errorMessage, viewModel.messages.isEmpty {
-                    PlaceholderView(
-                        title: "Unable to load chat",
-                        subtitle: canAttemptServerRead ? errorMessage : "This chat isn't available offline yet.",
-                        actionTitle: "Retry"
-                    ) {
-                        guard let selectedId = viewModel.selectedConversationId else { return }
-                        Task { await viewModel.loadConversation(id: selectedId) }
+                    if !canAttemptServerRead {
+                        DetailOfflineUnavailablePlaceholder(resource: .chat)
+                    } else {
+                        PlaceholderView(
+                            title: "Unable to load chat",
+                            subtitle: errorMessage,
+                            actionTitle: "Retry"
+                        ) {
+                            guard let selectedId = viewModel.selectedConversationId else { return }
+                            Task { await viewModel.loadConversation(id: selectedId) }
+                        }
                     }
                 } else if !canAttemptServerRead, !viewModel.hasCachedSelectedConversation {
-                    PlaceholderView(
-                        title: "Unable to load chat",
-                        subtitle: "This chat isn't available offline yet.",
-                        actionTitle: "Retry"
-                    ) {
-                        guard let selectedId = viewModel.selectedConversationId else { return }
-                        Task { await viewModel.loadConversation(id: selectedId) }
-                    }
+                    DetailOfflineUnavailablePlaceholder(resource: .chat)
                 } else {
                     ChatMessageListView(
                         viewModel: viewModel,

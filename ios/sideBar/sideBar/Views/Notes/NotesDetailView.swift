@@ -6,8 +6,6 @@ import UIKit
 import AppKit
 #endif
 
-// swiftlint:disable file_length
-
 struct NotesDetailView: View {
     static let actionControlChromeStyle: HeaderActionControlChromeStyle = .glass
 
@@ -224,6 +222,7 @@ extension NotesDetailView {
 
     @ViewBuilder
     private var content: some View {
+        let canAttemptServerRead = viewModel.notesOfflineCapabilityPolicy.canAttemptServerRead
         if isCompactPhoneRoutePendingSelection {
             LoadingView(message: "Loading note…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -238,19 +237,12 @@ extension NotesDetailView {
                 supportedNoteSurface
             }
         } else if viewModel.selectedNoteId != nil {
-            if let error = viewModel.errorMessage {
+            if !canAttemptServerRead {
+                DetailOfflineUnavailablePlaceholder(resource: .note)
+            } else if let error = viewModel.errorMessage {
                 PlaceholderView(
                     title: "Unable to load note",
-                    subtitle: environment.isOffline ? "This note isn't available offline yet." : error,
-                    actionTitle: "Retry"
-                ) {
-                    guard let selectedId = viewModel.selectedNoteId else { return }
-                    Task { await viewModel.loadNote(id: selectedId) }
-                }
-            } else if !environment.isNetworkAvailable {
-                PlaceholderView(
-                    title: "Unable to load note",
-                    subtitle: "This note isn't available offline yet.",
+                    subtitle: error,
                     actionTitle: "Retry"
                 ) {
                     guard let selectedId = viewModel.selectedNoteId else { return }
