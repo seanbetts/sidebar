@@ -266,3 +266,18 @@ final class ConnectivityMonitor: ObservableObject {
         }
     }
 }
+
+extension ConnectivityMonitor {
+    var offlineCapabilityPolicyPublisher: AnyPublisher<OfflineCapabilityPolicy, Never> {
+        Publishers.CombineLatest3($isOffline, $isNetworkAvailable, $isServerReachable)
+            .map { isOffline, isNetworkAvailable, isServerReachable in
+                OfflineCapabilityPolicy(
+                    isOffline: isOffline,
+                    isNetworkAvailable: isNetworkAvailable,
+                    isServerReachable: isServerReachable
+                )
+            }
+            .removeDuplicates()
+            .eraseToAnyPublisher()
+    }
+}

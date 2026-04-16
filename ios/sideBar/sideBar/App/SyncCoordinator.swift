@@ -35,9 +35,10 @@ final class SyncCoordinator {
     }
 
     func start() {
-        connectivityMonitor.$isOffline
+        connectivityMonitor.offlineCapabilityPolicyPublisher
+            .map(\.canAttemptServerRead)
             .removeDuplicates()
-            .filter { !$0 }
+            .filter { $0 }
             .sink { [weak self] _ in
                 Task { [weak self] in
                     await self?.refreshAll()
@@ -48,6 +49,8 @@ final class SyncCoordinator {
 
     func refreshAll() async {
         guard isSyncAllowed() else { return }
+        let capabilityPolicy = connectivityMonitor.offlineCapabilityPolicy
+        guard capabilityPolicy.canAttemptServerRead else { return }
         await writeQueue.processQueue()
         await withTaskGroup(of: Void.self) { group in
             for store in stores {
