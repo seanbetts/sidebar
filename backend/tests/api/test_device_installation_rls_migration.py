@@ -65,8 +65,9 @@ def test_upgrade_enables_device_installation_rls_and_policies() -> None:
         if "CREATE POLICY device_installations_user_isolation" in statement
     )
     assert "device_installation_users" in installation_policy
-    assert "installation_pk = id" in installation_policy
+    assert "installation_pk" in installation_policy
     assert "unbound_at IS NULL" in installation_policy
+    assert "user_id =" in installation_policy
     assert "current_setting('app.user_id', true)" in installation_policy
     assert "auth.uid()" in installation_policy
 
