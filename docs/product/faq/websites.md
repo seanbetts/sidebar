@@ -10,7 +10,8 @@ surfaces: [app, website, internal-knowledge]
 
 Websites is a read-it-later service built into sideBar. Save any web page and it
 is stored in full: the title, domain, favicon, full page content, and estimated
-reading time. Saved pages are available to read offline and to sideBar, so you
+reading time. Saved pages are available to read offline on devices that have
+already cached them and to sideBar, so you
 can ask questions about them, summarise them, or use them as context for
 anything else you are working on.
 
@@ -54,9 +55,12 @@ and sideBar can search across your saved content when it is relevant.
 
 ## Can I read saved pages offline?
 
-Yes. Pages are stored in full so you can read them without a connection. sideBar
-also has access to the full content offline, so you can work with a page in chat
-even without connectivity.
+Yes, once that device has cached the page. sideBar also has access to the
+cached content offline, so you can work with a page in chat without
+connectivity.
+
+If a page has never been cached on the current device yet, sideBar lets you
+know it is not available offline there.
 
 ## Does sideBar support YouTube videos?
 
@@ -89,5 +93,6 @@ title, URL, or full markdown content with a single tap.
 
 ## Do saved pages sync across my devices?
 
-Yes. All saved pages and their content sync in real time across every device
-where you are signed in to sideBar.
+Yes. Saved pages and their content sync across every device where you are
+signed in to sideBar. If you save a page while offline, the save queues on that
+device and syncs automatically once it reconnects.

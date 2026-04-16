@@ -60,5 +60,6 @@ and Mac so you can see what is on your plate without opening the app. See
 
 ## Do tasks sync across my devices?
 
-Yes. All changes sync in real time across every device where you are signed in
-to sideBar.
+Yes. Tasks sync across every device where you are signed in to sideBar. If you
+change a task while offline, the update is applied immediately on that device
+and syncs automatically once it reconnects.

@@ -71,5 +71,6 @@ asked to confirm before anything is removed.
 
 ## Do files sync across my devices?
 
-Yes. Files and their indexed content sync across all devices where you are signed
-in to sideBar.
+Yes. Files and their indexed content sync across all devices where you are
+signed in to sideBar. If you add a file while offline, the import queues on
+that device and syncs automatically once it reconnects.

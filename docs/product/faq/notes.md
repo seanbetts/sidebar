@@ -101,5 +101,6 @@ available from the toolbar menu or the note's context menu.
 
 ## Do notes sync across my devices?
 
-Yes. All changes sync in real time across every device where you are signed in
-to sideBar.
+Yes. Notes sync across every device where you are signed in to sideBar. If you
+create or edit a note while offline, the change applies immediately on that
+device and syncs automatically once it reconnects.

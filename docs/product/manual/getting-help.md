@@ -32,4 +32,11 @@ link to the issue once it's filed.
 
 ## Offline
 
-Reading your existing content always works offline. Creating new notes, sending messages, or adding tasks requires a connection. If something isn't saving, check your connectivity first.
+Most of sideBar keeps working offline. Cached chats, notes, tasks, websites,
+and files stay readable on the device you already used them on. New notes,
+tasks, website saves, and file imports queue locally and sync when your
+connection returns.
+
+Sending a new chat message still requires a connection. If something is missing
+on the current device because it was never cached there, sideBar shows that
+explicitly instead of leaving you on a blank screen.

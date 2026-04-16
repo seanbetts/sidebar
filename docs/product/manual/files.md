@@ -30,6 +30,8 @@ Tap the **+** button in the Files tab to open the file picker, then choose a
 file from your device. You can also share files directly from other apps using
 the sideBar Share extension, see [Widgets & Extensions](/manual/extensions)
 to set it up. After you select a file, sideBar begins ingesting it right away.
+If you are offline, the import is queued locally and continues when you are
+back online.
 
 Ingestion moves through three stages: **uploading**, **processing**, and
 **ready**. You can watch the status update in real time on the file card. If
@@ -55,6 +57,10 @@ Tap any ready file to open it in the built-in viewer:
 - **YouTube videos**: in-app player alongside the extracted plain-text transcript
 - **Images**: full-screen display
 - **Text and Markdown**: rendered preview
+
+Files you have already cached on a device remain available there offline. If a
+file record exists locally but its viewable content has not been cached on the
+current device yet, sideBar shows that it is not available offline yet.
 
 ## Using Files with sideBar
 

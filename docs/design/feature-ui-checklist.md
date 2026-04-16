@@ -96,6 +96,7 @@ The checklist is grouped by concern. Skip entire groups that genuinely do not ap
 | 7.2 | Row-level placeholder states (where a list has items but a row needs a sparse/placeholder appearance) use `SidebarSparseStateRow`, not `EmptyStateView`. | |
 | 7.3 | Error states use the established `ChatErrorComponents` pattern in the chat context. For other contexts, error presentation follows the [feedback-and-haptics](../patterns/feedback-and-haptics) toast conventions. | |
 | 7.4 | Error copy follows the voice and content guidelines: specific, human, actionable. No "Something went wrong." No technical jargon exposed to the user. | |
+| 7.5 | Selected detail content that is missing locally shows an explicit unavailable-offline placeholder in context. It must not fall back to a generic welcome or empty state. | |
 
 ---
 

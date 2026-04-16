@@ -83,6 +83,28 @@ Use `PlaceholderView` when a content area or detail view failed to load and has 
 
 ---
 
+### Unavailable offline
+
+Use the content placeholder surface for a dedicated unavailable-offline state when the user has selected a real item but this device does not have the required content cached yet.
+
+Examples:
+
+- "This note isn't available offline yet"
+- "This page isn't available offline yet"
+- "This file isn't available offline yet"
+- "This chat isn't available offline yet"
+
+Rules:
+
+- preserve the user's current selection and context
+- do not fall back to a generic welcome or empty state
+- use specific copy that explains the content exists, but this device does not have it cached yet
+- only include a retry action when a server read may now succeed
+
+This state is different from a generic load failure. It is a capability boundary caused by missing local content while offline.
+
+---
+
 ### Banner
 
 Use `OfflineBanner` when the device is offline or the server is unreachable. The condition is persistent and affects the whole session, not a single operation.
@@ -116,6 +138,7 @@ For retryable stream errors (provider overloaded, rate limited, timeout, transpo
 When an operation fails:
 
 - Content area is empty (load failure): show `PlaceholderView` with a retry action.
+- Selected content exists but is not cached offline: show an unavailable-offline placeholder in context.
 - Content area has stale content (refresh failure): show a toast, leave the stale content in place.
 - Streaming operation in chat: use the retryable/non-retryable logic in `ChatViewModel+StreamingErrors`.
 - Do not implement silent auto-retry without user visibility. If a retry also fails, surface the failure.
@@ -165,17 +188,19 @@ Payment and subscription failures are real errors that block functionality the u
 2. **Never show a toast and an alert for the same error.** Pick one.
 3. **Use `ToastCenter` for async operation failures.** Inject via `@EnvironmentObject` or pass into the view model.
 4. **Use `PlaceholderView` for content areas that fail to load.** Always include a retry action.
-5. **Use `DeleteConfirmationAlert` for all destructive confirmations.** Do not write inline `.alert` delete dialogs.
-6. **Inline error text belongs next to the field.** Use `.appFont(.caption)` with `DesignTokens.Colors.error`. Clear on correction.
-7. **`OfflineBanner` is built into `PanelHeader`.** Do not render it directly or add a second connection state indicator.
-8. **Caught `Error` values go through `ErrorMapping.message(for:)`.** Never pass `.localizedDescription` to the UI.
-9. **`ChatErrorPillView` is chat-only.** Do not reuse it outside `Views/Chat/`.
+5. **Use a dedicated unavailable-offline placeholder when selected content is not cached on this device.**
+6. **Use `DeleteConfirmationAlert` for all destructive confirmations.** Do not write inline `.alert` delete dialogs.
+7. **Inline error text belongs next to the field.** Use `.appFont(.caption)` with `DesignTokens.Colors.error`. Clear on correction.
+8. **`OfflineBanner` is built into `PanelHeader`.** Do not render it directly or add a second connection state indicator.
+9. **Caught `Error` values go through `ErrorMapping.message(for:)`.** Never pass `.localizedDescription` to the UI.
+10. **`ChatErrorPillView` is chat-only.** Do not reuse it outside `Views/Chat/`.
 
 ---
 
 ## Related docs
 
 - [Error Handling](./error-handling) — classification, mapping, logging, diagnostics
+- [Offline and Sync](./offline-and-sync) — local-first availability states and sync rules
 - [Subscription](./subscription) — subscription boundary patterns (not errors)
 - [Feedback and Haptics](./feedback-and-haptics) — success states, haptic feedback
 - [Wait UX](./wait-ux) — loading and in-progress states

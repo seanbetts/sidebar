@@ -299,23 +299,17 @@ Do not apply optimistically when:
 - The outcome depends on server-side validation that may reject the write
 - The operation is irreversible and catastrophic if incorrectly applied
 
-### WriteQueue: the iOS implementation
+### Shared local-first write model
 
-All eligible writes go through `WriteQueue`, which:
+The product contract is defined in [Offline and Sync](./offline-and-sync). For user experience purposes, treat the write queue as the delivery mechanism behind one shared rule set:
 
-1. Applies the change to local state immediately
-2. Queues a network write to CoreData
-3. Executes the write when online, with up to 5 retries and exponential backoff
-4. Coalesces rapid updates (note content edits merge into a single queued write)
-5. Pauses the queue and surfaces a conflict resolution sheet if the server returns a conflict
+1. Apply the local change immediately
+2. Persist a durable queued mutation when the server write cannot complete immediately
+3. Replay automatically when network and server state allow it
+4. Keep failed writes visible and retryable
+5. Rebase ordinary version conflicts automatically in favour of local intent
 
-**Current coverage:**
-
-| Section | Operations |
-|---|---|
-| Tasks | Create, complete, rename, update notes, move, set/clear due date, defer, set repeat, trash |
-| Notes | Archive, pin, move, delete |
-| Websites | Pin, rename, archive, delete |
+The current Apple implementation foundation is `WriteQueue`, but this doc defines the UX target rather than the current partial coverage.
 
 ### Failure handling
 
@@ -328,9 +322,9 @@ When a write fails after exhausting retries:
 
 ### Conflict resolution: local always wins
 
-When the server returns a conflict (the entity was changed on another device since the local write was queued), the local version always wins. The queue rebases the write automatically by updating the client timestamp to match the server's, then retries without pausing or asking the user.
+When the server returns a conflict because the entity changed on another device since the local write was queued, the local version wins. The queue rebases the write automatically and retries without pausing or asking the user.
 
-There is no manual conflict resolution. The user's most recent intent — the action they took on this device — is authoritative. Showing a resolution sheet interrupts the user for a problem they cannot meaningfully reason about (they rarely remember what changed on another device).
+There is no manual conflict resolution. The user's most recent local intent is authoritative. Showing a resolution sheet interrupts the user for a problem they cannot meaningfully reason about.
 
 **Rule**: Conflicts are resolved automatically in favour of local. The queue must never pause for user input. No conflict resolution UI should exist anywhere in the product.
 
@@ -404,6 +398,7 @@ Show a skeleton first. Transition to the empty state only when the load complete
 ## Related docs
 
 - [Request Lifecycle](./request-lifecycle)
+- [Offline and Sync](./offline-and-sync)
 - [Error Handling](./error-handling)
 - [Feedback and Haptics](./feedback-and-haptics)
 - [iOS Conventions](../platform-strategy/ios-conventions)

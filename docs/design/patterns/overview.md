@@ -12,6 +12,7 @@ Document the repeated interaction patterns that sit above individual components 
 | Pattern | Status |
 |---|---|
 | [Authentication](./authentication) | approved |
+| [Offline and Sync](./offline-and-sync) | approved |
 | [Navigation](./navigation) | approved |
 | [Feedback and Haptics](./feedback-and-haptics) | approved |
 | [Wait UX](./wait-ux) | approved |

@@ -41,7 +41,8 @@ Tap the **+** button from any task view. The new task sheet includes:
 - **List**: choose which project or smart list the task belongs to; defaults
   to Today
 
-Tap **Save** to add it.
+Tap **Save** to add it. If you are offline, the task is still added
+immediately on that device and syncs automatically when you reconnect.
 
 ## Task Properties and Actions
 
@@ -67,7 +68,8 @@ against all your tasks in the app.
 
 Your tasks that are due today appear in sideBar's home screen widget on iPhone,
 iPad, and Mac so you can see what's on your plate without opening the app. All
-changes sync in real time across your devices.
+changes sync across your devices, and offline changes replay automatically once
+the device that made them reconnects.
 
 See [Widgets & Extensions](/manual/extensions) for how to add the widget to
 your home screen or lock screen.

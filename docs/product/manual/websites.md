@@ -13,7 +13,8 @@ surfaces: [app, website, internal-knowledge]
 </Frame>
 
 Websites is a read-it-later service built into sideBar. Save pages you want to
-read, and they're stored in full, ready to read offline and available to
+read, and they're stored on-device for offline reading once that device has
+cached them, and available to
 sideBar so you can work with the content together: summarise it, ask questions
 about it, take notes, or dig deeper with further research.
 
@@ -39,6 +40,10 @@ publication date is detectable, that's saved and displayed too. You can rename
 the title any time after saving. As soon as processing finishes, the saved page
 is added to your Websites list and is ready to open without waiting for a
 manual refresh.
+
+If you save a page while offline, sideBar still adds it to your list right away
+and queues the save for later. The page content finishes downloading and
+processing when you are back online.
 
 ## Supported Sites
 
@@ -92,6 +97,10 @@ Open any saved page to see its full content. Tap the page title to open the
 original URL in your default browser. Text is selectable if you want to copy
 a passage. On iPad, closing a page also exits the expanded reading view and
 returns you to the normal split layout.
+
+Saved pages stay available offline on the devices that have already cached
+them. Archived pages follow the same rule. If a page has never been cached on
+the current device, sideBar tells you it is not available offline yet.
 
 ## Working with sideBar on a Page
 

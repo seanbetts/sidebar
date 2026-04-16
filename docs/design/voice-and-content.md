@@ -141,6 +141,17 @@ Empty states should tell the user what will appear here and give them the next a
 
 **Consistency rule**: No trailing period on empty state titles.
 
+### Unavailable offline states
+
+Unavailable-offline titles should explain that the content exists, but this device does not have it cached yet. Keep them short and direct.
+
+| Surface | Preferred copy |
+|---|---|
+| Note detail | "This note isn't available offline yet" |
+| Website detail | "This page isn't available offline yet" |
+| File detail | "This file isn't available offline yet" |
+| Chat detail | "This chat isn't available offline yet" |
+
 **Engaged register** — can be warmer:
 
 | Surface | Preferred copy |

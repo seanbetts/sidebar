@@ -122,9 +122,11 @@ already knows the basics before you've typed anything.
 
 ## Offline
 
-Your existing conversations are cached and fully readable without a connection.
-You can't send new messages until you're back online, but nothing is lost while
-you're offline.
+Your existing conversations are cached and readable without a connection. You
+can browse them and switch between them while offline.
+
+You can't send new messages until you're back online. The composer stays
+available, but sending waits for a connection.
 
 ## Keyboard Shortcuts
 

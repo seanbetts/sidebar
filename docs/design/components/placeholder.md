@@ -19,6 +19,8 @@ Use `PlaceholderView` when a content area attempted to load and failed — not w
 | Content failed to load | `PlaceholderView` |
 | Content is loading | [`SidebarListSkeleton`](./list-skeleton) |
 
+`PlaceholderView` is also the correct surface for selected content that exists in principle but is not available offline on the current device yet.
+
 Always include a retry action when the failure is recoverable. Wire `action` to the same load function that originally triggered the failure.
 
 ---
@@ -50,6 +52,7 @@ PlaceholderView(
 ## Key rules
 
 - Always provide a retry `action` when the failure is transient (network error, timeout). Do not leave the user with no recovery path.
+- For unavailable-offline states, preserve the user's current selection and explain that the content is not cached on this device yet.
 - If the content area has stale data from a previous successful load, prefer showing a toast over replacing the content with `PlaceholderView`. Reserve `PlaceholderView` for when the area is blank.
 - Keep `title` direct and honest. "Unable to load chat." not "Something went wrong."
 - Do not use `PlaceholderView` for empty states. Use [`EmptyStateView`](./empty-state).

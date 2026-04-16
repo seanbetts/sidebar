@@ -35,6 +35,9 @@ to confirm each save. The editor remembers your cursor position, so when you
 come back to a note it's exactly where you left off. On iPad, closing a note
 also exits the expanded note view and returns you to the normal split layout.
 
+Notes are local-first. If you create or edit a note while offline, the change is
+applied immediately on that device and syncs automatically when you reconnect.
+
 ## Formatting
 
 Notes use rich text. On iPhone and iPad, tap the `textformat` button in the
@@ -95,6 +98,10 @@ right or context menu) and **Delete** (swipe left or context menu).
 
 **Search** is available across all your notes at once. Results update as you
 type, so you don't need to submit a query to start seeing matches.
+
+Archived notes you have already loaded on a device stay available there
+offline. If an archived note was never cached on the current device, sideBar
+lets you know it is not available offline yet.
 
 ## Scratchpad
 

@@ -62,6 +62,7 @@
         "pages": [
           "patterns/overview",
           "patterns/authentication",
+          "patterns/offline-and-sync",
           "patterns/onboarding",
           "patterns/handoffs",
           "patterns/navigation",
