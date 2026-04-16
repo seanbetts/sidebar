@@ -16,6 +16,8 @@ protocol NotesWriteQueueApplying {
 @MainActor
 protocol TasksWriteQueueApplying {
     func applySyncResponse(_ response: TaskSyncResponse, operationId: String)
+    func pendingPlaceholderId(operationId: String) -> String?
+    func remapPendingTaskReferences(localID: String, serverID: String) async
     func removePendingTaskPlaceholder(operationId: String)
     func lastSyncToken() -> String?
     func updateLastSyncToken(_ token: String?)

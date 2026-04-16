@@ -347,7 +347,7 @@ public final class WriteQueue: ObservableObject {
     }
 }
 
-private extension WriteQueue {
+extension WriteQueue {
     // MARK: - Private
 
     private func processWrite(_ write: PendingWriteRecord) async -> Bool {
@@ -559,7 +559,7 @@ private extension WriteQueue {
         }
     }
 
-    private func loadQueueCounts() async {
+    func loadQueueCounts() async {
         do {
             let snapshot = try await performBackgroundTask { context in
                 let queuedRequest = PendingWrite.fetchRequest()

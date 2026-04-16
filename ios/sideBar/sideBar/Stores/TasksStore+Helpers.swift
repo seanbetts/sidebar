@@ -92,10 +92,27 @@ extension TasksStore {
         persistCurrentSnapshot()
     }
 
+    func pendingPlaceholderId(operationId: String) -> String? {
+        guard let offlineStore else { return nil }
+        return offlineStore.get(key: pendingTaskKey(operationId: operationId), as: String.self)
+    }
+
+    func remapPendingTaskReferences(localID: String, serverID: String) async {
+        do {
+            try await writeQueue?.applyServerIdentityMap(
+                entityType: .task,
+                localID: localID,
+                serverID: serverID
+            )
+        } catch {
+            // Best-effort remap for downstream queued mutations.
+        }
+    }
+
     func removePendingTaskPlaceholder(operationId: String) {
         guard let offlineStore else { return }
         let key = pendingTaskKey(operationId: operationId)
-        guard let placeholderId = offlineStore.get(key: key, as: String.self) else { return }
+        guard let placeholderId = pendingPlaceholderId(operationId: operationId) else { return }
         tasks.removeAll { $0.id == placeholderId }
         offlineStore.remove(key: key)
     }

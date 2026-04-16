@@ -29,9 +29,27 @@ final class TasksWriteQueueExecutor: WriteQueueExecutor {
                 serverSnapshot: encoded
             )
         }
+        if response.applied.contains(operation.operationId),
+           operation.op.lowercased() == "add",
+           let placeholderId = store.pendingPlaceholderId(operationId: operation.operationId),
+           let serverTaskId = syncedTaskID(for: operation, response: response) {
+            await store.remapPendingTaskReferences(localID: placeholderId, serverID: serverTaskId)
+        }
         store.applySyncResponse(response, operationId: operation.operationId)
         if let token = response.serverUpdatedSince {
             store.updateLastSyncToken(token)
         }
+    }
+
+    private func syncedTaskID(for operation: TaskOperationPayload, response: TaskSyncResponse) -> String? {
+        let candidates = response.tasks + response.nextTasks + (response.updates?.tasks ?? [])
+        guard !candidates.isEmpty else { return nil }
+
+        if let title = operation.title,
+           let matchingTitle = candidates.first(where: { $0.title == title }) {
+            return matchingTitle.id
+        }
+
+        return candidates.first?.id
     }
 }

@@ -22,6 +22,44 @@ final class TasksWriteQueueExecutorTests: XCTestCase {
         XCTAssertEqual(store.lastToken, "token-2")
     }
 
+    func testExecuteCreateRemapsPendingPlaceholderToServerIdentity() async throws {
+        let createdTask = TaskItem(
+            id: "task-42",
+            title: "Buy milk",
+            status: "open",
+            updatedAt: "u1"
+        )
+        let api = TasksSyncAPIStub(
+            syncResponses: [
+                TaskSyncResponse(
+                    applied: ["create-op"],
+                    tasks: [createdTask],
+                    nextTasks: [],
+                    conflicts: [],
+                    updates: nil,
+                    serverUpdatedSince: "token-1"
+                )
+            ]
+        )
+        let store = TasksWriteQueueStoreSpy()
+        store.pendingPlaceholderIDs["create-op"] = "local-task-1"
+        let executor = TasksWriteQueueExecutor(
+            api: api,
+            store: store,
+            refreshDebounceNanoseconds: 10_000_000
+        )
+
+        try await executor.execute(
+            write: makeCreateWrite(operationId: "create-op", title: "Buy milk")
+        )
+
+        XCTAssertEqual(
+            store.remappedIdentityPairs,
+            [IdentityRemap(localID: "local-task-1", serverID: "task-42")]
+        )
+        XCTAssertEqual(store.appliedOperationIds, ["create-op"])
+    }
+
     private func makeWrite(operationId: String, taskId: String) throws -> PendingWriteRecord {
         let payload = TaskOperationPayload(
             operationId: operationId,
@@ -41,12 +79,33 @@ final class TasksWriteQueueExecutorTests: XCTestCase {
             attempts: 0
         )
     }
+
+    private func makeCreateWrite(operationId: String, title: String) throws -> PendingWriteRecord {
+        let payload = TaskOperationPayload(
+            operationId: operationId,
+            op: "add",
+            id: nil,
+            title: title
+        )
+        let encoded = try JSONEncoder().encode(payload)
+        return PendingWriteRecord(
+            id: UUID(),
+            operationType: WriteOperation.create.rawValue,
+            entityType: WriteEntityType.task.rawValue,
+            entityId: nil,
+            payload: encoded,
+            serverSnapshot: nil,
+            attempts: 0
+        )
+    }
 }
 
 @MainActor
 private final class TasksWriteQueueStoreSpy: TasksWriteQueueApplying {
     var appliedOperationIds: [String] = []
     var lastToken: String?
+    var pendingPlaceholderIDs: [String: String] = [:]
+    var remappedIdentityPairs: [IdentityRemap] = []
 
     func applySyncResponse(_ response: TaskSyncResponse, operationId: String) {
         _ = response
@@ -55,6 +114,14 @@ private final class TasksWriteQueueStoreSpy: TasksWriteQueueApplying {
 
     func removePendingTaskPlaceholder(operationId: String) {
         _ = operationId
+    }
+
+    func pendingPlaceholderId(operationId: String) -> String? {
+        pendingPlaceholderIDs[operationId]
+    }
+
+    func remapPendingTaskReferences(localID: String, serverID: String) async {
+        remappedIdentityPairs.append(IdentityRemap(localID: localID, serverID: serverID))
     }
 
     func lastSyncToken() -> String? {
@@ -70,6 +137,11 @@ private final class TasksWriteQueueStoreSpy: TasksWriteQueueApplying {
 
 private final class TasksSyncAPIStub: TasksProviding {
     var syncCallCount: Int = 0
+    private var queuedSyncResponses: [TaskSyncResponse]
+
+    init(syncResponses: [TaskSyncResponse] = []) {
+        self.queuedSyncResponses = syncResponses
+    }
 
     func list(scope: String) async throws -> TaskListResponse {
         _ = scope
@@ -135,6 +207,9 @@ private final class TasksSyncAPIStub: TasksProviding {
 
     func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse {
         syncCallCount += 1
+        if !queuedSyncResponses.isEmpty {
+            return queuedSyncResponses.removeFirst()
+        }
         let operationId = payload.operations.first?.operationId ?? ""
         return TaskSyncResponse(
             applied: [operationId],
@@ -149,4 +224,9 @@ private final class TasksSyncAPIStub: TasksProviding {
 
 private enum TasksWriteQueueExecutorStubError: Error {
     case unused
+}
+
+private struct IdentityRemap: Equatable {
+    let localID: String
+    let serverID: String
 }
