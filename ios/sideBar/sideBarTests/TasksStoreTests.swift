@@ -210,6 +210,38 @@ final class TasksStoreTests: XCTestCase {
         XCTAssertEqual(api.listCallCount, 0)
     }
 
+    func testCachedListSkipsBackgroundRefreshWhenAppOfflineModeIsEnabled() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let networkStatus = TestNetworkStatus(isNetworkAvailable: true, isOffline: true, isServerReachable: true)
+        let store = TasksStore(
+            api: api,
+            cache: cache,
+            offlineStore: offlineStore,
+            networkStatus: networkStatus
+        )
+        let cachedList = TaskListResponse(
+            scope: "today",
+            generatedAt: nil,
+            tasks: [TaskItem(id: "cached-offline", title: "Cached offline", status: "open")],
+            projects: nil,
+            groups: nil
+        )
+        cache.set(
+            key: CacheKeys.tasksList(selectionKey: TaskSelection.today.cacheKey),
+            value: cachedList,
+            ttlSeconds: 60
+        )
+
+        await store.load(selection: .today)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(store.tasks.map(\.id), ["cached-offline"])
+        XCTAssertEqual(api.listCallCount, 0)
+    }
+
     func testCachedListRefreshDoesNotOverrideNewerSelection() async {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)

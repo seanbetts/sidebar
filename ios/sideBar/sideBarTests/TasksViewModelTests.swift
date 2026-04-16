@@ -158,6 +158,47 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertEqual(store.tasks.first?.isPreview, true)
     }
 
+    func testCreateTaskQueuesWhenAppOfflineModeIsEnabled() async {
+        let api = TasksViewModelAPIStub()
+        let sut = makeSUT(api: api, networkAvailable: true, serverReachable: true, isOffline: true)
+        let viewModel = sut.viewModel
+        let store = sut.store
+        let writeQueue = sut.writeQueue
+        await viewModel.load(selection: .today)
+        viewModel.startNewTask()
+
+        await viewModel.createTask(title: "Queued while app offline", notes: "", dueDate: nil, listId: nil)
+        await eventually {
+            writeQueue.pendingCount >= 1
+        }
+
+        XCTAssertEqual(api.applyCallCount, 0, "Explicit offline mode should queue instead of calling apply")
+        XCTAssertNil(viewModel.newTaskDraft)
+        XCTAssertEqual(store.tasks.first?.title, "Queued while app offline")
+        XCTAssertEqual(store.tasks.first?.isPreview, true)
+    }
+
+    func testCreateTaskOfflineUpdatesTodayCountOptimistically() async {
+        let api = TasksViewModelAPIStub()
+        let sut = makeSUT(api: api, networkAvailable: false)
+        let viewModel = sut.viewModel
+        let store = sut.store
+        api.countsResponse = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(today: 1, upcoming: 2, completed: 3),
+            projects: [],
+            groups: []
+        )
+
+        await viewModel.load(selection: .today)
+        await viewModel.loadCounts(force: true)
+        viewModel.startNewTask()
+        await viewModel.createTask(title: "Today task", notes: "", dueDate: Date(), listId: nil)
+
+        XCTAssertEqual(api.applyCallCount, 0)
+        XCTAssertEqual(store.counts?.counts.today, 2)
+    }
+
     func testPreferredLoadSelectionDefaultsToTodayWhenSelectionIsNone() async {
         let api = TasksViewModelAPIStub()
         let sut = makeSUT(api: api, networkAvailable: true)
@@ -491,6 +532,7 @@ final class TasksViewModelTests: XCTestCase {
         api: TasksViewModelAPIStub,
         networkAvailable: Bool,
         serverReachable: Bool = true,
+        isOffline: Bool = false,
         searchDebounceNanoseconds: UInt64 = 350_000_000,
         realtimeRefreshDelayNanoseconds: UInt64 = 200_000_000
     ) -> SUT {
@@ -499,7 +541,8 @@ final class TasksViewModelTests: XCTestCase {
         let cache = TestCacheClient()
         let networkStatus = TasksTestNetworkStatus(
             isNetworkAvailable: networkAvailable,
-            isServerReachable: serverReachable
+            isServerReachable: serverReachable,
+            isOfflineOverride: isOffline
         )
         let store = TasksStore(
             api: api,

@@ -1,11 +1,15 @@
 import Foundation
 
 extension TasksViewModel {
+    var taskOfflineCapabilityPolicy: OfflineCapabilityPolicy {
+        networkStatus.offlineCapabilityPolicy
+    }
+
     var preferredLoadSelection: TaskSelection {
         selection == .none ? .today : selection
     }
 
     var shouldQueueTaskWrites: Bool {
-        !networkStatus.isNetworkAvailable || !networkStatus.isServerReachable
+        taskOfflineCapabilityPolicy.shouldQueueWrites
     }
 }

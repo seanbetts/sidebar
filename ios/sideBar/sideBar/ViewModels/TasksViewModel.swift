@@ -410,6 +410,8 @@ extension TasksViewModel {
             do {
                 try await store.enqueueOperation(operation)
                 store.applyLocalOperation(operation)
+                updateWidgetDataAfterOfflineOperation(operation)
+                updateCountsAfterLocalOperation(operation)
                 newTaskDraft = nil
                 toastCenter.show(message: "Task queued for sync.")
             } catch WriteQueueError.queueFull {

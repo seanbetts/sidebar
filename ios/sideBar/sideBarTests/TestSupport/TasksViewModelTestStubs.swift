@@ -6,11 +6,17 @@ import sideBarShared
 final class TasksTestNetworkStatus: NetworkStatusProviding {
     var isNetworkAvailable: Bool
     var isServerReachable: Bool
-    var isOffline: Bool { !isNetworkAvailable }
+    var isOfflineOverride: Bool
+    var isOffline: Bool { isOfflineOverride || !isNetworkAvailable }
 
-    init(isNetworkAvailable: Bool, isServerReachable: Bool = true) {
+    init(
+        isNetworkAvailable: Bool,
+        isServerReachable: Bool = true,
+        isOfflineOverride: Bool = false
+    ) {
         self.isNetworkAvailable = isNetworkAvailable
         self.isServerReachable = isServerReachable
+        self.isOfflineOverride = isOfflineOverride
     }
 }
 
@@ -42,6 +48,12 @@ final class TasksViewModelAPIStub: TasksProviding {
     var createGroupResult: Result<TaskGroup, Error> = .failure(TasksTestStubError.unused)
     var deleteGroupResult: Result<Void, Error> = .failure(TasksTestStubError.unused)
     var deleteProjectResult: Result<Void, Error> = .failure(TasksTestStubError.unused)
+    var countsResponse = TaskCountsResponse(
+        generatedAt: nil,
+        counts: TaskCounts(today: 1, upcoming: 1, completed: 1),
+        projects: [],
+        groups: []
+    )
     private var queuedListResponsesByScope: [String: [TaskListResponse]] = [:]
     private var suspendedApplyResult: Result<TaskSyncResponse, Error>?
     private var pendingResumedApplyResult: Result<TaskSyncResponse, Error>?
@@ -92,12 +104,7 @@ final class TasksViewModelAPIStub: TasksProviding {
 
     func counts() async throws -> TaskCountsResponse {
         countsCallCount += 1
-        return TaskCountsResponse(
-            generatedAt: nil,
-            counts: TaskCounts(today: 1, upcoming: 1, completed: 1),
-            projects: [],
-            groups: []
-        )
+        return countsResponse
     }
 
     func createGroup(title: String) async throws -> TaskGroup {

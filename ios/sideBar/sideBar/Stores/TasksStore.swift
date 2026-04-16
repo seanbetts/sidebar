@@ -302,7 +302,7 @@ import Combine
     }
 
     func canRefreshFromRemote() -> Bool {
-        (networkStatus?.isNetworkAvailable ?? true) && (networkStatus?.isServerReachable ?? true)
+        networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true
     }
 
     func cachedSnapshot<T: Codable>(key: String) -> T? {
