@@ -185,7 +185,9 @@ extension AppEnvironment {
     }
 
     func performBackgroundWebsiteContinuation(maxDuration: TimeInterval = 20) async -> Bool {
-        guard authState == .active, isProtectedContentReady, !connectivityMonitor.isOffline else {
+        guard authState == .active,
+              isProtectedContentReady,
+              connectivityMonitor.offlineCapabilityPolicy.canAttemptServerWrite else {
             return false
         }
 
@@ -196,7 +198,8 @@ extension AppEnvironment {
     }
 
     func performBackgroundWriteQueueFlush() async -> Bool {
-        guard authState == .active, !connectivityMonitor.isOffline else {
+        guard authState == .active,
+              connectivityMonitor.offlineCapabilityPolicy.canAttemptServerWrite else {
             return false
         }
 
@@ -246,7 +249,7 @@ extension AppEnvironment {
             storage.pendingShareStore.replaceAll(initialPending)
         }
 
-        guard !connectivityMonitor.isOffline else {
+        guard connectivityMonitor.offlineCapabilityPolicy.canAttemptServerWrite else {
             websitesViewModel.syncPendingWebsitesFromQueuedShares(initialPending)
             replayStartSignal?.markStarted()
             return

@@ -26,6 +26,10 @@ public final class WriteQueue: ObservableObject {
         max(pendingCount - failedCount, 0)
     }
 
+    private var canAttemptServerWrite: Bool {
+        connectivityMonitor.offlineCapabilityPolicy.canAttemptServerWrite
+    }
+
     func applyHeaderQueueState(
         pendingCount: Int,
         failedCount: Int,
@@ -52,7 +56,7 @@ public final class WriteQueue: ObservableObject {
             await self?.recoverStuckWritesIfNeeded()
             await self?.recoverConflictWritesIfNeeded()
             await self?.loadQueueCounts()
-            if let self, self.autoProcessEnabled, self.executor != nil, !self.connectivityMonitor.isOffline {
+            if let self, self.autoProcessEnabled, self.executor != nil, self.canAttemptServerWrite {
                 await self.processQueue()
             }
         }
@@ -73,7 +77,7 @@ public final class WriteQueue: ObservableObject {
            let entityId,
            try await coalesceNoteUpdate(entityId: entityId, payload: payloadData) {
             await loadQueueCounts()
-            if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
+            if autoProcessEnabled, executor != nil, canAttemptServerWrite {
                 Task { [weak self] in
                     await self?.processQueue()
                 }
@@ -83,7 +87,7 @@ public final class WriteQueue: ObservableObject {
         if operation == .update, entityType == .task, let entityId,
            try await coalesceTaskNotesUpdate(entityId: entityId, payload: payloadData) {
             await loadQueueCounts()
-            if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
+            if autoProcessEnabled, executor != nil, canAttemptServerWrite {
                 Task { [weak self] in
                     await self?.processQueue()
                 }
@@ -111,7 +115,7 @@ public final class WriteQueue: ObservableObject {
 
         await loadQueueCounts()
 
-        if autoProcessEnabled, executor != nil, !connectivityMonitor.isOffline {
+        if autoProcessEnabled, executor != nil, canAttemptServerWrite {
             Task { [weak self] in
                 await self?.processQueue()
             }
@@ -119,7 +123,7 @@ public final class WriteQueue: ObservableObject {
     }
 
     func processQueue() async {
-        guard !isProcessing, executor != nil, !connectivityMonitor.isOffline else { return }
+        guard !isProcessing, executor != nil, canAttemptServerWrite else { return }
         await recoverStuckWritesIfNeeded()
         await recoverConflictWritesIfNeeded()
         await recoverRetryableFailedWrites()
@@ -328,7 +332,7 @@ public final class WriteQueue: ObservableObject {
     }
 
     func processRetriedWrite(id: UUID) async {
-        guard !isProcessing, executor != nil, !connectivityMonitor.isOffline else { return }
+        guard !isProcessing, executor != nil, canAttemptServerWrite else { return }
 
         isProcessing = true
         defer { isProcessing = false }
@@ -607,17 +611,8 @@ extension WriteQueue {
     }
 
     private func observeNetwork() {
-        connectivityMonitor.$isOffline
-            .removeDuplicates()
-            .filter { !$0 }
-            .sink { [weak self] _ in
-                self?.scheduleQueueProcessingIfNeeded()
-            }
-            .store(in: &cancellables)
-
-        connectivityMonitor.$isServerReachable
-            .removeDuplicates()
-            .filter { $0 }
+        connectivityMonitor.offlineCapabilityPolicyPublisher
+            .filter(\.canAttemptServerWrite)
             .sink { [weak self] _ in
                 self?.scheduleQueueProcessingIfNeeded()
             }
