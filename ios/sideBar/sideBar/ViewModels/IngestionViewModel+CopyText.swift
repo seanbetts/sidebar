@@ -51,8 +51,15 @@ extension IngestionViewModel {
         guard let derivative = preferredCopyTextDerivative(for: meta) else {
             return nil
         }
+        if let cached = store.cachedDerivativeContent(fileId: fileId, kind: derivative.kind) {
+            return decodeCopyText(data: cached, derivative: derivative, meta: meta)
+        }
+        guard store.canAttemptServerRead else {
+            return nil
+        }
         do {
             let data = try await api.getContent(fileId: fileId, kind: derivative.kind, range: nil)
+            store.persistDerivativeContent(data, fileId: fileId, kind: derivative.kind)
             return decodeCopyText(data: data, derivative: derivative, meta: meta)
         } catch {
             return nil
@@ -64,7 +71,16 @@ extension IngestionViewModel {
         guard let derivative = preferredDownloadDerivative(for: meta) else {
             throw FileTransferPayloadError.unavailable
         }
-        let data = try await api.getContent(fileId: fileId, kind: derivative.kind, range: nil)
+        let data: Data
+        if let cached = store.cachedDerivativeContent(fileId: fileId, kind: derivative.kind) {
+            data = cached
+        } else {
+            guard store.canAttemptServerRead else {
+                throw FileTransferPayloadError.unavailable
+            }
+            data = try await api.getContent(fileId: fileId, kind: derivative.kind, range: nil)
+            store.persistDerivativeContent(data, fileId: fileId, kind: derivative.kind)
+        }
         let filename = makeFilename(
             base: meta.file.filenameOriginal,
             mimeType: derivative.mime,
@@ -111,6 +127,9 @@ extension IngestionViewModel {
         }
         if let offline = store.offlineStore?.get(key: cacheKey, as: IngestionMetaResponse.self) {
             return offline
+        }
+        guard store.canAttemptServerRead else {
+            throw FileTransferPayloadError.unavailable
         }
         return try await api.getMeta(fileId: fileId)
     }

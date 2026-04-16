@@ -11,19 +11,28 @@ extension IngestionViewModel {
         guard meta.derivatives.contains(where: { $0.kind == "ai_md" }) else {
             return nil
         }
-        do {
-            let data = try await api.getContent(
-                fileId: meta.file.id,
-                kind: "ai_md",
-                range: nil
-            )
-            let rawText = String(bytes: data, encoding: .utf8) ?? ""
-            let transcript = sanitizeVideoTranscript(rawText)
-            guard !transcript.isEmpty else { return nil }
-            return isHeadingOnly(transcript) ? nil : transcript
-        } catch {
-            return nil
+        let data: Data
+        if let cached = store.cachedDerivativeContent(fileId: meta.file.id, kind: "ai_md") {
+            data = cached
+        } else {
+            guard store.canAttemptServerRead else {
+                return nil
+            }
+            do {
+                data = try await api.getContent(
+                    fileId: meta.file.id,
+                    kind: "ai_md",
+                    range: nil
+                )
+                store.persistDerivativeContent(data, fileId: meta.file.id, kind: "ai_md")
+            } catch {
+                return nil
+            }
         }
+        let rawText = String(bytes: data, encoding: .utf8) ?? ""
+        let transcript = sanitizeVideoTranscript(rawText)
+        guard !transcript.isEmpty else { return nil }
+        return isHeadingOnly(transcript) ? nil : transcript
     }
 
     private func sanitizeVideoTranscript(_ content: String) -> String {

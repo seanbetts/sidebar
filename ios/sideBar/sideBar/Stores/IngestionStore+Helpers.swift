@@ -8,6 +8,9 @@ extension IngestionStore {
         guard canAttemptBackgroundRefresh() else {
             return
         }
+        guard canAttemptServerRead else {
+            return
+        }
         guard !isRefreshingList else {
             return
         }
@@ -29,6 +32,9 @@ extension IngestionStore {
 
     func refreshMeta(fileId: String) async {
         guard canAttemptBackgroundRefresh() else {
+            return
+        }
+        guard canAttemptServerRead else {
             return
         }
         guard !refreshingMetaIds.contains(fileId) else {

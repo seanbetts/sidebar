@@ -2,9 +2,7 @@ import Combine
 import sideBarShared
 import Foundation
 import UniformTypeIdentifiers
-
 // MARK: - IngestionViewModel+Private
-
 extension IngestionViewModel {
     func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
         let candidates = meta.derivatives.filter { $0.kind != "thumb_png" }
@@ -24,7 +22,6 @@ extension IngestionViewModel {
         }
         return nonAI.first?.kind ?? candidates.first?.kind
     }
-
     func preferredDownloadDerivative(for meta: IngestionMetaResponse) -> IngestionDerivative? {
         if let sourceOriginal = meta.derivatives.first(where: { $0.kind == "source_original" }) {
             return sourceOriginal
@@ -39,7 +36,6 @@ extension IngestionViewModel {
         }
         return meta.derivatives.first
     }
-
     func ensureViewerReady(for fileId: String) async {
         guard selectedFileId == fileId else { return }
         guard let meta = activeMeta else { return }
@@ -49,7 +45,6 @@ extension IngestionViewModel {
             await selectDerivative(kind: kind)
         }
     }
-
     func startJobPollingIfNeeded(fileId: String) {
         guard let meta = activeMeta, meta.file.id == fileId else { return }
         let status = meta.job.status ?? ""
@@ -203,60 +198,87 @@ extension IngestionViewModel {
     func loadDerivativeContent(meta: IngestionMetaResponse, derivative: IngestionDerivative) async {
         isLoadingContent = true
         errorMessage = nil
+        if let cached = store.cachedDerivativeContent(fileId: meta.file.id, kind: derivative.kind) {
+            await applyDerivativeContent(
+                cached,
+                meta: meta,
+                derivative: derivative
+            )
+            isLoadingContent = false
+            return
+        }
+        guard store.canAttemptServerRead else {
+            errorMessage = "This file isn't available offline yet."
+            isLoadingContent = false
+            return
+        }
         do {
             let data = try await api.getContent(fileId: meta.file.id, kind: derivative.kind, range: nil)
-            let inferredKind = FileViewerKind.infer(path: nil, mimeType: derivative.mime, derivativeKind: derivative.kind)
-            let kind = overrideKindIfMarkdown(
-                inferredKind: inferredKind,
-                filename: meta.file.filenameOriginal,
-                mimeType: derivative.mime
-            )
-            let filename = makeFilename(base: meta.file.filenameOriginal, mimeType: derivative.mime, fallback: derivative.kind)
-            let youtubeEmbedURL = buildYouTubeEmbedURL(from: meta.file)
-            switch kind {
-            case .markdown, .text, .json:
-                let rawText = String(bytes: data, encoding: .utf8) ?? ""
-                let shouldStrip = derivative.kind == "ai_md" || kind == .markdown
-                let text = shouldStrip ? MarkdownRendering.stripFrontmatter(rawText) : rawText
-                let fileURL = try temporaryStore.store(data: data, filename: filename)
-                viewerState = FileViewerState(
-                    title: meta.file.filenameOriginal,
-                    kind: kind,
-                    text: text,
-                    fileURL: fileURL,
-                    spreadsheet: nil,
-                    youtubeEmbedURL: youtubeEmbedURL
-                )
-            case .spreadsheet:
-                let spreadsheet = try? JSONDecoder().decode(SpreadsheetPayload.self, from: data)
-                let fileURL = try temporaryStore.store(data: data, filename: filename)
-                viewerState = FileViewerState(
-                    title: meta.file.filenameOriginal,
-                    kind: .spreadsheet,
-                    text: nil,
-                    fileURL: fileURL,
-                    spreadsheet: spreadsheet,
-                    youtubeEmbedURL: youtubeEmbedURL
-                )
-            default:
-                let fileURL = try temporaryStore.store(data: data, filename: filename)
-                let transcript = await transcriptForVideoIfAvailable(
-                    meta: meta,
-                    kind: kind
-                )
-                viewerState = FileViewerState(
-                    title: meta.file.filenameOriginal,
-                    kind: kind,
-                    text: transcript,
-                    fileURL: fileURL,
-                    spreadsheet: nil,
-                    youtubeEmbedURL: youtubeEmbedURL
-                )
-            }
+            store.persistDerivativeContent(data, fileId: meta.file.id, kind: derivative.kind)
+            await applyDerivativeContent(data, meta: meta, derivative: derivative)
         } catch {
             errorMessage = ErrorMapping.message(for: error)
         }
         isLoadingContent = false
+    }
+
+    private func applyDerivativeContent(
+        _ data: Data,
+        meta: IngestionMetaResponse,
+        derivative: IngestionDerivative
+    ) async {
+        let inferredKind = FileViewerKind.infer(path: nil, mimeType: derivative.mime, derivativeKind: derivative.kind)
+        let kind = overrideKindIfMarkdown(
+            inferredKind: inferredKind,
+            filename: meta.file.filenameOriginal,
+            mimeType: derivative.mime
+        )
+        let filename = makeFilename(
+            base: meta.file.filenameOriginal,
+            mimeType: derivative.mime,
+            fallback: derivative.kind
+        )
+        let youtubeEmbedURL = buildYouTubeEmbedURL(from: meta.file)
+        switch kind {
+        case .markdown, .text, .json:
+            let rawText = String(bytes: data, encoding: .utf8) ?? ""
+            let shouldStrip = derivative.kind == "ai_md" || kind == .markdown
+            let text = shouldStrip ? MarkdownRendering.stripFrontmatter(rawText) : rawText
+            let fileURL = try? temporaryStore.store(data: data, filename: filename)
+            viewerState = FileViewerState(
+                title: meta.file.filenameOriginal,
+                kind: kind,
+                text: text,
+                fileURL: fileURL,
+                spreadsheet: nil,
+                youtubeEmbedURL: youtubeEmbedURL
+            )
+        case .spreadsheet:
+            let spreadsheet = try? JSONDecoder().decode(SpreadsheetPayload.self, from: data)
+            let fileURL = try? temporaryStore.store(data: data, filename: filename)
+            viewerState = FileViewerState(
+                title: meta.file.filenameOriginal,
+                kind: .spreadsheet,
+                text: nil,
+                fileURL: fileURL,
+                spreadsheet: spreadsheet,
+                youtubeEmbedURL: youtubeEmbedURL
+            )
+        default:
+            let fileURL = try? temporaryStore.store(data: data, filename: filename)
+            let transcript = await transcriptForVideoIfAvailable(
+                meta: meta,
+                kind: kind
+            )
+            viewerState = FileViewerState(
+                title: meta.file.filenameOriginal,
+                kind: kind,
+                text: transcript,
+                fileURL: fileURL,
+                spreadsheet: nil,
+                youtubeEmbedURL: youtubeEmbedURL
+            )
+        }
     }
 
     private func jobPollingDelayNanoseconds(fileId: String, consecutiveFailures: Int) -> UInt64 {
@@ -363,7 +385,7 @@ extension IngestionViewModel {
 
     func isOfflineForIngestion() -> Bool {
         if let networkStatus {
-            if networkStatus.isOffline || !networkStatus.isNetworkAvailable {
+            if networkStatus.offlineCapabilityPolicy.shouldQueueWrites {
                 return true
             }
         }

@@ -13,6 +13,7 @@ public enum CacheKeys {
     public nonisolated static let memoriesList = "memories.list"
     public nonisolated static let ingestionList = "ingestion.list"
     public nonisolated static let ingestionMetaPrefix = "ingestion.meta"
+    public nonisolated static let ingestionDerivativeContentPrefix = "ingestion.derivative-content"
     public nonisolated static let scratchpad = "scratchpad.content"
     public nonisolated static let filesTreePrefix = "files.tree"
     public nonisolated static let fileContentPrefix = "files.content"
@@ -49,6 +50,10 @@ public enum CacheKeys {
 
     public nonisolated static func ingestionMeta(fileId: String) -> String {
         "\(ingestionMetaPrefix).\(fileId)"
+    }
+
+    public nonisolated static func ingestionDerivativeContent(fileId: String, kind: String) -> String {
+        "\(ingestionDerivativeContentPrefix).\(fileId).\(kind)"
     }
 
     public nonisolated static func tasksList(selectionKey: String) -> String {
