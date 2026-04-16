@@ -340,7 +340,7 @@ extension WebsitesPanelView {
                         SelectableRow(
                             isSelected: false,
                             insets: EdgeInsets(
-                                top: 0,
+                                top: DesignTokens.Spacing.xxl,
                                 leading: archiveRowHorizontalInset,
                                 bottom: 0,
                                 trailing: archiveRowHorizontalInset
@@ -381,8 +381,6 @@ extension WebsitesPanelView {
                                 }
                             }
                         }
-                    } header: {
-                        sidebarHiddenProminentSectionHeader("Archive")
                     }
                 }
             }

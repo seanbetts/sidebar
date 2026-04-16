@@ -38,7 +38,7 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertFalse(normalized.contains("top:DesignTokens.Spacing.xxl"))
     }
 
-    func testArchiveSectionsUseHiddenProminentHeadersForMatchedSpacing() throws {
+    func testArchiveRowsUseXXLTopInsetWithoutHiddenHeaders() throws {
         let notes = try source(
             at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+TreeArchive.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
@@ -46,19 +46,10 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
             at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(notes.contains("header:{sidebarHiddenProminentSectionHeader(\"Archive\")}"))
-        XCTAssertTrue(websites.contains("header:{sidebarHiddenProminentSectionHeader(\"Archive\")}"))
-        XCTAssertFalse(notes.contains("top:DesignTokens.Spacing.sm"))
-        XCTAssertFalse(websites.contains("top:DesignTokens.Spacing.sm"))
-    }
-
-    func testPanelComponentsDefinesHiddenProminentSectionHeader() throws {
-        let normalized = try source(
-            at: ["sideBar", "Views", "SidebarPanels", "PanelComponents.swift"]
-        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-
-        XCTAssertTrue(normalized.contains("funcsidebarHiddenProminentSectionHeader(_title:String)->someView"))
-        XCTAssertTrue(normalized.contains("sidebarProminentSectionHeader(title).hidden().accessibilityHidden(true)"))
+        XCTAssertTrue(notes.contains("top:DesignTokens.Spacing.xxl"))
+        XCTAssertTrue(websites.contains("top:DesignTokens.Spacing.xxl"))
+        XCTAssertFalse(notes.contains("sidebarHiddenProminentSectionHeader"))
+        XCTAssertFalse(websites.contains("sidebarHiddenProminentSectionHeader"))
     }
 
     func testMacContentPanelsUseExplicitPlainListActivationPath() throws {
