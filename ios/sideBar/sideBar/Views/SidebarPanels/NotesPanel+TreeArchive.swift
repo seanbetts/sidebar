@@ -95,6 +95,8 @@ extension NotesPanelView {
                             notesTreeRows(buildItems(from: archivedNodes))
                         }
                     }
+                } header: {
+                    sidebarSectionSpacerHeader()
                 }
             }
         }

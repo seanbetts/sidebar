@@ -28,6 +28,12 @@ func sidebarProminentSectionHeader(_ title: String) -> some View {
         .textCase(nil)
 }
 
+func sidebarSectionSpacerHeader() -> some View {
+    Color.clear
+        .frame(height: DesignTokens.Spacing.xs)
+        .accessibilityHidden(true)
+}
+
 @ViewBuilder
 func sidebarPanelList<SelectionValue: Hashable, Content: View>(
     selection: Binding<SelectionValue?>? = nil,

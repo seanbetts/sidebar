@@ -381,6 +381,8 @@ extension WebsitesPanelView {
                                 }
                             }
                         }
+                    } header: {
+                        sidebarSectionSpacerHeader()
                     }
                 }
             }

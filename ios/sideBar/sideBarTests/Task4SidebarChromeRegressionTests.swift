@@ -38,6 +38,27 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertFalse(normalized.contains("top:DesignTokens.Spacing.xxl"))
     }
 
+    func testArchiveSectionsUseExplicitSpacerHeadersForVerticalSeparation() throws {
+        let notes = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+TreeArchive.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let websites = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(notes.contains("header:{sidebarSectionSpacerHeader()}"))
+        XCTAssertTrue(websites.contains("header:{sidebarSectionSpacerHeader()}"))
+    }
+
+    func testSidebarSectionSpacerHeaderUsesTokenBackedHeight() throws {
+        let normalized = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "PanelComponents.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("funcsidebarSectionSpacerHeader()->someView"))
+        XCTAssertTrue(normalized.contains("Color.clear.frame(height:DesignTokens.Spacing.xs)"))
+    }
+
     func testMacContentPanelsUseExplicitPlainListActivationPath() throws {
         let conversations = try source(
             at: ["sideBar", "Views", "SidebarPanels", "ConversationsPanelView+Helpers.swift"]
