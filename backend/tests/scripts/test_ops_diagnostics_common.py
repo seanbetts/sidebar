@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import uuid
+from decimal import Decimal
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -95,6 +96,33 @@ def test_print_json_result_serializes_datetime_and_uuid_values() -> None:
     parsed = json.loads(stream.getvalue())
     assert parsed["data"]["rows"][0]["id"] == "12345678-1234-5678-1234-567812345678"
     assert parsed["data"]["rows"][0]["created_at"] == "2026-04-13T18:00:00+00:00"
+
+
+def test_print_json_result_serializes_decimal_values() -> None:
+    """JSON printer should convert Decimal values returned by DB stats queries."""
+    result = build_result(
+        target="db",
+        command="top-queries",
+        status="ok",
+        data={
+            "rows": [
+                {
+                    "calls": 7,
+                    "mean_exec_time": Decimal("5.41"),
+                    "total_exec_time": Decimal("16144589.12"),
+                }
+            ]
+        },
+        generated_at="2026-04-13T12:00:00Z",
+    )
+
+    stream = io.StringIO()
+    print_json_result(result, stream=stream)
+
+    parsed = json.loads(stream.getvalue())
+    assert parsed["data"]["rows"][0]["calls"] == 7
+    assert parsed["data"]["rows"][0]["mean_exec_time"] == 5.41
+    assert parsed["data"]["rows"][0]["total_exec_time"] == 16144589.12
 
 
 def test_exit_codes_are_stable() -> None:

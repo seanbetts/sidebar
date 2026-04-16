@@ -7,6 +7,7 @@ import json
 import os
 import sys
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import TextIO
 from urllib.parse import urlparse
@@ -133,10 +134,12 @@ def _now_iso() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
-def _json_default(value: object) -> str:
+def _json_default(value: object) -> str | float:
     """Serialize common database scalar types for diagnostics JSON output."""
     if isinstance(value, UUID):
         return str(value)
     if isinstance(value, (datetime, date)):
         return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
     raise TypeError(f"Object of type {value.__class__.__name__} is not JSON serializable")
