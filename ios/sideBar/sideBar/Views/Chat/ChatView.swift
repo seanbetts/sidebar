@@ -101,7 +101,6 @@ public struct ChatView: View {
 
 private struct ChatDetailView: View {
     @ObservedObject var viewModel: ChatViewModel
-    @State private var draftMessage: String = ""
     private let contentMaxWidth: CGFloat = ChatLayout.maxContentWidth
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.workspaceColumn) private var workspaceColumn
@@ -226,13 +225,13 @@ private struct ChatDetailView: View {
                 } else if let errorMessage = viewModel.errorMessage, viewModel.messages.isEmpty {
                     PlaceholderView(
                         title: "Unable to load chat",
-                        subtitle: environment.isNetworkAvailable ? errorMessage : "This chat isn't available offline yet.",
+                        subtitle: canAttemptServerRead ? errorMessage : "This chat isn't available offline yet.",
                         actionTitle: "Retry"
                     ) {
                         guard let selectedId = viewModel.selectedConversationId else { return }
                         Task { await viewModel.loadConversation(id: selectedId) }
                     }
-                } else if !environment.isNetworkAvailable, !viewModel.hasCachedSelectedConversation {
+                } else if !canAttemptServerRead, !viewModel.hasCachedSelectedConversation {
                     PlaceholderView(
                         title: "Unable to load chat",
                         subtitle: "This chat isn't available offline yet.",
@@ -254,9 +253,9 @@ private struct ChatDetailView: View {
             VStack(spacing: 8) {
                 attachmentsContainer
                 ChatInputBar(
-                    text: $draftMessage,
+                    text: draftTextBinding,
                     measuredHeight: $inputMeasuredHeight,
-                    isEnabled: isComposerEnabled,
+                    isEnabled: isComposerEditable,
                     isSendEnabled: canSendMessages && !viewModel.hasPendingAttachments,
                     isAttachEnabled: canAttachFiles,
                     onSend: handleSend,
@@ -302,7 +301,7 @@ private struct ChatDetailView: View {
         .onChange(of: environment.settingsViewModel.onboardingState) { _, state in
             viewModel.syncSoulCalibration(from: state)
         }
-        .onChange(of: draftMessage) { _, newValue in
+        .onChange(of: viewModel.draftText) { _, newValue in
             if newValue.trimmed.isEmpty, inputMeasuredHeight != .zero {
                 inputMeasuredHeight = .zero
             }
@@ -321,18 +320,28 @@ private struct ChatDetailView: View {
         #endif
     }
 
-    private var isComposerEnabled: Bool {
-        environment.isNetworkAvailable
-            && environment.settingsViewModel.signedInOnboardingRecoveryState != .providerRecovery
+    private var draftTextBinding: Binding<String> {
+        Binding(
+            get: { viewModel.draftText },
+            set: { viewModel.updateDraftText($0) }
+        )
+    }
+
+    private var canAttemptServerRead: Bool {
+        environment.isNetworkAvailable && environment.isServerReachable && !environment.isOffline
+    }
+
+    private var isComposerEditable: Bool {
+        environment.settingsViewModel.signedInOnboardingRecoveryState != .providerRecovery
             && environment.settingsViewModel.signedInOnboardingRecoveryState != .soulCalibration
     }
 
     private var canSendMessages: Bool {
-        isComposerEnabled && !viewModel.isStreaming
+        isComposerEditable && canAttemptServerRead && !viewModel.isStreaming
     }
 
     private var canAttachFiles: Bool {
-        isComposerEnabled && !viewModel.isStreaming
+        isComposerEditable && canAttemptServerRead && !viewModel.isStreaming
     }
 
     private var assistantDisplayName: String {
@@ -345,13 +354,12 @@ private struct ChatDetailView: View {
     }
 
     private func handleSend() {
-        let message = draftMessage.trimmed
+        let message = viewModel.draftText.trimmed
         guard !message.isEmpty, canSendMessages else {
             return
         }
-        draftMessage = ""
         Task {
-            await viewModel.sendMessage(text: message)
+            await viewModel.sendMessage(text: message, clearDraftOnDispatch: true)
         }
     }
 

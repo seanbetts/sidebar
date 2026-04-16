@@ -24,6 +24,9 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     private var refreshingConversationDetailIDs: Set<String> = []
     private var isConversationsLoadInFlight = false
     private var conversationsLoadWaiters: [CheckedContinuation<Void, Error>] = []
+    private var canAttemptServerRead: Bool {
+        networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true
+    }
 
     public init(
         conversationsAPI: ConversationsProviding,
@@ -85,7 +88,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             triggerConversationDetailRefresh(id: id)
             return
         }
-        if networkStatus?.isOffline ?? false {
+        if !canAttemptServerRead {
             throw ChatOfflineError(message: "This chat isn't available offline yet.")
         }
 
@@ -95,27 +98,6 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.conversationDetail)
             persistConversationDetailSnapshot(response)
         }
-    }
-
-    public func hasCachedConversation(id: String) -> Bool {
-        if conversationDetails[id] != nil {
-            return true
-        }
-        let cacheKey = CacheKeys.conversation(id: id)
-        let cached: ConversationWithMessages? = cache.get(key: cacheKey)
-        if cached != nil {
-            return true
-        }
-        let messagesCacheKey = CacheKeys.conversationMessages(id: id)
-        let cachedMessages: [Message]? = cache.get(key: messagesCacheKey)
-        if cachedMessages != nil && !(cachedMessages?.isEmpty ?? true) {
-            return true
-        }
-        let offline: ConversationWithMessages? = offlineStore?.get(
-            key: CacheKeys.conversation(id: id),
-            as: ConversationWithMessages.self
-        )
-        return offline != nil
     }
 
     public func reset() {
@@ -341,7 +323,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     }
 
     private func triggerConversationDetailRefresh(id: String) {
-        guard !(networkStatus?.isOffline ?? false) else {
+        guard canAttemptServerRead else {
             return
         }
         guard !refreshingConversationDetailIDs.contains(id) else {
@@ -447,8 +429,28 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
         return false
     }
 }
-
 public extension ChatStore {
+    func hasCachedConversation(id: String) -> Bool {
+        if conversationDetails[id] != nil {
+            return true
+        }
+        let cacheKey = CacheKeys.conversation(id: id)
+        let cached: ConversationWithMessages? = cache.get(key: cacheKey)
+        if cached != nil {
+            return true
+        }
+        let messagesCacheKey = CacheKeys.conversationMessages(id: id)
+        let cachedMessages: [Message]? = cache.get(key: messagesCacheKey)
+        if cachedMessages != nil && !(cachedMessages?.isEmpty ?? true) {
+            return true
+        }
+        let offline: ConversationWithMessages? = offlineStore?.get(
+            key: CacheKeys.conversation(id: id),
+            as: ConversationWithMessages.self
+        )
+        return offline != nil
+    }
+
     func loadConversations(force: Bool = false) async throws {
         if isConversationsLoadInFlight {
             try await withCheckedThrowingContinuation { continuation in
@@ -464,7 +466,7 @@ public extension ChatStore {
             _ = try await loadWithCacheAndOffline(
                 force: force,
                 offline: { offlineStore?.get(key: listCacheKey, as: [Conversation].self) },
-                isNetworkAvailable: !(networkStatus?.isOffline ?? false),
+                isNetworkAvailable: canAttemptServerRead,
                 remoteUnavailableError: {
                     ChatOfflineError(message: "Conversations aren't available offline yet.")
                 }

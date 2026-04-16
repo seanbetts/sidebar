@@ -137,8 +137,7 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let expectedComposerGate =
-            "privatevarisComposerEnabled:Bool{" +
-            "environment.isNetworkAvailable&&" +
+            "privatevarisComposerEditable:Bool{" +
             "environment.settingsViewModel.signedInOnboardingRecoveryState!=.providerRecovery&&" +
             "environment.settingsViewModel.signedInOnboardingRecoveryState!=.soulCalibration" +
             "}"
@@ -166,11 +165,19 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("isEnabled:isComposerEnabled"))
+        XCTAssertTrue(normalized.contains("isEnabled:isComposerEditable"))
         XCTAssertTrue(normalized.contains("isSendEnabled:canSendMessages&&!viewModel.hasPendingAttachments"))
         XCTAssertTrue(normalized.contains("isAttachEnabled:canAttachFiles"))
-        XCTAssertTrue(normalized.contains("privatevarcanSendMessages:Bool{isComposerEnabled&&!viewModel.isStreaming}"))
-        XCTAssertTrue(normalized.contains("privatevarcanAttachFiles:Bool{isComposerEnabled&&!viewModel.isStreaming}"))
+        XCTAssertTrue(
+            normalized.contains(
+                "privatevarcanSendMessages:Bool{isComposerEditable&&canAttemptServerRead&&!viewModel.isStreaming}"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                "privatevarcanAttachFiles:Bool{isComposerEditable&&canAttemptServerRead&&!viewModel.isStreaming}"
+            )
+        )
     }
 
     func testHandleSendDoesNotForceComposerResetState() throws {
@@ -178,7 +185,7 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(normalized.contains("privatefunchandleSend(){"))
-        XCTAssertTrue(normalized.contains("draftMessage=\"\""))
+        XCTAssertFalse(normalized.contains("viewModel.updateDraftText(\"\")"))
         XCTAssertFalse(normalized.contains("inputMeasuredHeight=0"))
         XCTAssertFalse(normalized.contains("inputResetToken=UUID()"))
         XCTAssertFalse(normalized.contains("resetToken:"))
@@ -189,7 +196,7 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         let normalized = try combinedChatSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains(".onChange(of:draftMessage){_,newValuein"))
+        XCTAssertTrue(normalized.contains(".onChange(of:viewModel.draftText){_,newValuein"))
         XCTAssertTrue(
             normalized.contains(
                 "ifnewValue.trimmed.isEmpty,inputMeasuredHeight!=.zero{inputMeasuredHeight=.zero}"

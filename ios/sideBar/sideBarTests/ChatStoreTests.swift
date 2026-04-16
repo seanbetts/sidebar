@@ -201,10 +201,104 @@ final class ChatStoreTests: XCTestCase {
         XCTAssertEqual(api.listCallCount, 1)
         XCTAssertEqual(store.conversations.map(\.id), ["c1"])
     }
+
+    func testLoadConversationsUsesOfflineSnapshotWhenServerUnreachable() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cached = [
+            Conversation(
+                id: "c-offline",
+                title: "Offline",
+                titleGenerated: false,
+                createdAt: "2024-01-01",
+                updatedAt: "2024-01-01",
+                messageCount: 1,
+                firstMessage: "Hello",
+                isArchived: false
+            )
+        ]
+        offlineStore.set(
+            key: CacheKeys.conversationsList,
+            entityType: "conversationsList",
+            value: cached,
+            lastSyncAt: nil
+        )
+        let api = MockConversationsAPI(listResult: .success([]), getResult: .failure(MockError.forced))
+        let store = ChatStore(
+            conversationsAPI: api,
+            cache: TestCacheClient(),
+            offlineStore: offlineStore,
+            networkStatus: StoreNetworkStatus(
+                isNetworkAvailable: true,
+                isOffline: false,
+                isServerReachable: false
+            )
+        )
+
+        try await store.loadConversations()
+
+        XCTAssertEqual(store.conversations.first?.id, "c-offline")
+        XCTAssertEqual(api.listCallCount, 0)
+    }
+
+    func testLoadConversationUsesOfflineSnapshotWhenServerUnreachable() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let detail = ConversationWithMessages(
+            id: "c-offline",
+            title: "Offline",
+            titleGenerated: false,
+            createdAt: "2024-01-01",
+            updatedAt: "2024-01-01",
+            messageCount: 1,
+            firstMessage: "Hello",
+            isArchived: false,
+            messages: [
+                Message(
+                    id: "m1",
+                    role: .assistant,
+                    content: "Hello",
+                    status: .complete,
+                    toolCalls: nil,
+                    needsNewline: nil,
+                    timestamp: "2024-01-01T00:00:00Z",
+                    error: nil
+                )
+            ]
+        )
+        offlineStore.set(
+            key: CacheKeys.conversation(id: detail.id),
+            entityType: "conversation",
+            value: detail,
+            lastSyncAt: nil
+        )
+        let api = MockConversationsAPI(listResult: .success([]), getResult: .failure(MockError.forced))
+        let store = ChatStore(
+            conversationsAPI: api,
+            cache: TestCacheClient(),
+            offlineStore: offlineStore,
+            networkStatus: StoreNetworkStatus(
+                isNetworkAvailable: true,
+                isOffline: false,
+                isServerReachable: false
+            )
+        )
+
+        try await store.loadConversation(id: detail.id)
+
+        XCTAssertEqual(store.conversationDetails[detail.id]?.messages.first?.content, "Hello")
+        XCTAssertEqual(api.getCallCount, 0)
+    }
 }
 
 private enum MockError: Error {
     case forced
+}
+
+private struct StoreNetworkStatus: NetworkStatusProviding {
+    let isNetworkAvailable: Bool
+    let isOffline: Bool
+    let isServerReachable: Bool
 }
 
 private final class MockConversationsAPI: ConversationsProviding {

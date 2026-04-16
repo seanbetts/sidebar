@@ -11,10 +11,12 @@ enum ChatViewModelTestsSupport {
     struct TestNetworkStatus: NetworkStatusProviding {
         let isNetworkAvailable: Bool
         let isOffline: Bool
+        let isServerReachable: Bool
 
-        init(isNetworkAvailable: Bool, isOffline: Bool = false) {
+        init(isNetworkAvailable: Bool, isOffline: Bool = false, isServerReachable: Bool = true) {
             self.isNetworkAvailable = isNetworkAvailable
             self.isOffline = isOffline
+            self.isServerReachable = isServerReachable
         }
     }
 
@@ -172,6 +174,9 @@ class ChatViewModelTestCase: XCTestCase {
         api: API,
         cache: CacheClient,
         networkStatus: ChatViewModelTestsSupport.TestNetworkStatus? = nil,
+        persistence: PersistenceController? = nil,
+        offlineStore: OfflineStore? = nil,
+        draftStorage: DraftStorage? = nil,
         onboardingAPI: (any OnboardingProviding)? = nil,
         scratchpadStore: ScratchpadStore? = nil,
         ingestionAPI: IngestionAPI? = nil,
@@ -188,10 +193,17 @@ class ChatViewModelTestCase: XCTestCase {
         let themeManager = Self.sharedThemeManager
         let defaults = UserDefaults(suiteName: "ChatViewModelTests") ?? .standard
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
-        let chatStore = ChatStore(conversationsAPI: api, cache: cache)
+        let persistence = persistence ?? PersistenceController(inMemory: true)
+        let resolvedDraftStorage = draftStorage ?? DraftStorage(container: persistence.container)
         let resolvedIngestionAPI = ingestionAPI ?? IngestionAPI(client: Self.sharedAPIClient)
         let effectiveNetworkStatus = networkStatus ?? ChatViewModelTestsSupport.TestNetworkStatus(isNetworkAvailable: true)
         let resolvedStreamClient = streamClient ?? ChatViewModelTestsSupport.MockChatStreamClient()
+        let chatStore = ChatStore(
+            conversationsAPI: api,
+            cache: cache,
+            offlineStore: offlineStore,
+            networkStatus: effectiveNetworkStatus
+        )
         let viewModel = ChatViewModel(
             network: ChatNetworkCoordinator(
                 chatAPI: chatAPI,
@@ -204,6 +216,7 @@ class ChatViewModelTestCase: XCTestCase {
             storage: ChatStorageCoordinator(
                 cache: cache,
                 chatStore: chatStore,
+                draftStorage: resolvedDraftStorage,
                 notesStore: nil,
                 websitesStore: nil,
                 ingestionStore: nil,

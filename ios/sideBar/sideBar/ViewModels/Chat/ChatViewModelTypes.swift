@@ -126,12 +126,14 @@ struct IngestionContextProvider: ContextProvider {
 struct ChatStorageCoordinator {
     let cache: CacheClient
     let chatStore: ChatStore
+    let draftStorage: DraftStorage?
     let scratchpadStore: ScratchpadStore?
     let contextProviders: [any ContextProvider]
 
     init(
         cache: CacheClient,
         chatStore: ChatStore,
+        draftStorage: DraftStorage? = nil,
         notesStore: NotesStore? = nil,
         websitesStore: WebsitesStore? = nil,
         ingestionStore: IngestionStore? = nil,
@@ -140,6 +142,7 @@ struct ChatStorageCoordinator {
     ) {
         self.cache = cache
         self.chatStore = chatStore
+        self.draftStorage = draftStorage
         self.scratchpadStore = scratchpadStore
         if let contextProviders {
             self.contextProviders = contextProviders

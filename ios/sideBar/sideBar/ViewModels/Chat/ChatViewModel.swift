@@ -112,6 +112,11 @@ private final class ChatViewModelTeardownBag {
         let answer: OnboardingCalibrationAnswer
     }
 
+    struct DraftSendContext {
+        let draftText: String
+        let destinationKey: String
+    }
+
     @Published public var conversations: [Conversation] = []
     @Published public var selectedConversationId: String?
     @Published public var isDraftConversationActive: Bool = false
@@ -120,6 +125,7 @@ private final class ChatViewModelTeardownBag {
     @Published public var isLoadingConversations: Bool = false
     @Published public var isLoadingMessages: Bool = false
     @Published public var attachments: [ChatAttachmentItem] = []
+    @Published public var draftText: String = ""
     @Published public var errorMessage: String?
     @Published public var activeTool: ChatActiveTool?
     @Published public var promptPreview: ChatPromptPreview?
@@ -134,6 +140,7 @@ private final class ChatViewModelTeardownBag {
     let ui: ChatUICoordinator
     private let cacheClient: CacheClient
     private let chatStoreReference: ChatStore
+    private let draftControllerReference: ChatDraftController
     private let scratchpadStoreReference: ScratchpadStore?
     private let contextProvidersReference: [any ContextProvider]
 
@@ -146,8 +153,12 @@ private final class ChatViewModelTeardownBag {
 
     var cache: CacheClient { cacheClient }
     var chatStore: ChatStore { chatStoreReference }
+    var draftController: ChatDraftController { draftControllerReference }
     var scratchpadStore: ScratchpadStore? { scratchpadStoreReference }
     var contextProviders: [any ContextProvider] { contextProvidersReference }
+    var currentDraftKey: String {
+        ChatDraftController.draftKey(for: selectedConversationId)
+    }
 
     var themeManager: ThemeManager { ui.themeManager }
     var toastCenter: ToastCenter? { ui.toastCenter }
@@ -220,11 +231,13 @@ private final class ChatViewModelTeardownBag {
         self.ui = ui
         self.cacheClient = storage.cache
         self.chatStoreReference = storage.chatStore
+        self.draftControllerReference = ChatDraftController(draftStorage: storage.draftStorage)
         self.scratchpadStoreReference = storage.scratchpadStore
         self.contextProvidersReference = storage.contextProviders
         self.teardownBag.setStreamClient(network.streamClient)
         self.streamClient.handler = self
         self.selectedConversationId = nil
+        self.draftText = draftControllerReference.currentDraftText
 
         chatStore.$conversations
             .sink { [weak self] conversations in
@@ -343,6 +356,7 @@ private final class ChatViewModelTeardownBag {
         isDraftConversationActive = false
         conversations = []
         messages = []
+        draftText = ""
         isStreaming = false
         isLoadingConversations = false
         isLoadingMessages = false
@@ -394,6 +408,43 @@ private final class ChatViewModelTeardownBag {
         conversationUpdatedAtDates[conversation.id]
             ?? DateParsing.parseISO8601(conversation.updatedAt)
             ?? .distantPast
+    }
+
+    func syncDraftContext() {
+        draftController.switchContext(to: currentDraftKey)
+        draftText = draftController.currentDraftText
+    }
+
+    func updateDraftText(_ text: String) {
+        draftText = text
+        draftController.updateDraft(text)
+    }
+
+    func beginDraftSendTransition(
+        clearDraftOnDispatch: Bool,
+        conversationId: String
+    ) -> DraftSendContext? {
+        let currentDraftText = draftText
+        guard clearDraftOnDispatch, !currentDraftText.isEmpty else {
+            return nil
+        }
+        let destinationKey = ChatDraftController.draftKey(for: conversationId)
+        draftController.migrateDraft(from: currentDraftKey, to: destinationKey)
+        draftController.clearDraft(for: destinationKey)
+        draftText = draftController.currentDraftText
+        return DraftSendContext(draftText: currentDraftText, destinationKey: destinationKey)
+    }
+
+    func restoreDraftAfterFailedSendIfNeeded(
+        _ context: DraftSendContext?,
+        assistantMessageId: String
+    ) {
+        guard let context,
+              messages.first(where: { $0.id == assistantMessageId })?.status != .complete else {
+            return
+        }
+        draftController.switchContext(to: context.destinationKey)
+        updateDraftText(context.draftText)
     }
 
 }

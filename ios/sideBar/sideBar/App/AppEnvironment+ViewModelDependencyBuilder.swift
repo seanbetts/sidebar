@@ -330,6 +330,7 @@ extension AppEnvironment {
                 storage: ChatStorageCoordinator(
                     cache: container.cacheClient,
                     chatStore: stores.chatStore,
+                    draftStorage: core.draftStorage,
                     notesStore: stores.notesStore,
                     websitesStore: stores.websitesStore,
                     ingestionStore: stores.ingestionStore,

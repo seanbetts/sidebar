@@ -152,6 +152,35 @@ final class ChatViewModelConversationLifecycleTests: ChatViewModelTestCase {
 
         XCTAssertFalse(viewModel.isDraftConversationActive)
     }
+
+    func testSendMessageRestoresDraftWhenStreamConnectionFails() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let conversationId = "conv-1"
+        try draftStorage.saveDraft(
+            entityType: ChatDraftController.entityType,
+            entityId: ChatDraftController.draftKey(for: conversationId),
+            content: "Retry me"
+        )
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: TestCacheClient(),
+            persistence: persistence,
+            draftStorage: draftStorage,
+            streamClient: FailingChatStreamClient()
+        )
+
+        await viewModel.selectConversation(id: conversationId)
+        await viewModel.sendMessage(text: viewModel.draftText, clearDraftOnDispatch: true)
+
+        XCTAssertEqual(viewModel.draftText, "Retry me")
+        await waitUntil(timeoutSeconds: 1.0) {
+            (try? draftStorage.getDraft(
+                entityType: ChatDraftController.entityType,
+                entityId: ChatDraftController.draftKey(for: conversationId)
+            )?.content) == "Retry me"
+        }
+    }
 }
 
 @MainActor

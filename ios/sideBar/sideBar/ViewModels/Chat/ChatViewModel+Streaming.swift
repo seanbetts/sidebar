@@ -144,6 +144,7 @@ extension ChatViewModel {
         selectedConversationId = nil
         setDraftConversationActive(false)
         messages = []
+        syncDraftContext()
         promptPreview = nil
         activeTool = nil
         clearRetryState()

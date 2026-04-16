@@ -93,4 +93,21 @@ final class DraftStorageTests: XCTestCase {
         XCTAssertNil(try storage.getDraft(entityType: "note", entityId: "note-1"))
         XCTAssertNil(try storage.getDraft(entityType: "note", entityId: "note-2"))
     }
+
+    func testSaveAndLoadChatDraftUsesChatDraftEntityType() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let storage = DraftStorage(container: persistence.container)
+
+        try storage.saveDraft(
+            entityType: ChatDraftController.entityType,
+            entityId: ChatDraftController.newChatKey,
+            content: "Chat draft"
+        )
+
+        let draft = try storage.getDraft(
+            entityType: ChatDraftController.entityType,
+            entityId: ChatDraftController.newChatKey
+        )
+        XCTAssertEqual(draft?.content, "Chat draft")
+    }
 }

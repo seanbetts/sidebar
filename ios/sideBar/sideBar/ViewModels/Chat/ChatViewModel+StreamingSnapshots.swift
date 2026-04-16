@@ -14,6 +14,7 @@ extension ChatViewModel {
         selectedConversationId = nil
         clearTypingRevealState(flushDisplayedContent: false)
         messages = []
+        syncDraftContext()
         promptPreview = nil
         activeTool = nil
     }

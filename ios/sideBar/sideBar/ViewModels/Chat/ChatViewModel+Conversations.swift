@@ -90,7 +90,7 @@ extension ChatViewModel {
         refreshTask = nil
     }
 
-    public func sendMessage(text: String) async {
+    public func sendMessage(text: String, clearDraftOnDispatch: Bool = false) async {
         guard let trimmed = text.trimmedOrNil, !isStreaming else {
             return
         }
@@ -114,6 +114,10 @@ extension ChatViewModel {
             errorMessage = ErrorMapping.message(for: error)
             return
         }
+        let draftSendContext = beginDraftSendTransition(
+            clearDraftOnDispatch: clearDraftOnDispatch,
+            conversationId: conversationId
+        )
 
         let userMessage = Message(
             id: userMessageId,
@@ -159,6 +163,7 @@ extension ChatViewModel {
         await startStream(
             request: request
         )
+        restoreDraftAfterFailedSendIfNeeded(draftSendContext, assistantMessageId: assistantMessageId)
         clearAttachments()
     }
 
@@ -176,6 +181,7 @@ extension ChatViewModel {
         userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
         messages = []
         setDraftConversationActive(true)
+        syncDraftContext()
         clearRetryState()
         clearAttachments()
     }
@@ -234,6 +240,7 @@ extension ChatViewModel {
         setDraftConversationActive(false)
         messages = []
         userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
+        syncDraftContext()
         chatStore.upsertConversation(pending, persist: false)
         chatStore.upsertConversationDetail(
             ConversationWithMessages(
@@ -254,11 +261,14 @@ extension ChatViewModel {
     }
 
     private func finalizePendingConversation(_ pending: Conversation, with conversation: Conversation) {
+        let pendingDraftKey = ChatDraftController.draftKey(for: pending.id)
         chatStore.removeConversation(id: pending.id, persist: false)
         selectedConversationId = conversation.id
         setDraftConversationActive(false)
         userDefaults.set(conversation.id, forKey: AppStorageKeys.lastConversationId)
         messages = []
+        draftController.migrateDraft(from: pendingDraftKey, to: currentDraftKey)
+        draftText = draftController.currentDraftText
         chatStore.upsertConversation(conversation)
         chatStore.upsertConversationDetail(
             ConversationWithMessages(
@@ -277,11 +287,14 @@ extension ChatViewModel {
     }
 
     private func rollbackPendingConversation(_ pending: Conversation) {
+        let pendingDraftKey = ChatDraftController.draftKey(for: pending.id)
         chatStore.removeConversation(id: pending.id, persist: false)
         selectedConversationId = nil
         setDraftConversationActive(true)
         messages = []
         userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
+        draftController.migrateDraft(from: pendingDraftKey, to: currentDraftKey)
+        draftText = draftController.currentDraftText
         conversations = chatStore.conversations
     }
 
@@ -391,12 +404,14 @@ extension ChatViewModel {
         let previousPromptPreview = promptPreview
         let previousActiveTool = activeTool
         let previousRetryState = currentRetryStateSnapshot()
+        let draftKey = ChatDraftController.draftKey(for: id)
         chatStore.removeConversation(id: id)
         if wasSelected {
             clearConversationSelection()
         }
         do {
             _ = try await conversationsAPI.delete(conversationId: id)
+            draftController.clearDraft(for: draftKey)
         } catch {
             if let existing {
                 chatStore.upsertConversation(existing)
@@ -423,6 +438,7 @@ extension ChatViewModel {
         await cleanupEmptyConversationIfNeeded()
         selectedConversationId = id
         setDraftConversationActive(false)
+        syncDraftContext()
         promptPreview = nil
         activeTool = nil
         clearActiveToolTask?.cancel()
@@ -441,7 +457,8 @@ extension ChatViewModel {
             errorMessage = nil
             isLoadingMessages = true
         }
-        if networkStatus.isOffline, !chatStore.hasCachedConversation(id: id) {
+        if !networkStatus.offlineCapabilityPolicy.canAttemptServerRead,
+           !chatStore.hasCachedConversation(id: id) {
             errorMessage = "This chat isn't available offline yet."
             if !silent {
                 isLoadingMessages = false
