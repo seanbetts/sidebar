@@ -6,11 +6,17 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
     private let store: any NotesWriteQueueApplying
     private let decoder = JSONDecoder()
     private lazy var noteHandlers: [WriteOperation: (PendingWriteRecord) async throws -> Void] = [
+        .create: handleCreate,
         .update: handleUpdate,
         .move: handleMove,
         .archive: handleArchive,
         .pin: handlePin,
         .delete: handleDelete
+    ]
+    private lazy var folderHandlers: [WriteOperation: (PendingWriteRecord) async throws -> Void] = [
+        .create: handleCreateFolder,
+        .rename: handleRenameFolder,
+        .delete: handleDeleteFolder
     ]
 
     init(api: any NotesProviding, store: any NotesWriteQueueApplying) {
@@ -25,9 +31,24 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
         guard let entityType = WriteEntityType(rawValue: write.entityType) else {
             return
         }
-        guard entityType == .note else { return }
-        guard let handler = noteHandlers[operation] else { return }
+        let handler: ((PendingWriteRecord) async throws -> Void)?
+        switch entityType {
+        case .note:
+            handler = noteHandlers[operation]
+        case .noteFolder:
+            handler = folderHandlers[operation]
+        default:
+            handler = nil
+        }
+        guard let handler else { return }
         try await handler(write)
+    }
+
+    private func handleCreate(_ write: PendingWriteRecord) async throws {
+        let payload = try decoder.decode(NoteCreateRequest.self, from: write.payload)
+        let created = try await api.createNote(request: payload)
+        store.applyEditorUpdate(created)
+        try await store.loadTree(force: true)
     }
 
     private func handleUpdate(_ write: PendingWriteRecord) async throws {
@@ -72,5 +93,23 @@ final class NotesWriteQueueExecutor: WriteQueueExecutor {
             }
         }
         store.invalidateNote(id: noteId)
+    }
+
+    private func handleCreateFolder(_ write: PendingWriteRecord) async throws {
+        let payload = try decoder.decode(NoteFolderCreateRequest.self, from: write.payload)
+        try await api.createFolder(path: payload.path)
+        try await store.loadTree(force: true)
+    }
+
+    private func handleRenameFolder(_ write: PendingWriteRecord) async throws {
+        let payload = try decoder.decode(NoteFolderRenameRequest.self, from: write.payload)
+        try await api.renameFolder(oldPath: payload.oldPath, newName: payload.newName)
+        try await store.loadTree(force: true)
+    }
+
+    private func handleDeleteFolder(_ write: PendingWriteRecord) async throws {
+        let payload = try decoder.decode(NoteFolderDeleteRequest.self, from: write.payload)
+        try await api.deleteFolder(path: payload.path)
+        try await store.loadTree(force: true)
     }
 }

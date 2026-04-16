@@ -93,6 +93,10 @@ public final class NotesViewModel: ObservableObject {
     func setMirroredArchivedTree(_ tree: FileTree?) { archivedTree = tree }
     func setMirroredActiveNote(_ note: NotePayload?) { activeNote = note }
 
+    var notesOfflineCapabilityPolicy: OfflineCapabilityPolicy {
+        networkStatus.offlineCapabilityPolicy
+    }
+
     public func loadTree() async {
         errorMessage = nil
         do {
@@ -129,7 +133,7 @@ public final class NotesViewModel: ObservableObject {
         errorMessage = nil
         selectedNoteId = id
         store.clearActiveNote()
-        if !networkStatus.isNetworkAvailable, !store.hasCachedNote(id: id) {
+        if !notesOfflineCapabilityPolicy.canAttemptServerRead, !store.hasCachedNote(id: id) {
             errorMessage = "This note isn't available offline yet."
             pendingNoteId = id
             return
@@ -184,15 +188,29 @@ public final class NotesViewModel: ObservableObject {
             name: "Started Blank Note",
             data: ["source": "notes_view_model"]
         )
+        let request = NoteCreateRequest(
+            document: NotesSemanticDocument(
+                blocks: [.paragraph([.init(text: "", marks: [])])]
+            ),
+            plainText: ""
+        )
+        if notesOfflineCapabilityPolicy.shouldQueueWrites {
+            let localID = UUID().uuidString.lowercased()
+            do {
+                try await store.enqueueCreateNote(localID: localID, request: request)
+                let created = store.activeNote
+                selectedNoteId = created?.path
+                return created
+            } catch WriteQueueError.queueFull {
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+                return nil
+            } catch {
+                toastCenter.show(message: "Failed to queue note")
+                return nil
+            }
+        }
         do {
-            let created = try await api.createNote(
-                request: NoteCreateRequest(
-                    document: NotesSemanticDocument(
-                        blocks: [.paragraph([.init(text: "", marks: [])])]
-                    ),
-                    plainText: ""
-                )
-            )
+            let created = try await api.createNote(request: request)
             store.applyEditorUpdate(created)
             selectedNoteId = created.path
             await refreshTree(force: true)
@@ -215,6 +233,20 @@ public final class NotesViewModel: ObservableObject {
         let normalized = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !normalized.isEmpty else {
             return false
+        }
+        if notesOfflineCapabilityPolicy.shouldQueueWrites {
+            do {
+                try await store.enqueueCreateFolder(path: normalized)
+                tree = store.tree
+                archivedTree = store.archivedTree
+                return true
+            } catch WriteQueueError.queueFull {
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+                return false
+            } catch {
+                toastCenter.show(message: "Failed to queue folder")
+                return false
+            }
         }
         do {
             try await api.createFolder(path: normalized)

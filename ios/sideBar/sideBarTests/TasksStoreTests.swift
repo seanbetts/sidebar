@@ -70,6 +70,70 @@ final class TasksStoreTests: XCTestCase {
         XCTAssertEqual(store.tasks.first?.id, placeholderId)
     }
 
+    func testApplyLocalCreateGroupAddsGroup() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
+
+        let operation = TaskOperationPayload(
+            operationId: UUID().uuidString,
+            op: "create_group",
+            id: nil,
+            title: "Work"
+        )
+
+        store.applyLocalOperation(operation)
+
+        XCTAssertEqual(store.groups.map(\.title), ["Work"])
+    }
+
+    func testApplySyncResponseRemovesDeletedGroupsAndProjects() async {
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        let cache = TestCacheClient()
+        let api = StubTasksAPI()
+        let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
+
+        store.groups = [TaskGroup(id: "g1", title: "Work", updatedAt: nil)]
+        store.projects = [TaskProject(id: "p1", title: "Launch", groupId: "g1", status: "active", updatedAt: nil)]
+
+        let response = TaskSyncResponse(
+            applied: ["op-1"],
+            tasks: [],
+            nextTasks: [],
+            conflicts: [],
+            updates: TaskSyncUpdates(
+                tasks: [],
+                projects: [
+                    TaskProject(
+                        id: "p1",
+                        title: "Launch",
+                        groupId: "g1",
+                        status: "active",
+                        updatedAt: "u1",
+                        deletedAt: "2026-04-16T21:00:00Z"
+                    )
+                ],
+                groups: [
+                    TaskGroup(
+                        id: "g1",
+                        title: "Work",
+                        updatedAt: "u1",
+                        deletedAt: "2026-04-16T21:00:00Z"
+                    )
+                ]
+            ),
+            serverUpdatedSince: nil
+        )
+
+        store.applySyncResponse(response, operationId: "op-1")
+
+        XCTAssertTrue(store.groups.isEmpty)
+        XCTAssertTrue(store.projects.isEmpty)
+    }
+
     func testLoadCountsUsesCacheWhenNotForcedAndRefreshesInBackground() async {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)

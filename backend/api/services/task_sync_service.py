@@ -84,6 +84,9 @@ class TaskSyncService:
         outcome = TaskSyncService._apply_operations(
             db, user_id, operations, check_conflicts=True
         )
+        # Sync responses must include mutations from the operations we just applied,
+        # even in test and worker sessions that disable autoflush.
+        db.flush()
         updated_tasks, updated_projects, updated_groups = (
             TaskSyncService.list_updates_since(db, user_id, last_sync)
         )
@@ -197,6 +200,18 @@ class TaskSyncService:
             if op == "add":
                 task = TaskSyncService._apply_add(db, user_id, operation)
                 tasks.append(task)
+            elif op == "create_group":
+                TaskSyncService._apply_create_group(db, user_id, operation)
+            elif op == "rename_group":
+                TaskSyncService._apply_rename_group(db, user_id, operation)
+            elif op == "delete_group":
+                TaskSyncService._apply_delete_group(db, user_id, operation)
+            elif op == "create_project":
+                TaskSyncService._apply_create_project(db, user_id, operation)
+            elif op == "rename_project":
+                TaskSyncService._apply_rename_project(db, user_id, operation)
+            elif op == "delete_project":
+                TaskSyncService._apply_delete_project(db, user_id, operation)
             elif op == "complete":
                 task, next_task = TaskService.complete_task(
                     db, user_id, operation["id"]
@@ -371,6 +386,61 @@ class TaskSyncService:
             project_id=str(project.id) if project else None,
             group_id=str(group.id) if group else None,
         )
+
+    @staticmethod
+    def _apply_create_group(
+        db: Session, user_id: str, operation: dict[str, Any]
+    ) -> TaskGroup:
+        title = str(operation.get("title") or "").strip() or "Untitled Group"
+        return TaskService.create_task_group(db, user_id, title)
+
+    @staticmethod
+    def _apply_rename_group(
+        db: Session, user_id: str, operation: dict[str, Any]
+    ) -> TaskGroup:
+        title = str(operation.get("title") or "").strip() or "Untitled Group"
+        return TaskService.update_task_group(
+            db,
+            user_id,
+            operation["id"],
+            title=title,
+        )
+
+    @staticmethod
+    def _apply_delete_group(
+        db: Session, user_id: str, operation: dict[str, Any]
+    ) -> TaskGroup:
+        return TaskService.delete_task_group(db, user_id, operation["id"])
+
+    @staticmethod
+    def _apply_create_project(
+        db: Session, user_id: str, operation: dict[str, Any]
+    ) -> TaskProject:
+        title = str(operation.get("title") or "").strip() or "Untitled Project"
+        return TaskService.create_task_project(
+            db,
+            user_id,
+            title,
+            group_id=operation.get("list_id"),
+        )
+
+    @staticmethod
+    def _apply_rename_project(
+        db: Session, user_id: str, operation: dict[str, Any]
+    ) -> TaskProject:
+        title = str(operation.get("title") or "").strip() or "Untitled Project"
+        return TaskService.update_task_project(
+            db,
+            user_id,
+            operation["id"],
+            title=title,
+        )
+
+    @staticmethod
+    def _apply_delete_project(
+        db: Session, user_id: str, operation: dict[str, Any]
+    ) -> TaskProject:
+        return TaskService.delete_task_project(db, user_id, operation["id"])
 
     @staticmethod
     def _apply_move(db: Session, user_id: str, operation: dict[str, Any]) -> Task:

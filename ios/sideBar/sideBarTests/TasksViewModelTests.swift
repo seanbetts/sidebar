@@ -478,6 +478,19 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(api.countsCallCount, 1, "Should refresh counts after creating group")
     }
 
+    func testCreateGroupOfflineQueuesAndUpdatesPanelState() async {
+        let api = TasksViewModelAPIStub()
+        let sut = makeSUT(api: api, networkAvailable: false)
+
+        try? await sut.viewModel.createGroup(title: "Work")
+        await eventually {
+            sut.writeQueue.pendingCount >= 1
+                && sut.store.groups.contains(where: { $0.title == "Work" })
+        }
+
+        XCTAssertEqual(api.createGroupCallCount, 0, "Offline create should not call group endpoint directly")
+    }
+
     func testDeleteGroupFallsBackToNoneSelection() async {
         let api = TasksViewModelAPIStub()
         let group = TaskGroup(id: "g1", title: "Work", updatedAt: nil)

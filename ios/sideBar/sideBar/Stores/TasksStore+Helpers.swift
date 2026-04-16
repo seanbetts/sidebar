@@ -94,7 +94,13 @@ extension TasksStore {
 
     func pendingPlaceholderId(operationId: String) -> String? {
         guard let offlineStore else { return nil }
-        return offlineStore.get(key: pendingTaskKey(operationId: operationId), as: String.self)
+        if let placeholder = offlineStore.get(key: pendingTaskKey(operationId: operationId), as: String.self) {
+            return placeholder
+        }
+        if let placeholder = offlineStore.get(key: pendingGroupKey(operationId: operationId), as: String.self) {
+            return placeholder
+        }
+        return offlineStore.get(key: pendingProjectKey(operationId: operationId), as: String.self)
     }
 
     func remapPendingTaskReferences(localID: String, serverID: String) async {
@@ -111,10 +117,20 @@ extension TasksStore {
 
     func removePendingTaskPlaceholder(operationId: String) {
         guard let offlineStore else { return }
-        let key = pendingTaskKey(operationId: operationId)
-        guard let placeholderId = pendingPlaceholderId(operationId: operationId) else { return }
-        tasks.removeAll { $0.id == placeholderId }
-        offlineStore.remove(key: key)
+        if let placeholderId = offlineStore.get(key: pendingTaskKey(operationId: operationId), as: String.self) {
+            tasks.removeAll { $0.id == placeholderId }
+            offlineStore.remove(key: pendingTaskKey(operationId: operationId))
+            return
+        }
+        if let placeholderId = offlineStore.get(key: pendingGroupKey(operationId: operationId), as: String.self) {
+            groups.removeAll { $0.id == placeholderId }
+            offlineStore.remove(key: pendingGroupKey(operationId: operationId))
+            return
+        }
+        if let placeholderId = offlineStore.get(key: pendingProjectKey(operationId: operationId), as: String.self) {
+            projects.removeAll { $0.id == placeholderId }
+            offlineStore.remove(key: pendingProjectKey(operationId: operationId))
+        }
     }
 
     func lastSyncToken() -> String? {
@@ -165,7 +181,9 @@ extension TasksStore {
         guard !incomingProjects.isEmpty else { return }
         var updatedProjects = projects
         for project in incomingProjects {
-            if let index = updatedProjects.firstIndex(where: { $0.id == project.id }) {
+            if project.deletedAt != nil {
+                updatedProjects.removeAll { $0.id == project.id }
+            } else if let index = updatedProjects.firstIndex(where: { $0.id == project.id }) {
                 updatedProjects[index] = project
             } else {
                 updatedProjects.append(project)
@@ -178,7 +196,9 @@ extension TasksStore {
         guard !incomingGroups.isEmpty else { return }
         var updatedGroups = groups
         for group in incomingGroups {
-            if let index = updatedGroups.firstIndex(where: { $0.id == group.id }) {
+            if group.deletedAt != nil {
+                updatedGroups.removeAll { $0.id == group.id }
+            } else if let index = updatedGroups.firstIndex(where: { $0.id == group.id }) {
                 updatedGroups[index] = group
             } else {
                 updatedGroups.append(group)
@@ -187,12 +207,12 @@ extension TasksStore {
         groups = updatedGroups
     }
 
-    private func updateTask(id: String, update: (TaskItem) -> TaskItem) {
+    func updateTask(id: String, update: (TaskItem) -> TaskItem) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
         tasks[index] = update(tasks[index])
     }
 
-    private func addLocalTask(operation: TaskOperationPayload, title: String) {
+    func addLocalTask(operation: TaskOperationPayload, title: String) {
         let placeholderId = "local-\(UUID().uuidString)"
         registerPendingTask(operationId: operation.operationId, placeholderId: placeholderId)
         let task = TaskItem(
@@ -214,7 +234,7 @@ extension TasksStore {
         tasks.insert(task, at: 0)
     }
 
-    private func updatedTask(
+    func updatedTask(
         _ task: TaskItem,
         title: String? = nil,
         notes: String? = nil,
@@ -240,187 +260,4 @@ extension TasksStore {
             isPreview: task.isPreview
         )
     }
-
-    private func registerPendingTask(operationId: String, placeholderId: String) {
-        guard let offlineStore else { return }
-        let key = pendingTaskKey(operationId: operationId)
-        offlineStore.set(key: key, entityType: "taskPending", value: placeholderId, lastSyncAt: nil)
-    }
-
-    private func removePendingTaskRegistration(operationId: String) {
-        guard let offlineStore else { return }
-        offlineStore.remove(key: pendingTaskKey(operationId: operationId))
-    }
-
-    private func pendingTaskKey(operationId: String) -> String {
-        "tasks.pending.\(operationId)"
-    }
-
-    private func localOperation(from op: String) -> LocalTaskOperation? {
-        switch op.lowercased() {
-        case "add":
-            return .add
-        case "complete", "trash":
-            return .remove
-        case "rename":
-            return .rename
-        case "notes":
-            return .notes
-        case "move":
-            return .move
-        case "set_due", "defer":
-            return .setDue
-        case "clear_due":
-            return .clearDue
-        case "set_repeat":
-            return .setRepeat
-        default:
-            return nil
-        }
-    }
-
-    private func applyLocalOperation(_ operation: TaskOperationPayload, kind: LocalTaskOperation) {
-        switch kind {
-        case .add:
-            guard let title = operation.title else { return }
-            addLocalTask(operation: operation, title: title)
-        case .remove:
-            guard let taskId = operation.id else { return }
-            _ = removeTask(id: taskId)
-        case .rename:
-            updateOperationTask(operation) { task in
-                updatedTask(task, title: operation.title)
-            }
-        case .notes:
-            updateOperationTask(operation) { task in
-                updatedTask(task, notes: operation.notes)
-            }
-        case .move:
-            updateOperationTask(operation) { task in
-                updatedTask(task, projectId: operation.listId)
-            }
-        case .setDue:
-            updateOperationTask(operation) { task in
-                updatedTask(task, deadline: operation.dueDate)
-            }
-        case .clearDue:
-            updateOperationTask(operation) { task in
-                updatedTask(task, deadline: nil)
-            }
-        case .setRepeat:
-            updateOperationTask(operation) { task in
-                updatedTask(
-                    task,
-                    recurrenceRule: operation.recurrenceRule,
-                    repeating: operation.recurrenceRule != nil
-                )
-            }
-        }
-    }
-
-    private func updateOperationTask(
-        _ operation: TaskOperationPayload,
-        update: (TaskItem) -> TaskItem
-    ) {
-        guard let taskId = operation.id else { return }
-        updateTask(id: taskId, update: update)
-    }
-
-    private func reconcileVisibilityAfterLocalOperation(
-        _ operation: TaskOperationPayload,
-        kind: LocalTaskOperation
-    ) {
-        guard let taskId = operation.id else { return }
-        guard let task = tasks.first(where: { $0.id == taskId }) else { return }
-
-        switch kind {
-        case .rename, .notes:
-            guard case .search = selection else { return }
-        case .setDue, .clearDue:
-            switch selection {
-            case .today, .upcoming:
-                break
-            default:
-                return
-            }
-        case .add, .remove, .move, .setRepeat:
-            return
-        }
-
-        if !shouldDisplay(task, in: selection) {
-            tasks.removeAll { $0.id == taskId }
-        }
-    }
-
-    private func shouldDisplay(_ task: TaskItem, in selection: TaskSelection) -> Bool {
-        if task.isPreview {
-            return true
-        }
-        if task.deletedAt != nil {
-            return false
-        }
-
-        switch selection {
-        case .none:
-            return false
-        case .today, .upcoming:
-            return shouldDisplayScheduledTask(task, in: selection)
-        case .completed:
-            return task.status == "completed"
-        case .project(let id):
-            return task.projectId == id && task.status != "completed" && task.status != "trashed"
-        case .group(let id):
-            return task.groupId == id && task.status != "completed" && task.status != "trashed"
-        case .search(let query):
-            let haystack = [task.title, task.notes ?? ""].joined(separator: "\n")
-            return task.status != "completed"
-                && task.status != "trashed"
-                && haystack.localizedCaseInsensitiveContains(query)
-        }
-    }
-
-    private func shouldDisplayScheduledTask(_ task: TaskItem, in selection: TaskSelection) -> Bool {
-        guard task.status != "completed", task.status != "trashed", task.status != "someday" else {
-            return false
-        }
-        guard
-            let dateKey = task.deadline.map({ String($0.prefix(10)) }),
-            let deadline = TasksUtils.tasksDateFormatter.date(from: dateKey)
-        else {
-            return false
-        }
-
-        let startOfDay = Calendar.current.startOfDay(for: Date())
-        switch selection {
-        case .today:
-            return deadline <= startOfDay
-        case .upcoming:
-            return deadline > startOfDay
-        default:
-            return false
-        }
-    }
-
-    private func upsertVisibleTask(_ task: TaskItem) {
-        if let index = tasks.firstIndex(where: { $0.id == task.id }) {
-            tasks[index] = task
-        } else {
-            tasks.insert(task, at: 0)
-        }
-    }
-}
-
-enum LocalTaskOperation {
-    case add
-    case remove
-    case rename
-    case notes
-    case move
-    case setDue
-    case clearDue
-    case setRepeat
-}
-
-extension TaskSelection {
-    var isSearch: Bool { if case .search = self { true } else { false } }
 }

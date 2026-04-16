@@ -307,3 +307,68 @@ def test_sync_operations_conflict(db_session):
     db_session.refresh(task)
     assert task.title == "Original"
     assert result.conflicts
+
+
+def test_sync_operations_apply_group_and_project_mutations(db_session):
+    payload = {
+        "last_sync": None,
+        "operations": [
+            {
+                "operation_id": "op-group-create",
+                "op": "create_group",
+                "title": "Work",
+            },
+            {
+                "operation_id": "op-project-create",
+                "op": "create_project",
+                "title": "Launch",
+            },
+        ],
+    }
+
+    result = TaskSyncService.sync_operations(db_session, "user", payload)
+    db_session.commit()
+
+    groups = TaskService.list_task_groups(db_session, "user")
+    projects = TaskService.list_task_projects(db_session, "user")
+
+    assert result.applied_ids == ["op-group-create", "op-project-create"]
+    assert [group.title for group in groups] == ["Work"]
+    assert [project.title for project in projects] == ["Launch"]
+    assert any(group.title == "Work" for group in result.updated_groups)
+    assert any(project.title == "Launch" for project in result.updated_projects)
+
+
+def test_sync_operations_include_deleted_group_and_project_updates_since_last_sync(
+    db_session,
+):
+    group = TaskService.create_task_group(db_session, "user", "Work")
+    project = TaskService.create_task_project(
+        db_session, "user", "Launch", group_id=str(group.id)
+    )
+    db_session.commit()
+
+    last_sync = datetime.now(UTC)
+    payload = {
+        "last_sync": last_sync.isoformat(),
+        "operations": [
+            {
+                "operation_id": "op-project-delete",
+                "op": "delete_project",
+                "id": str(project.id),
+            },
+            {
+                "operation_id": "op-group-delete",
+                "op": "delete_group",
+                "id": str(group.id),
+            },
+        ],
+    }
+
+    result = TaskSyncService.sync_operations(db_session, "user", payload)
+    db_session.commit()
+
+    deleted_project = next(item for item in result.updated_projects if item.id == project.id)
+    deleted_group = next(item for item in result.updated_groups if item.id == group.id)
+    assert deleted_project.deleted_at is not None
+    assert deleted_group.deleted_at is not None

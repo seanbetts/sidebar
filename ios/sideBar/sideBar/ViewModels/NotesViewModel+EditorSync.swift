@@ -103,6 +103,27 @@ extension NotesViewModel {
         archivedTree = store.archivedTree
         activeNote = store.activeNote
 
+        if notesOfflineCapabilityPolicy.shouldQueueWrites {
+            do {
+                try await store.enqueueUpdate(noteId: current.id, document: renamedDocument)
+                return
+            } catch WriteQueueError.queueFull {
+                store.applyNoteUpdate(current, persist: false, activeNoteMode: .force)
+                tree = store.tree
+                archivedTree = store.archivedTree
+                activeNote = store.activeNote
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+                return
+            } catch {
+                store.applyNoteUpdate(current, persist: false, activeNoteMode: .force)
+                tree = store.tree
+                archivedTree = store.archivedTree
+                activeNote = store.activeNote
+                toastCenter.show(message: "Failed to queue rename")
+                return
+            }
+        }
+
         do {
             let updated = try await api.updateNote(id: current.id, document: renamedDocument)
             applySavedNoteAcknowledgement(serverNote: updated, document: renamedDocument)
@@ -119,7 +140,7 @@ extension NotesViewModel {
     }
 
     public func moveNote(id: String, folder: String) async {
-        if !networkStatus.isNetworkAvailable {
+        if notesOfflineCapabilityPolicy.shouldQueueWrites {
             do {
                 try await store.enqueueMove(notePath: id, folder: folder)
                 if selectedNoteId == id {
@@ -164,7 +185,7 @@ extension NotesViewModel {
     }
 
     public func setArchived(id: String, archived: Bool) async {
-        if !networkStatus.isNetworkAvailable {
+        if notesOfflineCapabilityPolicy.shouldQueueWrites {
             do {
                 try await store.enqueueArchive(notePath: id, archived: archived)
                 if archived, selectedNoteId == id {
@@ -204,7 +225,7 @@ extension NotesViewModel {
     }
 
     public func setPinned(id: String, pinned: Bool) async {
-        if !networkStatus.isNetworkAvailable {
+        if notesOfflineCapabilityPolicy.shouldQueueWrites {
             do {
                 try await store.enqueuePin(notePath: id, pinned: pinned)
             } catch WriteQueueError.queueFull {
@@ -233,7 +254,7 @@ extension NotesViewModel {
     }
 
     public func deleteNote(id: String) async {
-        if !networkStatus.isNetworkAvailable {
+        if notesOfflineCapabilityPolicy.shouldQueueWrites {
             do {
                 try await store.enqueueDelete(notePath: id)
                 if selectedNoteId == id {
@@ -276,6 +297,20 @@ extension NotesViewModel {
         guard let trimmed = newName.trimmedOrNil else { return }
         let normalized = normalizeFolderPath(path)
         guard !normalized.isEmpty else { return }
+        if notesOfflineCapabilityPolicy.shouldQueueWrites {
+            do {
+                try await store.enqueueRenameFolder(path: normalized, newName: trimmed)
+                tree = store.tree
+                archivedTree = store.archivedTree
+                return
+            } catch WriteQueueError.queueFull {
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+                return
+            } catch {
+                toastCenter.show(message: "Failed to queue folder rename")
+                return
+            }
+        }
         do {
             try await api.renameFolder(oldPath: normalized, newName: trimmed)
             if let selected = selectedNoteId {
@@ -298,6 +333,26 @@ extension NotesViewModel {
     public func deleteFolder(path: String) async {
         let normalized = normalizeFolderPath(path)
         guard !normalized.isEmpty else { return }
+        if notesOfflineCapabilityPolicy.shouldQueueWrites {
+            do {
+                try await store.enqueueDeleteFolder(path: normalized)
+                tree = store.tree
+                archivedTree = store.archivedTree
+                if let selected = selectedNoteId {
+                    let folderPrefix = normalized + "/"
+                    if selected.hasPrefix(folderPrefix) || selected == normalized {
+                        clearSelection()
+                    }
+                }
+                return
+            } catch WriteQueueError.queueFull {
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+                return
+            } catch {
+                toastCenter.show(message: "Failed to queue folder delete")
+                return
+            }
+        }
         do {
             try await api.deleteFolder(path: normalized)
             if let selected = selectedNoteId {

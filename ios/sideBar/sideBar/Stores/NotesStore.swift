@@ -85,26 +85,31 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         _ = try await loadWithCacheAndOffline(
             force: force,
             offline: { offlineStore?.get(key: treeCacheKey, as: FileTree.self) },
-            isNetworkAvailable: networkStatus?.isNetworkAvailable ?? true
+            isNetworkAvailable: networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true
         )
     }
 
     public func loadArchivedTree(force: Bool = false) async throws {
-        guard networkStatus?.isNetworkAvailable ?? true else {
-            return
-        }
+        let canAttemptServerRead = networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true
         if !force {
             let cached: FileTree? = cache.get(key: CacheKeys.notesArchivedTree)
             if let cached {
                 applyArchivedTreeUpdate(cached, persist: false)
-                await refreshArchivedTree()
+                if canAttemptServerRead {
+                    await refreshArchivedTree()
+                }
                 return
             }
             if let offline = offlineStore?.get(key: CacheKeys.notesArchivedTree, as: FileTree.self) {
                 applyArchivedTreeUpdate(offline, persist: false)
-                await refreshArchivedTree()
+                if canAttemptServerRead {
+                    await refreshArchivedTree()
+                }
                 return
             }
+        }
+        guard canAttemptServerRead else {
+            return
         }
         let remote = try await api.listArchivedTree(limit: archivedTreeLimit, offset: 0)
         applyArchivedTreeUpdate(remote, persist: true)
@@ -124,7 +129,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         }
         if !force, let offline = offlineStore?.get(key: cacheKey, as: NotePayload.self) {
             applyNoteUpdate(offline, persist: false, activeNoteMode: .matchingSelection)
-            if networkStatus?.isNetworkAvailable ?? true {
+            if networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true {
                 Task { [weak self] in
                     await self?.refreshNote(id: id)
                 }

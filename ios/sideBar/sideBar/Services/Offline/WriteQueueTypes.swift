@@ -13,6 +13,7 @@ enum WriteOperation: String {
 
 enum WriteEntityType: String, Codable {
     case note
+    case noteFolder
     case task
     case message
     case website

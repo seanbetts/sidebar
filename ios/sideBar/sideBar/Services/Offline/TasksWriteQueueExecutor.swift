@@ -30,10 +30,9 @@ final class TasksWriteQueueExecutor: WriteQueueExecutor {
             )
         }
         if response.applied.contains(operation.operationId),
-           operation.op.lowercased() == "add",
            let placeholderId = store.pendingPlaceholderId(operationId: operation.operationId),
-           let serverTaskId = syncedTaskID(for: operation, response: response) {
-            await store.remapPendingTaskReferences(localID: placeholderId, serverID: serverTaskId)
+           let serverEntityId = syncedEntityID(for: operation, response: response) {
+            await store.remapPendingTaskReferences(localID: placeholderId, serverID: serverEntityId)
         }
         store.applySyncResponse(response, operationId: operation.operationId)
         if let token = response.serverUpdatedSince {
@@ -41,15 +40,31 @@ final class TasksWriteQueueExecutor: WriteQueueExecutor {
         }
     }
 
-    private func syncedTaskID(for operation: TaskOperationPayload, response: TaskSyncResponse) -> String? {
-        let candidates = response.tasks + response.nextTasks + (response.updates?.tasks ?? [])
-        guard !candidates.isEmpty else { return nil }
-
-        if let title = operation.title,
-           let matchingTitle = candidates.first(where: { $0.title == title }) {
-            return matchingTitle.id
+    private func syncedEntityID(for operation: TaskOperationPayload, response: TaskSyncResponse) -> String? {
+        switch operation.op.lowercased() {
+        case "add":
+            let candidates = response.tasks + response.nextTasks + (response.updates?.tasks ?? [])
+            if let title = operation.title,
+               let matchingTitle = candidates.first(where: { $0.title == title }) {
+                return matchingTitle.id
+            }
+            return candidates.first?.id
+        case "create_group":
+            let candidates = response.updates?.groups ?? []
+            if let title = operation.title,
+               let matchingTitle = candidates.first(where: { $0.title == title && $0.deletedAt == nil }) {
+                return matchingTitle.id
+            }
+            return candidates.first(where: { $0.deletedAt == nil })?.id
+        case "create_project":
+            let candidates = response.updates?.projects ?? []
+            if let title = operation.title,
+               let matchingTitle = candidates.first(where: { $0.title == title && $0.deletedAt == nil }) {
+                return matchingTitle.id
+            }
+            return candidates.first(where: { $0.deletedAt == nil })?.id
+        default:
+            return nil
         }
-
-        return candidates.first?.id
     }
 }

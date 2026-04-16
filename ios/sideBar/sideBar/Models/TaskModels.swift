@@ -107,6 +107,20 @@ public struct TaskGroup: Codable, Identifiable, Equatable {
     public let title: String
     /// The updated at value.
     public let updatedAt: String?
+    /// The deleted at value.
+    public let deletedAt: String?
+
+    public init(
+        id: String,
+        title: String,
+        updatedAt: String?,
+        deletedAt: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+    }
 }
 
 /// Represents a task project struct.
@@ -121,6 +135,24 @@ public struct TaskProject: Codable, Identifiable, Equatable {
     public let status: String
     /// The updated at value.
     public let updatedAt: String?
+    /// The deleted at value.
+    public let deletedAt: String?
+
+    public init(
+        id: String,
+        title: String,
+        groupId: String?,
+        status: String,
+        updatedAt: String?,
+        deletedAt: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.groupId = groupId
+        self.status = status
+        self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+    }
 }
 
 /// Represents a task list response struct.

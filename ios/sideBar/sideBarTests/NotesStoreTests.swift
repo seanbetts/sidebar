@@ -132,6 +132,48 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertEqual(store.tree?.children.first?.name, "Offline")
     }
 
+    func testLoadArchivedTreeUsesOfflineStoreWhenOffline() async {
+        let archivedTree = FileTree(children: [
+            FileNode(
+                name: "Archived",
+                path: "/archived.md",
+                type: .file,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: true,
+                folderMarker: nil
+            )
+        ])
+        let persistence = PersistenceController(inMemory: true)
+        let offlineStore = OfflineStore(container: persistence.container)
+        offlineStore.set(
+            key: CacheKeys.notesArchivedTree,
+            entityType: "notesArchivedTree",
+            value: archivedTree,
+            lastSyncAt: nil
+        )
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
+        let cache = TestCacheClient()
+        let store = NotesStore(
+            api: api,
+            cache: cache,
+            offlineStore: offlineStore,
+            networkStatus: NotesStoreTestsSupport.TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+        )
+
+        try? await store.loadArchivedTree()
+
+        XCTAssertEqual(store.archivedTree?.children.first?.name, "Archived")
+    }
+
     func testArchivedNoteOlderThanRetentionDoesNotPersist() async {
         let archivedNode = FileNode(
             name: "Archived.md",

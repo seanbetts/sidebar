@@ -237,6 +237,7 @@ public struct NoteCreateRequest: Codable {
     public let path: String?
     public let folder: String?
     public let plainText: String?
+    public let clientId: String?
 
     enum CodingKeys: String, CodingKey {
         case document
@@ -244,6 +245,7 @@ public struct NoteCreateRequest: Codable {
         case path
         case folder
         case plainText = "plain_text"
+        case clientId = "client_id"
     }
 
     public init(
@@ -251,13 +253,15 @@ public struct NoteCreateRequest: Codable {
         title: String? = nil,
         path: String? = nil,
         folder: String? = nil,
-        plainText: String? = nil
+        plainText: String? = nil,
+        clientId: String? = nil
     ) {
         self.document = document
         self.title = title
         self.path = path
         self.folder = folder
         self.plainText = plainText ?? NotesSemanticDocumentProjection.plainText(from: document)
+        self.clientId = clientId
     }
 
     func canonicalized() -> NoteCreateRequest {
@@ -266,9 +270,26 @@ public struct NoteCreateRequest: Codable {
             title: title,
             path: path,
             folder: folder,
-            plainText: plainText ?? NotesSemanticDocumentProjection.plainText(from: document)
+            plainText: plainText ?? NotesSemanticDocumentProjection.plainText(from: document),
+            clientId: clientId
         )
     }
+}
+
+/// Request body for creating a note folder.
+public struct NoteFolderCreateRequest: Codable {
+    public let path: String
+}
+
+/// Request body for renaming a note folder.
+public struct NoteFolderRenameRequest: Codable {
+    public let oldPath: String
+    public let newName: String
+}
+
+/// Request body for deleting a note folder.
+public struct NoteFolderDeleteRequest: Codable {
+    public let path: String
 }
 
 /// Request body for updating note content.

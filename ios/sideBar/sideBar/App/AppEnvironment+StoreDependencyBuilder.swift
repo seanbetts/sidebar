@@ -65,6 +65,7 @@ extension AppEnvironment {
             let writeQueueExecutor = CompositeWriteQueueExecutor(
                 executors: [
                     .note: notesExecutor,
+                    .noteFolder: notesExecutor,
                     .task: tasksExecutor,
                     .website: websitesExecutor,
                     .file: filesExecutor
