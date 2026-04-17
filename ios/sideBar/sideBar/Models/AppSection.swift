@@ -1,6 +1,6 @@
 import Foundation
 
-public enum AppSection: String, CaseIterable, Identifiable {
+public enum AppSection: String, CaseIterable, Identifiable, Hashable {
     case chat
     case notes
     case files

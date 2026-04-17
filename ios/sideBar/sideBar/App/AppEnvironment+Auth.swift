@@ -306,6 +306,12 @@ extension AppEnvironment {
             message: "Handling signed-in activation.",
             metadata: ["auth_state": authState.rawValue]
         )
+        await refreshCoordinator.handleActivation(
+            ActivationRefreshRequest(
+                includeDeferredRefresh: includeDeferredRefresh,
+                activeSection: activeSection
+            )
+        )
         if authState != .signedOut {
             if authState == .stale {
                 await container.authSession.refreshSession()

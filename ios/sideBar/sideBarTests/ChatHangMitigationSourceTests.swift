@@ -6,6 +6,8 @@ final class ChatHangMitigationSourceTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertFalse(normalized.contains(".task{environment.chatViewModel.startAutoRefresh()}"))
+        XCTAssertFalse(normalized.contains("Task{awaitenvironment.chatViewModel.loadConversations()}"))
+        XCTAssertFalse(normalized.contains("Task{awaitenvironment.chatViewModel.refreshConversations(silent:true)}"))
         XCTAssertTrue(normalized.contains(".onAppear{updateAutoRefresh(for:scenePhase)}"))
         XCTAssertTrue(
             normalized.contains(".onChange(of:scenePhase){_,newValueinupdateAutoRefresh(for:newValue)}")

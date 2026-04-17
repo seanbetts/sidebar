@@ -180,6 +180,29 @@ final class CachedStoreTests: XCTestCase {
         XCTAssertNil(weakCache)
     }
 
+    func testApplyDataIfChangedSkipsEquivalentMergedRefresh() {
+        let cache = TestCacheClient()
+        let store = MockCachedStore(cache: cache, fetchResult: "fresh")
+
+        let didApplyInitial = store.applyDataIfChanged(
+            "cached",
+            currentData: nil,
+            persist: true,
+            isEqual: ==
+        )
+        let didApplyRefresh = store.applyDataIfChanged(
+            "cached",
+            currentData: "cached",
+            persist: true,
+            isEqual: ==
+        )
+
+        XCTAssertTrue(didApplyInitial)
+        XCTAssertFalse(didApplyRefresh)
+        XCTAssertEqual(store.appliedData.count, 1)
+        let cached: String? = cache.get(key: "store-key")
+        XCTAssertEqual(cached, "cached")
+    }
 }
 
 @MainActor

@@ -98,6 +98,7 @@ public final class AppEnvironment: ObservableObject {
     public let biometricMonitor: BiometricMonitor
     /// Queue that persists and replays offline writes.
     public let writeQueue: WriteQueue
+    let refreshCoordinator: RefreshCoordinatorType
     let draftStorage: DraftStorage
     let spotlightIndexer: any SpotlightIndexing
     let syncCoordinator: SyncCoordinator
@@ -151,12 +152,30 @@ public final class AppEnvironment: ObservableObject {
 
     // swiftlint:disable function_body_length
     /// Creates the root app environment and wires all stores, view models, and observers.
-    public init(
+    public convenience init(
         container: ServiceContainer,
         storage: AppEnvironmentStorage? = nil,
         configError: EnvironmentConfigLoadError? = nil,
         initialPasswordResetState: PasswordResetState? = nil,
         staleAuthRetryBannerDelayNanoseconds: UInt64 = 10_000_000_000
+    ) {
+        self.init(
+            container: container,
+            storage: storage,
+            configError: configError,
+            initialPasswordResetState: initialPasswordResetState,
+            staleAuthRetryBannerDelayNanoseconds: staleAuthRetryBannerDelayNanoseconds,
+            refreshCoordinator: nil
+        )
+    }
+
+    init(
+        container: ServiceContainer,
+        storage: AppEnvironmentStorage? = nil,
+        configError: EnvironmentConfigLoadError? = nil,
+        initialPasswordResetState: PasswordResetState? = nil,
+        staleAuthRetryBannerDelayNanoseconds: UInt64 = 10_000_000_000,
+        refreshCoordinator: RefreshCoordinatorType? = nil
     ) {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
         #if DEBUG
@@ -208,6 +227,7 @@ public final class AppEnvironment: ObservableObject {
         self.connectivityMonitor = dependencies.connectivityMonitor
         self.biometricMonitor = dependencies.biometricMonitor
         self.writeQueue = dependencies.writeQueue
+        self.refreshCoordinator = refreshCoordinator ?? RefreshCoordinator()
         self.draftStorage = dependencies.draftStorage
         self.spotlightIndexer = dependencies.spotlightIndexer
         self.configError = configError

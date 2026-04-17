@@ -384,7 +384,8 @@ extension AppEnvironmentDeepLinkTests {
 
     func makeEnvironment(
         storage: AppEnvironmentStorage,
-        websitesAPI: (any WebsitesProviding)? = nil
+        websitesAPI: (any WebsitesProviding)? = nil,
+        refreshCoordinator: RefreshCoordinatorType? = nil
     ) -> AppEnvironment {
         let authSession = PlaceholderAuthSession(authState: .signedOut)
         let container = makeNoNetworkServiceContainer(
@@ -392,7 +393,11 @@ extension AppEnvironmentDeepLinkTests {
             cacheClient: InMemoryCacheClient(),
             websitesAPI: websitesAPI
         )
-        let environment = AppEnvironment(container: container, storage: storage)
+        let environment = AppEnvironment(
+            container: container,
+            storage: storage,
+            refreshCoordinator: refreshCoordinator
+        )
         retainedEnvironments.append(environment)
         return environment
     }

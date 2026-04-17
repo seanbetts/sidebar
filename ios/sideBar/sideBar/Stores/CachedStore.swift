@@ -98,6 +98,27 @@ open class CachedStoreBase<CachedData: Codable>: ObservableObject {
         nextBackgroundRefreshAllowedAt = nil
     }
 
+    @discardableResult
+    public func applyDataIfChanged(
+        _ data: CachedData,
+        currentData: CachedData?,
+        persist: Bool,
+        isEqual: (CachedData, CachedData) -> Bool
+    ) -> Bool {
+        if let currentData, isEqual(currentData, data) {
+            if persist {
+                cache.set(key: cacheKey, value: data, ttlSeconds: cacheTTL)
+            }
+            return false
+        }
+
+        applyData(data, persist: persist)
+        if persist {
+            cache.set(key: cacheKey, value: data, ttlSeconds: cacheTTL)
+        }
+        return true
+    }
+
     func enqueueOfflineOperation<Payload: Encodable>(
         writeQueue: WriteQueue?,
         operation: WriteOperation,

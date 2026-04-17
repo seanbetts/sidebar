@@ -304,6 +304,13 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertFalse(shouldShow)
     }
 
+    func testUpdateActiveSectionNotifiesRefreshCoordinator() throws {
+        let normalized = try contentViewLifecycleSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("environment.refreshCoordinator.visibleSectionDidChange(to:section)"))
+    }
+
     func testShouldDisplayPhoneFloatingActionDockHidesOnCompactPhoneMoreRoot() {
         let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
@@ -369,6 +376,27 @@ final class ContentViewLifecycleTests: XCTestCase {
             isDesktopLikeLayout: false
         )
         XCTAssertFalse(shouldExpand)
+    }
+
+    private func contentViewLifecycleSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("ContentView+Lifecycle.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read ContentView+Lifecycle.swift: \(error)", file: file, line: line)
+            throw error
+        }
     }
 
 }

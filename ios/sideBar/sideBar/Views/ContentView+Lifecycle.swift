@@ -265,6 +265,7 @@ extension ContentView {
     func updateActiveSection() {
         let section = resolvedActiveSectionForWorkspace
         environment.activeSection = section
+        environment.refreshCoordinator.visibleSectionDidChange(to: section)
         #if os(iOS)
         UIMenuSystem.main.setNeedsRebuild()
         #endif
@@ -440,7 +441,6 @@ extension ContentView {
         updateActiveSection()
     }
     #endif
-
     static func makeInitialPhoneChatAction(
         selectedConversationId: String?
     ) -> InitialPhoneChatAction {

@@ -4,6 +4,20 @@ import sideBarShared
 
 @MainActor
 extension AppEnvironmentDeepLinkTests {
+    func testHandleSignedInActivationNotifiesRefreshCoordinator() async {
+        let refreshCoordinator = RefreshCoordinatorSpy()
+        environment = makeEnvironment(storage: storage, refreshCoordinator: refreshCoordinator)
+        let environment = requireEnvironment()
+        environment.authState = .active
+
+        await environment.handleSignedInActivation(includeDeferredRefresh: false)
+
+        let requests = await refreshCoordinator.activationRequests()
+        XCTAssertEqual(requests.count, 1)
+        XCTAssertEqual(requests.first?.includeDeferredRefresh, false)
+        XCTAssertEqual(requests.first?.activeSection, environment.activeSection)
+    }
+
     func testHandleSignedInActivationConsumesPendingWidgetCompletionFallbackWhenOffline() async {
         let environment = requireEnvironment()
         environment.authState = .active
@@ -233,5 +247,22 @@ actor AsyncCompletionFlag {
 
     func finished() -> Bool {
         isFinished
+    }
+}
+
+@MainActor
+final class RefreshCoordinatorSpy: RefreshCoordinatorType {
+    private var requests: [ActivationRefreshRequest] = []
+
+    func handleActivation(_ request: ActivationRefreshRequest) async {
+        requests.append(request)
+    }
+
+    func visibleSectionDidChange(to section: AppSection?) {
+        _ = section
+    }
+
+    func activationRequests() -> [ActivationRefreshRequest] {
+        requests
     }
 }
