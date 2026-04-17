@@ -4,6 +4,14 @@ import sideBarShared
 
 @MainActor
 extension AppEnvironmentDeepLinkTests {
+    func testHandleSignedInActivationDoesNotForceWebsiteListReloadInAuthPath() throws {
+        let normalized = try appEnvironmentAuthSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("try?awaitTask.sleep(nanoseconds:1_000_000_000)"))
+        XCTAssertFalse(normalized.contains("awaitwebsitesViewModel.load(force:true)"))
+    }
+
     func testHandleSignedInActivationNotifiesRefreshCoordinator() async {
         let refreshCoordinator = RefreshCoordinatorSpy()
         environment = makeEnvironment(storage: storage, refreshCoordinator: refreshCoordinator)
@@ -217,6 +225,27 @@ extension AppEnvironmentDeepLinkTests {
 
         await replayGate.open()
         await waitForWebsiteEventSurface(queuedURL, in: environment)
+    }
+
+    private func appEnvironmentAuthSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("App")
+            .appendingPathComponent("AppEnvironment+Auth.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read AppEnvironment+Auth.swift: \(error)", file: file, line: line)
+            throw error
+        }
     }
 }
 

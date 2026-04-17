@@ -8,6 +8,14 @@ final class OfflineBannerSourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("letshouldPresentAlert=awaitenvironment.refreshConnectivityStatusFromBannerTap()"))
         XCTAssertTrue(normalized.contains("guardshouldPresentAlertelse{return}"))
     }
+
+    func testConnectivityRefreshUsesCentralReconnectCoordinatorPath() throws {
+        let normalized = try source(named: "App/AppEnvironment+Selection.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("awaitsyncCoordinator.refreshAll()"))
+        XCTAssertFalse(normalized.contains("refreshOnReconnect()"))
+    }
 }
 
 private extension String {

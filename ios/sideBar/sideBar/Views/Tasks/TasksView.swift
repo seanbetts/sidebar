@@ -2,10 +2,6 @@ import SwiftUI
 
 public struct TasksView: View {
     @EnvironmentObject private var environment: AppEnvironment
-    #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    #endif
-    @Environment(\.scenePhase) private var scenePhase
 
     public init() {
     }
@@ -23,30 +19,10 @@ public struct TasksView: View {
                 guard isPending else { return }
                 consumePendingNewTaskDeepLinkIfNeeded()
             }
-            #if os(iOS)
-            .onChange(of: scenePhase) {
-                guard scenePhase == .active else { return }
-                Task {
-                    await environment.tasksViewModel.load(
-                        selection: environment.tasksViewModel.preferredLoadSelection,
-                        force: true
-                    )
-                    await environment.tasksViewModel.loadCounts(force: true)
-                }
-            }
-            #endif
             #if !os(macOS)
             .navigationTitle("Tasks")
             .navigationBarTitleDisplayMode(.inline)
             #endif
-    }
-
-    private var isCompact: Bool {
-        #if os(macOS)
-        return false
-        #else
-        return horizontalSizeClass == .compact
-        #endif
     }
 
     private func consumePendingNewTaskDeepLinkIfNeeded() {

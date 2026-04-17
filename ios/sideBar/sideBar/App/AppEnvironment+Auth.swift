@@ -334,14 +334,6 @@ extension AppEnvironment {
             }
         }
         #if os(iOS)
-        if includeDeferredRefresh {
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            if authState == .active {
-                await consumeExtensionEvents(awaitPendingShareReplay: false)
-                await websitesViewModel.load(force: true)
-                reconcileQueuedWebsitesWithSavedItems()
-            }
-        }
         runOfflineMaintenance()
         #endif
         ExternalSurfaceDiagnosticsStore.shared.record(

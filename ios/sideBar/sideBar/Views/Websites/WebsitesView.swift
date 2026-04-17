@@ -12,7 +12,6 @@ public struct WebsitesView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-    @Environment(\.scenePhase) private var scenePhase
     @State private var exportDocument: MarkdownFileDocument?
     @State private var exportFilename: String = "website.md"
     @State private var isExporting = false
@@ -33,16 +32,6 @@ public struct WebsitesView: View {
             renameValue: $renameValue,
             isDeleteAlertPresented: $isDeleteAlertPresented
         )
-            .task {
-                await environment.websitesViewModel.load(force: true)
-            }
-            .onChange(of: scenePhase) {
-                guard scenePhase == .active else { return }
-                Task {
-                    await environment.consumeExtensionEvents()
-                    await environment.websitesViewModel.load(force: true)
-                }
-            }
             #if !os(macOS)
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)

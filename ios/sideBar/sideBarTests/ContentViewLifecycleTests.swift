@@ -311,6 +311,28 @@ final class ContentViewLifecycleTests: XCTestCase {
         XCTAssertTrue(normalized.contains("environment.refreshCoordinator.visibleSectionDidChange(to:section)"))
     }
 
+    func testTasksViewDoesNotOwnScenePhaseRefresh() throws {
+        let normalized = try tasksViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let forcedSelectionLoad =
+            "awaitenvironment.tasksViewModel.load(selection:environment.tasksViewModel.preferredLoadSelection,force:true)"
+
+        XCTAssertFalse(normalized.contains("@Environment(\\.scenePhase)privatevarscenePhase"))
+        XCTAssertFalse(normalized.contains(".onChange(of:scenePhase)"))
+        XCTAssertFalse(normalized.contains(forcedSelectionLoad))
+        XCTAssertFalse(normalized.contains("awaitenvironment.tasksViewModel.loadCounts(force:true)"))
+    }
+
+    func testWebsitesViewDoesNotOwnLaunchOrForegroundRefresh() throws {
+        let normalized = try websitesViewSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertFalse(normalized.contains("@Environment(\\.scenePhase)privatevarscenePhase"))
+        XCTAssertFalse(normalized.contains(".task{awaitenvironment.websitesViewModel.load(force:true)}"))
+        XCTAssertFalse(normalized.contains(".onChange(of:scenePhase)"))
+        XCTAssertFalse(normalized.contains("awaitenvironment.websitesViewModel.load(force:true)"))
+    }
+
     func testShouldDisplayPhoneFloatingActionDockHidesOnCompactPhoneMoreRoot() {
         let shouldShow = ContentView.shouldDisplayPhoneFloatingActionDock(
             isPhoneIdiom: true,
@@ -395,6 +417,50 @@ final class ContentViewLifecycleTests: XCTestCase {
             return try String(contentsOf: sourceURL, encoding: .utf8)
         } catch {
             XCTFail("Failed to read ContentView+Lifecycle.swift: \(error)", file: file, line: line)
+            throw error
+        }
+    }
+
+    private func tasksViewSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("Tasks")
+            .appendingPathComponent("TasksView.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read TasksView.swift: \(error)", file: file, line: line)
+            throw error
+        }
+    }
+
+    private func websitesViewSource(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> String {
+        let fileURL = URL(fileURLWithPath: "\(file)")
+        let sideBarRoot = fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = sideBarRoot
+            .appendingPathComponent("sideBar")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("Websites")
+            .appendingPathComponent("WebsitesView.swift")
+
+        do {
+            return try String(contentsOf: sourceURL, encoding: .utf8)
+        } catch {
+            XCTFail("Failed to read WebsitesView.swift: \(error)", file: file, line: line)
             throw error
         }
     }
