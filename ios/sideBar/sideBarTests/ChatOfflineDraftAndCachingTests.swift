@@ -121,6 +121,12 @@ final class ChatOfflineDraftAndCachingTests: ChatViewModelTestCase {
         XCTAssertNil(
             try draftStorage.getDraft(
                 entityType: ChatDraftController.entityType,
+                entityId: ChatDraftController.newChatKey
+            )
+        )
+        XCTAssertNil(
+            try draftStorage.getDraft(
+                entityType: ChatDraftController.entityType,
                 entityId: ChatDraftController.draftKey(for: createdConversation.id)
             )
         )
