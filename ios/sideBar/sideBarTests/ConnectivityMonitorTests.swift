@@ -260,6 +260,46 @@ final class ConnectivityMonitorTests: XCTestCase {
         monitor = nil
     }
 
+    func testManualRefreshStatusImmediatelyRecoversOfflineStateWhenProbesSucceed() async {
+        ProbeURLProtocol.reset()
+        let sessionConfiguration = URLSessionConfiguration.ephemeral
+        sessionConfiguration.protocolClasses = [ProbeURLProtocol.self]
+        let session = URLSession(configuration: sessionConfiguration)
+
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://127.0.0.1:8001/api/v1")!,
+            startMonitoring: false,
+            session: session
+        )
+        guard let strongMonitor = monitor else {
+            XCTFail("Expected monitor")
+            return
+        }
+
+        NotificationCenter.default.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["error": URLError(.notConnectedToInternet)]
+        )
+        NotificationCenter.default.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["error": URLError(.notConnectedToInternet)]
+        )
+        await waitForMainQueueDrain()
+        XCTAssertTrue(strongMonitor.isOffline)
+
+        await strongMonitor.refreshStatusNow()
+
+        XCTAssertTrue(strongMonitor.isNetworkAvailable)
+        XCTAssertFalse(strongMonitor.isOffline)
+        XCTAssertTrue(strongMonitor.isServerReachable)
+        XCTAssertEqual(ProbeURLProtocol.requestCount, 2)
+
+        monitor = nil
+        session.invalidateAndCancel()
+    }
+
     private func waitForMainQueueDrain() async {
         let expectation = expectation(description: "Drain main queue")
         DispatchQueue.main.async {

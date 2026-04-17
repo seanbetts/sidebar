@@ -138,14 +138,39 @@ final class ConnectivityMonitor: ObservableObject {
         probeTask?.cancel()
         probeTask = Task { [weak self] in
             guard let self else { return }
-            self.isProbing = true
-            self.lastProbeAt = Date()
-            defer { self.isProbing = false }
+            self.beginProbe()
+            defer { self.endProbe() }
             if !immediate {
                 let delay = probeDelay()
                 try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
             await self.probeNetworkAndServer()
+        }
+    }
+
+    func refreshStatusNow() async {
+        guard !isProbing else {
+            return
+        }
+        probeTask?.cancel()
+        beginProbe()
+        defer { endProbe() }
+
+        let networkAvailable = await probeInternet()
+        guard networkAvailable else {
+            resetCounters()
+            setStatus(networkAvailable: false, serverReachable: false)
+            if allowsHealthProbes {
+                scheduleProbe(immediate: false)
+            }
+            return
+        }
+
+        let serverReachable = await probeServer()
+        resetCounters()
+        setStatus(networkAvailable: true, serverReachable: serverReachable)
+        if allowsHealthProbes, !serverReachable {
+            scheduleProbe(immediate: false)
         }
     }
 
@@ -255,6 +280,15 @@ final class ConnectivityMonitor: ObservableObject {
             return offlineProbeInterval
         }
         return onlineProbeInterval
+    }
+
+    private func beginProbe() {
+        isProbing = true
+        lastProbeAt = Date()
+    }
+
+    private func endProbe() {
+        isProbing = false
     }
 
     private func startScheduler() {

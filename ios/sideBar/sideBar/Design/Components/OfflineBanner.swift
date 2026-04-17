@@ -7,7 +7,7 @@ struct OfflineBanner: View {
     var body: some View {
         if shouldShow {
             Button {
-                isStatusAlertPresented = true
+                handleStatusTap()
             } label: {
                 statusIcon
                 .appFont(.captionSemibold)
@@ -22,12 +22,20 @@ struct OfflineBanner: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint("Shows connection status details")
+            .accessibilityHint("Rechecks connectivity and shows connection status details")
             .alert(statusAlertTitle, isPresented: $isStatusAlertPresented) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(statusAlertMessage)
             }
+        }
+    }
+
+    private func handleStatusTap() {
+        Task {
+            let shouldPresentAlert = await environment.refreshConnectivityStatusFromBannerTap()
+            guard shouldPresentAlert else { return }
+            isStatusAlertPresented = true
         }
     }
 

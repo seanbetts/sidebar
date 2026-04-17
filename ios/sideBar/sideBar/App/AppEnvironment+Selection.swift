@@ -1,6 +1,16 @@
 import Foundation
 
 extension AppEnvironment {
+    func refreshConnectivityStatusFromBannerTap() async -> Bool {
+        let wasUnavailable = !connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
+        await connectivityMonitor.refreshStatusNow()
+        let isStillUnavailable = !connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
+        if wasUnavailable && !isStillUnavailable {
+            refreshOnReconnect()
+        }
+        return isStillUnavailable
+    }
+
     func realtimeClientStopStart() {
         guard authState == .active,
               let userId = container.authSession.userId,
