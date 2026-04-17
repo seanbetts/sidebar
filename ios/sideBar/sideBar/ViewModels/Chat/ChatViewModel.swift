@@ -422,17 +422,18 @@ private final class ChatViewModelTeardownBag {
 
     func beginDraftSendTransition(
         clearDraftOnDispatch: Bool,
+        sourceKey: String,
+        sourceDraftText: String,
         conversationId: String
     ) -> DraftSendContext? {
-        let currentDraftText = draftText
-        guard clearDraftOnDispatch, !currentDraftText.isEmpty else {
+        guard clearDraftOnDispatch, !sourceDraftText.isEmpty else {
             return nil
         }
         let destinationKey = ChatDraftController.draftKey(for: conversationId)
-        draftController.migrateDraft(from: currentDraftKey, to: destinationKey)
+        draftController.migrateDraft(from: sourceKey, to: destinationKey)
         draftController.clearDraft(for: destinationKey)
         draftText = draftController.currentDraftText
-        return DraftSendContext(draftText: currentDraftText, destinationKey: destinationKey)
+        return DraftSendContext(draftText: sourceDraftText, destinationKey: destinationKey)
     }
 
     func restoreDraftAfterFailedSendIfNeeded(

@@ -106,6 +106,8 @@ extension ChatViewModel {
             guard let fileId = attachment.fileId else { return nil }
             return ChatAttachment(fileId: fileId, filename: attachment.name)
         }
+        let draftSourceKey = currentDraftKey
+        let draftSourceText = draftText
 
         let conversationId: String
         do {
@@ -116,6 +118,8 @@ extension ChatViewModel {
         }
         let draftSendContext = beginDraftSendTransition(
             clearDraftOnDispatch: clearDraftOnDispatch,
+            sourceKey: draftSourceKey,
+            sourceDraftText: draftSourceText,
             conversationId: conversationId
         )
 
