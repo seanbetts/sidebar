@@ -332,6 +332,17 @@ extension AppEnvironmentDeepLinkTests {
         }
     }
 
+    func waitForCompletion(_ completion: AsyncCompletionFlag, attempts: Int = 40) async -> Bool {
+        for _ in 0..<attempts {
+            if await completion.finished() {
+                return true
+            }
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        return await completion.finished()
+    }
+
     func waitForSavedWebsite(
         id: String,
         url: String,

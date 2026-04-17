@@ -82,7 +82,7 @@ extension AppEnvironmentDeepLinkTests {
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
         await waitForWebsiteSaveCallCount(1, in: websitesAPI)
-        let activationFinished = await completion.finished()
+        let activationFinished = await waitForCompletion(completion)
 
         XCTAssertTrue(activationFinished)
         XCTAssertTrue(storage.pendingShareStore.loadAll().contains(where: { $0.url == url }))
