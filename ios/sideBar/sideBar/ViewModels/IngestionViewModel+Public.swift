@@ -7,7 +7,9 @@ import UniformTypeIdentifiers
 
 extension IngestionViewModel {
     public func load(force: Bool = false) async {
-        isLoading = true
+        if items.isEmpty {
+            isLoading = true
+        }
         errorMessage = nil
         do {
             try await store.loadList(force: force)

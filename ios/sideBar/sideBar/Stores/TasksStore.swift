@@ -366,4 +366,41 @@ import Combine
         offlineStore?.get(key: key, as: type)
     }
 
+    func hydrateListFromCache(selection: TaskSelection) {
+        guard selection != .none else { return }
+        let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
+        if let cached: TaskListResponse = cachedSnapshot(key: cacheKey) {
+            selectionHydratedFromCache(cached, selection: selection)
+            return
+        }
+        if let offline: TaskListResponse = offlineSnapshot(key: cacheKey, as: TaskListResponse.self) {
+            selectionHydratedFromCache(offline, selection: selection)
+        }
+    }
+
+    func hydrateCountsFromCache() {
+        if let cached: TaskCountsResponse = cachedSnapshot(key: CacheKeys.tasksCounts) {
+            counts = cached
+            return
+        }
+        if let offline: TaskCountsResponse = offlineSnapshot(
+            key: CacheKeys.tasksCounts,
+            as: TaskCountsResponse.self
+        ) {
+            counts = offline
+        }
+    }
+
+    private func selectionHydratedFromCache(_ response: TaskListResponse, selection: TaskSelection) {
+        self.selection = selection
+        tasks = response.tasks
+        if let responseGroups = response.groups {
+            groups = responseGroups
+        }
+        if let responseProjects = response.projects {
+            projects = responseProjects
+        }
+        currentScope = response.scope
+    }
+
 }

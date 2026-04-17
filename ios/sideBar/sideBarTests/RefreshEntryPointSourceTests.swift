@@ -44,6 +44,44 @@ final class RefreshEntryPointSourceTests: XCTestCase {
         XCTAssertFalse(lifecycleSource.contains("awaitenvironment.chatViewModel.loadConversations()"))
     }
 
+    func testContentPanelsDoNotTriggerDirectStartupLoads() throws {
+        let notesSource = try source(named: "Views/SidebarPanels/NotesPanel.swift")
+            .normalizedForSourceAssertions()
+        let tasksSource = try source(named: "Views/SidebarPanels/TasksPanel.swift")
+            .normalizedForSourceAssertions()
+        let websitesSource = try source(named: "Views/SidebarPanels/WebsitesPanel.swift")
+            .normalizedForSourceAssertions()
+        let filesSource = try source(named: "Views/SidebarPanels/FilesPanel.swift")
+            .normalizedForSourceAssertions()
+        let legacyTasksStartupLoad =
+            "if!hasLoaded{hasLoaded=trueTask{awaitviewModel.load(selection:" +
+            "viewModel.preferredLoadSelection)}Task{awaitviewModel.loadCounts()}}"
+        let legacyWebsiteStartupLoad =
+            "if!hasLoaded{hasLoaded=trueisInitialLoadPending=trueTask{awaitviewModel.load()isInitialLoadPending=false}}"
+        let legacyFilesStartupLoad =
+            "if!hasLoaded{hasLoaded=trueisAwaitingInitialLoad=trueTask{awaitviewModel.load()" +
+            "isAwaitingInitialLoad=falseinitializeKnownFileIdsBaselineIfNeeded()}}"
+
+        XCTAssertFalse(notesSource.contains("if!hasLoaded{hasLoaded=trueTask{awaitviewModel.loadTree()}}"))
+        XCTAssertFalse(tasksSource.contains(legacyTasksStartupLoad))
+        XCTAssertFalse(websitesSource.contains(legacyWebsiteStartupLoad))
+        XCTAssertFalse(filesSource.contains(legacyFilesStartupLoad))
+
+        XCTAssertFalse(notesSource.contains("@StatevarhasLoaded=false"))
+        XCTAssertFalse(tasksSource.contains("@StateprivatevarhasLoaded=false"))
+        XCTAssertFalse(websitesSource.contains("@StatevarhasLoaded=false"))
+        XCTAssertFalse(websitesSource.contains("@StatevarisInitialLoadPending=false"))
+        XCTAssertFalse(filesSource.contains("@StatevarhasLoaded=false"))
+        XCTAssertFalse(filesSource.contains("@StatevarisAwaitingInitialLoad=false"))
+    }
+
+    func testVisibleSectionChangesPrepareContentBeforeRefresh() throws {
+        let normalized = try source(named: "App/AppEnvironment+Refresh.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("awaitprepareVisibleSectionForPresentation(section)"))
+    }
+
     func testPhoneSectionHelperDoesNotLoadContentDomainsDirectly() throws {
         let normalized = try source(named: "Views/ContentView+Lifecycle.swift")
             .normalizedForSourceAssertions()

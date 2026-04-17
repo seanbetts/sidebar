@@ -23,6 +23,16 @@ extension NotesStore {
         applyTreeUpdate(offline, persist: false)
     }
 
+    func hydrateTreeFromCache() {
+        if let cached: FileTree = cache.get(key: cacheKey) {
+            applyTreeUpdate(cached, persist: false)
+            return
+        }
+        if let offline = offlineStore?.get(key: cacheKey, as: FileTree.self) {
+            applyTreeUpdate(offline, persist: false)
+        }
+    }
+
     /// Persists current notes tree, archived tree, and active note snapshots to offline storage.
     public func saveOfflineSnapshot() async {
         if let tree {

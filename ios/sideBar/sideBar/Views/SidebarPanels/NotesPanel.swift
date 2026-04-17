@@ -33,7 +33,6 @@ struct NotesPanelView: View {
     @State var pinnedReorderNetworkAvailabilityOverride: Bool?
     @State var pinnedReorderAutoExitDelayOverride: TimeInterval?
     let pinnedReorderState: NotesPanelPinnedReorderState
-    @State var hasLoaded = false
     @State var isArchiveExpanded = false
     @State var expandedFolderIDs: Set<String> = []
     @State var isNewFolderPresented = false
@@ -77,10 +76,6 @@ struct NotesPanelView: View {
         .sidebarPanelScaffoldBackground()
         .frame(maxHeight: .infinity)
         .onAppear {
-            if !hasLoaded {
-                hasLoaded = true
-                Task { await viewModel.loadTree() }
-            }
             synchronizeExpandedFolderState()
             consumePendingNewNoteDeepLinkIfNeeded()
         }

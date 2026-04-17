@@ -20,7 +20,6 @@ struct TasksPanelView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
-    @State private var hasLoaded = false
     @State var showNewGroupAlert: Bool = false
     @State var showNewProjectAlert: Bool = false
     @State private var showProjectGroupDialog: Bool = false
@@ -38,13 +37,6 @@ struct TasksPanelView: View {
         }
         .sidebarPanelScaffoldBackground()
         .frame(maxHeight: .infinity)
-        .onAppear {
-            if !hasLoaded {
-                hasLoaded = true
-                Task { await viewModel.load(selection: viewModel.preferredLoadSelection) }
-                Task { await viewModel.loadCounts() }
-            }
-        }
         .onChange(of: viewModel.selection) { _, newValue in
             if case .search = newValue {
                 return

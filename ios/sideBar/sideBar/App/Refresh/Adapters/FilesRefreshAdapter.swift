@@ -12,12 +12,12 @@ final class FilesRefreshAdapter: DomainRefreshAdapter {
 
     func refresh(plan: RefreshPlan) async {
         if plan.targets.contains(.sectionList(.files)) || plan.targets.contains(.pinnedMetadata(.files)) {
-            await viewModel.store.refreshList()
+            await viewModel.load(force: true)
         }
 
         if plan.targets.contains(.visibleDetail(.files)),
            let fileId = viewModel.selectedFileId {
-            await viewModel.store.refreshMeta(fileId: fileId)
+            _ = await viewModel.loadMeta(fileId: fileId, force: true)
         }
     }
 }

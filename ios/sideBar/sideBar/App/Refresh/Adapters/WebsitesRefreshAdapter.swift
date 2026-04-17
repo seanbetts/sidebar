@@ -12,7 +12,7 @@ final class WebsitesRefreshAdapter: DomainRefreshAdapter {
 
     func refresh(plan: RefreshPlan) async {
         if plan.targets.contains(.sectionList(.websites)) || plan.targets.contains(.pinnedMetadata(.websites)) {
-            await viewModel.store.refreshList()
+            await viewModel.load(force: true)
         }
 
         if plan.targets.contains(.visibleDetail(.websites)),

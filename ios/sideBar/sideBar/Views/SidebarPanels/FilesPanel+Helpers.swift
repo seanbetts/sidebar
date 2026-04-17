@@ -174,7 +174,7 @@ extension FilesPanelView {
     func initializeKnownFileIdsBaselineIfNeeded() {
         guard FilesPanelExpansionPolicy.shouldInitializeBaseline(
             isLoading: viewModel.isLoading,
-            awaitingInitialLoad: isAwaitingInitialLoad,
+            awaitingInitialLoad: false,
             hasBaseline: hasKnownFileIdsBaseline
         ) else {
             return

@@ -12,7 +12,7 @@ final class NotesRefreshAdapter: DomainRefreshAdapter {
 
     func refresh(plan: RefreshPlan) async {
         if plan.targets.contains(.sectionList(.notes)) || plan.targets.contains(.pinnedMetadata(.notes)) {
-            await viewModel.store.refreshTree()
+            await viewModel.refreshTree(force: true)
         }
 
         if plan.targets.contains(.visibleDetail(.notes)),

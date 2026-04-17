@@ -38,7 +38,6 @@ struct FilesPanelView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
     @Environment(\.colorScheme) var colorScheme
-    @State var hasLoaded = false
     @State var expandedCategories: Set<String> = []
     @State var listAppeared = false
     @State var isDeleteAlertPresented = false
@@ -49,7 +48,6 @@ struct FilesPanelView: View {
     @State var newYouTubeUrl: String = ""
     @State var knownFileIds: Set<String> = []
     @State var hasKnownFileIdsBaseline = false
-    @State var isAwaitingInitialLoad = false
     @State var renameTarget: IngestionListItem?
     @State var renameValue: String = ""
     @State var isRenameSheetPresented = false
@@ -131,15 +129,6 @@ extension FilesPanelView {
                 }
             }
             .onAppear {
-                if !hasLoaded {
-                    hasLoaded = true
-                    isAwaitingInitialLoad = true
-                    Task {
-                        await viewModel.load()
-                        isAwaitingInitialLoad = false
-                        initializeKnownFileIdsBaselineIfNeeded()
-                    }
-                }
                 initializeExpandedCategoriesIfNeeded()
                 initializeKnownFileIdsBaselineIfNeeded()
             }

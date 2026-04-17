@@ -80,7 +80,7 @@ extension WebsitesPanelView {
 
     var panelState: PanelState {
         let resolvedState = Self.resolvePanelState(
-            isLoading: viewModel.isLoading || isInitialLoadPending,
+            isLoading: viewModel.isLoading,
             hasError: viewModel.errorMessage != nil,
             hasLoadedContent: !viewModel.items.isEmpty || !viewModel.pendingWebsites.isEmpty,
             panelSearchQuery: viewModel.panelSearchQuery,

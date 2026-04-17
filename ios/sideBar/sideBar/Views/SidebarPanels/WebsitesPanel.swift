@@ -30,8 +30,6 @@ struct WebsitesPanelView: View {
     @State var pinnedReorderNetworkAvailabilityOverride: Bool?
     @State var pinnedReorderAutoExitDelayOverride: TimeInterval?
     let pinnedReorderState: WebsitesPanelPinnedReorderState
-    @State var hasLoaded = false
-    @State var isInitialLoadPending = false
     @State var isArchiveExpanded = false
     @State var selection: String?
     @State var listAppeared = false
@@ -81,14 +79,6 @@ struct WebsitesPanelView: View {
         .sidebarPanelScaffoldBackground()
         .frame(maxHeight: .infinity)
         .onAppear {
-            if !hasLoaded {
-                hasLoaded = true
-                isInitialLoadPending = true
-                Task {
-                    await viewModel.load()
-                    isInitialLoadPending = false
-                }
-            }
             if selection == nil {
                 selection = viewModel.selectedWebsiteId ?? viewModel.active?.id
             }
