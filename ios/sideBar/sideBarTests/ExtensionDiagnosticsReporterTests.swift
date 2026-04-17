@@ -6,11 +6,9 @@ final class ExtensionDiagnosticsReporterTests: XCTestCase {
     func testBreadcrumbLogsAndMirrorsToDiagnosticsStore() {
         let logger = RecordingExtensionDiagnosticsLogger()
         let store = RecordingExternalSurfaceDiagnosticsStore()
-        let failureRecorder = RecordingExtensionFailureRecorder()
         let reporter = ExtensionDiagnosticsReporter(
             logger: logger,
-            store: store,
-            failureRecorder: failureRecorder
+            store: store
         )
 
         reporter.recordBreadcrumb(
@@ -28,17 +26,14 @@ final class ExtensionDiagnosticsReporterTests: XCTestCase {
         XCTAssertEqual(logger.records.first?.surface, "widget_provider")
         XCTAssertEqual(store.records.count, 1)
         XCTAssertEqual(store.records.first?.surface, "widget_provider")
-        XCTAssertTrue(failureRecorder.messages.isEmpty)
     }
 
-    func testFailureCapturesToFailureRecorderAndDiagnosticsStore() {
+    func testFailureLogsAndMirrorsToDiagnosticsStore() {
         let logger = RecordingExtensionDiagnosticsLogger()
         let store = RecordingExternalSurfaceDiagnosticsStore()
-        let failureRecorder = RecordingExtensionFailureRecorder()
         let reporter = ExtensionDiagnosticsReporter(
             logger: logger,
-            store: store,
-            failureRecorder: failureRecorder
+            store: store
         )
 
         reporter.captureFailure(
@@ -51,43 +46,17 @@ final class ExtensionDiagnosticsReporterTests: XCTestCase {
         XCTAssertEqual(logger.records.count, 1)
         XCTAssertEqual(logger.records.first?.level, .error)
         XCTAssertEqual(store.records.count, 1)
-        XCTAssertEqual(failureRecorder.messages.count, 1)
-        XCTAssertEqual(failureRecorder.messages.first?.message, "Share extension environment unavailable.")
-        XCTAssertEqual(failureRecorder.messages.first?.context["reason"], "missing_app_group")
-    }
-
-    func testFailureDoesNotCaptureToSentryRecorderWhenDisabled() {
-        let logger = RecordingExtensionDiagnosticsLogger()
-        let store = RecordingExternalSurfaceDiagnosticsStore()
-        let failureRecorder = RecordingExtensionFailureRecorder()
-        let reporter = ExtensionDiagnosticsReporter(
-            logger: logger,
-            store: store,
-            failureRecorder: failureRecorder,
-            isFailureCaptureEnabled: false
-        )
-
-        reporter.captureFailure(
-            surface: "safari_extension",
-            stage: "queue_write_failed",
-            message: "Failed to queue website from Safari extension.",
-            metadata: ["code": "queue_failed"]
-        )
-
-        XCTAssertEqual(logger.records.count, 1)
-        XCTAssertEqual(store.records.count, 1)
-        XCTAssertTrue(failureRecorder.messages.isEmpty)
+        XCTAssertEqual(store.records.first?.surface, "share_extension")
+        XCTAssertEqual(store.records.first?.metadata["reason"], "missing_app_group")
     }
 
     func testBreadcrumbStillLogsWhenDiagnosticsStoreIsUnavailable() {
         let logger = RecordingExtensionDiagnosticsLogger()
         let store = RecordingExternalSurfaceDiagnosticsStore()
         store.shouldAcceptRecords = false
-        let failureRecorder = RecordingExtensionFailureRecorder()
         let reporter = ExtensionDiagnosticsReporter(
             logger: logger,
-            store: store,
-            failureRecorder: failureRecorder
+            store: store
         )
 
         reporter.recordBreadcrumb(
@@ -99,7 +68,6 @@ final class ExtensionDiagnosticsReporterTests: XCTestCase {
 
         XCTAssertEqual(logger.records.count, 1)
         XCTAssertEqual(store.records.count, 0)
-        XCTAssertTrue(failureRecorder.messages.isEmpty)
     }
 }
 
@@ -153,18 +121,5 @@ private final class RecordingExternalSurfaceDiagnosticsStore: ExternalSurfaceDia
             )
         )
         return true
-    }
-}
-
-private final class RecordingExtensionFailureRecorder: ExtensionFailureRecording {
-    struct Message: Equatable {
-        let message: String
-        let context: [String: String]
-    }
-
-    private(set) var messages: [Message] = []
-
-    func capture(message: String, context: [String: String]) {
-        messages.append(Message(message: message, context: context))
     }
 }

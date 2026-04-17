@@ -11,26 +11,16 @@ public protocol ExtensionDiagnosticsLogging {
     )
 }
 
-public protocol ExtensionFailureRecording {
-    func capture(message: String, context: [String: String])
-}
-
 public struct ExtensionDiagnosticsReporter {
     private let logger: any ExtensionDiagnosticsLogging
     private let store: (any ExternalSurfaceDiagnosticsRecording)?
-    private let failureRecorder: (any ExtensionFailureRecording)?
-    private let isFailureCaptureEnabled: Bool
 
     public init(
         logger: any ExtensionDiagnosticsLogging = SystemExtensionDiagnosticsLogger(),
-        store: (any ExternalSurfaceDiagnosticsRecording)? = ExternalSurfaceDiagnosticsStore.shared,
-        failureRecorder: (any ExtensionFailureRecording)? = nil,
-        isFailureCaptureEnabled: Bool = true
+        store: (any ExternalSurfaceDiagnosticsRecording)? = ExternalSurfaceDiagnosticsStore.shared
     ) {
         self.logger = logger
         self.store = store
-        self.failureRecorder = failureRecorder
-        self.isFailureCaptureEnabled = isFailureCaptureEnabled
     }
 
     public func recordBreadcrumb(
@@ -74,17 +64,6 @@ public struct ExtensionDiagnosticsReporter {
             stage: stage,
             message: message,
             metadata: sanitizedMetadata
-        )
-        guard isFailureCaptureEnabled else { return }
-        failureRecorder?.capture(
-            message: message,
-            context: sanitizedMetadata.merging(
-                [
-                    "surface": surface,
-                    "stage": stage
-                ],
-                uniquingKeysWith: { current, _ in current }
-            )
         )
     }
 

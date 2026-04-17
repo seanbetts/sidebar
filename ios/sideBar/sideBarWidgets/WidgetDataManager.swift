@@ -286,7 +286,6 @@ private extension WidgetDataManager {
     message: String,
     metadata: [String: String] = [:]
   ) {
-    WidgetExtensionDiagnostics.ensureSentryStarted()
     let mergedMetadata = metadata.merging(
       [
         "app_group_id": appGroupId ?? "nil",

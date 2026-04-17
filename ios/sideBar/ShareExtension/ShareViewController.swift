@@ -19,7 +19,6 @@ final class ShareViewController: SharePlatformViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         shareApplyDefaultHostBackground(to: view)
-        ShareExtensionDiagnostics.ensureSentryStarted()
         do {
             environment = try ShareExtensionEnvironment()
         } catch {

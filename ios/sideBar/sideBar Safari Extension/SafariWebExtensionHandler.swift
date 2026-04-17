@@ -13,7 +13,6 @@ import sideBarShared
 class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
     func beginRequest(with context: NSExtensionContext) {
-        SafariExtensionDiagnostics.ensureSentryStarted()
         let request = context.inputItems.first as? NSExtensionItem
 
         let profile: UUID?
