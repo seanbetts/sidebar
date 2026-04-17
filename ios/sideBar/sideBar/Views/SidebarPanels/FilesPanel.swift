@@ -185,7 +185,7 @@ extension FilesPanelView {
             }
             if viewModel.isLoading && viewModel.items.isEmpty {
                 SidebarListSkeleton(rowCount: 8, showSubtitle: false)
-            } else if let message = viewModel.errorMessage {
+            } else if let message = viewModel.errorMessage, viewModel.items.isEmpty {
                 SidebarPanelPlaceholder(
                     title: "Unable to load files",
                     subtitle: message,

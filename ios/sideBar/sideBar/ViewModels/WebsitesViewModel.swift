@@ -189,6 +189,9 @@ public final class WebsitesViewModel: ObservableObject {
 
     public func loadById(id: String) async {
         errorMessage = nil
+        if active?.id != id {
+            store.clearActive()
+        }
         selectedWebsiteId = id
         isLoadingDetail = true
         do {

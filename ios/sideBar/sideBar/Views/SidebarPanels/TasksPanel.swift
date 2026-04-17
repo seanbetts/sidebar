@@ -148,93 +148,82 @@ extension TasksPanelView {
 
     @ViewBuilder
     private var content: some View {
-        if let error = viewModel.errorMessage {
-            SidebarPanelPlaceholder(
-                title: "Unable to load tasks",
-                subtitle: error,
-                actionTitle: "Retry",
-                style: .error
-            ) {
-                Task { await viewModel.load(selection: viewModel.preferredLoadSelection, force: true) }
+        tasksPanelList {
+            Section {
+                tasksListRow(
+                    title: "Today",
+                    iconName: "calendar",
+                    count: viewModel.counts?.counts.today,
+                    selection: .today
+                )
+                tasksListRow(
+                    title: "Upcoming",
+                    iconName: "calendar.badge.clock",
+                    count: upcomingCount,
+                    selection: .upcoming
+                )
+                tasksListRow(
+                    title: "Completed",
+                    iconName: "calendar.badge.checkmark",
+                    count: viewModel.counts?.counts.completed,
+                    selection: .completed
+                )
             }
-        } else {
-            tasksPanelList {
+
+            if !groupsSorted.isEmpty {
                 Section {
-                    tasksListRow(
-                        title: "Today",
-                        iconName: "calendar",
-                        count: viewModel.counts?.counts.today,
-                        selection: .today
-                    )
-                    tasksListRow(
-                        title: "Upcoming",
-                        iconName: "calendar.badge.clock",
-                        count: upcomingCount,
-                        selection: .upcoming
-                    )
-                    tasksListRow(
-                        title: "Completed",
-                        iconName: "calendar.badge.checkmark",
-                        count: viewModel.counts?.counts.completed,
-                        selection: .completed
-                    )
-                }
-
-                if !groupsSorted.isEmpty {
-                    Section {
-                        ForEach(groupsSorted, id: \.id) { group in
-                            tasksListRow(
-                                title: group.title,
-                                iconName: "square.3.layers.3d",
-                                count: groupCounts[group.id],
-                                selection: .group(id: group.id),
-                                onRename: { promptRename(group: group) },
-                                onDelete: { promptDelete(group: group) }
-                            )
-                            let projects = projectsByGroup[group.id] ?? []
-                            ForEach(projects, id: \.id) { project in
-                                tasksListRow(
-                                    title: project.title,
-                                    iconName: "list.bullet",
-                                    count: projectCounts[project.id],
-                                    selection: .project(id: project.id),
-                                    indent: 18,
-                                    onRename: { promptRename(project: project) },
-                                    onDelete: { promptDelete(project: project) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if !orphanProjects.isEmpty {
-                    Section {
-                        ForEach(orphanProjects, id: \.id) { project in
+                    ForEach(groupsSorted, id: \.id) { group in
+                        tasksListRow(
+                            title: group.title,
+                            iconName: "square.3.layers.3d",
+                            count: groupCounts[group.id],
+                            selection: .group(id: group.id),
+                            onRename: { promptRename(group: group) },
+                            onDelete: { promptDelete(group: group) }
+                        )
+                        let projects = projectsByGroup[group.id] ?? []
+                        ForEach(projects, id: \.id) { project in
                             tasksListRow(
                                 title: project.title,
                                 iconName: "list.bullet",
                                 count: projectCounts[project.id],
                                 selection: .project(id: project.id),
+                                indent: 18,
                                 onRename: { promptRename(project: project) },
                                 onDelete: { promptDelete(project: project) }
                             )
                         }
-                    } header: {
-                        sidebarSectionHeader("Projects")
                     }
                 }
             }
-            .sidebarPanelListStyle()
-            .sidebarCompactPhoneTopPadding(
-                LayoutMetrics.compactPhoneTasksPanelTopPadding,
-                isCompactPhone: isCompactPhone
-            )
-            .scrollContentBackground(.hidden)
-            .sidebarPanelListBackground()
-            .refreshable {
-                await viewModel.load(selection: viewModel.preferredLoadSelection, force: true)
-                await viewModel.loadCounts(force: true)
+
+            if !orphanProjects.isEmpty {
+                Section {
+                    ForEach(orphanProjects, id: \.id) { project in
+                        tasksListRow(
+                            title: project.title,
+                            iconName: "list.bullet",
+                            count: projectCounts[project.id],
+                            selection: .project(id: project.id),
+                            onRename: { promptRename(project: project) },
+                            onDelete: { promptDelete(project: project) }
+                        )
+                    }
+                } header: {
+                    sidebarSectionHeader("Projects")
+                }
             }
+        }
+        .sidebarPanelListStyle()
+        .sidebarCompactPhoneTopPadding(
+            LayoutMetrics.compactPhoneTasksPanelTopPadding,
+            isCompactPhone: isCompactPhone
+        )
+        .scrollContentBackground(.hidden)
+        .sidebarPanelListBackground()
+        .refreshable {
+            await viewModel.load(selection: viewModel.preferredLoadSelection, force: true)
+            await viewModel.loadCounts(force: true)
         }
     }
 

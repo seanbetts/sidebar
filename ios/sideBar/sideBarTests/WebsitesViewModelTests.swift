@@ -46,6 +46,36 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.active?.id, "site-1")
     }
 
+    func testSelectingDifferentWebsiteClearsStaleActiveDetailBeforeOfflineUnavailableFailure() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let networkStatus = TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+        let store = WebsitesStore(
+            api: api,
+            cache: cache,
+            networkStatus: networkStatus
+        )
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: networkStatus,
+            transcriptPollInterval: 60
+        )
+        let existing = makeItem(id: "site-existing")
+        let existingDetail = makeDetail(id: "site-existing", content: "Existing content")
+        let unavailable = makeItem(id: "site-unavailable")
+        store.updateListItem(existing, persist: false)
+        store.updateListItem(unavailable, persist: false)
+        store.applyDetailUpdate(existingDetail, persist: false)
+        viewModel.selectedWebsiteId = existing.id
+
+        await viewModel.selectWebsite(id: unavailable.id)
+
+        XCTAssertEqual(viewModel.selectedWebsiteId, unavailable.id)
+        XCTAssertNil(viewModel.active)
+    }
+
     func testApplyRealtimeDeleteClearsActive() async {
         let item = makeItem(id: "site-1")
         let detail = makeDetail(id: "site-1")

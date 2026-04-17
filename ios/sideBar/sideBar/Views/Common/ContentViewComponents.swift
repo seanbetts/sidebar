@@ -256,6 +256,7 @@ enum DetailOfflineUnavailableResource: Equatable {
     case website
     case file
     case chat
+    case taskList
 
     var title: String {
         switch self {
@@ -267,6 +268,8 @@ enum DetailOfflineUnavailableResource: Equatable {
             return "This file isn't available offline yet"
         case .chat:
             return "This chat isn't available offline yet"
+        case .taskList:
+            return "This task list isn't available offline yet"
         }
     }
 
@@ -284,6 +287,8 @@ enum DetailOfflineUnavailableResource: Equatable {
             return .files
         case .chat:
             return .chat
+        case .taskList:
+            return .tasks
         }
     }
 

@@ -79,6 +79,64 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.viewerState?.fileURL)
     }
 
+    func testSelectingDifferentFileClearsStaleActiveMetaBeforeOfflineUnavailableFailure() async {
+        let existingFile = makeFile(id: "file-existing")
+        let unavailableFile = makeFile(id: "file-unavailable")
+        let existingMeta = IngestionMetaResponse(
+            file: existingFile,
+            job: makeJob(),
+            derivatives: [],
+            recommendedViewer: nil
+        )
+        let defaults = makeDefaults()
+        let cache = TestCacheClient()
+        let networkStatus = TestNetworkStatus(
+            isNetworkAvailable: false,
+            isOffline: true
+        )
+        let store = IngestionStore(
+            api: MockIngestionAPI(
+                listResult: .success(IngestionListResponse(items: [])),
+                metaResult: .failure(MockError.forced),
+                contentResult: .failure(MockError.forced),
+                pinResult: .success(()),
+                youtubeResult: .failure(MockError.forced)
+            ),
+            cache: cache,
+            offlineStore: OfflineStore(container: PersistenceController(inMemory: true).container),
+            networkStatus: networkStatus,
+            userDefaults: defaults
+        )
+        store.applyListUpdate(
+            [
+                makeListItem(id: existingFile.id),
+                makeListItem(id: unavailableFile.id)
+            ],
+            persist: false
+        )
+        store.applyMetaUpdate(existingMeta, persist: false)
+        let viewModel = IngestionViewModel(
+            api: MockIngestionAPI(
+                listResult: .success(IngestionListResponse(items: [])),
+                metaResult: .failure(MockError.forced),
+                contentResult: .failure(MockError.forced),
+                pinResult: .success(()),
+                youtubeResult: .failure(MockError.forced)
+            ),
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter(),
+            networkStatus: networkStatus
+        )
+        viewModel.selectedFileId = existingFile.id
+
+        await viewModel.selectFile(fileId: unavailableFile.id)
+
+        XCTAssertEqual(viewModel.selectedFileId, unavailableFile.id)
+        XCTAssertNil(viewModel.activeMeta)
+    }
+
     func testSelectVideoFileLoadsTranscriptFromAiMarkdown() async {
         let file = makeVideoFile(id: "file-video-1")
         let viewModel = makeVideoViewModel(

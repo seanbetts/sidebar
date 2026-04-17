@@ -302,6 +302,7 @@ extension TasksDetailView {
     @ViewBuilder
     // swiftlint:disable:next function_body_length
     private func content(state: TasksViewState) -> some View {
+        let canAttemptServerRead = viewModel.networkStatus.offlineCapabilityPolicy.canAttemptServerRead
         if viewModel.isLoading || (isSearchSelection(state.selection) && viewModel.searchPending) {
             LoadingView(
                 message: isSearchSelection(state.selection)
@@ -309,6 +310,8 @@ extension TasksDetailView {
                     : "Loading tasks..."
             )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.store.errorMessage != nil, !canAttemptServerRead, state.selection != .none {
+            DetailOfflineUnavailablePlaceholder(resource: .taskList)
         } else if let error = viewModel.errorMessage {
             PlaceholderView(
                 title: "Unable to load tasks",

@@ -48,6 +48,9 @@ extension IngestionViewModel {
     }
 
     public func prepareSelection(fileId: String) {
+        if activeMeta?.file.id != fileId {
+            store.clearActiveMeta()
+        }
         selectedFileId = fileId
         viewerState = nil
         selectedDerivativeKind = nil

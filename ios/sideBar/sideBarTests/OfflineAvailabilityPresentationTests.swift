@@ -20,6 +20,10 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
             "This chat isn't available offline yet"
         )
         XCTAssertEqual(
+            DetailOfflineUnavailableResource.taskList.title,
+            "This task list isn't available offline yet"
+        )
+        XCTAssertEqual(
             DetailOfflineUnavailableResource.chat.subtitle,
             "Open it while online on this device to keep it available here."
         )
@@ -38,6 +42,10 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
         XCTAssertEqual(
             DetailOfflineUnavailableResource.chat.iconName,
             AppSection.chat.iconName
+        )
+        XCTAssertEqual(
+            DetailOfflineUnavailableResource.taskList.iconName,
+            AppSection.tasks.iconName
         )
     }
 
@@ -64,6 +72,27 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
 
         XCTAssertTrue(filesNormalized.contains("DetailOfflineUnavailablePlaceholder(resource:.file)"))
         XCTAssertTrue(detailNormalized.contains("DetailOfflineUnavailablePlaceholder(resource:.file)"))
+    }
+
+    func testTasksDetailViewUsesSharedOfflineUnavailablePlaceholder() throws {
+        let normalized = try source(named: "Views/Tasks/TasksDetailView.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("DetailOfflineUnavailablePlaceholder(resource:.taskList)"))
+    }
+
+    func testTasksPanelDoesNotReplaceNavigationListWithGlobalLoadErrorPlaceholder() throws {
+        let normalized = try source(named: "Views/SidebarPanels/TasksPanel.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertFalse(normalized.contains("SidebarPanelPlaceholder(title:\"Unabletoloadtasks\""))
+    }
+
+    func testFilesPanelOnlyShowsLoadPlaceholderWhenListContentIsEmpty() throws {
+        let normalized = try source(named: "Views/SidebarPanels/FilesPanel.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("}elseifletmessage=viewModel.errorMessage,viewModel.items.isEmpty{"))
     }
 
     func testChatViewUsesSharedOfflineUnavailablePlaceholder() throws {
