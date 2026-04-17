@@ -200,7 +200,13 @@ public struct Message: Codable, Identifiable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
         role = (try? container.decode(MessageRole.self, forKey: .role)) ?? .assistant
-        content = (try? container.decode(String.self, forKey: .content)) ?? ""
+        if let stringContent = try? container.decode(String.self, forKey: .content) {
+            content = stringContent
+        } else if let structuredContent = try? container.decode(AnyCodable.self, forKey: .content) {
+            content = Message.decodeStructuredContent(structuredContent.value)
+        } else {
+            content = ""
+        }
         status = (try? container.decode(MessageStatus.self, forKey: .status)) ?? .complete
         toolCalls = try? container.decode([ToolCall].self, forKey: .toolCalls)
         needsNewline = try? container.decodeIfPresent(Bool.self, forKey: .needsNewline)
@@ -221,6 +227,34 @@ public struct Message: Codable, Identifiable {
         try container.encode(timestamp, forKey: .timestamp)
         try container.encodeIfPresent(error, forKey: .error)
         try container.encodeIfPresent(errorDetails, forKey: .errorDetails)
+    }
+
+    nonisolated private static func decodeStructuredContent(_ rawValue: Any) -> String {
+        switch rawValue {
+        case let stringValue as String:
+            return stringValue
+        case let arrayValue as [Any]:
+            return arrayValue
+                .map(decodeStructuredContent)
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .joined(separator: "\n\n")
+        case let dictValue as [String: Any]:
+            if let textValue = dictValue["text"] as? String {
+                return textValue
+            }
+            let preferredKeys = ["content", "parts", "children", "value"]
+            for key in preferredKeys {
+                if let nestedValue = dictValue[key] {
+                    let decodedValue = decodeStructuredContent(nestedValue)
+                    if !decodedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        return decodedValue
+                    }
+                }
+            }
+            return ""
+        default:
+            return ""
+        }
     }
 }
 

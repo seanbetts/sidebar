@@ -327,7 +327,7 @@ private final class ChatViewModelTeardownBag {
             return false
         }
         guard let conversation = conversations.first(where: { $0.id == selectedId }) else {
-            return messages.isEmpty
+            return false
         }
         return conversation.messageCount == 0 && messages.isEmpty
     }

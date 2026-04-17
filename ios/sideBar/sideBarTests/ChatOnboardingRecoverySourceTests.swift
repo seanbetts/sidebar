@@ -228,6 +228,13 @@ final class ChatOnboardingRecoverySourceTests: XCTestCase {
         XCTAssertTrue(normalized.contains("else{ChatMessageListView("))
     }
 
+    func testSelectedChatMessageListIsScopedToConversationIdentity() throws {
+        let normalized = try combinedChatSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains(".id(viewModel.selectedConversationId??\"draft\")"))
+    }
+
     private func combinedChatSource(file: StaticString = #filePath, line: UInt = #line) throws -> String {
         let fileURL = URL(fileURLWithPath: "\(file)")
         let sideBarRoot = fileURL

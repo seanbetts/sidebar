@@ -153,6 +153,54 @@ final class ChatViewModelConversationLifecycleTests: ChatViewModelTestCase {
         XCTAssertFalse(viewModel.isDraftConversationActive)
     }
 
+    func testIsBlankConversationReturnsFalseWhenSelectedConversationMetadataIsMissing() {
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: TestCacheClient()
+        )
+        viewModel.selectedConversationId = "conv-missing"
+        viewModel.messages = []
+
+        XCTAssertFalse(viewModel.isBlankConversation)
+    }
+
+    func testApplySelectionIfNeededPreservesSelectedConversationWhenListOmitsIt() {
+        let viewModel = makeViewModel(
+            api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])),
+            cache: TestCacheClient()
+        )
+        let selectedMessage = Message(
+            id: "msg-1",
+            role: .assistant,
+            content: "Persisted reply",
+            status: .complete,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: "2026-01-02T00:00:00Z",
+            error: nil
+        )
+        viewModel.selectedConversationId = "conv-selected"
+        viewModel.messages = [selectedMessage]
+
+        viewModel.applySelectionIfNeeded(
+            using: [
+                Conversation(
+                    id: "conv-other",
+                    title: "Other chat",
+                    titleGenerated: false,
+                    createdAt: "2026-01-01T00:00:00Z",
+                    updatedAt: "2026-01-01T00:00:00Z",
+                    messageCount: 1,
+                    firstMessage: "Hello",
+                    isArchived: false
+                )
+            ]
+        )
+
+        XCTAssertEqual(viewModel.selectedConversationId, "conv-selected")
+        XCTAssertEqual(viewModel.messages.map(\.id), [selectedMessage.id])
+    }
+
     func testSendMessageRestoresDraftWhenStreamConnectionFails() async throws {
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)

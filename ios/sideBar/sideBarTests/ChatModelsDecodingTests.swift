@@ -154,4 +154,5 @@ final class ChatModelsDecodingTests: XCTestCase {
             "{'type': 'error', 'request_id': 'req_123'}"
         )
     }
+
 }

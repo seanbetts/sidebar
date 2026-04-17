@@ -7,16 +7,12 @@ extension ChatViewModel {
         guard !items.isEmpty else {
             return
         }
-        if let selectedId = selectedConversationId,
-           items.contains(where: { $0.id == selectedId }) {
+        guard let selectedId = selectedConversationId else {
             return
         }
-        selectedConversationId = nil
-        clearTypingRevealState(flushDisplayedContent: false)
-        messages = []
-        syncDraftContext()
-        promptPreview = nil
-        activeTool = nil
+        guard items.contains(where: { $0.id == selectedId }) else {
+            return
+        }
     }
 
     func reconcileMessages(_ incoming: [Message], for conversationId: String) -> [Message] {

@@ -239,12 +239,28 @@ private struct ChatDetailView: View {
                     }
                 } else if !canAttemptServerRead, !viewModel.hasCachedSelectedConversation {
                     DetailOfflineUnavailablePlaceholder(resource: .chat)
+                } else if ChatDetailPresentation.shouldShowMissingConversationPlaceholder(
+                    selectedConversationId: viewModel.selectedConversationId,
+                    selectedConversation: selectedConversation,
+                    messages: viewModel.messages,
+                    isLoadingMessages: viewModel.isLoadingMessages,
+                    errorMessage: viewModel.errorMessage
+                ) {
+                    PlaceholderView(
+                        title: "Unable to load chat",
+                        subtitle: "This chat couldn't be loaded. Try again to refresh its content.",
+                        actionTitle: "Retry"
+                    ) {
+                        guard let selectedId = viewModel.selectedConversationId else { return }
+                        Task { await viewModel.loadConversation(id: selectedId) }
+                    }
                 } else {
                     ChatMessageListView(
                         viewModel: viewModel,
                         bottomInset: messageListBottomInset,
                         assistantDisplayName: assistantDisplayName
                     )
+                    .id(viewModel.selectedConversationId ?? "draft")
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -337,6 +353,13 @@ private struct ChatDetailView: View {
             && viewModel.messages.isEmpty
     }
 
+    private var selectedConversation: Conversation? {
+        guard let selectedId = viewModel.selectedConversationId else {
+            return nil
+        }
+        return viewModel.conversations.first(where: { $0.id == selectedId })
+    }
+
     private var isComposerEditable: Bool {
         environment.settingsViewModel.signedInOnboardingRecoveryState != .providerRecovery
             && environment.settingsViewModel.signedInOnboardingRecoveryState != .soulCalibration
@@ -412,5 +435,27 @@ private struct ChatDetailView: View {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+}
+
+enum ChatDetailPresentation {
+    static func shouldShowMissingConversationPlaceholder(
+        selectedConversationId: String?,
+        selectedConversation: Conversation?,
+        messages: [Message],
+        isLoadingMessages: Bool,
+        errorMessage: String?
+    ) -> Bool {
+        guard selectedConversationId != nil else {
+            return false
+        }
+        guard !isLoadingMessages, errorMessage == nil, messages.isEmpty else {
+            return false
+        }
+        guard let selectedConversation else {
+            return true
+        }
+        return selectedConversation.messageCount > 0
+            || selectedConversation.firstMessage?.isEmpty == false
     }
 }
