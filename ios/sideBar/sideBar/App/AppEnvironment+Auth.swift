@@ -17,9 +17,7 @@ extension AppEnvironment {
 
     func consumeWebsiteSaveHandoff() async {
         guard authState == .active, isProtectedContentReady else { return }
-        await consumeExtensionEvents()
-        await websitesViewModel.refreshFromExtension()
-        reconcileQueuedWebsitesWithSavedItems()
+        await refreshWebsiteQueueHandoff(awaitPendingShareReplay: true)
     }
 
     public func refreshAuthState() {
@@ -322,12 +320,7 @@ extension AppEnvironment {
         }
 
         if authState == .active {
-            await consumeExtensionEvents(awaitPendingShareReplay: false)
-            let shouldRefreshWebsiteListFromPendingWork = hasPendingWebsiteBackgroundWork
-            if shouldRefreshWebsiteListFromPendingWork {
-                await websitesViewModel.refreshFromExtension()
-                reconcileQueuedWebsitesWithSavedItems()
-            }
+            await refreshWebsiteQueueHandoff(awaitPendingShareReplay: false)
             await consumeWidgetCompletions()
             if includeDeferredRefresh {
                 await refreshWidgetDataBridges()

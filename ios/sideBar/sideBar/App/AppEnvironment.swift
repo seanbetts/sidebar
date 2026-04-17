@@ -459,7 +459,7 @@ public final class AppEnvironment: ObservableObject {
                     && !self.connectivityMonitor.isOffline
             },
             replay: { [weak self] in
-                await self?.consumeExtensionEvents(awaitPendingShareReplay: false)
+                await self?.refreshWebsiteQueueHandoff(awaitPendingShareReplay: false)
             },
             scheduleContinuation: { [weak self] in
                 guard !isTestMode else { return }

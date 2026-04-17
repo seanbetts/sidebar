@@ -97,10 +97,17 @@ final class ShareViewController: SharePlatformViewController {
         return false
     }
 
-    private func hasBinaryFileContent(_ itemProvider: NSItemProvider) -> Bool {
+    func hasBinaryFileContent(_ itemProvider: NSItemProvider) -> Bool {
         itemProvider.hasItemConformingToTypeIdentifier(UTType.data.identifier) &&
-        !itemProvider.hasItemConformingToTypeIdentifier(UTType.url.identifier) &&
-        !itemProvider.hasItemConformingToTypeIdentifier(UTType.text.identifier)
+        !hasWebsiteLikeContent(itemProvider)
+    }
+
+    private func hasWebsiteLikeContent(_ itemProvider: NSItemProvider) -> Bool {
+        itemProvider.hasItemConformingToTypeIdentifier(UTType.url.identifier) ||
+        itemProvider.hasItemConformingToTypeIdentifier(UTType.text.identifier) ||
+        itemProvider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) ||
+        itemProvider.hasItemConformingToTypeIdentifier(UTType.html.identifier) ||
+        itemProvider.hasItemConformingToTypeIdentifier(UTType.propertyList.identifier)
     }
 
     private func handleURLFallback(from itemProviders: [NSItemProvider]) async {

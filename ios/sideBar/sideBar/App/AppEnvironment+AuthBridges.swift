@@ -29,6 +29,13 @@ extension AppEnvironment {
         _ = await (tasks, notes, websites, files)
     }
 
+    func refreshWebsiteQueueHandoff(awaitPendingShareReplay: Bool) async {
+        await consumeExtensionEvents(awaitPendingShareReplay: awaitPendingShareReplay)
+        guard hasPendingWebsiteBackgroundWork else { return }
+        await websitesViewModel.refreshFromExtension()
+        reconcileQueuedWebsitesWithSavedItems()
+    }
+
     public func consumeExtensionEvents(awaitPendingShareReplay: Bool = true) async {
         guard authState == .active, isProtectedContentReady else { return }
         if awaitPendingShareReplay {

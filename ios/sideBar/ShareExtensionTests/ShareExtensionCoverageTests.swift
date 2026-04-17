@@ -2,6 +2,7 @@ import Foundation
 import XCTest
 @testable import ShareExtension
 import sideBarShared
+import UniformTypeIdentifiers
 
 final class ShareExtensionCoverageTests: XCTestCase {
     func testShareExtensionInfoPlistSupportsSafariWebpagesAndRichAttachmentPayloads() throws {
@@ -256,6 +257,41 @@ final class ShareExtensionCoverageTests: XCTestCase {
         let url = controller.extractFirstURL(from: text)
 
         XCTAssertEqual(url?.absoluteString, "https://example.com/docs?tab=1")
+    }
+
+    func testWebsiteProvidersWithJavaScriptResultsAreNotClassifiedAsBinaryFiles() {
+        let controller = ShareViewController()
+        let itemProvider = NSItemProvider()
+        itemProvider.registerDataRepresentation(forTypeIdentifier: UTType.data.identifier, visibility: .all) { completion in
+            completion(Data("ignored".utf8), nil)
+            return nil
+        }
+        itemProvider.registerItem(
+            forTypeIdentifier: UTType.propertyList.identifier,
+            loadHandler: { completion, _, _ in
+                completion?(
+                    [
+                        NSExtensionJavaScriptPreprocessingResultsKey: [
+                            "baseURI": "https://example.com/article"
+                        ]
+                    ] as NSSecureCoding,
+                    nil
+                )
+            }
+        )
+
+        XCTAssertFalse(controller.hasBinaryFileContent(itemProvider))
+    }
+
+    func testGenericDataProvidersRemainClassifiedAsBinaryFiles() {
+        let controller = ShareViewController()
+        let itemProvider = NSItemProvider()
+        itemProvider.registerDataRepresentation(forTypeIdentifier: UTType.data.identifier, visibility: .all) { completion in
+            completion(Data("file".utf8), nil)
+            return nil
+        }
+
+        XCTAssertTrue(controller.hasBinaryFileContent(itemProvider))
     }
 
     func testURLFromTextPayloadReadsSafariJavaScriptPreprocessingResults() {
