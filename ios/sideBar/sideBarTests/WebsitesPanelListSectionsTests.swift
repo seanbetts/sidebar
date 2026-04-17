@@ -209,6 +209,44 @@ final class WebsitesPanelListSectionsTests: XCTestCase {
         XCTAssertNil(selected)
     }
 
+    func testResolvedSelectionPrefersTransientThenSelectedThenActive() {
+        XCTAssertEqual(
+            WebsitesPanelView.resolvedSelectionID(
+                transientSelection: "transient",
+                selectedWebsiteId: "selected",
+                activeWebsiteId: "active"
+            ),
+            "transient"
+        )
+        XCTAssertEqual(
+            WebsitesPanelView.resolvedSelectionID(
+                transientSelection: nil,
+                selectedWebsiteId: "selected",
+                activeWebsiteId: "active"
+            ),
+            "selected"
+        )
+        XCTAssertEqual(
+            WebsitesPanelView.resolvedSelectionID(
+                transientSelection: nil,
+                selectedWebsiteId: nil,
+                activeWebsiteId: "active"
+            ),
+            "active"
+        )
+    }
+
+    func testResolvedSelectionKeepsSelectedWebsiteWhenActiveDetailIsUnavailableOffline() {
+        XCTAssertEqual(
+            WebsitesPanelView.resolvedSelectionID(
+                transientSelection: nil,
+                selectedWebsiteId: "website-offline",
+                activeWebsiteId: nil
+            ),
+            "website-offline"
+        )
+    }
+
     private func makeView(
         isNetworkAvailable: Bool = true,
         items: [WebsiteItem]? = nil

@@ -64,6 +64,14 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
         XCTAssertTrue(normalized.contains("&&viewModel.selectedWebsiteId==nil"))
     }
 
+    func testWebsitesPanelTracksSelectionFromSelectedWebsiteIdInsteadOfLoadedDetail() throws {
+        let normalized = try source(named: "Views/SidebarPanels/WebsitesPanel.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains(".onChange(of:viewModel.selectedWebsiteId)"))
+        XCTAssertFalse(normalized.contains(".onChange(of:viewModel.active?.id)"))
+    }
+
     func testFilesDetailViewsUseSharedOfflineUnavailablePlaceholder() throws {
         let filesNormalized = try source(named: "Views/Files/FilesViewComponents.swift")
             .normalizedForSourceAssertions()

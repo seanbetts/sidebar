@@ -90,12 +90,12 @@ struct WebsitesPanelView: View {
                 }
             }
             if selection == nil {
-                selection = viewModel.active?.id
+                selection = viewModel.selectedWebsiteId ?? viewModel.active?.id
             }
             listAppeared = !viewModel.isLoading
         }
-        .onChange(of: viewModel.active?.id) { _, newValue in
-            selection = newValue
+        .onChange(of: viewModel.selectedWebsiteId) { _, newValue in
+            selection = newValue ?? viewModel.active?.id
         }
         .onChange(of: viewModel.isLoading) { _, isLoading in
             listAppeared = !isLoading

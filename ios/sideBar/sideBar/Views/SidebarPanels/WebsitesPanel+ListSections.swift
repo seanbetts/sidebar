@@ -21,6 +21,22 @@ extension WebsitesPanelView {
         case archive
     }
 
+    static func resolvedSelectionID(
+        transientSelection: String?,
+        selectedWebsiteId: String?,
+        activeWebsiteId: String?
+    ) -> String? {
+        transientSelection ?? selectedWebsiteId ?? activeWebsiteId
+    }
+
+    var currentSelectionID: String? {
+        Self.resolvedSelectionID(
+            transientSelection: selection,
+            selectedWebsiteId: viewModel.selectedWebsiteId,
+            activeWebsiteId: viewModel.active?.id
+        )
+    }
+
     static let sparseStateTitle = "No websites yet"
     static let sparseStateSubtitle: String? = nil
 
@@ -108,7 +124,7 @@ extension WebsitesPanelView {
     func navigateWebsitesList(direction: ShortcutListDirection) {
         let ids = websitesNavigationItems()
         guard !ids.isEmpty else { return }
-        let currentId = selection ?? viewModel.active?.id
+        let currentId = currentSelectionID
         let nextIndex: Int
         if let currentId, let index = ids.firstIndex(of: currentId) {
             nextIndex = direction == .next ? min(ids.count - 1, index + 1) : max(0, index - 1)
@@ -132,7 +148,7 @@ extension WebsitesPanelView {
         useListStyling: Bool = true,
         allowArchive: Bool
     ) -> some View {
-        let isSelected = selection == item.id
+        let isSelected = currentSelectionID == item.id
         let row = WebsiteRow(
             item: item,
             isSelected: isSelected,
