@@ -229,8 +229,7 @@ extension TasksPanelView {
         .scrollContentBackground(.hidden)
         .sidebarPanelListBackground()
         .refreshable {
-            await viewModel.load(selection: viewModel.preferredLoadSelection, force: true)
-            await viewModel.loadCounts(force: true)
+            await environment.refreshSectionManually(.tasks)
         }
     }
 

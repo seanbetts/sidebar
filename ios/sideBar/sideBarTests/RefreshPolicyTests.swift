@@ -30,7 +30,8 @@ final class RefreshPolicyTests: XCTestCase {
                 hasVisibleDetail: true,
                 pinnedSections: [.notes, .websites, .files],
                 lastOpenedSection: .tasks,
-                staleTargets: []
+                staleTargets: [],
+                canAttemptServerRead: true
             )
         )
 
@@ -57,7 +58,8 @@ final class RefreshPolicyTests: XCTestCase {
                 hasVisibleDetail: false,
                 pinnedSections: [.notes, .websites, .files],
                 lastOpenedSection: .tasks,
-                staleTargets: [.sectionList(.websites), .taskCounts]
+                staleTargets: [.sectionList(.websites), .taskCounts],
+                canAttemptServerRead: true
             )
         )
 
@@ -89,7 +91,8 @@ final class RefreshPolicyTests: XCTestCase {
                 hasVisibleDetail: true,
                 pinnedSections: [.notes, .websites],
                 lastOpenedSection: .tasks,
-                staleTargets: []
+                staleTargets: [],
+                canAttemptServerRead: true
             )
         )
 
@@ -117,11 +120,44 @@ final class RefreshPolicyTests: XCTestCase {
                 hasVisibleDetail: true,
                 pinnedSections: [.notes],
                 lastOpenedSection: nil,
-                staleTargets: []
+                staleTargets: [],
+                canAttemptServerRead: true
             )
         )
 
         XCTAssertTrue(plan.targets.isEmpty)
+    }
+
+    func testManualRefreshUsesChatListForChatAndCountsForTasks() {
+        let policy = RefreshPolicy()
+
+        let chatPlan = policy.makePlan(
+            trigger: .manualRefresh,
+            context: RefreshContext(
+                visibleSection: .chat,
+                hasVisibleDetail: true,
+                pinnedSections: [],
+                lastOpenedSection: nil,
+                staleTargets: [],
+                canAttemptServerRead: true
+            )
+        )
+        let tasksPlan = policy.makePlan(
+            trigger: .manualRefresh,
+            context: RefreshContext(
+                visibleSection: .tasks,
+                hasVisibleDetail: false,
+                pinnedSections: [],
+                lastOpenedSection: nil,
+                staleTargets: [],
+                canAttemptServerRead: true
+            )
+        )
+
+        XCTAssertTrue(chatPlan.targets.contains(.chatList))
+        XCTAssertTrue(chatPlan.targets.contains(.visibleDetail(.chat)))
+        XCTAssertTrue(tasksPlan.targets.contains(.sectionList(.tasks)))
+        XCTAssertTrue(tasksPlan.targets.contains(.taskCounts))
     }
 
     func testReconnectPlanRequiresQueueReplayFirstAndKeepsArchivesLazy() {
@@ -133,7 +169,8 @@ final class RefreshPolicyTests: XCTestCase {
                 hasVisibleDetail: true,
                 pinnedSections: [.notes, .websites, .files],
                 lastOpenedSection: .chat,
-                staleTargets: []
+                staleTargets: [],
+                canAttemptServerRead: true
             )
         )
 

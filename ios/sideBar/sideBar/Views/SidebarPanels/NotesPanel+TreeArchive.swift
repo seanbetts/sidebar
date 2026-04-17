@@ -109,7 +109,7 @@ extension NotesPanelView {
         .scrollContentBackground(.hidden)
         .sidebarPanelListBackground()
         .refreshable {
-            await viewModel.loadTree()
+            await environment.refreshSectionManually(.notes)
         }
         .onChange(of: pinnedItems.map(\.id)) { _, newValue in
             handlePinnedSetChanged(newValue)

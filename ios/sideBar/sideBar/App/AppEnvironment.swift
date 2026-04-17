@@ -254,7 +254,8 @@ public final class AppEnvironment: ObservableObject {
                 ingestionViewModel: ingestionViewModel,
                 notesStore: dependencies.notesStore,
                 websitesStore: dependencies.websitesStore,
-                ingestionStore: dependencies.ingestionStore
+                ingestionStore: dependencies.ingestionStore,
+                canAttemptServerRead: dependencies.connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
             )
         }
         self.syncCoordinator = SyncCoordinator(

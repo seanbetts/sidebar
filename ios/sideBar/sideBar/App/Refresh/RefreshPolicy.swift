@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 struct RefreshPolicy {
-    private let metadataStore: RefreshMetadataStore?
+    let metadataStore: RefreshMetadataStore?
     private let now: () -> Date
 
     init(
@@ -81,11 +81,22 @@ struct RefreshPolicy {
 
     private func visibleTargets(for context: RefreshContext) -> [RefreshTarget] {
         guard let visibleSection = context.visibleSection else { return [] }
-        var targets: [RefreshTarget] = [.sectionList(visibleSection)]
+        var targets = sectionTargets(for: visibleSection)
         if context.hasVisibleDetail {
             targets.append(.visibleDetail(visibleSection))
         }
         return targets
+    }
+
+    private func sectionTargets(for section: AppSection) -> [RefreshTarget] {
+        switch section {
+        case .chat:
+            return [.chatList]
+        case .tasks:
+            return [.sectionList(.tasks), .taskCounts]
+        default:
+            return [.sectionList(section)]
+        }
     }
 
     private func foregroundTargets(for context: RefreshContext) -> [RefreshTarget] {

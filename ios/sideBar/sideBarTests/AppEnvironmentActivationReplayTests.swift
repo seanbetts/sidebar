@@ -292,8 +292,9 @@ final class RefreshCoordinatorSpy: RefreshCoordinatorType {
         _ = context
     }
 
-    func visibleSectionDidChange(to section: AppSection?) {
+    func visibleSectionDidChange(to section: AppSection?, context: RefreshContext) async {
         _ = section
+        _ = context
     }
 
     func activationRequests() -> [ActivationRefreshRequest] {

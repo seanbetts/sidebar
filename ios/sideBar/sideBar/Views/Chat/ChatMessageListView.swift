@@ -10,6 +10,7 @@ struct ChatMessageListView: View {
     @State private var streamingAutoScrollTask: Task<Void, Never>?
     private let pageSize: Int = 40
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @EnvironmentObject private var environment: AppEnvironment
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -151,8 +152,7 @@ struct ChatMessageListView: View {
                 startStreamingAutoScrollLoopIfNeeded(proxy: proxy)
             }
             .refreshable {
-                await viewModel.refreshConversations()
-                await viewModel.refreshActiveConversation()
+                await environment.refreshSectionManually(.chat)
             }
         }
     }

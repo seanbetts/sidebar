@@ -308,7 +308,7 @@ final class ContentViewLifecycleTests: XCTestCase {
         let normalized = try contentViewLifecycleSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(normalized.contains("environment.refreshCoordinator.visibleSectionDidChange(to:section)"))
+        XCTAssertTrue(normalized.contains("Task{awaitenvironment.refreshVisibleSectionChange(to:section)}"))
     }
 
     func testTasksViewDoesNotOwnScenePhaseRefresh() throws {

@@ -202,7 +202,7 @@ extension ConversationsPanelView {
         .scrollContentBackground(.hidden)
         .sidebarPanelListBackground()
         .refreshable {
-            await viewModel.refreshConversations()
+            await environment.refreshSectionManually(.chat)
         }
     }
 

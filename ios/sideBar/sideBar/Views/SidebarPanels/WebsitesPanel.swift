@@ -305,7 +305,7 @@ extension WebsitesPanelView {
             .scrollContentBackground(.hidden)
             .sidebarPanelListBackground()
             .refreshable {
-                await viewModel.load()
+                await appEnvironment.refreshSectionManually(.websites)
             }
         } else {
             websitesPanelList {
@@ -405,7 +405,7 @@ extension WebsitesPanelView {
                 handlePinnedSetChanged(newValue)
             }
             .refreshable {
-                await viewModel.load()
+                await appEnvironment.refreshSectionManually(.websites)
             }
         }
     }

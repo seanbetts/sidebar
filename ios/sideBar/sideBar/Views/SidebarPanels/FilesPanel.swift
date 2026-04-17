@@ -401,7 +401,7 @@ extension FilesPanelView {
             handlePinnedSetChanged(newValue)
         }
         .refreshable {
-            await viewModel.load()
+            await appEnvironment.refreshSectionManually(.files)
         }
         .onAppear {
             listAppeared = !viewModel.isLoading

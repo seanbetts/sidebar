@@ -4,7 +4,6 @@ import CoreLocation
 #if os(iOS)
 import UIKit
 #endif
-
 struct MacInitialSelectionPlan {
     let primarySection: AppSection?
     let secondarySection: AppSection?
@@ -135,7 +134,6 @@ enum WorkspaceBehaviorPolicy {
         )
     }
 }
-
 extension ContentView {
     func refreshWeatherIfPossible() async {
         guard environment.authState == .active else { return }
@@ -153,20 +151,12 @@ extension ContentView {
 
     func loadPhoneSectionIfNeeded(_ section: AppSection) async {
         switch section {
-        case .notes:
-            await environment.notesRuntime.viewModel.loadTree()
-        case .websites:
-            await environment.websitesViewModel.load()
-        case .files:
-            await environment.ingestionViewModel.load()
-        case .chat:
-            await environment.chatViewModel.loadConversations()
         case .skillsStore:
             if environment.settingsViewModel.settings == nil {
                 await environment.settingsViewModel.load()
             }
             await environment.settingsViewModel.loadSkills()
-        case .tasks, .settings:
+        case .chat, .notes, .tasks, .websites, .files, .settings:
             break
         }
     }
@@ -265,7 +255,9 @@ extension ContentView {
     func updateActiveSection() {
         let section = resolvedActiveSectionForWorkspace
         environment.activeSection = section
-        environment.refreshCoordinator.visibleSectionDidChange(to: section)
+        Task {
+            await environment.refreshVisibleSectionChange(to: section)
+        }
         #if os(iOS)
         UIMenuSystem.main.setNeedsRebuild()
         #endif

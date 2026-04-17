@@ -23,6 +23,7 @@ struct RefreshContext: Equatable {
     let pinnedSections: [AppSection]
     let lastOpenedSection: AppSection?
     let staleTargets: [RefreshTarget]
+    let canAttemptServerRead: Bool
 }
 
 struct RefreshPlan: Hashable, Equatable {

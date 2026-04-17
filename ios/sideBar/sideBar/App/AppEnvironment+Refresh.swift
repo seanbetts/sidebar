@@ -10,7 +10,8 @@ extension AppEnvironment {
             ingestionViewModel: ingestionViewModel,
             notesStore: notesStore,
             websitesStore: websitesStore,
-            ingestionStore: ingestionStore
+            ingestionStore: ingestionStore,
+            canAttemptServerRead: connectivityMonitor.offlineCapabilityPolicy.canAttemptServerRead
         )
         guard baseContext.visibleSection == nil else {
             return baseContext
@@ -22,7 +23,43 @@ extension AppEnvironment {
             hasVisibleDetail: baseContext.hasVisibleDetail,
             pinnedSections: baseContext.pinnedSections,
             lastOpenedSection: baseContext.lastOpenedSection,
-            staleTargets: baseContext.staleTargets
+            staleTargets: baseContext.staleTargets,
+            canAttemptServerRead: baseContext.canAttemptServerRead
+        )
+    }
+
+    func refreshContext(for section: AppSection?) -> RefreshContext {
+        let baseContext = currentRefreshContext()
+        guard let section else { return baseContext }
+        return RefreshContext(
+            visibleSection: section,
+            hasVisibleDetail: Self.hasVisibleDetail(
+                for: section,
+                chatViewModel: chatViewModel,
+                notesViewModel: notesViewModel,
+                websitesViewModel: websitesViewModel,
+                ingestionViewModel: ingestionViewModel
+            ),
+            pinnedSections: baseContext.pinnedSections,
+            lastOpenedSection: baseContext.lastOpenedSection,
+            staleTargets: baseContext.staleTargets,
+            canAttemptServerRead: baseContext.canAttemptServerRead
+        )
+    }
+
+    func refreshVisibleSectionChange(to section: AppSection?) async {
+        guard authState == .active else { return }
+        await refreshCoordinator.visibleSectionDidChange(
+            to: section,
+            context: refreshContext(for: section)
+        )
+    }
+
+    func refreshSectionManually(_ section: AppSection) async {
+        guard authState == .active else { return }
+        await refreshCoordinator.refresh(
+            trigger: .manualRefresh,
+            context: refreshContext(for: section)
         )
     }
 
@@ -55,7 +92,8 @@ extension AppEnvironment {
         ingestionViewModel: IngestionViewModel,
         notesStore: NotesStore,
         websitesStore: WebsitesStore,
-        ingestionStore: IngestionStore
+        ingestionStore: IngestionStore,
+        canAttemptServerRead: Bool
     ) -> RefreshContext {
         let visibleSection = refreshableVisibleSection(from: workspaceState)
         return RefreshContext(
@@ -73,7 +111,8 @@ extension AppEnvironment {
                 ingestionStore: ingestionStore
             ),
             lastOpenedSection: workspaceState.lastNonChatSection,
-            staleTargets: []
+            staleTargets: [],
+            canAttemptServerRead: canAttemptServerRead
         )
     }
 

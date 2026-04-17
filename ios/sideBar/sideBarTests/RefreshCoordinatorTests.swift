@@ -14,7 +14,8 @@ final class RefreshCoordinatorTests: XCTestCase {
             hasVisibleDetail: true,
             pinnedSections: [.notes, .websites, .files],
             lastOpenedSection: .tasks,
-            staleTargets: []
+            staleTargets: [],
+            canAttemptServerRead: true
         )
 
         let first = Task {
@@ -32,6 +33,58 @@ final class RefreshCoordinatorTests: XCTestCase {
         _ = await second.value
 
         XCTAssertEqual(adapter.refreshCount, 1)
+    }
+
+    func testCoordinatorMarksTargetsFreshAfterRefreshCompletes() async {
+        let metadataStore = RefreshMetadataStore()
+        var currentNow = Date(timeIntervalSince1970: 1_000)
+        let adapter = CountingRefreshAdapter(section: .notes)
+        let coordinator = RefreshCoordinator(
+            policy: RefreshPolicy(metadataStore: metadataStore, now: { currentNow }),
+            registry: RefreshRegistry(adapters: [adapter]),
+            now: { currentNow }
+        )
+        let context = RefreshContext(
+            visibleSection: .notes,
+            hasVisibleDetail: true,
+            pinnedSections: [],
+            lastOpenedSection: nil,
+            staleTargets: [],
+            canAttemptServerRead: true
+        )
+
+        await coordinator.refresh(trigger: .coldLaunch, context: context)
+        XCTAssertEqual(adapter.refreshCount, 1)
+
+        currentNow = currentNow.addingTimeInterval(30)
+        await coordinator.refresh(trigger: .warmForeground, context: context)
+        XCTAssertEqual(adapter.refreshCount, 1)
+
+        currentNow = currentNow.addingTimeInterval(200)
+        await coordinator.refresh(trigger: .warmForeground, context: context)
+        XCTAssertEqual(adapter.refreshCount, 2)
+    }
+
+    func testCoordinatorSkipsRefreshWhenServerReadsAreUnavailable() async {
+        let adapter = CountingRefreshAdapter(section: .notes)
+        let coordinator = RefreshCoordinator(
+            policy: RefreshPolicy(),
+            registry: RefreshRegistry(adapters: [adapter])
+        )
+
+        await coordinator.refresh(
+            trigger: .manualRefresh,
+            context: RefreshContext(
+                visibleSection: .notes,
+                hasVisibleDetail: true,
+                pinnedSections: [],
+                lastOpenedSection: nil,
+                staleTargets: [],
+                canAttemptServerRead: false
+            )
+        )
+
+        XCTAssertEqual(adapter.refreshCount, 0)
     }
 }
 
@@ -57,5 +110,19 @@ private final class BlockingRefreshAdapter: DomainRefreshAdapter {
     func resume() {
         continuation?.resume()
         continuation = nil
+    }
+}
+
+@MainActor
+private final class CountingRefreshAdapter: DomainRefreshAdapter {
+    let section: AppSection
+    private(set) var refreshCount = 0
+
+    init(section: AppSection) {
+        self.section = section
+    }
+
+    func refresh(plan: RefreshPlan) async {
+        refreshCount += 1
     }
 }
