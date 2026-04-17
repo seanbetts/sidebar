@@ -62,6 +62,58 @@ final class ChatOfflineDraftAndCachingTests: ChatViewModelTestCase {
         XCTAssertEqual(api.getCallCount, 0)
     }
 
+    func testConversationDraftRestoresWhenDetailIsUnavailableOffline() async throws {
+        let persistence = PersistenceController(inMemory: true)
+        let draftStorage = DraftStorage(container: persistence.container)
+        let conversation = Conversation(
+            id: "conv-offline",
+            title: "Offline unavailable",
+            titleGenerated: false,
+            createdAt: "2026-01-10T00:00:00Z",
+            updatedAt: "2026-01-10T00:00:00Z",
+            messageCount: 0,
+            firstMessage: nil,
+            isArchived: false
+        )
+        try draftStorage.saveDraft(
+            entityType: ChatDraftController.entityType,
+            entityId: ChatDraftController.draftKey(for: conversation.id),
+            content: "Unavailable offline draft"
+        )
+        let api = ChatViewModelTestsSupport.ConversationsAPISpy()
+        let viewModel = makeViewModel(
+            api: api,
+            cache: TestCacheClient(),
+            networkStatus: ChatViewModelTestsSupport.TestNetworkStatus(
+                isNetworkAvailable: false,
+                isOffline: true
+            ),
+            persistence: persistence,
+            draftStorage: draftStorage
+        )
+        viewModel.conversations = [conversation]
+
+        await viewModel.selectConversation(id: conversation.id)
+
+        XCTAssertEqual(viewModel.selectedConversationId, conversation.id)
+        XCTAssertEqual(viewModel.draftText, "Unavailable offline draft")
+        XCTAssertTrue(viewModel.messages.isEmpty)
+        XCTAssertEqual(viewModel.errorMessage, "This chat isn't available offline yet.")
+        XCTAssertEqual(api.getCallCount, 0)
+
+        viewModel.updateDraftText("Unavailable offline draft updated")
+        try await Task.sleep(nanoseconds: 300_000_000)
+
+        XCTAssertEqual(viewModel.draftText, "Unavailable offline draft updated")
+        XCTAssertEqual(
+            try draftStorage.getDraft(
+                entityType: ChatDraftController.entityType,
+                entityId: ChatDraftController.draftKey(for: conversation.id)
+            )?.content,
+            "Unavailable offline draft updated"
+        )
+    }
+
     func testNewChatDraftUsesFallbackSlotUntilServerConversationExists() async throws {
         let persistence = PersistenceController(inMemory: true)
         let draftStorage = DraftStorage(container: persistence.container)
