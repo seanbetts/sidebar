@@ -219,7 +219,10 @@ extension FilesPanelView {
         )
 
         return VStack(spacing: DesignTokens.Spacing.sm) {
-            PanelHeader(title: "Files") {
+            PanelHeader(
+                title: "Files",
+                minimumContentHeight: HeaderActionControlMetrics.chromeHeight
+            ) {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
                         HeaderActionButton(

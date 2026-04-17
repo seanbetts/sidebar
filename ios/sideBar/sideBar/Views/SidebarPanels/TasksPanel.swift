@@ -119,7 +119,10 @@ extension TasksPanelView {
         )
 
         return VStack(spacing: DesignTokens.Spacing.sm) {
-            PanelHeader(title: "Tasks") {
+            PanelHeader(
+                title: "Tasks",
+                minimumContentHeight: HeaderActionControlMetrics.chromeHeight
+            ) {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
                         addMenuButton

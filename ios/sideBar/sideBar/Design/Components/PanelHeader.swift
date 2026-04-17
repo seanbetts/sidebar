@@ -3,6 +3,7 @@ import SwiftUI
 struct PanelHeader<Trailing: View>: View {
     let title: String
     let subtitle: String?
+    let minimumContentHeight: CGFloat?
     let trailing: Trailing
     @EnvironmentObject private var environment: AppEnvironment
 #if !os(macOS)
@@ -12,16 +13,23 @@ struct PanelHeader<Trailing: View>: View {
     init(
         title: String,
         subtitle: String? = nil,
+        minimumContentHeight: CGFloat? = nil,
         @ViewBuilder trailing: () -> Trailing
     ) {
         self.title = title
         self.subtitle = subtitle
+        self.minimumContentHeight = minimumContentHeight
         self.trailing = trailing()
     }
 
-    init(title: String, subtitle: String? = nil) where Trailing == EmptyView {
+    init(
+        title: String,
+        subtitle: String? = nil,
+        minimumContentHeight: CGFloat? = nil
+    ) where Trailing == EmptyView {
         self.title = title
         self.subtitle = subtitle
+        self.minimumContentHeight = minimumContentHeight
         self.trailing = EmptyView()
     }
 
@@ -43,7 +51,7 @@ struct PanelHeader<Trailing: View>: View {
     }
 
     private var headerContent: some View {
-        HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
+        let content = HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .appFont(.headline)
@@ -60,8 +68,21 @@ struct PanelHeader<Trailing: View>: View {
             }
             trailing
         }
-        .padding(.horizontal, DesignTokens.Spacing.md)
-        .padding(.vertical, DesignTokens.Spacing.sm)
+
+        if let minimumContentHeight {
+            return AnyView(
+                content
+                    .frame(minHeight: minimumContentHeight, alignment: .center)
+                    .padding(.horizontal, DesignTokens.Spacing.md)
+                    .padding(.vertical, DesignTokens.Spacing.sm)
+            )
+        }
+
+        return AnyView(
+            content
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.vertical, DesignTokens.Spacing.sm)
+        )
     }
 
     @Environment(\.colorScheme) private var colorScheme

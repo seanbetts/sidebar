@@ -194,13 +194,70 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
             at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"]
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let expectedFrame =
-            ".frame(maxWidth:.infinity,minHeight:LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch:showsInlineSearch),alignment:.top)"
+            ".frame(maxWidth:.infinity,minHeight:"
+            + "LayoutMetrics.searchablePanelHeaderMinHeight("
+            + "showsInlineSearch:showsInlineSearch),alignment:.top)"
 
         XCTAssertTrue(conversations.contains(expectedFrame))
         XCTAssertTrue(notes.contains(expectedFrame))
         XCTAssertTrue(files.contains(expectedFrame))
         XCTAssertTrue(tasks.contains(expectedFrame))
         XCTAssertTrue(websites.contains(expectedFrame))
+    }
+
+    func testSearchableSidebarHeadersReserveStableTitleRowHeight() throws {
+        let conversations = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "ConversationsPanelView+Helpers.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let notes = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+Helpers.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let files = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "FilesPanel.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let tasks = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "TasksPanel.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let websites = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let expectedHeader =
+            "PanelHeader(title:\"Chat\",minimumContentHeight:HeaderActionControlMetrics.chromeHeight)"
+        let expectedNotesHeader =
+            "PanelHeader(title:\"Notes\",minimumContentHeight:HeaderActionControlMetrics.chromeHeight)"
+        let expectedFilesHeader =
+            "PanelHeader(title:\"Files\",minimumContentHeight:HeaderActionControlMetrics.chromeHeight)"
+        let expectedTasksHeader =
+            "PanelHeader(title:\"Tasks\",minimumContentHeight:HeaderActionControlMetrics.chromeHeight)"
+        let expectedWebsitesHeader =
+            "PanelHeader(title:\"Websites\",minimumContentHeight:HeaderActionControlMetrics.chromeHeight)"
+
+        XCTAssertTrue(conversations.contains(expectedHeader))
+        XCTAssertTrue(notes.contains(expectedNotesHeader))
+        XCTAssertTrue(files.contains(expectedFilesHeader))
+        XCTAssertTrue(tasks.contains(expectedTasksHeader))
+        XCTAssertTrue(websites.contains(expectedWebsitesHeader))
+    }
+
+    func testPanelHeaderAppliesMinHeightBeforePadding() throws {
+        let panelHeader = try source(
+            at: ["sideBar", "Design", "Components", "PanelHeader.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            panelHeader.contains(
+                "content.frame(minHeight:minimumContentHeight,alignment:.center)"
+                    + ".padding(.horizontal,DesignTokens.Spacing.md)"
+                    + ".padding(.vertical,DesignTokens.Spacing.sm)"
+            )
+        )
+        XCTAssertFalse(
+            panelHeader.contains(
+                "content.padding(.horizontal,DesignTokens.Spacing.md)"
+                    + ".padding(.vertical,DesignTokens.Spacing.sm)"
+                    + ".frame(minHeight:minimumContentHeight,alignment:.center)"
+            )
+        )
     }
 
     func testSettingsEditorsUseSharedInputChrome() throws {

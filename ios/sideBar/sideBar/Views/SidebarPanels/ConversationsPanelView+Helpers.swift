@@ -93,7 +93,10 @@ extension ConversationsPanelView {
         )
 
         return VStack(spacing: DesignTokens.Spacing.sm) {
-            PanelHeader(title: "Chat") {
+            PanelHeader(
+                title: "Chat",
+                minimumContentHeight: HeaderActionControlMetrics.chromeHeight
+            ) {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if showNewChatButton && !isCompactPhone {
                         HeaderActionButton(

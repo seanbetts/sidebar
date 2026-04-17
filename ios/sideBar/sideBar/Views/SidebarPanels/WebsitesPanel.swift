@@ -210,7 +210,10 @@ extension WebsitesPanelView {
         )
 
         return VStack(spacing: DesignTokens.Spacing.sm) {
-            PanelHeader(title: "Websites") {
+            PanelHeader(
+                title: "Websites",
+                minimumContentHeight: HeaderActionControlMetrics.chromeHeight
+            ) {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
                         HeaderActionButton(

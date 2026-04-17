@@ -40,7 +40,10 @@ extension NotesPanelView {
         )
 
         return VStack(spacing: DesignTokens.Spacing.sm) {
-            PanelHeader(title: "Notes") {
+            PanelHeader(
+                title: "Notes",
+                minimumContentHeight: HeaderActionControlMetrics.chromeHeight
+            ) {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     if !isCompactPhone {
                         HeaderActionButton(
