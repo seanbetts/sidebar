@@ -283,6 +283,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
 
     func applyTreeUpdate(_ incoming: FileTree, persist: Bool) {
         let merged = mergeArchivedSummary(into: incoming)
+        syncActiveNote(with: merged, persist: persist)
         guard shouldUpdateTree(incoming) else {
             updateWidgetData(from: merged)
             return

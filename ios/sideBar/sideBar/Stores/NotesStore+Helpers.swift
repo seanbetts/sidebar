@@ -174,6 +174,25 @@ extension NotesStore {
         }
     }
 
+    func syncActiveNote(with tree: FileTree, persist: Bool) {
+        guard let activeNote,
+              let node = findNode(path: activeNote.path, in: tree.children) else {
+            return
+        }
+        let updated = notePayload(activeNote, syncedWith: node)
+        guard shouldSyncActiveNoteMetadata(current: activeNote, updated: updated) else {
+            return
+        }
+        self.activeNote = updated
+        guard persist else { return }
+        if shouldPersistNote(updated) {
+            persistNote(updated)
+            indexNoteInSpotlight(updated)
+        } else {
+            clearCachedNote(updated)
+        }
+    }
+
     private func syncNoteMetadataIntoTrees(_ note: NotePayload, persist: Bool) {
         syncNoteMetadata(
             into: tree,
@@ -227,6 +246,25 @@ extension NotesStore {
             value: updated,
             lastSyncAt: lastSyncAt
         )
+    }
+
+    func notePayload(_ note: NotePayload, syncedWith node: FileNode) -> NotePayload {
+        NotePayload(
+            id: note.id,
+            name: node.name,
+            document: note.document,
+            documentVersion: note.documentVersion,
+            plainText: note.plainText,
+            path: node.path,
+            modified: node.modified,
+            created: note.created
+        )
+    }
+
+    func shouldSyncActiveNoteMetadata(current: NotePayload, updated: NotePayload) -> Bool {
+        current.name != updated.name ||
+            current.path != updated.path ||
+            current.modified != updated.modified
     }
 
     func indexNoteInSpotlight(_ note: NotePayload) {

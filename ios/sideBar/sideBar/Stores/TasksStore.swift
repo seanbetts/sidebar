@@ -195,11 +195,13 @@ import Combine
                 for: selection,
                 requestId: requestId
             )
+            let pendingWrites = await pendingTaskWrites()
             apply(
                 list: response,
                 selection: selection,
                 persist: true,
-                updateVisibleState: shouldApplyVisibleState
+                updateVisibleState: shouldApplyVisibleState,
+                pendingWrites: pendingWrites
             )
         } catch {
             if shouldApplyVisibleState(for: selection, requestId: requestId), tasks.isEmpty {
@@ -246,20 +248,29 @@ import Combine
         list: TaskListResponse,
         selection: TaskSelection,
         persist: Bool,
-        updateVisibleState: Bool = true
+        updateVisibleState: Bool = true,
+        pendingWrites: [PendingWriteSummary] = []
     ) {
+        let mergedTasks = updateVisibleState
+            ? mergedVisibleTasks(remote: list.tasks, pendingWrites: pendingWrites)
+            : list.tasks
+        let mergedGroups = updateVisibleState
+            ? list.groups.map { mergedVisibleGroups(remote: $0, pendingWrites: pendingWrites) }
+            : list.groups
+        let mergedProjects = updateVisibleState
+            ? list.projects.map { mergedVisibleProjects(remote: $0, pendingWrites: pendingWrites) }
+            : list.projects
+
         if updateVisibleState {
-            // Filter out tasks that are pending removal (optimistic updates)
-            let incomingTasks = list.tasks.filter { !pendingRemovals.contains($0.id) }
-            if tasks != incomingTasks {
-                tasks = incomingTasks
+            if tasks != mergedTasks {
+                tasks = mergedTasks
             }
-            if let responseGroups = list.groups {
+            if let responseGroups = mergedGroups {
                 if groups != responseGroups {
                     groups = responseGroups
                 }
             }
-            if let responseProjects = list.projects {
+            if let responseProjects = mergedProjects {
                 if projects != responseProjects {
                     projects = responseProjects
                 }
@@ -276,14 +287,21 @@ import Combine
             }
 
             let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
-            cache.set(key: cacheKey, value: list, ttlSeconds: CachePolicy.tasksList)
+            let persistedList = TaskListResponse(
+                scope: list.scope,
+                generatedAt: list.generatedAt,
+                tasks: mergedTasks,
+                projects: mergedProjects,
+                groups: mergedGroups
+            )
+            cache.set(key: cacheKey, value: persistedList, ttlSeconds: CachePolicy.tasksList)
             offlineStore?.set(
                 key: cacheKey,
                 entityType: "taskList",
-                value: list,
+                value: persistedList,
                 lastSyncAt: nil
             )
-            indexTasksInSpotlight(list.tasks)
+            indexTasksInSpotlight(mergedTasks)
         }
     }
 

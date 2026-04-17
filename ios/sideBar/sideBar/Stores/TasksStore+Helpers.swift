@@ -1,6 +1,11 @@
 import Foundation
 
 extension TasksStore {
+    func pendingTaskWrites() async -> [PendingWriteSummary] {
+        guard let writeQueue else { return [] }
+        return (try? await writeQueue.fetchPendingWrites()) ?? []
+    }
+
     func indexTasksInSpotlight(_ items: [TaskItem]) {
         guard let indexer = spotlightIndexer else { return }
         let spotlightTasks = items
@@ -190,6 +195,108 @@ extension TasksStore {
             }
         }
         projects = updatedProjects
+    }
+
+    func mergedVisibleTasks(
+        remote: [TaskItem],
+        pendingWrites: [PendingWriteSummary]
+    ) -> [TaskItem] {
+        let filteredRemote = remote.filter { !pendingRemovals.contains($0.id) }
+        let protectedTaskIDs = Set(
+            pendingWrites.compactMap { write -> String? in
+                guard write.entityType == WriteEntityType.task.rawValue,
+                      let entityId = write.entityId,
+                      !isPendingGroupOperation(write.operationType),
+                      !isPendingProjectOperation(write.operationType) else {
+                    return nil
+                }
+                return entityId
+            }
+        )
+        let localTasksByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+        let mergedRemote = filteredRemote.map { task in
+            if protectedTaskIDs.contains(task.id), let local = localTasksByID[task.id] {
+                return local
+            }
+            return task
+        }
+
+        let previewTasks = tasks.filter(\.isPreview)
+        guard !previewTasks.isEmpty else {
+            return mergedRemote
+        }
+        let previewIDs = Set(previewTasks.map(\.id))
+        return previewTasks + mergedRemote.filter { !previewIDs.contains($0.id) }
+    }
+
+    func mergedVisibleGroups(
+        remote: [TaskGroup],
+        pendingWrites: [PendingWriteSummary]
+    ) -> [TaskGroup] {
+        let protectedGroupIDs = Set(
+            pendingWrites.compactMap { write -> String? in
+                guard let entityId = write.entityId,
+                      isPendingGroupOperation(write.operationType) else {
+                    return nil
+                }
+                return entityId
+            }
+        )
+        let localGroupsByID = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
+        let mergedRemote = remote.map { group in
+            if protectedGroupIDs.contains(group.id), let local = localGroupsByID[group.id] {
+                return local
+            }
+            return group
+        }
+
+        let localPreviewGroups = groups.filter { $0.id.hasPrefix("local-group-") }
+        guard !localPreviewGroups.isEmpty else {
+            return mergedRemote
+        }
+        let previewIDs = Set(localPreviewGroups.map(\.id))
+        return localPreviewGroups + mergedRemote.filter { !previewIDs.contains($0.id) }
+    }
+
+    func mergedVisibleProjects(
+        remote: [TaskProject],
+        pendingWrites: [PendingWriteSummary]
+    ) -> [TaskProject] {
+        let protectedProjectIDs = Set(
+            pendingWrites.compactMap { write -> String? in
+                guard let entityId = write.entityId,
+                      isPendingProjectOperation(write.operationType) else {
+                    return nil
+                }
+                return entityId
+            }
+        )
+        let localProjectsByID = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0) })
+        let mergedRemote = remote.map { project in
+            if protectedProjectIDs.contains(project.id), let local = localProjectsByID[project.id] {
+                return local
+            }
+            return project
+        }
+
+        let localPreviewProjects = projects.filter { $0.id.hasPrefix("local-project-") }
+        guard !localPreviewProjects.isEmpty else {
+            return mergedRemote
+        }
+        let previewIDs = Set(localPreviewProjects.map(\.id))
+        return localPreviewProjects + mergedRemote.filter { !previewIDs.contains($0.id) }
+    }
+
+    func isPendingGroupOperation(_ operationType: String) -> Bool {
+        operationType == LocalTaskOperation.createGroup.rawValue
+            || operationType == LocalTaskOperation.renameGroup.rawValue
+            || operationType == LocalTaskOperation.deleteGroup.rawValue
+    }
+
+    func isPendingProjectOperation(_ operationType: String) -> Bool {
+        operationType == LocalTaskOperation.createProject.rawValue
+            || operationType == LocalTaskOperation.renameProject.rawValue
+            || operationType == LocalTaskOperation.deleteProject.rawValue
     }
 
     private func mergeGroups(_ incomingGroups: [TaskGroup]) {
