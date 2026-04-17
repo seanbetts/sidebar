@@ -79,14 +79,15 @@ extension WebsitesPanelView {
     }
 
     var panelState: PanelState {
+        let visiblePendingCount = viewModel.visiblePendingWebsites.count
         let resolvedState = Self.resolvePanelState(
             isLoading: viewModel.isLoading,
             hasError: viewModel.errorMessage != nil,
-            hasLoadedContent: !viewModel.items.isEmpty || !viewModel.pendingWebsites.isEmpty,
+            hasLoadedContent: !viewModel.items.isEmpty || visiblePendingCount > 0,
             panelSearchQuery: viewModel.panelSearchQuery,
             pinnedCount: pinnedItemsSorted.count,
             mainCount: mainItems.count,
-            pendingCount: viewModel.pendingWebsites.count
+            pendingCount: visiblePendingCount
         )
         if resolvedState == .sparse && !hasArchivedContent {
             return .empty
@@ -99,7 +100,7 @@ extension WebsitesPanelView {
             panelState: panelState,
             hasPinnedItems: !pinnedItemsSorted.isEmpty,
             hasMainItems: !mainItems.isEmpty,
-            hasPendingItems: !viewModel.pendingWebsites.isEmpty
+            hasPendingItems: !viewModel.visiblePendingWebsites.isEmpty
         )
         if hasArchivedContent &&
             !sections.contains(.archive) &&

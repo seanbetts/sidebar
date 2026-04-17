@@ -96,6 +96,10 @@ extension WebsitesViewModel {
 
 @MainActor
 extension WebsitesViewModel {
+    var visiblePendingWebsites: [PendingWebsiteItem] {
+        pendingWebsites.filter { shouldDisplayPendingWebsite($0) }
+    }
+
     private struct QueuedPendingWebsite {
         let canonical: String
         let item: PendingShareItem
@@ -312,6 +316,15 @@ extension WebsitesViewModel {
         case .queuedShare:
             return .queued
         }
+    }
+
+    private func shouldDisplayPendingWebsite(_ pending: PendingWebsiteItem) -> Bool {
+        if YouTubeURLPolicy.extractVideoId(from: pending.url) != nil {
+            return true
+        }
+        return items.contains { item in
+            (canonicalWebsiteURLForPendingMatch(item.url) ?? item.url) == pending.canonicalURL
+        } == false
     }
 
     private func pendingWebsiteStatus(

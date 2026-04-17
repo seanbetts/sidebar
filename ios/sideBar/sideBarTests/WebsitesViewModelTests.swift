@@ -630,6 +630,65 @@ final class WebsitesViewModelTests: XCTestCase {
         viewModel.jobPollingTasks.removeValue(forKey: "job-1")
     }
 
+    func testVisiblePendingWebsitesHideSavedDuplicateUntilPollingCompletes() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            saveResult: .success(
+                WebsiteSaveJobResponse(jobId: "job-1", status: "queued")
+            ),
+            jobStatusResult: .success(
+                WebsiteJobStatusResponse(
+                    jobId: "job-1",
+                    status: "queued",
+                    website: nil,
+                    error: nil
+                )
+            )
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: TestNetworkStatus(isNetworkAvailable: true)
+        )
+
+        let saved = await viewModel.saveWebsite(url: "https://example.com")
+
+        XCTAssertTrue(saved)
+        XCTAssertEqual(viewModel.visiblePendingWebsites.count, 1)
+
+        let payload = RealtimePayload(
+            eventType: .insert,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: "saved-1",
+                title: "Saved",
+                url: "https://example.com",
+                domain: "example.com",
+                metadata: nil,
+                savedAt: nil,
+                publishedAt: nil,
+                readingTime: nil,
+                updatedAt: "2026-03-21T10:00:00Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+
+        await viewModel.applyRealtimeEvent(payload)
+        await Task.yield()
+
+        XCTAssertEqual(viewModel.items.first?.id, "saved-1")
+        XCTAssertEqual(viewModel.pendingWebsite?.jobId, "job-1")
+        XCTAssertTrue(viewModel.visiblePendingWebsites.isEmpty)
+
+        viewModel.jobPollingTasks["job-1"]?.cancel()
+        viewModel.jobPollingTasks.removeValue(forKey: "job-1")
+    }
+
     func testSaveWebsitePollingCanceledClearsPendingState() async {
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
@@ -840,6 +899,7 @@ final class WebsitesViewModelTests: XCTestCase {
             viewModel.pendingWebsite?.canonicalURL,
             "https://www.youtube.com/watch?v=abc123xyzAA"
         )
+        XCTAssertEqual(viewModel.visiblePendingWebsites.count, 1)
     }
 
     func testShowPendingFromExtensionAccumulatesMultipleQueuedWebsites() async {

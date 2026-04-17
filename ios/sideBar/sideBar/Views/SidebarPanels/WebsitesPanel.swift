@@ -265,9 +265,9 @@ extension WebsitesPanelView {
             .background(panelBackground)
         } else if panelState == .search {
             websitesPanelList {
-                if !viewModel.pendingWebsites.isEmpty {
+                if !viewModel.visiblePendingWebsites.isEmpty {
                     Section {
-                        ForEach(viewModel.pendingWebsites, id: \.id) { pending in
+                        ForEach(viewModel.visiblePendingWebsites, id: \.id) { pending in
                             pendingWebsiteListRow(pending: pending)
                         }
                     } header: {
@@ -318,9 +318,9 @@ extension WebsitesPanelView {
                         }
                     }
 
-                    if !mainItems.isEmpty || !viewModel.pendingWebsites.isEmpty {
+                    if !mainItems.isEmpty || !viewModel.visiblePendingWebsites.isEmpty {
                         Section {
-                            ForEach(viewModel.pendingWebsites, id: \.id) { pending in
+                            ForEach(viewModel.visiblePendingWebsites, id: \.id) { pending in
                                 pendingWebsiteListRow(pending: pending)
                             }
                             ForEach(mainItems, id: \.id) { item in
