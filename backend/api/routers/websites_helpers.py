@@ -77,6 +77,7 @@ def website_summary(website: Website) -> dict:
         "favicon_extracted_at": metadata.get("favicon_extracted_at"),
         "youtube_transcripts": metadata.get("youtube_transcripts", {}),
         "reading_time": reading_time_value,
+        "created_at": website.created_at.isoformat() if website.created_at else None,
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "last_opened_at": website.last_opened_at.isoformat()
         if website.last_opened_at

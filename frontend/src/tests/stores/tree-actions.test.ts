@@ -176,7 +176,8 @@ describe('tree actions', () => {
 		expect(notesAPI.listTree).not.toHaveBeenCalled();
 		expect(notesAPI.sync).toHaveBeenCalledWith({
 			last_sync: '2026-04-13T09:00:00Z',
-			operations: []
+			operations: [],
+			metadata_only: true
 		});
 		expect(state.trees.notes?.children).toEqual(
 			expect.arrayContaining([
@@ -185,5 +186,57 @@ describe('tree actions', () => {
 			])
 		);
 		expect(state.trees.notes?.lastSync).toBe('2026-04-13T09:10:00Z');
+	});
+
+	it('advances the sync cursor after folder-marker updates force a full reload', async () => {
+		cacheState.set('tree.notes', [
+			{
+				name: 'Cached',
+				path: 'note-1',
+				type: 'file',
+				modified: '2026-04-13T09:00:00Z'
+			}
+		]);
+		cacheState.set('notes.tree.lastSync', '2026-04-13T09:00:00Z');
+		isCacheStale.mockReturnValue(true);
+		notesAPI.sync.mockResolvedValue({
+			applied: [],
+			notes: [],
+			conflicts: [],
+			updates: {
+				items: [
+					{
+						id: 'folder-marker-1',
+						title: 'Projects',
+						folder: 'Projects',
+						pinned: false,
+						pinned_order: null,
+						archived: false,
+						is_folder_marker: true,
+						updated_at: '2026-04-13T09:12:00Z',
+						deleted_at: null
+					}
+				]
+			},
+			serverUpdatedSince: '2026-04-13T09:12:00Z'
+		});
+		notesAPI.listTree.mockResolvedValue({
+			children: [
+				{
+					name: 'Projects',
+					path: 'folder:Projects',
+					type: 'directory',
+					folderMarker: true,
+					children: []
+				}
+			]
+		});
+		const { load } = createLoadActions({ update, set, getState });
+
+		await load('notes');
+		await Promise.resolve();
+
+		expect(notesAPI.listTree).toHaveBeenCalledTimes(1);
+		expect(state.trees.notes?.lastSync).toBe('2026-04-13T09:12:00Z');
 	});
 });

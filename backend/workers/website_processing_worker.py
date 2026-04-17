@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 
 _CLEANUP_INTERVAL_SECONDS = 3600
 _JOB_RETENTION_DAYS = 7
-_MAX_IDLE_POLL_SECONDS = 10
 
 
 def _now() -> datetime:
@@ -214,10 +213,9 @@ def _requeue_stalled_jobs(db) -> None:
 
 
 def _compute_idle_poll_seconds(idle_polls: int) -> int:
-    """Increase idle sleeps after repeated empty polls, up to a small cap."""
-    base = max(settings.website_worker_poll_seconds, 1)
-    exponent = max(idle_polls - 1, 0)
-    return min(base * (2**exponent), _MAX_IDLE_POLL_SECONDS)
+    """Keep website polling responsive because saves are user-initiated."""
+    _ = idle_polls
+    return max(settings.website_worker_poll_seconds, 1)
 
 
 def _process_job(db, job: WebsiteProcessingJob) -> None:

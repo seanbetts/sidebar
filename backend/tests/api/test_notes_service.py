@@ -138,6 +138,20 @@ def test_note_sync_payload_handles_payload_purged_rows(db_session):
     assert payload["document"]["blocks"][0]["type"] == "title"
 
 
+def test_note_sync_payload_omits_content_for_metadata_only_updates(db_session):
+    note = NotesService.create_note(
+        db_session,
+        "user-1",
+        note_document_from_plain_text("# Title\n\nBody"),
+    )
+
+    payload = NotesSyncService.sync_payload(note, metadata_only=True)
+
+    assert payload["title"] == "# Title"
+    assert "document" not in payload
+    assert "plain_text" not in payload
+
+
 def test_update_note_missing_raises_single_formatted_not_found(db_session):
     missing_id = uuid.uuid4()
 

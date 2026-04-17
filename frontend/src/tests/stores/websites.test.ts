@@ -228,6 +228,88 @@ describe('websitesStore', () => {
 		expect(get(websitesStore).lastSync).toBe('2026-03-14T12:00:00Z');
 	});
 
+	it('re-sorts website items after sync deltas update recency fields', async () => {
+		websitesAPI.list.mockResolvedValue({
+			items: [
+				{
+					id: '1',
+					title: 'Existing Newer',
+					url: 'https://example.com/1',
+					domain: 'example.com',
+					saved_at: '2026-03-13T10:00:00Z',
+					created_at: '2026-03-10T10:00:00Z',
+					published_at: null,
+					pinned: false,
+					updated_at: '2026-03-13T10:00:00Z',
+					last_opened_at: null
+				},
+				{
+					id: '2',
+					title: 'Existing Older',
+					url: 'https://example.com/2',
+					domain: 'example.com',
+					saved_at: '2026-03-12T10:00:00Z',
+					created_at: '2026-03-09T10:00:00Z',
+					published_at: null,
+					pinned: false,
+					updated_at: '2026-03-12T10:00:00Z',
+					last_opened_at: null
+				}
+			]
+		});
+		websitesAPI.sync.mockResolvedValue({
+			applied: [],
+			websites: [],
+			conflicts: [],
+			updates: {
+				items: [
+					{
+						id: '2',
+						title: 'Existing Older Updated',
+						url: 'https://example.com/2',
+						domain: 'example.com',
+						saved_at: '2026-03-15T10:00:00Z',
+						created_at: '2026-03-09T10:00:00Z',
+						published_at: null,
+						pinned: false,
+						updated_at: '2026-03-15T10:00:00Z',
+						deleted_at: null
+					},
+					{
+						id: '3',
+						title: 'Unsaved Newer',
+						url: 'https://example.com/3',
+						domain: 'example.com',
+						saved_at: null,
+						created_at: '2026-03-14T10:00:00Z',
+						published_at: null,
+						pinned: false,
+						updated_at: '2026-03-14T10:00:00Z',
+						deleted_at: null
+					},
+					{
+						id: '4',
+						title: 'Unsaved Older',
+						url: 'https://example.com/4',
+						domain: 'example.com',
+						saved_at: null,
+						created_at: '2026-03-11T10:00:00Z',
+						published_at: null,
+						pinned: false,
+						updated_at: '2026-03-11T10:00:00Z',
+						deleted_at: null
+					}
+				]
+			},
+			serverUpdatedSince: '2026-03-15T10:00:00Z'
+		});
+
+		await websitesStore.load(true);
+		await websitesStore.revalidateInBackground();
+
+		expect(get(websitesStore).items.map((item) => item.id)).toEqual(['2', '1', '3', '4']);
+	});
+
 	it('ignores realtime updates older than current item', () => {
 		websitesStore.reset();
 		websitesStore.upsertFromRealtime({

@@ -254,12 +254,15 @@ export function createLoadActions(context: TreeStoreContext) {
 		}
 
 		try {
+			let syncCursorFloor: string | null = null;
 			if (lastSync) {
 				const response = await notesAPI.sync({
 					last_sync: lastSync,
-					operations: []
+					operations: [],
+					metadata_only: true
 				});
 				const syncItems = extractSyncItems(response.updates);
+				syncCursorFloor = response.serverUpdatedSince ?? null;
 				let shouldReloadFully = false;
 
 				context.update((state) => {
@@ -321,7 +324,10 @@ export function createLoadActions(context: TreeStoreContext) {
 				const mergedChildren = mergeArchivedNodesIntoTree(mergedActiveChildren, archivedChildren);
 
 				const finalChildren = applyExpandedPaths(mergedChildren, expandedPaths);
-				const nextLastSync = deriveSyncCursorFromTree(finalChildren);
+				const nextLastSync = mergeSyncCursor(
+					deriveSyncCursorFromTree(finalChildren),
+					syncCursorFloor
+				);
 				cacheTree(basePath, finalChildren);
 				setCachedLastSync(nextLastSync);
 

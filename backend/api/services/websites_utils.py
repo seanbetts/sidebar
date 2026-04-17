@@ -44,6 +44,7 @@ def website_sync_payload(website: Website) -> dict[str, object]:
         "favicon_r2_key": metadata.get("favicon_r2_key"),
         "favicon_extracted_at": metadata.get("favicon_extracted_at"),
         "reading_time": normalize_reading_time(reading_time) if reading_time else None,
+        "created_at": website.created_at.isoformat() if website.created_at else None,
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "deleted_at": website.deleted_at.isoformat() if website.deleted_at else None,
     }

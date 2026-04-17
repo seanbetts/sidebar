@@ -265,6 +265,7 @@ def sync_notes(
     db: Session = Depends(get_db),
 ):
     """Apply offline note operations and return updates since last sync."""
+    metadata_only = bool(request.get("metadata_only", False))
     result = NotesSyncService.sync_operations(db, user_id, request)
     return {
         "applied": result.applied_ids,
@@ -275,7 +276,8 @@ def sync_notes(
         "conflicts": result.conflicts,
         "updates": {
             "items": [
-                NotesSyncService.sync_payload(note) for note in result.updated_notes
+                NotesSyncService.sync_payload(note, metadata_only=metadata_only)
+                for note in result.updated_notes
             ],
         },
         "serverUpdatedSince": result.server_updated_since.isoformat()

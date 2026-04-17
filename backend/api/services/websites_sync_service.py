@@ -85,6 +85,7 @@ class WebsitesSyncService:
                     Website.reading_time,
                     Website.metadata_,
                     Website.is_archived,
+                    Website.created_at,
                     Website.updated_at,
                     Website.deleted_at,
                 )

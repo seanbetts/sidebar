@@ -20,6 +20,7 @@ export interface WebsiteItem {
 	url: string;
 	domain: string;
 	saved_at: string | null;
+	created_at?: string | null;
 	published_at: string | null;
 	pinned: boolean;
 	pinned_order?: number | null;
@@ -91,6 +92,7 @@ const buildWebsiteSummary = (data: WebsiteDetail): WebsiteItem => ({
 	url: data.url,
 	domain: data.domain,
 	saved_at: data.saved_at,
+	created_at: data.created_at ?? null,
 	published_at: data.published_at,
 	pinned: data.pinned ?? false,
 	pinned_order: data.pinned_order ?? null,
@@ -118,7 +120,7 @@ const isArchivedWebsite = (item: WebsiteItem) => Boolean(item.archived);
 const mergeWebsiteCollections = (active: WebsiteItem[], archived: WebsiteItem[]): WebsiteItem[] => {
 	const activeIds = new Set(active.map((item) => item.id));
 	const filteredArchived = archived.filter((item) => !activeIds.has(item.id));
-	return [...active, ...filteredArchived];
+	return sortWebsiteItems([...active, ...filteredArchived]);
 };
 
 const parseAsyncSaveResponse = (value: unknown): WebsiteAsyncSaveResponse | null => {
@@ -131,6 +133,44 @@ const parseAsyncSaveResponse = (value: unknown): WebsiteAsyncSaveResponse | null
 const getWebsiteSyncTimestamp = (
 	item: Pick<WebsiteItem, 'updated_at' | 'saved_at' | 'deleted_at'>
 ): string | null => item.updated_at ?? item.saved_at ?? item.deleted_at ?? null;
+
+const parseWebsiteTimestamp = (value: string | null | undefined): number | null => {
+	if (!value) return null;
+	const timestamp = new Date(value).getTime();
+	return Number.isFinite(timestamp) ? timestamp : null;
+};
+
+const compareNullableDesc = (lhs: number | null, rhs: number | null): number => {
+	if (lhs === rhs) return 0;
+	if (lhs === null) return 1;
+	if (rhs === null) return -1;
+	return rhs - lhs;
+};
+
+const compareWebsiteItems = (lhs: WebsiteItem, rhs: WebsiteItem): number => {
+	const savedComparison = compareNullableDesc(
+		parseWebsiteTimestamp(lhs.saved_at),
+		parseWebsiteTimestamp(rhs.saved_at)
+	);
+	if (savedComparison !== 0) return savedComparison;
+
+	const createdComparison = compareNullableDesc(
+		parseWebsiteTimestamp(lhs.created_at),
+		parseWebsiteTimestamp(rhs.created_at)
+	);
+	if (createdComparison !== 0) return createdComparison;
+
+	const updatedComparison = compareNullableDesc(
+		parseWebsiteTimestamp(lhs.updated_at),
+		parseWebsiteTimestamp(rhs.updated_at)
+	);
+	if (updatedComparison !== 0) return updatedComparison;
+
+	return lhs.id.localeCompare(rhs.id);
+};
+
+const sortWebsiteItems = (items: WebsiteItem[]): WebsiteItem[] =>
+	[...items].sort(compareWebsiteItems);
 
 const mergeSyncCursor = (current: string | null, candidate: string | null): string | null => {
 	if (!current) return candidate;
@@ -471,7 +511,7 @@ function createWebsitesStore() {
 						const newItems = syncItems.filter(
 							(item) => !item.deleted_at && !state.items.some((existing) => existing.id === item.id)
 						);
-						const allItems = [...newItems, ...orderedExisting];
+						const allItems = sortWebsiteItems([...newItems, ...orderedExisting]);
 						const nextActive =
 							state.active &&
 							syncItems.some((item) => item.id === state.active?.id && item.deleted_at)
@@ -520,7 +560,7 @@ function createWebsitesStore() {
 						(freshItem) => !state.items.some((existing) => existing.id === freshItem.id)
 					);
 
-					const allItems = [...mergedItems, ...newItems];
+					const allItems = sortWebsiteItems([...mergedItems, ...newItems]);
 					const nextLastSync = mergeSyncCursor(state.lastSync, deriveSyncCursor(allItems));
 					persistWebsiteCache(allItems, nextLastSync);
 					return { ...state, items: allItems, lastSync: nextLastSync };
@@ -672,13 +712,14 @@ function createWebsitesStore() {
 							existingItem.id === item.id ? { ...existingItem, ...item } : existingItem
 						)
 					: [item, ...state.items];
+				const sortedItems = sortWebsiteItems(nextItems);
 				const nextLastSync = mergeSyncCursor(state.lastSync, getWebsiteSyncTimestamp(item));
-				persistWebsiteCache(nextItems, nextLastSync);
+				persistWebsiteCache(sortedItems, nextLastSync);
 
 				const nextActive =
 					state.active && state.active.id === item.id ? { ...state.active, ...item } : state.active;
 
-				return { ...state, items: nextItems, active: nextActive, lastSync: nextLastSync };
+				return { ...state, items: sortedItems, active: nextActive, lastSync: nextLastSync };
 			});
 		},
 

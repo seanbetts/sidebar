@@ -327,16 +327,12 @@ class NotesSyncService:
         return latest or datetime.now(UTC)
 
     @staticmethod
-    def sync_payload(note: Note) -> dict[str, object]:
+    def sync_payload(note: Note, *, metadata_only: bool = False) -> dict[str, object]:
         """Build the canonical note payload for sync update streams."""
         folder = (note.folder_path or "").strip("/")
-        document = sync_safe_note_document(note)
-        return {
+        payload: dict[str, object] = {
             "id": str(note.id),
             "title": note.title,
-            "document": document,
-            "document_version": note.document_version,
-            "plain_text": note.plain_text or "",
             "folder": folder,
             "pinned": bool(note.pinned),
             "pinned_order": note.pinned_order,
@@ -346,3 +342,10 @@ class NotesSyncService:
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,
             "deleted_at": note.deleted_at.isoformat() if note.deleted_at else None,
         }
+        if metadata_only:
+            return payload
+
+        payload["document"] = sync_safe_note_document(note)
+        payload["document_version"] = note.document_version
+        payload["plain_text"] = note.plain_text or ""
+        return payload

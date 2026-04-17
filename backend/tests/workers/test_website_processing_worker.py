@@ -70,8 +70,8 @@ def test_requeue_stalled_jobs(test_db):
     assert job.worker_id is None
 
 
-def test_compute_idle_poll_seconds_uses_bounded_backoff(monkeypatch):
-    """Idle polls should back off without growing unbounded."""
+def test_compute_idle_poll_seconds_preserves_interactive_poll_latency(monkeypatch):
+    """Interactive website saves should keep the worker on a short fixed poll."""
     from workers import website_processing_worker
 
     monkeypatch.setattr(
@@ -81,14 +81,13 @@ def test_compute_idle_poll_seconds_uses_bounded_backoff(monkeypatch):
     )
 
     assert website_processing_worker._compute_idle_poll_seconds(1) == 2
-    assert website_processing_worker._compute_idle_poll_seconds(2) == 4
-    assert website_processing_worker._compute_idle_poll_seconds(3) == 8
-    assert website_processing_worker._compute_idle_poll_seconds(4) == 10
-    assert website_processing_worker._compute_idle_poll_seconds(8) == 10
+    assert website_processing_worker._compute_idle_poll_seconds(2) == 2
+    assert website_processing_worker._compute_idle_poll_seconds(3) == 2
+    assert website_processing_worker._compute_idle_poll_seconds(8) == 2
 
 
-def test_worker_loop_backs_off_after_consecutive_idle_polls(monkeypatch):
-    """Idle worker loops should progressively sleep longer between empty claims."""
+def test_worker_loop_keeps_short_sleep_after_consecutive_idle_polls(monkeypatch):
+    """Idle website worker loops should preserve a short wake-up latency."""
     from workers import website_processing_worker
 
     class StopLoop(BaseException):
@@ -131,7 +130,7 @@ def test_worker_loop_backs_off_after_consecutive_idle_polls(monkeypatch):
     except StopLoop:
         pass
 
-    assert sleep_calls == [2, 4, 8]
+    assert sleep_calls == [2, 2, 2]
 
 
 def test_worker_loop_rolls_back_before_sleeping_on_empty_queue(monkeypatch):
