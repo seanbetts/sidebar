@@ -10,34 +10,20 @@ struct PdfViewerFloatingControls: View {
         Group {
 #if os(iOS)
             if #available(iOS 26.0, *) {
-                ZStack(alignment: .topTrailing) {
-                    PDFControlBar(configuration: configuration)
-                        .disabled(!configuration.isEnabled)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-
-                    UIKitPDFControlBarRepresentable(
-                        configuration: configuration,
-                        showsVisibleChrome: false
-                    )
-                }
+                UIKitPDFControlBarRepresentable(
+                    configuration: configuration,
+                    showsVisibleChrome: true
+                )
                 .disabled(!configuration.isEnabled)
             } else {
                 PDFControlBar(configuration: configuration)
             }
 #elseif os(macOS)
             if #available(macOS 26.0, *) {
-                ZStack(alignment: .topTrailing) {
-                    PDFControlBar(configuration: configuration)
-                        .disabled(!configuration.isEnabled)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-
-                    AppKitPDFControlOverlay(
-                        configuration: configuration,
-                        showsVisibleChrome: false
-                    )
-                }
+                AppKitPDFControlOverlay(
+                    configuration: configuration,
+                    showsVisibleChrome: true
+                )
                 .disabled(!configuration.isEnabled)
             } else {
                 PDFControlBar(configuration: configuration)

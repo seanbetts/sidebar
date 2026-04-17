@@ -152,12 +152,14 @@ public struct FileViewerView: View {
         if let url = state.fileURL {
             if state.kind == .audio {
                 AudioPlayerView(url: url)
+                    .id(url)
                     .padding(DesignTokens.Spacing.lg)
             } else {
                 if let transcript = Self.videoTranscript(for: state) {
                     ScrollView {
                         VStack(spacing: DesignTokens.Spacing.lg) {
                             VideoPlayerContainer(url: url)
+                                .id(url)
                             videoTranscriptView(text: transcript)
                         }
                         .frame(maxWidth: .infinity, alignment: .top)
@@ -165,6 +167,7 @@ public struct FileViewerView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 } else {
                     VideoPlayerContainer(url: url)
+                        .id(url)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
             }
