@@ -289,6 +289,60 @@ final class ChatStoreTests: XCTestCase {
         XCTAssertEqual(store.conversationDetails[detail.id]?.messages.first?.content, "Hello")
         XCTAssertEqual(api.getCallCount, 0)
     }
+
+    func testLoadConversationsSyncsCachedConversationDetailMetadataWithoutDroppingMessages() async throws {
+        let fresh = [
+            Conversation(
+                id: "c1",
+                title: "Fresh",
+                titleGenerated: true,
+                createdAt: "2024-01-01",
+                updatedAt: "2024-01-02",
+                messageCount: 2,
+                firstMessage: "Updated preview",
+                isArchived: false
+            )
+        ]
+        let detail = ConversationWithMessages(
+            id: "c1",
+            title: "Cached",
+            titleGenerated: false,
+            createdAt: "2024-01-01",
+            updatedAt: "2024-01-01",
+            messageCount: 1,
+            firstMessage: "Original preview",
+            isArchived: false,
+            messages: [
+                Message(
+                    id: "m1",
+                    role: .assistant,
+                    content: "Preserve these messages",
+                    status: .complete,
+                    toolCalls: nil,
+                    needsNewline: nil,
+                    timestamp: "2024-01-01T00:00:00Z",
+                    error: nil
+                )
+            ]
+        )
+        let cache = TestCacheClient()
+        let api = MockConversationsAPI(listResult: .success(fresh), getResult: .failure(MockError.forced))
+        let store = ChatStore(conversationsAPI: api, cache: cache)
+        store.upsertConversationDetail(detail, persist: true)
+
+        try await store.loadConversations(force: true)
+
+        XCTAssertEqual(store.conversationDetails["c1"]?.title, "Fresh")
+        XCTAssertEqual(store.conversationDetails["c1"]?.titleGenerated, true)
+        XCTAssertEqual(store.conversationDetails["c1"]?.messageCount, 2)
+        XCTAssertEqual(store.conversationDetails["c1"]?.firstMessage, "Updated preview")
+        XCTAssertEqual(store.conversationDetails["c1"]?.messages.map(\.id), ["m1"])
+
+        let cached: ConversationWithMessages? = cache.get(key: CacheKeys.conversation(id: "c1"))
+        XCTAssertEqual(cached?.title, "Fresh")
+        XCTAssertEqual(cached?.messageCount, 2)
+        XCTAssertEqual(cached?.messages.map(\.id), ["m1"])
+    }
 }
 
 private enum MockError: Error {

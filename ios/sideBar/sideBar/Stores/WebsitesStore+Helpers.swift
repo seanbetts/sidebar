@@ -93,6 +93,7 @@ extension WebsitesStore {
     func applyListUpdate(_ incoming: [WebsiteItem], persist: Bool) {
         let currentActive = items.filter { !$0.archived }
         let reconciledActive = reconcileLocallyInsertedActiveItems(incoming, current: currentActive)
+        syncActiveDetail(with: reconciledActive, persist: persist)
         guard shouldUpdateList(reconciledActive, current: currentActive) else {
             updateWidgetData(from: items)
             return

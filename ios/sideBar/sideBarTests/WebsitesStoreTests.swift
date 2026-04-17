@@ -324,6 +324,72 @@ final class WebsitesStoreTests: XCTestCase {
         XCTAssertNil(cached)
     }
 
+    func testApplyListUpdateSyncsActiveDetailMetadataWithoutDroppingContent() async {
+        let cache = TestCacheClient()
+        let api = WebsitesStoreMockWebsitesAPI(
+            listResult: .failure(WebsitesStoreMockError.forced),
+            getResult: .failure(WebsitesStoreMockError.forced)
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let retainedUpdatedAt = ISO8601DateFormatter().string(from: Date())
+        let detail = WebsiteDetail(
+            id: "w1",
+            title: "Old Title",
+            url: "https://example.com/original",
+            urlFull: nil,
+            domain: "example.com",
+            content: "Preserve this content",
+            source: nil,
+            savedAt: nil,
+            publishedAt: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            archived: false,
+            faviconUrl: nil,
+            faviconR2Key: nil,
+            youtubeTranscripts: nil,
+            readingTime: "2 min",
+            updatedAt: retainedUpdatedAt,
+            lastOpenedAt: nil
+        )
+        store.active = detail
+
+        store.applyListUpdate([
+            WebsiteItem(
+                id: "w1",
+                title: "New Title",
+                url: "https://example.com/updated",
+                domain: "example.com",
+                savedAt: nil,
+                publishedAt: nil,
+                pinned: true,
+                pinnedOrder: 0,
+                archived: true,
+                faviconUrl: "https://example.com/favicon.png",
+                faviconR2Key: "favicons/w1",
+                youtubeTranscripts: nil,
+                readingTime: "5 min",
+                updatedAt: retainedUpdatedAt,
+                lastOpenedAt: "2024-01-03",
+                deletedAt: nil
+            )
+        ], persist: true)
+
+        XCTAssertEqual(store.active?.title, "New Title")
+        XCTAssertEqual(store.active?.url, "https://example.com/updated")
+        XCTAssertEqual(store.active?.content, "Preserve this content")
+        XCTAssertEqual(store.active?.pinned, true)
+        XCTAssertEqual(store.active?.pinnedOrder, 0)
+        XCTAssertEqual(store.active?.archived, true)
+        XCTAssertEqual(store.active?.faviconUrl, "https://example.com/favicon.png")
+        XCTAssertEqual(store.active?.readingTime, "5 min")
+
+        let cached: WebsiteDetail? = cache.get(key: CacheKeys.websiteDetail(id: "w1"))
+        XCTAssertEqual(cached?.title, "New Title")
+        XCTAssertEqual(cached?.content, "Preserve this content")
+        XCTAssertEqual(cached?.pinned, true)
+    }
+
     func testPrefetchArchivedDetailsFetchesOnlyRetainedUncachedItems() async {
         let retainedUpdatedAt = ISO8601DateFormatter().string(from: Date())
         let expiredUpdatedAt = ISO8601DateFormatter().string(from: Calendar.current.date(byAdding: .day, value: -10, to: Date())!)

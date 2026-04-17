@@ -351,6 +351,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     }
 
     private func applyConversationListUpdate(_ incoming: [Conversation], persist: Bool) {
+        syncConversationDetails(with: incoming, persist: persist)
         guard shouldUpdateConversationList(incoming) else {
             return
         }
@@ -484,7 +485,6 @@ public extension ChatStore {
         }
     }
 }
-
 private struct ChatOfflineError: LocalizedError {
     let message: String
 

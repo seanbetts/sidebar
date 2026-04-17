@@ -77,6 +77,7 @@ extension IngestionStore {
 
     func applyListUpdate(_ incoming: [IngestionListItem], persist: Bool) {
         let filteredIncoming = incoming.filter(shouldIncludeIngestionItem)
+        syncActiveMeta(with: filteredIncoming, persist: persist)
         guard shouldUpdateList(filteredIncoming) else {
             updateWidgetData()
             return
@@ -252,18 +253,7 @@ extension IngestionStore {
         activeMeta = incoming
         updateFilenameForItems(fileId: incoming.file.id, filename: incoming.file.filenameOriginal)
         if persist {
-            cache.set(
-                key: CacheKeys.ingestionMeta(fileId: incoming.file.id),
-                value: incoming,
-                ttlSeconds: CachePolicy.ingestionMeta
-            )
-            let lastSyncAt = Date()
-            offlineStore?.set(
-                key: CacheKeys.ingestionMeta(fileId: incoming.file.id),
-                entityType: "file",
-                value: incoming,
-                lastSyncAt: lastSyncAt
-            )
+            persistMeta(incoming)
         }
     }
 
@@ -303,6 +293,88 @@ extension IngestionStore {
             key: CacheKeys.ingestionList,
             entityType: "ingestionList",
             value: IngestionListResponse(items: remoteItems),
+            lastSyncAt: lastSyncAt
+        )
+    }
+
+    func syncActiveMeta(with items: [IngestionListItem], persist: Bool) {
+        guard let activeMeta,
+              let item = items.first(where: { $0.file.id == activeMeta.file.id }) else {
+            return
+        }
+        let updated = updateMeta(activeMeta, with: item)
+        guard shouldSyncMetaMetadata(current: activeMeta, updated: updated) else {
+            return
+        }
+        self.activeMeta = updated
+        guard persist else {
+            return
+        }
+        persistMeta(updated)
+    }
+
+    func updateMeta(_ meta: IngestionMetaResponse, with item: IngestionListItem) -> IngestionMetaResponse {
+        IngestionMetaResponse(
+            file: item.file,
+            job: item.job,
+            derivatives: meta.derivatives,
+            recommendedViewer: item.recommendedViewer ?? meta.recommendedViewer
+        )
+    }
+
+    func shouldSyncMetaMetadata(current: IngestionMetaResponse, updated: IngestionMetaResponse) -> Bool {
+        current.file.filenameOriginal != updated.file.filenameOriginal
+            || current.file.path != updated.file.path
+            || current.file.mimeOriginal != updated.file.mimeOriginal
+            || current.file.sizeBytes != updated.file.sizeBytes
+            || current.file.pinned != updated.file.pinned
+            || current.file.pinnedOrder != updated.file.pinnedOrder
+            || current.file.category != updated.file.category
+            || current.file.sourceUrl != updated.file.sourceUrl
+            || sourceMetadataChanged(current.file.sourceMetadata, updated.file.sourceMetadata)
+            || current.file.updatedAt != updated.file.updatedAt
+            || current.file.deletedAt != updated.file.deletedAt
+            || current.job.status != updated.job.status
+            || current.job.stage != updated.job.stage
+            || current.job.errorCode != updated.job.errorCode
+            || current.job.errorMessage != updated.job.errorMessage
+            || current.job.userMessage != updated.job.userMessage
+            || current.job.progress != updated.job.progress
+            || current.job.attempts != updated.job.attempts
+            || current.job.updatedAt != updated.job.updatedAt
+            || current.recommendedViewer != updated.recommendedViewer
+    }
+
+    func sourceMetadataChanged(
+        _ current: [String: AnyCodable]?,
+        _ updated: [String: AnyCodable]?
+    ) -> Bool {
+        switch (current, updated) {
+        case (nil, nil):
+            return false
+        case (nil, _), (_, nil):
+            return true
+        case let (.some(current), .some(updated)):
+            let encoder = JSONEncoder()
+            guard let currentData = try? encoder.encode(current),
+                  let updatedData = try? encoder.encode(updated) else {
+                return true
+            }
+            return currentData != updatedData
+        }
+    }
+
+    func persistMeta(_ meta: IngestionMetaResponse) {
+        cache.set(
+            key: CacheKeys.ingestionMeta(fileId: meta.file.id),
+            value: meta,
+            ttlSeconds: CachePolicy.ingestionMeta
+        )
+        let lastSyncAt = Date()
+        offlineStore?.set(
+            key: CacheKeys.ingestionMeta(fileId: meta.file.id),
+            entityType: "file",
+            value: meta,
             lastSyncAt: lastSyncAt
         )
     }

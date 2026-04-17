@@ -111,18 +111,7 @@ extension IngestionStore {
                 recommendedViewer: meta.recommendedViewer
             )
             activeMeta = updatedMeta
-            cache.set(
-                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
-                value: updatedMeta,
-                ttlSeconds: CachePolicy.ingestionMeta
-            )
-            let lastSyncAt = Date()
-            offlineStore?.set(
-                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
-                entityType: "file",
-                value: updatedMeta,
-                lastSyncAt: lastSyncAt
-            )
+            persistMeta(updatedMeta)
         }
         items = mergeItems(remoteItems)
         persistListCache()
@@ -157,18 +146,7 @@ extension IngestionStore {
                 recommendedViewer: meta.recommendedViewer
             )
             activeMeta = updatedMeta
-            cache.set(
-                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
-                value: updatedMeta,
-                ttlSeconds: CachePolicy.ingestionMeta
-            )
-            let lastSyncAt = Date()
-            offlineStore?.set(
-                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
-                entityType: "file",
-                value: updatedMeta,
-                lastSyncAt: lastSyncAt
-            )
+            persistMeta(updatedMeta)
         }
         items = mergeItems(remoteItems)
         persistListCache()
@@ -200,18 +178,7 @@ extension IngestionStore {
                 recommendedViewer: recommendedViewer ?? meta.recommendedViewer
             )
             activeMeta = updatedMeta
-            cache.set(
-                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
-                value: updatedMeta,
-                ttlSeconds: CachePolicy.ingestionMeta
-            )
-            let lastSyncAt = Date()
-            offlineStore?.set(
-                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
-                entityType: "file",
-                value: updatedMeta,
-                lastSyncAt: lastSyncAt
-            )
+            persistMeta(updatedMeta)
         }
         items = mergeItems(remoteItems)
         persistListCache()
