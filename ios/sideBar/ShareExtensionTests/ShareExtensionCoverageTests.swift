@@ -28,6 +28,26 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(activationRule["NSExtensionActivationSupportsText"] as? Bool, true)
     }
 
+    func testShareExtensionInfoPlistConfiguresSafariPreprocessingFile() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let plistURL = repositoryRoot.appendingPathComponent("ios/sideBar/ShareExtension/Info.plist")
+        let plistData = try Data(contentsOf: plistURL)
+        let propertyList = try XCTUnwrap(
+            PropertyListSerialization.propertyList(
+                from: plistData,
+                options: [],
+                format: nil
+            ) as? [String: Any]
+        )
+        let extensionDictionary = try XCTUnwrap(propertyList["NSExtension"] as? [String: Any])
+        let attributes = try XCTUnwrap(extensionDictionary["NSExtensionAttributes"] as? [String: Any])
+
+        XCTAssertEqual(
+            attributes["NSExtensionJavaScriptPreprocessingFile"] as? String,
+            "ShareExtensionPreprocessing"
+        )
+    }
+
     func testShareExtensionUsesMacAppIconAssets() throws {
         let repositoryRoot = try findRepositoryRoot()
         let projectURL = repositoryRoot.appendingPathComponent("ios/sideBar/sideBar.xcodeproj/project.pbxproj")
@@ -57,6 +77,19 @@ final class ShareExtensionCoverageTests: XCTestCase {
                 ($0["idiom"] as? String) == "mac"
             }
         )
+    }
+
+    func testShareExtensionTargetDoesNotExcludeSharedAssetCatalog() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let projectURL = repositoryRoot.appendingPathComponent("ios/sideBar/sideBar.xcodeproj/project.pbxproj")
+        let projectContents = try String(contentsOf: projectURL, encoding: .utf8)
+
+        let marker = #"Exceptions for "sideBar" folder in "ShareExtension" target"#
+        let markerRange = try XCTUnwrap(projectContents.range(of: marker))
+        let suffix = projectContents[markerRange.lowerBound...]
+        let blockContents = String(suffix.prefix(400))
+
+        XCTAssertFalse(blockContents.contains("Assets.xcassets"))
     }
 
     func testErrorMessageUsesCatalogForNotAuthenticated() {
@@ -179,6 +212,19 @@ final class ShareExtensionCoverageTests: XCTestCase {
         let url = controller.extractFirstURL(from: text)
 
         XCTAssertEqual(url?.absoluteString, "https://example.com/docs?tab=1")
+    }
+
+    func testURLFromTextPayloadReadsSafariJavaScriptPreprocessingResults() {
+        let controller = ShareViewController()
+        let payload: [String: Any] = [
+            NSExtensionJavaScriptPreprocessingResultsKey: [
+                "baseURI": "https://example.com/article?ref=share"
+            ]
+        ]
+
+        let url = controller.urlFromTextPayload(payload)
+
+        XCTAssertEqual(url?.absoluteString, "https://example.com/article?ref=share")
     }
 
     func testNormalizedWebsiteEventURLCanonicalizesYouTubeURL() {

@@ -37,6 +37,14 @@ extension ShareViewController {
             }
             return url
         }
+        if let dictionary = item as? [String: Any],
+           let url = extractURLFromJavaScriptPreprocessingResults(dictionary) {
+            return url
+        }
+        if let dictionary = item as? [AnyHashable: Any],
+           let url = extractURLFromJavaScriptPreprocessingResults(dictionary) {
+            return url
+        }
         if let attributed = item as? NSAttributedString {
             if let url = extractFirstLink(from: attributed) {
                 return url
@@ -52,6 +60,34 @@ extension ShareViewController {
         if let data = item as? Data,
            let string = String(data: data, encoding: .utf8) {
             return extractFirstURL(from: string)
+        }
+        return nil
+    }
+
+    func extractURLFromJavaScriptPreprocessingResults(
+        _ payload: [String: Any]
+    ) -> URL? {
+        extractURLFromJavaScriptPreprocessingResults(
+            payload.mapKeys { AnyHashable($0) }
+        )
+    }
+
+    func extractURLFromJavaScriptPreprocessingResults(
+        _ payload: [AnyHashable: Any]
+    ) -> URL? {
+        let resultsKey = AnyHashable(NSExtensionJavaScriptPreprocessingResultsKey)
+        let results = (payload[resultsKey] as? [AnyHashable: Any]) ?? payload
+
+        let candidateKeys = ["url", "baseURI", "canonicalURL", "documentURL"]
+        for key in candidateKeys {
+            let hashableKey = AnyHashable(key)
+            if let url = results[hashableKey] as? URL {
+                return url
+            }
+            if let string = results[hashableKey] as? String,
+               let url = extractFirstURL(from: string) ?? URL(string: string) {
+                return url
+            }
         }
         return nil
     }
@@ -153,5 +189,13 @@ extension ShareViewController {
             "zip": "application/zip"
         ]
         return mappings[ext] ?? "application/octet-stream"
+    }
+}
+
+private extension Dictionary {
+    func mapKeys<NewKey: Hashable>(_ transform: (Key) -> NewKey) -> [NewKey: Value] {
+        reduce(into: [NewKey: Value]()) { partialResult, element in
+            partialResult[transform(element.key)] = element.value
+        }
     }
 }

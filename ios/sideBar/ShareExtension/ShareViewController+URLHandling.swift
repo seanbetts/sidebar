@@ -10,13 +10,14 @@ extension ShareViewController {
     }
 
     func extractURL(from itemProvider: NSItemProvider) async throws -> URL? {
-        let urlTypes: [UTType] = [.url, .plainText, .text, .html]
+        let urlTypes: [UTType] = [.url, .plainText, .text, .html, .propertyList]
         let candidateIdentifiers = itemProvider.registeredTypeIdentifiers.compactMap { identifier -> String? in
             guard let type = UTType(identifier) else { return nil }
             if type.conforms(to: .url)
                 || type.conforms(to: .text)
                 || type.conforms(to: .plainText)
-                || type.conforms(to: .html) {
+                || type.conforms(to: .html)
+                || type.conforms(to: .propertyList) {
                 return identifier
             }
             return nil
