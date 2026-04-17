@@ -92,6 +92,50 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertFalse(blockContents.contains("Assets.xcassets"))
     }
 
+    func testOnlyAppTargetLinksVendoredSentryFramework() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let projectURL = repositoryRoot.appendingPathComponent("ios/sideBar/sideBar.xcodeproj/project.pbxproj")
+        let projectContents = try String(contentsOf: projectURL, encoding: .utf8)
+
+        let sentryBuildFileLines = projectContents
+            .components(separatedBy: .newlines)
+            .filter {
+                $0.contains("/* Vendor/Sentry/Sentry.xcframework in Frameworks */ = {isa = PBXBuildFile;")
+            }
+
+        XCTAssertEqual(sentryBuildFileLines.count, 1)
+        XCTAssertTrue(
+            projectBlockContents(
+                in: projectContents,
+                marker: "\t\t14C84A452F10562300FE0C16 /* Frameworks */ = {"
+            ).contains("Vendor/Sentry/Sentry.xcframework in Frameworks")
+        )
+        XCTAssertFalse(
+            projectBlockContents(
+                in: projectContents,
+                marker: "\t\t142516AA2F1EB96B0072E4F9 /* Frameworks */ = {"
+            ).contains("Vendor/Sentry/Sentry.xcframework in Frameworks")
+        )
+        XCTAssertFalse(
+            projectBlockContents(
+                in: projectContents,
+                marker: "\t\t1448E6C42F27A6420066EE47 /* Frameworks */ = {"
+            ).contains("Vendor/Sentry/Sentry.xcframework in Frameworks")
+        )
+        XCTAssertFalse(
+            projectBlockContents(
+                in: projectContents,
+                marker: "\t\t146EA0562F2FE83C004AE7D1 /* Frameworks */ = {"
+            ).contains("Vendor/Sentry/Sentry.xcframework in Frameworks")
+        )
+        XCTAssertFalse(
+            projectBlockContents(
+                in: projectContents,
+                marker: "\t\t146EA0932F2FE878004AE7D1 /* Frameworks */ = {"
+            ).contains("Vendor/Sentry/Sentry.xcframework in Frameworks")
+        )
+    }
+
     func testErrorMessageUsesCatalogForNotAuthenticated() {
         let message = ShareExtensionMessageMapper.errorMessage(for: ShareExtensionError.notAuthenticated)
 
@@ -298,6 +342,20 @@ final class ShareExtensionCoverageTests: XCTestCase {
             candidate.deleteLastPathComponent()
         }
         throw NSError(domain: "ShareExtensionCoverageTests", code: 1)
+    }
+
+    private func projectBlockContents(
+        in projectContents: String,
+        marker: String
+    ) -> String {
+        guard let markerRange = projectContents.range(of: marker) else {
+            return ""
+        }
+        let suffix = projectContents[markerRange.lowerBound...]
+        guard let blockEnd = suffix.range(of: "\n\t\t};") else {
+            return String(suffix)
+        }
+        return String(suffix[..<blockEnd.upperBound])
     }
 }
 
