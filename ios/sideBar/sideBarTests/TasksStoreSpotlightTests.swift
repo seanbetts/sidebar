@@ -8,7 +8,7 @@ final class TasksStoreSpotlightTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
         let spotlightIndexer = SpotlightIndexerSpy()
         store.spotlightIndexer = spotlightIndexer
@@ -41,7 +41,7 @@ final class TasksStoreSpotlightTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
         let spotlightIndexer = SpotlightIndexerSpy()
         store.spotlightIndexer = spotlightIndexer

@@ -8,8 +8,8 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
-        let networkStatus = TestNetworkStatus(isNetworkAvailable: false)
+        let api = TasksStoreStubTasksAPI()
+        let networkStatus = TasksStoreTestNetworkStatus(isNetworkAvailable: false)
         let store = TasksStore(
             api: api,
             cache: cache,
@@ -43,7 +43,7 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         let operationId = UUID().uuidString
@@ -74,7 +74,7 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         let operation = TaskOperationPayload(
@@ -93,7 +93,7 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         store.groups = [TaskGroup(id: "g1", title: "Work", updatedAt: nil)]
@@ -138,7 +138,7 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         let cachedCounts = TaskCountsResponse(
@@ -162,7 +162,7 @@ final class TasksStoreTests: XCTestCase {
         XCTAssertEqual(store.counts?.counts.today, 7)
         XCTAssertEqual(api.countsCallCount, 0)
 
-        try? await waitUntil(timeoutSeconds: 0.1) {
+        try? await waitUntilTasksCondition(timeoutSeconds: 0.1) {
             api.countsCallCount == 1
         }
         XCTAssertEqual(api.countsCallCount, 1)
@@ -172,7 +172,7 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         let cachedCounts = TaskCountsResponse(
@@ -201,7 +201,7 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         await store.load(selection: .none)
@@ -215,7 +215,7 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         let group = TaskGroup(id: "g1", title: "Work", updatedAt: nil)
@@ -247,8 +247,11 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
-        let networkStatus = TestNetworkStatus(isNetworkAvailable: true, isServerReachable: false)
+        let api = TasksStoreStubTasksAPI()
+        let networkStatus = TasksStoreTestNetworkStatus(
+            isNetworkAvailable: true,
+            isServerReachable: false
+        )
         let store = TasksStore(
             api: api,
             cache: cache,
@@ -278,8 +281,12 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
-        let networkStatus = TestNetworkStatus(isNetworkAvailable: true, isOffline: true, isServerReachable: true)
+        let api = TasksStoreStubTasksAPI()
+        let networkStatus = TasksStoreTestNetworkStatus(
+            isNetworkAvailable: true,
+            isOffline: true,
+            isServerReachable: true
+        )
         let store = TasksStore(
             api: api,
             cache: cache,
@@ -310,7 +317,7 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         let cachedTodayTask = TaskItem(id: "today-cached", title: "Cached today", status: "open")
@@ -349,7 +356,7 @@ final class TasksStoreTests: XCTestCase {
         await store.load(selection: .today)
         XCTAssertEqual(store.selection, .today)
         XCTAssertEqual(store.tasks, [cachedTodayTask])
-        try? await waitUntil(timeoutSeconds: 0.1) {
+        try? await waitUntilTasksCondition(timeoutSeconds: 0.1) {
             api.listCallCount == 1
         }
 
@@ -358,7 +365,7 @@ final class TasksStoreTests: XCTestCase {
         XCTAssertEqual(store.tasks, [upcomingTask])
 
         api.resumeList(scope: "today")
-        try? await waitUntil(timeoutSeconds: 0.1) {
+        try? await waitUntilTasksCondition(timeoutSeconds: 0.1) {
             api.listCallCount == 2
         }
         XCTAssertEqual(store.selection, .upcoming)
@@ -369,7 +376,7 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         let cachedToday = TaskListResponse(scope: "today", generatedAt: nil, tasks: [], projects: nil, groups: nil)
@@ -381,12 +388,12 @@ final class TasksStoreTests: XCTestCase {
         api.suspendList(scope: "today")
 
         await store.load(selection: .today)
-        try? await waitUntil(timeoutSeconds: 0.1) {
+        try? await waitUntilTasksCondition(timeoutSeconds: 0.1) {
             api.listCallCount == 1
         }
         await store.load(selection: .today)
         api.resumeList(scope: "today")
-        try? await waitUntil(timeoutSeconds: 0.1) {
+        try? await waitUntilTasksCondition(timeoutSeconds: 0.1) {
             api.listCallCount == 1
         }
 
@@ -397,7 +404,7 @@ final class TasksStoreTests: XCTestCase {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: offlineStore, networkStatus: nil)
 
         let cachedCounts = TaskCountsResponse(
@@ -410,152 +417,15 @@ final class TasksStoreTests: XCTestCase {
         api.suspendCounts = true
 
         await store.loadCounts()
-        try? await waitUntil(timeoutSeconds: 0.1) {
+        try? await waitUntilTasksCondition(timeoutSeconds: 0.1) {
             api.countsCallCount == 1
         }
         await store.loadCounts()
         api.resumeCounts()
-        try? await waitUntil(timeoutSeconds: 0.1) {
+        try? await waitUntilTasksCondition(timeoutSeconds: 0.1) {
             api.countsCallCount == 1
         }
 
         XCTAssertEqual(api.countsCallCount, 1)
-    }
-}
-
-@MainActor
-private final class TestNetworkStatus: NetworkStatusProviding {
-    var isNetworkAvailable: Bool
-    var isServerReachable: Bool
-    var isOffline: Bool
-
-    init(isNetworkAvailable: Bool, isOffline: Bool = false, isServerReachable: Bool = true) {
-        self.isNetworkAvailable = isNetworkAvailable
-        self.isOffline = isOffline
-        self.isServerReachable = isServerReachable
-    }
-}
-
-@MainActor
-final class StubTasksAPI: TasksProviding {
-    var listCallCount: Int = 0
-    var countsCallCount: Int = 0
-    var listResponsesByScope: [String: TaskListResponse] = [:]
-    var listResponseDelaysByScope: [String: UInt64] = [:]
-    var searchResponse = TaskListResponse(scope: "search", generatedAt: nil, tasks: [], projects: nil, groups: nil)
-    var countsResponseDelayNanoseconds: UInt64 = 0
-    var suspendCounts = false
-    private var suspendedListContinuations: [String: CheckedContinuation<Void, Never>] = [:]
-    private var suspendedListScopes: Set<String> = []
-    private var suspendedCountsContinuation: CheckedContinuation<Void, Never>?
-    var countsResponse = TaskCountsResponse(
-        generatedAt: nil,
-        counts: TaskCounts(today: 0, upcoming: 0, completed: 0),
-        projects: [],
-        groups: []
-    )
-
-    func suspendList(scope: String) {
-        suspendedListScopes.insert(scope)
-    }
-
-    func resumeList(scope: String) {
-        suspendedListContinuations.removeValue(forKey: scope)?.resume()
-    }
-
-    func resumeCounts() {
-        suspendedCountsContinuation?.resume()
-        suspendedCountsContinuation = nil
-    }
-
-    func list(scope: String) async throws -> TaskListResponse {
-        listCallCount += 1
-        if let delay = listResponseDelaysByScope[scope], delay > 0 {
-            try? await Task.sleep(nanoseconds: delay)
-        }
-        if suspendedListScopes.remove(scope) != nil {
-            await withCheckedContinuation { continuation in
-                suspendedListContinuations[scope] = continuation
-            }
-        }
-        return listResponsesByScope[scope]
-            ?? TaskListResponse(scope: scope, generatedAt: nil, tasks: [], projects: nil, groups: nil)
-    }
-
-    func projectTasks(projectId: String) async throws -> TaskListResponse {
-        throw StubError.unused
-    }
-
-    func groupTasks(groupId: String) async throws -> TaskListResponse {
-        throw StubError.unused
-    }
-
-    func search(query: String) async throws -> TaskListResponse {
-        _ = query
-        return searchResponse
-    }
-
-    func counts() async throws -> TaskCountsResponse {
-        countsCallCount += 1
-        if countsResponseDelayNanoseconds > 0 {
-            try? await Task.sleep(nanoseconds: countsResponseDelayNanoseconds)
-        }
-        if suspendCounts {
-            suspendCounts = false
-            await withCheckedContinuation { continuation in
-                suspendedCountsContinuation = continuation
-            }
-        }
-        return countsResponse
-    }
-
-    func createGroup(title: String) async throws -> TaskGroup {
-        throw StubError.unused
-    }
-
-    func renameGroup(groupId: String, title: String) async throws -> TaskGroup {
-        throw StubError.unused
-    }
-
-    func deleteGroup(groupId: String) async throws {
-        throw StubError.unused
-    }
-
-    func createProject(title: String, groupId: String?) async throws -> TaskProject {
-        throw StubError.unused
-    }
-
-    func renameProject(projectId: String, title: String) async throws -> TaskProject {
-        throw StubError.unused
-    }
-
-    func deleteProject(projectId: String) async throws {
-        throw StubError.unused
-    }
-
-    func apply(_ payload: TaskOperationBatch) async throws -> TaskSyncResponse {
-        throw StubError.unused
-    }
-
-    func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse {
-        throw StubError.unused
-    }
-}
-
-private enum StubError: Error {
-    case unused
-}
-
-@MainActor
-private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {
-    let timeoutNanoseconds = UInt64(timeoutSeconds * 1_000_000_000)
-    let start = DispatchTime.now().uptimeNanoseconds
-
-    while !condition() {
-        if DispatchTime.now().uptimeNanoseconds - start > timeoutNanoseconds {
-            XCTFail("Timed out waiting for condition")
-            return
-        }
-        await Task.yield()
     }
 }

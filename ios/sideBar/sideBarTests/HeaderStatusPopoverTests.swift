@@ -69,8 +69,10 @@ final class HeaderStatusPopoverTests: XCTestCase {
 
     func testPopoverActionButtonsUseSharedIconChromeInsteadOfTextLabels() throws {
         let normalized = try headerStatusPopoverSource().normalizedForSourceAssertions()
+        let expectedButtonStyle =
+            ".buttonStyle(HeaderStatusRowActionButtonStyle(role:action.role,isPrimary:isPrimaryAction(action)))"
 
-        XCTAssertTrue(normalized.contains(".buttonStyle(HeaderStatusRowActionButtonStyle(role:action.role,isPrimary:isPrimaryAction(action)))"))
+        XCTAssertTrue(normalized.contains(expectedButtonStyle))
         XCTAssertFalse(normalized.contains(".buttonStyle(.borderless)"))
         XCTAssertTrue(normalized.contains("Image(systemName:actionSymbolName(action))"))
         XCTAssertFalse(normalized.contains("Text(action.title)"))

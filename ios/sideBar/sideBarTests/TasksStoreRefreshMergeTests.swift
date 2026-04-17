@@ -7,7 +7,7 @@ final class TasksStoreRefreshMergeTests: XCTestCase {
     func testBackgroundRefreshPreservesPendingPreviewTask() async throws {
         let persistence = PersistenceController(inMemory: true)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: OfflineStore(container: persistence.container))
         let writeQueue = WriteQueue(
             container: persistence.container,
@@ -55,7 +55,7 @@ final class TasksStoreRefreshMergeTests: XCTestCase {
         XCTAssertEqual(store.tasks.first?.isPreview, true)
 
         await store.load(selection: .today)
-        try await waitUntil(timeoutSeconds: 0.2) {
+        try await waitUntilTasksCondition(timeoutSeconds: 0.2) {
             api.listCallCount >= 2
         }
 
@@ -66,7 +66,7 @@ final class TasksStoreRefreshMergeTests: XCTestCase {
     func testBackgroundRefreshPreservesPendingTaskEdits() async throws {
         let persistence = PersistenceController(inMemory: true)
         let cache = TestCacheClient()
-        let api = StubTasksAPI()
+        let api = TasksStoreStubTasksAPI()
         let store = TasksStore(api: api, cache: cache, offlineStore: OfflineStore(container: persistence.container))
         let writeQueue = WriteQueue(
             container: persistence.container,
@@ -115,24 +115,10 @@ final class TasksStoreRefreshMergeTests: XCTestCase {
         )
 
         await store.load(selection: .today)
-        try await waitUntil(timeoutSeconds: 0.2) {
+        try await waitUntilTasksCondition(timeoutSeconds: 0.2) {
             api.listCallCount >= 2
         }
 
         XCTAssertEqual(store.tasks.first?.title, "Local title")
-    }
-}
-
-@MainActor
-private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () -> Bool) async throws {
-    let timeoutNanoseconds = UInt64(timeoutSeconds * 1_000_000_000)
-    let start = DispatchTime.now().uptimeNanoseconds
-
-    while !condition() {
-        if DispatchTime.now().uptimeNanoseconds - start > timeoutNanoseconds {
-            XCTFail("Timed out waiting for condition")
-            return
-        }
-        await Task.yield()
     }
 }

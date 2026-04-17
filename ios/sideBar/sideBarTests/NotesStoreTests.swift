@@ -293,7 +293,10 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertEqual(store.tree?.children.first?.name, "First line")
         XCTAssertEqual(store.tree?.children.first?.modified, 2)
     }
+}
 
+@MainActor
+extension NotesStoreTests {
     func testBackgroundRefreshForPreviousNoteDoesNotReplaceNewActiveNote() async throws {
         let firstCached = NotePayload(
             id: "note-a",
@@ -489,7 +492,6 @@ final class NotesStoreTests: XCTestCase {
         XCTAssertLessThan(elapsed, 0.2)
         await firstRefresh.value
     }
-
 }
 
 private func makePinnedOrderTree() -> FileTree {
