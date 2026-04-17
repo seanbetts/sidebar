@@ -177,6 +177,32 @@ final class Task4SidebarChromeRegressionTests: XCTestCase {
         XCTAssertFalse(files.contains(".tag(item.file.id)"))
     }
 
+    func testSearchableSidebarHeadersPinMinHeightToTopAlignment() throws {
+        let conversations = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "ConversationsPanelView+Helpers.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let notes = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "NotesPanel+Helpers.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let files = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "FilesPanel.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let tasks = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "TasksPanel.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let websites = try source(
+            at: ["sideBar", "Views", "SidebarPanels", "WebsitesPanel.swift"]
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let expectedFrame =
+            ".frame(maxWidth:.infinity,minHeight:LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch:showsInlineSearch),alignment:.top)"
+
+        XCTAssertTrue(conversations.contains(expectedFrame))
+        XCTAssertTrue(notes.contains(expectedFrame))
+        XCTAssertTrue(files.contains(expectedFrame))
+        XCTAssertTrue(tasks.contains(expectedFrame))
+        XCTAssertTrue(websites.contains(expectedFrame))
+    }
+
     func testSettingsEditorsUseSharedInputChrome() throws {
         let systemMac = try source(
             at: ["sideBar", "Views", "Settings", "SettingsSections+SystemMac.swift"]

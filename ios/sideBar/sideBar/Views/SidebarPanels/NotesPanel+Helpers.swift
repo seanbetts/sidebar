@@ -73,7 +73,11 @@ extension NotesPanelView {
                     .padding(.bottom, DesignTokens.Spacing.sm)
             }
         }
-        .frame(minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch))
+        .frame(
+            maxWidth: .infinity,
+            minHeight: LayoutMetrics.searchablePanelHeaderMinHeight(showsInlineSearch: showsInlineSearch),
+            alignment: .top
+        )
         .sidebarPanelHeaderBackground(showsInlineSearch: showsInlineSearch)
     }
 
