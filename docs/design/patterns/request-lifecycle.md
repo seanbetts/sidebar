@@ -220,6 +220,22 @@ Offline support is a product decision, not a side effect of transport failure.
 
 ---
 
+## Refresh ownership
+
+Background refresh should be coordinated centrally, not reinvented by each screen.
+
+### Rules
+
+- a shared refresh coordinator owns launch refresh, foreground revalidation, reconnect refresh, and pinned-content refresh policy
+- individual list and detail views may request data, but they should not each invent their own refresh cadence or offline fallback rules
+- when renderable cached content already exists, revalidation should stay silent and must not re-show an initial loading state
+- reconnect handling should prioritize replaying queued writes before issuing overlapping refreshes for the same resources
+- automatic refresh should merge newer payloads into cache and only notify presentation state when visible data actually changed
+
+This keeps request behavior consistent across notes, tasks, websites, files, and chat browsing while avoiding unnecessary UI churn.
+
+---
+
 ## Streaming and upload special cases
 
 ### Streaming

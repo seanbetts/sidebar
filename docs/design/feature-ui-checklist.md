@@ -85,6 +85,7 @@ The checklist is grouped by concern. Skip entire groups that genuinely do not ap
 | 6.3 | Over-1s waits use `LoadingView` (spinner + optional message) or a progress indicator if determinate. | |
 | 6.4 | Background/ongoing operations use an ambient indicator and never block the UI. | |
 | 6.5 | `LoadingIndicatorView` is the spinner primitive (six sizes, platform-aware). `LoadingView` is the full-screen wrapper. The correct one is used for the context. | |
+| 6.6 | Once cached content exists, background refresh or reconnect work does not clear the visible UI or re-show initial loading states unless the current content genuinely becomes unavailable. | |
 
 ---
 

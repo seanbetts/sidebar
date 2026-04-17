@@ -43,6 +43,22 @@ Every supported surface follows the same read policy:
 - if cached content exists, keep showing it while refresh happens
 - if cached content does not exist, show an explicit unavailable-offline or load-failed state
 
+### Refresh behavior
+
+The shared read model includes explicit refresh rules so each surface does not invent its own launch or reconnect logic.
+
+Rules:
+
+- cold launch may schedule a silent background refresh for already-cached sections without blocking first render
+- warm foreground should revalidate stale visible content opportunistically, not reset the UI to an initial loading state
+- reconnect should trigger queue replay first, then a bounded background refresh for affected caches
+- pinned content belongs in the background refresh set regardless of count
+- background refresh updates cached data in place, it does not clear caches and rebuild them from scratch
+- background refresh should not disturb current list selection, scroll position, or visible detail state unless the data actually changed
+- archives stay out of the automatic launch refresh path unless the user is actively viewing archive content
+
+This keeps the UI stable while still allowing the cache to converge with newer server state from another device.
+
 ### Detail availability states
 
 Every selected detail surface must resolve into one of:
@@ -131,6 +147,7 @@ This means:
 - if you edit a note on iPhone while offline, the iPhone shows that local change immediately
 - the iPad does not see that change until the iPhone reconnects and syncs
 - once the server accepts the change, the iPad converges through refresh or realtime
+- a later launch or reconnect refresh on the iPad should merge newer server fields into its local cache without wiping older cached content that still has no replacement payload
 
 Cross-device sync should feel fast, but not magical. Offline work is local until the originating device reconnects.
 
