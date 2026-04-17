@@ -274,17 +274,21 @@ enum DetailOfflineUnavailableResource: Equatable {
         "Open it while online on this device to keep it available here."
     }
 
-    var iconName: String {
+    var appSection: AppSection {
         switch self {
         case .note:
-            return "note.text"
+            return .notes
         case .website:
-            return "globe"
+            return .websites
         case .file:
-            return "doc"
+            return .files
         case .chat:
-            return "bubble.left.and.bubble.right"
+            return .chat
         }
+    }
+
+    var iconName: String {
+        appSection.iconName
     }
 }
 

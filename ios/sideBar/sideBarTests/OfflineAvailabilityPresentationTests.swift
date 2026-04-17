@@ -23,6 +23,22 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
             DetailOfflineUnavailableResource.chat.subtitle,
             "Open it while online on this device to keep it available here."
         )
+        XCTAssertEqual(
+            DetailOfflineUnavailableResource.note.iconName,
+            AppSection.notes.iconName
+        )
+        XCTAssertEqual(
+            DetailOfflineUnavailableResource.website.iconName,
+            AppSection.websites.iconName
+        )
+        XCTAssertEqual(
+            DetailOfflineUnavailableResource.file.iconName,
+            AppSection.files.iconName
+        )
+        XCTAssertEqual(
+            DetailOfflineUnavailableResource.chat.iconName,
+            AppSection.chat.iconName
+        )
     }
 
     func testNotesDetailViewUsesSharedOfflineUnavailablePlaceholder() throws {
