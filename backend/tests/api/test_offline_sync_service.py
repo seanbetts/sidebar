@@ -196,6 +196,7 @@ def test_websites_sync_conflict(test_db):
         },
     )
     assert result.conflicts
+    assert result.conflicts[0]["operationId"] == "op-2"
 
 
 def test_files_sync_conflict(test_db):

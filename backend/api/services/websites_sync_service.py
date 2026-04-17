@@ -244,7 +244,8 @@ class WebsitesSyncService:
         exc: ConflictError, *, op: str, operation_id: str
     ) -> dict[str, Any]:
         payload = dict(exc.details.get("conflict") or {})
-        payload.setdefault("operationId", operation_id)
+        if not payload.get("operationId"):
+            payload["operationId"] = operation_id
         payload.setdefault("op", op)
         payload.setdefault("reason", "stale")
         return payload
