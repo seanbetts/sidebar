@@ -1,6 +1,21 @@
 import Foundation
 
 extension ChatStore {
+    func fetchConversationDetail(id: String) async throws -> ConversationWithMessages {
+        if let inFlightTask = inFlightConversationDetailTasks[id] {
+            return try await inFlightTask.value
+        }
+
+        let task = Task<ConversationWithMessages, Error> {
+            try await conversationsAPI.get(id: id)
+        }
+        inFlightConversationDetailTasks[id] = task
+        defer {
+            inFlightConversationDetailTasks[id] = nil
+        }
+        return try await task.value
+    }
+
     func syncConversationDetails(with incoming: [Conversation], persist: Bool) {
         let incomingByID = Dictionary(uniqueKeysWithValues: incoming.map { ($0.id, $0) })
         for (id, detail) in conversationDetails {

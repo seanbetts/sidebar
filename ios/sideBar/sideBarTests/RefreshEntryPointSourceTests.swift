@@ -34,6 +34,16 @@ final class RefreshEntryPointSourceTests: XCTestCase {
         XCTAssertTrue(messageListSource.contains("awaitenvironment.refreshSectionManually(.chat)"))
     }
 
+    func testChatViewsDoNotTriggerDirectStartupLoads() throws {
+        let conversationsPanelSource = try source(named: "Views/SidebarPanels/ConversationsPanel.swift")
+            .normalizedForSourceAssertions()
+        let lifecycleSource = try source(named: "Views/ContentView+Lifecycle.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertFalse(conversationsPanelSource.contains(".task{awaitenvironment.chatViewModel.loadConversations()}"))
+        XCTAssertFalse(lifecycleSource.contains("awaitenvironment.chatViewModel.loadConversations()"))
+    }
+
     func testPhoneSectionHelperDoesNotLoadContentDomainsDirectly() throws {
         let normalized = try source(named: "Views/ContentView+Lifecycle.swift")
             .normalizedForSourceAssertions()

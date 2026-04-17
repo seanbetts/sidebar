@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-
 // MARK: - ChatStore
 
 /// Persistent store for chat conversations and message details.
@@ -17,11 +16,12 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
     @Published public private(set) var conversations: [Conversation] = []
     @Published public private(set) var conversationDetails: [String: ConversationWithMessages] = [:]
 
-    private let conversationsAPI: ConversationsProviding
+    let conversationsAPI: ConversationsProviding
     private let offlineStore: OfflineStore?
     private let networkStatus: (any NetworkStatusProviding)?
     private var isRefreshingList = false
     private var refreshingConversationDetailIDs: Set<String> = []
+    var inFlightConversationDetailTasks: [String: Task<ConversationWithMessages, Error>] = [:]
     private var isConversationsLoadInFlight = false
     private var conversationsLoadWaiters: [CheckedContinuation<Void, Error>] = []
     private var canAttemptServerRead: Bool {
@@ -92,7 +92,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             throw ChatOfflineError(message: "This chat isn't available offline yet.")
         }
 
-        let response = try await conversationsAPI.get(id: id)
+        let response = try await fetchConversationDetail(id: id)
         if shouldApplyConversationUpdate(response, cached: conversationDetails[id]) {
             conversationDetails[id] = response
             cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.conversationDetail)
@@ -334,7 +334,7 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
             guard let self else { return }
             defer { self.refreshingConversationDetailIDs.remove(id) }
             do {
-                let response = try await self.conversationsAPI.get(id: id)
+                let response = try await self.fetchConversationDetail(id: id)
                 if self.shouldApplyConversationUpdate(response, cached: self.conversationDetails[id]) {
                     self.conversationDetails[id] = response
                     self.cache.set(

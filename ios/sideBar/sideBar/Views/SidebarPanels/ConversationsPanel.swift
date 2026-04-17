@@ -18,9 +18,6 @@ public struct ConversationsPanel: View {
             viewModel: environment.chatViewModel,
             searchQuery: searchQuery ?? $localSearchQuery
         )
-            .task {
-                await environment.chatViewModel.loadConversations()
-            }
     }
 }
 struct ConversationsPanelView: View {

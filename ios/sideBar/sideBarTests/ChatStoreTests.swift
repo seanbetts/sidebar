@@ -202,6 +202,45 @@ final class ChatStoreTests: XCTestCase {
         XCTAssertEqual(store.conversations.map(\.id), ["c1"])
     }
 
+    func testConcurrentLoadConversationSharesOneUnderlyingDetailRequest() async throws {
+        let detail = ConversationWithMessages(
+            id: "c1",
+            title: "Fresh",
+            titleGenerated: false,
+            createdAt: "2024-01-01",
+            updatedAt: "2024-01-02",
+            messageCount: 1,
+            firstMessage: "Hi",
+            isArchived: false,
+            messages: [
+                Message(
+                    id: "m1",
+                    role: .assistant,
+                    content: "Hello",
+                    status: .complete,
+                    toolCalls: nil,
+                    needsNewline: nil,
+                    timestamp: "2024-01-02T00:00:00Z",
+                    error: nil
+                )
+            ]
+        )
+        let cache = TestCacheClient()
+        let api = MockConversationsAPI(
+            listResult: .success([]),
+            getResult: .success(detail)
+        )
+        api.getDelay = 0.05
+        let store = ChatStore(conversationsAPI: api, cache: cache)
+
+        async let first: Void = store.loadConversation(id: detail.id, force: true)
+        async let second: Void = store.loadConversation(id: detail.id, force: true)
+        _ = try await (first, second)
+
+        XCTAssertEqual(api.getCallCount, 1)
+        XCTAssertEqual(store.conversationDetails[detail.id]?.messages.map(\.id), ["m1"])
+    }
+
     func testLoadConversationsUsesOfflineSnapshotWhenServerUnreachable() async throws {
         let persistence = PersistenceController(inMemory: true)
         let offlineStore = OfflineStore(container: persistence.container)

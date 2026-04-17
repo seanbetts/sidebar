@@ -447,7 +447,6 @@ extension ContentView {
         #if os(iOS)
         guard shouldStartInitialPhoneChatFlow else { return }
         didEnsureInitialPhoneChatInterface = true
-        await environment.chatViewModel.loadConversations()
         guard !didInitialPhoneChatFlowGetSuperseded else { return }
         await performInitialPhoneChatAction()
         #endif
