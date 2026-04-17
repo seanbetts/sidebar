@@ -82,18 +82,18 @@ struct FilesDetailContainer: View {
                   !viewModel.isLoadingContent,
                   FilesWorkspaceDisplayPolicy.shouldShowProcessingStateInMainWorkspace(for: selectedItem) {
             FilesProcessingView(item: selectedItem)
+        } else if viewModel.selectedFileId != nil,
+                  !canAttemptServerRead,
+                  viewModel.isSelectedPreviewUnavailableOffline {
+            DetailOfflineUnavailablePlaceholder(resource: .file)
         } else if let message = viewModel.errorMessage {
-            if viewModel.selectedFileId != nil && !canAttemptServerRead {
-                DetailOfflineUnavailablePlaceholder(resource: .file)
-            } else {
-                PlaceholderView(
-                    title: "Unable to load file",
-                    subtitle: message,
-                    actionTitle: viewModel.selectedFileId == nil ? nil : "Retry"
-                ) {
-                    guard let selectedId = viewModel.selectedFileId else { return }
-                    Task { await viewModel.selectFile(fileId: selectedId) }
-                }
+            PlaceholderView(
+                title: "Unable to load file",
+                subtitle: message,
+                actionTitle: viewModel.selectedFileId == nil ? nil : "Retry"
+            ) {
+                guard let selectedId = viewModel.selectedFileId else { return }
+                Task { await viewModel.selectFile(fileId: selectedId) }
             }
         } else if viewModel.isSelecting || viewModel.selectedFileId != nil {
             LoadingView(message: "Loading file…")

@@ -19,8 +19,14 @@ extension IngestionViewModel {
         isLoading = false
     }
 
-    public func loadMeta(fileId: String, force: Bool = false) async {
+    public func loadMeta(fileId: String, force: Bool = false) async -> Bool {
         errorMessage = nil
+        if !force,
+           !(networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true),
+           !store.hasCachedMeta(fileId: fileId) {
+            errorMessage = "This file isn't available offline yet."
+            return false
+        }
         do {
             try await store.loadMeta(fileId: fileId, force: force)
             if let meta = activeMeta, meta.file.id == fileId {
@@ -29,16 +35,25 @@ extension IngestionViewModel {
             }
             startJobPollingIfNeeded(fileId: fileId)
             await ensureViewerReady(for: fileId)
+            return true
         } catch {
             errorMessage = ErrorMapping.message(for: error)
+            return false
         }
     }
 
     public func selectFile(fileId: String, forceRefresh: Bool = false) async {
+        prepareSelection(fileId: fileId)
+        if !forceRefresh,
+           !(networkStatus?.offlineCapabilityPolicy.canAttemptServerRead ?? true),
+           !store.hasCachedMeta(fileId: fileId) {
+            errorMessage = "This file isn't available offline yet."
+            return
+        }
         isSelecting = true
         defer { isSelecting = false }
-        prepareSelection(fileId: fileId)
-        await loadMeta(fileId: fileId, force: forceRefresh)
+        let didLoadMeta = await loadMeta(fileId: fileId, force: forceRefresh)
+        guard didLoadMeta else { return }
         guard let meta = activeMeta else { return }
         guard viewerState == nil else { return }
         startJobPollingIfNeeded(fileId: fileId)
@@ -127,14 +142,14 @@ extension IngestionViewModel {
     public func applyIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) async {
         store.applyIngestedFileEvent(payload)
         if let selectedFileId, selectedFileId == payload.record?.id || selectedFileId == payload.oldRecord?.id {
-            await loadMeta(fileId: selectedFileId)
+            _ = await loadMeta(fileId: selectedFileId)
         }
     }
 
     public func applyFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>) async {
         store.applyFileJobEvent(payload)
         if let selectedFileId, selectedFileId == payload.record?.fileId {
-            await loadMeta(fileId: selectedFileId)
+            _ = await loadMeta(fileId: selectedFileId)
         }
     }
 

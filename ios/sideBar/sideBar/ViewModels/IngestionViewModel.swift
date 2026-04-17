@@ -128,6 +128,31 @@ public final class IngestionViewModel: ObservableObject {
     let ingestionProgressActivityTask = ManagedTask()
     private let teardownBag = IngestionViewModelTeardownBag()
 
+    var isSelectedPreviewUnavailableOffline: Bool {
+        guard let selectedFileId else { return false }
+        guard viewerState == nil else { return false }
+
+        let resolvedMeta: IngestionMetaResponse? = {
+            if let activeMeta, activeMeta.file.id == selectedFileId {
+                return activeMeta
+            }
+            let cacheKey = CacheKeys.ingestionMeta(fileId: selectedFileId)
+            let cached: IngestionMetaResponse? = store.cache.get(key: cacheKey)
+            if let cached {
+                return cached
+            }
+            return store.offlineStore?.get(key: cacheKey, as: IngestionMetaResponse.self)
+        }()
+
+        guard let meta = resolvedMeta else {
+            return true
+        }
+        guard let derivativeKind = selectedDerivativeKind ?? preferredDerivativeKind(for: meta) else {
+            return false
+        }
+        return store.cachedDerivativeContent(fileId: selectedFileId, kind: derivativeKind) == nil
+    }
+
     public convenience init(
         api: any IngestionProviding,
         store: IngestionStore,

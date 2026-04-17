@@ -64,6 +64,19 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
         XCTAssertTrue(normalized.contains("&&viewModel.selectedWebsiteId==nil"))
     }
 
+    func testWebsitesDetailViewShowsOfflineUnavailableBeforeLoadingForUncachedSelection() throws {
+        let normalized = try source(named: "Views/Websites/WebsitesDetailView.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(
+            normalized.contains(
+                "}elseifviewModel.selectedWebsiteId!=nil,!canAttemptServerRead,"
+                    + "!viewModel.hasCachedSelectedWebsiteDetail{"
+                    + "DetailOfflineUnavailablePlaceholder(resource:.website)"
+            )
+        )
+    }
+
     func testWebsitesPanelTracksSelectionFromSelectedWebsiteIdInsteadOfLoadedDetail() throws {
         let normalized = try source(named: "Views/SidebarPanels/WebsitesPanel.swift")
             .normalizedForSourceAssertions()
@@ -82,11 +95,37 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
         XCTAssertTrue(detailNormalized.contains("DetailOfflineUnavailablePlaceholder(resource:.file)"))
     }
 
+    func testFilesDetailViewShowsOfflineUnavailableBeforeLoadingForUncachedSelection() throws {
+        let normalized = try source(named: "Views/Files/IngestionDetailView.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(
+            normalized.contains(
+                "}elseif!canAttemptServerRead&&viewModel.isSelectedPreviewUnavailableOffline{"
+                    + "DetailOfflineUnavailablePlaceholder(resource:.file)"
+            )
+        )
+    }
+
     func testTasksDetailViewUsesSharedOfflineUnavailablePlaceholder() throws {
         let normalized = try source(named: "Views/Tasks/TasksDetailView.swift")
             .normalizedForSourceAssertions()
 
         XCTAssertTrue(normalized.contains("DetailOfflineUnavailablePlaceholder(resource:.taskList)"))
+    }
+
+    func testTasksDetailViewShowsOfflineUnavailableBeforeLoadingForUncachedSelection() throws {
+        let normalized = try source(named: "Views/Tasks/TasksDetailView.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(
+            normalized.contains(
+                "ifstate.selection!=.none,!canAttemptServerRead,"
+                    + "!viewModel.hasCachedSelection(selection:state.selection),"
+                    + "state.sections.isEmpty{"
+                    + "DetailOfflineUnavailablePlaceholder(resource:.taskList)"
+            )
+        )
     }
 
     func testTasksPanelDoesNotReplaceNavigationListWithGlobalLoadErrorPlaceholder() throws {
@@ -108,6 +147,44 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
             .normalizedForSourceAssertions()
 
         XCTAssertTrue(normalized.contains("DetailOfflineUnavailablePlaceholder(resource:.chat)"))
+    }
+
+    func testChatViewShowsOfflineUnavailableBeforeLoadingForUncachedSelection() throws {
+        let normalized = try source(named: "Views/Chat/ChatView.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(
+            normalized.contains(
+                "elseifshouldShowOfflineUnavailableConversation{"
+                    + "DetailOfflineUnavailablePlaceholder(resource:.chat)"
+            )
+        )
+    }
+
+    func testTasksStoreShortCircuitsOfflineUnavailableSelectionsBeforeLoading() throws {
+        let normalized = try source(named: "Stores/TasksStore.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(normalized.contains("if!canAttemptServerRead&&!hasCachedSnapshot{"))
+        XCTAssertTrue(normalized.contains("errorMessage=\"Thistasklistisn'tavailableofflineyet.\""))
+    }
+
+    func testWebsiteAndFileSelectionViewModelsGuardOfflineUnavailableSelectionsBeforeLoading() throws {
+        let websitesNormalized = try source(named: "ViewModels/WebsitesViewModel.swift")
+            .normalizedForSourceAssertions()
+        let filesNormalized = try source(named: "ViewModels/IngestionViewModel+Public.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(
+            websitesNormalized.contains(
+                "!networkStatus.offlineCapabilityPolicy.canAttemptServerRead,!store.hasCachedDetail(id:id)"
+            )
+        )
+        XCTAssertTrue(
+            filesNormalized.contains(
+                "!(networkStatus?.offlineCapabilityPolicy.canAttemptServerRead??true),!store.hasCachedMeta(fileId:fileId)"
+            )
+        )
     }
 }
 

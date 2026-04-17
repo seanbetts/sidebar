@@ -38,8 +38,24 @@ import Combine
     public func attachWriteQueue(_ writeQueue: WriteQueue) {
         self.writeQueue = writeQueue
     }
+
+    func hasCachedList(selection: TaskSelection) -> Bool {
+        guard selection != .none else { return false }
+        let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
+        let cached: TaskListResponse? = cache.get(key: cacheKey)
+        if cached != nil {
+            return true
+        }
+        if let offlineStore,
+           offlineStore.get(key: cacheKey, as: TaskListResponse.self) != nil {
+            return true
+        }
+        return false
+    }
+
     public func load(selection: TaskSelection, force: Bool = false) async {
         let requestId = beginLoadRequest()
+        let canAttemptServerRead = canRefreshFromRemote()
         if selection == .none {
             self.selection = selection
             errorMessage = nil
@@ -49,19 +65,38 @@ import Combine
             return
         }
         let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
-        let cached: TaskListResponse? = cache.get(key: cacheKey)
+        let hasCachedSnapshot = hasCachedList(selection: selection)
+        let shouldBypassCache = force && canAttemptServerRead
         self.selection = selection
         errorMessage = nil
         if selection.isSearch {
+            if !canAttemptServerRead && !hasCachedSnapshot {
+                tasks = []
+                groups = []
+                projects = []
+                currentScope = selection.scope
+                searchPending = false
+                isLoading = false
+                errorMessage = "This task list isn't available offline yet."
+                return
+            }
             if tasks.isEmpty {
                 searchPending = true
             }
-        } else if cached == nil {
+        } else if !hasCachedSnapshot {
+            if !canAttemptServerRead {
+                tasks = []
+                currentScope = selection.scope
+                isLoading = false
+                searchPending = false
+                errorMessage = "This task list isn't available offline yet."
+                return
+            }
             isLoading = true
             tasks = []
         }
         if applyCachedOrOffline(
-            force: force,
+            force: shouldBypassCache,
             cacheKey: cacheKey,
             type: TaskListResponse.self,
             apply: { [weak self] list in

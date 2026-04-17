@@ -12,4 +12,8 @@ extension TasksViewModel {
     var shouldQueueTaskWrites: Bool {
         taskOfflineCapabilityPolicy.shouldQueueWrites
     }
+
+    func hasCachedSelection(selection: TaskSelection) -> Bool {
+        store.hasCachedList(selection: selection)
+    }
 }

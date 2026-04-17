@@ -212,7 +212,9 @@ private struct ChatDetailView: View {
                 if environment.settingsViewModel.signedInOnboardingRecoveryState == .soulCalibration {
                     Color.clear
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if viewModel.isLoadingMessages {
+                } else if shouldShowOfflineUnavailableConversation {
+                    DetailOfflineUnavailablePlaceholder(resource: .chat)
+                } else if viewModel.isLoadingMessages && viewModel.messages.isEmpty {
                     LoadingView(message: "Loading messages…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.selectedConversationId == nil {
@@ -326,6 +328,13 @@ private struct ChatDetailView: View {
 
     private var canAttemptServerRead: Bool {
         environment.isNetworkAvailable && environment.isServerReachable && !environment.isOffline
+    }
+
+    private var shouldShowOfflineUnavailableConversation: Bool {
+        viewModel.selectedConversationId != nil
+            && !canAttemptServerRead
+            && !viewModel.hasCachedSelectedConversation
+            && viewModel.messages.isEmpty
     }
 
     private var isComposerEditable: Bool {

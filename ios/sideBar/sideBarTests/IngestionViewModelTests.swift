@@ -137,6 +137,50 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.activeMeta)
     }
 
+    func testSelectFileOfflineUnavailableSetsSelectionWithoutEnteringVisibleLoadState() async {
+        let unavailableFile = makeFile(id: "file-unavailable")
+        let defaults = makeDefaults()
+        let cache = TestCacheClient()
+        let networkStatus = TestNetworkStatus(
+            isNetworkAvailable: false,
+            isOffline: true
+        )
+        let store = IngestionStore(
+            api: MockIngestionAPI(
+                listResult: .success(IngestionListResponse(items: [])),
+                metaResult: .failure(MockError.forced),
+                contentResult: .failure(MockError.forced),
+                pinResult: .success(()),
+                youtubeResult: .failure(MockError.forced)
+            ),
+            cache: cache,
+            offlineStore: OfflineStore(container: PersistenceController(inMemory: true).container),
+            networkStatus: networkStatus,
+            userDefaults: defaults
+        )
+        let viewModel = IngestionViewModel(
+            api: MockIngestionAPI(
+                listResult: .success(IngestionListResponse(items: [])),
+                metaResult: .failure(MockError.forced),
+                contentResult: .failure(MockError.forced),
+                pinResult: .success(()),
+                youtubeResult: .failure(MockError.forced)
+            ),
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter(),
+            networkStatus: networkStatus
+        )
+
+        await viewModel.selectFile(fileId: unavailableFile.id)
+
+        XCTAssertEqual(viewModel.selectedFileId, unavailableFile.id)
+        XCTAssertNil(viewModel.activeMeta)
+        XCTAssertFalse(viewModel.isSelecting)
+        XCTAssertEqual(viewModel.errorMessage, "This file isn't available offline yet.")
+    }
+
     func testSelectVideoFileLoadsTranscriptFromAiMarkdown() async {
         let file = makeVideoFile(id: "file-video-1")
         let viewModel = makeVideoViewModel(

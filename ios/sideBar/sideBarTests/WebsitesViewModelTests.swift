@@ -76,6 +76,31 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.active)
     }
 
+    func testSelectWebsiteOfflineUnavailableSetsSelectionWithoutEnteringDetailLoading() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let networkStatus = TestNetworkStatus(isNetworkAvailable: false, isOffline: true)
+        let store = WebsitesStore(
+            api: api,
+            cache: cache,
+            networkStatus: networkStatus
+        )
+        let viewModel = WebsitesViewModel(
+            api: api,
+            store: store,
+            toastCenter: ToastCenter(),
+            networkStatus: networkStatus,
+            transcriptPollInterval: 60
+        )
+
+        await viewModel.selectWebsite(id: "site-unavailable")
+
+        XCTAssertEqual(viewModel.selectedWebsiteId, "site-unavailable")
+        XCTAssertNil(viewModel.active)
+        XCTAssertFalse(viewModel.isLoadingDetail)
+        XCTAssertEqual(viewModel.errorMessage, "This website isn't available offline yet.")
+    }
+
     func testApplyRealtimeDeleteClearsActive() async {
         let item = makeItem(id: "site-1")
         let detail = makeDetail(id: "site-1")

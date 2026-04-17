@@ -303,7 +303,12 @@ extension TasksDetailView {
     // swiftlint:disable:next function_body_length
     private func content(state: TasksViewState) -> some View {
         let canAttemptServerRead = viewModel.networkStatus.offlineCapabilityPolicy.canAttemptServerRead
-        if viewModel.isLoading || (isSearchSelection(state.selection) && viewModel.searchPending) {
+        if state.selection != .none,
+           !canAttemptServerRead,
+           !viewModel.hasCachedSelection(selection: state.selection),
+           state.sections.isEmpty {
+            DetailOfflineUnavailablePlaceholder(resource: .taskList)
+        } else if viewModel.isLoading || (isSearchSelection(state.selection) && viewModel.searchPending) {
             LoadingView(
                 message: isSearchSelection(state.selection)
                     ? "Loading search results..."

@@ -191,7 +191,7 @@ extension WebsitesDetailView {
                 }
             )
             #endif
-        } else if viewModel.isLoadingDetail || !viewModel.pendingWebsites.isEmpty {
+        } else if !viewModel.pendingWebsites.isEmpty {
             if let failedPending = failedPendingWebsite,
                let errorMessage = viewModel.saveErrorMessage {
                 PlaceholderView(
@@ -210,10 +210,14 @@ extension WebsitesDetailView {
             } else {
                 pendingWebsiteLoadingView
             }
+        } else if viewModel.selectedWebsiteId != nil,
+                  !canAttemptServerRead,
+                  !viewModel.hasCachedSelectedWebsiteDetail {
+            DetailOfflineUnavailablePlaceholder(resource: .website)
+        } else if viewModel.isLoadingDetail {
+            pendingWebsiteLoadingView
         } else if viewModel.selectedWebsiteId != nil {
-            if !canAttemptServerRead {
-                DetailOfflineUnavailablePlaceholder(resource: .website)
-            } else if let error = viewModel.errorMessage {
+            if let error = viewModel.errorMessage {
                 PlaceholderView(
                     title: "Unable to load website",
                     subtitle: error,

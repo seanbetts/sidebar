@@ -78,6 +78,11 @@ public final class WebsitesViewModel: ObservableObject {
         return pendingWebsites.first?.progressMessage ?? "Reading..."
     }
 
+    var hasCachedSelectedWebsiteDetail: Bool {
+        guard let selectedWebsiteId else { return false }
+        return store.hasCachedDetail(id: selectedWebsiteId)
+    }
+
     let api: any WebsitesProviding
     let store: WebsitesStore
     let ingestionStore: IngestionStore?
@@ -193,6 +198,12 @@ public final class WebsitesViewModel: ObservableObject {
             store.clearActive()
         }
         selectedWebsiteId = id
+        if !networkStatus.offlineCapabilityPolicy.canAttemptServerRead,
+           !store.hasCachedDetail(id: id) {
+            isLoadingDetail = false
+            errorMessage = "This website isn't available offline yet."
+            return
+        }
         isLoadingDetail = true
         do {
             try await store.loadDetail(id: id)

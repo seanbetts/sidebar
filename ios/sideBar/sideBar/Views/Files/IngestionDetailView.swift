@@ -20,10 +20,7 @@ public struct IngestionDetailView: View {
 
     private var viewer: some View {
         Group {
-            if viewModel.isSelecting || viewModel.isLoadingContent {
-                LoadingView(message: "Loading file…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if shouldShowProcessingState {
+            if shouldShowProcessingState {
                 VStack(spacing: 16) {
                     LoadingIndicatorView(size: LoadingIndicatorSize.page)
                     PlaceholderView(
@@ -40,21 +37,22 @@ public struct IngestionDetailView: View {
                 )
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state, pdfController: pdfController)
+            } else if !canAttemptServerRead && viewModel.isSelectedPreviewUnavailableOffline {
+                DetailOfflineUnavailablePlaceholder(resource: .file)
+            } else if viewModel.isSelecting || viewModel.isLoadingContent {
+                LoadingView(message: "Loading file…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error = viewModel.errorMessage {
-                if !canAttemptServerRead {
-                    DetailOfflineUnavailablePlaceholder(resource: .file)
-                } else {
-                    PlaceholderView(
-                        title: "Unable to load preview",
-                        subtitle: error,
-                        actionTitle: "Retry"
-                    ) {
-                        Task {
-                            if let kind = viewModel.selectedDerivativeKind {
-                                await viewModel.selectDerivative(kind: kind)
-                            } else {
-                                await viewModel.loadMeta(fileId: meta.file.id)
-                            }
+                PlaceholderView(
+                    title: "Unable to load preview",
+                    subtitle: error,
+                    actionTitle: "Retry"
+                ) {
+                    Task {
+                        if let kind = viewModel.selectedDerivativeKind {
+                            await viewModel.selectDerivative(kind: kind)
+                        } else {
+                            _ = await viewModel.loadMeta(fileId: meta.file.id)
                         }
                     }
                 }

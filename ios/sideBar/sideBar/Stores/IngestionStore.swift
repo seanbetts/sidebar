@@ -168,6 +168,18 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
         return offlineStore?.get(key: key, as: Data.self)
     }
 
+    func hasCachedMeta(fileId: String) -> Bool {
+        let key = CacheKeys.ingestionMeta(fileId: fileId)
+        let cached: IngestionMetaResponse? = cache.get(key: key)
+        if cached != nil {
+            return true
+        }
+        if let offlineStore, offlineStore.get(key: key, as: IngestionMetaResponse.self) != nil {
+            return true
+        }
+        return false
+    }
+
     func persistDerivativeContent(_ data: Data, fileId: String, kind: String) {
         let key = CacheKeys.ingestionDerivativeContent(fileId: fileId, kind: kind)
         cache.set(key: key, value: data, ttlSeconds: CachePolicy.ingestionMeta)
