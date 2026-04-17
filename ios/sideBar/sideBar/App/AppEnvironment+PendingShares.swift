@@ -8,6 +8,10 @@ final class PendingShareReplayStartSignal {
     private var continuation: CheckedContinuation<Void, Never>?
     private var hasStarted = false
 
+    var started: Bool {
+        hasStarted
+    }
+
     func wait() async {
         guard !hasStarted else { return }
         await withCheckedContinuation { continuation in

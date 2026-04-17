@@ -7,6 +7,20 @@ extension AppEnvironment {
         Logger(subsystem: "sideBar", category: "AppEnvironmentAuth")
     }
 
+    private func waitForPendingShareReplayToStart(
+        signal: PendingShareReplayStartSignal,
+        attempts: Int = 40,
+        pollNanoseconds: UInt64 = 5_000_000
+    ) async {
+        for _ in 0..<attempts {
+            if signal.started || isConsumingPendingShares {
+                return
+            }
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+        }
+    }
+
     func refreshWidgetDataBridges() async {
         async let tasks: () = tasksViewModel.refreshWidgetData()
         async let notes: () = notesViewModel.refreshWidgetData()
@@ -46,8 +60,9 @@ extension AppEnvironment {
             await self?.consumePendingShares(replayStartSignal: replayStartSignal)
         }
         // Wait until replay has entered the queued-save path before letting
-        // foreground refresh work observe the list.
-        await replayStartSignal.wait()
+        // foreground refresh work observe the list. A concurrent coordinator-
+        // driven replay can win the race here, so wait for any replay to start.
+        await waitForPendingShareReplayToStart(signal: replayStartSignal)
         _ = replayTask
     }
 

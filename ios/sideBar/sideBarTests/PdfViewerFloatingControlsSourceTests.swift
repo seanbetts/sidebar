@@ -1,22 +1,25 @@
 import XCTest
 
 final class PdfViewerFloatingControlsSourceTests: XCTestCase {
-    func testPdfViewerFloatingControlsUsesPlatformPopoverOverlays() throws {
+    func testPdfViewerFloatingControlsUsesSingleNativeControlSurfaceOnModernOS() throws {
         let normalized = try filesViewComponentsSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
-        XCTAssertTrue(
+        XCTAssertFalse(
             normalized.contains("ZStack(alignment:.topTrailing){")
         )
         XCTAssertTrue(
             normalized.contains(
-                "UIKitPDFControlBarRepresentable(configuration:configuration,showsVisibleChrome:false)"
+                "UIKitPDFControlBarRepresentable(configuration:configuration,showsVisibleChrome:true)"
             )
         )
         XCTAssertTrue(
             normalized.contains(
-                "AppKitPDFControlOverlay(configuration:configuration,showsVisibleChrome:false)"
+                "AppKitPDFControlOverlay(configuration:configuration,showsVisibleChrome:true)"
             )
+        )
+        XCTAssertTrue(
+            normalized.contains("PDFControlBar(configuration:configuration)")
         )
     }
 
