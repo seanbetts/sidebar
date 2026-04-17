@@ -157,6 +157,25 @@ final class OfflineAvailabilityPresentationTests: XCTestCase {
             normalized.contains(
                 "elseifshouldShowOfflineUnavailableConversation{"
                     + "DetailOfflineUnavailablePlaceholder(resource:.chat)"
+                )
+        )
+    }
+
+    func testChatViewKeepsComposerVisibleAlongsideOfflineUnavailablePlaceholder() throws {
+        let normalized = try source(named: "Views/Chat/ChatView.swift")
+            .normalizedForSourceAssertions()
+
+        XCTAssertTrue(
+            normalized.contains(
+                "elseifshouldShowOfflineUnavailableConversation{"
+                    + "DetailOfflineUnavailablePlaceholder(resource:.chat)"
+            )
+        )
+        XCTAssertTrue(
+            normalized.contains(
+                ".frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)"
+                    + "VStack(spacing:8){attachmentsContainer"
+                    + "ChatInputBar(text:draftTextBinding,"
             )
         )
     }
