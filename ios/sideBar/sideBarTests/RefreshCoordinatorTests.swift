@@ -35,6 +35,38 @@ final class RefreshCoordinatorTests: XCTestCase {
         XCTAssertEqual(adapter.refreshCount, 1)
     }
 
+    func testCoordinatorCoalescesOverlappingActivationRefreshesAcrossTriggers() async {
+        let adapter = BlockingRefreshAdapter(section: .notes)
+        let coordinator = RefreshCoordinator(
+            policy: RefreshPolicy(),
+            registry: RefreshRegistry(adapters: [adapter])
+        )
+        let context = RefreshContext(
+            visibleSection: .notes,
+            hasVisibleDetail: true,
+            pinnedSections: [.notes, .websites, .files],
+            lastOpenedSection: .tasks,
+            staleTargets: [],
+            canAttemptServerRead: true
+        )
+
+        let launchRefresh = Task {
+            await coordinator.refresh(trigger: .coldLaunch, context: context)
+        }
+        let foregroundRefresh = Task {
+            await coordinator.refresh(trigger: .warmForeground, context: context)
+        }
+
+        await fulfillment(of: [adapter.started], timeout: 1.0)
+        XCTAssertEqual(adapter.refreshCount, 1)
+
+        adapter.resume()
+        _ = await launchRefresh.value
+        _ = await foregroundRefresh.value
+
+        XCTAssertEqual(adapter.refreshCount, 1)
+    }
+
     func testCoordinatorMarksTargetsFreshAfterRefreshCompletes() async {
         let metadataStore = RefreshMetadataStore()
         var currentNow = Date(timeIntervalSince1970: 1_000)

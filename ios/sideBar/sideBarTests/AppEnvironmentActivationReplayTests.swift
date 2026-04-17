@@ -10,6 +10,10 @@ extension AppEnvironmentDeepLinkTests {
 
         XCTAssertFalse(normalized.contains("try?awaitTask.sleep(nanoseconds:1_000_000_000)"))
         XCTAssertFalse(normalized.contains("awaitwebsitesViewModel.load(force:true)"))
+        XCTAssertFalse(
+            normalized.contains("awaittasksViewModel.load(selection:tasksStore.selection,force:true)")
+        )
+        XCTAssertFalse(normalized.contains("awaittasksViewModel.loadCounts(force:true)"))
     }
 
     func testHandleSignedInActivationNotifiesRefreshCoordinator() async {
