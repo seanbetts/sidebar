@@ -37,6 +37,13 @@ public struct IngestionDetailView: View {
                 )
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state, pdfController: pdfController)
+                    .id(
+                        Self.viewerResetIdentity(
+                            fileId: meta.file.id,
+                            derivativeKind: viewModel.selectedDerivativeKind,
+                            state: state
+                        )
+                    )
             } else if !canAttemptServerRead && viewModel.isSelectedPreviewUnavailableOffline {
                 DetailOfflineUnavailablePlaceholder(resource: .file)
             } else if viewModel.isSelecting || viewModel.isLoadingContent {
@@ -102,6 +109,16 @@ public struct IngestionDetailView: View {
         }
         let normalizedStatus = (status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return normalizedStatus == "failed"
+    }
+
+    static func viewerResetIdentity(
+        fileId: String,
+        derivativeKind: String?,
+        state: FileViewerState
+    ) -> String {
+        let derivativeComponent = derivativeKind ?? state.kind.rawValue
+        let fileURLComponent = state.fileURL?.lastPathComponent ?? "no-file-url"
+        return [fileId, derivativeComponent, fileURLComponent].joined(separator: "::")
     }
 
     private var processingDetail: String? {
