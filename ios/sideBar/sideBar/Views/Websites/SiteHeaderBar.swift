@@ -68,7 +68,7 @@ public struct SiteHeaderBar: View {
         .onReceive(
             Publishers.CombineLatest4(
                 environment.writeQueue.$failedHeaderRows,
-                environment.writeQueue.$isProcessing,
+                environment.writeQueue.$isExecutingWrite,
                 environment.writeQueue.$pendingCount,
                 environment.writeQueue.$failedCount
             )

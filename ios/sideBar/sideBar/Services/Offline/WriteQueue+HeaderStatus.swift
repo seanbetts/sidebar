@@ -16,7 +16,7 @@ extension WriteQueue {
             return .error(rows: failedHeaderRows.map(makeHeaderRow))
         }
 
-        if isProcessing {
+        if isExecutingWrite {
             return .syncing
         }
 

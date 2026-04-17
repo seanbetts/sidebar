@@ -8,9 +8,9 @@ struct SyncStatusIndicator: View {
         if environment.writeQueue.pendingCount > 0 {
             ZStack {
                 Circle()
-                    .fill(environment.writeQueue.isProcessing ? DesignTokens.Colors.success : DesignTokens.Colors.warning)
+                    .fill(environment.writeQueue.isExecutingWrite ? DesignTokens.Colors.success : DesignTokens.Colors.warning)
                     .frame(width: 8, height: 8)
-                if environment.writeQueue.isProcessing {
+                if environment.writeQueue.isExecutingWrite {
                     Circle()
                         .stroke(DesignTokens.Colors.success.opacity(0.5), lineWidth: 2)
                         .frame(width: 12, height: 12)
@@ -21,8 +21,8 @@ struct SyncStatusIndicator: View {
             .onAppear {
                 isPulsing = true
             }
-            .onChange(of: environment.writeQueue.isProcessing) { _, isProcessing in
-                if isProcessing {
+            .onChange(of: environment.writeQueue.isExecutingWrite) { _, isExecutingWrite in
+                if isExecutingWrite {
                     isPulsing = true
                 } else {
                     isPulsing = false
@@ -33,6 +33,6 @@ struct SyncStatusIndicator: View {
     }
 
     private var syncAccessibilityLabel: String {
-        environment.writeQueue.isProcessing ? "Syncing pending changes" : "Pending changes"
+        environment.writeQueue.isExecutingWrite ? "Syncing pending changes" : "Pending changes"
     }
 }

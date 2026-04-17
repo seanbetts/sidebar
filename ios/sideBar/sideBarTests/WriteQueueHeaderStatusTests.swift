@@ -70,10 +70,41 @@ final class WriteQueueHeaderStatusTests: XCTestCase {
             await queue.processQueue()
         }
 
-        await waitUntilWriteQueueHeaderState { queue.isProcessing }
+        await waitUntilWriteQueueHeaderState { queue.isExecutingWrite }
         XCTAssertEqual(queue.headerStatusSnapshotLabel, "Syncing")
 
         processingTask.cancel()
+    }
+
+    func testQueueHeaderSnapshotDoesNotStaySyncingDuringRetryBackoff() async throws {
+        let executor = RetryingTransportFailureExecutor()
+        let queue = try await makeQueue(
+            writes: [makeWrite(id: UUID(), status: .pending, createdAt: Date(timeIntervalSince1970: 1))],
+            executor: executor
+        )
+
+        let processingTask = Task {
+            await queue.processQueue()
+        }
+
+        await waitUntilWriteQueueHeaderState {
+            executor.attemptCount >= 1 && queue.isProcessing && !queue.isExecutingWrite
+        }
+        XCTAssertEqual(queue.headerStatusSnapshotLabel, "Pending")
+
+        processingTask.cancel()
+        _ = await processingTask.result
+    }
+
+    func testQueueHeaderSnapshotClearsAfterProcessingCompletes() async throws {
+        let queue = try await makeQueue(
+            writes: [makeWrite(id: UUID(), status: .pending, createdAt: Date(timeIntervalSince1970: 1))]
+        )
+
+        await queue.processQueue()
+
+        XCTAssertFalse(queue.isProcessing)
+        XCTAssertNil(queue.headerStatusSnapshot)
     }
 
     func testQueueHeaderSnapshotMapsStoredAPIClientErrorsToUserFacingDetail() async throws {
@@ -96,7 +127,8 @@ final class WriteQueueHeaderStatusTests: XCTestCase {
     }
 
     private func makeQueue(
-        writes: [PendingWriteFixture]
+        writes: [PendingWriteFixture],
+        executor: WriteQueueExecutor? = nil
     ) async throws -> WriteQueue {
         let persistence = PersistenceController(inMemory: true)
         let context = persistence.container.viewContext
@@ -123,7 +155,7 @@ final class WriteQueueHeaderStatusTests: XCTestCase {
         let queue = WriteQueue(
             container: persistence.container,
             connectivityMonitor: connectivityMonitor,
-            executor: TestWriteExecutor(),
+            executor: executor ?? TestWriteExecutor(),
             autoProcessEnabled: false
         )
 
@@ -188,6 +220,16 @@ private final class TestWriteExecutor: WriteQueueExecutor {
         if Task.isCancelled {
             throw CancellationError()
         }
+    }
+}
+
+@MainActor
+private final class RetryingTransportFailureExecutor: WriteQueueExecutor {
+    private(set) var attemptCount = 0
+
+    func execute(write: PendingWriteRecord) async throws {
+        attemptCount += 1
+        throw URLError(.timedOut)
     }
 }
 

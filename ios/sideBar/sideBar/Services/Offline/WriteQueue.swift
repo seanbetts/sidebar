@@ -10,6 +10,7 @@ public final class WriteQueue: ObservableObject {
     @Published private(set) var failedCount: Int = 0
     @Published private(set) var failedHeaderRows: [PendingWriteSummary] = []
     @Published private(set) var isProcessing: Bool = false
+    @Published private(set) var isExecutingWrite: Bool = false
     @Published private(set) var isPausedForConflict: Bool = false
     public let maxPendingWrites: Int
     let container: NSPersistentContainer
@@ -359,10 +360,13 @@ extension WriteQueue {
             guard let executor else {
                 throw WriteQueueError.missingExecutor
             }
+            isExecutingWrite = true
             try await executor.execute(write: write)
+            isExecutingWrite = false
             try await deleteWrite(id: write.id)
             return true
         } catch {
+            isExecutingWrite = false
             if let conflictError = error as? WriteQueueConflictError {
                 await autoResolveConflict(write: write, error: conflictError)
                 return true
