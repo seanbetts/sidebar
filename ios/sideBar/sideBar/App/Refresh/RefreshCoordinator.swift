@@ -3,11 +3,13 @@ import Foundation
 struct ActivationRefreshRequest: Equatable {
     let includeDeferredRefresh: Bool
     let activeSection: AppSection?
+    let context: RefreshContext?
 }
 
 @MainActor
 protocol RefreshCoordinatorType: AnyObject {
     func handleActivation(_ request: ActivationRefreshRequest) async
+    func refresh(trigger: RefreshTrigger, context: RefreshContext) async
     func visibleSectionDidChange(to section: AppSection?)
 }
 
@@ -26,9 +28,14 @@ final class RefreshCoordinator: RefreshCoordinatorType {
     }
 
     func handleActivation(_ request: ActivationRefreshRequest) async {
+        let trigger: RefreshTrigger = request.includeDeferredRefresh ? .coldLaunch : .warmForeground
+        if let context = request.context {
+            await refresh(trigger: trigger, context: context)
+            return
+        }
         guard let activeSection = request.activeSection else { return }
         await refresh(
-            trigger: .coldLaunch,
+            trigger: trigger,
             context: RefreshContext(
                 visibleSection: activeSection,
                 hasVisibleDetail: false,

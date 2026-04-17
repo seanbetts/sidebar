@@ -2,35 +2,22 @@ import Combine
 import Foundation
 
 @MainActor
-protocol SyncableStore {
-    func refreshAll() async
-}
-
-struct SyncableStoreAdapter: SyncableStore {
-    let refresh: () async -> Void
-
-    func refreshAll() async {
-        await refresh()
-    }
-}
-
-@MainActor
 final class SyncCoordinator {
     private let connectivityMonitor: ConnectivityMonitor
     private let writeQueue: WriteQueue
-    private let stores: [SyncableStore]
+    private let onReconnectRefresh: () async -> Void
     private let isSyncAllowed: () -> Bool
     private var cancellables = Set<AnyCancellable>()
 
     init(
         connectivityMonitor: ConnectivityMonitor,
         writeQueue: WriteQueue,
-        stores: [SyncableStore],
+        onReconnectRefresh: @escaping () async -> Void,
         isSyncAllowed: @escaping () -> Bool = { true }
     ) {
         self.connectivityMonitor = connectivityMonitor
         self.writeQueue = writeQueue
-        self.stores = stores
+        self.onReconnectRefresh = onReconnectRefresh
         self.isSyncAllowed = isSyncAllowed
     }
 
@@ -52,12 +39,6 @@ final class SyncCoordinator {
         let capabilityPolicy = connectivityMonitor.offlineCapabilityPolicy
         guard capabilityPolicy.canAttemptServerRead else { return }
         await writeQueue.processQueue()
-        await withTaskGroup(of: Void.self) { group in
-            for store in stores {
-                group.addTask { @MainActor in
-                    await store.refreshAll()
-                }
-            }
-        }
+        await onReconnectRefresh()
     }
 }

@@ -5,7 +5,7 @@ import sideBarShared
 
 @MainActor
 final class SyncCoordinatorTests: XCTestCase {
-    func testRefreshAllProcessesQueueAndStores() async throws {
+    func testRefreshAllProcessesQueueBeforeRunningReconnectRefresh() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
@@ -30,17 +30,17 @@ final class SyncCoordinatorTests: XCTestCase {
             payload: Payload(value: "Hi")
         )
 
-        let store = TestSyncStore()
+        let refreshHandler = TestReconnectRefreshHandler()
         let coordinator = SyncCoordinator(
             connectivityMonitor: connectivityMonitor,
             writeQueue: queue,
-            stores: [store]
+            onReconnectRefresh: { await refreshHandler.run() }
         )
 
         await coordinator.refreshAll()
 
         XCTAssertEqual(executor.executedCount, 1)
-        XCTAssertEqual(store.refreshCount, 1)
+        XCTAssertEqual(refreshHandler.refreshCount, 1)
         XCTAssertEqual(queue.pendingCount, 0)
     }
 
@@ -69,22 +69,22 @@ final class SyncCoordinatorTests: XCTestCase {
             payload: Payload(value: "Hi")
         )
 
-        let store = TestSyncStore()
+        let refreshHandler = TestReconnectRefreshHandler()
         let coordinator = SyncCoordinator(
             connectivityMonitor: connectivityMonitor,
             writeQueue: queue,
-            stores: [store],
+            onReconnectRefresh: { await refreshHandler.run() },
             isSyncAllowed: { false }
         )
 
         await coordinator.refreshAll()
 
         XCTAssertEqual(executor.executedCount, 0)
-        XCTAssertEqual(store.refreshCount, 0)
+        XCTAssertEqual(refreshHandler.refreshCount, 0)
         XCTAssertEqual(queue.pendingCount, 1)
     }
 
-    func testRefreshAllSkipsQueueAndStoresWhenServerIsUnreachable() async throws {
+    func testRefreshAllSkipsQueueAndReconnectRefreshWhenServerIsUnreachable() async throws {
         let persistence = PersistenceController(inMemory: true)
         let connectivityMonitor = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
@@ -122,58 +122,26 @@ final class SyncCoordinatorTests: XCTestCase {
         )
         await waitForCoordinatorDrain()
 
-        let store = TestSyncStore()
+        let refreshHandler = TestReconnectRefreshHandler()
         let coordinator = SyncCoordinator(
             connectivityMonitor: connectivityMonitor,
             writeQueue: queue,
-            stores: [store]
+            onReconnectRefresh: { await refreshHandler.run() }
         )
 
         await coordinator.refreshAll()
 
         XCTAssertEqual(executor.executedCount, 0)
-        XCTAssertEqual(store.refreshCount, 0)
+        XCTAssertEqual(refreshHandler.refreshCount, 0)
         XCTAssertEqual(queue.pendingCount, 1)
-    }
-
-    func testRefreshAllStartsSecondStoreBeforeFirstStoreFinishes() async {
-        let connectivityMonitor = ConnectivityMonitor(
-            baseUrl: URL(string: "http://localhost")!,
-            startMonitoring: false
-        )
-        let queue = WriteQueue(
-            container: PersistenceController(inMemory: true).container,
-            connectivityMonitor: connectivityMonitor,
-            autoProcessEnabled: false
-        )
-        let firstStore = BlockingSyncStore()
-        let secondStore = OrderedSyncStore()
-        let coordinator = SyncCoordinator(
-            connectivityMonitor: connectivityMonitor,
-            writeQueue: queue,
-            stores: [firstStore, secondStore]
-        )
-
-        let refreshTask = Task {
-            await coordinator.refreshAll()
-        }
-
-        await fulfillment(of: [firstStore.started], timeout: 1.0)
-        await fulfillment(of: [secondStore.started], timeout: 1.0)
-        XCTAssertEqual(secondStore.refreshCount, 1)
-
-        firstStore.continueRefresh()
-        await refreshTask.value
-
-        XCTAssertEqual(secondStore.refreshCount, 1)
     }
 }
 
 @MainActor
-private final class TestSyncStore: SyncableStore {
+private final class TestReconnectRefreshHandler {
     private(set) var refreshCount = 0
 
-    func refreshAll() async {
+    func run() async {
         refreshCount += 1
     }
 }
@@ -183,35 +151,6 @@ private final class CountingWriteExecutor: WriteQueueExecutor {
 
     func execute(write: PendingWriteRecord) async throws {
         executedCount += 1
-    }
-}
-
-@MainActor
-private final class BlockingSyncStore: SyncableStore {
-    let started = XCTestExpectation(description: "blocking store started")
-    private var continuation: CheckedContinuation<Void, Never>?
-
-    func refreshAll() async {
-        started.fulfill()
-        await withCheckedContinuation { continuation in
-            self.continuation = continuation
-        }
-    }
-
-    func continueRefresh() {
-        continuation?.resume()
-        continuation = nil
-    }
-}
-
-@MainActor
-private final class OrderedSyncStore: SyncableStore {
-    let started = XCTestExpectation(description: "ordered store started")
-    private(set) var refreshCount = 0
-
-    func refreshAll() async {
-        started.fulfill()
-        refreshCount += 1
     }
 }
 

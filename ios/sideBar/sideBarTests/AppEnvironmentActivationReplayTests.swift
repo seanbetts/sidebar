@@ -12,7 +12,7 @@ extension AppEnvironmentDeepLinkTests {
 
         await environment.handleSignedInActivation(includeDeferredRefresh: false)
 
-        let requests = await refreshCoordinator.activationRequests()
+        let requests = refreshCoordinator.activationRequests()
         XCTAssertEqual(requests.count, 1)
         XCTAssertEqual(requests.first?.includeDeferredRefresh, false)
         XCTAssertEqual(requests.first?.activeSection, environment.activeSection)
@@ -256,6 +256,11 @@ final class RefreshCoordinatorSpy: RefreshCoordinatorType {
 
     func handleActivation(_ request: ActivationRefreshRequest) async {
         requests.append(request)
+    }
+
+    func refresh(trigger: RefreshTrigger, context: RefreshContext) async {
+        _ = trigger
+        _ = context
     }
 
     func visibleSectionDidChange(to section: AppSection?) {

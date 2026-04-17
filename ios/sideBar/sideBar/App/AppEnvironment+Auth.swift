@@ -309,7 +309,8 @@ extension AppEnvironment {
         await refreshCoordinator.handleActivation(
             ActivationRefreshRequest(
                 includeDeferredRefresh: includeDeferredRefresh,
-                activeSection: activeSection
+                activeSection: activeSection,
+                context: currentRefreshContext()
             )
         )
         if authState != .signedOut {

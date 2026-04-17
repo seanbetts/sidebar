@@ -227,7 +227,14 @@ public final class AppEnvironment: ObservableObject {
         self.connectivityMonitor = dependencies.connectivityMonitor
         self.biometricMonitor = dependencies.biometricMonitor
         self.writeQueue = dependencies.writeQueue
-        self.refreshCoordinator = refreshCoordinator ?? RefreshCoordinator()
+        let resolvedRefreshCoordinator = refreshCoordinator ?? Self.makeRefreshCoordinator(
+            chatViewModel: dependencies.chatViewModel,
+            notesViewModel: dependencies.notesViewModel,
+            tasksViewModel: dependencies.tasksViewModel,
+            websitesViewModel: dependencies.websitesViewModel,
+            ingestionViewModel: dependencies.ingestionViewModel
+        )
+        self.refreshCoordinator = resolvedRefreshCoordinator
         self.draftStorage = dependencies.draftStorage
         self.spotlightIndexer = dependencies.spotlightIndexer
         self.configError = configError
@@ -237,35 +244,29 @@ public final class AppEnvironment: ObservableObject {
         let notesViewModel = dependencies.notesViewModel
         let websitesViewModel = dependencies.websitesViewModel
         let ingestionViewModel = dependencies.ingestionViewModel
-        let tasksViewModel = dependencies.tasksViewModel
         let authSession = container.authSession
+        let refreshContextProvider = {
+            Self.makeRefreshContext(
+                workspaceState: workspaceStore.state,
+                chatViewModel: chatViewModel,
+                notesViewModel: notesViewModel,
+                websitesViewModel: websitesViewModel,
+                ingestionViewModel: ingestionViewModel,
+                notesStore: dependencies.notesStore,
+                websitesStore: dependencies.websitesStore,
+                ingestionStore: dependencies.ingestionStore
+            )
+        }
         self.syncCoordinator = SyncCoordinator(
             connectivityMonitor: dependencies.connectivityMonitor,
             writeQueue: dependencies.writeQueue,
-            stores: [
-                SyncableStoreAdapter { [weak chatViewModel] in
-                    guard let chatViewModel else { return }
-                    await chatViewModel.refreshConversations(silent: true)
-                    await chatViewModel.refreshActiveConversation(silent: true)
-                },
-                SyncableStoreAdapter { [weak notesViewModel] in
-                    guard let notesViewModel else { return }
-                    await notesViewModel.loadTree()
-                    await notesViewModel.refreshSelectedNoteIfNeeded()
-                },
-                SyncableStoreAdapter { [weak websitesViewModel] in
-                    await websitesViewModel?.load(force: true)
-                },
-                SyncableStoreAdapter { [weak ingestionViewModel] in
-                    await ingestionViewModel?.load(force: true)
-                },
-                SyncableStoreAdapter { [weak tasksViewModel] in
-                    guard let tasksViewModel else { return }
-                    await tasksViewModel.load(selection: tasksViewModel.preferredLoadSelection, force: true)
-                    await tasksViewModel.loadCounts(force: true)
-                    await tasksViewModel.refreshWidgetData()
-                }
-            ],
+            onReconnectRefresh: { [weak resolvedRefreshCoordinator] in
+                guard let resolvedRefreshCoordinator else { return }
+                await resolvedRefreshCoordinator.refresh(
+                    trigger: .reconnect,
+                    context: refreshContextProvider()
+                )
+            },
             isSyncAllowed: {
                 authSession.authState == .active
             }
