@@ -94,4 +94,49 @@ final class NotesStoreWidgetDataTests: XCTestCase {
         XCTAssertEqual(snapshot.totalCount, 1)
         XCTAssertEqual(snapshot.notes.map(\.path), ["/pinned.md"])
     }
+
+    func testMakeWidgetDataBuildsFolderScopedPathsWhenTreeUsesIdentifierPaths() async {
+        let api = NotesStoreTestsSupport.MockNotesAPI(
+            treeResult: .failure(NotesStoreTestsSupport.MockError.forced),
+            noteResult: .failure(NotesStoreTestsSupport.MockError.forced)
+        )
+        let store = NotesStore(api: api, cache: TestCacheClient())
+        let tree = FileTree(children: [
+            FileNode(
+                name: "Personal",
+                path: "folder:Personal",
+                type: .directory,
+                size: nil,
+                modified: nil,
+                created: nil,
+                children: [
+                    FileNode(
+                        name: "Journal",
+                        path: "note-personal-1",
+                        type: .file,
+                        size: nil,
+                        modified: 1,
+                        created: nil,
+                        children: nil,
+                        expanded: nil,
+                        pinned: false,
+                        pinnedOrder: nil,
+                        archived: nil,
+                        folderMarker: nil
+                    )
+                ],
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+
+        let snapshot = store.makeWidgetData(from: tree)
+
+        XCTAssertEqual(snapshot.notes.map(\.id), ["note-personal-1"])
+        XCTAssertEqual(snapshot.notes.map(\.path), ["note-personal-1"])
+        XCTAssertEqual(snapshot.notes.map(\.scopePath), ["/Personal/note-personal-1"])
+    }
 }

@@ -85,7 +85,7 @@ enum NotesWidgetSelection: Equatable, Sendable {
             let normalizedPath = Self.normalizeFolderPath(path)
             let prefix = normalizedPath == "/" ? "/" : normalizedPath + "/"
             let filteredNotes = data.notes.filter { note in
-                let notePath = Self.normalizeNotePath(note.path)
+                let notePath = Self.normalizeNotePath(note.scopePath ?? note.path)
                 return notePath.hasPrefix(prefix)
             }
             return WidgetNoteData(

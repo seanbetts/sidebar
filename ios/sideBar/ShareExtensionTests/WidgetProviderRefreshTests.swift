@@ -210,6 +210,60 @@ final class WidgetProviderRefreshTests: XCTestCase {
         )
     }
 
+    func testNotesRefreshSupportsFolderFilteringWhenTreeUsesNoteIdentifiersForFiles() async throws {
+        let client = makeAPIClient { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/notes/tree")
+            return (
+                HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!,
+                Data(
+                    """
+                    {
+                      "children": [
+                        {
+                          "name": "Personal",
+                          "path": "folder:Personal",
+                          "type": "directory",
+                          "children": [
+                            {
+                              "name": "Journal",
+                              "path": "note-personal-1",
+                              "type": "file",
+                              "modified": 1710000010,
+                              "pinned": false,
+                              "archived": false
+                            }
+                          ]
+                        },
+                        {
+                          "name": "Inbox",
+                          "path": "note-root-1",
+                          "type": "file",
+                          "modified": 1710000011,
+                          "pinned": true,
+                          "pinnedOrder": 0,
+                          "archived": false
+                        }
+                      ]
+                    }
+                    """.utf8
+                )
+            )
+        }
+
+        let refreshed = try await NotesWidgetRefreshClient(apiClient: client).refreshPinnedNotes(
+            now: Date(timeIntervalSince1970: 2_100)
+        )
+        let filtered = NotesWidgetSelection.folder(path: "/Personal", title: "Personal").filter(refreshed)
+
+        XCTAssertEqual(filtered.notes.map(\.id), ["note-personal-1"])
+        XCTAssertEqual(filtered.totalCount, 1)
+    }
+
     func testWebsitesRefreshMapsSavedWebsitesIntoWidgetWebsiteData() async throws {
         let client = makeAPIClient { request in
             XCTAssertEqual(request.url?.path, "/api/v1/websites")

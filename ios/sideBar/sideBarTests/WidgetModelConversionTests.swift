@@ -47,6 +47,7 @@ final class WidgetModelConversionTests: XCTestCase {
         XCTAssertEqual(widgetNote.id, "/notes/meeting.md")
         XCTAssertEqual(widgetNote.name, "meeting.md")
         XCTAssertEqual(widgetNote.path, "/notes/meeting.md")
+        XCTAssertNil(widgetNote.scopePath)
         XCTAssertEqual(widgetNote.modifiedAt, Date(timeIntervalSince1970: timestamp))
         XCTAssertFalse(widgetNote.pinned)
         XCTAssertEqual(widgetNote.pinnedOrder, 3)

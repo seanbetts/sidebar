@@ -187,7 +187,7 @@ struct NoteRowView: View {
     let compact: Bool
 
     private var noteURL: URL {
-        let encodedPath = note.path.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlPathAllowed) ?? note.path
+        let encodedPath = note.id.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlPathAllowed) ?? note.id
         return URL(string: "sidebar://notes/\(encodedPath)") ?? URL(string: "sidebar://notes")!
     }
 

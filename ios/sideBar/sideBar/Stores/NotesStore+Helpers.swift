@@ -431,16 +431,53 @@ extension NotesStore {
         return WidgetNoteData(notes: allNotes, totalCount: allNotes.count)
     }
 
-    func flattenNotes(from nodes: [FileNode]) -> [WidgetNote] {
+    func flattenNotes(
+        from nodes: [FileNode],
+        currentFolderPath: String = "/"
+    ) -> [WidgetNote] {
         var notes: [WidgetNote] = []
         for node in nodes {
             if node.type == .file, node.archived != true {
-                notes.append(WidgetNote(from: node))
+                notes.append(
+                    WidgetNote(
+                        from: node,
+                        scopePath: widgetScopedNotePath(
+                            noteIdentifier: node.path,
+                            folderPath: currentFolderPath
+                        )
+                    )
+                )
             }
             if let children = node.children {
-                notes.append(contentsOf: flattenNotes(from: children))
+                let nextFolderPath = node.type == .directory
+                    ? widgetFolderPath(appending: node.name, to: currentFolderPath)
+                    : currentFolderPath
+                notes.append(
+                    contentsOf: flattenNotes(
+                        from: children,
+                        currentFolderPath: nextFolderPath
+                    )
+                )
             }
         }
         return notes
+    }
+
+    private func widgetFolderPath(appending name: String, to currentFolderPath: String) -> String {
+        let trimmedName = name.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !trimmedName.isEmpty else { return currentFolderPath }
+        if currentFolderPath == "/" {
+            return "/\(trimmedName)"
+        }
+        return "\(currentFolderPath)/\(trimmedName)"
+    }
+
+    private func widgetScopedNotePath(noteIdentifier: String, folderPath: String) -> String {
+        let trimmedIdentifier = noteIdentifier.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !trimmedIdentifier.isEmpty else { return folderPath }
+        if folderPath == "/" {
+            return "/\(trimmedIdentifier)"
+        }
+        return "\(folderPath)/\(trimmedIdentifier)"
     }
 }

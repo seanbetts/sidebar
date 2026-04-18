@@ -6,6 +6,7 @@ public struct WidgetNote: WidgetStorable {
     public let name: String
     public let contentPreview: String?
     public let path: String
+    public let scopePath: String?
     public let modifiedAt: Date?
     public let pinned: Bool
     public let pinnedOrder: Int?
@@ -15,6 +16,7 @@ public struct WidgetNote: WidgetStorable {
         name: String,
         contentPreview: String? = nil,
         path: String,
+        scopePath: String? = nil,
         modifiedAt: Date? = nil,
         pinned: Bool = false,
         pinnedOrder: Int? = nil
@@ -23,6 +25,7 @@ public struct WidgetNote: WidgetStorable {
         self.name = name
         self.contentPreview = contentPreview
         self.path = path
+        self.scopePath = scopePath
         self.modifiedAt = modifiedAt
         self.pinned = pinned
         self.pinnedOrder = pinnedOrder
@@ -54,6 +57,7 @@ public struct WidgetNoteData: WidgetDataContainer {
                 name: "Meeting Notes",
                 contentPreview: "Discussed project timeline...",
                 path: "/notes/meeting",
+                scopePath: "/notes/meeting",
                 pinned: true,
                 pinnedOrder: 0
             ),
@@ -62,6 +66,7 @@ public struct WidgetNoteData: WidgetDataContainer {
                 name: "Ideas",
                 contentPreview: "New feature concepts",
                 path: "/notes/ideas",
+                scopePath: "/notes/ideas",
                 pinned: true,
                 pinnedOrder: 1
             )
