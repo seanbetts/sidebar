@@ -327,10 +327,15 @@ extension NotesPanelView {
             } else if viewModel.tree == nil {
                 SidebarListSkeleton(rowCount: 8, showSubtitle: false)
             } else if panelState == .empty {
-                EmptyStateView(
+                let emptyState = EmptyStateContent.noContentYet(
                     title: "No notes yet",
                     subtitle: "Create a note to get started.",
                     systemImage: "text.document"
+                )
+                EmptyStateView(
+                    title: emptyState.title,
+                    subtitle: emptyState.subtitle,
+                    systemImage: emptyState.systemImage
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(panelBackground)

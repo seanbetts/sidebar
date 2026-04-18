@@ -7,6 +7,23 @@ final class TasksDetailViewTests: XCTestCase {
         XCTAssertEqual(TasksDetailView.expandButtonChromeStyle, .glass)
     }
 
+    func testEmptyStateContentUsesAllTasksCompletedForToday() {
+        XCTAssertEqual(
+            TasksDetailView.emptyStateContent(for: .today, searchQuery: nil),
+            .allTasksCompleted()
+        )
+    }
+
+    func testEmptyStateContentUsesNoResultsForSearch() {
+        XCTAssertEqual(
+            TasksDetailView.emptyStateContent(
+                for: .search(query: "ship"),
+                searchQuery: "ship"
+            ),
+            .noResults(subtitle: "No results for \"ship\"")
+        )
+    }
+
     func testHeaderStatusLabelUsesTaskCountForNonEmptySelection() {
         XCTAssertEqual(
             TasksDetailView.headerStatus(

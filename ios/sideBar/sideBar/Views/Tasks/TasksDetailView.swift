@@ -1,5 +1,4 @@
 import SwiftUI
-
 struct TasksDetailView: View {
     static let expandButtonChromeStyle: HeaderActionControlChromeStyle = .glass
 
@@ -326,19 +325,20 @@ extension TasksDetailView {
                 Task { await viewModel.load(selection: viewModel.selection, force: true) }
             }
         } else if state.sections.isEmpty {
-            if state.selection == .none {
-                PlaceholderView(
-                    title: "Select a list",
-                    subtitle: "Pick a task list from the sidebar to get started.",
-                    iconName: "checkmark.circle"
-                )
-            } else {
-                PlaceholderView(
-                    title: state.selectionLabel == "Today" ? "All done for the day" : "No tasks to show.",
-                    subtitle: searchSubtitle(selection: state.selection),
-                    iconName: "checkmark.circle"
-                )
-            }
+            let emptyState = Self.emptyStateContent(
+                for: state.selection,
+                searchQuery: {
+                    if case .search(let query) = state.selection {
+                        return query
+                    }
+                    return nil
+                }()
+            )
+            PlaceholderView(
+                title: emptyState.title,
+                subtitle: emptyState.subtitle,
+                iconName: emptyState.systemImage
+            )
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {

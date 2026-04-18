@@ -292,10 +292,15 @@ extension WebsitesPanelView {
                 Task { await viewModel.load() }
             }
         } else if panelState == .empty {
-            EmptyStateView(
+            let emptyState = EmptyStateContent.noContentYet(
                 title: "No websites yet",
                 subtitle: "Save a link to get started.",
                 systemImage: "globe"
+            )
+            EmptyStateView(
+                title: emptyState.title,
+                subtitle: emptyState.subtitle,
+                systemImage: emptyState.systemImage
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(panelBackground)
@@ -312,7 +317,12 @@ extension WebsitesPanelView {
                 }
                 Section {
                     if filteredItems.isEmpty {
-                        SidebarPanelPlaceholder(title: "No results.")
+                        let searchEmptyState = EmptyStateContent.noResults()
+                        SidebarPanelPlaceholder(
+                            title: searchEmptyState.title,
+                            subtitle: searchEmptyState.subtitle,
+                            iconName: searchEmptyState.systemImage
+                        )
                     } else {
                         ForEach(filteredItems, id: \.id) { item in
                             let index = staggerIndex(for: item.id, section: "search")

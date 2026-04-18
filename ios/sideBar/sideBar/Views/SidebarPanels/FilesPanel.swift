@@ -185,14 +185,24 @@ extension FilesPanelView {
                 }
             } else if filteredItems.isEmpty {
                 if viewModel.panelSearchQuery.trimmed.isEmpty {
-                    EmptyStateView(
+                    let emptyState = EmptyStateContent.noContentYet(
                         title: "No files yet",
                         subtitle: "Upload or create a file to get started.",
                         systemImage: "folder"
                     )
+                    EmptyStateView(
+                        title: emptyState.title,
+                        subtitle: emptyState.subtitle,
+                        systemImage: emptyState.systemImage
+                    )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    EmptyStateView(title: "No results", systemImage: "magnifyingglass")
+                    let emptyState = EmptyStateContent.noResults()
+                    EmptyStateView(
+                        title: emptyState.title,
+                        subtitle: emptyState.subtitle,
+                        systemImage: emptyState.systemImage
+                    )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {

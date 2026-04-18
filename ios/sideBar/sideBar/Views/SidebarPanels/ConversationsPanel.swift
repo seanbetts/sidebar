@@ -62,18 +62,25 @@ struct ConversationsPanelView: View {
                     }
                 } else if filteredGroups.isEmpty {
                     if searchQuery.isEmpty {
-                        EmptyStateView(
+                        let emptyState = EmptyStateContent.noContentYet(
                             title: "No conversations",
                             subtitle: "Start a new chat to begin.",
                             systemImage: "bubble"
                         )
+                        EmptyStateView(
+                            title: emptyState.title,
+                            subtitle: emptyState.subtitle,
+                            systemImage: emptyState.systemImage
+                        )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(PlatformTokens.sidebarPanelBackground)
                     } else {
+                        let searchEmptyState = EmptyStateContent.noResults(subtitle: searchErrorMessage)
                         SidebarPanelPlaceholder(
-                            title: "No matching conversations",
-                            subtitle: searchErrorMessage,
-                            style: searchErrorMessage == nil ? .standard : .error
+                            title: searchEmptyState.title,
+                            subtitle: searchEmptyState.subtitle,
+                            style: searchErrorMessage == nil ? .standard : .error,
+                            iconName: searchEmptyState.systemImage
                         )
                     }
                 } else {
