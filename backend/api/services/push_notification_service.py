@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
@@ -21,6 +22,7 @@ from api.services.notification_types import (
 class PushNotificationService:
     """Send push notifications through APNs."""
 
+    logger = logging.getLogger("notifications.apns")
     _cached_jwt: str | None = None
     _cached_jwt_issued_at: int | None = None
 
@@ -62,6 +64,11 @@ class PushNotificationService:
 
         auth_token = cls._get_auth_token()
         if not auth_token:
+            cls.logger.error(
+                "APNs auth unavailable environment=%s attempted_count=%s",
+                cls._normalize_environment(settings.apns_env),
+                len(requests),
+            )
             return PushNotificationSendResult(
                 attempted_count=len(requests),
                 sent_count=0,
@@ -80,6 +87,13 @@ class PushNotificationService:
             for request in requests:
                 topic = request.topic or cls._topic_for_platform(request.platform)
                 if not topic:
+                    cls.logger.warning(
+                        "APNs request skipped category=%s platform=%s "
+                        "reason=missing_topic token_suffix=%s",
+                        cls._notification_category(request),
+                        request.platform,
+                        cls._token_suffix(request.token),
+                    )
                     continue
 
                 headers = {
@@ -91,7 +105,17 @@ class PushNotificationService:
                 url = f"https://{host}/3/device/{request.token}"
                 try:
                     response = client.post(url, json=request.payload, headers=headers)
-                except httpx.HTTPError:
+                except httpx.HTTPError as exc:
+                    cls.logger.warning(
+                        "APNs transport error category=%s platform=%s "
+                        "environment=%s topic=%s token_suffix=%s error=%s",
+                        cls._notification_category(request),
+                        request.platform,
+                        cls._normalize_environment(environment),
+                        topic,
+                        cls._token_suffix(request.token),
+                        exc.__class__.__name__,
+                    )
                     continue
 
                 if response.status_code >= 400:
@@ -101,6 +125,18 @@ class PushNotificationService:
                         reason = body.get("reason")
                     except Exception:
                         reason = None
+                    cls.logger.warning(
+                        "APNs request rejected category=%s platform=%s "
+                        "status_code=%s reason=%s token_suffix=%s topic=%s "
+                        "environment=%s",
+                        cls._notification_category(request),
+                        request.platform,
+                        response.status_code,
+                        reason or "unknown",
+                        cls._token_suffix(request.token),
+                        topic,
+                        cls._normalize_environment(environment),
+                    )
                     if response.status_code in {400, 410} and reason in {
                         "BadDeviceToken",
                         "Unregistered",
@@ -109,6 +145,16 @@ class PushNotificationService:
                         invalid_tokens.append(request.token)
                     continue
 
+                cls.logger.info(
+                    "APNs request accepted category=%s platform=%s "
+                    "status_code=%s topic=%s token_suffix=%s environment=%s",
+                    cls._notification_category(request),
+                    request.platform,
+                    response.status_code,
+                    topic,
+                    cls._token_suffix(request.token),
+                    cls._normalize_environment(environment),
+                )
                 sent_count += 1
 
         if invalid_tokens:
@@ -156,3 +202,19 @@ class PushNotificationService:
         with SessionLocal() as db:
             DeviceTokenService.disable_tokens_by_value(db, tokens)
             db.commit()
+
+    @staticmethod
+    def _token_suffix(token: str) -> str:
+        """Return the last visible portion of a device token for logs."""
+        return str(token or "")[-8:]
+
+    @staticmethod
+    def _notification_category(request: APNSNotificationRequest) -> str:
+        """Extract a stable notification category value for diagnostics."""
+        category = request.payload.get("notification_category")
+        return str(category or "unknown")
+
+    @staticmethod
+    def _normalize_environment(environment: str | None) -> str:
+        """Normalize environment labels for consistent logging."""
+        return str(environment or "dev").lower()

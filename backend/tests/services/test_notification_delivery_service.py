@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 
 from api.services.notification_delivery_service import NotificationDeliveryService
@@ -140,3 +141,26 @@ def test_unsupported_delivery_modes_return_noop(monkeypatch):
     assert result.status == "noop"
     assert result.reason == "unsupported_delivery_mode"
     assert send_requests_called is False
+
+
+def test_no_target_tokens_logs_delivery_skip(caplog):
+    caplog.set_level(logging.INFO, logger="notifications.delivery")
+
+    result = NotificationDeliveryService.deliver_intent(
+        NotificationIntent(
+            user_id="user-123",
+            category=NotificationCategory.TASK_REMINDER,
+            delivery_mode=NotificationDeliveryMode.ALERT,
+            title="Task reminder",
+            body="You have 2 tasks due today.",
+            route="sidebar://tasks/today",
+        ),
+        device_tokens=[],
+    )
+
+    assert result.status == "noop"
+    assert result.reason == "no_target_tokens"
+    assert (
+        "Notification delivery skipped category=task_reminder user_id=user-123 "
+        "reason=no_target_tokens"
+    ) in caplog.text
