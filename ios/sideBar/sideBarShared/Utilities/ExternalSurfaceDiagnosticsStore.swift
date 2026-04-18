@@ -146,11 +146,7 @@ public final class ExternalSurfaceDiagnosticsStore: ExternalSurfaceDiagnosticsRe
     }
 
     private func sanitize(_ metadata: [String: String]) -> [String: String] {
-        metadata.reduce(into: [:]) { result, item in
-            let value = item.value.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !value.isEmpty else { return }
-            result[item.key] = value
-        }
+        DiagnosticsMetadataSanitizer.sanitize(metadata)
     }
 
     private func defaultMetadata() -> [String: String] {

@@ -278,20 +278,13 @@ enum AppSentry {
     }
 
     private static func sanitizedData(_ data: [String: String]) -> [String: String] {
-        let blockedKeys = Set(["url", "path", "note_id", "chat_id", "file_id"])
-        return data.reduce(into: [:]) { result, item in
-            let key = item.key.trimmingCharacters(in: .whitespacesAndNewlines)
-            let value = item.value.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard key.isEmpty == false, value.isEmpty == false, blockedKeys.contains(key) == false else {
-                return
-            }
-            result[key] = value
-        }
+        DiagnosticsMetadataSanitizer.sanitize(data)
     }
 }
 
 private final class DefaultAppSentryRecorder: AppSentryRecording {
     static let shared = DefaultAppSentryRecorder()
+    private let requestLifecycleContextKey = "request_lifecycle"
 
     func addBreadcrumb(level: String, category: String, message: String, data: [String: String]) {
         let breadcrumb = Breadcrumb(level: sentryLevel(named: level), category: category)
@@ -306,16 +299,16 @@ private final class DefaultAppSentryRecorder: AppSentryRecording {
             SentrySDK.capture(error: error)
             return
         }
-        SentrySDK.capture(error: error) { _ in
+        SentrySDK.capture(error: error) { scope in
+            scope.setContext(value: context, key: self.requestLifecycleContextKey)
         }
     }
 
     func capture(message: String, level: String, context: [String: String]) {
-        if context.isEmpty {
-            SentrySDK.capture(message: message)
-            return
-        }
-        SentrySDK.capture(message: message) { _ in
+        SentrySDK.capture(message: message) { scope in
+            scope.setLevel(self.sentryLevel(named: level))
+            guard context.isEmpty == false else { return }
+            scope.setContext(value: context, key: self.requestLifecycleContextKey)
         }
     }
 

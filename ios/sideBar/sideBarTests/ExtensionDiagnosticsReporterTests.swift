@@ -69,6 +69,39 @@ final class ExtensionDiagnosticsReporterTests: XCTestCase {
         XCTAssertEqual(logger.records.count, 1)
         XCTAssertEqual(store.records.count, 0)
     }
+
+    func testFailureSanitizesUnsafeMetadataAndNormalizesKeys() {
+        let logger = RecordingExtensionDiagnosticsLogger()
+        let store = RecordingExternalSurfaceDiagnosticsStore()
+        let reporter = ExtensionDiagnosticsReporter(
+            logger: logger,
+            store: store
+        )
+
+        reporter.captureFailure(
+            surface: "widget_provider",
+            stage: "refresh_failed",
+            message: "Refresh failed.",
+            metadata: [
+                "url": "https://example.com/private/path",
+                "file_path": "/tmp/private.mov",
+                "backend_body": "{\"detail\":\"raw\"}",
+                "requestKind": "foregroundRead",
+                "statusCode": "503",
+                "category": "offline"
+            ]
+        )
+
+        let metadata = try! XCTUnwrap(store.records.first?.metadata)
+        XCTAssertEqual(metadata["category"], "offline")
+        XCTAssertEqual(metadata["request_kind"], "foregroundRead")
+        XCTAssertEqual(metadata["status_code"], "503")
+        XCTAssertNil(metadata["url"])
+        XCTAssertNil(metadata["file_path"])
+        XCTAssertNil(metadata["backend_body"])
+        XCTAssertNil(metadata["requestKind"])
+        XCTAssertNil(metadata["statusCode"])
+    }
 }
 
 private final class RecordingExtensionDiagnosticsLogger: ExtensionDiagnosticsLogging {

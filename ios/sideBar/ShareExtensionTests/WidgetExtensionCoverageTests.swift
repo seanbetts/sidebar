@@ -285,9 +285,9 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertTrue(export.contains("[widget_bridge_extension] read_auth_state:"))
         XCTAssertTrue(export.contains("build_number="))
         XCTAssertTrue(export.contains("process_name="))
-        XCTAssertTrue(export.contains("bundle_path="))
         XCTAssertTrue(export.contains("app_group_source="))
         XCTAssertTrue(export.contains("auth_key_present=true"))
+        XCTAssertFalse(export.contains("bundle_path="))
     }
 
     func testWidgetLoadDiagnosticsIncludeSnapshotMetadata() throws {

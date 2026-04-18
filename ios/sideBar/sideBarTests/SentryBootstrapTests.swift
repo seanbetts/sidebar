@@ -179,6 +179,34 @@ final class SentryBootstrapTests: XCTestCase {
         XCTAssertTrue(recorder.breadcrumbs.isEmpty)
     }
 
+    func testCaptureSanitizesContextBeforeSendingToRecorder() {
+        let recorder = RecordingAppSentryRecorder()
+
+        AppSentry.capture(
+            message: "Widget refresh failed",
+            context: [
+                "operation": "widget.files.refresh",
+                "requestKind": "foregroundRead",
+                "url": "https://example.com/private/path",
+                "backend_body": "{\"detail\":\"raw\"}",
+                "file_path": "/tmp/private.mov",
+                "category": "offline"
+            ],
+            recorder: recorder,
+            isEnabled: true
+        )
+
+        let record = try! XCTUnwrap(recorder.messages.first)
+        XCTAssertEqual(record.message, "Widget refresh failed")
+        XCTAssertEqual(record.context["operation"], "widget.files.refresh")
+        XCTAssertEqual(record.context["request_kind"], "foregroundRead")
+        XCTAssertEqual(record.context["category"], "offline")
+        XCTAssertNil(record.context["url"])
+        XCTAssertNil(record.context["backend_body"])
+        XCTAssertNil(record.context["file_path"])
+        XCTAssertNil(record.context["requestKind"])
+    }
+
     func testStartIfConfiguredStartsOnlyOnce() {
         let client = RecordingSentryBootstrapClient()
         let bundle = TestSentryBundleInfo()
@@ -278,6 +306,16 @@ private struct BreadcrumbRecord: Equatable {
     let data: [String: String]
 }
 
+private struct ErrorCaptureRecord {
+    let context: [String: String]
+}
+
+private struct MessageCaptureRecord {
+    let message: String
+    let level: String
+    let context: [String: String]
+}
+
 private final class RecordingSentryBootstrapClient: SentryBootstrapClient {
     private(set) var startCallCount = 0
     private(set) var lastOptions: SentryBootstrap.Configuration?
@@ -290,6 +328,8 @@ private final class RecordingSentryBootstrapClient: SentryBootstrapClient {
 
 private final class RecordingAppSentryRecorder: AppSentryRecording {
     private(set) var breadcrumbs: [BreadcrumbRecord] = []
+    private(set) var errors: [ErrorCaptureRecord] = []
+    private(set) var messages: [MessageCaptureRecord] = []
 
     func addBreadcrumb(level: String, category: String, message: String, data: [String: String]) {
         breadcrumbs.append(
@@ -303,9 +343,17 @@ private final class RecordingAppSentryRecorder: AppSentryRecording {
     }
 
     func capture(error: any Error, context: [String: String]) {
+        errors.append(ErrorCaptureRecord(context: context))
     }
 
     func capture(message: String, level: String, context: [String: String]) {
+        messages.append(
+            MessageCaptureRecord(
+                message: message,
+                level: level,
+                context: context
+            )
+        )
     }
 }
 

@@ -12,7 +12,7 @@ final class ExternalSurfaceDiagnosticsStoreTests: XCTestCase {
         super.tearDown()
     }
 
-    func testRecordAddsBuildAndProcessMetadata() throws {
+    func testRecordAddsSanitizedBuildAndProcessMetadata() throws {
         ExternalSurfaceDiagnosticsStore.shared.record(
             surface: "test_surface",
             stage: "test_stage",
@@ -21,10 +21,11 @@ final class ExternalSurfaceDiagnosticsStoreTests: XCTestCase {
 
         let entry = try XCTUnwrap(ExternalSurfaceDiagnosticsStore.shared.recentEntries(limit: 1).first)
         XCTAssertFalse((entry.metadata["process_name"] ?? "").isEmpty)
-        XCTAssertFalse((entry.metadata["bundle_path"] ?? "").isEmpty)
         XCTAssertFalse((entry.metadata["bundle_id"] ?? "").isEmpty)
         XCTAssertFalse((entry.metadata["app_version"] ?? "").isEmpty)
         XCTAssertFalse((entry.metadata["build_number"] ?? "").isEmpty)
+        XCTAssertNil(entry.metadata["bundle_path"])
+        XCTAssertNil(entry.metadata["process_id"])
     }
 
     func testCanQueueURLItemsRecordsStorageAvailabilityDetails() {
