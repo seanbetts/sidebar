@@ -63,6 +63,79 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
     }
 
+    func testReopenTaskFailureRestoresTaskAndSetsError() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "task-1", title: "Done", status: "completed", updatedAt: "u1")
+        api.enqueueListResponse(scope: "completed", tasks: [task])
+        api.applyResult = .failure(APIClientError.apiError("Sync failed"))
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .completed)
+
+        await sut.viewModel.reopenTask(task: task)
+
+        XCTAssertEqual(sut.store.tasks.map(\.id), [task.id])
+        XCTAssertEqual(sut.viewModel.errorMessage, "Sync failed")
+        XCTAssertEqual(api.lastApplyPayload?.operations.first?.op, "reopen")
+    }
+
+    func testReopenTaskSuccessRemovesTaskFromCompletedSelectionAndUpdatesTodayCount() async {
+        let api = TasksViewModelAPIStub()
+        let today = TasksUtils.formatDateKey(Date())
+        let task = TaskItem(
+            id: "task-1",
+            title: "Done today",
+            status: "completed",
+            deadline: today,
+            updatedAt: "u1"
+        )
+        api.enqueueListResponse(scope: "completed", tasks: [task])
+        api.countsResponse = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(today: 0, upcoming: 1, completed: 1),
+            projects: [],
+            groups: []
+        )
+        api.applyResult = .success(
+            TaskSyncResponse(
+                applied: ["op-1"],
+                tasks: [
+                    TaskItem(
+                        id: task.id,
+                        title: task.title,
+                        status: "active",
+                        deadline: task.deadline,
+                        updatedAt: "u2",
+                        deletedAt: nil
+                    )
+                ],
+                nextTasks: [],
+                conflicts: [],
+                updates: nil,
+                serverUpdatedSince: nil
+            )
+        )
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .completed)
+        await sut.viewModel.loadCounts(force: true)
+        api.countsResponse = TaskCountsResponse(
+            generatedAt: nil,
+            counts: TaskCounts(today: 1, upcoming: 1, completed: 0),
+            projects: [],
+            groups: []
+        )
+
+        await sut.viewModel.reopenTask(task: task)
+        await eventually {
+            sut.store.counts?.counts.today == 1 && !sut.store.tasks.contains(where: { $0.id == task.id })
+        }
+
+        XCTAssertEqual(api.lastApplyPayload?.operations.first?.op, "reopen")
+        XCTAssertFalse(sut.store.tasks.contains(where: { $0.id == task.id }))
+        XCTAssertEqual(sut.store.counts?.counts.today, 1)
+    }
+
     func testUpdateSearchReturnsToLastNonSearchSelectionWhenQueryClearedImmediately() async {
         let api = TasksViewModelAPIStub()
         api.enqueueListResponse(scope: "today", tasks: [])

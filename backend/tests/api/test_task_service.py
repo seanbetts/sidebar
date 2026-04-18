@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
-from api.exceptions import TaskNotFoundError
+from api.exceptions import BadRequestError, TaskNotFoundError
 from api.services.task_service import TaskService
 from api.services.task_sync_service import TaskSyncService
 
@@ -215,6 +215,59 @@ def test_trash_task_series_removes_instances(db_session):
     assert len(trashed) == 2
     assert all(item.deleted_at is not None for item in trashed)
     assert all(item.status == "trashed" for item in trashed)
+
+
+def test_reopen_non_repeating_task_restores_active_status(db_session):
+    task = TaskService.create_task(db_session, "user", "Follow up", status="active")
+    db_session.commit()
+
+    TaskService.complete_task(db_session, "user", str(task.id))
+    db_session.commit()
+
+    reopened, removed_next = TaskService.reopen_task(db_session, "user", str(task.id))
+    db_session.commit()
+
+    assert reopened.status == "active"
+    assert reopened.completed_at is None
+    assert removed_next is None
+
+
+def test_reopen_repeating_task_removes_generated_next_instance(db_session):
+    task = TaskService.create_task(
+        db_session,
+        "user",
+        "Daily standup",
+        status="active",
+        deadline=date(2026, 4, 18),
+        repeating=True,
+        repeat_template=True,
+        recurrence_rule={"type": "daily", "interval": 1},
+    )
+    task.repeat_template_id = task.id
+    db_session.commit()
+
+    completed, next_task = TaskService.complete_task(db_session, "user", str(task.id))
+    db_session.commit()
+    assert completed.completed_at is not None
+
+    reopened, removed_next = TaskService.reopen_task(db_session, "user", str(task.id))
+    db_session.commit()
+
+    assert next_task is not None
+    assert reopened.status == "active"
+    assert reopened.completed_at is None
+    assert removed_next is not None
+    assert removed_next.id == next_task.id
+    assert removed_next.deleted_at is not None
+    assert removed_next.status == "trashed"
+
+
+def test_reopen_task_requires_completed_status(db_session):
+    task = TaskService.create_task(db_session, "user", "Still open", status="active")
+    db_session.commit()
+
+    with pytest.raises(BadRequestError, match="Task is not completed"):
+        TaskService.reopen_task(db_session, "user", str(task.id))
 
 
 def test_list_tasks_by_scope_and_counts(db_session):

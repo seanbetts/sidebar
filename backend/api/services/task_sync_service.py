@@ -168,6 +168,7 @@ class TaskSyncService:
             op = operation.get("op")
             if check_conflicts and op in {
                 "complete",
+                "reopen",
                 "rename",
                 "notes",
                 "move",
@@ -219,6 +220,13 @@ class TaskSyncService:
                 tasks.append(task)
                 if next_task:
                     next_tasks.append(next_task)
+            elif op == "reopen":
+                task, removed_next = TaskService.reopen_task(
+                    db, user_id, operation["id"]
+                )
+                tasks.append(task)
+                if removed_next:
+                    tasks.append(removed_next)
             elif op == "rename":
                 task = TaskService.update_task(
                     db, user_id, operation["id"], title=operation["title"]

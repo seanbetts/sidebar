@@ -56,6 +56,10 @@ extension TasksStore {
                     repeating: operation.recurrenceRule != nil
                 )
             }
+        case .reopen:
+            updateOperationTask(operation) { task in
+                updatedTask(task, status: "active")
+            }
         case .add, .createGroup, .createProject, .renameGroup, .renameProject, .deleteGroup, .deleteProject, .remove:
             return
         }
@@ -161,6 +165,8 @@ extension TasksStore {
             default:
                 return
             }
+        case .reopen:
+            break
         case .add, .createGroup, .renameGroup, .deleteGroup, .createProject, .renameProject, .deleteProject,
              .remove, .move, .setRepeat:
             return
@@ -322,6 +328,7 @@ enum LocalTaskOperation: String {
     case setDue = "set_due"
     case clearDue = "clear_due"
     case setRepeat = "set_repeat"
+    case reopen = "reopen"
 
     init?(operationName: String) {
         switch operationName.lowercased() {

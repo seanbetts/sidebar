@@ -265,6 +265,82 @@ def test_tasks_apply_idempotent(test_client, test_db):
     assert payload_second["tasks"] == []
 
 
+def test_tasks_apply_reopen_operation(test_client, test_db):
+    task = Task(
+        user_id=TEST_USER_ID,
+        title="Completed task",
+        status="completed",
+        completed_at=datetime.now(UTC),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(task)
+    test_db.commit()
+
+    response = test_client.post(
+        "/api/v1/tasks/apply",
+        json={"op": "reopen", "id": str(task.id), "operation_id": "op-reopen-1"},
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["applied"] == ["op-reopen-1"]
+    assert payload["tasks"][0]["status"] == "active"
+    assert payload["tasks"][0]["deletedAt"] is None
+
+
+def test_tasks_apply_reopen_operation_returns_removed_recurring_instance(
+    test_client, test_db
+):
+    task = Task(
+        user_id=TEST_USER_ID,
+        title="Daily standup",
+        status="completed",
+        deadline=date(2026, 4, 18),
+        repeating=True,
+        repeat_template=True,
+        recurrence_rule={"type": "daily", "interval": 1},
+        next_instance_date=date(2026, 4, 19),
+        completed_at=datetime.now(UTC),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(task)
+    test_db.flush()
+    task.repeat_template_id = task.id
+
+    next_task = Task(
+        user_id=TEST_USER_ID,
+        title="Daily standup",
+        status="active",
+        deadline=date(2026, 4, 19),
+        repeating=True,
+        repeat_template=False,
+        repeat_template_id=task.id,
+        recurrence_rule={"type": "daily", "interval": 1},
+        next_instance_date=date(2026, 4, 20),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(next_task)
+    test_db.commit()
+
+    response = test_client.post(
+        "/api/v1/tasks/apply",
+        json={"op": "reopen", "id": str(task.id), "operation_id": "op-reopen-2"},
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    returned_tasks = {item["id"]: item for item in payload["tasks"]}
+    assert returned_tasks[str(task.id)]["status"] == "active"
+    assert returned_tasks[str(task.id)]["deletedAt"] is None
+    assert returned_tasks[str(next_task.id)]["status"] == "trashed"
+    assert returned_tasks[str(next_task.id)]["deletedAt"] is not None
+
+
 def test_today_tasks_snapshot_logs_background_failures(
     test_client, test_db, monkeypatch, caplog
 ):

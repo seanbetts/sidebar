@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.exceptions import (
+    BadRequestError,
     TaskGroupNotFoundError,
     TaskNotFoundError,
     TaskProjectNotFoundError,
@@ -677,6 +678,45 @@ class TaskService:
 
         next_task = RecurrenceService.complete_repeating_task(db, task)
         return task, next_task
+
+    @staticmethod
+    def reopen_task(
+        db: Session, user_id: str, task_id: str
+    ) -> tuple[Task, Task | None]:
+        """Reopen a completed task and remove its generated recurring instance."""
+        task = TaskService.get_task(db, user_id, task_id)
+        if task.status != "completed":
+            raise BadRequestError("Task is not completed")
+
+        now = datetime.now(UTC)
+        removed_next: Task | None = None
+
+        if task.recurrence_rule:
+            template_id = task.repeat_template_id or task.id
+            expected_deadline = RecurrenceService.next_instance_date(task)
+            removed_next = (
+                db.query(Task)
+                .filter(
+                    Task.user_id == user_id,
+                    Task.repeat_template_id == template_id,
+                    Task.deadline == expected_deadline,
+                    Task.deleted_at.is_(None),
+                )
+                .one_or_none()
+            )
+            if removed_next is None:
+                raise BadRequestError(
+                    "Cannot reopen repeating task without its next instance"
+                )
+            removed_next.status = "trashed"
+            removed_next.trashed_at = now
+            removed_next.deleted_at = now
+            removed_next.updated_at = now
+
+        task.status = "active"
+        task.completed_at = None
+        task.updated_at = now
+        return task, removed_next
 
     @staticmethod
     def list_completed_today(db: Session, user_id: str) -> list[Task]:

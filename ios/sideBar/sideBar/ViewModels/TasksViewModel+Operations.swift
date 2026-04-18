@@ -62,6 +62,57 @@ extension TasksViewModel {
         }
     }
 
+    @discardableResult
+    public func reopenTask(task: TaskItem) async -> Bool {
+        let operation = TaskOperationPayload(
+            operationId: TaskOperationId.make(),
+            op: "reopen",
+            id: task.id,
+            clientUpdatedAt: task.updatedAt
+        )
+        let shouldIncrementTodayCount = reopenedTaskBelongsInToday(task)
+        setLocalErrorMessage(nil)
+
+        if shouldQueueTaskWrites {
+            do {
+                try await store.enqueueOperation(operation)
+                store.applyLocalOperation(operation)
+                updateWidgetDataAfterOfflineOperation(operation)
+                if shouldIncrementTodayCount {
+                    store.incrementTodayCount()
+                }
+                return true
+            } catch WriteQueueError.queueFull {
+                toastCenter.show(message: "Sync queue full. Review pending changes.")
+                return false
+            } catch {
+                setLocalErrorMessage("Failed to queue task changes")
+                return false
+            }
+        }
+
+        let snapshot = store.makeOptimisticSnapshot()
+        store.applyLocalOperation(operation)
+        updateWidgetDataAfterOfflineOperation(operation)
+        if shouldIncrementTodayCount {
+            store.incrementTodayCount()
+        }
+
+        do {
+            let response = try await api.apply(TaskOperationBatch(operations: [operation]))
+            store.applySyncResponse(response, operationId: operation.operationId)
+            Task {
+                await loadCounts(force: true)
+                await refreshWidgetData()
+            }
+            return true
+        } catch {
+            store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
+            setLocalErrorMessage(ErrorMapping.message(for: error))
+            return false
+        }
+    }
+
     public func renameTask(task: TaskItem, title: String) async {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -308,5 +359,10 @@ extension TasksViewModel {
             return nil
         }
         return date.formatted(.dateTime.day().month(.wide))
+    }
+
+    private func reopenedTaskBelongsInToday(_ task: TaskItem) -> Bool {
+        guard let deadline = TasksUtils.parseTaskDate(task) else { return false }
+        return deadline <= Calendar.current.startOfDay(for: Date())
     }
 }

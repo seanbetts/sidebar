@@ -343,6 +343,7 @@ extension TasksStore {
 
     func updatedTask(
         _ task: TaskItem,
+        status: String? = nil,
         title: String? = nil,
         notes: String? = nil,
         projectId: String? = nil,
@@ -353,7 +354,7 @@ extension TasksStore {
         TaskItem(
             id: task.id,
             title: title ?? task.title,
-            status: task.status,
+            status: status ?? task.status,
             deadline: deadline ?? task.deadline,
             notes: notes ?? task.notes,
             projectId: projectId ?? task.projectId,

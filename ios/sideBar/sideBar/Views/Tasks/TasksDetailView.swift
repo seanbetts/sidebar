@@ -362,7 +362,7 @@ extension TasksDetailView {
                                         repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
                                         selection: state.selection,
                                         isExpanded: isExpandable && expandedTaskIds.contains(task.id),
-                                        onComplete: { Task { await viewModel.completeTask(task: task) } },
+                                        onComplete: { handleCompletionAction(for: task, selection: state.selection) },
                                         onOpenNotes: { openNotes(task) },
                                         onOpenDue: { openDue(task) },
                                         onSelect: { setActiveTask(task) },

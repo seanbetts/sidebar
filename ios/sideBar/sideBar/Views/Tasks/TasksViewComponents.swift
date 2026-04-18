@@ -4,6 +4,21 @@ func taskRowTapGestureMask() -> GestureMask {
     .gesture
 }
 
+enum TaskRowCompletionAction: Equatable {
+    case complete
+    case reopen
+}
+
+func taskRowCompletionAction(
+    selection: TaskSelection,
+    taskStatus: String
+) -> TaskRowCompletionAction {
+    if selection == .completed || taskStatus == "completed" {
+        return .reopen
+    }
+    return .complete
+}
+
 struct TaskPill: View {
     let text: String
     let iconName: String?
@@ -84,15 +99,23 @@ struct TaskRow<MenuContent: View>: View {
                         Text(repeatLabel ?? "")
                     }
                 } else {
-                    let isCompleted = selection == .completed || task.status == "completed"
+                    let completionAction = taskRowCompletionAction(
+                        selection: selection,
+                        taskStatus: task.status
+                    )
+                    let isCompleted = completionAction == .reopen
                     Button {
                         guard !isCompleting else { return }
-                        guard !isCompleted else { return }
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            isCompleting = true
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            Haptics.notification(.success)
+                        switch completionAction {
+                        case .complete:
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                isCompleting = true
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                Haptics.notification(.success)
+                                onComplete()
+                            }
+                        case .reopen:
                             onComplete()
                         }
                     } label: {
@@ -122,7 +145,7 @@ struct TaskRow<MenuContent: View>: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .allowsHitTesting(!(isCompleting || isCompleted))
+                    .allowsHitTesting(!isCompleting)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {

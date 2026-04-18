@@ -212,8 +212,8 @@ async def apply_task_operation(
             )
     return {
         "applied": result.applied_ids,
-        "tasks": [_task_payload(task) for task in result.tasks],
-        "nextTasks": [_task_payload(task) for task in result.next_tasks],
+        "tasks": [_task_sync_payload(task) for task in result.tasks],
+        "nextTasks": [_task_sync_payload(task) for task in result.next_tasks],
         "conflicts": [],
         "serverUpdatedSince": datetime.now(UTC).isoformat(),
     }
