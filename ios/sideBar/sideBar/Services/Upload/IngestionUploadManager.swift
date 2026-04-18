@@ -54,25 +54,25 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private let providedSession: URLSession?
     private let certificatePinningDelegate: CertificatePinningDelegate?
     private lazy var session: URLSession = {
-        let configuration: URLSessionConfiguration =
-            if let providedSession {
-                providedSession.configuration
+        let configuration: URLSessionConfiguration
+        if let providedSession {
+            configuration = providedSession.configuration
+        } else {
+            #if os(iOS)
+            if EnvironmentConfig.isRunningTestsOrPreviews() {
+                configuration = .default
             } else {
-                #if os(iOS)
-                if EnvironmentConfig.isRunningTestsOrPreviews() {
-                    URLSessionConfiguration.default
-                } else {
-                    let backgroundConfiguration = URLSessionConfiguration.background(
-                        withIdentifier: "sideBar.ingestion.uploads"
-                    )
-                    backgroundConfiguration.sessionSendsLaunchEvents = true
-                    backgroundConfiguration.isDiscretionary = false
-                    backgroundConfiguration
-                }
-                #else
-                URLSessionConfiguration.default
-                #endif
+                let backgroundConfiguration = URLSessionConfiguration.background(
+                    withIdentifier: "sideBar.ingestion.uploads"
+                )
+                backgroundConfiguration.sessionSendsLaunchEvents = true
+                backgroundConfiguration.isDiscretionary = false
+                configuration = backgroundConfiguration
             }
+            #else
+            configuration = .default
+            #endif
+        }
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 180
         return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)

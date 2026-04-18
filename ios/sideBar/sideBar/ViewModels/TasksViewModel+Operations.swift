@@ -1,4 +1,5 @@
 import Foundation
+import sideBarShared
 
 extension TasksViewModel {
     private static let recurringScheduleToastDuration: TimeInterval = 4
@@ -24,6 +25,24 @@ extension TasksViewModel {
 
     public func setErrorMessage(_ message: String) {
         setLocalErrorMessage(message)
+    }
+
+    private func presentMutationFailure(_ error: Error, operation: String) {
+        let presentation = ErrorMapping.presentation(
+            for: error,
+            operation: operation,
+            requestKind: .foregroundMutation
+        )
+
+        switch presentation.surface {
+        case .inline, .placeholder:
+            setLocalErrorMessage(presentation.message)
+        case .silent:
+            setLocalErrorMessage(nil)
+        default:
+            setLocalErrorMessage(nil)
+            toastCenter.show(message: presentation.message)
+        }
     }
 
     @discardableResult
@@ -57,7 +76,7 @@ extension TasksViewModel {
             if let removedTask {
                 store.restoreTask(removedTask)
             }
-            setLocalErrorMessage(ErrorMapping.message(for: error))
+            presentMutationFailure(error, operation: "tasks.complete")
             return false
         }
     }
@@ -108,7 +127,7 @@ extension TasksViewModel {
             return true
         } catch {
             store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
-            setLocalErrorMessage(ErrorMapping.message(for: error))
+            presentMutationFailure(error, operation: "tasks.reopen")
             return false
         }
     }
@@ -171,7 +190,7 @@ extension TasksViewModel {
             store.applySyncResponse(response, operationId: operation.operationId)
         } catch {
             store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
-            setLocalErrorMessage(ErrorMapping.message(for: error))
+            presentMutationFailure(error, operation: "tasks.move")
         }
     }
 
@@ -261,7 +280,7 @@ extension TasksViewModel {
             store.applySyncResponse(response, operationId: operation.operationId)
         } catch {
             store.restoreOptimisticSnapshot(snapshot, operationId: operation.operationId)
-            setLocalErrorMessage(ErrorMapping.message(for: error))
+            presentMutationFailure(error, operation: "tasks.mutation")
         }
     }
 

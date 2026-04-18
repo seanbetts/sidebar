@@ -47,7 +47,6 @@ extension ChatViewModel {
                 self?.didReceiveTerminalStreamEvent = true
                 if self?.shouldSuppressCurrentStreamErrors != true {
                     self?.errorMessage = presentation.userMessage
-                    self?.toastCenter?.show(message: presentation.userMessage)
                 }
                 self?.finalizeStreaming(
                     status: .error,

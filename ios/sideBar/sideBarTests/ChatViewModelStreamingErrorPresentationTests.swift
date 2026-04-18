@@ -7,10 +7,12 @@ final class ChatStreamErrorPresentationTests: XCTestCase {
     func testErrorEventStoresFriendlySummaryAndRawDetailsOnAssistantMessage() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
+        let toastCenter = ToastCenter()
         let viewModel = makeStreamingFailureViewModel(
             api: conversationsAPI,
             cache: cache,
-            streamClient: FailingChatStreamClient()
+            streamClient: FailingChatStreamClient(),
+            toastCenter: toastCenter
         )
 
         let initialMessage = Message(
@@ -46,5 +48,6 @@ final class ChatStreamErrorPresentationTests: XCTestCase {
             viewModel.errorMessage,
             "The AI provider is busy right now. Please try again in a moment."
         )
+        XCTAssertNil(toastCenter.toast)
     }
 }

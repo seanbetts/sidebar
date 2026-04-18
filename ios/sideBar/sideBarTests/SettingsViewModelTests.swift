@@ -22,6 +22,48 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.skills.first?.id, "s1")
     }
 
+    func testLoadSkillsMapsTypedFailureMessage() async {
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .failure(APIClientError.requestFailed(503))),
+            cache: TestCacheClient()
+        )
+
+        await viewModel.loadSkills()
+
+        XCTAssertEqual(viewModel.skillsError, "Server is busy right now. Please try again.")
+    }
+
+    func testLoadShortcutsTokenMapsTypedFailureMessage() async {
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .failure(SettingsViewModelMockError.forced),
+                tokenResult: .failure(APIClientError.requestFailed(401))
+            ),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: TestCacheClient()
+        )
+
+        await viewModel.loadShortcutsToken()
+
+        XCTAssertEqual(viewModel.shortcutsError, "Session expired. Please sign in again.")
+    }
+
+    func testRotateShortcutsTokenMapsTypedFailureMessage() async {
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .failure(SettingsViewModelMockError.forced),
+                tokenResult: .failure(APIClientError.requestFailed(503))
+            ),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: TestCacheClient()
+        )
+
+        await viewModel.rotateShortcutsToken()
+
+        XCTAssertEqual(viewModel.shortcutsError, "Server is busy right now. Please try again.")
+    }
+
     func testSetSkillEnabledInvalidatesCachesAndForceRefreshesSettingsAndSkills() async {
         let initial = UserSettings(
             userId: "user-1",

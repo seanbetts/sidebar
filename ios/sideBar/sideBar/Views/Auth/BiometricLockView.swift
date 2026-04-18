@@ -211,7 +211,15 @@ public struct BiometricLockView: View {
                     onUnlock()
                 } else if let error = error {
                     logger.error("Passcode unlock failed: \(error.localizedDescription, privacy: .public)")
-                    errorMessage = error.localizedDescription
+                    if let laError = error as? LAError {
+                        let state = BiometricLockErrorPresentation.authenticationState(
+                            for: laError.code,
+                            biometryName: biometryName
+                        )
+                        errorMessage = state.message
+                    } else {
+                        errorMessage = "Unable to authenticate. Please try again."
+                    }
                     Haptics.notification(.error)
                 }
             }

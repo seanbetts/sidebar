@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 public struct TasksPanel: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -262,6 +263,24 @@ extension TasksPanelView {
 }
 
 private extension TasksPanelView {
+    func presentTaskPanelFailure(_ error: Error, operation: String) {
+        let presentation = ErrorMapping.presentation(
+            for: error,
+            operation: operation,
+            requestKind: .foregroundMutation
+        )
+
+        switch presentation.surface {
+        case .inline, .placeholder:
+            viewModel.setErrorMessage(presentation.message)
+        case .silent:
+            viewModel.localErrorMessage = nil
+        default:
+            viewModel.localErrorMessage = nil
+            viewModel.toastCenter.show(message: presentation.message)
+        }
+    }
+
     func handleCreateGroup() {
         let title = newGroupTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return }
@@ -270,7 +289,7 @@ private extension TasksPanelView {
             do {
                 try await viewModel.createGroup(title: title)
             } catch {
-                viewModel.setErrorMessage(ErrorMapping.message(for: error))
+                presentTaskPanelFailure(error, operation: "tasks.groups.create")
             }
         }
     }
@@ -295,7 +314,7 @@ private extension TasksPanelView {
             do {
                 try await viewModel.createProject(title: title, groupId: groupId)
             } catch {
-                viewModel.setErrorMessage(ErrorMapping.message(for: error))
+                presentTaskPanelFailure(error, operation: "tasks.projects.create")
             }
         }
     }
@@ -335,7 +354,11 @@ private extension TasksPanelView {
                 }
                 clearRenameState()
             } catch {
-                viewModel.setErrorMessage(ErrorMapping.message(for: error))
+                let operation = switch target.kind {
+                case .group: "tasks.groups.rename"
+                case .project: "tasks.projects.rename"
+                }
+                presentTaskPanelFailure(error, operation: operation)
             }
         }
     }
@@ -352,7 +375,11 @@ private extension TasksPanelView {
                 }
                 clearDeleteState()
             } catch {
-                viewModel.setErrorMessage(ErrorMapping.message(for: error))
+                let operation = switch target.kind {
+                case .group: "tasks.groups.delete"
+                case .project: "tasks.projects.delete"
+                }
+                presentTaskPanelFailure(error, operation: operation)
             }
         }
     }

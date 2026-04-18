@@ -1,5 +1,6 @@
 import Foundation
 import os
+import sideBarShared
 
 struct SettingsRefreshFailure: LocalizedError, Equatable {
     let message: String
@@ -99,11 +100,15 @@ extension SettingsViewModel {
             applySettingsResponse(refreshed)
             return .success(refreshed)
         } catch {
-            let mappedError = ErrorMapping.message(for: error)
+            let mappedError = settingsErrorMessage(
+                for: error,
+                operation: "settings.reloadBeforeSave",
+                requestKind: .foregroundRead
+            )
             Self.settingsScopeLogger.error(
                 "Settings reload before save failed: \(mappedError, privacy: .public)"
             )
-            return .failure(SettingsRefreshFailure(message: ErrorMapping.message(for: error)))
+            return .failure(SettingsRefreshFailure(message: mappedError))
         }
     }
 

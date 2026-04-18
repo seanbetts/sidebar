@@ -37,6 +37,29 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
     }
 
+    func testLoadMapsTypedFailureMessageWhenNoContentIsAvailable() async {
+        let api = MockIngestionAPI(
+            listResult: .failure(APIClientError.requestFailed(503)),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .failure(MockError.forced),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager(),
+            toastCenter: ToastCenter()
+        )
+
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.errorMessage, "Server is busy right now. Please try again.")
+    }
+
     func testSelectFileLoadsViewerState() async {
         let file = makeFile(id: "file-1")
         let meta = IngestionMetaResponse(

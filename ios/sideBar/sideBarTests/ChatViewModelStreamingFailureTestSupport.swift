@@ -15,7 +15,8 @@ func makeStreamingFailureViewModel(
     api: StubConversationsAPI,
     cache: CacheClient,
     streamClient: ChatStreamClient,
-    requestContextProvider: (() -> ChatRequestContext?)? = nil
+    requestContextProvider: (() -> ChatRequestContext?)? = nil,
+    toastCenter: ToastCenter? = nil
 ) -> ChatViewModel {
     let resolvedChatAPI = ChatAPI(client: streamingFailureSharedAPIClient)
     let themeDefaults = UserDefaults(suiteName: "ChatViewModelStreamingFailureTheme") ?? .standard
@@ -40,6 +41,7 @@ func makeStreamingFailureViewModel(
         ),
         ui: ChatUICoordinator(
             themeManager: themeManager,
+            toastCenter: toastCenter,
             userDefaults: uiDefaults,
             clock: { Date(timeIntervalSince1970: 0) },
             requestContextProvider: requestContextProvider,

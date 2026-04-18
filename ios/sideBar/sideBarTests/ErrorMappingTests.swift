@@ -4,6 +4,40 @@ import sideBarShared
 
 @MainActor
 final class ErrorMappingTests: XCTestCase {
+    func testServerBusyMutationUsesToastPresentationDecision() {
+        let appError = AppError.classify(
+            operation: "tasks.rename",
+            requestKind: .foregroundMutation,
+            responseStatus: 503,
+            backendMessage: "database request timed out",
+            transportError: nil
+        )
+
+        let presentation = ErrorMapping.presentation(for: appError)
+
+        XCTAssertEqual(presentation.surface, .toast)
+        XCTAssertEqual(presentation.title, "Server busy")
+        XCTAssertEqual(presentation.message, "Server is busy right now. Please try again.")
+        XCTAssertEqual(presentation.retryLabel, "Retry")
+    }
+
+    func testPayloadTooLargeUsesInlinePresentationDecision() {
+        let appError = AppError.classify(
+            operation: "settings.profileImage.upload",
+            requestKind: .multipartUpload,
+            responseStatus: 413,
+            backendMessage: nil,
+            transportError: nil
+        )
+
+        let presentation = ErrorMapping.presentation(for: appError)
+
+        XCTAssertEqual(presentation.surface, .inline)
+        XCTAssertEqual(presentation.title, "Attachment too large")
+        XCTAssertEqual(presentation.message, "File too large. Max size is 100MB.")
+        XCTAssertNil(presentation.retryLabel)
+    }
+
     func testMapsOverloadedChatStreamErrorAsRetryable() {
         let presentation = ErrorMapping.chatStreamPresentation(
             from: "{'error': {'type': 'overloaded_error'}}"

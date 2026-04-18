@@ -54,7 +54,6 @@ extension ChatViewModel {
             logStreamRequestFailure(mappedError)
             if !shouldSuppressCurrentStreamErrors {
                 errorMessage = presentation.userMessage
-                toastCenter?.show(message: presentation.userMessage)
             }
             finalizeStreaming(
                 status: .error,

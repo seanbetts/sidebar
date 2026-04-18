@@ -6,7 +6,7 @@ import sideBarShared
 @MainActor
 // swiftlint:disable:next type_body_length
 final class TasksViewModelTests: XCTestCase {
-    func testCompleteTaskFailureRestoresTaskAndSetsError() async {
+    func testCompleteTaskFailureRestoresTaskAndUsesToastPresentation() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Follow up", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
@@ -21,7 +21,24 @@ final class TasksViewModelTests: XCTestCase {
 
         XCTAssertEqual(api.applyCallCount, 1)
         XCTAssertEqual(store.tasks.map(\.id), [task.id], "Failed optimistic updates should restore the task")
-        XCTAssertEqual(viewModel.errorMessage, "Sync failed")
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(sut.toastCenter.toast?.message, "Sync failed")
+    }
+
+    func testRenameTaskFailurePreservesLoadedContentAndUsesToastPresentation() async {
+        let api = TasksViewModelAPIStub()
+        let task = TaskItem(id: "task-1", title: "Follow up", status: "open", updatedAt: "u1")
+        api.enqueueListResponse(scope: "today", tasks: [task])
+        api.applyResult = .failure(APIClientError.requestFailed(503))
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .today)
+
+        await sut.viewModel.renameTask(task: task, title: "Renamed")
+
+        XCTAssertEqual(sut.store.tasks.map(\.id), [task.id])
+        XCTAssertNil(sut.viewModel.errorMessage)
+        XCTAssertEqual(sut.toastCenter.toast?.message, "Server is busy right now. Please try again.")
     }
 
     func testCompleteTaskSuccessKeepsSelectionStableAndRefreshesCounts() async {
@@ -63,7 +80,7 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
     }
 
-    func testReopenTaskFailureRestoresTaskAndSetsError() async {
+    func testReopenTaskFailureRestoresTaskAndUsesToastPresentation() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "task-1", title: "Done", status: "completed", updatedAt: "u1")
         api.enqueueListResponse(scope: "completed", tasks: [task])
@@ -75,7 +92,8 @@ final class TasksViewModelTests: XCTestCase {
         await sut.viewModel.reopenTask(task: task)
 
         XCTAssertEqual(sut.store.tasks.map(\.id), [task.id])
-        XCTAssertEqual(sut.viewModel.errorMessage, "Sync failed")
+        XCTAssertNil(sut.viewModel.errorMessage)
+        XCTAssertEqual(sut.toastCenter.toast?.message, "Sync failed")
         XCTAssertEqual(api.lastApplyPayload?.operations.first?.op, "reopen")
     }
 
@@ -408,7 +426,7 @@ final class TasksViewModelTests: XCTestCase {
 
     // MARK: - Task operations error paths
 
-    func testRenameTaskFailureSetsError() async {
+    func testRenameTaskFailureUsesToastPresentation() async {
         let api = TasksViewModelAPIStub()
         let task = TaskItem(id: "t1", title: "Old name", status: "open", updatedAt: "u1")
         api.enqueueListResponse(scope: "today", tasks: [task])
@@ -420,7 +438,8 @@ final class TasksViewModelTests: XCTestCase {
         await sut.viewModel.renameTask(task: task, title: "New name")
 
         XCTAssertEqual(api.applyCallCount, 1)
-        XCTAssertNotNil(sut.viewModel.errorMessage)
+        XCTAssertNil(sut.viewModel.errorMessage)
+        XCTAssertEqual(sut.toastCenter.toast?.message, "Rename failed")
     }
 
     func testDeleteTaskSuccessRemovesFromStore() async {
@@ -693,6 +712,7 @@ final class TasksViewModelTests: XCTestCase {
         let store: TasksStore
         let writeQueue: WriteQueue
         let widgetDataManager: WidgetDataManager
+        let toastCenter: ToastCenter
     }
 
     private func makeSUT(
@@ -727,12 +747,13 @@ final class TasksViewModelTests: XCTestCase {
         )
         let defaults = UserDefaults(suiteName: "TasksViewModelTests.widget.\(UUID().uuidString)")!
         let widgetDataManager = WidgetDataManager(userDefaults: defaults)
+        let toastCenter = ToastCenter()
         store.attachWriteQueue(writeQueue)
         let viewModel = TasksViewModel(
             api: api,
             store: store,
             widgetDataManager: widgetDataManager,
-            toastCenter: ToastCenter(),
+            toastCenter: toastCenter,
             networkStatus: networkStatus,
             searchDebounceNanoseconds: searchDebounceNanoseconds,
             realtimeRefreshDelayNanoseconds: realtimeRefreshDelayNanoseconds
@@ -741,7 +762,8 @@ final class TasksViewModelTests: XCTestCase {
             viewModel: viewModel,
             store: store,
             writeQueue: writeQueue,
-            widgetDataManager: widgetDataManager
+            widgetDataManager: widgetDataManager,
+            toastCenter: toastCenter
         )
     }
 

@@ -55,7 +55,6 @@ extension ChatViewModel {
         )
         if !shouldSuppressCurrentStreamErrors {
             errorMessage = fallbackMessage
-            toastCenter?.show(message: fallbackMessage)
         }
         finalizeStreaming(status: .error, streamError: fallbackMessage)
     }

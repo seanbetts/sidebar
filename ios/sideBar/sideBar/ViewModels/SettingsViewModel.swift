@@ -105,7 +105,11 @@ public final class SettingsViewModel: LoadableViewModel {
             })
             skills = response.skills
         } catch {
-            skillsError = error.localizedDescription
+            skillsError = settingsErrorMessage(
+                for: error,
+                operation: "settings.skills.list",
+                requestKind: .foregroundRead
+            )
         }
         isLoadingSkills = false
     }
@@ -136,7 +140,11 @@ public final class SettingsViewModel: LoadableViewModel {
             let response = try await settingsAPI.getShortcutsToken()
             shortcutsToken = response.token
         } catch {
-            shortcutsError = error.localizedDescription
+            shortcutsError = settingsErrorMessage(
+                for: error,
+                operation: "settings.shortcutsToken.read",
+                requestKind: .foregroundRead
+            )
         }
         isLoadingShortcuts = false
     }
@@ -148,7 +156,11 @@ public final class SettingsViewModel: LoadableViewModel {
             let response = try await settingsAPI.rotateShortcutsToken()
             shortcutsToken = response.token
         } catch {
-            shortcutsError = error.localizedDescription
+            shortcutsError = settingsErrorMessage(
+                for: error,
+                operation: "settings.shortcutsToken.rotate",
+                requestKind: .foregroundMutation
+            )
         }
         isRotatingShortcuts = false
     }
@@ -445,7 +457,11 @@ extension SettingsViewModel {
             await invalidateAndRefreshSkillsState()
             return true
         } catch {
-            skillsError = ErrorMapping.message(for: error)
+            skillsError = settingsErrorMessage(
+                for: error,
+                operation: "settings.skills.install",
+                requestKind: .foregroundMutation
+            )
             return false
         }
     }
@@ -460,8 +476,24 @@ extension SettingsViewModel {
             await invalidateAndRefreshSkillsState()
             return true
         } catch {
-            skillsError = ErrorMapping.message(for: error)
+            skillsError = settingsErrorMessage(
+                for: error,
+                operation: "settings.skills.uninstall",
+                requestKind: .foregroundMutation
+            )
             return false
         }
+    }
+
+    func settingsErrorMessage(
+        for error: Error,
+        operation: String,
+        requestKind: RequestKind?
+    ) -> String {
+        ErrorMapping.presentation(
+            for: error,
+            operation: operation,
+            requestKind: requestKind
+        ).message
     }
 }

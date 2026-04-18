@@ -15,7 +15,11 @@ extension IngestionViewModel {
             try await store.loadList(force: force)
         } catch {
             if items.isEmpty {
-                errorMessage = ErrorMapping.message(for: error)
+                errorMessage = ingestionErrorMessage(
+                    for: error,
+                    operation: "ingestion.list",
+                    requestKind: .foregroundRead
+                )
             }
         }
         isLoading = false
@@ -39,7 +43,11 @@ extension IngestionViewModel {
             await ensureViewerReady(for: fileId)
             return true
         } catch {
-            errorMessage = ErrorMapping.message(for: error)
+            errorMessage = ingestionErrorMessage(
+                for: error,
+                operation: "ingestion.meta",
+                requestKind: .foregroundRead
+            )
             return false
         }
     }
@@ -118,7 +126,11 @@ extension IngestionViewModel {
             if let previousPinned {
                 store.updatePinned(fileId: fileId, pinned: previousPinned)
             }
-            errorMessage = ErrorMapping.message(for: error)
+            errorMessage = ingestionErrorMessage(
+                for: error,
+                operation: "ingestion.pin",
+                requestKind: .foregroundMutation
+            )
         }
     }
 
@@ -417,7 +429,13 @@ extension IngestionViewModel {
             do {
                 try await self.cancelHeaderIngestion(fileId: fileId)
             } catch {
-                self.toastCenter.show(message: error.localizedDescription)
+                self.toastCenter.show(
+                    message: self.ingestionErrorMessage(
+                        for: error,
+                        operation: "ingestion.cancel",
+                        requestKind: .foregroundMutation
+                    )
+                )
             }
         }
     }
@@ -447,6 +465,18 @@ extension IngestionViewModel {
         guard let record = store.localUploadRecords[fileId] else { return nil }
         guard let bookmarkData = record.bookmarkData else { return nil }
         return LocalUploadResumeItem(item: record.item, bookmarkData: bookmarkData)
+    }
+
+    private func ingestionErrorMessage(
+        for error: Error,
+        operation: String,
+        requestKind: RequestKind?
+    ) -> String {
+        ErrorMapping.presentation(
+            for: error,
+            operation: operation,
+            requestKind: requestKind
+        ).message
     }
 
     private func retryableYouTubeSource(for item: IngestionListItem) -> String? {

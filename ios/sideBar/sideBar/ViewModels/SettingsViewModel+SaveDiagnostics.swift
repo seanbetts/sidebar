@@ -21,11 +21,11 @@ private enum SettingsSaveDiagnostics {
 
     static func mappedFailureMessage(
         for error: Error,
-        operation: String
+        operation: String,
+        message: String
     ) -> String {
-        let mappedError = ErrorMapping.message(for: error)
         let failureMessage =
-            "Settings save failed operation=\(operation) error=\(mappedError)"
+            "Settings save failed operation=\(operation) error=\(message)"
         logger.error(
             "\(failureMessage, privacy: .public)"
         )
@@ -43,7 +43,7 @@ private enum SettingsSaveDiagnostics {
                 "\(underlyingMessage, privacy: .public)"
             )
         }
-        return mappedError
+        return message
     }
 }
 
@@ -59,9 +59,15 @@ extension SettingsViewModel {
 
     @discardableResult
     func recordSettingsSaveFailure(_ error: Error, operation: String) -> String {
-        SettingsSaveDiagnostics.mappedFailureMessage(
+        let message = settingsErrorMessage(
             for: error,
-            operation: operation
+            operation: operation,
+            requestKind: .foregroundMutation
+        )
+        return SettingsSaveDiagnostics.mappedFailureMessage(
+            for: error,
+            operation: operation,
+            message: message
         )
     }
 }

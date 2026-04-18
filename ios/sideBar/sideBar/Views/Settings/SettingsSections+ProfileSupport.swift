@@ -64,7 +64,7 @@ extension ProfileSettingsView {
                 filename: filename
             )
         } catch {
-            profileImageError = error.localizedDescription
+            profileImageError = profileImageUploadErrorMessage(for: error)
         }
     }
 
@@ -347,7 +347,7 @@ extension ProfileSettingsView {
                 filename: "profile-image.\(fileExtension)"
             )
         } catch {
-            profileImageError = error.localizedDescription
+            profileImageError = profileImageUploadErrorMessage(for: error)
         }
     }
 
@@ -367,8 +367,16 @@ extension ProfileSettingsView {
                 filename: filename
             )
         } catch {
-            profileImageError = error.localizedDescription
+            profileImageError = profileImageUploadErrorMessage(for: error)
         }
+    }
+
+    func profileImageUploadErrorMessage(for error: Error) -> String {
+        ErrorMapping.presentation(
+            for: error,
+            operation: "settings.profileImage.upload",
+            requestKind: .multipartUpload
+        ).message
     }
 
     func loadImageData(from url: URL) throws -> Data {
