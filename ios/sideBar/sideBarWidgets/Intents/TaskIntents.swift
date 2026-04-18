@@ -184,10 +184,14 @@ struct TaskWidgetConfigurationIntent: WidgetConfigurationIntent {
     static var parameterSummary: some ParameterSummary {
         Switch(\.$scope) {
             Case(.project) {
-                Summary("Show \(\.$project)")
+                Summary("Show \(\.$scope) tasks") {
+                    \.$project
+                }
             }
             Case(.group) {
-                Summary("Show \(\.$group)")
+                Summary("Show \(\.$scope) tasks") {
+                    \.$group
+                }
             }
             DefaultCase {
                 Summary("Show \(\.$scope) tasks")

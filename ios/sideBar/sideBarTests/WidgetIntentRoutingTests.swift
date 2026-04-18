@@ -154,6 +154,25 @@ final class WidgetIntentRoutingTests: XCTestCase {
         XCTAssertTrue(fileIntentSource.contains("enumFileWidgetScope:"))
     }
 
+    func testEntityBackedWidgetIntentsExposeDependentSelectionRows() throws {
+        let taskIntentSource = try normalizedWidgetTaskIntentsSource()
+        let noteIntentSource = try normalizedWidgetNoteIntentsSource()
+        let websiteIntentSource = try normalizedWidgetWebsiteIntentsSource()
+
+        XCTAssertTrue(
+            taskIntentSource.contains("Case(.project){Summary(\"Show\\(\\.$scope)tasks\"){\\.$project}}")
+        )
+        XCTAssertTrue(
+            taskIntentSource.contains("Case(.group){Summary(\"Show\\(\\.$scope)tasks\"){\\.$group}}")
+        )
+        XCTAssertTrue(
+            noteIntentSource.contains("Case(.folder){Summary(\"Show\\(\\.$scope)\"){\\.$folder}}")
+        )
+        XCTAssertTrue(
+            websiteIntentSource.contains("Case(.domain){Summary(\"Show\\(\\.$scope)\"){\\.$domain}}")
+        )
+    }
+
     func testIngestionLiveActivityUsesBrandedAppLogoInsteadOfGenericDocumentSymbol() throws {
         let source = try normalizedWidgetSource(named: "IngestionProgressLiveActivity.swift")
 

@@ -124,7 +124,9 @@ struct NotesWidgetConfigurationIntent: WidgetConfigurationIntent {
     static var parameterSummary: some ParameterSummary {
         Switch(\.$scope) {
             Case(.folder) {
-                Summary("Show notes from \(\.$folder)")
+                Summary("Show \(\.$scope)") {
+                    \.$folder
+                }
             }
             DefaultCase {
                 Summary("Show \(\.$scope)")

@@ -111,7 +111,9 @@ struct WebsitesWidgetConfigurationIntent: WidgetConfigurationIntent {
     static var parameterSummary: some ParameterSummary {
         Switch(\.$scope) {
             Case(.domain) {
-                Summary("Show websites from \(\.$domain)")
+                Summary("Show \(\.$scope)") {
+                    \.$domain
+                }
             }
             DefaultCase {
                 Summary("Show \(\.$scope)")
