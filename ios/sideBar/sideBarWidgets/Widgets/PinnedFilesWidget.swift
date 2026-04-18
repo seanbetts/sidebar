@@ -108,10 +108,10 @@ struct PinnedFilesWidgetView: View {
 
     private var emptyStateView: some View {
         HomeWidgetEmptyStateView(
-            title: "No pinned files",
-            subtitle: "Pin a file to see it here",
-            iconSystemName: "pin",
-            destination: URL(string: "sidebar://files")!
+            title: entry.selection.emptyStateTitle,
+            subtitle: entry.selection.emptyStateSubtitle,
+            iconSystemName: entry.selection.emptyStateSystemImage,
+            destination: entry.selection.deepLinkURL
         )
     }
 

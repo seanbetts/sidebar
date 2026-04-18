@@ -42,6 +42,26 @@ enum FileWidgetSelection: Equatable, Sendable {
     case all
     case category(FileWidgetCategory)
 
+    var emptyStateContent: WidgetEmptyStateContent {
+        .noPinnedFiles()
+    }
+
+    var emptyStateTitle: String {
+        emptyStateContent.title
+    }
+
+    var emptyStateSubtitle: String {
+        emptyStateContent.subtitle ?? ""
+    }
+
+    var emptyStateSystemImage: String {
+        emptyStateContent.systemImage
+    }
+
+    var lockScreenEmptyLabel: String {
+        emptyStateContent.lockScreenLabel
+    }
+
     var headerTitle: String {
         switch self {
         case .all:

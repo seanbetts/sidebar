@@ -69,8 +69,8 @@ struct LockScreenSitePreviewView: View {
             LockScreenSignedOutRow(iconSystemName: "globe")
         } else if entry.data.websites.isEmpty {
             HStack {
-                Image(systemName: "globe")
-                Text("No saved websites")
+                Image(systemName: entry.selection.emptyStateSystemImage)
+                Text(entry.selection.lockScreenEmptyLabel)
                     .font(.caption)
             }
         } else {
@@ -121,7 +121,7 @@ struct LockScreenSitesInlineView: View {
     var body: some View {
         if entry.isAuthenticated {
             if entry.data.totalCount == 0 {
-                Label("No saved websites", systemImage: "globe")
+                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateSystemImage)
             } else {
                 Label(
                     "\(entry.data.totalCount) saved website\(entry.data.totalCount == 1 ? "" : "s")",

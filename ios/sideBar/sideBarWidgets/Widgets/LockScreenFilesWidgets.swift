@@ -69,8 +69,8 @@ struct LockScreenFilePreviewView: View {
             LockScreenSignedOutRow(iconSystemName: "doc")
         } else if entry.data.files.isEmpty {
             HStack {
-                Image(systemName: "doc")
-                Text("No pinned files")
+                Image(systemName: entry.selection.emptyStateSystemImage)
+                Text(entry.selection.lockScreenEmptyLabel)
                     .font(.caption)
             }
         } else {
@@ -124,7 +124,7 @@ struct LockScreenFilesInlineView: View {
     var body: some View {
         if entry.isAuthenticated {
             if entry.data.totalCount == 0 {
-                Label("No pinned files", systemImage: "doc")
+                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateSystemImage)
             } else {
                 Label(
                     "\(entry.data.totalCount) pinned file\(entry.data.totalCount == 1 ? "" : "s")",

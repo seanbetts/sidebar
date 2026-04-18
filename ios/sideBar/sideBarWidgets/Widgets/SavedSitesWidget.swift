@@ -121,10 +121,10 @@ struct SavedSitesWidgetView: View {
 
     private var emptyStateView: some View {
         HomeWidgetEmptyStateView(
-            title: "No saved websites",
-            subtitle: "Save a website to see it here",
-            iconSystemName: "globe",
-            destination: URL(string: "sidebar://websites")!
+            title: entry.selection.emptyStateTitle,
+            subtitle: entry.selection.emptyStateSubtitle,
+            iconSystemName: entry.selection.emptyStateSystemImage,
+            destination: entry.selection.deepLinkURL
         )
     }
 

@@ -21,6 +21,15 @@ enum NotesWidgetSelection: Equatable, Sendable {
     case all
     case folder(path: String, title: String)
 
+    var emptyStateContent: WidgetEmptyStateContent {
+        switch self {
+        case .all:
+            return .noPinnedNotes()
+        case .folder(_, let title):
+            return .noNotes(in: title)
+        }
+    }
+
     var headerTitle: String {
         switch self {
         case .all:
@@ -35,39 +44,19 @@ enum NotesWidgetSelection: Equatable, Sendable {
     }
 
     var emptyStateTitle: String {
-        switch self {
-        case .all:
-            return "No pinned notes"
-        case .folder(_, let title):
-            return "No notes in \(title)"
-        }
+        emptyStateContent.title
     }
 
     var emptyStateSubtitle: String {
-        switch self {
-        case .all:
-            return "Pin a note to see it here"
-        case .folder:
-            return "This folder is empty"
-        }
+        emptyStateContent.subtitle ?? ""
     }
 
     var emptyStateSystemImage: String {
-        switch self {
-        case .all:
-            return "pin"
-        case .folder:
-            return "folder"
-        }
+        emptyStateContent.systemImage
     }
 
     var lockScreenEmptyLabel: String {
-        switch self {
-        case .all:
-            return "No pinned notes"
-        case .folder:
-            return "No notes"
-        }
+        emptyStateContent.lockScreenLabel
     }
 
     func filter(_ data: WidgetNoteData) -> WidgetNoteData {

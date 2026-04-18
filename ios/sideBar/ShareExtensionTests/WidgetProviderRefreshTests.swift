@@ -735,20 +735,49 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertEqual(selection.emptyStateSubtitle, "This folder is empty")
     }
 
+    func testTodayTaskSelectionUsesStandardizedCompletedCopy() {
+        let selection = TaskWidgetSelection.today
+
+        XCTAssertEqual(selection.emptyStateTitle, "All tasks completed")
+        XCTAssertEqual(selection.emptyStateSubtitle, "No tasks for today")
+        XCTAssertEqual(selection.emptyStateSystemImage, "checkmark.circle")
+        XCTAssertEqual(selection.lockScreenEmptyLabel, "All tasks completed")
+    }
+
     func testProjectScopedTaskSelectionUsesScopeSpecificEmptyStateCopy() {
         let selection = TaskWidgetSelection.project(id: "project-1", title: "Launch")
 
-        XCTAssertEqual(selection.emptyStateTitle, "All done!")
+        XCTAssertEqual(selection.emptyStateTitle, "All tasks completed")
         XCTAssertEqual(selection.emptyStateSubtitle, "No open tasks in this project")
         XCTAssertEqual(selection.emptyStateSystemImage, "list.bullet")
+        XCTAssertEqual(selection.lockScreenEmptyLabel, "All tasks completed")
     }
 
     func testGroupScopedTaskSelectionUsesGroupSpecificEmptyStateIcon() {
         let selection = TaskWidgetSelection.group(id: "group-1", title: "Work")
 
-        XCTAssertEqual(selection.emptyStateTitle, "All done!")
+        XCTAssertEqual(selection.emptyStateTitle, "All tasks completed")
         XCTAssertEqual(selection.emptyStateSubtitle, "No open tasks in this group")
         XCTAssertEqual(selection.emptyStateSystemImage, "square.stack.3d.up")
+        XCTAssertEqual(selection.lockScreenEmptyLabel, "All tasks completed")
+    }
+
+    func testFilesSelectionExposesSharedEmptyStateContent() {
+        let selection = FileWidgetSelection.category(.reports)
+
+        XCTAssertEqual(selection.emptyStateTitle, "No pinned files")
+        XCTAssertEqual(selection.emptyStateSubtitle, "Pin a file to see it here")
+        XCTAssertEqual(selection.emptyStateSystemImage, "pin")
+        XCTAssertEqual(selection.lockScreenEmptyLabel, "No pinned files")
+    }
+
+    func testWebsiteSelectionExposesSharedEmptyStateContent() {
+        let selection = WebsiteWidgetSelection.pinned
+
+        XCTAssertEqual(selection.emptyStateTitle, "No saved websites")
+        XCTAssertEqual(selection.emptyStateSubtitle, "Save a website to see it here")
+        XCTAssertEqual(selection.emptyStateSystemImage, "globe")
+        XCTAssertEqual(selection.lockScreenEmptyLabel, "No saved websites")
     }
 
     func testTodayTasksProviderUsesScopedSnapshotStoredWithoutSelectionTitle() async {

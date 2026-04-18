@@ -584,23 +584,39 @@ final class WidgetExtensionCoverageTests: XCTestCase {
 
     func testHomeWidgetsUseSharedPurposefulEmptyStatePattern() throws {
         let tasksSource = try normalizedWidgetSource(named: "TodayTasksWidget.swift")
+        let taskCountSource = try normalizedWidgetSource(named: "TaskCountWidget.swift")
         let notesSource = try normalizedWidgetSource(named: "PinnedNotesWidget.swift")
         let filesSource = try normalizedWidgetSource(named: "PinnedFilesWidget.swift")
         let websitesSource = try normalizedWidgetSource(named: "SavedSitesWidget.swift")
+        let lockScreenTasksSource = try normalizedWidgetSource(named: "LockScreenWidgets.swift")
+        let lockScreenFilesSource = try normalizedWidgetSource(named: "LockScreenFilesWidgets.swift")
+        let lockScreenSitesSource = try normalizedWidgetSource(named: "LockScreenSitesWidgets.swift")
 
         XCTAssertTrue(tasksSource.contains("HomeWidgetEmptyStateView(title:entry.selection.emptyStateTitle"))
         XCTAssertTrue(tasksSource.contains("subtitle:entry.selection.emptyStateSubtitle"))
         XCTAssertTrue(tasksSource.contains("iconSystemName:entry.selection.emptyStateSystemImage"))
         XCTAssertFalse(tasksSource.contains("accentIcon:false"))
+        XCTAssertTrue(taskCountSource.contains("Text(entry.selection.emptyStateTitle)"))
 
         XCTAssertTrue(notesSource.contains("HomeWidgetEmptyStateView(title:entry.selection.emptyStateTitle"))
         XCTAssertTrue(notesSource.contains("subtitle:entry.selection.emptyStateSubtitle"))
 
-        XCTAssertTrue(filesSource.contains("HomeWidgetEmptyStateView(title:\"Nopinnedfiles\""))
-        XCTAssertTrue(filesSource.contains("subtitle:\"Pinafiletoseeithere\""))
+        XCTAssertTrue(filesSource.contains("HomeWidgetEmptyStateView(title:entry.selection.emptyStateTitle"))
+        XCTAssertTrue(filesSource.contains("subtitle:entry.selection.emptyStateSubtitle"))
+        XCTAssertTrue(filesSource.contains("iconSystemName:entry.selection.emptyStateSystemImage"))
 
-        XCTAssertTrue(websitesSource.contains("HomeWidgetEmptyStateView(title:\"Nosavedwebsites\""))
-        XCTAssertTrue(websitesSource.contains("subtitle:\"Saveawebsitetoseeithere\""))
+        XCTAssertTrue(websitesSource.contains("HomeWidgetEmptyStateView(title:entry.selection.emptyStateTitle"))
+        XCTAssertTrue(websitesSource.contains("subtitle:entry.selection.emptyStateSubtitle"))
+        XCTAssertTrue(websitesSource.contains("iconSystemName:entry.selection.emptyStateSystemImage"))
+
+        XCTAssertTrue(lockScreenTasksSource.contains("Text(entry.selection.lockScreenEmptyLabel)"))
+        XCTAssertTrue(lockScreenTasksSource.contains("Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"))
+
+        XCTAssertTrue(lockScreenFilesSource.contains("Text(entry.selection.lockScreenEmptyLabel)"))
+        XCTAssertTrue(lockScreenFilesSource.contains("Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"))
+
+        XCTAssertTrue(lockScreenSitesSource.contains("Text(entry.selection.lockScreenEmptyLabel)"))
+        XCTAssertTrue(lockScreenSitesSource.contains("Label(entry.selection.lockScreenEmptyLabel,systemImage:entry.selection.emptyStateSystemImage)"))
     }
 
     func testLockScreenTaskPreviewUsesInteractiveCompletionButtons() throws {
