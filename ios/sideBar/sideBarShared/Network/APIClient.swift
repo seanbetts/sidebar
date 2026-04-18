@@ -13,14 +13,18 @@ public struct APIClientConfig {
     /// Optional hook to refresh auth state when a request fails with 401.
     /// Should return true only if auth is now available for new requests.
     public let refreshAuthIfNeeded: (() async -> Bool)?
+    /// Optional bridge from the current request to the shared request policy contract.
+    public let requestIntentProvider: ((URLRequest) -> RequestIntent?)?
     public init(
         baseUrl: URL,
         accessTokenProvider: @escaping () -> String?,
-        refreshAuthIfNeeded: (() async -> Bool)? = nil
+        refreshAuthIfNeeded: (() async -> Bool)? = nil,
+        requestIntentProvider: ((URLRequest) -> RequestIntent?)? = nil
     ) {
         self.baseUrl = baseUrl
         self.accessTokenProvider = accessTokenProvider
         self.refreshAuthIfNeeded = refreshAuthIfNeeded
+        self.requestIntentProvider = requestIntentProvider
     }
 }
 
@@ -234,6 +238,9 @@ public final class APIClient {
 
     private func shouldAttemptAuthRefresh(for request: URLRequest) -> Bool {
         guard config.refreshAuthIfNeeded != nil else { return false }
+        if let intent = config.requestIntentProvider?(request) {
+            return RequestExecutionPolicy.shouldAttemptAuthRefresh(for: intent)
+        }
         let method = request.httpMethod?.uppercased() ?? "GET"
         let retryableMethods = Set(["GET", "PUT", "PATCH", "DELETE"])
         return retryableMethods.contains(method)

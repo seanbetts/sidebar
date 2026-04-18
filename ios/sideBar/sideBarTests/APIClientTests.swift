@@ -97,23 +97,37 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(cache?.diskCapacity, 0)
     }
 
-    func test401TriggersRefreshAndRetriesGetOnce() async throws {
-        try await assertAuthRefreshRetry(for: "GET")
+    func test401RetriesReplaySafePostWhenRequestPolicyAllowsRefresh() async throws {
+        let intent = RequestIntent(
+            operation: "files.upload",
+            path: "files",
+            method: .post,
+            requestKind: .multipartUpload,
+            authRequirement: .required,
+            replaySafety: .safeToReplayBeforeBodyStarts,
+            timeoutClass: .long
+        )
+
+        XCTAssertTrue(RequestExecutionPolicy.shouldAttemptAuthRefresh(for: intent))
+        try await assertAuthRefreshRetry(for: intent)
     }
 
-    func test401TriggersRefreshAndRetriesPutOnce() async throws {
-        try await assertAuthRefreshRetry(for: "PUT")
+    func test401DoesNotRetryNonRepeatablePatchWhenRequestPolicyDisallowsRefresh() async {
+        let intent = RequestIntent(
+            operation: "files.upload",
+            path: "files",
+            method: .patch,
+            requestKind: .multipartUpload,
+            authRequirement: .required,
+            replaySafety: .notReplaySafe,
+            timeoutClass: .long
+        )
+
+        XCTAssertFalse(RequestExecutionPolicy.shouldAttemptAuthRefresh(for: intent))
+        await assertNoAuthRefreshRetry(for: intent)
     }
 
-    func test401TriggersRefreshAndRetriesDeleteOnce() async throws {
-        try await assertAuthRefreshRetry(for: "DELETE")
-    }
-
-    func test401TriggersRefreshAndRetriesPatchOnce() async throws {
-        try await assertAuthRefreshRetry(for: "PATCH")
-    }
-
-    private func assertAuthRefreshRetry(for method: String) async throws {
+    private func assertAuthRefreshRetry(for intent: RequestIntent) async throws {
         final class TokenBox: @unchecked Sendable {
             var token: String
             init(_ token: String) { self.token = token }
@@ -125,6 +139,7 @@ final class APIClientTests: XCTestCase {
         let tokenBox = TokenBox("token-1")
         let refreshCalls = Counter()
         let requestCount = Counter()
+        let method = intent.method.rawValue
 
         let config = APIClientConfig(
             baseUrl: router.baseURL,
@@ -133,7 +148,8 @@ final class APIClientTests: XCTestCase {
                 refreshCalls.value += 1
                 tokenBox.token = "token-2"
                 return true
-            }
+            },
+            requestIntentProvider: { _ in intent }
         )
 
         let session = router.makeSession()
@@ -151,7 +167,7 @@ final class APIClientTests: XCTestCase {
             return (response, Data("{}".utf8))
         }
 
-        if method == "GET" {
+        if intent.method == .get {
             let _: EmptyResponse = try await client.request("ping", method: method)
         } else {
             try await client.requestVoid("ping", method: method)
@@ -160,7 +176,7 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(requestCount.value, 2)
     }
 
-    func test401DoesNotRetryForPost() async {
+    private func assertNoAuthRefreshRetry(for intent: RequestIntent) async {
         final class TokenBox: @unchecked Sendable {
             var token: String
             init(_ token: String) { self.token = token }
@@ -172,6 +188,7 @@ final class APIClientTests: XCTestCase {
         let tokenBox = TokenBox("token-1")
         let refreshCalls = Counter()
         let requestCount = Counter()
+        let method = intent.method.rawValue
 
         let config = APIClientConfig(
             baseUrl: router.baseURL,
@@ -180,7 +197,8 @@ final class APIClientTests: XCTestCase {
                 refreshCalls.value += 1
                 tokenBox.token = "token-2"
                 return true
-            }
+            },
+            requestIntentProvider: { _ in intent }
         )
 
         let session = router.makeSession()
@@ -193,7 +211,11 @@ final class APIClientTests: XCTestCase {
         }
 
         do {
-            try await client.requestVoid("ping", method: "POST")
+            if intent.method == .get {
+                let _: EmptyResponse = try await client.request("ping", method: method)
+            } else {
+                try await client.requestVoid("ping", method: method)
+            }
             XCTFail("Expected error")
         } catch {
             // Expected

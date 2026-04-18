@@ -160,26 +160,66 @@ final class ErrorMappingTests: XCTestCase {
         XCTAssertEqual(message, AuthAdapterError.invalidCredentials.errorDescription)
     }
 
-    func testMapsNetworkError() {
-        let message = ErrorMapping.message(for: URLError(.notConnectedToInternet))
+    func testMapsTypedOfflineAppError() {
+        let appError = AppError.classify(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            responseStatus: nil,
+            backendMessage: nil,
+            transportError: URLError(.notConnectedToInternet)
+        )
+
+        XCTAssertEqual(appError.category, .offline)
+        XCTAssertEqual(appError.recommendedSurface, .offlineBanner)
+        let message = ErrorMapping.message(for: appError)
         XCTAssertEqual(message, "Network connection failed. Please check your internet.")
     }
 
-    func testMapsTimeoutError() {
-        let message = ErrorMapping.message(for: URLError(.timedOut))
+    func testMapsTypedTimeoutAppError() {
+        let appError = AppError.classify(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            responseStatus: nil,
+            backendMessage: nil,
+            transportError: URLError(.timedOut)
+        )
+
+        XCTAssertEqual(appError.category, .timeout)
+        XCTAssertEqual(appError.recommendedSurface, .toast)
+        let message = ErrorMapping.message(for: appError)
         XCTAssertEqual(message, "Server took too long to respond. Please try again.")
     }
 
-    func testMapsSecureConnectionError() {
-        let message = ErrorMapping.message(for: URLError(.secureConnectionFailed))
+    func testMapsTypedSecureConnectionAppError() {
+        let appError = AppError.classify(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            responseStatus: nil,
+            backendMessage: nil,
+            transportError: URLError(.secureConnectionFailed)
+        )
+
+        XCTAssertEqual(appError.category, .secureConnection)
+        XCTAssertEqual(appError.recommendedSurface, .alert)
+        let message = ErrorMapping.message(for: appError)
         XCTAssertEqual(
             message,
             "Unable to verify a secure connection to the server. Please try again shortly. [SEC-CONN]"
         )
     }
 
-    func testMapsCancelledRequestError() {
-        let message = ErrorMapping.message(for: URLError(.cancelled))
+    func testMapsTypedCancelledAppError() {
+        let appError = AppError.classify(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            responseStatus: nil,
+            backendMessage: nil,
+            transportError: URLError(.cancelled)
+        )
+
+        XCTAssertEqual(appError.category, .cancelled)
+        XCTAssertEqual(appError.recommendedSurface, .silent)
+        let message = ErrorMapping.message(for: appError)
         XCTAssertEqual(message, "Request was interrupted. Please try again.")
     }
 
@@ -197,8 +237,7 @@ final class ErrorMappingTests: XCTestCase {
     }
 
     func testMapsCancelledRequestWithRegistryAsCertPinError() {
-        // Simulate a cert-pinning cancellation recorded in the registry.
-        let host = "api.trysidebar.ai"
+        let host = "cert-pin-\(UUID().uuidString.lowercased()).example.com"
         CertPinCancellationRegistry.shared.record(host: host)
         let error = URLError(
             .cancelled,
@@ -226,31 +265,80 @@ final class ErrorMappingTests: XCTestCase {
         XCTAssertEqual(message, "Failed to load settings: Invalid request URL.")
     }
 
-    func testMapsRequestTimeoutStatus() {
-        let message = ErrorMapping.message(for: APIClientError.requestFailed(408))
-        XCTAssertEqual(message, "Network connection failed. Please check your internet.")
+    func testMapsTypedRequestTimeoutStatus() {
+        let appError = AppError.classify(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            responseStatus: 408,
+            backendMessage: nil,
+            transportError: nil
+        )
+
+        XCTAssertEqual(appError.category, .timeout)
+        XCTAssertEqual(appError.recommendedSurface, .toast)
+        let message = ErrorMapping.message(for: appError)
+        XCTAssertEqual(message, "Server took too long to respond. Please try again.")
     }
 
-    func testMapsGatewayTimeoutStatus() {
-        let message = ErrorMapping.message(for: APIClientError.requestFailed(504))
-        XCTAssertEqual(message, "Network connection failed. Please check your internet.")
+    func testMapsTypedGatewayTimeoutStatus() {
+        let appError = AppError.classify(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            responseStatus: 504,
+            backendMessage: nil,
+            transportError: nil
+        )
+
+        XCTAssertEqual(appError.category, .timeout)
+        let message = ErrorMapping.message(for: appError)
+        XCTAssertEqual(message, "Server took too long to respond. Please try again.")
     }
 
-    func testMapsServiceUnavailableStatusToBusyServerMessage() {
-        let message = ErrorMapping.message(for: APIClientError.requestFailed(503))
+    func testMapsTypedServiceUnavailableStatusToBusyServerMessage() {
+        let appError = AppError.classify(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            responseStatus: 503,
+            backendMessage: nil,
+            transportError: nil
+        )
+
+        XCTAssertEqual(appError.category, .serverBusy)
+        XCTAssertEqual(appError.recommendedSurface, .toast)
+        let message = ErrorMapping.message(for: appError)
         XCTAssertEqual(message, "Server is busy right now. Please try again.")
     }
 
-    func testMapsBadRequestStatusToAttachmentGuidance() {
-        let message = ErrorMapping.message(for: APIClientError.requestFailed(400))
+    func testMapsTypedBadRequestStatusToAttachmentGuidance() {
+        let appError = AppError.classify(
+            operation: "files.upload",
+            requestKind: .multipartUpload,
+            responseStatus: 400,
+            backendMessage: nil,
+            transportError: nil
+        )
+
+        XCTAssertEqual(appError.category, .requestRejected)
+        XCTAssertEqual(appError.recommendedSurface, .toast)
+        let message = ErrorMapping.message(for: appError)
         XCTAssertEqual(
             message,
             "Request was rejected by the server. If this includes attachments, remove one and try again."
         )
     }
 
-    func testMapsAuthSignalFromAPIErrorMessage() {
-        let message = ErrorMapping.message(for: APIClientError.apiError("Not authenticated"))
+    func testMapsTypedAuthenticationHintToSessionExpiredMessage() {
+        let appError = AppError.classify(
+            operation: "chat.send",
+            requestKind: .foregroundMutation,
+            responseStatus: nil,
+            backendMessage: "Not authenticated",
+            transportError: nil
+        )
+
+        XCTAssertEqual(appError.category, .authentication)
+        XCTAssertEqual(appError.recommendedSurface, .alert)
+        let message = ErrorMapping.message(for: appError)
         XCTAssertEqual(message, "Session expired. Please sign in again.")
     }
 
@@ -308,6 +396,22 @@ final class ErrorMappingTests: XCTestCase {
         XCTAssertEqual(
             message,
             "I couldn't finish updating my setup just yet. Your answer is saved, please try again."
+        )
+    }
+
+    func testMapsTypedAuthenticationAppErrorToSessionExpiredMessage() {
+        let appError = AppError.classify(
+            operation: "chat.send",
+            requestKind: .foregroundMutation,
+            responseStatus: 401,
+            backendMessage: nil,
+            transportError: nil
+        )
+
+        XCTAssertEqual(appError.recommendedSurface, .alert)
+        XCTAssertEqual(
+            ErrorMapping.message(for: appError),
+            "Session expired. Please sign in again."
         )
     }
 }
