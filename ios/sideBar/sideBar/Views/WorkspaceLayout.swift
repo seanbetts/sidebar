@@ -55,6 +55,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     private let leftPanelWidth: Double = 280
     private let minRightSidebarWidth: Double = 280
     private let minMainWidth: Double = 320
+    private let minRightSidebarSnapSpacing: Double = 32
 
     private struct LayoutWidths {
         let leftPanel: Double
@@ -212,19 +213,47 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     }
 
     private func snappedRightWidth(_ value: Double, proxy: GeometryProxy, leftPanelWidth: Double) -> Double {
-        let half = halfWidth(proxy: proxy, leftPanelWidth: leftPanelWidth)
-        let maxAllowed = maxRightWidth(proxy: proxy, leftPanelWidth: leftPanelWidth)
-        let snapPoints = [
-            defaultRightSidebarWidth,
-            420,
-            480,
-            maxAllowed,
-            half
-        ]
-        let candidates = snapPoints
-            .filter { $0 >= minRightSidebarWidth && $0 <= maxAllowed }
+        let candidates = adaptiveRightSidebarSnapPoints(proxy: proxy, leftPanelWidth: leftPanelWidth)
         let nearest = candidates.min(by: { abs($0 - value) < abs($1 - value) }) ?? value
         return clampedRightWidth(nearest, proxy: proxy, leftPanelWidth: leftPanelWidth)
+    }
+
+    private func adaptiveRightSidebarSnapPoints(proxy: GeometryProxy, leftPanelWidth: Double) -> [Double] {
+        let half = halfWidth(proxy: proxy, leftPanelWidth: leftPanelWidth)
+        let widthDelta = max(0, half - defaultRightSidebarWidth)
+        var preferredPoints = [defaultRightSidebarWidth]
+
+        // Keep intermediate stops proportional to the current window so they remain distinct.
+        if widthDelta >= 48 {
+            preferredPoints.append(
+                roundedRightSidebarWidth(defaultRightSidebarWidth + (widthDelta * 0.5))
+            )
+        }
+        if widthDelta >= 120 {
+            preferredPoints.append(
+                roundedRightSidebarWidth(defaultRightSidebarWidth + (widthDelta * 0.75))
+            )
+        }
+        preferredPoints.append(half)
+
+        return preferredPoints
+            .map { clampedRightWidth($0, proxy: proxy, leftPanelWidth: leftPanelWidth) }
+            .sorted()
+            .reduce(into: []) { points, point in
+                guard let last = points.last else {
+                    points.append(point)
+                    return
+                }
+                guard abs(last - point) >= minRightSidebarSnapSpacing else {
+                    points[points.count - 1] = max(last, point)
+                    return
+                }
+                points.append(point)
+            }
+    }
+
+    private func roundedRightSidebarWidth(_ value: Double) -> Double {
+        (value / 20).rounded() * 20
     }
 
     private func toggleRightSidebarWidth(proxy: GeometryProxy, leftPanelWidth: Double) {

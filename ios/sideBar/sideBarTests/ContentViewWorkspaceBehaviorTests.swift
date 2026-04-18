@@ -327,6 +327,15 @@ final class ContentViewWorkspaceBehaviorTests: XCTestCase {
         XCTAssertTrue(splitNormalized.contains(".sidebarHover(cursor:.resizeLeftRight)"))
     }
 
+    func testWorkspaceLayoutUsesAdaptiveMacRightSidebarSnapPoints() throws {
+        let normalized = try workspaceLayoutSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("adaptiveRightSidebarSnapPoints("))
+        XCTAssertTrue(normalized.contains("roundedRightSidebarWidth("))
+        XCTAssertFalse(normalized.contains("defaultRightSidebarWidth,420,480,maxAllowed,half"))
+    }
+
     func testSignedInContentHandlesSidebarToggleAndScratchpadShortcutsOnMacOS() throws {
         let normalized = try signedInContentSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
