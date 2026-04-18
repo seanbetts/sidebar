@@ -23,11 +23,11 @@ public protocol SettingsProviding {
 /// API client for user settings endpoints.
 public struct SettingsAPI {
     private let client: APIClient
-    private let session: URLSession
+    private let transportClient: APIClient
 
     public init(client: APIClient, session: URLSession = APIClient.makeDefaultSession()) {
         self.client = client
-        self.session = session
+        self.transportClient = APIClient(config: client.config, session: session)
     }
 
     public func getSettings() async throws -> UserSettings {
@@ -87,28 +87,25 @@ public struct SettingsAPI {
     }
 
     public func uploadProfileImage(data: Data, contentType: String, filename: String = "profile-image") async throws {
-        let url = client.config.baseUrl.appendingPathComponent("settings/profile-image")
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
-        request.setValue(filename, forHTTPHeaderField: "X-Filename")
-        if let token = client.config.accessTokenProvider() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        let intent = RequestIntent(
+            operation: "settings.profileImage.upload",
+            path: "settings/profile-image",
+            method: .post,
+            requestKind: .multipartUpload,
+            authRequirement: .required,
+            replaySafety: .notReplaySafe,
+            timeoutClass: .long
+        )
+        var request = try transportClient.buildRequest(
+            intent.path,
+            method: intent.method,
+            headers: [
+                "Content-Type": contentType,
+                "X-Filename": filename
+            ]
+        )
         request.httpBody = data
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw APIClientError.unknown
-        }
-        guard (200...299).contains(http.statusCode) else {
-            let errorDecoder = JSONDecoder()
-            errorDecoder.keyDecodingStrategy = .convertFromSnakeCase
-            let message = APIClient.decodeErrorMessage(data: data, decoder: errorDecoder)
-            if let message {
-                throw APIClientError.apiError(message)
-            }
-            throw APIClientError.requestFailed(http.statusCode)
-        }
+        _ = try await transportClient.execute(request, intent: intent)
     }
 
     public func getProfileImage() async throws -> Data {

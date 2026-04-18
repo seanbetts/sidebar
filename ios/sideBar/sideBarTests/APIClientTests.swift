@@ -113,6 +113,154 @@ final class APIClientTests: XCTestCase {
         _ = try await (left, right)
     }
 
+    func testProfileImageUploadEmitsFailureSignalClassifiedAsPayloadTooLarge() async {
+        let api = SettingsAPI(client: makeClient(token: "token-123"), session: router.makeSession())
+        let signalExpectation = expectation(description: "Profile image upload failure signal")
+        var receivedSignal: RequestLifecycleSignal?
+        let observer = NotificationCenter.default.addObserver(
+            forName: .apiClientRequestFailed,
+            object: nil,
+            queue: nil
+        ) { notification in
+            guard let signal = notification.userInfo?["signal"] as? RequestLifecycleSignal,
+                  signal.operation == "settings.profileImage.upload" else {
+                return
+            }
+            receivedSignal = signal
+            signalExpectation.fulfill()
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
+        router.setHandler { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 413,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"detail\":\"Image too large\"}".utf8))
+        }
+
+        do {
+            try await api.uploadProfileImage(
+                data: Data([0x01, 0x02]),
+                contentType: "image/png",
+                filename: "avatar.png"
+            )
+            XCTFail("Expected upload to fail")
+        } catch {
+            // Expected failure.
+        }
+
+        await fulfillment(of: [signalExpectation], timeout: 1.0)
+        XCTAssertEqual(receivedSignal?.requestKind, .multipartUpload)
+        XCTAssertEqual(receivedSignal?.errorCategory, .payloadTooLarge)
+    }
+
+    func testIngestionMultipartUploadEmitsFailureSignalClassifiedAsAuthentication() async {
+        let api = IngestionAPI(client: makeClient(token: "token-123"), session: router.makeSession())
+        let signalExpectation = expectation(description: "Ingestion upload failure signal")
+        var receivedSignal: RequestLifecycleSignal?
+        let observer = NotificationCenter.default.addObserver(
+            forName: .apiClientRequestFailed,
+            object: nil,
+            queue: nil
+        ) { notification in
+            guard let signal = notification.userInfo?["signal"] as? RequestLifecycleSignal,
+                  signal.operation == "files.upload" else {
+                return
+            }
+            receivedSignal = signal
+            signalExpectation.fulfill()
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("upload-\(UUID().uuidString).txt")
+        try? Data("upload".utf8).write(to: fileURL, options: .atomic)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        router.setHandler { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 401,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"detail\":\"Unauthorized\"}".utf8))
+        }
+
+        do {
+            _ = try await api.upload(
+                fileURL: fileURL,
+                filename: "upload.txt",
+                mimeType: "text/plain",
+                folder: "docs"
+            )
+            XCTFail("Expected upload to fail")
+        } catch {
+            // Expected failure.
+        }
+
+        await fulfillment(of: [signalExpectation], timeout: 1.0)
+        XCTAssertEqual(receivedSignal?.requestKind, .multipartUpload)
+        XCTAssertEqual(receivedSignal?.errorCategory, .authentication)
+    }
+
+    func testIngestionMultipartUploadDoesNotEmitSuccessSignalWhenResponseParsingFails() async throws {
+        let api = IngestionAPI(client: makeClient(token: "token-123"), session: router.makeSession())
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("upload-\(UUID().uuidString).txt")
+        try Data("upload".utf8).write(to: fileURL, options: .atomic)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let successSignalExpectation = expectation(description: "No upload success signal")
+        successSignalExpectation.isInverted = true
+        let observer = NotificationCenter.default.addObserver(
+            forName: .apiClientRequestSucceeded,
+            object: nil,
+            queue: nil
+        ) { notification in
+            guard let signal = notification.userInfo?["signal"] as? RequestLifecycleSignal,
+                  signal.operation == "files.upload" else {
+                return
+            }
+            successSignalExpectation.fulfill()
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
+        router.setHandler { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"detail\":\"missing file id\"}".utf8))
+        }
+
+        do {
+            _ = try await api.upload(
+                fileURL: fileURL,
+                filename: "upload.txt",
+                mimeType: "text/plain",
+                folder: "docs"
+            )
+            XCTFail("Expected upload parsing to fail")
+        } catch {
+            // Expected failure.
+        }
+
+        await fulfillment(of: [successSignalExpectation], timeout: 0.2)
+    }
+
     private func makeClient(
         token: String,
         router: ScopedURLProtocolRouter? = nil

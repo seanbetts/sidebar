@@ -36,9 +36,9 @@ public enum APIClientError: Error {
 /// HTTP client for JSON and binary API requests.
 public final class APIClient {
     public let config: APIClientConfig
-    private let session: URLSession
-    private let logger = Logger(subsystem: "sideBar", category: "APIClient")
-    private let authRefreshCoordinator = AuthRefreshCoordinator(minimumInterval: 45)
+    let session: URLSession
+    let logger = Logger(subsystem: "sideBar", category: "APIClient")
+    let authRefreshCoordinator = AuthRefreshCoordinator(minimumInterval: 45)
 
     public init(config: APIClientConfig, session: URLSession = APIClient.makeDefaultSession()) {
         self.config = config
@@ -107,132 +107,22 @@ public final class APIClient {
     }
 
     private func performRequest(_ context: RequestExecutionContext) async throws -> (Data, HTTPURLResponse) {
-        let request = context.request
-        let intent = context.intent
-        let start = Date()
-        if let url = request.url {
-            logger.debug("Request \(request.httpMethod ?? "GET") \(url.absoluteString, privacy: .public)")
-        }
-        let (data, response): (Data, URLResponse)
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch {
-            if isCancellationError(error) {
-                logCancellation(request)
-                throw error
-            }
-            logTransportError(error, request: request)
-            postFailureNotification(intent: intent, transportError: error)
-            throw error
-        }
-        let elapsedMs = Int(Date().timeIntervalSince(start) * 1000)
-        guard let http = response as? HTTPURLResponse else {
-            logger.error("Response failed: non-HTTP response")
-            postFailureNotification(intent: intent, statusCode: nil, backendMessage: nil, transportError: nil)
-            throw APIClientError.unknown
-        }
-        logger.debug("Response \(http.statusCode) in \(elapsedMs)ms")
-        guard (200...299).contains(http.statusCode) else {
-            if http.statusCode == 401,
-               shouldAttemptAuthRefresh(for: intent) {
-                let method = request.httpMethod ?? "GET"
-                let url = request.url?.absoluteString ?? "?"
-                let hadToken = request.value(forHTTPHeaderField: "Authorization") != nil
-                let retryableRequestDescription =
-                    "Response 401 for \(method) \(url); hadToken=\(hadToken) retrying auth refresh"
-                logger.notice(
-                    "\(retryableRequestDescription, privacy: .public)"
-                )
-                let refreshed = await attemptAuthRefreshIfNeeded()
-                let tokenChanged = shouldRetryWithUpdatedToken(for: request)
-                if refreshed || tokenChanged {
-                    let retryDescription =
-                        "Retrying \(method) \(url) after auth refresh; refreshed=\(refreshed) tokenChanged=\(tokenChanged)"
-                    logger.notice(
-                        "\(retryDescription, privacy: .public)"
-                    )
-                    var retry = request
-                    if let token = config.accessTokenProvider() {
-                        retry.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                    } else {
-                        retry.setValue(nil, forHTTPHeaderField: "Authorization")
-                    }
-                    return try await performRequestWithoutAuthRetry(retry, intent: intent)
-                } else {
-                    let refreshUnavailableDescription =
-                        "Auth refresh unavailable for \(method) \(url); no retry token available"
-                    logger.notice(
-                        "\(refreshUnavailableDescription, privacy: .public)"
-                    )
-                }
-            }
-
-            if let body = String(data: data, encoding: .utf8), !body.isEmpty {
-                let preview = body.prefix(2000)
-                logger.error("Response body: \(preview, privacy: .private)")
-            }
-            let decoder = Self.makeDecoder()
-            let message = Self.decodeErrorMessage(data: data, decoder: decoder)
-            postFailureNotification(intent: intent, statusCode: http.statusCode, backendMessage: message, transportError: nil)
-            if let message {
-                throw APIClientError.apiError(message)
-            }
-            throw APIClientError.requestFailed(http.statusCode)
-        }
-        postSuccessNotification(intent: intent, statusCode: http.statusCode)
-        return (data, http)
+        try await execute(context.request, intent: context.intent)
     }
 
-    private func performRequestWithoutAuthRetry(
-        _ request: URLRequest,
-        intent: RequestIntent
-    ) async throws -> (Data, HTTPURLResponse) {
-        let start = Date()
-        let (data, response): (Data, URLResponse)
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch {
-            if isCancellationError(error) {
-                logCancellation(request)
-                throw error
-            }
-            logTransportError(error, request: request)
-            postFailureNotification(intent: intent, transportError: error)
-            throw error
-        }
-        let elapsedMs = Int(Date().timeIntervalSince(start) * 1000)
-        guard let http = response as? HTTPURLResponse else {
-            logger.error("Response failed: non-HTTP response")
-            postFailureNotification(intent: intent, statusCode: nil, backendMessage: nil, transportError: nil)
-            throw APIClientError.unknown
-        }
-        logger.debug("Response(retry) \(http.statusCode) in \(elapsedMs)ms")
-        guard (200...299).contains(http.statusCode) else {
-            let decoder = Self.makeDecoder()
-            let message = Self.decodeErrorMessage(data: data, decoder: decoder)
-            postFailureNotification(intent: intent, statusCode: http.statusCode, backendMessage: message, transportError: nil)
-            if let message {
-                throw APIClientError.apiError(message)
-            }
-            throw APIClientError.requestFailed(http.statusCode)
-        }
-        postSuccessNotification(intent: intent, statusCode: http.statusCode)
-        return (data, http)
-    }
-
-    private func shouldAttemptAuthRefresh(for intent: RequestIntent) -> Bool {
+    func shouldAttemptAuthRefresh(for intent: RequestIntent) -> Bool {
         guard config.refreshAuthIfNeeded != nil else { return false }
         return RequestExecutionPolicy.shouldAttemptAuthRefresh(for: intent)
     }
 
-    private func shouldRetryWithUpdatedToken(for request: URLRequest) -> Bool {
+    func shouldRetryWithUpdatedToken(for request: URLRequest) -> Bool {
         guard let latestToken = config.accessTokenProvider(), !latestToken.isEmpty else {
             return false
         }
         return latestToken != bearerToken(from: request)
     }
 
-    private func bearerToken(from request: URLRequest) -> String? {
+    func bearerToken(from request: URLRequest) -> String? {
         guard let header = request.value(forHTTPHeaderField: "Authorization"),
               header.hasPrefix("Bearer ") else {
             return nil
@@ -240,12 +130,12 @@ public final class APIClient {
         return String(header.dropFirst("Bearer ".count))
     }
 
-    private func attemptAuthRefreshIfNeeded() async -> Bool {
+    func attemptAuthRefreshIfNeeded() async -> Bool {
         guard let refresh = config.refreshAuthIfNeeded else { return false }
         return await authRefreshCoordinator.refreshIfNeeded(using: refresh)
     }
 
-    private func logTransportError(_ error: Error, request: URLRequest) {
+    func logTransportError(_ error: Error, request: URLRequest) {
         let nsError = error as NSError
         let method = request.httpMethod ?? "?"
         let url = request.url?.absoluteString ?? "?"
@@ -266,12 +156,12 @@ public final class APIClient {
         }
     }
 
-    private func isCancellationError(_ error: Error) -> Bool {
+    func isCancellationError(_ error: Error) -> Bool {
         let nsError = error as NSError
         return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
     }
 
-    private func logCancellation(_ request: URLRequest) {
+    func logCancellation(_ request: URLRequest) {
         let method = request.httpMethod ?? "?"
         let url = request.url?.absoluteString ?? "?"
         logger.debug("Request cancelled \(method, privacy: .public) \(url, privacy: .public)")
@@ -349,7 +239,7 @@ public final class APIClient {
         return nil
     }
 
-    private static func makeDecoder() -> JSONDecoder {
+    static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return decoder
@@ -417,7 +307,7 @@ private struct APIErrorEnvelope: Decodable {
 private struct APIErrorMessage: Decodable {
     let message: String
 }
-private actor AuthRefreshCoordinator {
+actor AuthRefreshCoordinator {
     private let minimumInterval: TimeInterval
     private var lastAttempt: Date?
     private var refreshTask: Task<Bool, Never>?

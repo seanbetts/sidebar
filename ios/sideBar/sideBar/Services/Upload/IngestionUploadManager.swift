@@ -54,21 +54,25 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private let providedSession: URLSession?
     private let certificatePinningDelegate: CertificatePinningDelegate?
     private lazy var session: URLSession = {
-        if let providedSession {
-            return providedSession
-        }
-        #if os(iOS)
-        let configuration: URLSessionConfiguration
-        if EnvironmentConfig.isRunningTestsOrPreviews() {
-            configuration = URLSessionConfiguration.default
-        } else {
-            configuration = URLSessionConfiguration.background(withIdentifier: "sideBar.ingestion.uploads")
-            configuration.sessionSendsLaunchEvents = true
-            configuration.isDiscretionary = false
-        }
-        #else
-        let configuration = URLSessionConfiguration.default
-        #endif
+        let configuration: URLSessionConfiguration =
+            if let providedSession {
+                providedSession.configuration
+            } else {
+                #if os(iOS)
+                if EnvironmentConfig.isRunningTestsOrPreviews() {
+                    URLSessionConfiguration.default
+                } else {
+                    let backgroundConfiguration = URLSessionConfiguration.background(
+                        withIdentifier: "sideBar.ingestion.uploads"
+                    )
+                    backgroundConfiguration.sessionSendsLaunchEvents = true
+                    backgroundConfiguration.isDiscretionary = false
+                    backgroundConfiguration
+                }
+                #else
+                URLSessionConfiguration.default
+                #endif
+            }
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 180
         return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
@@ -101,9 +105,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         if DispatchQueue.getSpecific(key: workQueueKey) == nil {
             workQueue.sync {}
         }
-        if providedSession == nil {
-            session.invalidateAndCancel()
-        }
+        session.invalidateAndCancel()
     }
 
     public func startUpload(
@@ -111,10 +113,18 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         onProgress: @escaping (Double) -> Void,
         onCompletion: @escaping (Result<String, Error>) -> Void
     ) {
-        let baseUrl = config.baseUrl
-        let accessTokenProvider = config.accessTokenProvider
+        let intent = RequestIntent(
+            operation: "files.backgroundUpload",
+            path: "files",
+            method: .post,
+            requestKind: .backgroundUpload,
+            authRequirement: .required,
+            replaySafety: .notReplaySafe,
+            timeoutClass: .long
+        )
         let session = self.session
         let logger = self.logger
+        let lifecycleClient = APIClient(config: self.config, session: session)
 
         markUploadStartRequested(uploadId: request.uploadId)
         workQueue.async {
@@ -123,12 +133,17 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
                 return
             }
             let boundary = "Boundary-\(UUID().uuidString)"
-            var urlRequest = URLRequest(url: baseUrl.appendingPathComponent("files"))
-            urlRequest.httpMethod = "POST"
-            urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-            urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
-            if let token = accessTokenProvider() {
-                urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            let urlRequest: URLRequest
+            do {
+                urlRequest = try lifecycleClient.buildRequest(
+                    intent.path,
+                    method: intent.method,
+                    headers: ["Content-Type": "multipart/form-data; boundary=\(boundary)"]
+                )
+            } catch {
+                self.markUploadStartFinished(uploadId: request.uploadId)
+                self.dispatchCompletion(onCompletion, result: .failure(error))
+                return
             }
 
             let bodyURL = FileManager.default.temporaryDirectory.appendingPathComponent("upload-\(UUID().uuidString)")
@@ -151,6 +166,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
             }
 
             let task = session.uploadTask(with: urlRequest, fromFile: bodyURL)
+
             let context = UploadContext(
                 uploadId: request.uploadId,
                 bodyFileURL: bodyURL,
@@ -190,10 +206,33 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     }
 
     private func handleCompletion(for task: URLSessionTask, error: Error?) {
-        let context = takeContext(forTaskId: task.taskIdentifier)
+        handleCompletion(
+            forTaskId: task.taskIdentifier,
+            responseData: context(forTaskId: task.taskIdentifier)?.responseData ?? Data(),
+            response: task.response,
+            error: error,
+            intent: RequestIntent(
+                operation: "files.backgroundUpload",
+                path: "files",
+                method: .post,
+                requestKind: .backgroundUpload,
+                authRequirement: .required,
+                replaySafety: .notReplaySafe,
+                timeoutClass: .long
+            )
+        )
+    }
+
+    private func handleCompletion(
+        forTaskId taskId: Int,
+        responseData: Data,
+        response: URLResponse?,
+        error: Error?,
+        intent: RequestIntent
+    ) {
+        let context = takeContext(forTaskId: taskId)
         guard let context else { return }
         let onCompletion = context.onCompletion
-        let responseData = context.responseData
         defer {
             do {
                 try FileManager.default.removeItem(at: context.bodyFileURL)
@@ -203,25 +242,42 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         }
 
         if let error {
+            if !isCancellationError(error) {
+                lifecycleClient.postFailureNotification(intent: intent, transportError: error)
+            }
             dispatchCompletion(onCompletion, result: .failure(error))
             return
         }
-        guard let response = task.response as? HTTPURLResponse else {
+        guard let response else {
+            lifecycleClient.postFailureNotification(intent: intent)
             dispatchCompletion(onCompletion, result: .failure(APIClientError.unknown))
             return
         }
-        guard (200...299).contains(response.statusCode) else {
+        guard let http = response as? HTTPURLResponse else {
+            lifecycleClient.postFailureNotification(intent: intent)
+            dispatchCompletion(onCompletion, result: .failure(APIClientError.unknown))
+            return
+        }
+        guard (200...299).contains(http.statusCode) else {
             let decoder = JSONDecoder()
             decoder.keyDecodingStrategy = .convertFromSnakeCase
-            if let message = APIClient.decodeErrorMessage(data: responseData, decoder: decoder) {
+            let message = APIClient.decodeErrorMessage(data: responseData, decoder: decoder)
+            lifecycleClient.postFailureNotification(
+                intent: intent,
+                statusCode: http.statusCode,
+                backendMessage: message,
+                transportError: nil
+            )
+            if let message {
                 dispatchCompletion(onCompletion, result: .failure(APIClientError.apiError(message)))
                 return
             }
-            dispatchCompletion(onCompletion, result: .failure(APIClientError.requestFailed(response.statusCode)))
+            dispatchCompletion(onCompletion, result: .failure(APIClientError.requestFailed(http.statusCode)))
             return
         }
         do {
             let fileId = try IngestionUploadHelpers.parseUploadResponse(data: responseData)
+            lifecycleClient.postSuccessNotification(intent: intent, statusCode: http.statusCode)
             dispatchCompletion(onCompletion, result: .success(fileId))
         } catch {
             dispatchCompletion(onCompletion, result: .failure(error))
@@ -235,6 +291,15 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         DispatchQueue.main.async {
             onCompletion(result)
         }
+    }
+
+    private var lifecycleClient: APIClient {
+        APIClient(config: config, session: session)
+    }
+
+    private func isCancellationError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
     }
 
     private func setContext(_ context: UploadContext, forTaskId taskId: Int, uploadId: String) -> Bool {
@@ -383,26 +448,6 @@ enum IngestionUploadHelpers {
             return fileId
         }
         throw APIClientError.decodingFailed
-    }
-}
-
-private final class UploadContext {
-    let uploadId: String
-    let bodyFileURL: URL
-    let onProgress: (Double) -> Void
-    let onCompletion: (Result<String, Error>) -> Void
-    var responseData = Data()
-
-    init(
-        uploadId: String,
-        bodyFileURL: URL,
-        onProgress: @escaping (Double) -> Void,
-        onCompletion: @escaping (Result<String, Error>) -> Void
-    ) {
-        self.uploadId = uploadId
-        self.bodyFileURL = bodyFileURL
-        self.onProgress = onProgress
-        self.onCompletion = onCompletion
     }
 }
 

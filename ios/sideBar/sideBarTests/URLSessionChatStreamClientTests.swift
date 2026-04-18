@@ -156,6 +156,52 @@ final class URLSessionChatStreamClientTests: XCTestCase {
         }
     }
 
+    func testConnectEmitsFailureSignalClassifiedBeforeReturningChatError() async {
+        let session = makeSession()
+        let client = URLSessionChatStreamClient(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil },
+            session: session
+        )
+        let signalExpectation = expectation(description: "Chat stream failure signal")
+        var receivedSignal: RequestLifecycleSignal?
+        var receivedSignalCount = 0
+        let observer = NotificationCenter.default.addObserver(
+            forName: .apiClientRequestFailed,
+            object: nil,
+            queue: nil
+        ) { notification in
+            guard let signal = notification.userInfo?["signal"] as? RequestLifecycleSignal,
+                  signal.operation == "chat.stream" else {
+                return
+            }
+            receivedSignalCount += 1
+            receivedSignal = signal
+            signalExpectation.fulfill()
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
+        URLProtocolStreamingMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            throw URLError(.cannotConnectToHost)
+        }
+
+        do {
+            try await client.connect(request: ChatStreamRequest(message: "Hello"))
+            XCTFail("Expected error")
+        } catch {
+            // Expected failure.
+        }
+
+        await fulfillment(of: [signalExpectation], timeout: 1.0)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(receivedSignalCount, 1)
+        XCTAssertEqual(receivedSignal?.requestKind, .sseStream)
+        XCTAssertEqual(receivedSignal?.errorCategory, .serverUnreachable)
+    }
+
     func testDefaultSessionDoesNotUseSharedSingleton() {
         XCTAssertFalse(URLSessionChatStreamClient.defaultSession() === URLSession.shared)
     }

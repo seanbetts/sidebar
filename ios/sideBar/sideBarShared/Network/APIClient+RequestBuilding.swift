@@ -6,6 +6,21 @@ struct RequestExecutionContext {
 }
 
 extension APIClient {
+    public func buildRequest(
+        _ path: String,
+        method: HTTPMethod,
+        headers: [String: String] = [:],
+        timeoutInterval: TimeInterval? = nil
+    ) throws -> URLRequest {
+        try buildRequest(
+            path,
+            method: method.rawValue,
+            body: nil,
+            headers: headers,
+            timeoutInterval: timeoutInterval
+        )
+    }
+
     func buildRequestContext(
         _ path: String,
         method: String,

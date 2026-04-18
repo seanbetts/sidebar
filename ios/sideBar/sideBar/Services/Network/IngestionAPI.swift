@@ -121,12 +121,12 @@ private struct IngestionDeleteRequest: Codable {
 /// API client for ingestion endpoints.
 public struct IngestionAPI {
     private let client: APIClient
-    private let session: URLSession
+    private let transportClient: APIClient
     private let logger = Logger(subsystem: "sideBar", category: "IngestionAPI")
 
     public init(client: APIClient, session: URLSession = APIClient.makeDefaultSession()) {
         self.client = client
-        self.session = session
+        self.transportClient = APIClient(config: client.config, session: session)
     }
 
     public func list() async throws -> IngestionListResponse {
@@ -222,13 +222,21 @@ public struct IngestionAPI {
     }
 
     public func upload(fileURL: URL, filename: String, mimeType: String, folder: String = "") async throws -> String {
+        let intent = RequestIntent(
+            operation: "files.upload",
+            path: "files",
+            method: .post,
+            requestKind: .multipartUpload,
+            authRequirement: .required,
+            replaySafety: .notReplaySafe,
+            timeoutClass: .long
+        )
         let boundary = "Boundary-\(UUID().uuidString)"
-        var request = URLRequest(url: client.config.baseUrl.appendingPathComponent("files"))
-        request.httpMethod = "POST"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        if let token = client.config.accessTokenProvider() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        let request = try transportClient.buildRequest(
+            intent.path,
+            method: intent.method,
+            headers: ["Content-Type": "multipart/form-data; boundary=\(boundary)"]
+        )
 
         let bodyFileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("ingestion-upload-body-\(UUID().uuidString)")
@@ -247,20 +255,15 @@ public struct IngestionAPI {
             try? FileManager.default.removeItem(at: bodyFileURL)
         }
 
-        let (data, response) = try await session.upload(for: request, fromFile: bodyFileURL)
-        guard let http = response as? HTTPURLResponse else {
-            throw APIClientError.unknown
-        }
-        guard (200...299).contains(http.statusCode) else {
-            let errorDecoder = JSONDecoder()
-            errorDecoder.keyDecodingStrategy = .convertFromSnakeCase
-            let message = APIClient.decodeErrorMessage(data: data, decoder: errorDecoder)
-            if let message {
-                throw APIClientError.apiError(message)
-            }
-            throw APIClientError.requestFailed(http.statusCode)
-        }
-        return try IngestionUploadHelpers.parseUploadResponse(data: data)
+        let (responseData, http) = try await transportClient.executeUpload(
+            request,
+            fromFile: bodyFileURL,
+            intent: intent,
+            emitSuccessNotification: false
+        )
+        let fileId = try IngestionUploadHelpers.parseUploadResponse(data: responseData)
+        transportClient.postSuccessNotification(intent: intent, statusCode: http.statusCode)
+        return fileId
     }
 
     public func ingestYouTube(url: String) async throws -> String {

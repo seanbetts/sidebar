@@ -12,7 +12,7 @@ private enum APIClientNotificationUserInfoKey {
 }
 
 extension APIClient {
-    func postSuccessNotification(intent: RequestIntent, statusCode: Int) {
+    public func postSuccessNotification(intent: RequestIntent, statusCode: Int) {
         let signal = RequestLifecycleSignal(
             operation: intent.operation,
             requestKind: intent.requestKind,
@@ -26,11 +26,11 @@ extension APIClient {
         )
     }
 
-    func postFailureNotification(
+    public func postFailureNotification(
         intent: RequestIntent,
         statusCode: Int? = nil,
         backendMessage: String? = nil,
-        transportError: Error?
+        transportError: Error? = nil
     ) {
         let appError = AppError.classify(
             operation: intent.operation,

@@ -1,5 +1,4 @@
 import Foundation
-import OSLog
 import sideBarShared
 
 /// Streams chat events over URLSession SSE.
@@ -14,7 +13,6 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
     private let session: URLSession
     private var parser: ChatStreamParser
     public weak var handler: ChatStreamEventHandler?
-    private let logger = Logger(subsystem: "sideBar", category: "ChatStreamClient")
 
     private let streamTaskLock = NSLock()
     private var streamTaskState: StreamTaskState?
@@ -38,16 +36,30 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
     }
 
     public func connect(request: ChatStreamRequest) async throws {
-        let url = baseUrl.appendingPathComponent("chat/stream")
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let appVersion = AppVersionHeader.currentValue() {
-            urlRequest.setValue(appVersion, forHTTPHeaderField: AppVersionHeader.fieldName)
-        }
-        if let token = accessTokenProvider() {
-            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        let intent = RequestIntent(
+            operation: "chat.stream",
+            path: "chat/stream",
+            method: .post,
+            requestKind: .sseStream,
+            authRequirement: .required,
+            replaySafety: .notReplaySafe,
+            timeoutClass: .long
+        )
+        let client = APIClient(
+            config: APIClientConfig(
+                baseUrl: baseUrl,
+                accessTokenProvider: accessTokenProvider
+            ),
+            session: session
+        )
+        var urlRequest = try client.buildRequest(
+            intent.path,
+            method: intent.method,
+            headers: [
+                "Accept": "text/event-stream",
+                "Content-Type": "application/json"
+            ]
+        )
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
         urlRequest.httpBody = try encoder.encode(request)
@@ -55,29 +67,8 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         let streamTaskId = UUID()
         logConnectStart(request: request, streamTaskId: streamTaskId)
         let streamTask = Task {
-            let (bytes, response) = try await session.bytes(for: urlRequest)
-            guard let http = response as? HTTPURLResponse else {
-                throw APIClientError.unknown
-            }
+            let (bytes, http) = try await client.executeStream(urlRequest, intent: intent)
             logConnectResponse(statusCode: http.statusCode, streamTaskId: streamTaskId)
-            guard (200...299).contains(http.statusCode) else {
-                let errorData = try await collectBytes(from: bytes)
-                if let message = decodeAPIErrorMessage(from: errorData) {
-                    logger.error(
-                        "Chat stream request failed status=\(http.statusCode) message=\(message, privacy: .public)"
-                    )
-                    throw APIClientError.apiError(message)
-                }
-                if let bodyPreview = String(data: errorData.prefix(2000), encoding: .utf8),
-                   !bodyPreview.isEmpty {
-                    logger.error(
-                        "Chat stream request failed status=\(http.statusCode) body=\(bodyPreview, privacy: .private)"
-                    )
-                } else {
-                    logger.error("Chat stream request failed status=\(http.statusCode)")
-                }
-                throw APIClientError.requestFailed(http.statusCode)
-            }
 
             var buffer = Data()
             var previousByte: UInt8?
@@ -141,23 +132,6 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         defer { streamTaskLock.unlock() }
         guard streamTaskState?.id == id else { return }
         streamTaskState = nil
-    }
-
-    private func collectBytes(from bytes: URLSession.AsyncBytes) async throws -> Data {
-        var data = Data()
-        for try await byte in bytes {
-            data.append(byte)
-        }
-        return data
-    }
-
-    private func decodeAPIErrorMessage(from data: Data) -> String? {
-        guard !data.isEmpty else {
-            return nil
-        }
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return APIClient.decodeErrorMessage(data: data, decoder: decoder)
     }
 
     private func logConnectStart(request: ChatStreamRequest, streamTaskId: UUID) {

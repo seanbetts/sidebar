@@ -153,6 +153,116 @@ final class IngestionUploadManagerTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testBackgroundUploadEmitsFailureSignalClassifiedAsServerBusy() async throws {
+        let manager = makeManager()
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("signal-upload-\(UUID().uuidString)")
+        try Data("data".utf8).write(to: fileURL, options: .atomic)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let signalExpectation = expectation(description: "Background upload failure signal")
+        let completionExpectation = expectation(description: "Background upload completion")
+        var receivedSignal: RequestLifecycleSignal?
+        let observer = NotificationCenter.default.addObserver(
+            forName: .apiClientRequestFailed,
+            object: nil,
+            queue: nil
+        ) { notification in
+            guard let signal = notification.userInfo?["signal"] as? RequestLifecycleSignal,
+                  signal.operation == "files.backgroundUpload" else {
+                return
+            }
+            receivedSignal = signal
+            signalExpectation.fulfill()
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
+        IngestionUploadURLProtocolMock.requestHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url ?? URL(string: "https://example.com/files")!,
+                statusCode: 503,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"detail\":\"Try again later\"}".utf8))
+        }
+
+        manager.startUpload(
+            request: UploadRequest(
+                uploadId: "bg-upload",
+                fileURL: fileURL,
+                filename: "signal.txt",
+                mimeType: "text/plain",
+                folder: "docs"
+            ),
+            onProgress: { _ in },
+            onCompletion: { _ in completionExpectation.fulfill() }
+        )
+
+        await fulfillment(of: [completionExpectation, signalExpectation], timeout: 2.0)
+        XCTAssertEqual(receivedSignal?.requestKind, .backgroundUpload)
+        XCTAssertEqual(receivedSignal?.errorCategory, .serverBusy)
+    }
+
+    @MainActor
+    func testBackgroundUploadDoesNotEmitSuccessSignalWhenResponseParsingFails() async throws {
+        let manager = makeManager()
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("signal-upload-\(UUID().uuidString)")
+        try Data("data".utf8).write(to: fileURL, options: .atomic)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let successSignalExpectation = expectation(description: "No background upload success signal")
+        successSignalExpectation.isInverted = true
+        let completionExpectation = expectation(description: "Background upload completion")
+        let observer = NotificationCenter.default.addObserver(
+            forName: .apiClientRequestSucceeded,
+            object: nil,
+            queue: nil
+        ) { notification in
+            guard let signal = notification.userInfo?["signal"] as? RequestLifecycleSignal,
+                  signal.operation == "files.backgroundUpload" else {
+                return
+            }
+            successSignalExpectation.fulfill()
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
+        IngestionUploadURLProtocolMock.requestHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url ?? URL(string: "https://example.com/files")!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("{\"detail\":\"missing file id\"}".utf8))
+        }
+
+        var completionResult: Result<String, Error>?
+        manager.startUpload(
+            request: UploadRequest(
+                uploadId: "bg-upload-invalid",
+                fileURL: fileURL,
+                filename: "signal.txt",
+                mimeType: "text/plain",
+                folder: "docs"
+            ),
+            onProgress: { _ in },
+            onCompletion: { result in
+                completionResult = result
+                completionExpectation.fulfill()
+            }
+        )
+
+        await fulfillment(of: [completionExpectation, successSignalExpectation], timeout: 2.0)
+        guard case .failure = completionResult else {
+            return XCTFail("Expected parsing failure")
+        }
+    }
+
     // MARK: - Helpers
 
     func testWriteMultipartBodyIncludesFields() throws {
