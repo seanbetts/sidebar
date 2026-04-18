@@ -163,17 +163,21 @@ struct TodayTasksProvider: AppIntentTimelineProvider {
                 dataManager.storeTaskData(overlaid, for: selection)
                 data = overlaid
             } catch {
+                let appError = AppError.classify(
+                    error: error,
+                    operation: "widget.tasks.refresh",
+                    requestKind: .foregroundRead
+                )
+                var metadata = appError.diagnostics
+                metadata["provider"] = "TodayTasksProvider"
+                metadata["selection"] = selection.headerTitle
+                metadata["scope"] = selection.cacheKey
+                metadata["has_cached_snapshot"] = hasCachedSnapshot ? "true" : "false"
                 WidgetExtensionDiagnostics.reporter.captureFailure(
                     surface: "widget_provider",
                     stage: "today_tasks_refresh_failed",
                     message: "Failed to refresh task widget content.",
-                    metadata: [
-                        "provider": "TodayTasksProvider",
-                        "selection": selection.headerTitle,
-                        "scope": selection.cacheKey,
-                        "has_cached_snapshot": hasCachedSnapshot ? "true" : "false",
-                        "error": String(describing: error)
-                    ]
+                    metadata: metadata
                 )
             }
         }

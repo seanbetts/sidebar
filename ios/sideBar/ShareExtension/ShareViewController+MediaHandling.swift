@@ -43,13 +43,6 @@ extension ShareViewController {
             return
         }
 
-        if !(await ShareNetworkMonitor.isOnline()) {
-            await MainActor.run {
-                self.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: true)
-            }
-            return
-        }
-
         await uploadFile(data: data, filename: filename, mimeType: mimeType, isImage: true)
     }
 
@@ -79,13 +72,6 @@ extension ShareViewController {
             let suggestedName = itemProvider.suggestedName ?? fileURL.lastPathComponent
             let filename = suggestedName.isEmpty ? fileURL.lastPathComponent : suggestedName
             let mimeType = mimeTypeForFilename(filename)
-            if !(await ShareNetworkMonitor.isOnline()) {
-                await MainActor.run { [weak self] in
-                    self?.queuePendingFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: false)
-                }
-                try? FileManager.default.removeItem(at: fileURL)
-                return
-            }
             await uploadFileFromURL(fileURL, itemProvider: itemProvider)
             return
         }
@@ -108,13 +94,6 @@ extension ShareViewController {
             filename = "\(suggestedName).\(ext)"
         }
         let mimeType = mimeTypeForFilename(filename)
-
-        if !(await ShareNetworkMonitor.isOnline()) {
-            await MainActor.run { [weak self] in
-                self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: false)
-            }
-            return
-        }
 
         await uploadFile(data: data, filename: filename, mimeType: mimeType, isImage: false)
     }
@@ -197,12 +176,13 @@ extension ShareViewController {
         }
 
         func handleFailure(_ error: Error) async {
+            let classifiedError = environment.classifyUploadError(error)
             await MainActor.run { [weak self] in
-                if self?.isOfflineError(error) == true || environment.isUnauthorized(error) {
+                if classifiedError.retryability.allowsOfflineHandoff {
                     self?.queuePendingFile(data: data, filename: filename, mimeType: mimeType, isImage: isImage)
                     return
                 }
-                self?.showError(ShareExtensionMessageMapper.errorMessage(for: error))
+                self?.showError(ShareExtensionMessageMapper.errorMessage(for: classifiedError))
             }
         }
 
@@ -210,7 +190,7 @@ extension ShareViewController {
             let fileId = try await uploadNow()
             await handleSuccess(fileId: fileId)
         } catch {
-            if environment.isUnauthorized(error),
+            if environment.shouldRetryUploadAfterAuthFailure(error),
                await environment.ensureValidAccessToken(forceRefresh: true) {
                 do {
                     let fileId = try await uploadNow()
@@ -274,12 +254,13 @@ extension ShareViewController {
         }
 
         func handleFailure(_ error: Error) async {
+            let classifiedError = environment.classifyUploadError(error)
             await MainActor.run { [weak self] in
-                if self?.isOfflineError(error) == true || environment.isUnauthorized(error) {
+                if classifiedError.retryability.allowsOfflineHandoff {
                     self?.queuePendingFile(at: fileURL, filename: filename, mimeType: mimeType, isImage: isImage)
                     return
                 }
-                self?.showError(ShareExtensionMessageMapper.errorMessage(for: error))
+                self?.showError(ShareExtensionMessageMapper.errorMessage(for: classifiedError))
             }
         }
 
@@ -287,7 +268,7 @@ extension ShareViewController {
             let fileId = try await uploadNow()
             await handleSuccess(fileId: fileId)
         } catch {
-            if environment.isUnauthorized(error),
+            if environment.shouldRetryUploadAfterAuthFailure(error),
                await environment.ensureValidAccessToken(forceRefresh: true) {
                 do {
                     let fileId = try await uploadNow()

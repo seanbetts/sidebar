@@ -116,17 +116,21 @@ struct PinnedNotesProvider: AppIntentTimelineProvider {
                 dataManager.store(refreshed, for: .notes)
                 data = selection.filter(refreshed)
             } catch {
+                let appError = AppError.classify(
+                    error: error,
+                    operation: "widget.notes.refresh",
+                    requestKind: .foregroundRead
+                )
+                var metadata = appError.diagnostics
+                metadata["provider"] = "PinnedNotesProvider"
+                metadata["selection"] = selection.headerTitle
+                metadata["scope"] = selection.scopeDescription
+                metadata["has_cached_snapshot"] = hasCachedSnapshot ? "true" : "false"
                 WidgetExtensionDiagnostics.reporter.captureFailure(
                     surface: "widget_provider",
                     stage: "pinned_notes_refresh_failed",
                     message: "Failed to refresh note widget content.",
-                    metadata: [
-                        "provider": "PinnedNotesProvider",
-                        "selection": selection.headerTitle,
-                        "scope": selection.scopeDescription,
-                        "has_cached_snapshot": hasCachedSnapshot ? "true" : "false",
-                        "error": String(describing: error)
-                    ]
+                    metadata: metadata
                 )
             }
         }

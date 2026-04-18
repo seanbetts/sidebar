@@ -112,7 +112,23 @@ struct PinnedFilesProvider: AppIntentTimelineProvider {
                 let refreshed = try await refreshData(date)
                 dataManager.store(refreshed, for: .files)
                 data = selection.filter(refreshed)
-            } catch {}
+            } catch {
+                let appError = AppError.classify(
+                    error: error,
+                    operation: "widget.files.refresh",
+                    requestKind: .foregroundRead
+                )
+                var metadata = appError.diagnostics
+                metadata["provider"] = "PinnedFilesProvider"
+                metadata["selection"] = selection.headerTitle
+                metadata["has_cached_snapshot"] = hasCachedSnapshot ? "true" : "false"
+                WidgetExtensionDiagnostics.reporter.captureFailure(
+                    surface: "widget_provider",
+                    stage: "pinned_files_refresh_failed",
+                    message: "Failed to refresh files widget content.",
+                    metadata: metadata
+                )
+            }
         }
 
         return PinnedFilesEntry(

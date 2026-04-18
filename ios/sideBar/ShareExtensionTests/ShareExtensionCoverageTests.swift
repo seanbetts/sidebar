@@ -233,6 +233,40 @@ final class ShareExtensionCoverageTests: XCTestCase {
         )
     }
 
+    func testErrorMessageMapsOfflineAppErrorToNetworkMessage() {
+        let message = ShareExtensionMessageMapper.errorMessage(
+            for: AppError(
+                category: .offline,
+                operation: "share_extension.upload_file",
+                requestKind: .multipartUpload,
+                retryability: .allowsOfflineHandoff,
+                recommendedSurface: .offlineBanner
+            )
+        )
+
+        XCTAssertEqual(
+            message,
+            ExtensionUserMessageCatalog.message(for: .networkError)
+        )
+    }
+
+    func testErrorMessageMapsAuthenticationAppErrorToNotAuthenticated() {
+        let message = ShareExtensionMessageMapper.errorMessage(
+            for: AppError(
+                category: .authentication,
+                operation: "share_extension.upload_file",
+                requestKind: .multipartUpload,
+                retryability: .userActionRequired,
+                recommendedSurface: .alert
+            )
+        )
+
+        XCTAssertEqual(
+            message,
+            ExtensionUserMessageCatalog.message(for: .notAuthenticated)
+        )
+    }
+
     func testErrorMessageMapsItemProviderUnsupportedDetailToUnsupportedContent() {
         let itemProviderError = NSError(
             domain: NSItemProvider.errorDomain,
@@ -382,8 +416,16 @@ final class ShareExtensionCoverageTests: XCTestCase {
         XCTAssertTrue(export.contains("item_provider_count=0"))
     }
 
-    func testShareNetworkMonitorUsesSharedSessionForConnectivityProbes() {
-        XCTAssertTrue(ShareNetworkMonitor.defaultSession() === URLSession.shared)
+    func testShareExtensionUploadHandlingDoesNotUseReachabilityPreflight() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let source = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "ios/sideBar/ShareExtension/ShareViewController+MediaHandling.swift"
+            ),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(source.contains("ShareNetworkMonitor"))
     }
 
     private func findRepositoryRoot(filePath: String = #filePath) throws -> URL {

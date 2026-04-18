@@ -131,16 +131,20 @@ struct SavedSitesProvider: AppIntentTimelineProvider {
                 dataManager.store(refreshed, for: .websites)
                 data = selection.filter(refreshed)
             } catch {
+                let appError = AppError.classify(
+                    error: error,
+                    operation: "widget.websites.refresh",
+                    requestKind: .foregroundRead
+                )
+                var metadata = appError.diagnostics
+                metadata["provider"] = "SavedSitesProvider"
+                metadata["selection"] = selection.headerTitle
+                metadata["has_cached_snapshot"] = hasCachedSnapshot ? "true" : "false"
                 WidgetExtensionDiagnostics.reporter.captureFailure(
                     surface: "widget_provider",
                     stage: "saved_sites_refresh_failed",
                     message: "Failed to refresh websites widget content.",
-                    metadata: [
-                        "provider": "SavedSitesProvider",
-                        "selection": selection.headerTitle,
-                        "has_cached_snapshot": hasCachedSnapshot ? "true" : "false",
-                        "error": String(describing: error)
-                    ]
+                    metadata: metadata
                 )
             }
         }

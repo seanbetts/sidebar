@@ -829,8 +829,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         let provider = SavedSitesProvider(
             now: { now },
             refreshData: { _ in
-                struct RefreshFailure: Error {}
-                throw RefreshFailure()
+                throw URLError(.notConnectedToInternet)
             },
             faviconFetcher: { _ in [:] }
         )
@@ -842,7 +841,12 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertTrue(export.contains("[widget_provider] saved_sites_refresh_failed:"))
         XCTAssertTrue(export.contains("provider=SavedSitesProvider"))
         XCTAssertTrue(export.contains("selection=Websites"))
+        XCTAssertTrue(export.contains("category=offline"))
         XCTAssertTrue(export.contains("has_cached_snapshot=true"))
+        XCTAssertTrue(export.contains("operation=widget.websites.refresh"))
+        XCTAssertTrue(export.contains("requestKind=foregroundRead"))
+        XCTAssertTrue(export.contains("retryability=allowsOfflineHandoff"))
+        XCTAssertFalse(export.contains("error="))
     }
 
     func testSavedSitesProviderFiltersPinnedSelection() async {
@@ -911,6 +915,39 @@ final class WidgetProviderRefreshTests: XCTestCase {
 
         XCTAssertEqual(refreshCallCount, 0)
         XCTAssertEqual(timeline.entries.first?.data.files.map(\.id), ["cached-file"])
+    }
+
+    func testPinnedFilesProviderPreservesCachedDataAndReportsRefreshFailureDiagnostics() async {
+        let now = Date(timeIntervalSince1970: 42_000)
+        let cached = WidgetFileData(
+            files: [WidgetFile(id: "cached-file", filename: "Cached.pdf", sizeBytes: 12)],
+            totalCount: 1,
+            lastUpdated: now.addingTimeInterval(-3600)
+        )
+        ExternalSurfaceDiagnosticsStore.shared.clear()
+        defer { ExternalSurfaceDiagnosticsStore.shared.clear() }
+        WidgetDataManager.shared.store(cached, for: .files)
+        setWidgetAuthenticated(true)
+
+        let provider = PinnedFilesProvider(
+            now: { now },
+            refreshData: { _ in
+                throw APIClientError.requestFailed(401)
+            }
+        )
+
+        let timeline = await provider.timeline(for: now)
+
+        XCTAssertEqual(timeline.entries.first?.data.files.map(\.id), ["cached-file"])
+        let export = ExternalSurfaceDiagnosticsStore.shared.exportText(limit: 10)
+        XCTAssertTrue(export.contains("[widget_provider] pinned_files_refresh_failed:"))
+        XCTAssertTrue(export.contains("provider=PinnedFilesProvider"))
+        XCTAssertTrue(export.contains("selection=Files"))
+        XCTAssertTrue(export.contains("category=authentication"))
+        XCTAssertTrue(export.contains("statusCode=401"))
+        XCTAssertTrue(export.contains("operation=widget.files.refresh"))
+        XCTAssertTrue(export.contains("requestKind=foregroundRead"))
+        XCTAssertFalse(export.contains("error="))
     }
 
     func testPinnedFilesProviderFiltersConfiguredCategorySelection() async {

@@ -11,22 +11,12 @@ enum ShareExtensionMessageMapper {
     }
 
     static func errorMessage(for error: Error) -> String {
-        if let shareError = error as? ShareExtensionError {
-            switch shareError {
-            case .notAuthenticated:
-                return ExtensionUserMessageCatalog.message(for: .notAuthenticated)
-            case .invalidBaseUrl:
-                return ExtensionUserMessageCatalog.message(for: .invalidBaseUrl)
-            case .invalidSharePayload:
-                return ExtensionUserMessageCatalog.message(for: .invalidSharePayload)
-            case .unsupportedContentType:
-                return ExtensionUserMessageCatalog.message(for: .unsupportedContent)
-            case .uploadFailed(let detail):
-                if let messageCode = messageCode(forDetail: detail) {
-                    return ExtensionUserMessageCatalog.message(for: messageCode)
-                }
-                return ExtensionUserMessageCatalog.uploadFailureMessage(detail: detail)
-            }
+        if let shareErrorMessage = message(forShareExtensionError: error) {
+            return shareErrorMessage
+        }
+
+        if let appError = error as? AppError {
+            return message(for: appError)
         }
 
         if let apiError = error as? APIClientError {
@@ -43,6 +33,41 @@ enum ShareExtensionMessageMapper {
         }
 
         return ExtensionUserMessageCatalog.message(for: .unknownFailure)
+    }
+
+    private static func message(forShareExtensionError error: Error) -> String? {
+        guard let shareError = error as? ShareExtensionError else {
+            return nil
+        }
+
+        switch shareError {
+        case .notAuthenticated:
+            return ExtensionUserMessageCatalog.message(for: .notAuthenticated)
+        case .invalidBaseUrl:
+            return ExtensionUserMessageCatalog.message(for: .invalidBaseUrl)
+        case .invalidSharePayload:
+            return ExtensionUserMessageCatalog.message(for: .invalidSharePayload)
+        case .unsupportedContentType:
+            return ExtensionUserMessageCatalog.message(for: .unsupportedContent)
+        case .uploadFailed(let detail):
+            if let messageCode = messageCode(forDetail: detail) {
+                return ExtensionUserMessageCatalog.message(for: messageCode)
+            }
+            return ExtensionUserMessageCatalog.uploadFailureMessage(detail: detail)
+        }
+    }
+
+    private static func message(for error: AppError) -> String {
+        switch error.category {
+        case .authentication, .permission:
+            return ExtensionUserMessageCatalog.message(for: .notAuthenticated)
+        case .offline, .serverUnreachable, .timeout, .secureConnection:
+            return ExtensionUserMessageCatalog.message(for: .networkError)
+        case .rateLimited, .serverBusy, .requestRejected, .payloadTooLarge, .decoding, .unknown:
+            return ExtensionUserMessageCatalog.message(for: .uploadFailed)
+        case .cancelled:
+            return ExtensionUserMessageCatalog.message(for: .unknownFailure)
+        }
     }
 
     private static func message(for error: APIClientError) -> String {

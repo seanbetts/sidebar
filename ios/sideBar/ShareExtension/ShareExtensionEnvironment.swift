@@ -42,20 +42,20 @@ final class ShareExtensionEnvironment {
         }
     }
 
-    func isUnauthorized(_ error: Error) -> Bool {
-        if let apiError = error as? APIClientError {
-            switch apiError {
-            case .requestFailed(401):
-                return true
-            case .apiError(let message):
-                let lowered = message.lowercased()
-                return lowered.contains("unauthorized") || lowered.contains("forbidden")
-            default:
-                return false
-            }
-        }
-        let description = error.localizedDescription.lowercased()
-        return description.contains("unauthorized") || description.contains("forbidden")
+    func classifyUploadError(_ error: Error) -> AppError {
+        AppError.classify(
+            error: error,
+            operation: "share_extension.upload_file",
+            requestKind: .multipartUpload
+        )
+    }
+
+    func shouldRetryUploadAfterAuthFailure(_ error: Error) -> Bool {
+        classifyUploadError(error).category == .authentication
+    }
+
+    func shouldQueueUploadForOfflineHandoff(_ error: Error) -> Bool {
+        classifyUploadError(error).retryability.allowsOfflineHandoff
     }
 
     /// Uploads a file to the ingestion API and returns the file ID.

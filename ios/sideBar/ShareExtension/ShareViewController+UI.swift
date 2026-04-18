@@ -41,10 +41,6 @@ extension ShareViewController {
         ])
     }
 
-    func isOfflineError(_ error: Error) -> Bool {
-        ExtensionNetworkErrorClassifier.isOfflineLike(error)
-    }
-
     func showProviderLoadError(_ error: Error?, fallback: ExtensionMessageCode) {
         guard let error else {
             showError(ExtensionUserMessageCatalog.message(for: fallback))
