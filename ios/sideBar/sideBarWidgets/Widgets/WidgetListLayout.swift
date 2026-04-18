@@ -131,6 +131,84 @@ struct HomeWidgetSignedOutView: View {
     }
 }
 
+struct HomeWidgetEmptyStateView: View {
+    let iconSystemName: String
+    let title: String
+    let subtitle: String
+    let destination: URL
+    let accentIcon: Bool
+    let trailingAccessory: AnyView?
+    @Environment(\.colorScheme) private var colorScheme
+
+    init(
+        title: String,
+        subtitle: String,
+        iconSystemName: String,
+        destination: URL,
+        accentIcon: Bool = true
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.iconSystemName = iconSystemName
+        self.destination = destination
+        self.accentIcon = accentIcon
+        self.trailingAccessory = nil
+    }
+
+    init<TrailingAccessory: View>(
+        title: String,
+        subtitle: String,
+        iconSystemName: String,
+        destination: URL,
+        accentIcon: Bool = true,
+        @ViewBuilder trailingAccessory: () -> TrailingAccessory? = { nil }
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.iconSystemName = iconSystemName
+        self.destination = destination
+        self.accentIcon = accentIcon
+        self.trailingAccessory = trailingAccessory().map { AnyView($0) }
+    }
+
+    var body: some View {
+        VStack {
+            Spacer()
+            icon
+            Text(title)
+                .font(.headline)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            if let trailingAccessory {
+                HStack {
+                    Spacer()
+                    trailingAccessory
+                }
+            }
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .widgetURL(destination)
+    }
+
+    @ViewBuilder
+    private var icon: some View {
+        let image = Image(systemName: iconSystemName)
+            .font(.system(size: 32))
+
+        if accentIcon {
+            image
+                .foregroundStyle(.secondary)
+                .widgetAccentable()
+        } else {
+            image
+                .foregroundStyle(colorScheme == .dark ? .white : .black)
+        }
+    }
+}
+
 #if os(iOS)
 struct LockScreenSignedOutRow: View {
     let iconSystemName: String

@@ -4,15 +4,11 @@ import XCTest
 
 final class WidgetIntentRoutingTests: XCTestCase {
     func testAppWidgetIntentsReturnOpenResults() async throws {
-        let quickSaveIntent = QuickSaveIntent()
-        quickSaveIntent.url = URL(string: "https://example.com")!
-
         assertOpensIntent(try await AddTaskIntent().perform())
         assertOpensIntent(try await OpenTodayIntent().perform())
         assertOpensIntent(try await OpenNotesIntent().perform())
         assertOpensIntent(try await CreateNoteIntent().perform())
         assertOpensIntent(try await OpenWebsitesIntent().perform())
-        assertOpensIntent(try await quickSaveIntent.perform())
         assertOpensIntent(try await OpenFilesIntent().perform())
         assertOpensIntent(try await OpenScratchpadIntent().perform())
         assertOpensIntent(try await StartChatIntent().perform())
@@ -52,33 +48,29 @@ final class WidgetIntentRoutingTests: XCTestCase {
         XCTAssertFalse(appSource.contains("consumeWidgetAddNote"))
     }
 
-    func testQuickSaveIntentTargetsWebsiteSaveDeepLink() throws {
-        let widgetSource = try normalizedWidgetWebsiteIntentsSource()
-        let appSource = try normalizedSideBarAppSource()
-
-        for source in [widgetSource, appSource] {
-            XCTAssertTrue(source.contains("components.host=\"websites\""))
-            XCTAssertTrue(source.contains("components.path=\"/save\""))
-            XCTAssertTrue(source.contains("URLQueryItem(name:\"url\",value:url.absoluteString)"))
-            XCTAssertFalse(source.contains("recordQuickSaveIntent"))
-        }
+    func testQuickSaveIntentAndShortcutPlumbingAreRemoved() throws {
+        XCTAssertFalse(try normalizedWidgetWebsiteIntentsSource().contains("QuickSaveIntent"))
+        XCTAssertFalse(try normalizedWidgetTaskIntentsSource().contains("QuickSaveIntent"))
+        XCTAssertFalse(try normalizedSideBarAppSource().contains("QuickSaveIntent"))
+        XCTAssertFalse(try normalizedWidgetExtensionDataManagerSource().contains("pendingQuickSaveURL"))
+        XCTAssertFalse(try normalizedAppWidgetDataManagerSource().contains("pendingQuickSaveURL"))
     }
 
     func testPopulatedWidgetsExposeSectionWideTapTargets() throws {
         XCTAssertEqual(
             try normalizedWidgetSource(named: "PinnedNotesWidget.swift")
                 .numberOfOccurrences(of: ".widgetURL(URL(string:\"sidebar://notes\"))"),
-            2
+            1
         )
         XCTAssertEqual(
             try normalizedWidgetSource(named: "SavedSitesWidget.swift")
                 .numberOfOccurrences(of: ".widgetURL(URL(string:\"sidebar://websites\"))"),
-            2
+            1
         )
         XCTAssertEqual(
             try normalizedWidgetSource(named: "PinnedFilesWidget.swift")
                 .numberOfOccurrences(of: ".widgetURL(URL(string:\"sidebar://files\"))"),
-            2
+            1
         )
     }
 
@@ -147,6 +139,30 @@ private func normalizedSideBarAppSource(
 ) throws -> String {
     try widgetSource(
         at: ["sideBar", "sideBarApp.swift"],
+        file: file,
+        line: line
+    )
+    .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+}
+
+private func normalizedWidgetExtensionDataManagerSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try widgetSource(
+        at: ["sideBarWidgets", "WidgetDataManager.swift"],
+        file: file,
+        line: line
+    )
+    .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+}
+
+private func normalizedAppWidgetDataManagerSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try widgetSource(
+        at: ["sideBar", "Utilities", "WidgetDataManager.swift"],
         file: file,
         line: line
     )

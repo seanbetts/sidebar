@@ -205,16 +205,6 @@ struct SideBarShortcutsProvider: AppShortcutsProvider {
             shortTitle: "Saved Websites",
             systemImageName: "globe"
         )
-        AppShortcut(
-            intent: QuickSaveIntent(),
-            phrases: [
-                "Save this website in \(.applicationName)",
-                "Bookmark this page in \(.applicationName)",
-                "Save URL in \(.applicationName)"
-            ],
-            shortTitle: "Save Website",
-            systemImageName: "bookmark.fill"
-        )
         // File shortcuts
         AppShortcut(
             intent: OpenFilesIntent(),

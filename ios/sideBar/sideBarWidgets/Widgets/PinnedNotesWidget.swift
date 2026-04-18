@@ -163,25 +163,14 @@ struct PinnedNotesWidgetView: View {
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        VStack {
-            Spacer()
-            Image(systemName: "pin")
-                .font(.system(size: 32))
-                .foregroundStyle(.secondary)
-                .widgetAccentable()
-            Text("No pinned notes")
-                .font(.headline)
-            Text("Pin a note to see it here")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-            HStack {
-                Spacer()
-                createNoteButton
-            }
+        HomeWidgetEmptyStateView(
+            title: "No pinned notes",
+            subtitle: "Pin a note to see it here",
+            iconSystemName: "pin",
+            destination: URL(string: "sidebar://notes")!
+        ) {
+            createNoteButton
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .widgetURL(URL(string: "sidebar://notes"))
     }
 
     // MARK: - Not Authenticated

@@ -30,6 +30,8 @@ struct SavedSitesProvider: TimelineProvider {
     private let now: () -> Date
     private let refreshData: @Sendable (Date) async throws -> WidgetWebsiteData
     private let faviconFetcher: @Sendable ([WidgetWebsite]) async -> [String: Data]
+    private let faviconCacheLoad: ([WidgetWebsite]) -> [String: Data]
+    private let faviconCacheStore: ([String: Data]) -> Void
 
     init(
         dataManager: WidgetDataManager = .shared,
@@ -41,12 +43,20 @@ struct SavedSitesProvider: TimelineProvider {
         },
         faviconFetcher: @escaping @Sendable ([WidgetWebsite]) async -> [String: Data] = { websites in
             await Self.fetchFaviconDataByWebsiteId(for: websites)
+        },
+        faviconCacheLoad: @escaping ([WidgetWebsite]) -> [String: Data] = { websites in
+            WidgetFaviconCache.load(for: websites)
+        },
+        faviconCacheStore: @escaping ([String: Data]) -> Void = { faviconDataByWebsiteId in
+            WidgetFaviconCache.store(faviconDataByWebsiteId)
         }
     ) {
         self.dataManager = dataManager
         self.now = now
         self.refreshData = refreshData
         self.faviconFetcher = faviconFetcher
+        self.faviconCacheLoad = faviconCacheLoad
+        self.faviconCacheStore = faviconCacheStore
     }
 
     func placeholder(in context: Context) -> SavedSitesEntry {
@@ -74,7 +84,14 @@ struct SavedSitesProvider: TimelineProvider {
     func timeline(for currentDate: Date) async -> Timeline<SavedSitesEntry> {
         let entry = await entry(for: currentDate)
         recordProviderDiagnostics(stage: "timeline", entry: entry)
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate) ?? currentDate
+        guard entry.isAuthenticated else {
+            return Timeline(entries: [entry], policy: .after(nextMidnight(from: currentDate)))
+        }
+        let nextUpdate = WidgetRefreshPolicy.nextRefreshDate(
+            lastUpdated: entry.data.lastUpdated,
+            contentType: .websites,
+            now: currentDate
+        )
         return Timeline(entries: [entry], policy: .after(nextUpdate))
     }
 
@@ -106,7 +123,16 @@ struct SavedSitesProvider: TimelineProvider {
             } catch {}
         }
 
-        let faviconDataByWebsiteId = await faviconFetcher(data.websites)
+        let candidateSites = Self.candidateSites(for: data.websites)
+        var faviconDataByWebsiteId = faviconCacheLoad(candidateSites)
+        let uncachedSites = candidateSites.filter { faviconDataByWebsiteId[$0.id] == nil }
+        if !uncachedSites.isEmpty {
+            let fetched = await faviconFetcher(uncachedSites)
+            if !fetched.isEmpty {
+                faviconCacheStore(fetched)
+                faviconDataByWebsiteId.merge(fetched, uniquingKeysWith: { current, _ in current })
+            }
+        }
         return SavedSitesEntry(
             date: date,
             data: data,
@@ -116,7 +142,7 @@ struct SavedSitesProvider: TimelineProvider {
     }
 
     private static func fetchFaviconDataByWebsiteId(for websites: [WidgetWebsite]) async -> [String: Data] {
-        let candidates = Array(websites.prefix(SavedSitesWidgetView.maxSites(for: .systemLarge)))
+        let candidates = candidateSites(for: websites)
         guard !candidates.isEmpty else { return [:] }
 
         return await withTaskGroup(of: (String, Data?).self) { group in
@@ -152,6 +178,16 @@ struct SavedSitesProvider: TimelineProvider {
         } catch {
             return nil
         }
+    }
+
+    private static func candidateSites(for websites: [WidgetWebsite]) -> [WidgetWebsite] {
+        Array(websites.prefix(SavedSitesWidgetView.maxSites(for: .systemLarge)))
+    }
+
+    private func nextMidnight(from date: Date) -> Date {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: date) ?? date
+        return calendar.startOfDay(for: tomorrow)
     }
 
     private func recordProviderDiagnostics(stage: String, entry: SavedSitesEntry) {

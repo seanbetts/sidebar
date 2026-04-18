@@ -147,7 +147,6 @@ public final class WidgetDataManager {
     defaults.removeObject(forKey: legacyTodayTasksKey)
     defaults.removeObject(forKey: legacyPendingCompletionsKey)
     defaults.removeObject(forKey: legacyPendingAddTaskKey)
-    defaults.removeObject(forKey: Self.pendingQuickSaveKey)
     recordDiagnostics(
       stage: "clear_all_for_sign_out",
       message: "Cleared widget bridge data for sign-out."
@@ -321,40 +320,6 @@ extension WidgetDataManager {
     WidgetIntentHandoffNotifier.post()
   }
 
-  private static let pendingQuickSaveKey = "pendingQuickSaveURL"
-
-  /// Records a URL to be saved when the app opens
-  public func recordPendingQuickSave(url: URL) {
-    guard let defaults = userDefaults else { return }
-    defaults.set(url.absoluteString, forKey: Self.pendingQuickSaveKey)
-    recordDiagnostics(
-      stage: "record_pending_quick_save",
-      message: "Recorded widget quick save URL.",
-      metadata: ["url": url.absoluteString]
-    )
-  }
-
-  /// Records a quick-save widget intent and notifies a running app process.
-  public func recordQuickSaveIntent(url: URL) {
-    recordPendingQuickSave(url: url)
-    WidgetIntentHandoffNotifier.post()
-  }
-
-  /// Consumes the pending quick save URL (called by main app)
-  public func consumePendingQuickSave() -> URL? {
-    guard let defaults = userDefaults,
-          let urlString = defaults.string(forKey: Self.pendingQuickSaveKey),
-          let url = URL(string: urlString) else {
-      return nil
-    }
-    defaults.removeObject(forKey: Self.pendingQuickSaveKey)
-    recordDiagnostics(
-      stage: "consume_pending_quick_save",
-      message: "Consumed widget quick save URL.",
-      metadata: ["url": url.absoluteString]
-    )
-    return url
-  }
 }
 
 private extension WidgetDataManager {

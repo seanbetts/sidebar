@@ -120,21 +120,12 @@ struct SavedSitesWidgetView: View {
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        VStack {
-            Spacer()
-            Image(systemName: "globe")
-                .font(.system(size: 32))
-                .foregroundStyle(.secondary)
-                .widgetAccentable()
-            Text("No saved sites")
-                .font(.headline)
-            Text("Save a site to see it here")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .widgetURL(URL(string: "sidebar://websites"))
+        HomeWidgetEmptyStateView(
+            title: "No saved websites",
+            subtitle: "Save a website to see it here",
+            iconSystemName: "globe",
+            destination: URL(string: "sidebar://websites")!
+        )
     }
 
     // MARK: - Not Authenticated

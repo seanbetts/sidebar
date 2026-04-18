@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 import sideBarShared
@@ -67,7 +68,7 @@ struct LockScreenTaskPreviewView: View {
     var body: some View {
         if !entry.isAuthenticated {
             LockScreenSignedOutRow(iconSystemName: "checklist")
-        } else if entry.data.tasks.isEmpty {
+        } else if visibleTasks.isEmpty {
             HStack {
                 Image(systemName: "checkmark.circle.fill")
                 Text("All done for today!")
@@ -75,17 +76,21 @@ struct LockScreenTaskPreviewView: View {
             }
         } else {
             VStack(alignment: .leading, spacing: 2) {
-                ForEach(entry.data.tasks.prefix(2)) { task in
-                    HStack(spacing: 4) {
-                        Image(systemName: "circle")
-                            .font(.system(size: 8))
-                        Text(task.title)
-                            .font(.caption)
-                            .lineLimit(1)
+                ForEach(visibleTasks.prefix(2)) { task in
+                    Button(intent: CompleteTaskIntent(taskId: task.id)) {
+                        HStack(spacing: 4) {
+                            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 8))
+                            Text(task.title)
+                                .font(.caption)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
-                if entry.data.totalCount > 2 {
-                    Text("+\(entry.data.totalCount - 2) more")
+                if visibleTasks.count > 2 {
+                    Text("+\(visibleTasks.count - 2) more")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -93,6 +98,12 @@ struct LockScreenTaskPreviewView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .widgetURL(URL(string: "sidebar://tasks/today"))
         }
+    }
+
+    private var visibleTasks: [WidgetTask] {
+        WidgetTasksUtils.sortByDueDate(
+            WidgetTasksUtils.visibleTasks(entry.data.tasks, now: entry.date)
+        )
     }
 }
 

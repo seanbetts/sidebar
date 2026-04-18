@@ -72,4 +72,50 @@ final class WidgetRefreshPolicyTests: XCTestCase {
             )
         )
     }
+
+    func testDisplayOnlyWidgetsScheduleNextRefreshFromSnapshotAge() {
+        let now = Date(timeIntervalSince1970: 5_000)
+        let lastUpdated = now.addingTimeInterval(-5 * 60)
+        let expectedRefresh = now.addingTimeInterval(10 * 60)
+
+        XCTAssertEqual(
+            WidgetRefreshPolicy.nextRefreshDate(
+                lastUpdated: lastUpdated,
+                contentType: .notes,
+                now: now
+            ),
+            expectedRefresh
+        )
+        XCTAssertEqual(
+            WidgetRefreshPolicy.nextRefreshDate(
+                lastUpdated: lastUpdated,
+                contentType: .websites,
+                now: now
+            ),
+            expectedRefresh
+        )
+        XCTAssertEqual(
+            WidgetRefreshPolicy.nextRefreshDate(
+                lastUpdated: lastUpdated,
+                contentType: .files,
+                now: now
+            ),
+            expectedRefresh
+        )
+    }
+
+    func testStaleDisplayOnlyWidgetsBackOffByOneThresholdAfterFailedRefreshWindow() {
+        let now = Date(timeIntervalSince1970: 6_000)
+        let lastUpdated = now.addingTimeInterval(-20 * 60)
+        let expectedRefresh = now.addingTimeInterval(15 * 60)
+
+        XCTAssertEqual(
+            WidgetRefreshPolicy.nextRefreshDate(
+                lastUpdated: lastUpdated,
+                contentType: .notes,
+                now: now
+            ),
+            expectedRefresh
+        )
+    }
 }

@@ -107,21 +107,12 @@ struct PinnedFilesWidgetView: View {
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        VStack {
-            Spacer()
-            Image(systemName: "pin")
-                .font(.system(size: 32))
-                .foregroundStyle(.secondary)
-                .widgetAccentable()
-            Text("No pinned files")
-                .font(.headline)
-            Text("Pin a file to see it here")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .widgetURL(URL(string: "sidebar://files"))
+        HomeWidgetEmptyStateView(
+            title: "No pinned files",
+            subtitle: "Pin a file to see it here",
+            iconSystemName: "pin",
+            destination: URL(string: "sidebar://files")!
+        )
     }
 
     // MARK: - Not Authenticated

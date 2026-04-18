@@ -269,15 +269,6 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         _ = try await performTask.value
     }
 
-    func testQuickSaveRoundTripAndConsumeClearsStoredValue() {
-        let manager = WidgetDataManager.shared
-        let url = URL(string: "https://example.com/docs")!
-
-        manager.recordPendingQuickSave(url: url)
-        XCTAssertEqual(manager.consumePendingQuickSave(), url)
-        XCTAssertNil(manager.consumePendingQuickSave())
-    }
-
     func testWidgetDiagnosticsUseSharedExternalSurfaceStoreMetadata() {
         let groupId = appGroupIdForWidgetTests()
         let defaults = UserDefaults(suiteName: groupId)
@@ -507,6 +498,58 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(timeline.entries.first?.faviconDataByWebsiteId["site-a"], Data([0x1, 0x2, 0x3]))
     }
 
+    func testSavedSitesProviderCachesFetchedFaviconsAcrossTimelineBuilds() async {
+        let now = Date(timeIntervalSince1970: 61_000)
+        let fetchCallCounter = CallCounter()
+        var cachedFavicons: [String: Data] = [:]
+        let provider = SavedSitesProvider(
+            now: { now },
+            refreshData: { _ in
+                WidgetWebsiteData(
+                    websites: [
+                        WidgetWebsite(
+                            id: "site-a",
+                            title: "Example",
+                            url: "https://example.com",
+                            domain: "example.com",
+                            faviconUrl: "https://example.com/favicon.ico"
+                        )
+                    ],
+                    totalCount: 1,
+                    lastUpdated: now
+                )
+            },
+            faviconFetcher: { websites in
+                await fetchCallCounter.increment()
+                XCTAssertEqual(websites.map(\.id), ["site-a"])
+                return ["site-a": Data([0xA, 0xB, 0xC])]
+            },
+            faviconCacheLoad: { _ in
+                cachedFavicons
+            },
+            faviconCacheStore: { fetched in
+                cachedFavicons.merge(fetched, uniquingKeysWith: { _, new in new })
+            }
+        )
+        let defaults = UserDefaults(suiteName: appGroupIdForWidgetTests())
+        defaults?.set(true, forKey: "widgetIsAuthenticated")
+        defaults?.synchronize()
+        defer {
+            defaults?.removeObject(forKey: "widgetIsAuthenticated")
+            defaults?.removeObject(forKey: WidgetContentType.websites.dataKey)
+            defaults?.removeObject(forKey: WidgetContentType.websites.pendingKey)
+            defaults?.synchronize()
+        }
+
+        let firstTimeline = await provider.timeline(for: now)
+        let secondTimeline = await provider.timeline(for: now.addingTimeInterval(60))
+        let fetchCallCount = await fetchCallCounter.value()
+
+        XCTAssertEqual(fetchCallCount, 1)
+        XCTAssertEqual(firstTimeline.entries.first?.faviconDataByWebsiteId["site-a"], Data([0xA, 0xB, 0xC]))
+        XCTAssertEqual(secondTimeline.entries.first?.faviconDataByWebsiteId["site-a"], Data([0xA, 0xB, 0xC]))
+    }
+
     func testWidgetIntentsExecuteWithoutThrowing() async throws {
         _ = try await OpenScratchpadIntent().perform()
         _ = try await StartChatIntent().perform()
@@ -526,7 +569,6 @@ final class WidgetExtensionCoverageTests: XCTestCase {
 
         _ = try await OpenWebsitesIntent().perform()
         _ = try await OpenWebsiteIntent(websiteId: "site_1").perform()
-        _ = try await QuickSaveIntent(url: URL(string: "https://example.com")!).perform()
     }
 
     func testWidgetOpenAndMutationIntentsReturnOpenResults() async throws {
@@ -535,10 +577,35 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         assertOpensIntent(try await OpenNotesIntent().perform())
         assertOpensIntent(try await CreateNoteIntent().perform())
         assertOpensIntent(try await OpenWebsitesIntent().perform())
-        assertOpensIntent(try await QuickSaveIntent(url: URL(string: "https://example.com")!).perform())
         assertOpensIntent(try await OpenFilesIntent().perform())
         assertOpensIntent(try await OpenScratchpadIntent().perform())
         assertOpensIntent(try await StartChatIntent().perform())
+    }
+
+    func testHomeWidgetsUseSharedPurposefulEmptyStatePattern() throws {
+        let tasksSource = try normalizedWidgetSource(named: "TodayTasksWidget.swift")
+        let notesSource = try normalizedWidgetSource(named: "PinnedNotesWidget.swift")
+        let filesSource = try normalizedWidgetSource(named: "PinnedFilesWidget.swift")
+        let websitesSource = try normalizedWidgetSource(named: "SavedSitesWidget.swift")
+
+        XCTAssertTrue(tasksSource.contains("HomeWidgetEmptyStateView(title:\"Alldone!\""))
+        XCTAssertTrue(tasksSource.contains("subtitle:\"Notasksfortoday\""))
+
+        XCTAssertTrue(notesSource.contains("HomeWidgetEmptyStateView(title:\"Nopinnednotes\""))
+        XCTAssertTrue(notesSource.contains("subtitle:\"Pinanotetoseeithere\""))
+
+        XCTAssertTrue(filesSource.contains("HomeWidgetEmptyStateView(title:\"Nopinnedfiles\""))
+        XCTAssertTrue(filesSource.contains("subtitle:\"Pinafiletoseeithere\""))
+
+        XCTAssertTrue(websitesSource.contains("HomeWidgetEmptyStateView(title:\"Nosavedwebsites\""))
+        XCTAssertTrue(websitesSource.contains("subtitle:\"Saveawebsitetoseeithere\""))
+    }
+
+    func testLockScreenTaskPreviewUsesInteractiveCompletionButtons() throws {
+        let source = try normalizedWidgetSource(named: "LockScreenWidgets.swift")
+
+        XCTAssertTrue(source.contains("Button(intent:CompleteTaskIntent(taskId:task.id))"))
+        XCTAssertTrue(source.contains("visibleTasks.prefix(2)"))
     }
 }
 
@@ -579,7 +646,53 @@ private actor AsyncGate {
     }
 }
 
+private actor CallCounter {
+    private var count = 0
+
+    func increment() {
+        count += 1
+    }
+
+    func value() -> Int {
+        count
+    }
+}
+
 private func assertOpensIntent<Result: OpensIntent>(_: Result) {}
+
+private func normalizedWidgetSource(
+    named fileName: String,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try widgetSource(
+        at: ["sideBarWidgets", "Widgets", fileName],
+        file: file,
+        line: line
+    )
+    .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+}
+
+private func widgetSource(
+    at pathComponents: [String],
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    let fileURL = URL(fileURLWithPath: "\(file)")
+    let sideBarRoot = fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceURL = pathComponents.reduce(sideBarRoot) { partialURL, component in
+        partialURL.appendingPathComponent(component)
+    }
+
+    do {
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    } catch {
+        XCTFail("Failed to read \(sourceURL.lastPathComponent): \(error)", file: file, line: line)
+        throw error
+    }
+}
 
 private func appGroupIdForWidgetTests() -> String {
     AppGroupConfiguration.appGroupId ?? "group.ai.sidebar.sidebar"

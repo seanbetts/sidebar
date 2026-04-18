@@ -67,7 +67,14 @@ struct PinnedNotesProvider: TimelineProvider {
     func timeline(for currentDate: Date) async -> Timeline<PinnedNotesEntry> {
         let entry = await entry(for: currentDate)
         recordProviderDiagnostics(stage: "timeline", entry: entry)
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate) ?? currentDate
+        guard entry.isAuthenticated else {
+            return Timeline(entries: [entry], policy: .after(nextMidnight(from: currentDate)))
+        }
+        let nextUpdate = WidgetRefreshPolicy.nextRefreshDate(
+            lastUpdated: entry.data.lastUpdated,
+            contentType: .notes,
+            now: currentDate
+        )
         return Timeline(entries: [entry], policy: .after(nextUpdate))
     }
 
@@ -114,5 +121,11 @@ struct PinnedNotesProvider: TimelineProvider {
                 "total_count": "\(entry.data.totalCount)"
             ]
         )
+    }
+
+    private func nextMidnight(from date: Date) -> Date {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: date) ?? date
+        return calendar.startOfDay(for: tomorrow)
     }
 }

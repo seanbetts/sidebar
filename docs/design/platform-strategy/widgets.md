@@ -122,9 +122,15 @@ Refresh policy: `.after(lastBoundary + 15 minutes)`.
 
 This means the widget responds to task completions and deadline crossings without waiting for a system-scheduled refresh.
 
-### Notes, files, websites: fixed interval
+### Notes, files, websites: age-based interval
 
-These widgets use a fixed `.after(now + 15 minutes)` refresh policy. There are no in-widget user actions that modify this data, so smart boundaries are not needed.
+These widgets use a data-aware `.after(...)` refresh policy derived from the snapshot age:
+
+1. If the snapshot is fresh, refresh at `lastUpdated + 15 minutes`
+2. If the snapshot is already stale and a refresh attempt fails, back off by one 15-minute window from `now`
+3. If the widget is signed out and has no cached snapshot, refresh again at next midnight
+
+These widgets are still display-only surfaces, so they do not need per-item smart boundaries like tasks.
 
 ### Unauthenticated state
 
@@ -220,7 +226,7 @@ Interactive actions use `AppIntent` (iOS 17+) with deep link fallback for earlie
 | `CreateNoteIntent` | Record pending operation, open app to new note |
 | Section tap or row tap | Open app to the relevant list or item deep link |
 
-Legacy app shortcuts such as `QuickSaveIntent`, `OpenScratchpadIntent`, and `StartChatIntent` are outside the active widget surface and should not shape widget architecture decisions.
+Legacy app shortcuts such as `OpenScratchpadIntent` and `StartChatIntent` are outside the active widget surface and should not shape widget architecture decisions.
 
 ### Optimistic update pattern
 
@@ -268,7 +274,7 @@ Website favicons are fetched asynchronously during timeline generation. The reso
 
 Maximum favicon size: 512KB. Failed fetches fall back to a `globe` SF Symbol.
 
-Favicons are fetched fresh on every timeline generation. There is no disk cache.
+Fetched favicons are persisted in a lightweight disk cache keyed by website ID and reused across timeline generations. Uncached websites still fetch on demand.
 
 ---
 

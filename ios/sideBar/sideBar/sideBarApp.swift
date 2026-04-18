@@ -261,40 +261,6 @@ struct OpenWebsitesIntent: AppIntent {
     }
 }
 
-struct QuickSaveIntent: AppIntent {
-    static var title: LocalizedStringResource = "Save Website"
-    static var description = IntentDescription("Saves a website URL to sideBar")
-    static var openAppWhenRun: Bool = true
-    private let logger = Logger(subsystem: "sideBar", category: "WidgetIntent")
-
-    @Parameter(title: "URL", description: "The website URL to save")
-    var url: URL?
-
-    func perform() async throws -> some IntentResult & OpensIntent {
-        guard let url else {
-            logger.error("QuickSaveIntent failed: no URL provided")
-            return .result()
-        }
-        guard let deepLink = Self.websiteSaveDeepLink(for: url) else {
-            logger.error("QuickSaveIntent failed: invalid deep link URL")
-            return .result()
-        }
-        logger.info("QuickSaveIntent opening save deep link for URL: \(url.absoluteString, privacy: .public)")
-        return .result(opensIntent: OpenURLIntent(deepLink))
-    }
-
-    private static func websiteSaveDeepLink(for url: URL) -> URL? {
-        var components = URLComponents()
-        components.scheme = "sidebar"
-        components.host = "websites"
-        components.path = "/save"
-        components.queryItems = [
-            URLQueryItem(name: "url", value: url.absoluteString)
-        ]
-        return components.url
-    }
-}
-
 struct OpenFilesIntent: AppIntent {
     static var title: LocalizedStringResource = "Open Files"
     static var description = IntentDescription("Opens sideBar to your files")

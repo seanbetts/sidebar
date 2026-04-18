@@ -178,24 +178,15 @@ struct TodayTasksWidgetView: View {
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        VStack {
-            Spacer()
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 32))
-                .foregroundStyle(colorScheme == .dark ? .white : .black)
-            Text("All done!")
-                .font(.headline)
-            Text("No tasks for today")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-            HStack {
-                Spacer()
-                addTaskButton
-            }
+        HomeWidgetEmptyStateView(
+            title: "All done!",
+            subtitle: "No tasks for today",
+            iconSystemName: "checkmark.circle",
+            destination: URL(string: "sidebar://tasks/today")!,
+            accentIcon: false
+        ) {
+            addTaskButton
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .widgetURL(URL(string: "sidebar://tasks/today"))
     }
 
     // MARK: - Not Authenticated

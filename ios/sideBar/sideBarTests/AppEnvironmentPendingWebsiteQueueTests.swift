@@ -501,7 +501,6 @@ extension AppEnvironmentPendingWebsiteQueueTests {
     func clearWidgetPendingOperations() {
         _ = storage.widgetDataManager.consumePendingOperations(for: .tasks, actionType: TaskWidgetAction.self)
         _ = storage.widgetDataManager.consumePendingOperations(for: .notes, actionType: NoteWidgetAction.self)
-        _ = storage.widgetDataManager.consumePendingQuickSave()
     }
 
     func clearExtensionEvents() {

@@ -240,44 +240,6 @@ extension WidgetDataManager {
     WidgetIntentHandoffNotifier.post()
   }
 
-  // MARK: - Quick Save
-
-  private static let pendingQuickSaveKey = "pendingQuickSaveURL"
-
-  /// Records a URL to be saved when the app opens
-  public func recordPendingQuickSave(url: URL) {
-    guard let defaults = userDefaults else { return }
-    defaults.set(url.absoluteString, forKey: Self.pendingQuickSaveKey)
-    defaults.synchronize()
-    recordDiagnostics(
-      stage: "record_pending_quick_save",
-      message: "Recorded widget quick save URL.",
-      metadata: ["url": url.absoluteString]
-    )
-  }
-
-  /// Backward compatible method for recording a quick-save intent with live handoff.
-  public func recordQuickSaveIntent(url: URL) {
-    recordPendingQuickSave(url: url)
-    WidgetIntentHandoffNotifier.post()
-  }
-
-  /// Consumes the pending quick save URL (called by main app)
-  public func consumePendingQuickSave() -> URL? {
-    guard let defaults = userDefaults,
-          let urlString = defaults.string(forKey: Self.pendingQuickSaveKey),
-          let url = URL(string: urlString) else {
-      return nil
-    }
-    defaults.removeObject(forKey: Self.pendingQuickSaveKey)
-    defaults.synchronize()
-    recordDiagnostics(
-      stage: "consume_pending_quick_save",
-      message: "Consumed widget quick save URL.",
-      metadata: ["url": url.absoluteString]
-    )
-    return url
-  }
 }
 
 private extension WidgetDataManager {
