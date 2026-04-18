@@ -3,7 +3,7 @@ import XCTest
 import sideBarShared
 @testable import sideBar
 
-final class WidgetConfigurationCatalogPersistenceTests: XCTestCase {
+final class WidgetConfigCatalogPersistenceTests: XCTestCase {
     private func makeWidgetDataManager() -> WidgetDataManager {
         WidgetDataManager(
             userDefaults: UserDefaults(

@@ -9,6 +9,33 @@ import AppKit
 #endif
 
 extension AppEnvironment {
+    nonisolated static func shouldBootstrapWidgetBridge(authState: AuthState) -> Bool {
+        authState != .signedOut
+    }
+
+    nonisolated static func shouldNotifyWebsiteQueueConnectivityRecovery(
+        previousIsOffline: Bool?,
+        currentIsOffline: Bool
+    ) -> Bool {
+        previousIsOffline == true && currentIsOffline == false
+    }
+
+    func bootstrapWidgetBridgeForCurrentAuthState() {
+        guard Self.shouldBootstrapWidgetBridge(authState: authState) else {
+            syncWidgetAuthStateIfNeeded(isAuthenticated: isAuthenticated)
+            return
+        }
+
+        storage.widgetDataManager.migrateIfNeeded()
+        storage.widgetDataManager.sanitizePendingTaskCompletions()
+        syncWidgetAuthStateIfNeeded(isAuthenticated: isAuthenticated)
+        storage.widgetDataManager.updateFaviconConfiguration(
+            r2Endpoint: container.config.r2Endpoint,
+            r2FaviconBucket: container.config.r2FaviconBucket,
+            r2FaviconPublicBaseUrl: container.config.r2FaviconPublicBaseUrl
+        )
+    }
+
     func configureWebsiteSaveHandoffObserver() {
         guard websiteSaveHandoffObserver == nil else { return }
         websiteSaveHandoffObserver = WebsiteSaveHandoffNotifier.observe { [weak self] in
@@ -43,16 +70,7 @@ extension AppEnvironment {
 
         // Migrate widget data to new generic keys (one-time)
         StartupDebugTrace.log("app-group.bootstrap.start")
-        storage.widgetDataManager.migrateIfNeeded()
-        storage.widgetDataManager.sanitizePendingTaskCompletions()
-
-        // Sync initial auth state to widgets
-        storage.widgetDataManager.updateAuthState(isAuthenticated: isAuthenticated)
-        storage.widgetDataManager.updateFaviconConfiguration(
-            r2Endpoint: container.config.r2Endpoint,
-            r2FaviconBucket: container.config.r2FaviconBucket,
-            r2FaviconPublicBaseUrl: container.config.r2FaviconPublicBaseUrl
-        )
+        bootstrapWidgetBridgeForCurrentAuthState()
         StartupDebugTrace.log("app-group.bootstrap.end")
     }
 
@@ -119,7 +137,11 @@ extension AppEnvironment {
                     "websites-store.items.changed",
                     details: ["saved_count=\(items.count)"]
                 )
-                self?.reconcileQueuedWebsitesWithSavedItems(
+                guard let self,
+                      Self.shouldReconcileQueuedWebsitesOnItemsChange(authState: self.authState) else {
+                    return
+                }
+                self.reconcileQueuedWebsitesWithSavedItems(
                     trigger: "websitesStore.items.changed",
                     savedItemCount: items.count
                 )
@@ -169,11 +191,17 @@ extension AppEnvironment {
     }
 
     private func monitorNetwork() {
+        var previousIsOffline: Bool?
         connectivityMonitor.$isOffline
             .removeDuplicates()
             .sink { [weak self] isOffline in
+                let shouldNotifyRecovery = Self.shouldNotifyWebsiteQueueConnectivityRecovery(
+                    previousIsOffline: previousIsOffline,
+                    currentIsOffline: isOffline
+                )
+                previousIsOffline = isOffline
                 self?.isOffline = isOffline
-                if !isOffline {
+                if shouldNotifyRecovery {
                     self?.resetStoreRefreshBackoff()
                     self?.websiteQueueCoordinator.connectivityDidRecover()
                 }

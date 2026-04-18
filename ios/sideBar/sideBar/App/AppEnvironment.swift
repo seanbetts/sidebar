@@ -478,8 +478,15 @@ public final class AppEnvironment: ObservableObject {
         )
     }
 
+    nonisolated static func shouldBootstrapMacWindowlessWebsiteQueueHost(
+        authState: AuthState
+    ) -> Bool {
+        authState == .active
+    }
+
     func bootstrapMacWindowlessWebsiteQueueHost() {
         #if os(macOS)
+        guard Self.shouldBootstrapMacWindowlessWebsiteQueueHost(authState: authState) else { return }
         websiteQueueCoordinator.queueDidChange(trigger: .appDidBecomeActive)
         #endif
     }

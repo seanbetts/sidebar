@@ -2,6 +2,10 @@ import Foundation
 import sideBarShared
 
 extension AppEnvironment {
+    nonisolated static func shouldReconcileQueuedWebsitesOnItemsChange(authState: AuthState) -> Bool {
+        authState == .active
+    }
+
     var hasPendingWebsiteCoordinatorWork: Bool {
         hasPendingWebsiteBackgroundWork || storage.extensionEventStore.hasQueuedWebsiteEvents()
     }

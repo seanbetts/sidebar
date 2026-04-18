@@ -40,6 +40,7 @@ extension AppEnvironment {
             shouldShowStaleAuthRetryBanner = false
             clearStoredCacheScopeUserId()
             resetSignedInData(clearNavigationState: true)
+            storage.userDefaults.set(false, forKey: AppStorageKeys.widgetAuthStateMirror)
         }
         if becameStale && wasAuthenticated {
             shouldShowStaleAuthRetryBanner = false
@@ -80,8 +81,11 @@ extension AppEnvironment {
         }
         realtimeClientStopStart()
 
-        // Update widget auth state
-        storage.widgetDataManager.updateAuthState(isAuthenticated: isAuthenticated)
+        if previousAuthState == .signedOut && isAuthenticated {
+            bootstrapWidgetBridgeForCurrentAuthState()
+        } else {
+            syncWidgetAuthStateIfNeeded(isAuthenticated: isAuthenticated)
+        }
     }
 
     func syncBiometricUnlockState(previousAuthState: AuthState) {
@@ -208,6 +212,17 @@ extension AppEnvironment {
 
     private func clearStoredCacheScopeUserId() {
         storage.userDefaults.removeObject(forKey: AppStorageKeys.cacheScopeUserId)
+    }
+
+    func syncWidgetAuthStateIfNeeded(isAuthenticated: Bool) {
+        let defaults = storage.userDefaults
+        let lastSyncedState = defaults.object(forKey: AppStorageKeys.widgetAuthStateMirror) as? Bool ?? false
+        guard lastSyncedState != isAuthenticated else {
+            defaults.set(isAuthenticated, forKey: AppStorageKeys.widgetAuthStateMirror)
+            return
+        }
+        storage.widgetDataManager.updateAuthState(isAuthenticated: isAuthenticated)
+        defaults.set(isAuthenticated, forKey: AppStorageKeys.widgetAuthStateMirror)
     }
 
     private func resetSignedInData(
