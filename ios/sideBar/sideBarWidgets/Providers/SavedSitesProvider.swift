@@ -7,23 +7,27 @@ struct SavedSitesEntry: TimelineEntry {
     let data: WidgetWebsiteData
     let isAuthenticated: Bool
     let faviconDataByWebsiteId: [String: Data]
+    let selection: WebsiteWidgetSelection
 
     static let placeholder = SavedSitesEntry(
         date: Date(),
         data: .placeholder,
         isAuthenticated: true,
-        faviconDataByWebsiteId: [:]
+        faviconDataByWebsiteId: [:],
+        selection: .all
     )
 
     static let notAuthenticated = SavedSitesEntry(
         date: Date(),
         data: .empty,
         isAuthenticated: false,
-        faviconDataByWebsiteId: [:]
+        faviconDataByWebsiteId: [:],
+        selection: .all
     )
 }
 
-struct SavedSitesProvider: TimelineProvider {
+struct SavedSitesProvider: AppIntentTimelineProvider {
+    typealias Intent = WebsitesWidgetConfigurationIntent
     typealias Entry = SavedSitesEntry
 
     private let dataManager: WidgetDataManager
@@ -60,29 +64,31 @@ struct SavedSitesProvider: TimelineProvider {
     }
 
     func placeholder(in context: Context) -> SavedSitesEntry {
-        Self.previewEntry(for: context.family, now: now())
+        Self.previewEntry(for: context.family, selection: .all, now: now())
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (SavedSitesEntry) -> Void) {
+    func snapshot(for configuration: WebsitesWidgetConfigurationIntent, in context: Context) async -> SavedSitesEntry {
         if context.isPreview {
-            completion(Self.previewEntry(for: context.family, now: now()))
-            return
+            return Self.previewEntry(for: context.family, selection: configuration.selection, now: now())
         }
-        Task {
-            let entry = await entry(for: now())
-            recordProviderDiagnostics(stage: "snapshot", entry: entry)
-            completion(entry)
-        }
+
+        let entry = await entry(for: now(), selection: configuration.selection)
+        recordProviderDiagnostics(stage: "snapshot", entry: entry)
+        return entry
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<SavedSitesEntry>) -> Void) {
-        Task {
-            completion(await timeline(for: now()))
-        }
+    func timeline(
+        for configuration: WebsitesWidgetConfigurationIntent,
+        in context: Context
+    ) async -> Timeline<SavedSitesEntry> {
+        await timeline(for: now(), selection: configuration.selection)
     }
 
-    func timeline(for currentDate: Date) async -> Timeline<SavedSitesEntry> {
-        let entry = await entry(for: currentDate)
+    func timeline(
+        for currentDate: Date,
+        selection: WebsiteWidgetSelection = .all
+    ) async -> Timeline<SavedSitesEntry> {
+        let entry = await entry(for: currentDate, selection: selection)
         recordProviderDiagnostics(stage: "timeline", entry: entry)
         guard entry.isAuthenticated else {
             return Timeline(entries: [entry], policy: .after(nextMidnight(from: currentDate)))
@@ -95,7 +101,10 @@ struct SavedSitesProvider: TimelineProvider {
         return Timeline(entries: [entry], policy: .after(nextUpdate))
     }
 
-    func entry(for date: Date) async -> SavedSitesEntry {
+    func entry(
+        for date: Date,
+        selection: WebsiteWidgetSelection = .all
+    ) async -> SavedSitesEntry {
         let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .websites)
         let isAuthenticated = dataManager.isAuthenticated()
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
@@ -106,10 +115,11 @@ struct SavedSitesProvider: TimelineProvider {
             return .notAuthenticated
         }
 
-        var data: WidgetWebsiteData = dataManager.load(for: .websites)
+        let storedData: WidgetWebsiteData = dataManager.load(for: .websites)
+        var data: WidgetWebsiteData = selection.filter(storedData)
         let decision = WidgetRefreshCoordinator.decision(
             contentType: .websites,
-            lastUpdated: hasCachedSnapshot ? data.lastUpdated : nil,
+            lastUpdated: hasCachedSnapshot ? storedData.lastUpdated : nil,
             hasCachedSnapshot: hasCachedSnapshot,
             isAuthenticated: isAuthenticated,
             now: date
@@ -119,7 +129,7 @@ struct SavedSitesProvider: TimelineProvider {
             do {
                 let refreshed = try await refreshData(date)
                 dataManager.store(refreshed, for: .websites)
-                data = refreshed
+                data = selection.filter(refreshed)
             } catch {}
         }
 
@@ -137,7 +147,8 @@ struct SavedSitesProvider: TimelineProvider {
             date: date,
             data: data,
             isAuthenticated: true,
-            faviconDataByWebsiteId: faviconDataByWebsiteId
+            faviconDataByWebsiteId: faviconDataByWebsiteId,
+            selection: selection
         )
     }
 
@@ -205,12 +216,18 @@ struct SavedSitesProvider: TimelineProvider {
         )
     }
 
-    static func previewEntry(for family: WidgetFamily, now: Date = Date()) -> SavedSitesEntry {
-        SavedSitesEntry(
+    static func previewEntry(
+        for family: WidgetFamily,
+        selection: WebsiteWidgetSelection = .all,
+        now: Date = Date()
+    ) -> SavedSitesEntry {
+        let previewData = selection.filter(WidgetGalleryPreviewContent.websites(for: family, now: now))
+        return SavedSitesEntry(
             date: now,
-            data: WidgetGalleryPreviewContent.websites(for: family, now: now),
+            data: previewData,
             isAuthenticated: true,
-            faviconDataByWebsiteId: [:]
+            faviconDataByWebsiteId: [:],
+            selection: selection
         )
     }
 }

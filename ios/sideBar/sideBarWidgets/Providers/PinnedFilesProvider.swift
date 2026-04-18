@@ -6,21 +6,25 @@ struct PinnedFilesEntry: TimelineEntry {
     let date: Date
     let data: WidgetFileData
     let isAuthenticated: Bool
+    let selection: FileWidgetSelection
 
     static let placeholder = PinnedFilesEntry(
         date: Date(),
         data: .placeholder,
-        isAuthenticated: true
+        isAuthenticated: true,
+        selection: .all
     )
 
     static let notAuthenticated = PinnedFilesEntry(
         date: Date(),
         data: .empty,
-        isAuthenticated: false
+        isAuthenticated: false,
+        selection: .all
     )
 }
 
-struct PinnedFilesProvider: TimelineProvider {
+struct PinnedFilesProvider: AppIntentTimelineProvider {
+    typealias Intent = FilesWidgetConfigurationIntent
     typealias Entry = PinnedFilesEntry
 
     private let dataManager: WidgetDataManager
@@ -42,30 +46,31 @@ struct PinnedFilesProvider: TimelineProvider {
     }
 
     func placeholder(in context: Context) -> PinnedFilesEntry {
-        Self.previewEntry(for: context.family, now: now())
+        Self.previewEntry(for: context.family, selection: .all, now: now())
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (PinnedFilesEntry) -> Void) {
+    func snapshot(for configuration: FilesWidgetConfigurationIntent, in context: Context) async -> PinnedFilesEntry {
         if context.isPreview {
-            completion(Self.previewEntry(for: context.family, now: now()))
-            return
+            return Self.previewEntry(for: context.family, selection: configuration.selection, now: now())
         }
 
-        Task {
-            let entry = await entry(for: now())
-            recordProviderDiagnostics(stage: "snapshot", entry: entry)
-            completion(entry)
-        }
+        let entry = await entry(for: now(), selection: configuration.selection)
+        recordProviderDiagnostics(stage: "snapshot", entry: entry)
+        return entry
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedFilesEntry>) -> Void) {
-        Task {
-            completion(await timeline(for: now()))
-        }
+    func timeline(
+        for configuration: FilesWidgetConfigurationIntent,
+        in context: Context
+    ) async -> Timeline<PinnedFilesEntry> {
+        await timeline(for: now(), selection: configuration.selection)
     }
 
-    func timeline(for currentDate: Date) async -> Timeline<PinnedFilesEntry> {
-        let entry = await entry(for: currentDate)
+    func timeline(
+        for currentDate: Date,
+        selection: FileWidgetSelection = .all
+    ) async -> Timeline<PinnedFilesEntry> {
+        let entry = await entry(for: currentDate, selection: selection)
         recordProviderDiagnostics(stage: "timeline", entry: entry)
         guard entry.isAuthenticated else {
             return Timeline(entries: [entry], policy: .after(nextMidnight(from: currentDate)))
@@ -78,7 +83,10 @@ struct PinnedFilesProvider: TimelineProvider {
         return Timeline(entries: [entry], policy: .after(nextUpdate))
     }
 
-    func entry(for date: Date) async -> PinnedFilesEntry {
+    func entry(
+        for date: Date,
+        selection: FileWidgetSelection = .all
+    ) async -> PinnedFilesEntry {
         let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .files)
         let isAuthenticated = dataManager.isAuthenticated()
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
@@ -89,10 +97,11 @@ struct PinnedFilesProvider: TimelineProvider {
             return .notAuthenticated
         }
 
-        var data: WidgetFileData = dataManager.load(for: .files)
+        let storedData: WidgetFileData = dataManager.load(for: .files)
+        var data: WidgetFileData = selection.filter(storedData)
         let decision = WidgetRefreshCoordinator.decision(
             contentType: .files,
-            lastUpdated: hasCachedSnapshot ? data.lastUpdated : nil,
+            lastUpdated: hasCachedSnapshot ? storedData.lastUpdated : nil,
             hasCachedSnapshot: hasCachedSnapshot,
             isAuthenticated: isAuthenticated,
             now: date
@@ -102,11 +111,16 @@ struct PinnedFilesProvider: TimelineProvider {
             do {
                 let refreshed = try await refreshData(date)
                 dataManager.store(refreshed, for: .files)
-                data = refreshed
+                data = selection.filter(refreshed)
             } catch {}
         }
 
-        return PinnedFilesEntry(date: date, data: data, isAuthenticated: true)
+        return PinnedFilesEntry(
+            date: date,
+            data: data,
+            isAuthenticated: true,
+            selection: selection
+        )
     }
 
     private func recordProviderDiagnostics(stage: String, entry: PinnedFilesEntry) {
@@ -129,11 +143,17 @@ struct PinnedFilesProvider: TimelineProvider {
         return calendar.startOfDay(for: tomorrow)
     }
 
-    static func previewEntry(for family: WidgetFamily, now: Date = Date()) -> PinnedFilesEntry {
-        PinnedFilesEntry(
+    static func previewEntry(
+        for family: WidgetFamily,
+        selection: FileWidgetSelection = .all,
+        now: Date = Date()
+    ) -> PinnedFilesEntry {
+        let previewData = selection.filter(WidgetGalleryPreviewContent.files(for: family, now: now))
+        return PinnedFilesEntry(
             date: now,
-            data: WidgetGalleryPreviewContent.files(for: family, now: now),
-            isAuthenticated: true
+            data: previewData,
+            isAuthenticated: true,
+            selection: selection
         )
     }
 }

@@ -7,7 +7,7 @@ struct PinnedNotesWidget: Widget {
     let kind: String = "PinnedNotesWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedNotesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: NotesWidgetConfigurationIntent.self, provider: PinnedNotesProvider()) { entry in
             PinnedNotesWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -41,9 +41,9 @@ struct PinnedNotesWidgetView: View {
     private var noteListView: some View {
         WidgetListLayout(family: family) {
             WidgetHeaderView(
-                title: "Notes",
+                title: entry.selection.headerTitle,
                 totalCount: entry.data.totalCount,
-                destination: URL(string: "sidebar://notes")!,
+                destination: entry.selection.deepLinkURL,
                 reduceTitleForSmall: false,
                 family: family
             )
@@ -60,7 +60,7 @@ struct PinnedNotesWidgetView: View {
         .overlay(alignment: .bottomTrailing) {
             createNoteButton
         }
-        .widgetURL(URL(string: "sidebar://notes"))
+        .widgetURL(entry.selection.deepLinkURL)
     }
 
     private var notesList: some View {
@@ -215,7 +215,7 @@ struct NoteRowView: View {
 #Preview("Small", as: .systemSmall) {
     PinnedNotesWidget()
 } timeline: {
-    PinnedNotesEntry.placeholder
+    PinnedNotesProvider.previewEntry(for: .systemSmall, selection: .all)
 }
 
 #Preview("Medium", as: .systemMedium) {
@@ -233,7 +233,7 @@ struct NoteRowView: View {
 #Preview("Empty", as: .systemMedium) {
     PinnedNotesWidget()
 } timeline: {
-    PinnedNotesEntry(date: Date(), data: .empty, isAuthenticated: true)
+    PinnedNotesEntry(date: Date(), data: .empty, isAuthenticated: true, selection: .all)
 }
 
 #Preview("Not Authenticated", as: .systemMedium) {

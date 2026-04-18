@@ -459,6 +459,39 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertEqual(stored.notes.map(\.path), ["/refreshed.md"])
     }
 
+    func testPinnedNotesProviderFiltersConfiguredFolderSelection() async {
+        let now = Date(timeIntervalSince1970: 25_000)
+        WidgetDataManager.shared.store(
+            WidgetNoteData(
+                notes: [
+                    WidgetNote(id: "/Projects/Launch.md", name: "Launch", path: "/Projects/Launch.md"),
+                    WidgetNote(id: "/Inbox.md", name: "Inbox", path: "/Inbox.md")
+                ],
+                totalCount: 2,
+                lastUpdated: now
+            ),
+            for: .notes
+        )
+        setWidgetAuthenticated(true)
+
+        let provider = PinnedNotesProvider(
+            now: { now },
+            refreshData: { _ in
+                XCTFail("Expected cached snapshot to be reused")
+                return .empty
+            }
+        )
+
+        let entry = await provider.entry(
+            for: now,
+            selection: .folder(path: "/Projects", title: "Projects")
+        )
+
+        XCTAssertEqual(entry.data.notes.map(\.path), ["/Projects/Launch.md"])
+        XCTAssertEqual(entry.data.totalCount, 1)
+        XCTAssertEqual(entry.selection.headerTitle, "Projects")
+    }
+
     func testSavedSitesProviderPreservesCachedDataWhenRefreshFails() async {
         let now = Date(timeIntervalSince1970: 30_000)
         let cached = WidgetWebsiteData(
@@ -481,6 +514,47 @@ final class WidgetProviderRefreshTests: XCTestCase {
         let timeline = await provider.timeline(for: now)
 
         XCTAssertEqual(timeline.entries.first?.data.websites.map(\.id), ["cached-site"])
+    }
+
+    func testSavedSitesProviderFiltersConfiguredDomainSelection() async {
+        let now = Date(timeIntervalSince1970: 35_000)
+        WidgetDataManager.shared.store(
+            WidgetWebsiteData(
+                websites: [
+                    WidgetWebsite(
+                        id: "site-a",
+                        title: "Docs",
+                        url: "https://docs.example.com",
+                        domain: "docs.example.com"
+                    ),
+                    WidgetWebsite(
+                        id: "site-b",
+                        title: "GitHub",
+                        url: "https://github.com",
+                        domain: "github.com"
+                    )
+                ],
+                totalCount: 2,
+                lastUpdated: now
+            ),
+            for: .websites
+        )
+        setWidgetAuthenticated(true)
+
+        let provider = SavedSitesProvider(
+            now: { now },
+            refreshData: { _ in
+                XCTFail("Expected cached snapshot to be reused")
+                return .empty
+            },
+            faviconFetcher: { _ in [:] }
+        )
+
+        let entry = await provider.entry(for: now, selection: .domain("docs.example.com"))
+
+        XCTAssertEqual(entry.data.websites.map(\.id), ["site-a"])
+        XCTAssertEqual(entry.data.totalCount, 1)
+        XCTAssertEqual(entry.selection.headerTitle, "docs.example.com")
     }
 
     func testPinnedFilesProviderRendersCachedDataWhenAuthIsUnavailableButSnapshotExists() async {
@@ -506,6 +580,36 @@ final class WidgetProviderRefreshTests: XCTestCase {
 
         XCTAssertEqual(refreshCallCount, 0)
         XCTAssertEqual(timeline.entries.first?.data.files.map(\.id), ["cached-file"])
+    }
+
+    func testPinnedFilesProviderFiltersConfiguredCategorySelection() async {
+        let now = Date(timeIntervalSince1970: 45_000)
+        WidgetDataManager.shared.store(
+            WidgetFileData(
+                files: [
+                    WidgetFile(id: "file-a", filename: "Report.pdf", sizeBytes: 64, category: "reports"),
+                    WidgetFile(id: "file-b", filename: "Notes.txt", sizeBytes: 32, category: "documents")
+                ],
+                totalCount: 2,
+                lastUpdated: now
+            ),
+            for: .files
+        )
+        setWidgetAuthenticated(true)
+
+        let provider = PinnedFilesProvider(
+            now: { now },
+            refreshData: { _ in
+                XCTFail("Expected cached snapshot to be reused")
+                return .empty
+            }
+        )
+
+        let entry = await provider.entry(for: now, selection: .category(.reports))
+
+        XCTAssertEqual(entry.data.files.map(\.id), ["file-a"])
+        XCTAssertEqual(entry.data.totalCount, 1)
+        XCTAssertEqual(entry.selection.headerTitle, "Reports")
     }
 
     private func makeAPIClient(

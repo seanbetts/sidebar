@@ -137,9 +137,6 @@ Single working list of every known divergence between the design system and the 
 | Widget action intents use bespoke deferred flags (`pendingNewTaskDeepLink`, `pendingNewNoteDeepLink`) rather than routing through the deep link system — target state is to convert all widget action intents to `sidebar://` deep links and let the deep link handler own deferred execution | `AppEnvironment+Widgets.swift`, `TasksViewModel.swift`, `NotesViewModel.swift` | [handoffs](./patterns/handoffs) |
 | Files have no share sheet action — files can only be exported to the Files app via `fileExporter`; sharing a binary file directly via `UIActivityViewController` (to Mail, Messages, AirDrop, etc.) is not supported | `FilesHeaderActions.swift`, `FilesPanel+ContextMenu.swift` | [handoffs](./patterns/handoffs) |
 | Chat conversations cannot be exported or shared — individual messages can be copied but there is no action to share or export a full conversation as text | `ChatView.swift`, `ChatMessageRow.swift` | [handoffs](./patterns/handoffs) |
-| Non-task lock screen widgets are still static configurations — notes, websites, and files have no intent-based customisation for dynamic content selection | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
-| Non-task home screen widgets have no content filtering — notes cannot be filtered by folder, websites by collection, or files by category from widget configuration | `sideBarWidgets/` | [widgets](./platform-strategy/widgets) |
-
 ### AI assistant UI gaps
 
 | Gap | File(s) | Source |

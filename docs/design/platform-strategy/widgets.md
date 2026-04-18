@@ -241,6 +241,15 @@ The task widget family uses an App Intent-backed configuration surface rather th
 - Project and group choices should come from live task catalogs, not hard-coded strings, so the widget configuration UI stays aligned with the user’s current task model.
 - Scoped task widgets should deep link back into the matching project or group in the app instead of always opening the generic Today view.
 
+### Non-task widget configuration
+
+The notes, websites, and files widget families now use App Intent-backed configuration surfaces across both home-screen and lock-screen variants:
+
+- Notes widgets support `All pinned notes` and a specific notes folder. Folder choices come from the live notes tree rather than a static list.
+- Website widgets support `All saved websites` and a specific saved-site domain. Domain choices come from the live websites list and act as the current widget-level collection proxy until first-class website collections exist in the product model.
+- File widgets support `All pinned files` and a specific file category using the same category vocabulary as the files panel.
+- Non-task selections currently deep link back to the owning workspace root rather than a scoped in-app filter route. The widget content itself remains filtered to the configured selection.
+
 ---
 
 ## Interactivity and optimistic updates

@@ -6,21 +6,25 @@ struct PinnedNotesEntry: TimelineEntry {
     let date: Date
     let data: WidgetNoteData
     let isAuthenticated: Bool
+    let selection: NotesWidgetSelection
 
     static let placeholder = PinnedNotesEntry(
         date: Date(),
         data: .placeholder,
-        isAuthenticated: true
+        isAuthenticated: true,
+        selection: .all
     )
 
     static let notAuthenticated = PinnedNotesEntry(
         date: Date(),
         data: .empty,
-        isAuthenticated: false
+        isAuthenticated: false,
+        selection: .all
     )
 }
 
-struct PinnedNotesProvider: TimelineProvider {
+struct PinnedNotesProvider: AppIntentTimelineProvider {
+    typealias Intent = NotesWidgetConfigurationIntent
     typealias Entry = PinnedNotesEntry
 
     private let dataManager: WidgetDataManager
@@ -42,30 +46,31 @@ struct PinnedNotesProvider: TimelineProvider {
     }
 
     func placeholder(in context: Context) -> PinnedNotesEntry {
-        Self.previewEntry(for: context.family, now: now())
+        Self.previewEntry(for: context.family, selection: .all, now: now())
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (PinnedNotesEntry) -> Void) {
+    func snapshot(for configuration: NotesWidgetConfigurationIntent, in context: Context) async -> PinnedNotesEntry {
         if context.isPreview {
-            completion(Self.previewEntry(for: context.family, now: now()))
-            return
+            return Self.previewEntry(for: context.family, selection: configuration.selection, now: now())
         }
 
-        Task {
-            let entry = await entry(for: now())
-            recordProviderDiagnostics(stage: "snapshot", entry: entry)
-            completion(entry)
-        }
+        let entry = await entry(for: now(), selection: configuration.selection)
+        recordProviderDiagnostics(stage: "snapshot", entry: entry)
+        return entry
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedNotesEntry>) -> Void) {
-        Task {
-            completion(await timeline(for: now()))
-        }
+    func timeline(
+        for configuration: NotesWidgetConfigurationIntent,
+        in context: Context
+    ) async -> Timeline<PinnedNotesEntry> {
+        await timeline(for: now(), selection: configuration.selection)
     }
 
-    func timeline(for currentDate: Date) async -> Timeline<PinnedNotesEntry> {
-        let entry = await entry(for: currentDate)
+    func timeline(
+        for currentDate: Date,
+        selection: NotesWidgetSelection = .all
+    ) async -> Timeline<PinnedNotesEntry> {
+        let entry = await entry(for: currentDate, selection: selection)
         recordProviderDiagnostics(stage: "timeline", entry: entry)
         guard entry.isAuthenticated else {
             return Timeline(entries: [entry], policy: .after(nextMidnight(from: currentDate)))
@@ -78,7 +83,10 @@ struct PinnedNotesProvider: TimelineProvider {
         return Timeline(entries: [entry], policy: .after(nextUpdate))
     }
 
-    func entry(for date: Date) async -> PinnedNotesEntry {
+    func entry(
+        for date: Date,
+        selection: NotesWidgetSelection = .all
+    ) async -> PinnedNotesEntry {
         let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .notes)
         let isAuthenticated = dataManager.isAuthenticated()
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
@@ -89,10 +97,11 @@ struct PinnedNotesProvider: TimelineProvider {
             return .notAuthenticated
         }
 
-        var data: WidgetNoteData = dataManager.load(for: .notes)
+        let storedData: WidgetNoteData = dataManager.load(for: .notes)
+        var data: WidgetNoteData = selection.filter(storedData)
         let decision = WidgetRefreshCoordinator.decision(
             contentType: .notes,
-            lastUpdated: hasCachedSnapshot ? data.lastUpdated : nil,
+            lastUpdated: hasCachedSnapshot ? storedData.lastUpdated : nil,
             hasCachedSnapshot: hasCachedSnapshot,
             isAuthenticated: isAuthenticated,
             now: date
@@ -102,11 +111,16 @@ struct PinnedNotesProvider: TimelineProvider {
             do {
                 let refreshed = try await refreshData(date)
                 dataManager.store(refreshed, for: .notes)
-                data = refreshed
+                data = selection.filter(refreshed)
             } catch {}
         }
 
-        return PinnedNotesEntry(date: date, data: data, isAuthenticated: true)
+        return PinnedNotesEntry(
+            date: date,
+            data: data,
+            isAuthenticated: true,
+            selection: selection
+        )
     }
 
     private func recordProviderDiagnostics(stage: String, entry: PinnedNotesEntry) {
@@ -129,11 +143,17 @@ struct PinnedNotesProvider: TimelineProvider {
         return calendar.startOfDay(for: tomorrow)
     }
 
-    static func previewEntry(for family: WidgetFamily, now: Date = Date()) -> PinnedNotesEntry {
-        PinnedNotesEntry(
+    static func previewEntry(
+        for family: WidgetFamily,
+        selection: NotesWidgetSelection = .all,
+        now: Date = Date()
+    ) -> PinnedNotesEntry {
+        let previewData = selection.filter(WidgetGalleryPreviewContent.notes(for: family, now: now))
+        return PinnedNotesEntry(
             date: now,
-            data: WidgetGalleryPreviewContent.notes(for: family, now: now),
-            isAuthenticated: true
+            data: previewData,
+            isAuthenticated: true,
+            selection: selection
         )
     }
 }

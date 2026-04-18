@@ -231,7 +231,7 @@ enum WidgetGalleryPreviewContent {
         filename: "Widget-Review.mov",
         sizeBytes: 22_500_000,
         pinned: true,
-        category: "videos",
+        category: "video",
         recommendedViewer: "viewer_video"
       ),
       WidgetFile(
@@ -239,7 +239,7 @@ enum WidgetGalleryPreviewContent {
         filename: "Metrics.json",
         sizeBytes: 2_800,
         pinned: true,
-        category: "data",
+        category: "other",
         recommendedViewer: "viewer_json"
       ),
       WidgetFile(

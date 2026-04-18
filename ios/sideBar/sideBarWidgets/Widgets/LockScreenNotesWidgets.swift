@@ -9,7 +9,7 @@ struct LockScreenNoteCountWidget: Widget {
     let kind: String = "LockScreenNoteCount"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedNotesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: NotesWidgetConfigurationIntent.self, provider: PinnedNotesProvider()) { entry in
             LockScreenNoteCountView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -35,7 +35,7 @@ struct LockScreenNoteCountView: View {
                         .textCase(.uppercase)
                 }
             }
-            .widgetURL(URL(string: "sidebar://notes"))
+            .widgetURL(entry.selection.deepLinkURL)
         } else {
             ZStack {
                 AccessoryWidgetBackground()
@@ -51,7 +51,7 @@ struct LockScreenNotePreviewWidget: Widget {
     let kind: String = "LockScreenNotePreview"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedNotesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: NotesWidgetConfigurationIntent.self, provider: PinnedNotesProvider()) { entry in
             LockScreenNotePreviewView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -91,7 +91,7 @@ struct LockScreenNotePreviewView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .widgetURL(URL(string: "sidebar://notes"))
+            .widgetURL(entry.selection.deepLinkURL)
         }
     }
 }
@@ -102,7 +102,7 @@ struct LockScreenNotesInlineWidget: Widget {
     let kind: String = "LockScreenNotesInline"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedNotesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: NotesWidgetConfigurationIntent.self, provider: PinnedNotesProvider()) { entry in
             LockScreenNotesInlineView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -136,18 +136,18 @@ struct LockScreenNotesInlineView: View {
 #Preview("Circular", as: .accessoryCircular) {
     LockScreenNoteCountWidget()
 } timeline: {
-    PinnedNotesEntry.placeholder
+    PinnedNotesProvider.previewEntry(for: .accessoryCircular, selection: .all)
 }
 
 #Preview("Rectangular", as: .accessoryRectangular) {
     LockScreenNotePreviewWidget()
 } timeline: {
-    PinnedNotesEntry.placeholder
+    PinnedNotesProvider.previewEntry(for: .accessoryRectangular, selection: .all)
 }
 
 #Preview("Inline", as: .accessoryInline) {
     LockScreenNotesInlineWidget()
 } timeline: {
-    PinnedNotesEntry.placeholder
+    PinnedNotesProvider.previewEntry(for: .accessoryInline, selection: .all)
 }
 #endif

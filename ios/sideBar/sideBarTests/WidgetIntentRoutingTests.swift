@@ -57,20 +57,17 @@ final class WidgetIntentRoutingTests: XCTestCase {
     }
 
     func testPopulatedWidgetsExposeSectionWideTapTargets() throws {
-        XCTAssertEqual(
+        XCTAssertTrue(
             try normalizedWidgetSource(named: "PinnedNotesWidget.swift")
-                .numberOfOccurrences(of: ".widgetURL(URL(string:\"sidebar://notes\"))"),
-            1
+                .contains(".widgetURL(entry.selection.deepLinkURL)")
         )
-        XCTAssertEqual(
+        XCTAssertTrue(
             try normalizedWidgetSource(named: "SavedSitesWidget.swift")
-                .numberOfOccurrences(of: ".widgetURL(URL(string:\"sidebar://websites\"))"),
-            1
+                .contains(".widgetURL(entry.selection.deepLinkURL)")
         )
-        XCTAssertEqual(
+        XCTAssertTrue(
             try normalizedWidgetSource(named: "PinnedFilesWidget.swift")
-                .numberOfOccurrences(of: ".widgetURL(URL(string:\"sidebar://files\"))"),
-            1
+                .contains(".widgetURL(entry.selection.deepLinkURL)")
         )
     }
 
@@ -106,6 +103,55 @@ final class WidgetIntentRoutingTests: XCTestCase {
         )
         XCTAssertTrue(intentSource.contains("structTaskWidgetConfigurationIntent:WidgetConfigurationIntent"))
         XCTAssertTrue(intentSource.contains("enumTaskWidgetScope:"))
+    }
+
+    func testNonTaskWidgetsUseConfigurableAppIntentConfiguration() throws {
+        let notesSource = try normalizedWidgetSource(named: "PinnedNotesWidget.swift")
+        let lockScreenNotesSource = try normalizedWidgetSource(named: "LockScreenNotesWidgets.swift")
+        let websitesSource = try normalizedWidgetSource(named: "SavedSitesWidget.swift")
+        let lockScreenSitesSource = try normalizedWidgetSource(named: "LockScreenSitesWidgets.swift")
+        let filesSource = try normalizedWidgetSource(named: "PinnedFilesWidget.swift")
+        let lockScreenFilesSource = try normalizedWidgetSource(named: "LockScreenFilesWidgets.swift")
+        let noteIntentSource = try normalizedWidgetNoteIntentsSource()
+        let websiteIntentSource = try normalizedWidgetWebsiteIntentsSource()
+        let fileIntentSource = try normalizedWidgetFileIntentsSource()
+
+        XCTAssertTrue(
+            notesSource.contains(
+                "AppIntentConfiguration(kind:kind,intent:NotesWidgetConfigurationIntent.self,provider:PinnedNotesProvider())"
+            )
+        )
+        XCTAssertTrue(
+            lockScreenNotesSource.contains(
+                "AppIntentConfiguration(kind:kind,intent:NotesWidgetConfigurationIntent.self,provider:PinnedNotesProvider())"
+            )
+        )
+        XCTAssertTrue(
+            websitesSource.contains(
+                "AppIntentConfiguration(kind:kind,intent:WebsitesWidgetConfigurationIntent.self,provider:SavedSitesProvider())"
+            )
+        )
+        XCTAssertTrue(
+            lockScreenSitesSource.contains(
+                "AppIntentConfiguration(kind:kind,intent:WebsitesWidgetConfigurationIntent.self,provider:SavedSitesProvider())"
+            )
+        )
+        XCTAssertTrue(
+            filesSource.contains(
+                "AppIntentConfiguration(kind:kind,intent:FilesWidgetConfigurationIntent.self,provider:PinnedFilesProvider())"
+            )
+        )
+        XCTAssertTrue(
+            lockScreenFilesSource.contains(
+                "AppIntentConfiguration(kind:kind,intent:FilesWidgetConfigurationIntent.self,provider:PinnedFilesProvider())"
+            )
+        )
+        XCTAssertTrue(noteIntentSource.contains("structNotesWidgetConfigurationIntent:WidgetConfigurationIntent"))
+        XCTAssertTrue(noteIntentSource.contains("enumNotesWidgetScope:"))
+        XCTAssertTrue(websiteIntentSource.contains("structWebsitesWidgetConfigurationIntent:WidgetConfigurationIntent"))
+        XCTAssertTrue(websiteIntentSource.contains("enumWebsiteWidgetScope:"))
+        XCTAssertTrue(fileIntentSource.contains("structFilesWidgetConfigurationIntent:WidgetConfigurationIntent"))
+        XCTAssertTrue(fileIntentSource.contains("enumFileWidgetScope:"))
     }
 
     func testIngestionLiveActivityUsesBrandedAppLogoInsteadOfGenericDocumentSymbol() throws {
@@ -161,6 +207,18 @@ private func normalizedWidgetWebsiteIntentsSource(
 ) throws -> String {
     try widgetSource(
         at: ["sideBarWidgets", "Intents", "WebsiteIntents.swift"],
+        file: file,
+        line: line
+    )
+    .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+}
+
+private func normalizedWidgetFileIntentsSource(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> String {
+    try widgetSource(
+        at: ["sideBarWidgets", "Intents", "FileIntents.swift"],
         file: file,
         line: line
     )

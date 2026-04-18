@@ -9,7 +9,7 @@ struct LockScreenFileCountWidget: Widget {
     let kind: String = "LockScreenFileCount"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedFilesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: FilesWidgetConfigurationIntent.self, provider: PinnedFilesProvider()) { entry in
             LockScreenFileCountView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -35,7 +35,7 @@ struct LockScreenFileCountView: View {
                         .textCase(.uppercase)
                 }
             }
-            .widgetURL(URL(string: "sidebar://files"))
+            .widgetURL(entry.selection.deepLinkURL)
         } else {
             ZStack {
                 AccessoryWidgetBackground()
@@ -51,7 +51,7 @@ struct LockScreenFilePreviewWidget: Widget {
     let kind: String = "LockScreenFilePreview"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedFilesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: FilesWidgetConfigurationIntent.self, provider: PinnedFilesProvider()) { entry in
             LockScreenFilePreviewView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -91,7 +91,7 @@ struct LockScreenFilePreviewView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .widgetURL(URL(string: "sidebar://files"))
+            .widgetURL(entry.selection.deepLinkURL)
         }
     }
 
@@ -108,7 +108,7 @@ struct LockScreenFilesInlineWidget: Widget {
     let kind: String = "LockScreenFilesInline"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedFilesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: FilesWidgetConfigurationIntent.self, provider: PinnedFilesProvider()) { entry in
             LockScreenFilesInlineView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -142,18 +142,18 @@ struct LockScreenFilesInlineView: View {
 #Preview("Circular", as: .accessoryCircular) {
     LockScreenFileCountWidget()
 } timeline: {
-    PinnedFilesEntry.placeholder
+    PinnedFilesProvider.previewEntry(for: .accessoryCircular, selection: .all)
 }
 
 #Preview("Rectangular", as: .accessoryRectangular) {
     LockScreenFilePreviewWidget()
 } timeline: {
-    PinnedFilesEntry.placeholder
+    PinnedFilesProvider.previewEntry(for: .accessoryRectangular, selection: .all)
 }
 
 #Preview("Inline", as: .accessoryInline) {
     LockScreenFilesInlineWidget()
 } timeline: {
-    PinnedFilesEntry.placeholder
+    PinnedFilesProvider.previewEntry(for: .accessoryInline, selection: .all)
 }
 #endif

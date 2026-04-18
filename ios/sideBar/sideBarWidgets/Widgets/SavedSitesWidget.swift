@@ -7,7 +7,7 @@ struct SavedSitesWidget: Widget {
     let kind: String = "SavedSitesWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: SavedSitesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: WebsitesWidgetConfigurationIntent.self, provider: SavedSitesProvider()) { entry in
             SavedSitesWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -41,9 +41,9 @@ struct SavedSitesWidgetView: View {
     private var siteListView: some View {
         WidgetListLayout(family: family) {
             WidgetHeaderView(
-                title: "Websites",
+                title: entry.selection.headerTitle,
                 totalCount: entry.data.totalCount,
-                destination: URL(string: "sidebar://websites")!,
+                destination: entry.selection.deepLinkURL,
                 reduceTitleForSmall: true,
                 family: family
             )
@@ -57,7 +57,7 @@ struct SavedSitesWidgetView: View {
                 Spacer()
             }
         }
-        .widgetURL(URL(string: "sidebar://websites"))
+        .widgetURL(entry.selection.deepLinkURL)
     }
 
     private var sitesList: some View {
@@ -182,25 +182,31 @@ struct SiteRowView: View {
 #Preview("Small", as: .systemSmall) {
     SavedSitesWidget()
 } timeline: {
-    SavedSitesEntry.placeholder
+    SavedSitesProvider.previewEntry(for: .systemSmall, selection: .all)
 }
 
 #Preview("Medium", as: .systemMedium) {
     SavedSitesWidget()
 } timeline: {
-    SavedSitesEntry.placeholder
+    SavedSitesProvider.previewEntry(for: .systemMedium, selection: .all)
 }
 
 #Preview("Large", as: .systemLarge) {
     SavedSitesWidget()
 } timeline: {
-    SavedSitesEntry.placeholder
+    SavedSitesProvider.previewEntry(for: .systemLarge, selection: .all)
 }
 
 #Preview("Empty", as: .systemMedium) {
     SavedSitesWidget()
 } timeline: {
-    SavedSitesEntry(date: Date(), data: .empty, isAuthenticated: true, faviconDataByWebsiteId: [:])
+    SavedSitesEntry(
+        date: Date(),
+        data: .empty,
+        isAuthenticated: true,
+        faviconDataByWebsiteId: [:],
+        selection: .all
+    )
 }
 
 #Preview("Not Authenticated", as: .systemMedium) {

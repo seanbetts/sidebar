@@ -7,7 +7,7 @@ struct PinnedFilesWidget: Widget {
     let kind: String = "PinnedFilesWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: PinnedFilesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: FilesWidgetConfigurationIntent.self, provider: PinnedFilesProvider()) { entry in
             PinnedFilesWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -41,9 +41,9 @@ struct PinnedFilesWidgetView: View {
     private var fileListView: some View {
         WidgetListLayout(family: family) {
             WidgetHeaderView(
-                title: "Files",
+                title: entry.selection.headerTitle,
                 totalCount: entry.data.totalCount,
-                destination: URL(string: "sidebar://files")!,
+                destination: entry.selection.deepLinkURL,
                 reduceTitleForSmall: false,
                 family: family
             )
@@ -57,7 +57,7 @@ struct PinnedFilesWidgetView: View {
                 Spacer()
             }
         }
-        .widgetURL(URL(string: "sidebar://files"))
+        .widgetURL(entry.selection.deepLinkURL)
     }
 
     private var filesList: some View {
@@ -185,25 +185,25 @@ struct FileRowView: View {
 #Preview("Small", as: .systemSmall) {
     PinnedFilesWidget()
 } timeline: {
-    PinnedFilesEntry.placeholder
+    PinnedFilesProvider.previewEntry(for: .systemSmall, selection: .all)
 }
 
 #Preview("Medium", as: .systemMedium) {
     PinnedFilesWidget()
 } timeline: {
-    PinnedFilesEntry.placeholder
+    PinnedFilesProvider.previewEntry(for: .systemMedium, selection: .all)
 }
 
 #Preview("Large", as: .systemLarge) {
     PinnedFilesWidget()
 } timeline: {
-    PinnedFilesEntry.placeholder
+    PinnedFilesProvider.previewEntry(for: .systemLarge, selection: .all)
 }
 
 #Preview("Empty", as: .systemMedium) {
     PinnedFilesWidget()
 } timeline: {
-    PinnedFilesEntry(date: Date(), data: .empty, isAuthenticated: true)
+    PinnedFilesEntry(date: Date(), data: .empty, isAuthenticated: true, selection: .all)
 }
 
 #Preview("Not Authenticated", as: .systemMedium) {

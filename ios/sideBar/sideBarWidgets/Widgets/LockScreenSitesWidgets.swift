@@ -9,7 +9,7 @@ struct LockScreenSiteCountWidget: Widget {
     let kind: String = "LockScreenSiteCount"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: SavedSitesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: WebsitesWidgetConfigurationIntent.self, provider: SavedSitesProvider()) { entry in
             LockScreenSiteCountView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -35,7 +35,7 @@ struct LockScreenSiteCountView: View {
                         .textCase(.uppercase)
                 }
             }
-            .widgetURL(URL(string: "sidebar://websites"))
+            .widgetURL(entry.selection.deepLinkURL)
         } else {
             ZStack {
                 AccessoryWidgetBackground()
@@ -51,7 +51,7 @@ struct LockScreenSitePreviewWidget: Widget {
     let kind: String = "LockScreenSitePreview"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: SavedSitesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: WebsitesWidgetConfigurationIntent.self, provider: SavedSitesProvider()) { entry in
             LockScreenSitePreviewView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -94,7 +94,7 @@ struct LockScreenSitePreviewView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .widgetURL(URL(string: "sidebar://websites"))
+            .widgetURL(entry.selection.deepLinkURL)
         }
     }
 }
@@ -105,7 +105,7 @@ struct LockScreenSitesInlineWidget: Widget {
     let kind: String = "LockScreenSitesInline"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: SavedSitesProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: WebsitesWidgetConfigurationIntent.self, provider: SavedSitesProvider()) { entry in
             LockScreenSitesInlineView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -139,18 +139,18 @@ struct LockScreenSitesInlineView: View {
 #Preview("Circular", as: .accessoryCircular) {
     LockScreenSiteCountWidget()
 } timeline: {
-    SavedSitesEntry.placeholder
+    SavedSitesProvider.previewEntry(for: .accessoryCircular, selection: .all)
 }
 
 #Preview("Rectangular", as: .accessoryRectangular) {
     LockScreenSitePreviewWidget()
 } timeline: {
-    SavedSitesEntry.placeholder
+    SavedSitesProvider.previewEntry(for: .accessoryRectangular, selection: .all)
 }
 
 #Preview("Inline", as: .accessoryInline) {
     LockScreenSitesInlineWidget()
 } timeline: {
-    SavedSitesEntry.placeholder
+    SavedSitesProvider.previewEntry(for: .accessoryInline, selection: .all)
 }
 #endif
