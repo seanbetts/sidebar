@@ -177,6 +177,7 @@ extension ConversationsPanelView {
                             )
                             }
                         )
+                        .accessibilityIdentifier("chat-conversation-row-\(conversation.id)")
                         .sidebarListSwipeActions(
                             leadingTitle: "Rename",
                             onLeading: { beginRename(conversation) },

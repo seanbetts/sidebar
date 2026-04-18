@@ -166,18 +166,12 @@ final class SideBarUITests: XCTestCase {
         if waitForHittable(newChatButton, timeout: 8) {
             newChatButton.tap()
         } else {
-            let conversationTitle = seededConversationTitle()
-            let conversationRow = app.staticTexts[conversationTitle]
-            if waitForHittable(conversationRow, timeout: 8) {
-                conversationRow.tap()
-            } else {
-                let anyConversationCell = app.cells.firstMatch
-                if waitForHittable(anyConversationCell, timeout: 8) {
-                    anyConversationCell.tap()
-                } else {
-                    XCTFail("Could not reach chat detail view from Chat tab.")
-                }
-            }
+            let conversationRow = resolveSeededConversationRow(in: app)
+            XCTAssertTrue(
+                waitForHittable(conversationRow, timeout: 8),
+                "Seeded chat row did not appear in chat list."
+            )
+            conversationRow.tap()
         }
 
         XCTAssertTrue(

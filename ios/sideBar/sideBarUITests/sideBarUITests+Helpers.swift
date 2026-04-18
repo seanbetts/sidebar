@@ -9,6 +9,13 @@ import Foundation
 import XCTest
 
 extension SideBarUITests {
+    func resolveSeededConversationRow(in app: XCUIApplication) -> XCUIElement {
+        let identifierPrefix = "chat-conversation-row-"
+        let predicate = NSPredicate(format: "identifier BEGINSWITH %@", identifierPrefix)
+        let rows = app.descendants(matching: .any).matching(predicate)
+        return rows.firstMatch
+    }
+
     func seededConversationTitle() -> String {
         let environment = ProcessInfo.processInfo.environment
         if let title = environment[SideBarUITestConstants.uiTestChatConversationTitleKey]?.trimmingCharacters(
