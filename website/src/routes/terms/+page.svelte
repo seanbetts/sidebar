@@ -141,13 +141,31 @@
 
     <section>
       <h2>5. Acceptable use</h2>
+      <p>
+        This section is our Acceptable Use Policy. It applies to everyone who uses sideBar,
+        including the app, web app, AI features, and any Store skills you install.
+      </p>
+
+      <h3>What you must not do</h3>
       <p>You agree not to use the Service to:</p>
       <ul>
         <li>Break any applicable law or regulation</li>
         <li>Infringe anyone else's intellectual property, privacy, or other rights</li>
         <li>
-          Generate or distribute content that is illegal, sexually exploitative of minors, harmful,
-          harassing, defamatory, or designed to deceive
+          Generate, store, or distribute content that is illegal, sexually exploitative of minors,
+          harmful, harassing, threatening, defamatory, hateful, or designed to deceive
+        </li>
+        <li>
+          Generate content designed to facilitate violence, self-harm, the creation of weapons, or
+          attacks on critical infrastructure
+        </li>
+        <li>
+          Use AI features to impersonate a real person, produce non-consensual intimate imagery, or
+          generate deceptive political or electoral content
+        </li>
+        <li>
+          Upload malware, scripts, or files intended to damage, disable, or gain unauthorised access
+          to any system
         </li>
         <li>Attempt to reverse engineer, scrape, or extract source code from the Service</li>
         <li>Resell, sublicense, or provide the Service to third parties as a hosted offering</li>
@@ -161,12 +179,27 @@
         </li>
         <li>Use the Service to build a competing product or to train another AI system</li>
         <li>
-          Use automated agents to generate high volumes of requests beyond normal personal use
+          Use bots, scrapers, or other automated agents to access the Service or generate high
+          volumes of requests beyond normal personal use
+        </li>
+        <li>
+          Misuse Store skills or third-party integrations (for example, to send spam, harvest
+          contacts, or access accounts you do not own)
         </li>
       </ul>
+
+      <h3>Consequences of breaking these rules</h3>
       <p>
-        If you break these rules we may suspend or close your account. Where reasonable we will try
-        to warn you first.
+        If you break these rules we may, depending on the severity and the circumstances: issue a
+        warning; restrict specific features for your account; suspend your account; or permanently
+        close your account. For serious or repeat violations, or where we are required to by law,
+        we may act without prior warning and without refund. We may also report conduct to law
+        enforcement or affected third parties where appropriate.
+      </p>
+      <p>
+        If you believe your account has been restricted or closed in error, or you want to report
+        someone else's misuse of the Service, contact
+        <a href="mailto:support@trysidebar.ai">support@trysidebar.ai</a>.
       </p>
     </section>
 

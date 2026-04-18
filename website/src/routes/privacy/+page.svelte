@@ -21,7 +21,7 @@
   <div class="page-inner">
     <header>
       <h1>Privacy Policy</h1>
-      <p class="meta">Last updated: 11 April 2026</p>
+      <p class="meta">Last updated: 18 April 2026</p>
     </header>
 
     <section>
@@ -267,7 +267,52 @@
     </section>
 
     <section>
-      <h2>8. Security</h2>
+      <h2>8. Cookies and Browser Storage</h2>
+      <p>
+        sideBar does not set advertising cookies and does not use third-party tracking cookies. The
+        Service relies on browser storage (localStorage, sessionStorage, and a small number of
+        first-party cookies set by our infrastructure providers) purely to keep you signed in and to
+        remember your preferences.
+      </p>
+
+      <h3>What we store in your browser</h3>
+      <ul>
+        <li>
+          <strong>Authentication tokens</strong>: set by Supabase so you stay signed in between
+          visits. Cleared when you sign out or when the session expires.
+        </li>
+        <li>
+          <strong>Theme and layout preferences</strong>: your light/dark theme choice and sidebar
+          layout, so the app looks the way you left it.
+        </li>
+        <li>
+          <strong>Weather and location preferences</strong>: cached weather data, your Fahrenheit or
+          Celsius choice, and a short-lived cache of your location if you granted permission, so the
+          header does not have to re-fetch on every load.
+        </li>
+        <li>
+          <strong>Infrastructure cookies</strong>: essential first-party cookies set by Cloudflare
+          and Fly.io for security, bot protection, and request routing.
+        </li>
+      </ul>
+
+      <p>
+        All of this storage is essential or functional. We do not use browser storage for
+        advertising, cross-site tracking, or analytics that profile you across other websites.
+        Because the storage is limited to what the Service needs to function, a cookie consent
+        banner is not required under UK and EU ePrivacy rules, but this section explains what is
+        happening so you can make an informed choice.
+      </p>
+
+      <p>
+        You can clear this data at any time through your browser settings. Clearing it will sign
+        you out and reset your preferences. On our iOS and macOS apps, equivalent local data is
+        stored in the app container and is removed when you delete the app or sign out.
+      </p>
+    </section>
+
+    <section>
+      <h2>9. Security</h2>
       <p>
         We use industry-standard measures to protect your data, including encryption in transit
         (TLS), encryption at rest for sensitive data, certificate pinning on our apps, encrypted
@@ -277,7 +322,7 @@
     </section>
 
     <section>
-      <h2>9. Your Rights</h2>
+      <h2>10. Your Rights</h2>
       <p>Depending on where you live, you may have the right to:</p>
       <ul>
         <li>Access the personal data we hold about you</li>
@@ -299,7 +344,7 @@
     </section>
 
     <section>
-      <h2>10. Account and Data Deletion</h2>
+      <h2>11. Account and Data Deletion</h2>
       <p>
         You can request deletion of your account and associated content by emailing
         <a href="mailto:support@trysidebar.ai">support@trysidebar.ai</a> from your account email.
@@ -309,7 +354,7 @@
     </section>
 
     <section>
-      <h2>11. Children's Privacy</h2>
+      <h2>12. Children's Privacy</h2>
       <p>
         sideBar is intended for users aged 18 and over. It is not designed for children or
         teenagers, and we do not knowingly collect personal data from anyone under 18.
@@ -322,7 +367,7 @@
     </section>
 
     <section>
-      <h2>12. Changes to This Policy</h2>
+      <h2>13. Changes to This Policy</h2>
       <p>
         We may update this Privacy Policy from time to time. If we make material changes, we will
         post the updated policy here and revise the "Last updated" date above. For significant
@@ -331,7 +376,7 @@
     </section>
 
     <section>
-      <h2>13. Contact</h2>
+      <h2>14. Contact</h2>
       <p>
         sideBar Labs Limited, a company registered in England and Wales under company number
         17137829. ICO registration number ZC116277. Registered office: 66 Paul Street, London,
