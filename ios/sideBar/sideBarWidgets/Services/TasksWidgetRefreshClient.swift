@@ -16,7 +16,23 @@ struct TasksWidgetRefreshClient {
         previousSnapshot: WidgetTaskData,
         now: Date = Date()
     ) async throws -> WidgetTaskData {
-        let response: TasksWidgetTodayResponse = try await apiClient.request("tasks/lists/today")
+        try await refreshTasks(previousSnapshot: previousSnapshot, selection: .today, now: now)
+    }
+
+    func refreshTasks(
+        previousSnapshot: WidgetTaskData,
+        selection: TaskWidgetSelection,
+        now: Date = Date()
+    ) async throws -> WidgetTaskData {
+        let response: TasksWidgetTodayResponse
+        switch selection {
+        case .today:
+            response = try await apiClient.request("tasks/lists/today")
+        case .project(let id, _):
+            response = try await apiClient.request("tasks/projects/\(id)/tasks")
+        case .group(let id, _):
+            response = try await apiClient.request("tasks/groups/\(id)/tasks")
+        }
         let projectTitleById = Dictionary(
             uniqueKeysWithValues: (response.projects ?? []).map { ($0.id, $0.title) }
         )

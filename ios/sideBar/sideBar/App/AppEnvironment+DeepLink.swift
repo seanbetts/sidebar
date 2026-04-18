@@ -79,6 +79,22 @@ extension AppEnvironment {
                 pendingNewTaskDeepLink = false
                 tasksViewModel.startNewTask()
             }
+        } else if let projectId = taskScopedSelectionID(in: url, prefix: "/project/") {
+            let selection = TaskSelection.project(id: projectId)
+            Task {
+                await tasksViewModel.load(selection: selection, force: true)
+            }
+            #if !os(macOS)
+            tasksPhoneDetailRouteId = selection.cacheKey
+            #endif
+        } else if let groupId = taskScopedSelectionID(in: url, prefix: "/group/") {
+            let selection = TaskSelection.group(id: groupId)
+            Task {
+                await tasksViewModel.load(selection: selection, force: true)
+            }
+            #if !os(macOS)
+            tasksPhoneDetailRouteId = selection.cacheKey
+            #endif
         }
     }
 
@@ -193,8 +209,20 @@ extension AppEnvironment {
         case "/today":
             return "Opened Tasks Today via Deep Link"
         default:
+            if path.hasPrefix("/project/") {
+                return "Opened Task Project via Deep Link"
+            }
+            if path.hasPrefix("/group/") {
+                return "Opened Task Group via Deep Link"
+            }
             return "Opened Tasks via Deep Link"
         }
+    }
+
+    private func taskScopedSelectionID(in url: URL, prefix: String) -> String? {
+        guard url.path.hasPrefix(prefix) else { return nil }
+        let rawID = String(url.path.dropFirst(prefix.count))
+        return rawID.isEmpty ? nil : rawID
     }
 
     private func websiteSaveURL(from deepLink: URL) -> String? {

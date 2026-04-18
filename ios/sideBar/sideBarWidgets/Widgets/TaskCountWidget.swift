@@ -6,7 +6,7 @@ struct TaskCountWidget: Widget {
     let kind: String = "TaskCountWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: TodayTasksProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: TaskWidgetConfigurationIntent.self, provider: TodayTasksProvider()) { entry in
             TaskCountWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -59,7 +59,7 @@ struct TaskCountWidgetView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .widgetURL(URL(string: "sidebar://tasks/today"))
+        .widgetURL(entry.selection.deepLinkURL)
     }
 
     private var completionProgress: CGFloat {
@@ -83,5 +83,5 @@ struct TaskCountWidgetView: View {
 #Preview("Empty", as: .systemSmall) {
     TaskCountWidget()
 } timeline: {
-    TodayTasksEntry(date: Date(), data: .empty, isAuthenticated: true)
+    TodayTasksEntry(date: Date(), data: .empty, isAuthenticated: true, selection: .today)
 }

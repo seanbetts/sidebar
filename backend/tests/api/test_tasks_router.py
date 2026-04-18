@@ -217,6 +217,35 @@ def test_tasks_group_and_project_payloads(test_client, test_db):
     assert any(item["title"] == "Vacuum" for item in project_payload["tasks"])
 
 
+def test_tasks_group_and_project_catalog_routes(test_client, test_db):
+    group = TaskGroup(
+        user_id=TEST_USER_ID,
+        title="Home",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(group)
+    test_db.flush()
+    project = TaskProject(
+        user_id=TEST_USER_ID,
+        title="Household",
+        group_id=group.id,
+        status="active",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(project)
+    test_db.commit()
+
+    groups_response = test_client.get("/api/v1/tasks/groups", headers=_auth_headers())
+    assert groups_response.status_code == 200
+    assert any(item["title"] == "Home" for item in groups_response.json())
+
+    projects_response = test_client.get("/api/v1/tasks/projects", headers=_auth_headers())
+    assert projects_response.status_code == 200
+    assert any(item["title"] == "Household" for item in projects_response.json())
+
+
 def test_tasks_apply_idempotent(test_client, test_db):
     request = {"op": "add", "title": "New Task", "operation_id": "op-1"}
     response = test_client.post(

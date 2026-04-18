@@ -7,7 +7,7 @@ struct TodayTasksWidget: Widget {
     let kind: String = "TodayTasksWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: TodayTasksProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: TaskWidgetConfigurationIntent.self, provider: TodayTasksProvider()) { entry in
             TodayTasksWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -56,7 +56,8 @@ struct TodayTasksWidgetView: View {
                     task: task,
                     compact: isCompact,
                     standBy: usesStandByLayout,
-                    showSubtitle: showSubtitle
+                    showSubtitle: showSubtitle,
+                    selection: entry.selection
                 )
             }
         }
@@ -65,9 +66,9 @@ struct TodayTasksWidgetView: View {
     private var standardTaskListView: some View {
         WidgetListLayout(family: family) {
             WidgetHeaderView(
-                title: "Tasks",
+                title: entry.selection.headerTitle,
                 totalCount: entry.data.totalCount,
-                destination: URL(string: "sidebar://tasks/today")!,
+                destination: entry.selection.deepLinkURL,
                 reduceTitleForSmall: false,
                 family: family
             )
@@ -84,13 +85,13 @@ struct TodayTasksWidgetView: View {
         .overlay(alignment: .bottomTrailing) {
             addTaskButton
         }
-        .widgetURL(URL(string: "sidebar://tasks/today"))
+        .widgetURL(entry.selection.deepLinkURL)
     }
 
     private var standByTaskListView: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("Today")
+                Text(entry.selection.standByTitle)
                     .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .lineLimit(1)
 
@@ -112,7 +113,7 @@ struct TodayTasksWidgetView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(URL(string: "sidebar://tasks/today"))
+        .widgetURL(entry.selection.deepLinkURL)
     }
 
     private var visibleTasks: [WidgetTask] {
@@ -234,7 +235,7 @@ struct TodayTasksWidgetView: View {
                     title: "All done!",
                     subtitle: "No tasks for today",
                     iconSystemName: "checkmark.circle",
-                    destination: URL(string: "sidebar://tasks/today")!,
+                    destination: entry.selection.deepLinkURL,
                     accentIcon: false
                 ) {
                     addTaskButton
@@ -261,7 +262,7 @@ struct TodayTasksWidgetView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(URL(string: "sidebar://tasks/today"))
+        .widgetURL(entry.selection.deepLinkURL)
     }
 
     // MARK: - Not Authenticated
@@ -278,12 +279,13 @@ struct TaskRowView: View {
     let compact: Bool
     let standBy: Bool
     let showSubtitle: Bool
+    let selection: TaskWidgetSelection
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 8) {
             // Interactive checkbox button
-            Button(intent: CompleteTaskIntent(taskId: task.id)) {
+            Button(intent: CompleteTaskIntent(taskId: task.id, selectionKey: selection.cacheKey)) {
                 checkboxIcon
             }
             .buttonStyle(.plain)
@@ -345,25 +347,25 @@ struct TaskRowView: View {
 #Preview("Small", as: .systemSmall) {
     TodayTasksWidget()
 } timeline: {
-    TodayTasksEntry.placeholder
+    TodayTasksProvider.previewEntry(for: .systemSmall, selection: .today)
 }
 
 #Preview("Medium", as: .systemMedium) {
     TodayTasksWidget()
 } timeline: {
-    TodayTasksEntry.placeholder
+    TodayTasksProvider.previewEntry(for: .systemMedium, selection: .today)
 }
 
 #Preview("Large", as: .systemLarge) {
     TodayTasksWidget()
 } timeline: {
-    TodayTasksEntry.placeholder
+    TodayTasksProvider.previewEntry(for: .systemLarge, selection: .today)
 }
 
 #Preview("Empty", as: .systemMedium) {
     TodayTasksWidget()
 } timeline: {
-    TodayTasksEntry(date: Date(), data: .empty, isAuthenticated: true)
+    TodayTasksEntry(date: Date(), data: .empty, isAuthenticated: true, selection: .today)
 }
 
 #Preview("Not Authenticated", as: .systemMedium) {

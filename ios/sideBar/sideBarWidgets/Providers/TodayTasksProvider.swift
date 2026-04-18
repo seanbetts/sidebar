@@ -6,26 +6,30 @@ struct TodayTasksEntry: TimelineEntry {
     let date: Date
     let data: WidgetTaskData
     let isAuthenticated: Bool
+    let selection: TaskWidgetSelection
 
     static let placeholder = TodayTasksEntry(
         date: Date(),
         data: .placeholder,
-        isAuthenticated: true
+        isAuthenticated: true,
+        selection: .today
     )
 
     static let notAuthenticated = TodayTasksEntry(
         date: Date(),
         data: .empty,
-        isAuthenticated: false
+        isAuthenticated: false,
+        selection: .today
     )
 }
 
-struct TodayTasksProvider: TimelineProvider {
+struct TodayTasksProvider: AppIntentTimelineProvider {
+    typealias Intent = TaskWidgetConfigurationIntent
     typealias Entry = TodayTasksEntry
 
     private let dataManager: WidgetDataManager
     private let now: () -> Date
-    private let refreshData: @Sendable (WidgetTaskData, Date) async throws -> WidgetTaskData
+    private let refreshData: @Sendable (WidgetTaskData, TaskWidgetSelection, Date) async throws -> WidgetTaskData
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -38,10 +42,14 @@ struct TodayTasksProvider: TimelineProvider {
     init(
         dataManager: WidgetDataManager = .shared,
         now: @escaping () -> Date = Date.init,
-        refreshData: @escaping @Sendable (WidgetTaskData, Date) async throws -> WidgetTaskData = { cached, currentDate in
+        refreshData: @escaping @Sendable (
+            WidgetTaskData,
+            TaskWidgetSelection,
+            Date
+        ) async throws -> WidgetTaskData = { cached, selection, currentDate in
             let environment = try WidgetAPIEnvironment()
             return try await TasksWidgetRefreshClient(environment: environment)
-                .refreshTodayTasks(previousSnapshot: cached, now: currentDate)
+                .refreshTasks(previousSnapshot: cached, selection: selection, now: currentDate)
         }
     ) {
         self.dataManager = dataManager
@@ -50,30 +58,25 @@ struct TodayTasksProvider: TimelineProvider {
     }
 
     func placeholder(in context: Context) -> TodayTasksEntry {
-        Self.previewEntry(for: context.family, now: now())
+        Self.previewEntry(for: context.family, selection: .today, now: now())
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (TodayTasksEntry) -> Void) {
+    func snapshot(for configuration: TaskWidgetConfigurationIntent, in context: Context) async -> TodayTasksEntry {
         if context.isPreview {
-            completion(Self.previewEntry(for: context.family, now: now()))
-            return
+            return Self.previewEntry(for: context.family, selection: configuration.selection, now: now())
         }
 
-        Task {
-            let entry = await entry(for: now())
-            recordProviderDiagnostics(stage: "snapshot", entry: entry)
-            completion(entry)
-        }
+        let entry = await entry(for: now(), selection: configuration.selection)
+        recordProviderDiagnostics(stage: "snapshot", entry: entry)
+        return entry
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<TodayTasksEntry>) -> Void) {
-        Task {
-            completion(await timeline(for: now()))
-        }
+    func timeline(for configuration: TaskWidgetConfigurationIntent, in context: Context) async -> Timeline<TodayTasksEntry> {
+        await timeline(for: now(), selection: configuration.selection)
     }
 
-    func timeline(for currentDate: Date) async -> Timeline<TodayTasksEntry> {
-        let entry = await entry(for: currentDate)
+    func timeline(for currentDate: Date, selection: TaskWidgetSelection = .today) async -> Timeline<TodayTasksEntry> {
+        let entry = await entry(for: currentDate, selection: selection)
         guard entry.isAuthenticated else {
             recordProviderDiagnostics(stage: "timeline", entry: entry)
             return Timeline(entries: [entry], policy: .after(nextMidnight(from: currentDate)))
@@ -111,7 +114,8 @@ struct TodayTasksProvider: TimelineProvider {
                 TodayTasksEntry(
                     date: boundaryDate,
                     data: entry.data,
-                    isAuthenticated: true
+                    isAuthenticated: true,
+                    selection: entry.selection
                 )
             )
         }
@@ -122,8 +126,8 @@ struct TodayTasksProvider: TimelineProvider {
         return Timeline(entries: entries, policy: .after(nextRefresh))
     }
 
-    func entry(for date: Date) async -> TodayTasksEntry {
-        let hasCachedSnapshot = dataManager.hasStoredSnapshot(for: .tasks)
+    func entry(for date: Date, selection: TaskWidgetSelection = .today) async -> TodayTasksEntry {
+        let hasCachedSnapshot = dataManager.hasStoredTaskSnapshot(for: selection)
         let isAuthenticated = dataManager.isAuthenticated()
         let canDisplayContent = WidgetDisplayAuthorization.canDisplayContent(
             isAuthenticated: isAuthenticated,
@@ -133,7 +137,7 @@ struct TodayTasksProvider: TimelineProvider {
             return .notAuthenticated
         }
 
-        var data = dataManager.loadTodayTasks()
+        var data = dataManager.loadTaskData(for: selection)
         let decision = WidgetRefreshCoordinator.decision(
             contentType: .tasks,
             lastUpdated: hasCachedSnapshot ? data.lastUpdated : nil,
@@ -144,7 +148,7 @@ struct TodayTasksProvider: TimelineProvider {
 
         if decision.shouldAttemptRefresh {
             do {
-                let refreshed = try await refreshData(data, date)
+                let refreshed = try await refreshData(data, selection, date)
                 let pending = dataManager.loadPendingOperations(
                     for: .tasks,
                     actionType: TaskWidgetAction.self
@@ -153,12 +157,12 @@ struct TodayTasksProvider: TimelineProvider {
                     to: refreshed,
                     pendingOperations: pending
                 )
-                dataManager.store(overlaid, for: .tasks)
+                dataManager.storeTaskData(overlaid, for: selection)
                 data = overlaid
             } catch {}
         }
 
-        return TodayTasksEntry(date: date, data: data, isAuthenticated: true)
+        return TodayTasksEntry(date: date, data: data, isAuthenticated: true, selection: selection)
     }
 
     private func nextMidnight(from date: Date) -> Date {
@@ -181,11 +185,16 @@ struct TodayTasksProvider: TimelineProvider {
         )
     }
 
-    static func previewEntry(for family: WidgetFamily, now: Date = Date()) -> TodayTasksEntry {
+    static func previewEntry(
+        for family: WidgetFamily,
+        selection: TaskWidgetSelection = .today,
+        now: Date = Date()
+    ) -> TodayTasksEntry {
         TodayTasksEntry(
             date: now,
             data: WidgetGalleryPreviewContent.tasks(for: family, now: now),
-            isAuthenticated: true
+            isAuthenticated: true,
+            selection: selection
         )
     }
 }

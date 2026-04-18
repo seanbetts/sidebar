@@ -4,6 +4,248 @@ import sideBarShared
 import os
 import Foundation
 
+// MARK: - Widget Configuration
+
+enum TaskWidgetScope: String, AppEnum {
+    case today
+    case project
+    case group
+
+    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Task Scope")
+    static var caseDisplayRepresentations: [TaskWidgetScope: DisplayRepresentation] = [
+        .today: DisplayRepresentation(title: "Today"),
+        .project: DisplayRepresentation(title: "Project"),
+        .group: DisplayRepresentation(title: "Group")
+    ]
+}
+
+enum TaskWidgetSelection: Equatable, Sendable {
+    case today
+    case project(id: String, title: String)
+    case group(id: String, title: String)
+
+    var cacheKey: String {
+        switch self {
+        case .today:
+            return "today"
+        case .project(let id, let title):
+            return "project:\(id):\(Self.encodeTitle(title))"
+        case .group(let id, let title):
+            return "group:\(id):\(Self.encodeTitle(title))"
+        }
+    }
+
+    var headerTitle: String {
+        switch self {
+        case .today:
+            return "Tasks"
+        case .project(_, let title), .group(_, let title):
+            return title
+        }
+    }
+
+    var standByTitle: String {
+        switch self {
+        case .today:
+            return "Today"
+        case .project(_, let title), .group(_, let title):
+            return title
+        }
+    }
+
+    var deepLinkURL: URL {
+        let path: String
+        switch self {
+        case .today:
+            path = "sidebar://tasks/today"
+        case .project(let id, _):
+            path = "sidebar://tasks/project/\(id)"
+        case .group(let id, _):
+            path = "sidebar://tasks/group/\(id)"
+        }
+        return URL(string: path) ?? URL(string: "sidebar://tasks/today")!
+    }
+
+    static func from(cacheKey: String?) -> TaskWidgetSelection {
+        guard let cacheKey, !cacheKey.isEmpty else { return .today }
+        if cacheKey == "today" {
+            return .today
+        }
+
+        let components = cacheKey.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
+        guard components.count >= 2 else {
+            return .today
+        }
+
+        let id = String(components[1])
+        let title = components.count == 3 ? decodeTitle(String(components[2])) : id
+        switch String(components[0]) {
+        case "project":
+            return .project(id: id, title: title)
+        case "group":
+            return .group(id: id, title: title)
+        default:
+            return .today
+        }
+    }
+
+    private static func encodeTitle(_ title: String) -> String {
+        title.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? title
+    }
+
+    private static func decodeTitle(_ encodedTitle: String) -> String {
+        encodedTitle.removingPercentEncoding ?? encodedTitle
+    }
+}
+
+struct TaskProjectEntity: AppEntity, Identifiable, Hashable {
+    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Task Project")
+    static var defaultQuery = TaskProjectEntityQuery()
+
+    let id: String
+    let title: String
+    let groupId: String?
+
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(title)")
+    }
+}
+
+struct TaskGroupEntity: AppEntity, Identifiable, Hashable {
+    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Task Group")
+    static var defaultQuery = TaskGroupEntityQuery()
+
+    let id: String
+    let title: String
+
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(title)")
+    }
+}
+
+struct TaskProjectEntityQuery: EntityQuery {
+    func entities(for identifiers: [TaskProjectEntity.ID]) async throws -> [TaskProjectEntity] {
+        let projects = try await TaskWidgetConfigurationCatalogClient().projects()
+        let projectsById = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0) })
+        return identifiers.compactMap { id in
+            projectsById[id] ?? TaskProjectEntity(id: id, title: id, groupId: nil)
+        }
+    }
+
+    func suggestedEntities() async throws -> [TaskProjectEntity] {
+        try await TaskWidgetConfigurationCatalogClient().projects()
+    }
+}
+
+struct TaskGroupEntityQuery: EntityQuery {
+    func entities(for identifiers: [TaskGroupEntity.ID]) async throws -> [TaskGroupEntity] {
+        let groups = try await TaskWidgetConfigurationCatalogClient().groups()
+        let groupsById = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
+        return identifiers.compactMap { id in
+            groupsById[id] ?? TaskGroupEntity(id: id, title: id)
+        }
+    }
+
+    func suggestedEntities() async throws -> [TaskGroupEntity] {
+        try await TaskWidgetConfigurationCatalogClient().groups()
+    }
+}
+
+struct TaskWidgetConfigurationIntent: WidgetConfigurationIntent {
+    static var title: LocalizedStringResource = "Task Widget"
+    static var description = IntentDescription("Choose which task list the widget should show.")
+
+    @Parameter(title: "Scope", default: .today)
+    var scope: TaskWidgetScope
+
+    @Parameter(title: "Project")
+    var project: TaskProjectEntity?
+
+    @Parameter(title: "Group")
+    var group: TaskGroupEntity?
+
+    init() {
+        scope = .today
+    }
+
+    init(selection: TaskWidgetSelection) {
+        switch selection {
+        case .today:
+            scope = .today
+        case .project(let id, let title):
+            scope = .project
+            project = TaskProjectEntity(id: id, title: title, groupId: nil)
+        case .group(let id, let title):
+            scope = .group
+            group = TaskGroupEntity(id: id, title: title)
+        }
+    }
+
+    static var parameterSummary: some ParameterSummary {
+        Switch(\.$scope) {
+            Case(.project) {
+                Summary("Show \(\.$project)")
+            }
+            Case(.group) {
+                Summary("Show \(\.$group)")
+            }
+            DefaultCase {
+                Summary("Show \(\.$scope) tasks")
+            }
+        }
+    }
+
+    var selection: TaskWidgetSelection {
+        switch scope {
+        case .today:
+            return .today
+        case .project:
+            if let project {
+                return .project(id: project.id, title: project.title)
+            }
+            return .today
+        case .group:
+            if let group {
+                return .group(id: group.id, title: group.title)
+            }
+            return .today
+        }
+    }
+}
+
+private struct TaskWidgetConfigurationCatalogClient {
+    private let apiClient: APIClient
+
+    init() throws {
+        apiClient = try WidgetAPIEnvironment().apiClient
+    }
+
+    func projects() async throws -> [TaskProjectEntity] {
+        let response: [TaskWidgetProjectPayload] = try await apiClient.request("tasks/projects")
+        return response.map {
+            TaskProjectEntity(id: $0.id, title: $0.title, groupId: $0.groupId)
+        }
+    }
+
+    func groups() async throws -> [TaskGroupEntity] {
+        let response: [TaskWidgetGroupPayload] = try await apiClient.request("tasks/groups")
+        return response.map {
+            TaskGroupEntity(id: $0.id, title: $0.title)
+        }
+    }
+}
+
+private struct TaskWidgetProjectPayload: Decodable {
+    let id: String
+    let title: String
+    let groupId: String?
+}
+
+private struct TaskWidgetGroupPayload: Decodable {
+    let id: String
+    let title: String
+}
+
 // MARK: - Complete Task Intent
 
 /// Intent to mark a task as complete from a widget
@@ -22,11 +264,14 @@ struct CompleteTaskIntent: AppIntent {
 
     @Parameter(title: "Task ID")
     var taskId: String
+    @Parameter(title: "Selection")
+    var selectionKey: String?
 
     init() {}
 
-    init(taskId: String) {
+    init(taskId: String, selectionKey: String? = nil) {
         self.taskId = taskId
+        self.selectionKey = selectionKey
     }
 
     func perform() async throws -> some IntentResult {
@@ -34,12 +279,13 @@ struct CompleteTaskIntent: AppIntent {
             return .result()
         }
 
+        let selection = TaskWidgetSelection.from(cacheKey: selectionKey)
         let operation = WidgetPendingOperation(itemId: taskId, action: TaskWidgetAction.complete)
         WidgetDataManager.shared.recordPendingOperation(operation, for: .tasks)
         WidgetTaskCompletionHandoffNotifier.post()
 
         // Update widget data optimistically (show checked state before disappearing)
-        let data = WidgetDataManager.shared.loadTodayTasks()
+        let data = WidgetDataManager.shared.loadTaskData(for: selection)
         let wasAlreadyCompleted = data.tasks.first(where: { $0.id == taskId })?.isCompleted ?? false
         let completedAt = Date()
         let updatedTasks = data.tasks.map { task in
@@ -65,8 +311,9 @@ struct CompleteTaskIntent: AppIntent {
         }
 
         let nextTotalCount = wasAlreadyCompleted ? data.totalCount : max(0, data.totalCount - 1)
-        WidgetDataManager.shared.updateTodayTasks(
+        WidgetDataManager.shared.updateTaskData(
             updatedTasks,
+            for: selection,
             totalCount: nextTotalCount,
             progressCompletedCount: nextProgressCompletedCount,
             progressTotalCount: baseProgressTotal

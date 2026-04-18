@@ -86,6 +86,55 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertEqual(refreshed.progressTotalCount, 2)
     }
 
+    func testTasksRefreshUsesProjectScopeEndpointWhenConfigured() async throws {
+        let client = makeAPIClient { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/tasks/projects/project-1/tasks")
+            return (
+                HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!,
+                Data(
+                    """
+                    {
+                      "scope": "project",
+                      "generatedAt": "2026-03-31T10:00:00Z",
+                      "tasks": [
+                        {
+                          "id": "task-a",
+                          "title": "Project task",
+                          "status": "open",
+                          "deadline": "2026-03-31",
+                          "notes": null,
+                          "projectId": "project-1",
+                          "groupId": "group-1"
+                        }
+                      ],
+                      "projects": [
+                        { "id": "project-1", "title": "Launch", "groupId": "group-1", "status": "active", "updatedAt": null }
+                      ],
+                      "groups": [
+                        { "id": "group-1", "title": "Work", "updatedAt": null }
+                      ]
+                    }
+                    """.utf8
+                )
+            )
+        }
+
+        let refreshed = try await TasksWidgetRefreshClient(apiClient: client).refreshTasks(
+            previousSnapshot: WidgetTaskData.empty,
+            selection: .project(id: "project-1", title: "Launch"),
+            now: Date(timeIntervalSince1970: 1_500)
+        )
+
+        XCTAssertEqual(refreshed.tasks.map(\.id), ["task-a"])
+        XCTAssertEqual(refreshed.totalCount, 1)
+        XCTAssertEqual(refreshed.tasks.first?.projectName, "Launch")
+    }
+
     func testNotesRefreshMapsPinnedNotesIntoWidgetNoteData() async throws {
         let client = makeAPIClient { request in
             XCTAssertEqual(request.url?.path, "/api/v1/notes/tree")
@@ -369,7 +418,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         var refreshCallCount = 0
         let provider = TodayTasksProvider(
             now: { now },
-            refreshData: { _, _ in
+            refreshData: { _, _, _ in
                 refreshCallCount += 1
                 return WidgetTaskData(tasks: [WidgetTask(id: "refreshed-task", title: "Refreshed")], totalCount: 1)
             }
@@ -378,7 +427,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         let timeline = await provider.timeline(for: now)
 
         XCTAssertEqual(refreshCallCount, 0)
-        XCTAssertEqual(timeline.entries.first?.data.tasks.map(\.id), ["cached-task"])
+        XCTAssertEqual(timeline.entries.first?.data.tasks.map(\WidgetTask.id), ["cached-task"])
     }
 
     func testPinnedNotesProviderRefreshesStaleSnapshotWhenAuthIsAvailable() async {

@@ -83,6 +83,31 @@ final class WidgetIntentRoutingTests: XCTestCase {
         XCTAssertTrue(source.contains("privatevarstandByTaskListView:someView"))
     }
 
+    func testTaskWidgetsUseConfigurableAppIntentConfiguration() throws {
+        let todaySource = try normalizedWidgetSource(named: "TodayTasksWidget.swift")
+        let countSource = try normalizedWidgetSource(named: "TaskCountWidget.swift")
+        let lockScreenSource = try normalizedWidgetSource(named: "LockScreenWidgets.swift")
+        let intentSource = try normalizedWidgetTaskIntentsSource()
+
+        XCTAssertTrue(
+            todaySource.contains(
+                "AppIntentConfiguration(kind:kind,intent:TaskWidgetConfigurationIntent.self,provider:TodayTasksProvider())"
+            )
+        )
+        XCTAssertTrue(
+            countSource.contains(
+                "AppIntentConfiguration(kind:kind,intent:TaskWidgetConfigurationIntent.self,provider:TodayTasksProvider())"
+            )
+        )
+        XCTAssertTrue(
+            lockScreenSource.contains(
+                "AppIntentConfiguration(kind:kind,intent:TaskWidgetConfigurationIntent.self,provider:TodayTasksProvider())"
+            )
+        )
+        XCTAssertTrue(intentSource.contains("structTaskWidgetConfigurationIntent:WidgetConfigurationIntent"))
+        XCTAssertTrue(intentSource.contains("enumTaskWidgetScope:"))
+    }
+
     func testIngestionLiveActivityUsesBrandedAppLogoInsteadOfGenericDocumentSymbol() throws {
         let source = try normalizedWidgetSource(named: "IngestionProgressLiveActivity.swift")
 

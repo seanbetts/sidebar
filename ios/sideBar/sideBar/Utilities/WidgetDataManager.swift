@@ -13,6 +13,7 @@ public final class WidgetDataManager {
   private let faviconR2EndpointKey = "widget_favicon_r2_endpoint"
   private let faviconR2BucketKey = "widget_favicon_r2_bucket"
   private let faviconR2PublicBaseUrlKey = "widget_favicon_r2_public_base_url"
+  private let configuredTaskDataKeyPrefix = "widget_tasks_data::"
 
   // Legacy keys (for migration)
   private let legacyTodayTasksKey = "widgetTodayTasks"
@@ -142,6 +143,9 @@ public final class WidgetDataManager {
     for contentType in WidgetContentType.allCases {
       defaults.removeObject(forKey: contentType.dataKey)
       defaults.removeObject(forKey: contentType.pendingKey)
+    }
+    for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(configuredTaskDataKeyPrefix) {
+      defaults.removeObject(forKey: key)
     }
 
     defaults.removeObject(forKey: legacyTodayTasksKey)

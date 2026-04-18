@@ -10,7 +10,7 @@ struct LockScreenTaskCountWidget: Widget {
     let kind: String = "LockScreenTaskCount"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: TodayTasksProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: TaskWidgetConfigurationIntent.self, provider: TodayTasksProvider()) { entry in
             LockScreenTaskCountView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -36,7 +36,7 @@ struct LockScreenTaskCountView: View {
                         .textCase(.uppercase)
                 }
             }
-            .widgetURL(URL(string: "sidebar://tasks/today"))
+            .widgetURL(entry.selection.deepLinkURL)
         } else {
             ZStack {
                 AccessoryWidgetBackground()
@@ -52,7 +52,7 @@ struct LockScreenTaskPreviewWidget: Widget {
     let kind: String = "LockScreenTaskPreview"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: TodayTasksProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: TaskWidgetConfigurationIntent.self, provider: TodayTasksProvider()) { entry in
             LockScreenTaskPreviewView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -77,7 +77,7 @@ struct LockScreenTaskPreviewView: View {
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(visibleTasks.prefix(2)) { task in
-                    Button(intent: CompleteTaskIntent(taskId: task.id)) {
+                    Button(intent: CompleteTaskIntent(taskId: task.id, selectionKey: entry.selection.cacheKey)) {
                         HStack(spacing: 4) {
                             Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                                 .font(.system(size: 8))
@@ -96,7 +96,7 @@ struct LockScreenTaskPreviewView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .widgetURL(URL(string: "sidebar://tasks/today"))
+            .widgetURL(entry.selection.deepLinkURL)
         }
     }
 
@@ -113,7 +113,7 @@ struct LockScreenInlineWidget: Widget {
     let kind: String = "LockScreenInline"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: TodayTasksProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: TaskWidgetConfigurationIntent.self, provider: TodayTasksProvider()) { entry in
             LockScreenInlineView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }

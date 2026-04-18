@@ -433,7 +433,7 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         let now = Date(timeIntervalSince1970: 50_000)
         let provider = TodayTasksProvider(
             now: { now },
-            refreshData: { _, _ in
+            refreshData: { _, _, _ in
                 WidgetTaskData(
                     tasks: [
                         WidgetTask(id: "completed-task", title: "Completed", isCompleted: true, completedAt: now),
@@ -604,7 +604,7 @@ final class WidgetExtensionCoverageTests: XCTestCase {
     func testLockScreenTaskPreviewUsesInteractiveCompletionButtons() throws {
         let source = try normalizedWidgetSource(named: "LockScreenWidgets.swift")
 
-        XCTAssertTrue(source.contains("Button(intent:CompleteTaskIntent(taskId:task.id))"))
+        XCTAssertTrue(source.contains("Button(intent:CompleteTaskIntent(taskId:task.id,selectionKey:entry.selection.cacheKey))"))
         XCTAssertTrue(source.contains("visibleTasks.prefix(2)"))
     }
 

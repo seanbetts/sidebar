@@ -152,6 +152,30 @@ def search_tasks(
     }
 
 
+@router.get("/groups")
+def list_task_groups(
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """List active task groups."""
+    set_session_user_id(db, user_id)
+    groups = TaskService.list_task_groups(db, user_id)
+    return [_group_payload(group) for group in groups]
+
+
+@router.get("/projects")
+def list_task_projects(
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """List active task projects."""
+    set_session_user_id(db, user_id)
+    projects = TaskService.list_task_projects(db, user_id)
+    return [_project_payload(project) for project in projects]
+
+
 @router.post("/apply")
 async def apply_task_operation(
     request: dict,

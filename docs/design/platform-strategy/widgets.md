@@ -232,6 +232,15 @@ Widget gallery previews come from the provider preview path, not from a separate
 - `accessoryRectangular` task previews should show exactly 2 items with overflow count potential.
 - Preview data should stay realistic and current. Use curated sample content and future-relative dates for task deadlines rather than stale hard-coded examples.
 
+### Task widget configuration
+
+The task widget family uses an App Intent-backed configuration surface rather than a static widget configuration:
+
+- Home screen task widgets and lock-screen task widgets share the same task-selection intent.
+- Supported task scopes are `Today`, a specific project, or a specific group.
+- Project and group choices should come from live task catalogs, not hard-coded strings, so the widget configuration UI stays aligned with the user’s current task model.
+- Scoped task widgets should deep link back into the matching project or group in the app instead of always opening the generic Today view.
+
 ---
 
 ## Interactivity and optimistic updates

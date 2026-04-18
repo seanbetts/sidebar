@@ -182,6 +182,59 @@ public struct WidgetFaviconConfigurationValues {
 // MARK: - Backward Compatibility
 
 extension WidgetDataManager {
+  private var configuredTaskDataKeyPrefix: String {
+    "widget_tasks_data::"
+  }
+
+  func loadTaskData(for selection: TaskWidgetSelection) -> WidgetTaskData {
+    if selection == .today {
+      return loadTodayTasks()
+    }
+    guard let defaults = userDefaults,
+          let data = defaults.data(forKey: configuredTaskDataKeyPrefix + selection.cacheKey),
+          let decoded = try? Self.makeDecoder().decode(WidgetTaskData.self, from: data) else {
+      return .empty
+    }
+    return decoded
+  }
+
+  func hasStoredTaskSnapshot(for selection: TaskWidgetSelection) -> Bool {
+    if selection == .today {
+      return hasStoredSnapshot(for: .tasks)
+    }
+    return userDefaults?.data(forKey: configuredTaskDataKeyPrefix + selection.cacheKey) != nil
+  }
+
+  func storeTaskData(_ data: WidgetTaskData, for selection: TaskWidgetSelection) {
+    if selection == .today {
+      store(data, for: .tasks)
+      return
+    }
+    guard let defaults = userDefaults,
+          let encoded = try? Self.makeEncoder().encode(data) else { return }
+    defaults.set(encoded, forKey: configuredTaskDataKeyPrefix + selection.cacheKey)
+    for kind in WidgetContentType.tasks.widgetKinds {
+      WidgetCenter.shared.reloadTimelines(ofKind: kind)
+    }
+  }
+
+  func updateTaskData(
+    _ tasks: [WidgetTask],
+    for selection: TaskWidgetSelection,
+    totalCount: Int,
+    progressCompletedCount: Int? = nil,
+    progressTotalCount: Int? = nil
+  ) {
+    let existing = loadTaskData(for: selection)
+    let data = WidgetTaskData(
+      tasks: tasks,
+      totalCount: totalCount,
+      progressCompletedCount: progressCompletedCount ?? existing.progressCompletedCount,
+      progressTotalCount: progressTotalCount ?? max(totalCount, existing.progressTotalCount)
+    )
+    storeTaskData(data, for: selection)
+  }
+
   /// Backward compatible method for loading tasks
   public func loadTodayTasks() -> WidgetTaskData {
     // Try new key first, fall back to legacy key
@@ -208,14 +261,13 @@ extension WidgetDataManager {
     progressCompletedCount: Int? = nil,
     progressTotalCount: Int? = nil
   ) {
-    let existing = loadTodayTasks()
-    let data = WidgetTaskData(
-      tasks: tasks,
+    updateTaskData(
+      tasks,
+      for: .today,
       totalCount: totalCount,
-      progressCompletedCount: progressCompletedCount ?? existing.progressCompletedCount,
-      progressTotalCount: progressTotalCount ?? max(totalCount, existing.progressTotalCount)
+      progressCompletedCount: progressCompletedCount,
+      progressTotalCount: progressTotalCount
     )
-    store(data, for: .tasks)
   }
 
   /// Backward compatible method for recording task completion
