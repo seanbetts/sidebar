@@ -50,12 +50,12 @@ struct TodayTasksProvider: TimelineProvider {
     }
 
     func placeholder(in context: Context) -> TodayTasksEntry {
-        .placeholder
+        Self.previewEntry(for: context.family, now: now())
     }
 
     func getSnapshot(in context: Context, completion: @escaping (TodayTasksEntry) -> Void) {
         if context.isPreview {
-            completion(.placeholder)
+            completion(Self.previewEntry(for: context.family, now: now()))
             return
         }
 
@@ -178,6 +178,14 @@ struct TodayTasksProvider: TimelineProvider {
                 "item_count": "\(entry.data.tasks.count)",
                 "total_count": "\(entry.data.totalCount)"
             ]
+        )
+    }
+
+    static func previewEntry(for family: WidgetFamily, now: Date = Date()) -> TodayTasksEntry {
+        TodayTasksEntry(
+            date: now,
+            data: WidgetGalleryPreviewContent.tasks(for: family, now: now),
+            isAuthenticated: true
         )
     }
 }

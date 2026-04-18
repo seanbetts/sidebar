@@ -60,12 +60,12 @@ struct SavedSitesProvider: TimelineProvider {
     }
 
     func placeholder(in context: Context) -> SavedSitesEntry {
-        .placeholder
+        Self.previewEntry(for: context.family, now: now())
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SavedSitesEntry) -> Void) {
         if context.isPreview {
-            completion(.placeholder)
+            completion(Self.previewEntry(for: context.family, now: now()))
             return
         }
         Task {
@@ -202,6 +202,15 @@ struct SavedSitesProvider: TimelineProvider {
                 "total_count": "\(entry.data.totalCount)",
                 "favicon_count": "\(entry.faviconDataByWebsiteId.count)"
             ]
+        )
+    }
+
+    static func previewEntry(for family: WidgetFamily, now: Date = Date()) -> SavedSitesEntry {
+        SavedSitesEntry(
+            date: now,
+            data: WidgetGalleryPreviewContent.websites(for: family, now: now),
+            isAuthenticated: true,
+            faviconDataByWebsiteId: [:]
         )
     }
 }

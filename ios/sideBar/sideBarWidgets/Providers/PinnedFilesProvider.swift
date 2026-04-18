@@ -42,12 +42,12 @@ struct PinnedFilesProvider: TimelineProvider {
     }
 
     func placeholder(in context: Context) -> PinnedFilesEntry {
-        .placeholder
+        Self.previewEntry(for: context.family, now: now())
     }
 
     func getSnapshot(in context: Context, completion: @escaping (PinnedFilesEntry) -> Void) {
         if context.isPreview {
-            completion(.placeholder)
+            completion(Self.previewEntry(for: context.family, now: now()))
             return
         }
 
@@ -127,5 +127,13 @@ struct PinnedFilesProvider: TimelineProvider {
         let calendar = Calendar.current
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: date) ?? date
         return calendar.startOfDay(for: tomorrow)
+    }
+
+    static func previewEntry(for family: WidgetFamily, now: Date = Date()) -> PinnedFilesEntry {
+        PinnedFilesEntry(
+            date: now,
+            data: WidgetGalleryPreviewContent.files(for: family, now: now),
+            isAuthenticated: true
+        )
     }
 }

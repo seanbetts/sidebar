@@ -42,12 +42,12 @@ struct PinnedNotesProvider: TimelineProvider {
     }
 
     func placeholder(in context: Context) -> PinnedNotesEntry {
-        .placeholder
+        Self.previewEntry(for: context.family, now: now())
     }
 
     func getSnapshot(in context: Context, completion: @escaping (PinnedNotesEntry) -> Void) {
         if context.isPreview {
-            completion(.placeholder)
+            completion(Self.previewEntry(for: context.family, now: now()))
             return
         }
 
@@ -127,5 +127,13 @@ struct PinnedNotesProvider: TimelineProvider {
         let calendar = Calendar.current
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: date) ?? date
         return calendar.startOfDay(for: tomorrow)
+    }
+
+    static func previewEntry(for family: WidgetFamily, now: Date = Date()) -> PinnedNotesEntry {
+        PinnedNotesEntry(
+            date: now,
+            data: WidgetGalleryPreviewContent.notes(for: family, now: now),
+            isAuthenticated: true
+        )
     }
 }

@@ -607,6 +607,38 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertTrue(source.contains("Button(intent:CompleteTaskIntent(taskId:task.id))"))
         XCTAssertTrue(source.contains("visibleTasks.prefix(2)"))
     }
+
+    func testWidgetGalleryPreviewEntriesMatchFamilyDensity() {
+        let now = Date(timeIntervalSince1970: 67_000)
+
+        let smallTasks = TodayTasksProvider.previewEntry(for: .systemSmall, now: now)
+        let largeTasks = TodayTasksProvider.previewEntry(for: .systemLarge, now: now)
+        let rectangularTasks = TodayTasksProvider.previewEntry(for: .accessoryRectangular, now: now)
+        XCTAssertEqual(smallTasks.data.tasks.count, 3)
+        XCTAssertEqual(largeTasks.data.tasks.count, 5)
+        XCTAssertEqual(rectangularTasks.data.tasks.count, 2)
+        XCTAssertEqual(largeTasks.data.totalCount, 6)
+        XCTAssertTrue(largeTasks.data.tasks.allSatisfy { $0.deadline != nil || $0.groupName != nil })
+
+        let smallNotes = PinnedNotesProvider.previewEntry(for: .systemSmall, now: now)
+        let largeNotes = PinnedNotesProvider.previewEntry(for: .systemLarge, now: now)
+        XCTAssertEqual(smallNotes.data.notes.count, 3)
+        XCTAssertEqual(largeNotes.data.notes.count, 5)
+        XCTAssertEqual(largeNotes.data.totalCount, 6)
+
+        let smallFiles = PinnedFilesProvider.previewEntry(for: .systemSmall, now: now)
+        let largeFiles = PinnedFilesProvider.previewEntry(for: .systemLarge, now: now)
+        XCTAssertEqual(smallFiles.data.files.count, 3)
+        XCTAssertEqual(largeFiles.data.files.count, 5)
+        XCTAssertEqual(largeFiles.data.totalCount, 6)
+
+        let smallSites = SavedSitesProvider.previewEntry(for: .systemSmall, now: now)
+        let largeSites = SavedSitesProvider.previewEntry(for: .systemLarge, now: now)
+        XCTAssertEqual(smallSites.data.websites.count, 3)
+        XCTAssertEqual(largeSites.data.websites.count, 5)
+        XCTAssertEqual(largeSites.data.totalCount, 6)
+        XCTAssertTrue(largeSites.data.websites.allSatisfy { !$0.domain.isEmpty })
+    }
 }
 
 private actor TaskCompletionSyncProbe {

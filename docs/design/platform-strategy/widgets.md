@@ -211,6 +211,15 @@ Circular button, 20pt diameter on small, 24pt on medium/large. Rendering-mode-aw
 
 This state is only shown when there is no cached snapshot to render. If cached content exists, keep showing it rather than replacing it with the signed-out state. No action is provided beyond the implicit tap-to-open.
 
+### Gallery previews
+
+Widget gallery previews come from the provider preview path, not from a separate static image asset. Each provider should return family-aware sample data when WidgetKit requests a preview snapshot so the gallery reflects the actual information density of that widget size.
+
+- `systemSmall` and `systemMedium` previews should show the compact 3-item layout used in production.
+- `systemLarge` previews should use a denser sample set so the gallery demonstrates the larger layout instead of reusing the small preview payload.
+- `accessoryRectangular` task previews should show exactly 2 items with overflow count potential.
+- Preview data should stay realistic and current. Use curated sample content and future-relative dates for task deadlines rather than stale hard-coded examples.
+
 ---
 
 ## Interactivity and optimistic updates
