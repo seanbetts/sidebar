@@ -42,6 +42,7 @@ extension AppEnvironment {
         runOfflineMaintenance()
 
         // Migrate widget data to new generic keys (one-time)
+        StartupDebugTrace.log("app-group.bootstrap.start")
         storage.widgetDataManager.migrateIfNeeded()
         storage.widgetDataManager.sanitizePendingTaskCompletions()
 
@@ -52,6 +53,7 @@ extension AppEnvironment {
             r2FaviconBucket: container.config.r2FaviconBucket,
             r2FaviconPublicBaseUrl: container.config.r2FaviconPublicBaseUrl
         )
+        StartupDebugTrace.log("app-group.bootstrap.end")
     }
 
     func runOfflineMaintenance() {
@@ -112,8 +114,15 @@ extension AppEnvironment {
             .store(in: &cancellables)
 
         websitesStore.$items
-            .sink { [weak self] _ in
-                self?.reconcileQueuedWebsitesWithSavedItems()
+            .sink { [weak self] items in
+                WebsiteQueueDebugTrace.log(
+                    "websites-store.items.changed",
+                    details: ["saved_count=\(items.count)"]
+                )
+                self?.reconcileQueuedWebsitesWithSavedItems(
+                    trigger: "websitesStore.items.changed",
+                    savedItemCount: items.count
+                )
             }
             .store(in: &cancellables)
 

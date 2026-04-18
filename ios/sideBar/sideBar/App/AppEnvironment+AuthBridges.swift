@@ -93,6 +93,10 @@ extension AppEnvironment {
             actionType: TaskWidgetAction.self,
             matching: { $0 == .complete }
         )
+        StartupDebugTrace.log(
+            "widget-completions.consume",
+            details: ["operation_count": "\(operations.count)"]
+        )
         let taskIds = operations
             .map { $0.itemId.trimmingCharacters(in: .whitespacesAndNewlines) }
         guard !taskIds.isEmpty else { return }
@@ -144,6 +148,10 @@ extension AppEnvironment {
         }
 
         guard appliedAny else { return }
+        StartupDebugTrace.log(
+            "widget-completions.reload",
+            details: ["task_count": "\(taskIds.count)"]
+        )
         await tasksViewModel.load(selection: .today, force: true)
         await tasksViewModel.loadCounts(force: true)
     }

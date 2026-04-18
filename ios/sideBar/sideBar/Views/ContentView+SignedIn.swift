@@ -310,7 +310,7 @@ extension ContentView {
                     }
                 }
                 #endif
-                triggerSignedInProtectedContentLoadIfNeeded()
+                triggerSignedInProtectedContentLoadIfNeeded(source: "auth_state")
                 Task { await ensureInitialPhoneChatInterfaceIfNeeded() }
             } else {
                 didEnsureInitialPhoneChatInterface = false
@@ -321,7 +321,7 @@ extension ContentView {
             environment.updateBiometricUnlockPreference(isEnabled: isEnabled)
         })
         content = AnyView(content.onChange(of: environment.isBiometricUnlocked) { _, _ in
-            triggerSignedInProtectedContentLoadIfNeeded()
+            triggerSignedInProtectedContentLoadIfNeeded(source: "biometric_unlock")
         })
         content = AnyView(content.onChange(of: environment.settingsViewModel.settings?.location) { _, _ in
             Task {
@@ -361,7 +361,7 @@ extension ContentView {
         })
         content = AnyView(content.task {
             applyInitialSelectionIfNeeded()
-            triggerSignedInProtectedContentLoadIfNeeded()
+            triggerSignedInProtectedContentLoadIfNeeded(source: "signed_in_task")
         })
         #if !os(macOS)
         content = AnyView(content.sheet(isPresented: $isSettingsPresented) {
@@ -450,9 +450,23 @@ extension ContentView {
         return content
     }
 
-    private func triggerSignedInProtectedContentLoadIfNeeded() {
-        guard environment.isProtectedContentReady, !didLoadSettings else { return }
+    private func triggerSignedInProtectedContentLoadIfNeeded(source: String) {
+        guard environment.isProtectedContentReady else {
+            StartupDebugTrace.log(
+                "signed-in.bootstrap.skip",
+                details: ["reason": "protected_content_not_ready", "source": source]
+            )
+            return
+        }
+        guard !didLoadSettings else {
+            StartupDebugTrace.log(
+                "signed-in.bootstrap.skip",
+                details: ["reason": "already_loaded", "source": source]
+            )
+            return
+        }
         didLoadSettings = true
+        StartupDebugTrace.log("signed-in.bootstrap.start", details: ["source": source])
         Task {
             guard environment.authState == .active, environment.isProtectedContentReady else { return }
             environment.currentLocationViewModel.startTrackingIfAuthorized()
@@ -460,20 +474,9 @@ extension ContentView {
             await environment.settingsViewModel.loadOnboarding(force: true)
             await environment.settingsViewModel.loadProfileImage()
             await refreshWeatherIfPossible()
+            StartupDebugTrace.log("signed-in.bootstrap.end", details: ["source": source])
         }
     }
-
-    func logStartup(_ message: String) {
-        #if DEBUG
-        #if os(iOS)
-        AppLaunchMetrics.shared.mark(message)
-        #else
-        let logger = Logger(subsystem: "sideBar", category: "Startup")
-        logger.info("\(message, privacy: .public)")
-        #endif
-        #endif
-    }
-
     var biometricHintTitle: String {
         switch environment.biometricMonitor.biometryType {
         case .touchID:

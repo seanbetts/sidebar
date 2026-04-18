@@ -106,6 +106,12 @@ extension WebsitesViewModel {
         let url: URL
     }
 
+    private struct QueuedPendingWebsiteSnapshot {
+        let entries: [QueuedPendingWebsite]
+        let queuedCanonical: Set<String>
+        let savedCanonical: Set<String>
+    }
+
     @discardableResult
     func upsertPendingWebsite(
         from url: URL,
@@ -222,23 +228,80 @@ extension WebsitesViewModel {
         with queuedItems: [PendingShareItem],
         readingQueueItemId: UUID? = nil
     ) {
+        let pendingCountBefore = pendingWebsites.count
+        let savedCount = items.count
+        var orderedQueuedEntryCount = 0
+        var queuedCanonicalCount = 0
+        var savedCanonicalCount = 0
+
+        WebsiteQueueDebugTrace.measure(
+            "queued-websites.sync-pending",
+            details: [
+                "queued_count=\(queuedItems.count)",
+                "saved_count=\(savedCount)",
+                "pending_before=\(pendingCountBefore)"
+            ]
+        ) {
+            let snapshot = queuedPendingWebsiteSnapshot(from: queuedItems)
+            orderedQueuedEntryCount = snapshot.entries.count
+            queuedCanonicalCount = snapshot.queuedCanonical.count
+            savedCanonicalCount = snapshot.savedCanonical.count
+            pruneStaleQueuedPendingWebsites(
+                queuedCanonical: snapshot.queuedCanonical,
+                savedCanonical: snapshot.savedCanonical
+            )
+            syncQueuedPendingWebsiteEntries(
+                snapshot.entries,
+                savedCanonical: snapshot.savedCanonical,
+                readingQueueItemId: readingQueueItemId
+            )
+        }
+
+        WebsiteQueueDebugTrace.log(
+            "queued-websites.sync-pending.result",
+            details: [
+                "queued_count=\(queuedItems.count)",
+                "saved_count=\(savedCount)",
+                "ordered_queued_count=\(orderedQueuedEntryCount)",
+                "queued_canonical_count=\(queuedCanonicalCount)",
+                "saved_canonical_count=\(savedCanonicalCount)",
+                "pending_before=\(pendingCountBefore)",
+                "pending_after=\(pendingWebsites.count)"
+            ]
+        )
+    }
+
+    private func queuedPendingWebsiteSnapshot(
+        from queuedItems: [PendingShareItem]
+    ) -> QueuedPendingWebsiteSnapshot {
         var orderedQueuedEntries: [QueuedPendingWebsite] = []
         var seenCanonical = Set<String>()
+
         for item in queuedItems {
             guard item.kind == .website,
                   let raw = item.url,
                   let normalized = WebsiteURLValidator.normalizedCandidate(raw) else {
                 continue
             }
-            let canonical = canonicalWebsiteURLForPendingMatch(normalized.absoluteString) ?? normalized.absoluteString
+            let canonical = canonicalWebsiteURLForPendingMatch(normalized.absoluteString)
+                ?? normalized.absoluteString
             guard seenCanonical.insert(canonical).inserted else { continue }
             orderedQueuedEntries.append(
                 QueuedPendingWebsite(canonical: canonical, item: item, url: normalized)
             )
         }
-        let queuedCanonical = Set(orderedQueuedEntries.map { $0.canonical })
-        let savedCanonical = Set(items.map { canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url })
 
+        return QueuedPendingWebsiteSnapshot(
+            entries: orderedQueuedEntries,
+            queuedCanonical: Set(orderedQueuedEntries.map(\.canonical)),
+            savedCanonical: Set(items.map { canonicalWebsiteURLForPendingMatch($0.url) ?? $0.url })
+        )
+    }
+
+    private func pruneStaleQueuedPendingWebsites(
+        queuedCanonical: Set<String>,
+        savedCanonical: Set<String>
+    ) {
         pendingWebsites.removeAll {
             guard $0.source == .queuedShare else { return false }
             if savedCanonical.contains($0.canonicalURL) {
@@ -251,8 +314,14 @@ extension WebsitesViewModel {
             // keep rendering its pending row until completion or failure removes it.
             return $0.jobId == nil
         }
+    }
 
-        for entry in orderedQueuedEntries {
+    private func syncQueuedPendingWebsiteEntries(
+        _ entries: [QueuedPendingWebsite],
+        savedCanonical: Set<String>,
+        readingQueueItemId: UUID?
+    ) {
+        for entry in entries {
             guard !savedCanonical.contains(entry.canonical) else { continue }
             let status = pendingWebsiteStatus(
                 for: entry.item,
@@ -272,7 +341,7 @@ extension WebsitesViewModel {
                 continue
             }
 
-            guard pendingWebsites.contains(where: { $0.canonicalURL == entry.canonical }) == false else {
+            guard !pendingWebsites.contains(where: { $0.canonicalURL == entry.canonical }) else {
                 continue
             }
             _ = upsertPendingWebsite(

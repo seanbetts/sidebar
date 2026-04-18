@@ -17,6 +17,16 @@ struct FaviconImageView: View {
     @State private var cachedImage: Image?
     @State private var currentUrlString: String?
 
+    private var faviconSourceLabel: String {
+        if let faviconR2Key, !faviconR2Key.isEmpty {
+            return "r2"
+        }
+        if let faviconUrl, !faviconUrl.isEmpty {
+            return "remote"
+        }
+        return "none"
+    }
+
     private var resolvedUrl: URL? {
         if let key = faviconR2Key, !key.isEmpty {
             if let publicBase = r2FaviconPublicBaseUrl {
@@ -60,37 +70,100 @@ struct FaviconImageView: View {
 
     @MainActor
     private func loadImage(for url: URL?) async {
+        let baseDetails = faviconBaseDetails
         guard let url else {
             cachedImage = nil
             currentUrlString = nil
+            WebsiteQueueDebugTrace.log(
+                "favicon.load.reset",
+                details: baseDetails
+            )
             return
         }
 
         let urlString = url.absoluteString
-        guard currentUrlString != urlString else { return }
+        let urlDetails = baseDetails + [
+            "host=\(url.host ?? "unknown")"
+        ]
+        guard currentUrlString != urlString else {
+            WebsiteQueueDebugTrace.log(
+                "favicon.load.skip-duplicate",
+                details: urlDetails
+            )
+            return
+        }
         currentUrlString = urlString
 
         if let cachedData: Data = environment.container.cacheClient.get(
             key: CacheKeys.favicon(url: urlString)
         ) {
-            cachedImage = loadImage(from: cachedData)
+            showCachedImage(cachedData, details: urlDetails)
             return
         }
 
         if environment.isOffline || !environment.isNetworkAvailable {
-            cachedImage = nil
+            clearImageAndLog("favicon.load.skipped-offline", details: urlDetails)
             return
         }
 
+        await loadRemoteImage(for: url, urlString: urlString, details: urlDetails)
+    }
+
+    private var faviconBaseDetails: [String] {
+        [
+            "source=\(faviconSourceLabel)",
+            "size=\(Int(size))"
+        ]
+    }
+
+    @MainActor
+    private func showCachedImage(_ data: Data, details: [String]) {
+        cachedImage = loadImage(from: data)
+        WebsiteQueueDebugTrace.log(
+            "favicon.load.cache-hit",
+            details: details + [
+                "bytes=\(data.count)"
+            ]
+        )
+    }
+
+    @MainActor
+    private func clearImageAndLog(_ event: String, details: [String]) {
+        cachedImage = nil
+        WebsiteQueueDebugTrace.log(event, details: details)
+    }
+
+    @MainActor
+    private func loadRemoteImage(for url: URL, urlString: String, details: [String]) async {
         do {
+            let start = ProcessInfo.processInfo.systemUptime
+            WebsiteQueueDebugTrace.log(
+                "favicon.load.network.start",
+                details: details
+            )
             let (data, response) = try await URLSession.shared.data(from: url)
             guard let httpResponse = response as? HTTPURLResponse,
                   (200..<300).contains(httpResponse.statusCode) else {
-                cachedImage = nil
+                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                let elapsedMs = Int((ProcessInfo.processInfo.systemUptime - start) * 1000)
+                clearImageAndLog(
+                    "favicon.load.network.bad-status",
+                    details: details + [
+                        "status_code=\(statusCode)",
+                        "elapsed_ms=\(elapsedMs)"
+                    ]
+                )
                 return
             }
             guard let image = loadImage(from: data) else {
-                cachedImage = nil
+                let elapsedMs = Int((ProcessInfo.processInfo.systemUptime - start) * 1000)
+                clearImageAndLog(
+                    "favicon.load.network.invalid-image",
+                    details: details + [
+                        "bytes=\(data.count)",
+                        "elapsed_ms=\(elapsedMs)"
+                    ]
+                )
                 return
             }
             cachedImage = image
@@ -99,8 +172,21 @@ struct FaviconImageView: View {
                 value: data,
                 ttlSeconds: CachePolicy.faviconImage
             )
+            let elapsedMs = Int((ProcessInfo.processInfo.systemUptime - start) * 1000)
+            WebsiteQueueDebugTrace.log(
+                "favicon.load.network.success",
+                details: details + [
+                    "bytes=\(data.count)",
+                    "elapsed_ms=\(elapsedMs)"
+                ]
+            )
         } catch {
-            cachedImage = nil
+            clearImageAndLog(
+                "favicon.load.network.error",
+                details: details + [
+                    "error=\(error.localizedDescription)"
+                ]
+            )
         }
     }
 

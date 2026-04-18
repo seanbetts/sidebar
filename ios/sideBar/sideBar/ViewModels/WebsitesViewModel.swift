@@ -59,30 +59,6 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public internal(set) var panelMainItems: [WebsiteItem] = []
     @Published public internal(set) var panelArchivedItems: [WebsiteItem] = []
     @Published public internal(set) var panelNavigationWebsiteIds: [String] = []
-    public var pendingWebsite: PendingWebsiteItem? {
-        get { pendingWebsites.first }
-        set {
-            if let newValue {
-                pendingWebsites = [newValue]
-            } else {
-                pendingWebsites.removeAll()
-            }
-        }
-    }
-
-    var detailLoadingMessage: String {
-        if let selectedWebsiteId,
-           let selectedPending = pendingWebsites.first(where: { $0.id == selectedWebsiteId }) {
-            return selectedPending.progressMessage
-        }
-        return pendingWebsites.first?.progressMessage ?? "Reading..."
-    }
-
-    var hasCachedSelectedWebsiteDetail: Bool {
-        guard let selectedWebsiteId else { return false }
-        return store.hasCachedDetail(id: selectedWebsiteId)
-    }
-
     let api: any WebsitesProviding
     let store: WebsitesStore
     let ingestionStore: IngestionStore?
@@ -136,6 +112,12 @@ public final class WebsitesViewModel: ObservableObject {
 
         store.$active
             .sink { [weak self] active in
+                WebsiteQueueDebugTrace.log(
+                    "websites-detail.active.changed",
+                    details: [
+                        "active_id=\(active?.id ?? "nil")"
+                    ]
+                )
                 self?.active = active
                 self?.syncTranscriptPolling(for: active)
             }
@@ -193,6 +175,16 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func loadById(id: String) async {
+        let start = ProcessInfo.processInfo.systemUptime
+        WebsiteQueueDebugTrace.log(
+            "websites-detail.load.request",
+            details: [
+                "requested_id=\(id)",
+                "selected_before=\(selectedWebsiteId ?? "nil")",
+                "active_before=\(active?.id ?? "nil")",
+                "has_cached_detail=\(store.hasCachedDetail(id: id))"
+            ]
+        )
         errorMessage = nil
         if active?.id != id {
             store.clearActive()
@@ -207,10 +199,28 @@ public final class WebsitesViewModel: ObservableObject {
         isLoadingDetail = true
         do {
             try await store.loadDetail(id: id)
+            let elapsedMs = Int((ProcessInfo.processInfo.systemUptime - start) * 1000)
+            WebsiteQueueDebugTrace.log(
+                "websites-detail.load.success",
+                details: [
+                    "requested_id=\(id)",
+                    "active_after=\(active?.id ?? "nil")",
+                    "elapsed_ms=\(elapsedMs)"
+                ]
+            )
         } catch {
             if active == nil {
                 errorMessage = ErrorMapping.message(for: error)
             }
+            let elapsedMs = Int((ProcessInfo.processInfo.systemUptime - start) * 1000)
+            WebsiteQueueDebugTrace.log(
+                "websites-detail.load.failure",
+                details: [
+                    "requested_id=\(id)",
+                    "elapsed_ms=\(elapsedMs)",
+                    "error=\(ErrorMapping.message(for: error))"
+                ]
+            )
         }
         isLoadingDetail = false
     }
@@ -220,6 +230,13 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func selectWebsite(id: String) async {
+        WebsiteQueueDebugTrace.log(
+            "websites-detail.select",
+            details: [
+                "requested_id=\(id)",
+                "selected_before=\(selectedWebsiteId ?? "nil")"
+            ]
+        )
         await loadById(id: id)
     }
 

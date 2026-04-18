@@ -3,6 +3,14 @@ import Foundation
 import OSLog
 import sideBarShared
 
+private struct WebsitePanelDerivedState {
+    let filteredItems: [WebsiteItem]
+    let pinnedItemsSorted: [WebsiteItem]
+    let mainItems: [WebsiteItem]
+    let archivedItems: [WebsiteItem]
+    let navigationIds: [String]
+}
+
 @MainActor
 extension WebsitesViewModel {
     func normalizedWebsiteURL(from rawURL: String) -> URL? {
@@ -158,34 +166,65 @@ extension WebsitesViewModel {
     }
 
     func updatePanelDerivedState() {
-        let needle = SearchTextMatcher.normalizedQuery(panelSearchQuery)
-        let filteredItems: [WebsiteItem]
-        if needle.isEmpty {
-            filteredItems = items
-        } else {
-            filteredItems = items.filter { item in
-                SearchTextMatcher.contains(
-                    normalizedQuery: needle,
-                    in: [item.title, item.domain, item.url]
-                )
+        let searchActive = !panelSearchQuery.trimmed.isEmpty
+        let derivedState = WebsiteQueueDebugTrace.measure(
+            "websites-panel.derived-state",
+            details: [
+                "items_count=\(items.count)",
+                "pending_count=\(pendingWebsites.count)",
+                "search_active=\(searchActive)"
+            ]
+        ) { () -> WebsitePanelDerivedState in
+            let needle = SearchTextMatcher.normalizedQuery(panelSearchQuery)
+            let filteredItems: [WebsiteItem]
+            if needle.isEmpty {
+                filteredItems = items
+            } else {
+                filteredItems = items.filter { item in
+                    SearchTextMatcher.contains(
+                        normalizedQuery: needle,
+                        in: [item.title, item.domain, item.url]
+                    )
+                }
             }
+
+            let pinnedItemsSorted = items
+                .filter { $0.pinned && !$0.archived }
+                .sorted(by: Self.sortPinnedItems)
+            let mainItems = items.filter { !$0.pinned && !$0.archived }
+            let archivedItems = items.filter { $0.archived }
+            let navigationIds: [String]
+            if needle.isEmpty {
+                navigationIds = pinnedItemsSorted.map { $0.id } + mainItems.map { $0.id }
+            } else {
+                navigationIds = filteredItems.map { $0.id }
+            }
+
+            return WebsitePanelDerivedState(
+                filteredItems: filteredItems,
+                pinnedItemsSorted: pinnedItemsSorted,
+                mainItems: mainItems,
+                archivedItems: archivedItems,
+                navigationIds: navigationIds
+            )
         }
 
-        let pinnedItemsSorted = items
-            .filter { $0.pinned && !$0.archived }
-            .sorted(by: Self.sortPinnedItems)
-        let mainItems = items.filter { !$0.pinned && !$0.archived }
-        let archivedItems = items.filter { $0.archived }
+        panelFilteredItems = derivedState.filteredItems
+        panelPinnedItemsSorted = derivedState.pinnedItemsSorted
+        panelMainItems = derivedState.mainItems
+        panelArchivedItems = derivedState.archivedItems
+        panelNavigationWebsiteIds = derivedState.navigationIds
 
-        panelFilteredItems = filteredItems
-        panelPinnedItemsSorted = pinnedItemsSorted
-        panelMainItems = mainItems
-        panelArchivedItems = archivedItems
-        if needle.isEmpty {
-            panelNavigationWebsiteIds = pinnedItemsSorted.map { $0.id } + mainItems.map { $0.id }
-        } else {
-            panelNavigationWebsiteIds = filteredItems.map { $0.id }
-        }
+        WebsiteQueueDebugTrace.log(
+            "websites-panel.derived-state.result",
+            details: [
+                "filtered_count=\(derivedState.filteredItems.count)",
+                "pinned_count=\(derivedState.pinnedItemsSorted.count)",
+                "main_count=\(derivedState.mainItems.count)",
+                "archived_count=\(derivedState.archivedItems.count)",
+                "navigation_count=\(derivedState.navigationIds.count)"
+            ]
+        )
     }
 
     private static func sortPinnedItems(_ lhs: WebsiteItem, _ rhs: WebsiteItem) -> Bool {

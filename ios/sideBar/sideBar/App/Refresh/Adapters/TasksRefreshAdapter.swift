@@ -11,6 +11,13 @@ final class TasksRefreshAdapter: DomainRefreshAdapter {
     }
 
     func refresh(plan: RefreshPlan) async {
+        StartupDebugTrace.log(
+            "tasks.refresh.plan",
+            details: [
+                "targets": plan.targets.map { String(describing: $0) }.joined(separator: ",")
+            ]
+        )
+
         if plan.targets.contains(.sectionList(.tasks)) || plan.targets.contains(.visibleDetail(.tasks)) {
             await viewModel.load(selection: viewModel.preferredLoadSelection, force: true)
         }

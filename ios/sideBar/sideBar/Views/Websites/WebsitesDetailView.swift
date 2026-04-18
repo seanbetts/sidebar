@@ -40,10 +40,40 @@ struct WebsitesDetailView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            WebsiteQueueDebugTrace.log(
+                "websites-detail.appear",
+                details: detailDebugDetails
+            )
+        }
         .onKeyPress(.escape) {
             guard viewModel.active != nil else { return .ignored }
             closeWebsite()
             return .handled
+        }
+        .onChange(of: viewModel.selectedWebsiteId) { _, newValue in
+            WebsiteQueueDebugTrace.log(
+                "websites-detail.selected.changed",
+                details: detailDebugDetails + [
+                    "new_selected_id=\(newValue ?? "nil")"
+                ]
+            )
+        }
+        .onChange(of: viewModel.active?.id) { _, newValue in
+            WebsiteQueueDebugTrace.log(
+                "websites-detail.active-view.changed",
+                details: detailDebugDetails + [
+                    "new_active_id=\(newValue ?? "nil")"
+                ]
+            )
+        }
+        .onChange(of: viewModel.isLoadingDetail) { _, isLoading in
+            WebsiteQueueDebugTrace.log(
+                "websites-detail.loading.changed",
+                details: detailDebugDetails + [
+                    "is_loading_detail=\(isLoading)"
+                ]
+            )
         }
         .onReceive(appEnvironment.navigation.$shortcutActionEvent) { event in
             guard let event,
@@ -132,6 +162,18 @@ struct WebsitesDetailView: View {
 }
 
 extension WebsitesDetailView {
+    private var detailDebugDetails: [String] {
+        [
+            "selected_id=\(viewModel.selectedWebsiteId ?? "nil")",
+            "active_id=\(viewModel.active?.id ?? "nil")",
+            "items_count=\(viewModel.items.count)",
+            "pending_count=\(viewModel.pendingWebsites.count)",
+            "is_loading=\(viewModel.isLoading)",
+            "is_loading_detail=\(viewModel.isLoadingDetail)",
+            "has_error=\(viewModel.errorMessage != nil)"
+        ]
+    }
+
     private var header: some View {
         ContentHeaderRow(
             iconView: headerIcon,

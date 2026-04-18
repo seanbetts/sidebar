@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 public struct SidebarRail: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -91,15 +92,40 @@ public struct SidebarRail: View {
         )
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .onAppear {
-            guard environment.isAuthenticated,
-                  environment.settingsViewModel.profileImageData == nil else { return }
+            guard Self.shouldLoadProfileImageOnAppear(
+                isAuthenticated: environment.isAuthenticated,
+                profileImageUrl: environment.settingsViewModel.settings?.profileImageUrl,
+                hasProfileImageData: environment.settingsViewModel.profileImageData != nil
+            ) else {
+                StartupDebugTrace.log(
+                    "sidebar-rail.profile-image.skip",
+                    details: [
+                        "has_profile_image_data":
+                            environment.settingsViewModel.profileImageData == nil ? "false" : "true",
+                        "has_profile_image_url":
+                            environment.settingsViewModel.settings?.profileImageUrl?.trimmedOrNil == nil
+                            ? "false"
+                            : "true",
+                        "is_authenticated": environment.isAuthenticated ? "true" : "false"
+                    ]
+                )
+                return
+            }
+
+            StartupDebugTrace.log("sidebar-rail.profile-image.start")
             Task {
-                if environment.settingsViewModel.settings == nil {
-                    await environment.settingsViewModel.load()
-                }
                 await environment.settingsViewModel.loadProfileImage()
             }
         }
+    }
+
+    static func shouldLoadProfileImageOnAppear(
+        isAuthenticated: Bool,
+        profileImageUrl: String?,
+        hasProfileImageData: Bool
+    ) -> Bool {
+        guard isAuthenticated, !hasProfileImageData else { return false }
+        return profileImageUrl?.trimmedOrNil != nil
     }
 
     private func sectionButton(for section: AppSection) -> some View {

@@ -18,8 +18,8 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var shortcutsError: String?
     @Published public private(set) var isLoadingShortcuts: Bool = false
     @Published public private(set) var isRotatingShortcuts: Bool = false
-    @Published public private(set) var profileImageData: Data?
-    @Published public private(set) var isLoadingProfileImage: Bool = false
+    @Published public internal(set) var profileImageData: Data?
+    @Published public internal(set) var isLoadingProfileImage: Bool = false
     @Published public private(set) var isSavingProfile: Bool = false
     @Published public private(set) var profileSaveError: String?
     @Published public internal(set) var isSavingSystem: Bool = false
@@ -30,6 +30,7 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var onboardingState: OnboardingState?
     @Published public private(set) var isLoadingOnboarding: Bool = false
     var isRefreshingProviderRecoveryState = false
+    var inFlightProfileImageLoad: Task<Data?, Never>?
 
     let settingsAPI: any SettingsProviding
     let skillsAPI: any SkillsProviding
@@ -150,35 +151,6 @@ public final class SettingsViewModel: LoadableViewModel {
             shortcutsError = error.localizedDescription
         }
         isRotatingShortcuts = false
-    }
-
-    public func loadProfileImage() async {
-        guard let settings, settings.profileImageUrl != nil else {
-            profileImageData = nil
-            cache.remove(key: profileImageCacheKey)
-            removeLegacyCacheKeyIfNeeded(
-                currentKey: profileImageCacheKey,
-                legacyKey: CacheKeys.profileImage
-            )
-            return
-        }
-        isLoadingProfileImage = true
-        let loader = CachedLoader(
-            cache: cache,
-            key: profileImageCacheKey,
-            ttl: CachePolicy.profileImage
-        ) { [settingsAPI] in
-            try await settingsAPI.getProfileImage()
-        }
-        do {
-            let (data, _) = try await loader.load(onRefresh: { [weak self] fresh in
-                self?.profileImageData = fresh
-            })
-            profileImageData = data
-        } catch {
-            profileImageData = nil
-        }
-        isLoadingProfileImage = false
     }
 
     public func uploadProfileImage(data: Data, contentType: String, filename: String) async throws {

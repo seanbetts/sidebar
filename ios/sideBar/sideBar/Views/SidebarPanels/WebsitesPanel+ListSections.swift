@@ -78,6 +78,47 @@ extension WebsitesPanelView {
         }
     }
 
+    nonisolated static func debugLabel(for panelState: PanelState) -> String {
+        switch panelState {
+        case .loading:
+            return "loading"
+        case .error:
+            return "error"
+        case .search:
+            return "search"
+        case .empty:
+            return "empty"
+        case .content:
+            return "content"
+        case .sparse:
+            return "sparse"
+        }
+    }
+
+    nonisolated static func debugLabel(for layout: ListSectionLayout) -> String {
+        switch layout {
+        case .sparseState:
+            return "sparse"
+        case .primaryContent:
+            return "primary"
+        case .archive:
+            return "archive"
+        }
+    }
+
+    var panelDebugDetails: [String] {
+        [
+            "items_count=\(viewModel.items.count)",
+            "pinned_count=\(pinnedItemsSorted.count)",
+            "main_count=\(mainItems.count)",
+            "archived_count=\(archivedItems.count)",
+            "pending_count=\(viewModel.visiblePendingWebsites.count)",
+            "selected_id=\(viewModel.selectedWebsiteId ?? "nil")",
+            "active_id=\(viewModel.active?.id ?? "nil")",
+            "search_active=\(!viewModel.panelSearchQuery.trimmed.isEmpty)"
+        ]
+    }
+
     var panelState: PanelState {
         let visiblePendingCount = viewModel.visiblePendingWebsites.count
         let resolvedState = Self.resolvePanelState(

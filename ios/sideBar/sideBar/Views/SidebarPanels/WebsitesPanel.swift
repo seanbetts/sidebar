@@ -83,12 +83,48 @@ struct WebsitesPanelView: View {
                 selection = viewModel.selectedWebsiteId ?? viewModel.active?.id
             }
             listAppeared = !viewModel.isLoading
+            WebsiteQueueDebugTrace.log(
+                "websites-panel.appear",
+                details: panelDebugDetails + [
+                    "transient_selection=\(selection ?? "nil")",
+                    "panel_state=\(Self.debugLabel(for: panelState))"
+                ]
+            )
         }
         .onChange(of: viewModel.selectedWebsiteId) { _, newValue in
             selection = newValue ?? viewModel.active?.id
+            WebsiteQueueDebugTrace.log(
+                "websites-panel.selection.changed",
+                details: panelDebugDetails + [
+                    "transient_selection=\(selection ?? "nil")",
+                    "new_selected_id=\(newValue ?? "nil")"
+                ]
+            )
         }
         .onChange(of: viewModel.isLoading) { _, isLoading in
             listAppeared = !isLoading
+            WebsiteQueueDebugTrace.log(
+                "websites-panel.loading.changed",
+                details: panelDebugDetails + [
+                    "is_loading=\(isLoading)"
+                ]
+            )
+        }
+        .onChange(of: panelState) { _, newValue in
+            WebsiteQueueDebugTrace.log(
+                "websites-panel.state.changed",
+                details: panelDebugDetails + [
+                    "panel_state=\(Self.debugLabel(for: newValue))"
+                ]
+            )
+        }
+        .onChange(of: listSectionLayout) { _, newValue in
+            WebsiteQueueDebugTrace.log(
+                "websites-panel.layout.changed",
+                details: panelDebugDetails + [
+                    "layout=\(newValue.map(Self.debugLabel(for:)).joined(separator: ","))"
+                ]
+            )
         }
         .onChange(of: isArchiveExpanded) { _, expanded in
             if expanded {

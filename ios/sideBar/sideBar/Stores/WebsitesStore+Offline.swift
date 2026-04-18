@@ -203,6 +203,15 @@ extension WebsitesStore {
 
     func applySyncItems(_ items: [WebsiteItem]) {
         guard !items.isEmpty else { return }
+        let storeCountBefore = self.items.count
+        WebsiteQueueDebugTrace.log(
+            "websites-store.apply-sync-items.start",
+            details: [
+                "incoming_count=\(items.count)",
+                "store_count_before=\(storeCountBefore)"
+            ]
+        )
+        let start = ProcessInfo.processInfo.systemUptime
         for item in items {
             if item.deletedAt != nil {
                 removeItem(
@@ -222,6 +231,16 @@ extension WebsitesStore {
         }
         persistListCache()
         updateWidgetData(from: self.items)
+        let elapsedMs = Int((ProcessInfo.processInfo.systemUptime - start) * 1000)
+        WebsiteQueueDebugTrace.log(
+            "websites-store.apply-sync-items.end",
+            details: [
+                "incoming_count=\(items.count)",
+                "store_count_before=\(storeCountBefore)",
+                "store_count_after=\(self.items.count)",
+                "elapsed_ms=\(elapsedMs)"
+            ]
+        )
     }
 
     private func applyLocalUpdate(id: String, update: (WebsiteItem) -> WebsiteItem) {
