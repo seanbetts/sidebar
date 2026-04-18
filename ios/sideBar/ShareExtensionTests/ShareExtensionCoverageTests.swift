@@ -137,6 +137,25 @@ final class ShareExtensionCoverageTests: XCTestCase {
         )
     }
 
+    func testWidgetsExtensionEntitlementsIncludeSharedKeychainAccessGroup() throws {
+        let repositoryRoot = try findRepositoryRoot()
+        let entitlementsPath = repositoryRoot
+            .appendingPathComponent("ios/sideBar/sideBarWidgetsExtension.entitlements")
+            .path
+        let content = try String(contentsOfFile: entitlementsPath, encoding: .utf8)
+        let projectContents = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("ios/sideBar/sideBar.xcodeproj/project.pbxproj"),
+            encoding: .utf8
+        )
+        let staleEntitlementsPath = repositoryRoot
+            .appendingPathComponent("ios/sideBar/sideBarWidgets/sideBarWidgets.entitlements")
+            .path
+
+        XCTAssertTrue(content.contains("<string>$(KEYCHAIN_ACCESS_GROUP)</string>"))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: staleEntitlementsPath))
+        XCTAssertFalse(projectContents.contains("sideBarWidgets/sideBarWidgets.entitlements"))
+    }
+
     func testErrorMessageUsesCatalogForNotAuthenticated() {
         let message = ShareExtensionMessageMapper.errorMessage(for: ShareExtensionError.notAuthenticated)
 

@@ -738,6 +738,8 @@ final class WidgetProviderRefreshTests: XCTestCase {
             totalCount: 1,
             lastUpdated: now.addingTimeInterval(-3600)
         )
+        ExternalSurfaceDiagnosticsStore.shared.clear()
+        defer { ExternalSurfaceDiagnosticsStore.shared.clear() }
         WidgetDataManager.shared.store(cached, for: .websites)
         setWidgetAuthenticated(true)
 
@@ -753,6 +755,11 @@ final class WidgetProviderRefreshTests: XCTestCase {
         let timeline = await provider.timeline(for: now)
 
         XCTAssertEqual(timeline.entries.first?.data.websites.map(\.id), ["cached-site"])
+        let export = ExternalSurfaceDiagnosticsStore.shared.exportText(limit: 10)
+        XCTAssertTrue(export.contains("[widget_provider] saved_sites_refresh_failed:"))
+        XCTAssertTrue(export.contains("provider=SavedSitesProvider"))
+        XCTAssertTrue(export.contains("selection=All"))
+        XCTAssertTrue(export.contains("has_cached_snapshot=true"))
     }
 
     func testSavedSitesProviderFiltersPinnedSelection() async {
