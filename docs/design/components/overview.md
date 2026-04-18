@@ -46,6 +46,14 @@ Two layout axes:
 
 Centred title, optional subtitle, and optional SF Symbol icon for genuinely empty content areas. See [EmptyStateView](./empty-state) for full usage rules.
 
+Use the empty-state semantic categories from [EmptyStateView](./empty-state) before choosing a concrete presentation:
+
+- centred detail empty states: `EmptyStateView`
+- sidebar panel empty states: `EmptyStateView` or `SidebarPanelPlaceholder` with empty-state copy, depending on the panel layout
+- sparse row empty states: `SidebarSparseStateRow`
+
+The semantic category should stay consistent even when the rendered component differs by surface.
+
 ### SearchField
 
 Search input with leading icon and clear button. Two variants:

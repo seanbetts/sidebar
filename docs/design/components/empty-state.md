@@ -43,6 +43,25 @@ EmptyStateView(
 - `systemImage` is optional. Use it when the icon adds clarity, not just decoration.
 - Do not add a call-to-action button to `EmptyStateView`. If an action is needed, use [`PlaceholderView`](./placeholder) which has a built-in action slot, or place a button separately in the view hierarchy.
 
+## Semantic categories
+
+Use one of these semantic buckets before choosing copy:
+
+- `noContentYet`: the surface loaded correctly but nothing has been created yet
+- `noResults`: a search or filter returned no matches
+- `noSelection`: the user has not selected any content yet
+- `allTasksCompleted`: an active task scope is empty because work is done
+
+These semantics may be carried in code by a helper such as `EmptyStateContent`, even when the rendered view differs by surface.
+
+## Copy rules
+
+- Use `No … yet` for genuinely empty content collections.
+- Use `No results` for search or filter miss states.
+- Use `Select a …` for no-selection states.
+- Use `All tasks completed` only for active task scopes emptied by completion.
+- Use activity-complete phrasing only when the surface represents finished work, not missing setup.
+
 ---
 
 ## Subscription-gated empty states

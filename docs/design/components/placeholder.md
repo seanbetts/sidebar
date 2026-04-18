@@ -21,6 +21,8 @@ Use `PlaceholderView` when a content area attempted to load and failed — not w
 
 `PlaceholderView` is also the correct surface for selected content that exists in principle but is not available offline on the current device yet.
 
+If the question is "which empty-state copy should I use?", stay in [`EmptyStateView`](./empty-state) and the empty-state rules. Do not repurpose `PlaceholderView` for empty states just because the layout happens to fit.
+
 Always include a retry action when the failure is recoverable. Wire `action` to the same load function that originally triggered the failure.
 
 ---
