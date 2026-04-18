@@ -684,16 +684,16 @@ final class WidgetProviderRefreshTests: XCTestCase {
     func testProjectScopedTaskSelectionUsesScopeSpecificEmptyStateCopy() {
         let selection = TaskWidgetSelection.project(id: "project-1", title: "Launch")
 
-        XCTAssertEqual(selection.emptyStateTitle, "No tasks in Launch")
-        XCTAssertEqual(selection.emptyStateSubtitle, "This project is empty")
+        XCTAssertEqual(selection.emptyStateTitle, "All done!")
+        XCTAssertEqual(selection.emptyStateSubtitle, "No open tasks in this project")
         XCTAssertEqual(selection.emptyStateSystemImage, "list.bullet")
     }
 
     func testGroupScopedTaskSelectionUsesGroupSpecificEmptyStateIcon() {
         let selection = TaskWidgetSelection.group(id: "group-1", title: "Work")
 
-        XCTAssertEqual(selection.emptyStateTitle, "No tasks in Work")
-        XCTAssertEqual(selection.emptyStateSubtitle, "This group is empty")
+        XCTAssertEqual(selection.emptyStateTitle, "All done!")
+        XCTAssertEqual(selection.emptyStateSubtitle, "No open tasks in this group")
         XCTAssertEqual(selection.emptyStateSystemImage, "square.stack.3d.up")
     }
 

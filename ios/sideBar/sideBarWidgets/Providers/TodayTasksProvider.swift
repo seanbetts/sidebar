@@ -162,7 +162,20 @@ struct TodayTasksProvider: AppIntentTimelineProvider {
                 )
                 dataManager.storeTaskData(overlaid, for: selection)
                 data = overlaid
-            } catch {}
+            } catch {
+                WidgetExtensionDiagnostics.reporter.captureFailure(
+                    surface: "widget_provider",
+                    stage: "today_tasks_refresh_failed",
+                    message: "Failed to refresh task widget content.",
+                    metadata: [
+                        "provider": "TodayTasksProvider",
+                        "selection": selection.headerTitle,
+                        "scope": selection.cacheKey,
+                        "has_cached_snapshot": hasCachedSnapshot ? "true" : "false",
+                        "error": String(describing: error)
+                    ]
+                )
+            }
         }
 
         return TodayTasksEntry(date: date, data: data, isAuthenticated: true, selection: selection)

@@ -115,7 +115,20 @@ struct PinnedNotesProvider: AppIntentTimelineProvider {
                 let refreshed = try await refreshData(date)
                 dataManager.store(refreshed, for: .notes)
                 data = selection.filter(refreshed)
-            } catch {}
+            } catch {
+                WidgetExtensionDiagnostics.reporter.captureFailure(
+                    surface: "widget_provider",
+                    stage: "pinned_notes_refresh_failed",
+                    message: "Failed to refresh note widget content.",
+                    metadata: [
+                        "provider": "PinnedNotesProvider",
+                        "selection": selection.headerTitle,
+                        "scope": selection.scopeDescription,
+                        "has_cached_snapshot": hasCachedSnapshot ? "true" : "false",
+                        "error": String(describing: error)
+                    ]
+                )
+            }
         }
 
         return PinnedNotesEntry(
@@ -158,5 +171,16 @@ struct PinnedNotesProvider: AppIntentTimelineProvider {
             isAuthenticated: true,
             selection: selection
         )
+    }
+}
+
+private extension NotesWidgetSelection {
+    var scopeDescription: String {
+        switch self {
+        case .all:
+            return "all"
+        case .folder(let path, _):
+            return path
+        }
     }
 }

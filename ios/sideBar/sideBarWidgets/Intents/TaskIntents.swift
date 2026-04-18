@@ -28,8 +28,8 @@ enum TaskWidgetSelection: Equatable, Sendable {
         switch self {
         case .today:
             return "All done!"
-        case .project(_, let title), .group(_, let title):
-            return "No tasks in \(title)"
+        case .project, .group:
+            return "All done!"
         }
     }
     var emptyStateSubtitle: String {
@@ -37,9 +37,9 @@ enum TaskWidgetSelection: Equatable, Sendable {
         case .today:
             return "No tasks for today"
         case .project:
-            return "This project is empty"
+            return "No open tasks in this project"
         case .group:
-            return "This group is empty"
+            return "No open tasks in this group"
         }
     }
     var emptyStateSystemImage: String {
@@ -57,7 +57,7 @@ enum TaskWidgetSelection: Equatable, Sendable {
         case .today:
             return "All done!"
         case .project, .group:
-            return "No tasks"
+            return "All done!"
         }
     }
     var cacheKey: String {
