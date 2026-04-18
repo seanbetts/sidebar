@@ -164,13 +164,27 @@ struct PinnedNotesProvider: AppIntentTimelineProvider {
         selection: NotesWidgetSelection = .all,
         now: Date = Date()
     ) -> PinnedNotesEntry {
-        let previewData = selection.filter(WidgetGalleryPreviewContent.notes(for: family, now: now))
+        let filteredPreviewData = selection.filter(WidgetGalleryPreviewContent.allNotes(now: now))
+        let previewData = WidgetNoteData(
+            notes: Array(filteredPreviewData.notes.prefix(previewItemCount(for: family))),
+            totalCount: filteredPreviewData.totalCount,
+            lastUpdated: filteredPreviewData.lastUpdated
+        )
         return PinnedNotesEntry(
             date: now,
             data: previewData,
             isAuthenticated: true,
             selection: selection
         )
+    }
+
+    private static func previewItemCount(for family: WidgetFamily) -> Int {
+        switch family {
+        case .systemLarge:
+            return 5
+        default:
+            return 3
+        }
     }
 }
 

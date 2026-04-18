@@ -132,7 +132,7 @@ enum WidgetGalleryPreviewContent {
     )
   }
 
-  static func notes(for family: WidgetFamily, now: Date = Date()) -> WidgetNoteData {
+  static func allNotes(now: Date = Date()) -> WidgetNoteData {
     let allNotes = [
       WidgetNote(
         id: "preview-note-1",
@@ -184,10 +184,15 @@ enum WidgetGalleryPreviewContent {
       )
     ]
 
+    return WidgetNoteData(notes: allNotes, totalCount: allNotes.count, lastUpdated: now)
+  }
+
+  static func notes(for family: WidgetFamily, now: Date = Date()) -> WidgetNoteData {
+    let allNotes = allNotes(now: now)
     return WidgetNoteData(
-      notes: Array(allNotes.prefix(listCount(for: family))),
-      totalCount: allNotes.count,
-      lastUpdated: now
+      notes: Array(allNotes.notes.prefix(listCount(for: family))),
+      totalCount: allNotes.totalCount,
+      lastUpdated: allNotes.lastUpdated
     )
   }
 

@@ -841,7 +841,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         let export = ExternalSurfaceDiagnosticsStore.shared.exportText(limit: 10)
         XCTAssertTrue(export.contains("[widget_provider] saved_sites_refresh_failed:"))
         XCTAssertTrue(export.contains("provider=SavedSitesProvider"))
-        XCTAssertTrue(export.contains("selection=All"))
+        XCTAssertTrue(export.contains("selection=Websites"))
         XCTAssertTrue(export.contains("has_cached_snapshot=true"))
     }
 
