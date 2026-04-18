@@ -14,13 +14,11 @@ struct NotesWidgetRefreshClient {
 
     func refreshPinnedNotes(now: Date = Date()) async throws -> WidgetNoteData {
         let response: NotesWidgetTreeResponse = try await apiClient.request("notes/tree")
-        let pinnedNotes = flattenNotes(from: response.children)
-            .filter(\.pinned)
-            .sorted { ($0.pinnedOrder ?? Int.max) < ($1.pinnedOrder ?? Int.max) }
+        let notes = flattenNotes(from: response.children)
 
         return WidgetNoteData(
-            notes: Array(pinnedNotes.prefix(10)),
-            totalCount: pinnedNotes.count,
+            notes: notes,
+            totalCount: notes.count,
             lastUpdated: now
         )
     }

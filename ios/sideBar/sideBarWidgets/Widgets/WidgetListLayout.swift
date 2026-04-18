@@ -172,22 +172,28 @@ struct HomeWidgetEmptyStateView: View {
     }
 
     var body: some View {
-        VStack {
-            Spacer()
-            icon
-            Text(title)
-                .font(.headline)
-            Text(subtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            VStack(spacing: 14) {
+                icon
+                VStack(spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
             if let trailingAccessory {
                 HStack {
                     Spacer()
                     trailingAccessory
                 }
+                .padding(.top, 8)
             }
         }
+        .padding(.horizontal, 18)
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .widgetURL(destination)

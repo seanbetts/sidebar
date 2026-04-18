@@ -232,11 +232,10 @@ struct TodayTasksWidgetView: View {
                 standByEmptyStateView
             } else {
                 HomeWidgetEmptyStateView(
-                    title: "All done!",
-                    subtitle: "No tasks for today",
-                    iconSystemName: "checkmark.circle",
-                    destination: entry.selection.deepLinkURL,
-                    accentIcon: false
+                    title: entry.selection.emptyStateTitle,
+                    subtitle: entry.selection.emptyStateSubtitle,
+                    iconSystemName: entry.selection.emptyStateSystemImage,
+                    destination: entry.selection.deepLinkURL
                 ) {
                     addTaskButton
                 }
@@ -247,15 +246,15 @@ struct TodayTasksWidgetView: View {
     private var standByEmptyStateView: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Image(systemName: "checkmark.circle.fill")
+                Image(systemName: entry.selection.emptyStateSystemImage)
                     .font(.system(size: 18, weight: .semibold))
-                Text("All done!")
+                Text(entry.selection.emptyStateTitle)
                     .font(.system(size: 22, weight: .semibold, design: .rounded))
                 Spacer(minLength: 0)
                 addTaskButton
             }
 
-            Text("No tasks for today")
+            Text(entry.selection.emptyStateSubtitle)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 

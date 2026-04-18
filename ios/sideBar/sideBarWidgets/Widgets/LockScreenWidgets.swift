@@ -70,8 +70,8 @@ struct LockScreenTaskPreviewView: View {
             LockScreenSignedOutRow(iconSystemName: "checklist")
         } else if visibleTasks.isEmpty {
             HStack {
-                Image(systemName: "checkmark.circle.fill")
-                Text("All done for today!")
+                Image(systemName: entry.selection.emptyStateSystemImage)
+                Text(entry.selection.lockScreenEmptyLabel)
                     .font(.caption)
             }
         } else {
@@ -129,10 +129,10 @@ struct LockScreenInlineView: View {
     var body: some View {
         if entry.isAuthenticated {
             if entry.data.totalCount == 0 {
-                Label("All done!", systemImage: "checkmark.circle")
+                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateSystemImage)
             } else {
                 Label(
-                    "\(entry.data.totalCount) task\(entry.data.totalCount == 1 ? "" : "s") today",
+                    "\(entry.data.totalCount) task\(entry.data.totalCount == 1 ? "" : "s")",
                     systemImage: "checklist"
                 )
             }

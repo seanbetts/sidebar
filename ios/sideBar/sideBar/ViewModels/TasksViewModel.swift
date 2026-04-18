@@ -55,6 +55,9 @@ public final class TasksViewModel: ObservableObject {
         Publishers.CombineLatest3(store.$groups, store.$projects, store.$counts)
             .sink { [weak self] groups, projects, counts in
                 self?.rebuildPanelDerivedState(groups: groups, projects: projects, counts: counts)
+                guard Self.shouldSyncWidgetConfigurationCatalog(projects: projects, groups: groups) else {
+                    return
+                }
                 self?.widgetDataManager.updateTaskConfigurationCatalog(
                     projects: projects,
                     groups: groups
@@ -88,20 +91,24 @@ public final class TasksViewModel: ObservableObject {
             filteredUpcomingCount = viewState.totalCount
         }
 
-        // Update widget data when loading Today's tasks
-        if case .today = selection {
-            updateWidgetData()
+        switch selection {
+        case .today, .project, .group:
+            updateWidgetData(for: selection)
+        default:
+            break
         }
     }
 
-    /// Updates widget data with current today tasks (when already on Today view)
-    func updateWidgetData() {
+    /// Updates widget data with the currently loaded tasks for widget-supported scopes.
+    func updateWidgetData(for selection: TaskSelection? = nil) {
+        let targetSelection = selection ?? self.selection
+        guard isWidgetSupported(selection: targetSelection) else { return }
         let projectTitleById = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.title) })
         let groupTitleById = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0.title) })
-        let todayTasks = TasksUtils.sortByDueDate(
+        let visibleTasks = TasksUtils.sortByDueDate(
             tasks.filter { $0.status != "completed" && $0.status != "project" }
         )
-        let widgetTasks = todayTasks.prefix(10).map { task in
+        let widgetTasks = visibleTasks.prefix(10).map { task in
             WidgetTask(
                 from: task,
                 projectName: task.projectId.flatMap { projectTitleById[$0] },
@@ -109,10 +116,11 @@ public final class TasksViewModel: ObservableObject {
             )
         }
         let data = buildWidgetTaskData(
+            for: targetSelection,
             tasks: Array(widgetTasks),
-            remainingCount: todayTasks.count
+            remainingCount: visibleTasks.count
         )
-        widgetDataManager.store(data, for: .tasks)
+        widgetDataManager.storeTaskData(data, for: targetSelection)
     }
 
     /// Fetches today's tasks and updates widget data (works from any view)
@@ -136,6 +144,7 @@ public final class TasksViewModel: ObservableObject {
                 )
             }
             let data = buildWidgetTaskData(
+                for: .today,
                 tasks: Array(widgetTasks),
                 remainingCount: todayTasks.count
             )
@@ -145,9 +154,13 @@ public final class TasksViewModel: ObservableObject {
         }
     }
 
-    private func buildWidgetTaskData(tasks: [WidgetTask], remainingCount: Int) -> WidgetTaskData {
+    private func buildWidgetTaskData(
+        for selection: TaskSelection,
+        tasks: [WidgetTask],
+        remainingCount: Int
+    ) -> WidgetTaskData {
         let now = Date()
-        let previous: WidgetTaskData = widgetDataManager.load(for: .tasks)
+        let previous = widgetDataManager.loadTaskData(for: selection)
         let calendar = Calendar.current
 
         let progressCompletedCount: Int
@@ -172,6 +185,15 @@ public final class TasksViewModel: ObservableObject {
             progressTotalCount: progressTotalCount,
             lastUpdated: now
         )
+    }
+
+    private func isWidgetSupported(selection: TaskSelection) -> Bool {
+        switch selection {
+        case .today, .project, .group:
+            return true
+        default:
+            return false
+        }
     }
 
     public func loadCounts(force: Bool = false) async {
@@ -236,6 +258,13 @@ public final class TasksViewModel: ObservableObject {
             projectCounts[project.id] = 0
         }
         panelProjectCounts = projectCounts
+    }
+
+    static func shouldSyncWidgetConfigurationCatalog(
+        projects: [TaskProject],
+        groups: [TaskGroup]
+    ) -> Bool {
+        !projects.isEmpty || !groups.isEmpty
     }
 }
 

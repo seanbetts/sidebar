@@ -381,6 +381,36 @@ public final class WidgetDataManager {
 // MARK: - Quick Save
 
 extension WidgetDataManager {
+  public func loadTaskData(for selection: TaskSelection) -> WidgetTaskData {
+    if selection == .today {
+      return load(for: .tasks)
+    }
+    guard let defaults = userDefaults,
+          let data = defaults.data(forKey: configuredTaskDataKeyPrefix + selection.cacheKey),
+          let decoded = try? Self.makeDecoder().decode(WidgetTaskData.self, from: data) else {
+      return .empty
+    }
+    return decoded
+  }
+
+  public func hasStoredTaskSnapshot(for selection: TaskSelection) -> Bool {
+    if selection == .today {
+      return hasStoredSnapshot(for: .tasks)
+    }
+    return userDefaults?.data(forKey: configuredTaskDataKeyPrefix + selection.cacheKey) != nil
+  }
+
+  public func storeTaskData(_ data: WidgetTaskData, for selection: TaskSelection) {
+    if selection == .today {
+      store(data, for: .tasks)
+      return
+    }
+    guard let defaults = userDefaults,
+          let encoded = try? Self.makeEncoder().encode(data) else { return }
+    defaults.set(encoded, forKey: configuredTaskDataKeyPrefix + selection.cacheKey)
+    reloadWidgets(for: .tasks)
+  }
+
   /// Records a task completion from a widget and notifies a running app process.
   public func recordTaskCompletion(taskId: String) {
     guard IdentifierValidation.isServerTaskID(taskId) else { return }

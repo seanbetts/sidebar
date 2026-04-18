@@ -135,7 +135,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertEqual(refreshed.tasks.first?.projectName, "Launch")
     }
 
-    func testNotesRefreshMapsPinnedNotesIntoWidgetNoteData() async throws {
+    func testNotesRefreshPreservesAllNotesForScopedFiltering() async throws {
         let client = makeAPIClient { request in
             XCTAssertEqual(request.url?.path, "/api/v1/notes/tree")
             return (
@@ -202,9 +202,12 @@ final class WidgetProviderRefreshTests: XCTestCase {
             now: Date(timeIntervalSince1970: 2_000)
         )
 
-        XCTAssertEqual(refreshed.notes.map(\.path), ["/Top.md", "/Projects/Pinned.md"])
-        XCTAssertEqual(refreshed.totalCount, 2)
-        XCTAssertEqual(refreshed.notes.first?.pinnedOrder, 0)
+        XCTAssertEqual(Set(refreshed.notes.map(\.path)), Set(["/Projects/Pinned.md", "/Top.md", "/Loose.md"]))
+        XCTAssertEqual(refreshed.totalCount, 3)
+        XCTAssertEqual(
+            refreshed.notes.first(where: { $0.path == "/Top.md" })?.pinnedOrder,
+            0
+        )
     }
 
     func testWebsitesRefreshMapsSavedWebsitesIntoWidgetWebsiteData() async throws {
@@ -430,6 +433,75 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertEqual(timeline.entries.first?.data.tasks.map(\WidgetTask.id), ["cached-task"])
     }
 
+    func testTodayTasksProviderRefreshesConfiguredProjectSelectionWhenScopedSnapshotIsMissing() async {
+        let now = Date(timeIntervalSince1970: 15_000)
+        WidgetDataManager.shared.store(
+            WidgetTaskData(
+                tasks: [WidgetTask(id: "today-task", title: "Today")],
+                totalCount: 1,
+                lastUpdated: now
+            ),
+            for: .tasks
+        )
+        setWidgetAuthenticated(true)
+
+        var observedSelection: TaskWidgetSelection?
+        let provider = TodayTasksProvider(
+            now: { now },
+            refreshData: { _, selection, _ in
+                observedSelection = selection
+                return WidgetTaskData(
+                    tasks: [WidgetTask(id: "project-task", title: "Project task", projectName: "Launch")],
+                    totalCount: 1,
+                    lastUpdated: now
+                )
+            }
+        )
+
+        let entry = await provider.entry(
+            for: now,
+            selection: .project(id: "project-1", title: "Launch")
+        )
+
+        XCTAssertEqual(observedSelection, .project(id: "project-1", title: "Launch"))
+        XCTAssertEqual(entry.data.tasks.map(\.id), ["project-task"])
+        XCTAssertEqual(entry.selection.headerTitle, "Launch")
+    }
+
+    func testTodayTasksProviderRefreshesConfiguredProjectSelectionWhenFreshScopedSnapshotIsEmpty() async {
+        let now = Date(timeIntervalSince1970: 16_000)
+        let selection = TaskWidgetSelection.project(id: "project-1", title: "Launch")
+        WidgetDataManager.shared.storeTaskData(
+            WidgetTaskData(
+                tasks: [],
+                totalCount: 0,
+                lastUpdated: now
+            ),
+            for: selection
+        )
+        setWidgetAuthenticated(true)
+
+        var refreshCallCount = 0
+        let provider = TodayTasksProvider(
+            now: { now },
+            refreshData: { _, observedSelection, _ in
+                refreshCallCount += 1
+                XCTAssertEqual(observedSelection, selection)
+                return WidgetTaskData(
+                    tasks: [WidgetTask(id: "project-task", title: "Project task", projectName: "Launch")],
+                    totalCount: 1,
+                    lastUpdated: now
+                )
+            }
+        )
+
+        let entry = await provider.entry(for: now, selection: selection)
+
+        XCTAssertEqual(refreshCallCount, 1)
+        XCTAssertEqual(entry.data.tasks.map(\.id), ["project-task"])
+        XCTAssertEqual(entry.data.totalCount, 1)
+    }
+
     func testPinnedNotesProviderRefreshesStaleSnapshotWhenAuthIsAvailable() async {
         let now = Date(timeIntervalSince1970: 20_000)
         WidgetDataManager.shared.store(
@@ -443,7 +515,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         setWidgetAuthenticated(true)
 
         let refreshed = WidgetNoteData(
-            notes: [WidgetNote(id: "/refreshed.md", name: "Refreshed", path: "/refreshed.md")],
+            notes: [WidgetNote(id: "/refreshed.md", name: "Refreshed", path: "/refreshed.md", pinned: true)],
             totalCount: 1,
             lastUpdated: now
         )
@@ -457,6 +529,76 @@ final class WidgetProviderRefreshTests: XCTestCase {
 
         XCTAssertEqual(timeline.entries.first?.data.notes.map(\.path), ["/refreshed.md"])
         XCTAssertEqual(stored.notes.map(\.path), ["/refreshed.md"])
+    }
+
+    func testPinnedNotesProviderRefreshesConfiguredFolderSelectionWhenFreshSnapshotFiltersToEmpty() async {
+        let now = Date(timeIntervalSince1970: 22_000)
+        WidgetDataManager.shared.store(
+            WidgetNoteData(
+                notes: [WidgetNote(id: "/Inbox.md", name: "Inbox", path: "/Inbox.md")],
+                totalCount: 1,
+                lastUpdated: now
+            ),
+            for: .notes
+        )
+        setWidgetAuthenticated(true)
+
+        var refreshCallCount = 0
+        let provider = PinnedNotesProvider(
+            now: { now },
+            refreshData: { _ in
+                refreshCallCount += 1
+                return WidgetNoteData(
+                    notes: [WidgetNote(id: "/Projects/Launch.md", name: "Launch", path: "/Projects/Launch.md")],
+                    totalCount: 1,
+                    lastUpdated: now
+                )
+            }
+        )
+
+        let entry = await provider.entry(
+            for: now,
+            selection: .folder(path: "/Projects", title: "Projects")
+        )
+
+        XCTAssertEqual(refreshCallCount, 1)
+        XCTAssertEqual(entry.data.notes.map(\.path), ["/Projects/Launch.md"])
+        XCTAssertEqual(entry.data.totalCount, 1)
+    }
+
+    func testPinnedNotesProviderRefreshesConfiguredFolderSelectionWhenFreshStoredSnapshotIsEmpty() async {
+        let now = Date(timeIntervalSince1970: 23_000)
+        WidgetDataManager.shared.store(
+            WidgetNoteData(
+                notes: [],
+                totalCount: 0,
+                lastUpdated: now
+            ),
+            for: .notes
+        )
+        setWidgetAuthenticated(true)
+
+        var refreshCallCount = 0
+        let provider = PinnedNotesProvider(
+            now: { now },
+            refreshData: { _ in
+                refreshCallCount += 1
+                return WidgetNoteData(
+                    notes: [WidgetNote(id: "/Projects/Launch.md", name: "Launch", path: "/Projects/Launch.md")],
+                    totalCount: 1,
+                    lastUpdated: now
+                )
+            }
+        )
+
+        let entry = await provider.entry(
+            for: now,
+            selection: .folder(path: "/Projects", title: "Projects")
+        )
+
+        XCTAssertEqual(refreshCallCount, 1)
+        XCTAssertEqual(entry.data.notes.map(\.path), ["/Projects/Launch.md"])
+        XCTAssertEqual(entry.data.totalCount, 1)
     }
 
     func testPinnedNotesProviderFiltersConfiguredFolderSelection() async {
@@ -537,6 +679,56 @@ final class WidgetProviderRefreshTests: XCTestCase {
 
         XCTAssertEqual(selection.emptyStateTitle, "No notes in Projects")
         XCTAssertEqual(selection.emptyStateSubtitle, "This folder is empty")
+    }
+
+    func testProjectScopedTaskSelectionUsesScopeSpecificEmptyStateCopy() {
+        let selection = TaskWidgetSelection.project(id: "project-1", title: "Launch")
+
+        XCTAssertEqual(selection.emptyStateTitle, "No tasks in Launch")
+        XCTAssertEqual(selection.emptyStateSubtitle, "This project is empty")
+        XCTAssertEqual(selection.emptyStateSystemImage, "list.bullet")
+    }
+
+    func testGroupScopedTaskSelectionUsesGroupSpecificEmptyStateIcon() {
+        let selection = TaskWidgetSelection.group(id: "group-1", title: "Work")
+
+        XCTAssertEqual(selection.emptyStateTitle, "No tasks in Work")
+        XCTAssertEqual(selection.emptyStateSubtitle, "This group is empty")
+        XCTAssertEqual(selection.emptyStateSystemImage, "square.stack.3d.up")
+    }
+
+    func testTodayTasksProviderUsesScopedSnapshotStoredWithoutSelectionTitle() async {
+        let now = Date(timeIntervalSince1970: 27_000)
+        let defaults = UserDefaults(suiteName: appGroupIdForWidgetTests())
+        let snapshot = WidgetTaskData(
+            tasks: [WidgetTask(id: "project-task", title: "Project task", projectName: "Launch")],
+            totalCount: 1,
+            lastUpdated: now
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        defaults?.set(
+            try? encoder.encode(snapshot),
+            forKey: "widget_tasks_data::project:project-1"
+        )
+        defaults?.synchronize()
+        setWidgetAuthenticated(true)
+
+        let provider = TodayTasksProvider(
+            now: { now },
+            refreshData: { _, _, _ in
+                XCTFail("Expected legacy scoped snapshot to be reused")
+                return .empty
+            }
+        )
+
+        let entry = await provider.entry(
+            for: now,
+            selection: .project(id: "project-1", title: "Launch")
+        )
+
+        XCTAssertEqual(entry.data.tasks.map(\.id), ["project-task"])
+        XCTAssertEqual(entry.data.totalCount, 1)
     }
 
     func testSavedSitesProviderPreservesCachedDataWhenRefreshFails() async {
@@ -683,10 +875,14 @@ final class WidgetProviderRefreshTests: XCTestCase {
 
     private func clearWidgetStorage() {
         let defaults = UserDefaults(suiteName: appGroupIdForWidgetTests())
+        let scopedTaskDataPrefix = "widget_tasks_data::"
         for contentType in [WidgetContentType.tasks, .notes, .websites, .files] {
             defaults?.removeObject(forKey: contentType.dataKey)
             defaults?.removeObject(forKey: contentType.pendingKey)
         }
+        defaults?.dictionaryRepresentation().keys
+            .filter { $0.hasPrefix(scopedTaskDataPrefix) }
+            .forEach { defaults?.removeObject(forKey: $0) }
         defaults?.removeObject(forKey: "widgetIsAuthenticated")
         defaults?.removeObject(forKey: "widgetTodayTasks")
         defaults?.removeObject(forKey: "widgetPendingCompletions")

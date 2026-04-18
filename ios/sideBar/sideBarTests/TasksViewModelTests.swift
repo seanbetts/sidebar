@@ -253,6 +253,64 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertTrue(sut.store.tasks.contains(where: { $0.id == "t1" }))
     }
 
+    func testLoadProjectSelectionStoresScopedWidgetData() async {
+        let api = TasksViewModelAPIStub()
+        let group = TaskGroup(id: "g1", title: "Work", updatedAt: nil)
+        let project = TaskProject(id: "p1", title: "Launch", groupId: group.id, status: "active", updatedAt: nil)
+        let task = TaskItem(
+            id: "t1",
+            title: "Project task",
+            status: "open",
+            projectId: project.id,
+            groupId: group.id
+        )
+        api.projectTasksResponse = TaskListResponse(
+            scope: "project",
+            generatedAt: nil,
+            tasks: [task],
+            projects: [project],
+            groups: [group]
+        )
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .project(id: project.id))
+
+        let snapshot = sut.widgetDataManager.loadTaskData(for: .project(id: project.id))
+        XCTAssertEqual(snapshot.tasks.map(\.id), ["t1"])
+        XCTAssertEqual(snapshot.totalCount, 1)
+        XCTAssertEqual(snapshot.tasks.first?.projectName, "Launch")
+        XCTAssertEqual(snapshot.tasks.first?.groupName, "Work")
+    }
+
+    func testLoadGroupSelectionStoresScopedWidgetData() async {
+        let api = TasksViewModelAPIStub()
+        let group = TaskGroup(id: "g1", title: "Work", updatedAt: nil)
+        let project = TaskProject(id: "p1", title: "Launch", groupId: group.id, status: "active", updatedAt: nil)
+        let task = TaskItem(
+            id: "t1",
+            title: "Group task",
+            status: "open",
+            projectId: project.id,
+            groupId: group.id
+        )
+        api.groupTasksResponse = TaskListResponse(
+            scope: "group",
+            generatedAt: nil,
+            tasks: [task],
+            projects: [project],
+            groups: [group]
+        )
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+        await sut.viewModel.load(selection: .group(id: group.id))
+
+        let snapshot = sut.widgetDataManager.loadTaskData(for: .group(id: group.id))
+        XCTAssertEqual(snapshot.tasks.map(\.id), ["t1"])
+        XCTAssertEqual(snapshot.totalCount, 1)
+        XCTAssertEqual(snapshot.tasks.first?.projectName, "Launch")
+        XCTAssertEqual(snapshot.tasks.first?.groupName, "Work")
+    }
+
     func testRefreshWidgetDataSeedsTaskConfigurationCatalogFromTodayResponse() async {
         let api = TasksViewModelAPIStub()
         let group = TaskGroup(id: "group-1", title: "Work", updatedAt: nil)

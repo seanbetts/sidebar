@@ -24,6 +24,42 @@ enum TaskWidgetSelection: Equatable, Sendable {
     case project(id: String, title: String)
     case group(id: String, title: String)
 
+    var emptyStateTitle: String {
+        switch self {
+        case .today:
+            return "All done!"
+        case .project(_, let title), .group(_, let title):
+            return "No tasks in \(title)"
+        }
+    }
+    var emptyStateSubtitle: String {
+        switch self {
+        case .today:
+            return "No tasks for today"
+        case .project:
+            return "This project is empty"
+        case .group:
+            return "This group is empty"
+        }
+    }
+    var emptyStateSystemImage: String {
+        switch self {
+        case .today:
+            return "checkmark.circle"
+        case .project:
+            return "list.bullet"
+        case .group:
+            return "square.stack.3d.up"
+        }
+    }
+    var lockScreenEmptyLabel: String {
+        switch self {
+        case .today:
+            return "All done!"
+        case .project, .group:
+            return "No tasks"
+        }
+    }
     var cacheKey: String {
         switch self {
         case .today:
@@ -34,7 +70,6 @@ enum TaskWidgetSelection: Equatable, Sendable {
             return "group:\(id):\(Self.encodeTitle(title))"
         }
     }
-
     var headerTitle: String {
         switch self {
         case .today:
@@ -43,7 +78,6 @@ enum TaskWidgetSelection: Equatable, Sendable {
             return title
         }
     }
-
     var standByTitle: String {
         switch self {
         case .today:

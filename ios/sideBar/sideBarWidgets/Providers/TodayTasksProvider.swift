@@ -145,8 +145,11 @@ struct TodayTasksProvider: AppIntentTimelineProvider {
             isAuthenticated: isAuthenticated,
             now: date
         )
+        let shouldAttemptScopedEmptyRefresh =
+            selection != .today &&
+            data.tasks.isEmpty
 
-        if decision.shouldAttemptRefresh {
+        if decision.shouldAttemptRefresh || shouldAttemptScopedEmptyRefresh {
             do {
                 let refreshed = try await refreshData(data, selection, date)
                 let pending = dataManager.loadPendingOperations(

@@ -588,11 +588,13 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         let filesSource = try normalizedWidgetSource(named: "PinnedFilesWidget.swift")
         let websitesSource = try normalizedWidgetSource(named: "SavedSitesWidget.swift")
 
-        XCTAssertTrue(tasksSource.contains("HomeWidgetEmptyStateView(title:\"Alldone!\""))
-        XCTAssertTrue(tasksSource.contains("subtitle:\"Notasksfortoday\""))
+        XCTAssertTrue(tasksSource.contains("HomeWidgetEmptyStateView(title:entry.selection.emptyStateTitle"))
+        XCTAssertTrue(tasksSource.contains("subtitle:entry.selection.emptyStateSubtitle"))
+        XCTAssertTrue(tasksSource.contains("iconSystemName:entry.selection.emptyStateSystemImage"))
+        XCTAssertFalse(tasksSource.contains("accentIcon:false"))
 
-        XCTAssertTrue(notesSource.contains("HomeWidgetEmptyStateView(title:\"Nopinnednotes\""))
-        XCTAssertTrue(notesSource.contains("subtitle:\"Pinanotetoseeithere\""))
+        XCTAssertTrue(notesSource.contains("HomeWidgetEmptyStateView(title:entry.selection.emptyStateTitle"))
+        XCTAssertTrue(notesSource.contains("subtitle:entry.selection.emptyStateSubtitle"))
 
         XCTAssertTrue(filesSource.contains("HomeWidgetEmptyStateView(title:\"Nopinnedfiles\""))
         XCTAssertTrue(filesSource.contains("subtitle:\"Pinafiletoseeithere\""))

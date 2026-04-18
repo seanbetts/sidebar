@@ -216,19 +216,25 @@ extension WidgetDataManager {
     if selection == .today {
       return loadTodayTasks()
     }
-    guard let defaults = userDefaults,
-          let data = defaults.data(forKey: configuredTaskDataKeyPrefix + selection.cacheKey),
-          let decoded = try? Self.makeDecoder().decode(WidgetTaskData.self, from: data) else {
+    guard let defaults = userDefaults else {
       return .empty
     }
-    return decoded
+    for key in taskSnapshotKeys(for: selection) {
+      guard let data = defaults.data(forKey: key),
+            let decoded = try? Self.makeDecoder().decode(WidgetTaskData.self, from: data) else {
+        continue
+      }
+      return decoded
+    }
+    return .empty
   }
 
   func hasStoredTaskSnapshot(for selection: TaskWidgetSelection) -> Bool {
     if selection == .today {
       return hasStoredSnapshot(for: .tasks)
     }
-    return userDefaults?.data(forKey: configuredTaskDataKeyPrefix + selection.cacheKey) != nil
+    guard let defaults = userDefaults else { return false }
+    return taskSnapshotKeys(for: selection).contains { defaults.data(forKey: $0) != nil }
   }
 
   func storeTaskData(_ data: WidgetTaskData, for selection: TaskWidgetSelection) {
@@ -316,6 +322,23 @@ extension WidgetDataManager {
     let operation = WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew)
     recordPendingOperation(operation, for: .notes)
     WidgetIntentHandoffNotifier.post()
+  }
+
+  private func taskSnapshotKeys(for selection: TaskWidgetSelection) -> [String] {
+    switch selection {
+    case .today:
+      return [WidgetContentType.tasks.dataKey]
+    case .project(let id, _):
+      return [
+        configuredTaskDataKeyPrefix + selection.cacheKey,
+        configuredTaskDataKeyPrefix + "project:\(id)"
+      ]
+    case .group(let id, _):
+      return [
+        configuredTaskDataKeyPrefix + selection.cacheKey,
+        configuredTaskDataKeyPrefix + "group:\(id)"
+      ]
+    }
   }
 
 }

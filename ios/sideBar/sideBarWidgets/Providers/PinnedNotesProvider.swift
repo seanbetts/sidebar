@@ -106,8 +106,11 @@ struct PinnedNotesProvider: AppIntentTimelineProvider {
             isAuthenticated: isAuthenticated,
             now: date
         )
+        let shouldAttemptScopedEmptyRefresh =
+            selection != .all &&
+            data.notes.isEmpty
 
-        if decision.shouldAttemptRefresh {
+        if decision.shouldAttemptRefresh || shouldAttemptScopedEmptyRefresh {
             do {
                 let refreshed = try await refreshData(date)
                 dataManager.store(refreshed, for: .notes)
