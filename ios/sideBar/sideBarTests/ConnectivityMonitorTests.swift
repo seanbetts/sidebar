@@ -101,6 +101,45 @@ final class ConnectivityMonitorTests: XCTestCase {
         monitor = nil
     }
 
+    func testServerBusyLifecycleSignalMarksServerUnreachableAfterThreshold() async {
+        let notificationCenter = NotificationCenter()
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false,
+            notificationCenter: notificationCenter
+        )
+        guard let strongMonitor = monitor else {
+            XCTFail("Expected monitor")
+            return
+        }
+
+        let signal = RequestLifecycleSignal(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            stage: .failed,
+            errorCategory: .serverBusy
+        )
+
+        notificationCenter.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["signal": signal]
+        )
+        await waitForMainQueueDrain()
+        notificationCenter.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["signal": signal]
+        )
+        await waitForMainQueueDrain()
+
+        XCTAssertTrue(strongMonitor.isNetworkAvailable)
+        XCTAssertFalse(strongMonitor.isOffline)
+        XCTAssertFalse(strongMonitor.isServerReachable)
+
+        monitor = nil
+    }
+
     func testNotConnectedToInternetMarksOfflineAfterThreshold() async {
         var monitor: ConnectivityMonitor? = ConnectivityMonitor(
             baseUrl: URL(string: "http://localhost")!,
@@ -121,6 +160,45 @@ final class ConnectivityMonitorTests: XCTestCase {
             name: .apiClientRequestFailed,
             object: nil,
             userInfo: ["error": URLError(.notConnectedToInternet)]
+        )
+        await waitForMainQueueDrain()
+
+        XCTAssertFalse(strongMonitor.isNetworkAvailable)
+        XCTAssertTrue(strongMonitor.isOffline)
+        XCTAssertFalse(strongMonitor.isServerReachable)
+
+        monitor = nil
+    }
+
+    func testOfflineLifecycleSignalMarksOfflineAfterThreshold() async {
+        let notificationCenter = NotificationCenter()
+        var monitor: ConnectivityMonitor? = ConnectivityMonitor(
+            baseUrl: URL(string: "http://localhost")!,
+            startMonitoring: false,
+            notificationCenter: notificationCenter
+        )
+        guard let strongMonitor = monitor else {
+            XCTFail("Expected monitor")
+            return
+        }
+
+        let signal = RequestLifecycleSignal(
+            operation: "tasks.list",
+            requestKind: .foregroundRead,
+            stage: .failed,
+            errorCategory: .offline
+        )
+
+        notificationCenter.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["signal": signal]
+        )
+        await waitForMainQueueDrain()
+        notificationCenter.post(
+            name: .apiClientRequestFailed,
+            object: nil,
+            userInfo: ["signal": signal]
         )
         await waitForMainQueueDrain()
 

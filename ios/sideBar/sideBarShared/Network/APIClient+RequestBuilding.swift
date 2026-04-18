@@ -1,6 +1,33 @@
 import Foundation
 
+struct RequestExecutionContext {
+    let request: URLRequest
+    let intent: RequestIntent
+}
+
 extension APIClient {
+    func buildRequestContext(
+        _ path: String,
+        method: String,
+        body: Encodable?,
+        headers: [String: String],
+        timeoutInterval: TimeInterval?
+    ) throws -> RequestExecutionContext {
+        let request = try buildRequest(
+            path,
+            method: method,
+            body: body,
+            headers: headers,
+            timeoutInterval: timeoutInterval
+        )
+        let intent = resolvedRequestIntent(
+            for: request,
+            path: path,
+            timeoutInterval: timeoutInterval
+        )
+        return RequestExecutionContext(request: request, intent: intent)
+    }
+
     func buildRequest(
         _ path: String,
         method: String,
@@ -30,6 +57,27 @@ extension APIClient {
             request.httpBody = try encoder.encode(AnyEncodable(body))
         }
         return request
+    }
+
+    private func resolvedRequestIntent(
+        for request: URLRequest,
+        path: String,
+        timeoutInterval: TimeInterval?
+    ) -> RequestIntent {
+        if let intent = config.requestIntentProvider?(request) {
+            return intent
+        }
+
+        let method = HTTPMethod(request.httpMethod ?? "GET")
+        return RequestIntent(
+            operation: inferredOperation(for: path, method: method),
+            path: path,
+            method: method,
+            requestKind: inferredRequestKind(for: method),
+            authRequirement: .required,
+            replaySafety: inferredReplaySafety(for: method),
+            timeoutClass: inferredTimeoutClass(timeoutInterval)
+        )
     }
 
     private func resolvedURL(for path: String) throws -> URL {
@@ -71,5 +119,47 @@ extension APIClient {
             return
         }
         request.setValue(appVersion, forHTTPHeaderField: AppVersionHeader.fieldName)
+    }
+
+    private func inferredOperation(for path: String, method: HTTPMethod) -> String {
+        let trimmedPath = path
+            .split(separator: "?", maxSplits: 1)
+            .first
+            .map(String.init)?
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+        if let trimmedPath, !trimmedPath.isEmpty {
+            return "\(method.rawValue.lowercased()).\(trimmedPath.replacingOccurrences(of: "/", with: "."))"
+        }
+        return method.rawValue.lowercased()
+    }
+
+    private func inferredRequestKind(for method: HTTPMethod) -> RequestKind {
+        switch method {
+        case .get, .head, .options:
+            return .foregroundRead
+        case .post, .put, .patch, .delete, .custom:
+            return .foregroundMutation
+        }
+    }
+
+    private func inferredReplaySafety(for method: HTTPMethod) -> ReplaySafety {
+        switch method {
+        // Preserve pre-policy 401 retry semantics for implicit callers until
+        // explicit RequestIntent metadata is supplied by the call site.
+        case .get:
+            return .safeToReplayAlways
+        case .put, .patch, .delete:
+            return .safeToReplayBeforeBodyStarts
+        case .head, .options, .post, .custom:
+            return .notReplaySafe
+        }
+    }
+
+    private func inferredTimeoutClass(_ timeoutInterval: TimeInterval?) -> TimeoutClass {
+        guard let timeoutInterval, timeoutInterval > 60 else {
+            return .standard
+        }
+        return .long
     }
 }

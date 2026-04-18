@@ -85,13 +85,19 @@ final class ConnectivityMonitor: ObservableObject {
 
         notificationCenter.publisher(for: .apiClientRequestSucceeded)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.handleRequestSuccess()
+            .sink { [weak self] notification in
+                self?.handleRequestSuccess(notification)
             }
             .store(in: &cancellables)
     }
 
     private func handleRequestFailure(_ notification: Notification) {
+        if let signal = notification.userInfo?["signal"] as? RequestLifecycleSignal {
+            handleLifecycleFailure(signal)
+            scheduleProbe(immediate: false)
+            return
+        }
+
         let statusCode = notification.userInfo?["statusCode"] as? Int
         let error = notification.userInfo?["error"] as? Error
         if let error,
@@ -118,9 +124,36 @@ final class ConnectivityMonitor: ObservableObject {
         scheduleProbe(immediate: false)
     }
 
-    private func handleRequestSuccess() {
+    private func handleRequestSuccess(_ notification: Notification) {
+        if let signal = notification.userInfo?["signal"] as? RequestLifecycleSignal,
+           signal.stage != .succeeded {
+            return
+        }
         recordInternetSuccess()
         recordServerSuccess()
+    }
+
+    private func handleLifecycleFailure(_ signal: RequestLifecycleSignal) {
+        guard signal.stage == .failed, let category = signal.errorCategory else {
+            return
+        }
+
+        switch category {
+        case .offline:
+            recordInternetFailure()
+            recordServerFailure()
+        case .serverBusy, .serverUnreachable, .timeout, .secureConnection:
+            recordServerFailure()
+        case .authentication,
+             .permission,
+             .rateLimited,
+             .requestRejected,
+             .payloadTooLarge,
+             .decoding,
+             .cancelled,
+             .unknown:
+            break
+        }
     }
 
     private func scheduleProbe(immediate: Bool) {

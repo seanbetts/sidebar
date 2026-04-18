@@ -1,10 +1,5 @@
 import Foundation
 import os
-// MARK: - APIClient
-public extension Notification.Name {
-    static let apiClientRequestFailed = Notification.Name("sideBar.apiClient.requestFailed")
-    static let apiClientRequestSucceeded = Notification.Name("sideBar.apiClient.requestSucceeded")
-}
 
 /// Configuration for APIClient base URL and auth token.
 public struct APIClientConfig {
@@ -56,14 +51,14 @@ public final class APIClient {
         headers: [String: String] = [:],
         timeoutInterval: TimeInterval? = nil
     ) async throws -> T {
-        let request = try buildRequest(
+        let context = try buildRequestContext(
             path,
             method: method,
             body: body,
             headers: headers,
             timeoutInterval: timeoutInterval
         )
-        let (data, _) = try await performRequest(request)
+        let (data, _) = try await performRequest(context)
         do {
             let decoder = Self.makeDecoder()
             return try decoder.decode(T.self, from: data)
@@ -80,14 +75,14 @@ public final class APIClient {
         headers: [String: String] = [:],
         timeoutInterval: TimeInterval? = nil
     ) async throws {
-        let request = try buildRequest(
+        let context = try buildRequestContext(
             path,
             method: method,
             body: body,
             headers: headers,
             timeoutInterval: timeoutInterval
         )
-        _ = try await performRequest(request)
+        _ = try await performRequest(context)
     }
 
     public func requestData(
@@ -100,18 +95,20 @@ public final class APIClient {
         if requestHeaders["Accept"] == nil {
             requestHeaders["Accept"] = "*/*"
         }
-        let request = try buildRequest(
+        let context = try buildRequestContext(
             path,
             method: method,
             body: nil,
             headers: requestHeaders,
             timeoutInterval: timeoutInterval
         )
-        let (data, _) = try await performRequest(request)
+        let (data, _) = try await performRequest(context)
         return data
     }
 
-    private func performRequest(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    private func performRequest(_ context: RequestExecutionContext) async throws -> (Data, HTTPURLResponse) {
+        let request = context.request
+        let intent = context.intent
         let start = Date()
         if let url = request.url {
             logger.debug("Request \(request.httpMethod ?? "GET") \(url.absoluteString, privacy: .public)")
@@ -125,23 +122,19 @@ public final class APIClient {
                 throw error
             }
             logTransportError(error, request: request)
-            NotificationCenter.default.post(
-                name: .apiClientRequestFailed,
-                object: nil,
-                userInfo: ["error": error]
-            )
+            postFailureNotification(intent: intent, transportError: error)
             throw error
         }
         let elapsedMs = Int(Date().timeIntervalSince(start) * 1000)
         guard let http = response as? HTTPURLResponse else {
             logger.error("Response failed: non-HTTP response")
-            NotificationCenter.default.post(name: .apiClientRequestFailed, object: nil)
+            postFailureNotification(intent: intent, statusCode: nil, backendMessage: nil, transportError: nil)
             throw APIClientError.unknown
         }
         logger.debug("Response \(http.statusCode) in \(elapsedMs)ms")
         guard (200...299).contains(http.statusCode) else {
             if http.statusCode == 401,
-               shouldAttemptAuthRefresh(for: request) {
+               shouldAttemptAuthRefresh(for: intent) {
                 let method = request.httpMethod ?? "GET"
                 let url = request.url?.absoluteString ?? "?"
                 let hadToken = request.value(forHTTPHeaderField: "Authorization") != nil
@@ -164,7 +157,7 @@ public final class APIClient {
                     } else {
                         retry.setValue(nil, forHTTPHeaderField: "Authorization")
                     }
-                    return try await performRequestWithoutAuthRetry(retry)
+                    return try await performRequestWithoutAuthRetry(retry, intent: intent)
                 } else {
                     let refreshUnavailableDescription =
                         "Auth refresh unavailable for \(method) \(url); no retry token available"
@@ -178,23 +171,22 @@ public final class APIClient {
                 let preview = body.prefix(2000)
                 logger.error("Response body: \(preview, privacy: .private)")
             }
-            NotificationCenter.default.post(
-                name: .apiClientRequestFailed,
-                object: nil,
-                userInfo: ["statusCode": http.statusCode]
-            )
             let decoder = Self.makeDecoder()
             let message = Self.decodeErrorMessage(data: data, decoder: decoder)
+            postFailureNotification(intent: intent, statusCode: http.statusCode, backendMessage: message, transportError: nil)
             if let message {
                 throw APIClientError.apiError(message)
             }
             throw APIClientError.requestFailed(http.statusCode)
         }
-        NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
+        postSuccessNotification(intent: intent, statusCode: http.statusCode)
         return (data, http)
     }
 
-    private func performRequestWithoutAuthRetry(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    private func performRequestWithoutAuthRetry(
+        _ request: URLRequest,
+        intent: RequestIntent
+    ) async throws -> (Data, HTTPURLResponse) {
         let start = Date()
         let (data, response): (Data, URLResponse)
         do {
@@ -205,45 +197,32 @@ public final class APIClient {
                 throw error
             }
             logTransportError(error, request: request)
-            NotificationCenter.default.post(
-                name: .apiClientRequestFailed,
-                object: nil,
-                userInfo: ["error": error]
-            )
+            postFailureNotification(intent: intent, transportError: error)
             throw error
         }
         let elapsedMs = Int(Date().timeIntervalSince(start) * 1000)
         guard let http = response as? HTTPURLResponse else {
             logger.error("Response failed: non-HTTP response")
-            NotificationCenter.default.post(name: .apiClientRequestFailed, object: nil)
+            postFailureNotification(intent: intent, statusCode: nil, backendMessage: nil, transportError: nil)
             throw APIClientError.unknown
         }
         logger.debug("Response(retry) \(http.statusCode) in \(elapsedMs)ms")
         guard (200...299).contains(http.statusCode) else {
-            NotificationCenter.default.post(
-                name: .apiClientRequestFailed,
-                object: nil,
-                userInfo: ["statusCode": http.statusCode]
-            )
             let decoder = Self.makeDecoder()
             let message = Self.decodeErrorMessage(data: data, decoder: decoder)
+            postFailureNotification(intent: intent, statusCode: http.statusCode, backendMessage: message, transportError: nil)
             if let message {
                 throw APIClientError.apiError(message)
             }
             throw APIClientError.requestFailed(http.statusCode)
         }
-        NotificationCenter.default.post(name: .apiClientRequestSucceeded, object: nil)
+        postSuccessNotification(intent: intent, statusCode: http.statusCode)
         return (data, http)
     }
 
-    private func shouldAttemptAuthRefresh(for request: URLRequest) -> Bool {
+    private func shouldAttemptAuthRefresh(for intent: RequestIntent) -> Bool {
         guard config.refreshAuthIfNeeded != nil else { return false }
-        if let intent = config.requestIntentProvider?(request) {
-            return RequestExecutionPolicy.shouldAttemptAuthRefresh(for: intent)
-        }
-        let method = request.httpMethod?.uppercased() ?? "GET"
-        let retryableMethods = Set(["GET", "PUT", "PATCH", "DELETE"])
-        return retryableMethods.contains(method)
+        return RequestExecutionPolicy.shouldAttemptAuthRefresh(for: intent)
     }
 
     private func shouldRetryWithUpdatedToken(for request: URLRequest) -> Bool {
