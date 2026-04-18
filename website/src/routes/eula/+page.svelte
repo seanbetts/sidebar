@@ -27,9 +27,10 @@
     <section>
       <p>
         This End User Licence Agreement ("EULA") is a legal agreement between you and sideBar Labs
-        Limited, a company registered in England and Wales under company number 17137829
-        ("sideBar", "we", "us", "our"), for the sideBar application for iPhone, iPad, and Mac,
-        including any updates, and any content or services made available through it (the "App").
+        Limited, a company registered in England and Wales under company number 17137829 with its
+        registered office at 66 Paul Street, London, EC2A 4NA ("sideBar", "we", "us", "our"), for
+        the sideBar application for iPhone, iPad, and Mac, including any updates, and any content or
+        services made available through it (the "App").
       </p>
       <p>
         This EULA applies in addition to our
@@ -235,7 +236,7 @@
       <h2>12. Contact</h2>
       <p>
         sideBar Labs Limited, a company registered in England and Wales under company number
-        17137829.
+        17137829. Registered office: 66 Paul Street, London, EC2A 4NA.
       </p>
       <p>
         Support:

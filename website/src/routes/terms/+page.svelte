@@ -27,10 +27,10 @@
     <section>
       <p>
         These Terms of Service ("Terms") are a legal agreement between you and sideBar Labs
-        Limited, a company registered in England and Wales under company number 17137829
-        ("sideBar", "we", "us", "our"). They govern your use of the sideBar iOS, iPadOS, and macOS
-        apps, the sideBar web app at trysidebar.ai, and our related services (together, the
-        "Service").
+        Limited, a company registered in England and Wales under company number 17137829 with its
+        registered office at 66 Paul Street, London, EC2A 4NA ("sideBar", "we", "us", "our"). They
+        govern your use of the sideBar iOS, iPadOS, and macOS apps, the sideBar web app at
+        trysidebar.ai, and our related services (together, the "Service").
       </p>
       <p>
         By creating an account or using the Service you agree to these Terms. If you do not agree,
@@ -275,7 +275,8 @@
       <h2>14. Contact</h2>
       <p>
         sideBar Labs Limited, a company registered in England and Wales under company number
-        17137829. ICO registration number ZC116277.
+        17137829. ICO registration number ZC116277. Registered office: 66 Paul Street, London,
+        EC2A 4NA.
       </p>
       <p>
         Support and account questions:

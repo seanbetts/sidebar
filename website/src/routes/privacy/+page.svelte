@@ -32,9 +32,9 @@
       </p>
       <p>
         sideBar Labs Limited is a company registered in England and Wales (company number
-        17137829) and acts as the data controller for personal data processed through the Service.
-        We are registered with the UK Information Commissioner's Office (ICO) under registration
-        number ZC116277.
+        17137829) with its registered office at 66 Paul Street, London, EC2A 4NA, and acts as the
+        data controller for personal data processed through the Service. We are registered with the
+        UK Information Commissioner's Office (ICO) under registration number ZC116277.
       </p>
       <p>
         By using sideBar you agree to the practices described in this policy. If you do not agree,
@@ -334,7 +334,8 @@
       <h2>13. Contact</h2>
       <p>
         sideBar Labs Limited, a company registered in England and Wales under company number
-        17137829. ICO registration number ZC116277.
+        17137829. ICO registration number ZC116277. Registered office: 66 Paul Street, London,
+        EC2A 4NA.
       </p>
       <p>
         Privacy questions or requests:
