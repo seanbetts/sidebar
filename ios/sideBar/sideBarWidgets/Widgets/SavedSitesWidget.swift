@@ -85,7 +85,7 @@ struct SavedSitesWidgetView: View {
         switch family {
         case .systemSmall: return 3
         case .systemMedium: return 3
-        case .systemLarge: return 7
+        case .systemLarge: return 6
         default: return 3
         }
     }

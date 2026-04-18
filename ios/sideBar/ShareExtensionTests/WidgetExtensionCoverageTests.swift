@@ -323,7 +323,7 @@ final class WidgetExtensionCoverageTests: XCTestCase {
     func testSavedSitesWidgetUsesSevenItemsForLargeFamily() {
         XCTAssertEqual(SavedSitesWidgetView.maxSites(for: .systemSmall), 3)
         XCTAssertEqual(SavedSitesWidgetView.maxSites(for: .systemMedium), 3)
-        XCTAssertEqual(SavedSitesWidgetView.maxSites(for: .systemLarge), 7)
+        XCTAssertEqual(SavedSitesWidgetView.maxSites(for: .systemLarge), 6)
     }
 
     func testWidgetWebsiteResolvedFaviconURLPrefersMetadataValue() {
