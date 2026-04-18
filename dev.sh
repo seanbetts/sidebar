@@ -524,12 +524,24 @@ is_website_worker_process() {
 
 is_docs_process() {
   local command="$1"
-  [[ "${command}" == *"mintlify"* ]] && [[ "${command}" == *"${REPO_ROOT}/docs/product"* ]]
+  if [[ "${command}" == *"${REPO_ROOT}/docs/product"* ]]; then
+    [[ "${command}" == *"mintlify"* || "${command}" == *"@mintlify/cli"* ]]
+    return $?
+  fi
+
+  [[ "${command}" == *"mintlify"* || "${command}" == *"@mintlify/cli"* ]] &&
+    [[ "${command}" == *"--port 3001"* ]]
 }
 
 is_design_docs_process() {
   local command="$1"
-  [[ "${command}" == *"mintlify"* ]] && [[ "${command}" == *"${REPO_ROOT}/docs/design"* ]]
+  if [[ "${command}" == *"${REPO_ROOT}/docs/design"* ]]; then
+    [[ "${command}" == *"mintlify"* || "${command}" == *"@mintlify/cli"* ]]
+    return $?
+  fi
+
+  [[ "${command}" == *"mintlify"* || "${command}" == *"@mintlify/cli"* ]] &&
+    [[ "${command}" == *"--port 3002"* ]]
 }
 
 is_website_process() {
@@ -543,7 +555,10 @@ is_website_process() {
 
 is_caddy_process() {
   local command="$1"
-  [[ "${command}" == *"caddy run"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]
+  [[ "${command}" == *"caddy run"* ]] &&
+    ([[ "${command}" == *"${REPO_ROOT}"* ]] ||
+      [[ "${command}" == *"--config Caddyfile"* ]] ||
+      [[ "${command}" == *"--config ${REPO_ROOT}/Caddyfile"* ]])
 }
 
 role_matches_command() {
