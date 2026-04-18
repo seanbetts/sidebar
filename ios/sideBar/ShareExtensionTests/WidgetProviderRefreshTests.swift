@@ -492,6 +492,53 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertEqual(entry.selection.headerTitle, "Projects")
     }
 
+    func testPinnedNotesProviderFiltersAllSelectionToPinnedNotes() async {
+        let now = Date(timeIntervalSince1970: 26_000)
+        WidgetDataManager.shared.store(
+            WidgetNoteData(
+                notes: [
+                    WidgetNote(
+                        id: "/Projects/Launch.md",
+                        name: "Launch",
+                        path: "/Projects/Launch.md",
+                        pinned: true,
+                        pinnedOrder: 0
+                    ),
+                    WidgetNote(
+                        id: "/Inbox.md",
+                        name: "Inbox",
+                        path: "/Inbox.md",
+                        pinned: false
+                    )
+                ],
+                totalCount: 2,
+                lastUpdated: now
+            ),
+            for: .notes
+        )
+        setWidgetAuthenticated(true)
+
+        let provider = PinnedNotesProvider(
+            now: { now },
+            refreshData: { _ in
+                XCTFail("Expected cached snapshot to be reused")
+                return .empty
+            }
+        )
+
+        let entry = await provider.entry(for: now, selection: .all)
+
+        XCTAssertEqual(entry.data.notes.map(\.path), ["/Projects/Launch.md"])
+        XCTAssertEqual(entry.data.totalCount, 1)
+    }
+
+    func testFolderScopedNotesSelectionUsesFolderSpecificEmptyStateCopy() {
+        let selection = NotesWidgetSelection.folder(path: "/Projects", title: "Projects")
+
+        XCTAssertEqual(selection.emptyStateTitle, "No notes in Projects")
+        XCTAssertEqual(selection.emptyStateSubtitle, "This folder is empty")
+    }
+
     func testSavedSitesProviderPreservesCachedDataWhenRefreshFails() async {
         let now = Date(timeIntervalSince1970: 30_000)
         let cached = WidgetWebsiteData(

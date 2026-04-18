@@ -253,6 +253,28 @@ final class TasksViewModelTests: XCTestCase {
         XCTAssertTrue(sut.store.tasks.contains(where: { $0.id == "t1" }))
     }
 
+    func testRefreshWidgetDataSeedsTaskConfigurationCatalogFromTodayResponse() async {
+        let api = TasksViewModelAPIStub()
+        let group = TaskGroup(id: "group-1", title: "Work", updatedAt: nil)
+        let project = TaskProject(
+            id: "project-1",
+            title: "Launch",
+            groupId: group.id,
+            status: "active",
+            updatedAt: nil
+        )
+        api.enqueueListResponse(scope: "today", tasks: [], groups: [group], projects: [project])
+
+        let sut = makeSUT(api: api, networkAvailable: true)
+
+        await sut.viewModel.refreshWidgetData()
+
+        let catalog = sut.widgetDataManager.loadTaskConfigurationCatalog()
+        XCTAssertEqual(catalog.groups.map(\.title), ["Work"])
+        XCTAssertEqual(catalog.projects.map(\.title), ["Launch"])
+        XCTAssertEqual(catalog.projects.first?.groupId, group.id)
+    }
+
     // MARK: - Task operations error paths
 
     func testRenameTaskFailureSetsError() async {
@@ -539,6 +561,7 @@ final class TasksViewModelTests: XCTestCase {
         let viewModel: TasksViewModel
         let store: TasksStore
         let writeQueue: WriteQueue
+        let widgetDataManager: WidgetDataManager
     }
 
     private func makeSUT(
@@ -571,16 +594,24 @@ final class TasksViewModelTests: XCTestCase {
             ),
             autoProcessEnabled: false
         )
+        let defaults = UserDefaults(suiteName: "TasksViewModelTests.widget.\(UUID().uuidString)")!
+        let widgetDataManager = WidgetDataManager(userDefaults: defaults)
         store.attachWriteQueue(writeQueue)
         let viewModel = TasksViewModel(
             api: api,
             store: store,
+            widgetDataManager: widgetDataManager,
             toastCenter: ToastCenter(),
             networkStatus: networkStatus,
             searchDebounceNanoseconds: searchDebounceNanoseconds,
             realtimeRefreshDelayNanoseconds: realtimeRefreshDelayNanoseconds
         )
-        return SUT(viewModel: viewModel, store: store, writeQueue: writeQueue)
+        return SUT(
+            viewModel: viewModel,
+            store: store,
+            writeQueue: writeQueue,
+            widgetDataManager: widgetDataManager
+        )
     }
 
     private func eventually(

@@ -34,10 +34,53 @@ enum NotesWidgetSelection: Equatable, Sendable {
         URL(string: "sidebar://notes")!
     }
 
+    var emptyStateTitle: String {
+        switch self {
+        case .all:
+            return "No pinned notes"
+        case .folder(_, let title):
+            return "No notes in \(title)"
+        }
+    }
+
+    var emptyStateSubtitle: String {
+        switch self {
+        case .all:
+            return "Pin a note to see it here"
+        case .folder:
+            return "This folder is empty"
+        }
+    }
+
+    var emptyStateSystemImage: String {
+        switch self {
+        case .all:
+            return "pin"
+        case .folder:
+            return "folder"
+        }
+    }
+
+    var lockScreenEmptyLabel: String {
+        switch self {
+        case .all:
+            return "No pinned notes"
+        case .folder:
+            return "No notes"
+        }
+    }
+
     func filter(_ data: WidgetNoteData) -> WidgetNoteData {
         switch self {
         case .all:
-            return data
+            let filteredNotes = data.notes
+                .filter(\.pinned)
+                .sorted { ($0.pinnedOrder ?? Int.max) < ($1.pinnedOrder ?? Int.max) }
+            return WidgetNoteData(
+                notes: filteredNotes,
+                totalCount: filteredNotes.count,
+                lastUpdated: data.lastUpdated
+            )
         case .folder(let path, _):
             let normalizedPath = Self.normalizeFolderPath(path)
             let prefix = normalizedPath == "/" ? "/" : normalizedPath + "/"
@@ -54,7 +97,9 @@ enum NotesWidgetSelection: Equatable, Sendable {
     }
 
     private static func normalizeFolderPath(_ path: String) -> String {
-        let trimmed = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let trimmed = path
+            .replacingOccurrences(of: "folder:", with: "")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !trimmed.isEmpty else { return "/" }
         return "/" + trimmed
     }

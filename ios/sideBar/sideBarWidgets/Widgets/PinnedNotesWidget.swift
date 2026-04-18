@@ -164,9 +164,9 @@ struct PinnedNotesWidgetView: View {
 
     private var emptyStateView: some View {
         HomeWidgetEmptyStateView(
-            title: "No pinned notes",
-            subtitle: "Pin a note to see it here",
-            iconSystemName: "pin",
+            title: entry.selection.emptyStateTitle,
+            subtitle: entry.selection.emptyStateSubtitle,
+            iconSystemName: entry.selection.emptyStateSystemImage,
             destination: URL(string: "sidebar://notes")!
         ) {
             createNoteButton

@@ -255,25 +255,40 @@ public final class WidgetDataManager {
     projects: [TaskProject],
     groups: [TaskGroup]
   ) {
+    let existingCatalog = loadTaskConfigurationCatalog()
+    let nextProjects: [WidgetTaskConfigurationProject]
+    if projects.isEmpty {
+      nextProjects = existingCatalog.projects
+    } else {
+      nextProjects = projects
+        .map {
+          WidgetTaskConfigurationProject(
+            id: $0.id,
+            title: $0.title,
+            groupId: $0.groupId
+          )
+        }
+        .sorted {
+          $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+    }
+
+    let nextGroups: [WidgetTaskConfigurationGroup]
+    if groups.isEmpty {
+      nextGroups = existingCatalog.groups
+    } else {
+      nextGroups = groups
+        .map { WidgetTaskConfigurationGroup(id: $0.id, title: $0.title) }
+        .sorted {
+          $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+    }
+
     guard let defaults = userDefaults,
           let encoded = try? Self.makeEncoder().encode(
             WidgetTaskConfigurationCatalog(
-              projects: projects
-                .map {
-                  WidgetTaskConfigurationProject(
-                    id: $0.id,
-                    title: $0.title,
-                    groupId: $0.groupId
-                  )
-                }
-                .sorted {
-                  $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-                },
-              groups: groups
-                .map { WidgetTaskConfigurationGroup(id: $0.id, title: $0.title) }
-                .sorted {
-                  $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-                }
+              projects: nextProjects,
+              groups: nextGroups
             )
           ) else {
       return

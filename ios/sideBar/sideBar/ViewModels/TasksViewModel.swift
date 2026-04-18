@@ -119,6 +119,10 @@ public final class TasksViewModel: ObservableObject {
     func refreshWidgetData() async {
         do {
             let response = try await api.list(scope: "today")
+            widgetDataManager.updateTaskConfigurationCatalog(
+                projects: response.projects ?? [],
+                groups: response.groups ?? []
+            )
             let projectTitleById = Dictionary(uniqueKeysWithValues: response.projects?.map { ($0.id, $0.title) } ?? [])
             let groupTitleById = Dictionary(uniqueKeysWithValues: response.groups?.map { ($0.id, $0.title) } ?? [])
             let todayTasks = TasksUtils.sortByDueDate(

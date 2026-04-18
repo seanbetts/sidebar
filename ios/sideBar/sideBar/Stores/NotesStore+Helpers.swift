@@ -428,11 +428,7 @@ extension NotesStore {
 
     func makeWidgetData(from tree: FileTree) -> WidgetNoteData {
         let allNotes = flattenNotes(from: tree.children)
-        let pinnedNotes = allNotes
-            .filter { $0.pinned }
-            .sorted { ($0.pinnedOrder ?? Int.max) < ($1.pinnedOrder ?? Int.max) }
-        let widgetNotes = Array(pinnedNotes.prefix(10))
-        return WidgetNoteData(notes: widgetNotes, totalCount: pinnedNotes.count)
+        return WidgetNoteData(notes: allNotes, totalCount: allNotes.count)
     }
 
     func flattenNotes(from nodes: [FileNode]) -> [WidgetNote] {

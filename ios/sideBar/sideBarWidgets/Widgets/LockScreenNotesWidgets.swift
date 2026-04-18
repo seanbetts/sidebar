@@ -30,7 +30,7 @@ struct LockScreenNoteCountView: View {
                     Text("\(entry.data.totalCount)")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .widgetAccentable()
-                    Text("pinned")
+                    Text(entry.selection == .all ? "pinned" : "notes")
                         .font(.system(size: 8))
                         .textCase(.uppercase)
                 }
@@ -69,15 +69,15 @@ struct LockScreenNotePreviewView: View {
             LockScreenSignedOutRow(iconSystemName: "pin")
         } else if entry.data.notes.isEmpty {
             HStack {
-                Image(systemName: "pin")
-                Text("No pinned notes")
+                Image(systemName: entry.selection.emptyStateSystemImage)
+                Text(entry.selection.lockScreenEmptyLabel)
                     .font(.caption)
             }
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(entry.data.notes.prefix(2)) { note in
                     HStack(spacing: 4) {
-                        Image(systemName: "pin.fill")
+                        Image(systemName: entry.selection == .all ? "pin.fill" : "doc.text")
                             .font(.system(size: 8))
                         Text(note.name)
                             .font(.caption)
@@ -118,11 +118,11 @@ struct LockScreenNotesInlineView: View {
     var body: some View {
         if entry.isAuthenticated {
             if entry.data.totalCount == 0 {
-                Label("No pinned notes", systemImage: "pin")
+                Label(entry.selection.lockScreenEmptyLabel, systemImage: entry.selection.emptyStateSystemImage)
             } else {
                 Label(
-                    "\(entry.data.totalCount) pinned",
-                    systemImage: "pin.fill"
+                    entry.selection == .all ? "\(entry.data.totalCount) pinned" : "\(entry.data.totalCount) notes",
+                    systemImage: entry.selection == .all ? "pin.fill" : "folder"
                 )
             }
         } else {
