@@ -154,10 +154,9 @@ final class WidgetIntentRoutingTests: XCTestCase {
         XCTAssertTrue(fileIntentSource.contains("enumFileWidgetScope:"))
     }
 
-    func testEntityBackedWidgetIntentsExposeDependentSelectionRows() throws {
+    func testTaskAndNoteWidgetIntentsExposeDependentSelectionRows() throws {
         let taskIntentSource = try normalizedWidgetTaskIntentsSource()
         let noteIntentSource = try normalizedWidgetNoteIntentsSource()
-        let websiteIntentSource = try normalizedWidgetWebsiteIntentsSource()
 
         XCTAssertTrue(
             taskIntentSource.contains("Case(.project){Summary(\"Show\\(\\.$scope)tasks\"){\\.$project}}")
@@ -168,9 +167,26 @@ final class WidgetIntentRoutingTests: XCTestCase {
         XCTAssertTrue(
             noteIntentSource.contains("Case(.folder){Summary(\"Show\\(\\.$scope)\"){\\.$folder}}")
         )
-        XCTAssertTrue(
-            websiteIntentSource.contains("Case(.domain){Summary(\"Show\\(\\.$scope)\"){\\.$domain}}")
-        )
+    }
+
+    func testTaskAndNoteWidgetConfigIntentsDoNotDependOnLiveAPIRequests() throws {
+        let taskIntentSource = try normalizedWidgetTaskIntentsSource()
+        let noteIntentSource = try normalizedWidgetNoteIntentsSource()
+
+        XCTAssertFalse(taskIntentSource.contains("apiClient.request(\"tasks/projects\")"))
+        XCTAssertFalse(taskIntentSource.contains("apiClient.request(\"tasks/groups\")"))
+
+        XCTAssertFalse(noteIntentSource.contains("apiClient.request(\"notes/tree\")"))
+    }
+
+    func testWebsiteWidgetConfigurationUsesPinnedOrAllScopes() throws {
+        let websiteIntentSource = try normalizedWidgetWebsiteIntentsSource()
+
+        XCTAssertTrue(websiteIntentSource.contains("enumWebsiteWidgetScope:"))
+        XCTAssertTrue(websiteIntentSource.contains("caseall"))
+        XCTAssertTrue(websiteIntentSource.contains("casepinned"))
+        XCTAssertFalse(websiteIntentSource.contains("casedomain"))
+        XCTAssertFalse(websiteIntentSource.contains("WebsiteDomainEntity"))
     }
 
     func testIngestionLiveActivityUsesBrandedAppLogoInsteadOfGenericDocumentSymbol() throws {

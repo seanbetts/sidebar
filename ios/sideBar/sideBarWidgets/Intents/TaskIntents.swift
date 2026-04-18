@@ -125,7 +125,9 @@ struct TaskGroupEntity: AppEntity, Identifiable, Hashable {
 
 struct TaskProjectEntityQuery: EntityQuery {
     func entities(for identifiers: [TaskProjectEntity.ID]) async throws -> [TaskProjectEntity] {
-        let projects = try await TaskWidgetConfigurationCatalogClient().projects()
+        let projects = WidgetDataManager.shared.loadTaskConfigurationCatalog().projects.map {
+            TaskProjectEntity(id: $0.id, title: $0.title, groupId: $0.groupId)
+        }
         let projectsById = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0) })
         return identifiers.compactMap { id in
             projectsById[id] ?? TaskProjectEntity(id: id, title: id, groupId: nil)
@@ -133,13 +135,17 @@ struct TaskProjectEntityQuery: EntityQuery {
     }
 
     func suggestedEntities() async throws -> [TaskProjectEntity] {
-        try await TaskWidgetConfigurationCatalogClient().projects()
+        WidgetDataManager.shared.loadTaskConfigurationCatalog().projects.map {
+            TaskProjectEntity(id: $0.id, title: $0.title, groupId: $0.groupId)
+        }
     }
 }
 
 struct TaskGroupEntityQuery: EntityQuery {
     func entities(for identifiers: [TaskGroupEntity.ID]) async throws -> [TaskGroupEntity] {
-        let groups = try await TaskWidgetConfigurationCatalogClient().groups()
+        let groups = WidgetDataManager.shared.loadTaskConfigurationCatalog().groups.map {
+            TaskGroupEntity(id: $0.id, title: $0.title)
+        }
         let groupsById = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
         return identifiers.compactMap { id in
             groupsById[id] ?? TaskGroupEntity(id: id, title: id)
@@ -147,7 +153,9 @@ struct TaskGroupEntityQuery: EntityQuery {
     }
 
     func suggestedEntities() async throws -> [TaskGroupEntity] {
-        try await TaskWidgetConfigurationCatalogClient().groups()
+        WidgetDataManager.shared.loadTaskConfigurationCatalog().groups.map {
+            TaskGroupEntity(id: $0.id, title: $0.title)
+        }
     }
 }
 
@@ -216,40 +224,6 @@ struct TaskWidgetConfigurationIntent: WidgetConfigurationIntent {
         }
     }
 }
-
-private struct TaskWidgetConfigurationCatalogClient {
-    private let apiClient: APIClient
-
-    init() throws {
-        apiClient = try WidgetAPIEnvironment().apiClient
-    }
-
-    func projects() async throws -> [TaskProjectEntity] {
-        let response: [TaskWidgetProjectPayload] = try await apiClient.request("tasks/projects")
-        return response.map {
-            TaskProjectEntity(id: $0.id, title: $0.title, groupId: $0.groupId)
-        }
-    }
-
-    func groups() async throws -> [TaskGroupEntity] {
-        let response: [TaskWidgetGroupPayload] = try await apiClient.request("tasks/groups")
-        return response.map {
-            TaskGroupEntity(id: $0.id, title: $0.title)
-        }
-    }
-}
-
-private struct TaskWidgetProjectPayload: Decodable {
-    let id: String
-    let title: String
-    let groupId: String?
-}
-
-private struct TaskWidgetGroupPayload: Decodable {
-    let id: String
-    let title: String
-}
-
 // MARK: - Complete Task Intent
 
 /// Intent to mark a task as complete from a widget

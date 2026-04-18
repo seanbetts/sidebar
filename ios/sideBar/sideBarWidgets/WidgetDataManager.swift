@@ -11,17 +11,25 @@ public final class WidgetDataManager {
   private let faviconR2EndpointKey = "widget_favicon_r2_endpoint"
   private let faviconR2BucketKey = "widget_favicon_r2_bucket"
   private let faviconR2PublicBaseUrlKey = "widget_favicon_r2_public_base_url"
+  private let taskConfigurationCatalogKey = "widget_tasks_configuration_catalog"
+  private let noteConfigurationCatalogKey = "widget_notes_configuration_catalog"
+  private let injectedUserDefaults: UserDefaults?
 
   // Legacy keys (for backward compatibility during transition)
   private let legacyTodayTasksKey = "widgetTodayTasks"
   private let legacyPendingCompletionsKey = "widgetPendingCompletions"
   private let legacyPendingAddTaskKey = "widgetPendingAddTask"
 
-  private init() {}
+  public init(userDefaults: UserDefaults? = nil) {
+    self.injectedUserDefaults = userDefaults
+  }
 
   // MARK: - App Group Access
 
   private var userDefaults: UserDefaults? {
+    if let injectedUserDefaults {
+      return injectedUserDefaults
+    }
     guard let groupId = appGroupResolution.id else { return nil }
     return UserDefaults(suiteName: groupId)
   }
@@ -147,6 +155,24 @@ public final class WidgetDataManager {
       return nil
     }
     return parsed
+  }
+
+  public func loadTaskConfigurationCatalog() -> WidgetTaskConfigurationCatalog {
+    guard let defaults = userDefaults,
+          let encoded = defaults.data(forKey: taskConfigurationCatalogKey),
+          let decoded = try? Self.makeDecoder().decode(WidgetTaskConfigurationCatalog.self, from: encoded) else {
+      return .empty
+    }
+    return decoded
+  }
+
+  public func loadNoteConfigurationCatalog() -> WidgetNoteConfigurationCatalog {
+    guard let defaults = userDefaults,
+          let encoded = defaults.data(forKey: noteConfigurationCatalogKey),
+          let decoded = try? Self.makeDecoder().decode(WidgetNoteConfigurationCatalog.self, from: encoded) else {
+      return .empty
+    }
+    return decoded
   }
 
   private static func makeEncoder() -> JSONEncoder {

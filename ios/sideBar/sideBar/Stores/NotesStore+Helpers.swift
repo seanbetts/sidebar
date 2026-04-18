@@ -423,6 +423,7 @@ extension NotesStore {
 
     func updateWidgetData(from tree: FileTree) {
         widgetDataManager.store(makeWidgetData(from: tree), for: .notes)
+        widgetDataManager.updateNoteConfigurationCatalog(from: tree)
     }
 
     func makeWidgetData(from tree: FileTree) -> WidgetNoteData {

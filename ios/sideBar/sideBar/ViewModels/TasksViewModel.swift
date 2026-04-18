@@ -55,6 +55,10 @@ public final class TasksViewModel: ObservableObject {
         Publishers.CombineLatest3(store.$groups, store.$projects, store.$counts)
             .sink { [weak self] groups, projects, counts in
                 self?.rebuildPanelDerivedState(groups: groups, projects: projects, counts: counts)
+                self?.widgetDataManager.updateTaskConfigurationCatalog(
+                    projects: projects,
+                    groups: groups
+                )
             }
             .store(in: &cancellables)
     }

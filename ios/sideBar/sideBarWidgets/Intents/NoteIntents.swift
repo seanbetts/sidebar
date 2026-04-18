@@ -81,19 +81,36 @@ struct NoteFolderEntity: AppEntity, Identifiable, Hashable {
 
 struct NoteFolderEntityQuery: EntityQuery {
     func entities(for identifiers: [NoteFolderEntity.ID]) async throws -> [NoteFolderEntity] {
-        let folders = try await NotesWidgetConfigurationCatalogClient().folders()
+        let folders = WidgetDataManager.shared.loadNoteConfigurationCatalog().folders.map {
+            NoteFolderEntity(id: $0.id, title: $0.title, path: $0.path)
+        }
         let foldersById = Dictionary(uniqueKeysWithValues: folders.map { ($0.id, $0) })
         return identifiers.compactMap { id in
             foldersById[id] ?? NoteFolderEntity(
                 id: id,
-                title: NotesWidgetConfigurationCatalogClient.folderTitle(for: id),
+                title: NoteFolderEntityQuery.folderTitle(for: id),
                 path: id
             )
         }
     }
 
     func suggestedEntities() async throws -> [NoteFolderEntity] {
-        try await NotesWidgetConfigurationCatalogClient().folders()
+        WidgetDataManager.shared.loadNoteConfigurationCatalog().folders.map {
+            NoteFolderEntity(id: $0.id, title: $0.title, path: $0.path)
+        }
+    }
+
+    private static func folderTitle(for path: String) -> String {
+        let normalizedPath = normalizeFolderPath(path)
+        return normalizedPath.split(separator: "/").last.map(String.init) ?? "Notes"
+    }
+
+    private static func normalizeFolderPath(_ path: String) -> String {
+        let trimmed = path
+            .replacingOccurrences(of: "folder:", with: "")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !trimmed.isEmpty else { return "/" }
+        return "/" + trimmed
     }
 }
 
@@ -146,70 +163,6 @@ struct NotesWidgetConfigurationIntent: WidgetConfigurationIntent {
         }
     }
 }
-
-private struct NotesWidgetConfigurationCatalogClient {
-    private let apiClient: APIClient
-
-    init() throws {
-        apiClient = try WidgetAPIEnvironment().apiClient
-    }
-
-    func folders() async throws -> [NoteFolderEntity] {
-        let response: NotesWidgetTreeResponse = try await apiClient.request("notes/tree")
-        return folderEntities(from: response.children)
-    }
-
-    private func folderEntities(from nodes: [NotesWidgetFolderNode]) -> [NoteFolderEntity] {
-        var folders: [NoteFolderEntity] = []
-
-        for node in nodes {
-            guard node.type == "directory" else { continue }
-            if node.name.lowercased() == "archive" { continue }
-
-            let normalizedPath = Self.normalizeFolderPath(node.path)
-            folders.append(
-                NoteFolderEntity(
-                    id: normalizedPath,
-                    title: node.name,
-                    path: normalizedPath
-                )
-            )
-
-            if let children = node.children {
-                folders.append(contentsOf: folderEntities(from: children))
-            }
-        }
-
-        return folders.sorted { lhs, rhs in
-            lhs.path.localizedCaseInsensitiveCompare(rhs.path) == .orderedAscending
-        }
-    }
-
-    static func folderTitle(for path: String) -> String {
-        let normalizedPath = normalizeFolderPath(path)
-        return normalizedPath.split(separator: "/").last.map(String.init) ?? "Notes"
-    }
-
-    private static func normalizeFolderPath(_ path: String) -> String {
-        let trimmed = path
-            .replacingOccurrences(of: "folder:", with: "")
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard !trimmed.isEmpty else { return "/" }
-        return "/" + trimmed
-    }
-}
-
-private struct NotesWidgetTreeResponse: Decodable {
-    let children: [NotesWidgetFolderNode]
-}
-
-private struct NotesWidgetFolderNode: Decodable {
-    let name: String
-    let path: String
-    let type: String
-    let children: [NotesWidgetFolderNode]?
-}
-
 // MARK: - Open Note Intent
 
 /// Intent to open a specific note in the app

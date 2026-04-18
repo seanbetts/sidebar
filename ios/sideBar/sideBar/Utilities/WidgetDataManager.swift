@@ -14,6 +14,8 @@ public final class WidgetDataManager {
   private let faviconR2BucketKey = "widget_favicon_r2_bucket"
   private let faviconR2PublicBaseUrlKey = "widget_favicon_r2_public_base_url"
   private let configuredTaskDataKeyPrefix = "widget_tasks_data::"
+  private let taskConfigurationCatalogKey = "widget_tasks_configuration_catalog"
+  private let noteConfigurationCatalogKey = "widget_notes_configuration_catalog"
 
   // Legacy keys (for migration)
   private let legacyTodayTasksKey = "widgetTodayTasks"
@@ -147,6 +149,8 @@ public final class WidgetDataManager {
     for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(configuredTaskDataKeyPrefix) {
       defaults.removeObject(forKey: key)
     }
+    defaults.removeObject(forKey: taskConfigurationCatalogKey)
+    defaults.removeObject(forKey: noteConfigurationCatalogKey)
 
     defaults.removeObject(forKey: legacyTodayTasksKey)
     defaults.removeObject(forKey: legacyPendingCompletionsKey)
@@ -247,6 +251,66 @@ public final class WidgetDataManager {
     }
   }
 
+  public func updateTaskConfigurationCatalog(
+    projects: [TaskProject],
+    groups: [TaskGroup]
+  ) {
+    guard let defaults = userDefaults,
+          let encoded = try? Self.makeEncoder().encode(
+            WidgetTaskConfigurationCatalog(
+              projects: projects
+                .map {
+                  WidgetTaskConfigurationProject(
+                    id: $0.id,
+                    title: $0.title,
+                    groupId: $0.groupId
+                  )
+                }
+                .sorted {
+                  $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+                },
+              groups: groups
+                .map { WidgetTaskConfigurationGroup(id: $0.id, title: $0.title) }
+                .sorted {
+                  $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+                }
+            )
+          ) else {
+      return
+    }
+    defaults.set(encoded, forKey: taskConfigurationCatalogKey)
+  }
+
+  public func loadTaskConfigurationCatalog() -> WidgetTaskConfigurationCatalog {
+    guard let defaults = userDefaults,
+          let encoded = defaults.data(forKey: taskConfigurationCatalogKey),
+          let decoded = try? Self.makeDecoder().decode(WidgetTaskConfigurationCatalog.self, from: encoded) else {
+      return .empty
+    }
+    return decoded
+  }
+
+  public func updateNoteConfigurationCatalog(from tree: FileTree) {
+    guard let defaults = userDefaults,
+          let encoded = try? Self.makeEncoder().encode(
+            WidgetNoteConfigurationCatalog(
+              folders: noteConfigurationFolders(from: tree.children)
+            )
+          ) else {
+      return
+    }
+    defaults.set(encoded, forKey: noteConfigurationCatalogKey)
+  }
+
+  public func loadNoteConfigurationCatalog() -> WidgetNoteConfigurationCatalog {
+    guard let defaults = userDefaults,
+          let encoded = defaults.data(forKey: noteConfigurationCatalogKey),
+          let decoded = try? Self.makeDecoder().decode(WidgetNoteConfigurationCatalog.self, from: encoded) else {
+      return .empty
+    }
+    return decoded
+  }
+
   // MARK: - Widget Reload
 
   private func reloadWidgets(for contentType: WidgetContentType) {
@@ -322,6 +386,40 @@ extension WidgetDataManager {
     let operation = WidgetPendingOperation(itemId: "", action: NoteWidgetAction.addNew)
     recordPendingOperation(operation, for: .notes)
     WidgetIntentHandoffNotifier.post()
+  }
+
+  private func noteConfigurationFolders(from nodes: [FileNode]) -> [WidgetNoteConfigurationFolder] {
+    var folders: [WidgetNoteConfigurationFolder] = []
+
+    for node in nodes {
+      guard node.type == .directory else { continue }
+      if node.name.lowercased() == "archive" { continue }
+
+      let normalizedPath = normalizeWidgetFolderPath(node.path)
+      folders.append(
+        WidgetNoteConfigurationFolder(
+          id: normalizedPath,
+          title: node.name,
+          path: normalizedPath
+        )
+      )
+
+      if let children = node.children {
+        folders.append(contentsOf: noteConfigurationFolders(from: children))
+      }
+    }
+
+    return folders.sorted {
+      $0.path.localizedCaseInsensitiveCompare($1.path) == .orderedAscending
+    }
+  }
+
+  private func normalizeWidgetFolderPath(_ path: String) -> String {
+    let trimmed = path
+      .replacingOccurrences(of: "folder:", with: "")
+      .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    guard !trimmed.isEmpty else { return "/" }
+    return "/" + trimmed
   }
 
 }

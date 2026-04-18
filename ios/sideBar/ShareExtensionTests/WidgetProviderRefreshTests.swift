@@ -516,7 +516,7 @@ final class WidgetProviderRefreshTests: XCTestCase {
         XCTAssertEqual(timeline.entries.first?.data.websites.map(\.id), ["cached-site"])
     }
 
-    func testSavedSitesProviderFiltersConfiguredDomainSelection() async {
+    func testSavedSitesProviderFiltersPinnedSelection() async {
         let now = Date(timeIntervalSince1970: 35_000)
         WidgetDataManager.shared.store(
             WidgetWebsiteData(
@@ -525,7 +525,9 @@ final class WidgetProviderRefreshTests: XCTestCase {
                         id: "site-a",
                         title: "Docs",
                         url: "https://docs.example.com",
-                        domain: "docs.example.com"
+                        domain: "docs.example.com",
+                        pinned: true,
+                        pinnedOrder: 0
                     ),
                     WidgetWebsite(
                         id: "site-b",
@@ -550,11 +552,11 @@ final class WidgetProviderRefreshTests: XCTestCase {
             faviconFetcher: { _ in [:] }
         )
 
-        let entry = await provider.entry(for: now, selection: .domain("docs.example.com"))
+        let entry = await provider.entry(for: now, selection: .pinned)
 
         XCTAssertEqual(entry.data.websites.map(\.id), ["site-a"])
         XCTAssertEqual(entry.data.totalCount, 1)
-        XCTAssertEqual(entry.selection.headerTitle, "docs.example.com")
+        XCTAssertEqual(entry.selection.headerTitle, "Pinned")
     }
 
     func testPinnedFilesProviderRendersCachedDataWhenAuthIsUnavailableButSnapshotExists() async {
