@@ -21,7 +21,7 @@
   <div class="page-inner">
     <header>
       <h1>Terms of Service</h1>
-      <p class="meta">Last updated: 11 April 2026</p>
+      <p class="meta">Last updated: 18 April 2026</p>
     </header>
 
     <section>
@@ -108,6 +108,16 @@
         sideBar is not responsible for those charges.
       </p>
 
+      <h3>Changing or cancelling your plan</h3>
+      <p>
+        You can change plans at any time. Upgrades take effect immediately and are prorated against
+        your current billing period. Downgrades and cancellations take effect at the end of your
+        current paid period, and you keep the features of your existing plan until then. When a
+        downgrade or cancellation takes effect, features specific to the higher tier (such as a
+        higher daily message cap or access to flagship Store skills) are no longer available, but
+        your content, notes, tasks, files, and account remain intact.
+      </p>
+
       <h3>UK and EU cancellation rights</h3>
       <p>
         If you are a consumer in the UK or EU you normally have 14 days from the start of a new
@@ -144,6 +154,10 @@
         <li>
           Probe, disrupt, or overload the Service or any connected infrastructure, or circumvent
           security, rate-limit, or access controls
+        </li>
+        <li>
+          Circumvent daily message caps, subscription gating, or billing (for example by using
+          multiple accounts, shared accounts, or automation to exceed the limits of your plan)
         </li>
         <li>Use the Service to build a competing product or to train another AI system</li>
         <li>
