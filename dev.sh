@@ -52,6 +52,8 @@ WEBSITE_PID="/tmp/sidebar-website.pid"
 CADDY_LOG="/tmp/sidebar-caddy.log"
 CADDY_PID="/tmp/sidebar-caddy.pid"
 REPO_ROOT="$(pwd)"
+PRODUCT_DOCS_MINTLIFY_HOME="${HOME}/.sidebar/mintlify-product"
+DESIGN_DOCS_MINTLIFY_HOME="${HOME}/.sidebar/mintlify-design"
 TEST_DB_HOST="localhost"
 TEST_DB_PORT="5433"
 TEST_DB_NAME="sidebar_test"
@@ -862,7 +864,8 @@ start_docs() {
   fi
   ensure_port_available 3001 docs
   echo "Starting docs..."
-  (cd "${REPO_ROOT}/docs/product" && mintlify dev --port 3001) >"${DOCS_LOG}" 2>&1 </dev/null &
+  mkdir -p "${PRODUCT_DOCS_MINTLIFY_HOME}"
+  (cd "${REPO_ROOT}/docs/product" && HOME="${PRODUCT_DOCS_MINTLIFY_HOME}" mintlify dev --port 3001 --no-open) >"${DOCS_LOG}" 2>&1 </dev/null &
   echo $! >"${DOCS_PID}"
   if ! wait_for_role_port 3001 docs "${DOCS_PID}"; then
     echo "Docs failed to bind to port 3001. Check logs: ${DOCS_LOG}"
@@ -881,7 +884,8 @@ start_design_docs() {
   fi
   ensure_port_available 3002 design-docs
   echo "Starting design docs..."
-  (cd "${REPO_ROOT}/docs/design" && mintlify dev --port 3002) >"${DESIGN_DOCS_LOG}" 2>&1 </dev/null &
+  mkdir -p "${DESIGN_DOCS_MINTLIFY_HOME}"
+  (cd "${REPO_ROOT}/docs/design" && HOME="${DESIGN_DOCS_MINTLIFY_HOME}" mintlify dev --port 3002 --no-open) >"${DESIGN_DOCS_LOG}" 2>&1 </dev/null &
   echo $! >"${DESIGN_DOCS_PID}"
   if ! wait_for_role_port 3002 design-docs "${DESIGN_DOCS_PID}"; then
     echo "Design docs failed to bind to port 3002. Check logs: ${DESIGN_DOCS_LOG}"
