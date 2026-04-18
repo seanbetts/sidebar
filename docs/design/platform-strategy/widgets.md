@@ -174,6 +174,8 @@ WidgetListLayout
 └─ Footer (overflow indicator, optional)
 ```
 
+When `showsWidgetContainerBackground == false` on `WidgetFamily.systemSmall`, treat the widget as a StandBy/CarPlay style surface rather than reusing the dense home-screen layout. Remove header chrome, use fewer items, and scale up the primary text.
+
 ### Typography
 
 | Context | Style |
@@ -202,6 +204,16 @@ Widgets support three rendering modes. Use `.widgetAccentable()` on elements tha
 ### Action buttons (add/create)
 
 Circular button, 20pt diameter on small, 24pt on medium/large. Rendering-mode-aware fill and icon color (see above). On iOS 17+, backed by an `AppIntent`. Below iOS 17, a deep link.
+
+### StandBy treatment
+
+StandBy and CarPlay reuse the small system widget with the background removed and scaled up. For the tasks widget:
+
+- Detect this context with `showsWidgetContainerBackground == false` on `WidgetFamily.systemSmall`.
+- Show at most 2 tasks.
+- Remove the standard header row and replace it with a large, distance-readable title treatment.
+- Use larger, heavier task typography than the home-screen small widget.
+- Keep the layout high-contrast and glanceable. Do not introduce custom background colors when the system removes the container background.
 
 ### Signed-out state
 
@@ -293,8 +305,9 @@ Fetched favicons are persisted in a lightweight disk cache keyed by website ID a
 2. **Every element must be glanceable.** The user is not in the app. If it requires reading, it is probably too much.
 2. **Show the most actionable content.** Tasks sort overdue first, then by earliest deadline. Pinned items appear because the user explicitly signalled they are important.
 3. **Cache-first, always.** Show cached data immediately. Best-effort provider refresh improves freshness when the app is closed, but never blocks rendering. Show stale data rather than a loading state.
-4. **Optimistic actions feel instant.** Task completion updates the widget immediately. No spinner, no delay, no waiting for the server.
-5. **Honest empty states.** Never pretend there is content when there is none. Provide a purposeful empty state — positive for tasks ("All done!"), actionable for notes (create affordance).
+4. **Optimize background-removed small widgets for distance.** In StandBy and CarPlay, prefer fewer items, larger type, and less chrome over feature parity with the home-screen layout.
+5. **Optimistic actions feel instant.** Task completion updates the widget immediately. No spinner, no delay, no waiting for the server.
+6. **Honest empty states.** Never pretend there is content when there is none. Provide a purposeful empty state — positive for tasks ("All done!"), actionable for notes (create affordance).
 
 ---
 

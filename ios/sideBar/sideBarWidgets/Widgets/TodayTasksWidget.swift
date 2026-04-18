@@ -24,6 +24,7 @@ struct TodayTasksWidgetView: View {
 
     @Environment(\.widgetFamily) var family
     @Environment(\.widgetRenderingMode) var renderingMode
+    @Environment(\.showsWidgetContainerBackground) var showsWidgetContainerBackground
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
@@ -39,6 +40,29 @@ struct TodayTasksWidgetView: View {
     // MARK: - Task List View
 
     private var taskListView: some View {
+        Group {
+            if usesStandByLayout {
+                standByTaskListView
+            } else {
+                standardTaskListView
+            }
+        }
+    }
+
+    private var tasksList: some View {
+        VStack(alignment: .leading, spacing: taskSpacing) {
+            ForEach(displayedTasks) { task in
+                TaskRowView(
+                    task: task,
+                    compact: isCompact,
+                    standBy: usesStandByLayout,
+                    showSubtitle: showSubtitle
+                )
+            }
+        }
+    }
+
+    private var standardTaskListView: some View {
         WidgetListLayout(family: family) {
             WidgetHeaderView(
                 title: "Tasks",
@@ -63,12 +87,32 @@ struct TodayTasksWidgetView: View {
         .widgetURL(URL(string: "sidebar://tasks/today"))
     }
 
-    private var tasksList: some View {
-        VStack(alignment: .leading, spacing: taskSpacing) {
-            ForEach(displayedTasks) { task in
-                TaskRowView(task: task, compact: isCompact, showSubtitle: showSubtitle)
+    private var standByTaskListView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("Today")
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+
+                if entry.data.totalCount > 0 {
+                    Text("\(entry.data.totalCount)")
+                        .font(.system(size: 18, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+                addTaskButton
+            }
+
+            tasksList
+
+            if showMoreIndicator {
+                moreTasksIndicator
+                    .font(.footnote.weight(.medium))
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetURL(URL(string: "sidebar://tasks/today"))
     }
 
     private var visibleTasks: [WidgetTask] {
@@ -83,7 +127,7 @@ struct TodayTasksWidgetView: View {
 
     private var maxTasks: Int {
         switch family {
-        case .systemSmall: return 3
+        case .systemSmall: return usesStandByLayout ? 2 : 3
         case .systemMedium: return 3  // Same height as small
         case .systemLarge: return 8
         default: return 3
@@ -92,7 +136,7 @@ struct TodayTasksWidgetView: View {
 
     private var taskSpacing: CGFloat {
         switch family {
-        case .systemSmall: return 6
+        case .systemSmall: return usesStandByLayout ? 10 : 6
         case .systemMedium: return 6  // Same height as small
         case .systemLarge: return 10
         default: return 6
@@ -100,11 +144,15 @@ struct TodayTasksWidgetView: View {
     }
 
     private var isCompact: Bool {
-        family == .systemSmall
+        family == .systemSmall && !usesStandByLayout
     }
 
     private var showSubtitle: Bool {
         family == .systemLarge
+    }
+
+    private var usesStandByLayout: Bool {
+        family == .systemSmall && !showsWidgetContainerBackground
     }
 
     private var showMoreIndicator: Bool {
@@ -178,15 +226,42 @@ struct TodayTasksWidgetView: View {
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        HomeWidgetEmptyStateView(
-            title: "All done!",
-            subtitle: "No tasks for today",
-            iconSystemName: "checkmark.circle",
-            destination: URL(string: "sidebar://tasks/today")!,
-            accentIcon: false
-        ) {
-            addTaskButton
+        Group {
+            if usesStandByLayout {
+                standByEmptyStateView
+            } else {
+                HomeWidgetEmptyStateView(
+                    title: "All done!",
+                    subtitle: "No tasks for today",
+                    iconSystemName: "checkmark.circle",
+                    destination: URL(string: "sidebar://tasks/today")!,
+                    accentIcon: false
+                ) {
+                    addTaskButton
+                }
+            }
         }
+    }
+
+    private var standByEmptyStateView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                Text("All done!")
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                Spacer(minLength: 0)
+                addTaskButton
+            }
+
+            Text("No tasks for today")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetURL(URL(string: "sidebar://tasks/today"))
     }
 
     // MARK: - Not Authenticated
@@ -201,6 +276,7 @@ struct TodayTasksWidgetView: View {
 struct TaskRowView: View {
     let task: WidgetTask
     let compact: Bool
+    let standBy: Bool
     let showSubtitle: Bool
     @Environment(\.colorScheme) private var colorScheme
 
@@ -214,8 +290,8 @@ struct TaskRowView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
-                    .font(compact ? .caption : .subheadline)
-                    .lineLimit(1)
+                    .font(titleFont)
+                    .lineLimit(standBy ? 2 : 1)
                     .strikethrough(task.isCompleted)
                     .foregroundStyle(task.isCompleted ? .secondary : .primary)
 
@@ -239,7 +315,7 @@ struct TaskRowView: View {
 
     @ViewBuilder
     private var checkboxIcon: some View {
-        let iconSize: CGFloat = compact ? 16 : 18
+        let iconSize: CGFloat = standBy ? 20 : (compact ? 16 : 18)
         if task.isCompleted {
             ZStack {
                 Circle()
@@ -254,6 +330,13 @@ struct TaskRowView: View {
                 .font(.system(size: iconSize))
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var titleFont: Font {
+        if standBy {
+            return .system(size: 15, weight: .semibold, design: .rounded)
+        }
+        return compact ? .caption : .subheadline
     }
 }
 

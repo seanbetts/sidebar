@@ -74,6 +74,15 @@ final class WidgetIntentRoutingTests: XCTestCase {
         )
     }
 
+    func testTodayTasksWidgetOptimizesSmallLayoutWhenBackgroundIsRemoved() throws {
+        let source = try normalizedWidgetSource(named: "TodayTasksWidget.swift")
+
+        XCTAssertTrue(source.contains("@Environment(\\.showsWidgetContainerBackground)varshowsWidgetContainerBackground"))
+        XCTAssertTrue(source.contains("privatevarusesStandByLayout:Bool{family==.systemSmall&&!showsWidgetContainerBackground}"))
+        XCTAssertTrue(source.contains("case.systemSmall:returnusesStandByLayout?2:3"))
+        XCTAssertTrue(source.contains("privatevarstandByTaskListView:someView"))
+    }
+
     func testIngestionLiveActivityUsesBrandedAppLogoInsteadOfGenericDocumentSymbol() throws {
         let source = try normalizedWidgetSource(named: "IngestionProgressLiveActivity.swift")
 

@@ -639,6 +639,17 @@ final class WidgetExtensionCoverageTests: XCTestCase {
         XCTAssertEqual(largeSites.data.totalCount, 6)
         XCTAssertTrue(largeSites.data.websites.allSatisfy { !$0.domain.isEmpty })
     }
+
+    func testTodayTasksWidgetUsesStandBySpecificSmallWidgetLayout() throws {
+        let source = try normalizedWidgetSource(named: "TodayTasksWidget.swift")
+
+        XCTAssertTrue(source.contains("@Environment(\\.showsWidgetContainerBackground)varshowsWidgetContainerBackground"))
+        XCTAssertTrue(source.contains("privatevarusesStandByLayout:Bool{family==.systemSmall&&!showsWidgetContainerBackground}"))
+        XCTAssertTrue(source.contains("case.systemSmall:returnusesStandByLayout?2:3"))
+        XCTAssertTrue(source.contains("ifusesStandByLayout{standByTaskListView}else{standardTaskListView}"))
+        XCTAssertTrue(source.contains("privatevarstandByTaskListView:someView"))
+        XCTAssertTrue(source.contains("privatevarstandByEmptyStateView:someView"))
+    }
 }
 
 private actor TaskCompletionSyncProbe {
