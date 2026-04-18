@@ -30,7 +30,6 @@
         "group": "Manual",
         "pages": [
           "index",
-          "manual/introduction",
           "manual/getting-started",
           "manual/api-keys",
           "manual/personality",
