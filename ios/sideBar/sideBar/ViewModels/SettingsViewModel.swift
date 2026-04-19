@@ -29,7 +29,7 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var primaryProviderError: String?
     @Published public private(set) var onboardingState: OnboardingState?
     @Published public private(set) var isLoadingOnboarding: Bool = false
-    @Published public private(set) var isInternalDiagnosticsLocallyUnlocked: Bool
+    @Published public internal(set) var isInternalDiagnosticsLocallyUnlocked: Bool
     var isRefreshingProviderRecoveryState = false
     var inFlightProfileImageLoad: Task<Data?, Never>?
     var internalDiagnosticsRevealTapCount: Int = 0

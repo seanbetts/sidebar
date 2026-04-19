@@ -69,9 +69,6 @@ extension ShareViewController {
         let typeIdentifier = preferredType.identifier
         let fileURLResult = await loadFileURLResult(from: itemProvider, typeIdentifier: typeIdentifier)
         if let fileURL = fileURLResult.value {
-            let suggestedName = itemProvider.suggestedName ?? fileURL.lastPathComponent
-            let filename = suggestedName.isEmpty ? fileURL.lastPathComponent : suggestedName
-            let mimeType = mimeTypeForFilename(filename)
             await uploadFileFromURL(fileURL, itemProvider: itemProvider)
             return
         }
