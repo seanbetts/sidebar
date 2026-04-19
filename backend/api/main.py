@@ -37,6 +37,7 @@ from api.routers import (
     events,
     health,
     ingestion,
+    internal_diagnostics,
     memories,
     metrics,
     notes,
@@ -298,6 +299,11 @@ app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
 app.include_router(events.router, prefix="/api/v1", tags=["events"])
 app.include_router(device_tokens.router, prefix="/api/v1", tags=["device-tokens"])
 app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
+app.include_router(
+    internal_diagnostics.router,
+    prefix="/api/v1",
+    tags=["internal-diagnostics"],
+)
 
 # Legacy routes (deprecated)
 app.include_router(
@@ -338,6 +344,12 @@ app.include_router(
 app.include_router(tasks.router, prefix="/api", tags=["tasks-legacy"], deprecated=True)
 app.include_router(
     onboarding.router, prefix="/api", tags=["onboarding-legacy"], deprecated=True
+)
+app.include_router(
+    internal_diagnostics.router,
+    prefix="/api",
+    tags=["internal-diagnostics-legacy"],
+    deprecated=True,
 )
 
 # Mount MCP endpoint (auth handled by middleware)

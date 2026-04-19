@@ -97,6 +97,7 @@ class NotificationDeliveryService:
             status="sent",
             request_count=len(requests),
             sent_count=result.sent_count,
+            outcomes=result.outcomes,
         )
 
     @staticmethod

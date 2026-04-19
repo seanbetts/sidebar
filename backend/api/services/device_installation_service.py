@@ -289,6 +289,15 @@ class DeviceInstallationService:
         return query.order_by(DeviceInstallation.created_at.desc()).all()
 
     @staticmethod
+    def list_active_installations_for_user(
+        db: Session,
+        *,
+        user_id: str,
+    ) -> list[DeviceInstallation]:
+        """List active installations currently bound to the signed-in user."""
+        return DeviceInstallationService.list_active_tokens(db, user_id)
+
+    @staticmethod
     def _find_active_installation_by_id(
         db: Session,
         *,

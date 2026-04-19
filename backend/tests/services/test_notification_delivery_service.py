@@ -4,9 +4,6 @@ import logging
 from types import SimpleNamespace
 
 from api.models.notification_diagnostics_audit import NotificationDiagnosticsAudit
-from api.services.notification_diagnostics_audit_service import (
-    NotificationDiagnosticsAuditService,
-)
 from api.services.notification_delivery_service import NotificationDeliveryService
 from api.services.notification_types import (
     APNSNotificationOutcome,

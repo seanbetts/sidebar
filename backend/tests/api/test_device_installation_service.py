@@ -129,3 +129,34 @@ def test_disable_installation_unbinds_user_without_destroying_installation(db_se
     assert len(bindings) == 1
     assert bindings[0].user_id == "user-1"
     assert bindings[0].unbound_at is not None
+
+
+def test_list_active_installations_for_user_returns_only_current_users_devices(
+    db_session,
+):
+    DeviceInstallationService.register_installation(
+        db_session,
+        "user-1",
+        installation_id="install-1",
+        token="token-1",
+        platform="ios",
+        environment="prod",
+    )
+    DeviceInstallationService.register_installation(
+        db_session,
+        "user-2",
+        installation_id="install-2",
+        token="token-2",
+        platform="macos",
+        environment="prod",
+    )
+    db_session.commit()
+
+    installations = DeviceInstallationService.list_active_installations_for_user(
+        db_session,
+        user_id="user-1",
+    )
+
+    assert [installation.installation_id for installation in installations] == [
+        "install-1"
+    ]

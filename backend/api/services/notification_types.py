@@ -14,6 +14,7 @@ class NotificationCategory(StrEnum):
     MORNING_DIGEST = "morning_digest"
     ASSISTANT_REPLY = "assistant_reply"
     ASSISTANT_PROACTIVE = "assistant_proactive"
+    TEST_PUSH = "test_push"
 
 
 class NotificationDeliveryMode(StrEnum):
@@ -94,3 +95,4 @@ class NotificationDeliveryResult:
     request_count: int
     sent_count: int
     reason: str | None = None
+    outcomes: tuple[APNSNotificationOutcome, ...] = ()
