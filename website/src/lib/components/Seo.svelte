@@ -17,10 +17,10 @@
     jsonLd
   }: Props = $props();
 
-  const fullTitle = title === 'sideBar' ? title : `${title} — sideBar`;
-  const jsonLdString = jsonLd
-    ? JSON.stringify(Array.isArray(jsonLd) ? jsonLd : [jsonLd]).replace(/<\//g, '<\\/')
-    : null;
+  const fullTitle = $derived(title === 'sideBar' ? title : `${title} — sideBar`);
+  const jsonLdString = $derived(
+    jsonLd ? JSON.stringify(Array.isArray(jsonLd) ? jsonLd : [jsonLd]).replace(/<\//g, '<\\/') : null
+  );
 </script>
 
 <svelte:head>
