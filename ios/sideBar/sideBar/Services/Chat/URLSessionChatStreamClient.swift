@@ -65,10 +65,8 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         urlRequest.httpBody = try encoder.encode(request)
 
         let streamTaskId = UUID()
-        logConnectStart(request: request, streamTaskId: streamTaskId)
         let streamTask = Task {
-            let (bytes, http) = try await client.executeStream(urlRequest, intent: intent)
-            logConnectResponse(statusCode: http.statusCode, streamTaskId: streamTaskId)
+            let (bytes, _) = try await client.executeStream(urlRequest, intent: intent)
 
             var buffer = Data()
             var previousByte: UInt8?
@@ -78,19 +76,14 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
                 let reachedEventBoundary = previousByte == 0x0A && byte == 0x0A
                 let reachedFlushSize = buffer.count >= 512
                 if reachedEventBoundary || reachedFlushSize {
-                    await emitEvents(
-                        from: buffer,
-                        streamTaskId: streamTaskId,
-                        reason: reachedEventBoundary ? "boundary" : "size"
-                    )
+                    await emitEvents(from: buffer)
                     buffer.removeAll(keepingCapacity: true)
                 }
                 previousByte = byte
             }
             if !buffer.isEmpty {
-                await emitEvents(from: buffer, streamTaskId: streamTaskId, reason: "eof")
+                await emitEvents(from: buffer)
             }
-            logConnectEnd(streamTaskId: streamTaskId)
         }
         replaceStreamTask(with: StreamTaskState(id: streamTaskId, task: streamTask))?.task.cancel()
         defer {
@@ -103,14 +96,8 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         replaceStreamTask(with: nil)?.task.cancel()
     }
 
-    private func emitEvents(from data: Data, streamTaskId: UUID, reason: String) async {
+    private func emitEvents(from data: Data) async {
         let events = parser.ingest(data)
-        logStreamFlush(
-            streamTaskId: streamTaskId,
-            reason: reason,
-            byteCount: data.count,
-            events: events
-        )
         guard !events.isEmpty else { return }
         await MainActor.run { [handler = self.handler] in
             for event in events {
@@ -132,49 +119,5 @@ public final class URLSessionChatStreamClient: ChatStreamClient {
         defer { streamTaskLock.unlock() }
         guard streamTaskState?.id == id else { return }
         streamTaskState = nil
-    }
-
-    private func logConnectStart(request: ChatStreamRequest, streamTaskId: UUID) {
-        ChatStreamingDebugTrace.log(
-            "connect.start",
-            details: [
-                "stream=\(ChatStreamingDebugTrace.shortID(streamTaskId.uuidString))",
-                "conversation=\(ChatStreamingDebugTrace.shortID(request.conversationId))",
-                "userMessage=\(ChatStreamingDebugTrace.shortID(request.userMessageId))",
-                "assistantMessage=\(ChatStreamingDebugTrace.shortID(request.assistantMessageId))",
-                "messageChars=\(request.message.count)",
-                "attachments=\(request.attachments?.count ?? 0)"
-            ].joined(separator: " ")
-        )
-    }
-
-    private func logConnectResponse(statusCode: Int, streamTaskId: UUID) {
-        ChatStreamingDebugTrace.log(
-            "connect.response",
-            details: [
-                "stream=\(ChatStreamingDebugTrace.shortID(streamTaskId.uuidString))",
-                "status=\(statusCode)"
-            ].joined(separator: " ")
-        )
-    }
-
-    private func logConnectEnd(streamTaskId: UUID) {
-        ChatStreamingDebugTrace.log(
-            "connect.end",
-            details: "stream=\(ChatStreamingDebugTrace.shortID(streamTaskId.uuidString))"
-        )
-    }
-
-    private func logStreamFlush(streamTaskId: UUID, reason: String, byteCount: Int, events: [ChatStreamEvent]) {
-        ChatStreamingDebugTrace.log(
-            "stream.flush",
-            details: [
-                "stream=\(ChatStreamingDebugTrace.shortID(streamTaskId.uuidString))",
-                "reason=\(reason)",
-                "bytes=\(byteCount)",
-                "events=\(events.count)",
-                "types=\(ChatStreamingDebugTrace.summarizeEventTypes(events))"
-            ].joined(separator: " ")
-        )
     }
 }

@@ -6,14 +6,6 @@ import UniformTypeIdentifiers
 // MARK: - ChatViewModel+Streaming
 extension ChatViewModel {
     public func handle(event: ChatStreamEvent) {
-        ChatStreamingDebugTrace.log(
-            "viewModel.event",
-            details: [
-                "type=\(event.type.rawValue)",
-                "assistantMessage=\(ChatStreamingDebugTrace.shortID(activeStreamingMessageId))",
-                "streaming=\(isStreaming)"
-            ].joined(separator: " ")
-        )
         if let handler = streamEventHandlers[event.type] {
             handler(event)
         }
@@ -210,15 +202,6 @@ extension ChatViewModel {
         guard persist, let conversationId else {
             return
         }
-        ChatStreamingDebugTrace.log(
-            "store.sync.request",
-            details: [
-                "conversation=\(ChatStreamingDebugTrace.shortID(conversationId))",
-                "persist=\(persist)",
-                "messageCount=\(messages.count)",
-                ChatStreamingDebugTrace.summarizeMessage(messages.last)
-            ].joined(separator: " ")
-        )
         chatStore.updateConversationMessages(
             id: conversationId,
             messages: messages,
@@ -267,16 +250,6 @@ extension ChatViewModel {
         let appendedText = prefix + token
 
         guard typingRevealEnabled else {
-            ChatStreamingDebugTrace.log(
-                "token.append.immediate",
-                details: [
-                    "assistantMessage=\(ChatStreamingDebugTrace.shortID(messageId))",
-                    "token=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(token))\"",
-                    "prefix=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(prefix))\"",
-                    "contentBefore=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(currentContent, limit: 120))\"",
-                    "contentAfter=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(currentContent + appendedText, limit: 120))\""
-                ].joined(separator: " ")
-            )
             updateMessage(id: messageId, persist: false) { message in
                 let needsNewline = message.needsNewline == true ? false : message.needsNewline
                 return Message(
@@ -296,23 +269,6 @@ extension ChatViewModel {
 
         let existingTarget = typingRevealTargetsByMessageId[messageId] ?? currentMessage.content
         let updatedTarget = existingTarget + appendedText
-        ChatStreamingDebugTrace.log(
-            "token.append",
-            details: [
-                "assistantMessage=\(ChatStreamingDebugTrace.shortID(messageId))",
-                "tokenChars=\(token.count)",
-                "prefixChars=\(prefix.count)",
-                "token=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(token))\"",
-                "prefix=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(prefix))\"",
-                "contentBefore=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(currentContent, limit: 120))\"",
-                "contentAfter=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(updatedTarget, limit: 120))\"",
-                "displayed=\(currentMessage.content.count)",
-                "targetBefore=\(currentContent.count)",
-                "targetAfter=\(updatedTarget.count)",
-                "backlogAfter=\(updatedTarget.count - currentMessage.content.count)",
-                "needsNewline=\(currentMessage.needsNewline?.description ?? "nil")"
-            ].joined(separator: " ")
-        )
         typingRevealTargetsByMessageId[messageId] = updatedTarget
         if currentMessage.needsNewline == true {
             updateMessage(id: messageId, persist: false) { message in

@@ -288,25 +288,12 @@ extension ChatViewModel {
     }
 
     func updateMessage(id: String, persist: Bool = true, transform: (Message) -> Message) {
-        var previousMessage: Message?
-        var updatedMessage: Message?
         messages = messages.map { message in
             guard message.id == id else {
                 return message
             }
-            previousMessage = message
-            let transformed = transform(message)
-            updatedMessage = transformed
-            return transformed
+            return transform(message)
         }
-        ChatStreamingDebugTrace.log(
-            "message.update",
-            details: [
-                "persist=\(persist)",
-                "before={\(ChatStreamingDebugTrace.summarizeMessage(previousMessage))}",
-                "after={\(ChatStreamingDebugTrace.summarizeMessage(updatedMessage))}"
-            ].joined(separator: " ")
-        )
         syncMessagesToStore(
             conversationId: streamingConversationId ?? selectedConversationId,
             persist: persist

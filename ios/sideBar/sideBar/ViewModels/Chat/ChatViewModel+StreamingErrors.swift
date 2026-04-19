@@ -39,14 +39,6 @@ extension ChatViewModel {
             return
         }
         let fallbackMessage = Self.unexpectedStreamEndMessage
-        ChatStreamingDebugTrace.log(
-            "viewModel.stream.unexpectedEnd",
-            details: [
-                "conversation=\(ChatStreamingDebugTrace.shortID(self.streamingConversationId))",
-                "assistantMessage=\(ChatStreamingDebugTrace.shortID(self.currentStreamMessageId))",
-                ChatStreamingDebugTrace.summarizeMessage(messages.first(where: { $0.id == currentStreamMessageId }))
-            ].joined(separator: " ")
-        )
         chatStreamLogger.error(
             """
             Stream ended without terminal event conversationId=\(self.streamingConversationId ?? "nil", privacy: .public) \

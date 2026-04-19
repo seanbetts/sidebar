@@ -222,15 +222,6 @@ public final class ChatStore: CachedStoreBase<[Conversation]> {
         guard let existing = conversationDetails[id] else {
             return
         }
-        ChatStreamingDebugTrace.log(
-            "store.updateConversationMessages",
-            details: [
-                "conversation=\(ChatStreamingDebugTrace.shortID(id))",
-                "persist=\(persist)",
-                "messageCount=\(messages.count)",
-                ChatStreamingDebugTrace.summarizeMessage(messages.last)
-            ].joined(separator: " ")
-        )
         let updated = ConversationWithMessages(
             id: existing.id,
             title: existing.title,

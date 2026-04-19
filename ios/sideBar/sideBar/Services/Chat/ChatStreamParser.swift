@@ -64,24 +64,9 @@ public struct ChatStreamParser {
 
     private func mapEvent(_ event: ParsedSSEEvent) -> ChatStreamEvent? {
         guard let type = chatStreamEventTypeByName[event.type] else {
-            ChatStreamingDebugTrace.log(
-                "parser.ignoredUnknownEvent",
-                details: "type=\(event.type)"
-            )
             return nil
         }
         let decoded = decodeAny(json: event.data)
-        if type == .token,
-           let payload = decoded?.value as? [String: Any],
-           let content = (payload["content"] as? String) ?? (payload["text"] as? String) {
-            ChatStreamingDebugTrace.log(
-                "parser.token",
-                details: [
-                    "chars=\(content.count)",
-                    "content=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(content))\""
-                ].joined(separator: " ")
-            )
-        }
         return ChatStreamEvent(type: type, data: decoded)
     }
 
