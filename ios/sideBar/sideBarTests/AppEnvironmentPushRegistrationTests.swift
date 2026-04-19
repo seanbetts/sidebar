@@ -167,6 +167,68 @@ final class AppEnvironmentPushRegistrationTests: XCTestCase {
         XCTAssertNil(environment.inFlightDeviceTokenUserId)
     }
 
+    func testRegisterDeviceTokenIfNeededRecordsLifecycleStateOnSuccess() async throws {
+        let requestCompleted = expectation(description: "request completed")
+
+        router.setHandler { request in
+            let response = HTTPURLResponse(
+                url: try XCTUnwrap(request.url),
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            if request.url?.path.hasSuffix("/device-tokens/presence") == true {
+                requestCompleted.fulfill()
+            }
+            return (response, Data("{}".utf8))
+        }
+
+        let environment = makeEnvironment(userId: "user-123")
+        let token = "device-token-abcdef"
+
+        environment.updateDeviceToken(token)
+        await fulfillment(of: [requestCompleted], timeout: 2.0)
+        await waitForRegistrationState(
+            environment,
+            token: token,
+            userId: "user-123"
+        )
+
+        XCTAssertEqual(environment.pushDiagnosticsState.currentDeviceTokenSuffix, "abcdef")
+        XCTAssertNotNil(environment.pushDiagnosticsState.currentDeviceInstallationId)
+        XCTAssertNotNil(environment.pushDiagnosticsState.lastDeviceRegistrationAttemptAt)
+        XCTAssertEqual(environment.pushDiagnosticsState.lastDeviceRegistrationResult, .success)
+        XCTAssertNotNil(environment.pushDiagnosticsState.lastDevicePresenceUpdateAt)
+        XCTAssertNotNil(environment.pushDiagnosticsState.currentDevicePresenceIsForeground)
+    }
+
+    func testRegisterDeviceTokenIfNeededRecordsLifecycleStateOnFailure() async throws {
+        let registrationFailed = expectation(description: "registration failed")
+
+        router.setHandler { request in
+            let response = HTTPURLResponse(
+                url: try XCTUnwrap(request.url),
+                statusCode: 500,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            if request.url?.path.hasSuffix("/device-tokens") == true {
+                registrationFailed.fulfill()
+            }
+            return (response, Data("{}".utf8))
+        }
+
+        let environment = makeEnvironment(userId: "user-123")
+
+        environment.updateDeviceToken("device-token-abcdef")
+        await fulfillment(of: [registrationFailed], timeout: 2.0)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertNotNil(environment.pushDiagnosticsState.lastDeviceRegistrationAttemptAt)
+        XCTAssertEqual(environment.pushDiagnosticsState.lastDeviceRegistrationResult, .failure)
+        XCTAssertNil(environment.pushDiagnosticsState.lastDevicePresenceUpdateAt)
+    }
+
     private func makeEnvironment(userId: String) -> AppEnvironment {
         let authSession = PushMutableAuthSession(authState: .active, userId: userId)
         let config = APIClientConfig(

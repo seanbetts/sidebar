@@ -89,6 +89,10 @@ extension AppEnvironment {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         deviceToken = trimmed
+        pushDiagnosticsState = pushDiagnosticsState.updating(
+            currentDeviceInstallationId: deviceInstallationId,
+            currentDeviceTokenSuffix: Self.deviceTokenSuffix(for: trimmed)
+        )
         registerDeviceTokenIfNeeded()
     }
 
@@ -114,6 +118,10 @@ extension AppEnvironment {
         guard let token = deviceToken else { return }
         guard let userId = container.authSession.userId else { return }
         let installationId = deviceInstallationId
+        pushDiagnosticsState = pushDiagnosticsState.updating(
+            currentDeviceInstallationId: installationId,
+            currentDeviceTokenSuffix: Self.deviceTokenSuffix(for: token)
+        )
         if lastRegisteredDeviceInstallationId == installationId,
            lastRegisteredDeviceToken == token,
            lastRegisteredUserId == userId {
@@ -126,6 +134,9 @@ extension AppEnvironment {
         }
         let environment = pushEnvironment
         let platform = pushPlatform
+        pushDiagnosticsState = pushDiagnosticsState.updating(
+            lastDeviceRegistrationAttemptAt: Date()
+        )
         inFlightDeviceInstallationId = installationId
         inFlightDeviceToken = token
         inFlightDeviceTokenUserId = userId
@@ -143,6 +154,9 @@ extension AppEnvironment {
                     self.lastRegisteredDeviceInstallationId = installationId
                     self.lastRegisteredDeviceToken = token
                     self.lastRegisteredUserId = userId
+                    self.pushDiagnosticsState = self.pushDiagnosticsState.updating(
+                        lastDeviceRegistrationResult: .success
+                    )
                     self.inFlightDeviceInstallationId = nil
                     self.inFlightDeviceToken = nil
                     self.inFlightDeviceTokenUserId = nil
@@ -155,6 +169,9 @@ extension AppEnvironment {
                     self.inFlightDeviceInstallationId = nil
                     self.inFlightDeviceToken = nil
                     self.inFlightDeviceTokenUserId = nil
+                    self.pushDiagnosticsState = self.pushDiagnosticsState.updating(
+                        lastDeviceRegistrationResult: .failure
+                    )
                 }
                 self.pushLogger.error("Device token registration failed.")
                 return
@@ -219,6 +236,10 @@ extension AppEnvironment {
     func reportDevicePresence(isForeground: Bool) {
         let reporter = ensureDevicePresenceReporter()
         let token = deviceToken
+        pushDiagnosticsState = pushDiagnosticsState.updating(
+            lastDevicePresenceUpdateAt: Date(),
+            currentDevicePresenceIsForeground: isForeground
+        )
         Task { @MainActor in
             await reporter.report(isForeground: isForeground, token: token)
         }
@@ -228,6 +249,10 @@ extension AppEnvironment {
         let reporter = ensureDevicePresenceReporter()
         let token = deviceToken
         let isForeground = currentPresenceForegroundState
+        pushDiagnosticsState = pushDiagnosticsState.updating(
+            lastDevicePresenceUpdateAt: Date(),
+            currentDevicePresenceIsForeground: isForeground
+        )
         Task { @MainActor in
             await reporter.report(isForeground: isForeground, token: token)
         }
@@ -262,6 +287,10 @@ extension AppEnvironment {
         inFlightDeviceInstallationId = nil
         inFlightDeviceToken = nil
         inFlightDeviceTokenUserId = nil
+    }
+
+    private static func deviceTokenSuffix(for token: String, length: Int = 6) -> String {
+        String(token.suffix(length))
     }
 }
 #endif

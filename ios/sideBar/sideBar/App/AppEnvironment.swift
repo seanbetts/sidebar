@@ -117,6 +117,8 @@ public final class AppEnvironment: ObservableObject {
     @Published public internal(set) var isMacSettingsPresented: Bool = false
     /// Tracks whether the current authenticated session has cleared local biometric protection.
     @Published public internal(set) var isBiometricUnlocked: Bool = false
+    /// Tracks device-local push registration and presence state for diagnostics.
+    @Published public internal(set) var pushDiagnosticsState = PushLifecycleDiagnosticsState()
     /// Tracks whether a user-triggered stale-session refresh is currently running.
     @Published public internal(set) var isRetryingStaleAuth: Bool = false
     /// Tracks whether the delayed stale-auth retry banner should currently be visible.

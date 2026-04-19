@@ -121,6 +121,8 @@ public struct UserSettings: Codable {
     public let enabledSkills: [String]
     /// Installed Store skills.
     public let installedStoreSkills: [String]
+    /// Indicates whether the signed-in user can access internal diagnostics.
+    public let canAccessInternalDiagnostics: Bool
 
     private enum CodingKeys: String, CodingKey {
         case userId
@@ -144,6 +146,7 @@ public struct UserSettings: Codable {
         case aiPrimaryProviderKeyLast4
         case enabledSkills
         case installedStoreSkills
+        case canAccessInternalDiagnostics
     }
 
     public init(
@@ -167,7 +170,8 @@ public struct UserSettings: Codable {
         aiPrimaryProviderHasKey: Bool = false,
         aiPrimaryProviderKeyLast4: String? = nil,
         enabledSkills: [String],
-        installedStoreSkills: [String] = []
+        installedStoreSkills: [String] = [],
+        canAccessInternalDiagnostics: Bool = false
     ) {
         self.userId = userId
         self.communicationStyle = communicationStyle
@@ -190,6 +194,7 @@ public struct UserSettings: Codable {
         self.aiPrimaryProviderKeyLast4 = aiPrimaryProviderKeyLast4
         self.enabledSkills = enabledSkills
         self.installedStoreSkills = installedStoreSkills
+        self.canAccessInternalDiagnostics = canAccessInternalDiagnostics
     }
 
     public init(from decoder: Decoder) throws {
@@ -239,6 +244,10 @@ public struct UserSettings: Codable {
             [String].self,
             forKey: .installedStoreSkills
         ) ?? []
+        canAccessInternalDiagnostics = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .canAccessInternalDiagnostics
+        ) ?? false
     }
 }
 

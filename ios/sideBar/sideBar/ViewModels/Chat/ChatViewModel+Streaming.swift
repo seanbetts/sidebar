@@ -19,101 +19,14 @@ extension ChatViewModel {
         }
     }
 
-    // swiftlint:disable:next function_body_length
     func makeStreamEventHandlers() -> [ChatStreamEventType: (ChatStreamEvent) -> Void] {
         #if DEBUG
         streamEventHandlersBuildCountForTesting += 1
         #endif
-        var handlers: [ChatStreamEventType: (ChatStreamEvent) -> Void] = [
-            .token: { [weak self] (event: ChatStreamEvent) in
-                self?.appendToken(from: event)
-            },
-            .toolCall: { [weak self] (event: ChatStreamEvent) in
-                self?.handleToolCall(event)
-            },
-            .toolResult: { [weak self] (event: ChatStreamEvent) in
-                self?.handleToolResult(event)
-            },
-            .complete: { [weak self] (_: ChatStreamEvent) in
-                self?.didReceiveTerminalStreamEvent = true
-                self?.finalizeStreaming(status: .complete)
-            },
-            .error: { [weak self] (event: ChatStreamEvent) in
-                let rawStreamError = self?.stringValue(from: event.data, key: "error")?.trimmedOrNil
-                let presentation = ErrorMapping.chatStreamPresentation(
-                    from: rawStreamError,
-                    fallbackUserMessage: "The response hit an error. Please try again."
-                )
-                self?.didReceiveTerminalStreamEvent = true
-                if self?.shouldSuppressCurrentStreamErrors != true {
-                    self?.errorMessage = presentation.userMessage
-                }
-                self?.finalizeStreaming(
-                    status: .error,
-                    streamError: presentation.userMessage,
-                    errorDetails: presentation.details
-                )
-            },
-            .noteCreated: { [weak self] (event: ChatStreamEvent) in
-                self?.handleNoteCreate(event)
-            },
-            .noteUpdated: { [weak self] (event: ChatStreamEvent) in
-                self?.handleNoteUpdate(event)
-            },
-            .notePinned: { [weak self] (event: ChatStreamEvent) in
-                self?.handleNotePinned(event)
-            },
-            .noteMoved: { [weak self] (event: ChatStreamEvent) in
-                self?.handleNoteMoved(event)
-            },
-            .noteDeleted: { [weak self] (event: ChatStreamEvent) in
-                self?.handleNoteDelete(event)
-            },
-            .conversationTitleUpdated: makeEventHandler(ChatViewModel.handleConversationTitleUpdated),
-            .websiteSaved: { [weak self] (event: ChatStreamEvent) in
-                self?.handleWebsiteSaved(event)
-            },
-            .websiteRenamed: makeEventHandler(ChatViewModel.handleWebsiteRenamed),
-            .websitePinned: { [weak self] (event: ChatStreamEvent) in
-                self?.handleWebsitePinned(event)
-            },
-            .websiteArchived: { [weak self] (event: ChatStreamEvent) in
-                self?.handleWebsiteArchived(event)
-            },
-            .websiteDeleted: { [weak self] (event: ChatStreamEvent) in
-                self?.handleWebsiteDeleted(event)
-            },
-            .ingestionUpdated: { [weak self] (event: ChatStreamEvent) in
-                self?.handleIngestionUpdated(event)
-            },
-            .themeSet: { [weak self] (event: ChatStreamEvent) in
-                self?.handleThemeSet(event)
-            },
-            .scratchpadUpdated: makeVoidEventHandler(ChatViewModel.refreshScratchpad),
-            .scratchpadCleared: makeVoidEventHandler(ChatViewModel.refreshScratchpad),
-            .promptPreview: makeEventHandler(ChatViewModel.handlePromptPreview),
-            .toolStart: makeEventHandler(ChatViewModel.handleToolStart),
-            .toolEnd: makeEventHandler(ChatViewModel.handleToolEnd),
-            .memoryCreated: makeVoidEventHandler(ChatViewModel.refreshMemories),
-            .memoryUpdated: makeVoidEventHandler(ChatViewModel.refreshMemories),
-            .memoryDeleted: makeVoidEventHandler(ChatViewModel.refreshMemories),
-            .assistantIdentityUpdated: makeEventHandler(ChatViewModel.handleAssistantIdentityUpdated),
-            .assistantSoulUpdated: makeEventHandler(ChatViewModel.handleAssistantSoulUpdated),
-            .profileUserSettingsUpdated: makeEventHandler(ChatViewModel.handleProfileUserSettingsUpdated),
-            .otherPreferencesUpdated: makeEventHandler(ChatViewModel.handleOtherPreferencesUpdated),
-            .workspacePatch: makeEventHandler(ChatViewModel.handleWorkspacePatch)
-        ]
-        handlers.merge(onboardingStateRefreshEventHandlers()) { current, _ in current }
+        let handlers = makeTransportStreamEventHandlers()
+            .merging(makePrimitiveStreamEventHandlers(), uniquingKeysWith: { current, _ in current })
+            .merging(makeContentStreamEventHandlers(), uniquingKeysWith: { current, _ in current })
         return handlers
-    }
-
-    private func onboardingStateRefreshEventHandlers() -> [ChatStreamEventType: (ChatStreamEvent) -> Void] {
-        let refreshHandler = makeVoidEventHandler(ChatViewModel.requestOnboardingStateRefresh)
-        return [
-            .onboardingProviderBlocked: refreshHandler,
-            .onboardingResumeSuggested: refreshHandler,
-            .onboardingMilestoneCompleted: refreshHandler
-        ]
     }
 
     func cleanupEmptyConversationIfNeeded() async {

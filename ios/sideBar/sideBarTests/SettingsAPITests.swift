@@ -78,6 +78,42 @@ final class SettingsAPITests: XCTestCase {
         XCTAssertEqual(settings.aiPrimaryProviderKeyLast4, "1234")
     }
 
+    func testGetSettingsDecodesInternalDiagnosticsCapability() async throws {
+        let api = SettingsAPI(client: makeClient())
+        router.setHandler { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = """
+            {
+              "user_id": "u1",
+              "communication_style": null,
+              "working_relationship": null,
+              "name": null,
+              "job_title": null,
+              "employer": null,
+              "date_of_birth": null,
+              "gender": null,
+              "pronouns": null,
+              "location": null,
+              "profile_image_url": null,
+              "assistant_identity": null,
+              "enabled_skills": [],
+              "can_access_internal_diagnostics": true
+            }
+            """
+            return (response, Data(payload.utf8))
+        }
+
+        let settings = try await api.getSettings()
+
+        XCTAssertTrue(settings.canAccessInternalDiagnostics)
+    }
+
     func testUpdateSettingsUsesPatchWithSnakeCaseKeys() async throws {
         let api = SettingsAPI(client: makeClient())
         router.setHandler { request in

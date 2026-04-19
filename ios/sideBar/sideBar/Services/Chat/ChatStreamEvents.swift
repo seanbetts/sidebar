@@ -8,36 +8,145 @@ public enum ChatStreamEventType: String {
     case toolResult = "tool_result"
     case complete
     case error
-    case noteCreated = "note_created"
-    case noteUpdated = "note_updated"
-    case notePinned = "note_pinned"
-    case noteMoved = "note_moved"
-    case noteDeleted = "note_deleted"
-    case conversationTitleUpdated = "conversation_title_updated"
-    case websiteSaved = "website_saved"
-    case websiteRenamed = "website_renamed"
-    case websitePinned = "website_pinned"
-    case websiteArchived = "website_archived"
-    case websiteDeleted = "website_deleted"
-    case ingestionUpdated = "ingestion_updated"
-    case themeSet = "ui_theme_set"
-    case scratchpadUpdated = "scratchpad_updated"
-    case scratchpadCleared = "scratchpad_cleared"
+    case collectionInvalidated = "collection_invalidated"
+    case entityChanged = "entity_changed"
+    case entityDeleted = "entity_deleted"
     case promptPreview = "prompt_preview"
-    case toolStart = "tool_start"
-    case toolEnd = "tool_end"
-    case memoryCreated = "memory_created"
-    case memoryUpdated = "memory_updated"
-    case memoryDeleted = "memory_deleted"
-    case assistantIdentityUpdated = "assistant_identity_updated"
-    case assistantSoulUpdated = "assistant_soul_updated"
-    case profileUserSettingsUpdated = "profile_user_settings_updated"
-    case otherPreferencesUpdated = "other_preferences_updated"
+    case toolStatus = "tool_status"
     case workspacePatch = "workspace_patch"
-    case onboardingProviderBlocked = "onboarding_provider_blocked"
-    case onboardingResumeSuggested = "onboarding_resume_suggested"
-    case onboardingMilestoneCompleted = "onboarding_milestone_completed"
 }
+
+public extension ChatStreamEventType {
+    static let noteCreated: Self = .entityChanged
+    static let noteUpdated: Self = .entityChanged
+    static let notePinned: Self = .entityChanged
+    static let noteMoved: Self = .entityChanged
+    static let noteDeleted: Self = .entityDeleted
+    static let conversationTitleUpdated: Self = .entityChanged
+    static let websiteSaved: Self = .entityChanged
+    static let websiteRenamed: Self = .entityChanged
+    static let websitePinned: Self = .entityChanged
+    static let websiteArchived: Self = .entityChanged
+    static let websiteDeleted: Self = .entityDeleted
+    static let ingestionUpdated: Self = .collectionInvalidated
+    static let themeSet: Self = .collectionInvalidated
+    static let scratchpadUpdated: Self = .collectionInvalidated
+    static let scratchpadCleared: Self = .collectionInvalidated
+    static let toolStart: Self = .toolStatus
+    static let toolEnd: Self = .toolStatus
+    static let memoryCreated: Self = .collectionInvalidated
+    static let memoryUpdated: Self = .collectionInvalidated
+    static let memoryDeleted: Self = .collectionInvalidated
+    static let assistantIdentityUpdated: Self = .collectionInvalidated
+    static let assistantSoulUpdated: Self = .collectionInvalidated
+    static let profileUserSettingsUpdated: Self = .collectionInvalidated
+    static let otherPreferencesUpdated: Self = .collectionInvalidated
+    static let onboardingProviderBlocked: Self = .collectionInvalidated
+    static let onboardingResumeSuggested: Self = .collectionInvalidated
+    static let onboardingMilestoneCompleted: Self = .collectionInvalidated
+}
+
+/// Declares supported sync entity types.
+public enum ChatStreamEntityType: String, CaseIterable {
+    case assistantSettings = "assistant_settings"
+    case conversation
+    case ingestion
+    case memory
+    case note
+    case onboardingState = "onboarding_state"
+    case preferences
+    case profile
+    case scratchpad
+    case website
+    case workspace
+}
+
+/// Declares supported entity change types.
+public enum ChatStreamChangeType: String, CaseIterable {
+    case archived
+    case cleared
+    case completed
+    case created
+    case deleted
+    case moved
+    case pinned
+    case renamed
+    case unarchived
+    case unpinned
+    case updated
+}
+
+/// Declares client-side sync handling policy for an entity type.
+public enum ChatStreamEntitySyncPolicy: String {
+    case patchThenInvalidate
+    case invalidateFirst
+    case specialCase
+}
+
+public let chatStreamCustomEventNames: [String] = [
+    "collection_invalidated",
+    "entity_changed",
+    "entity_deleted",
+    "prompt_preview",
+    "tool_status",
+    "workspace_patch"
+]
+
+public let chatStreamEventTypeByName: [String: ChatStreamEventType] = [
+    "complete": .complete,
+    "collection_invalidated": .collectionInvalidated,
+    "entity_changed": .entityChanged,
+    "entity_deleted": .entityDeleted,
+    "error": .error,
+    "prompt_preview": .promptPreview,
+    "token": .token,
+    "tool_call": .toolCall,
+    "tool_result": .toolResult,
+    "tool_status": .toolStatus,
+    "workspace_patch": .workspacePatch
+]
+
+public let chatStreamEntityTypeNames: [String] = [
+    "assistant_settings",
+    "conversation",
+    "ingestion",
+    "memory",
+    "note",
+    "onboarding_state",
+    "preferences",
+    "profile",
+    "scratchpad",
+    "website",
+    "workspace"
+]
+
+public let chatStreamChangeTypeNames: [String] = [
+    "archived",
+    "cleared",
+    "completed",
+    "created",
+    "deleted",
+    "moved",
+    "pinned",
+    "renamed",
+    "unarchived",
+    "unpinned",
+    "updated"
+]
+
+public let chatStreamEntitySyncPolicies: [ChatStreamEntityType: ChatStreamEntitySyncPolicy] = [
+    .assistantSettings: .invalidateFirst,
+    .conversation: .patchThenInvalidate,
+    .ingestion: .invalidateFirst,
+    .memory: .invalidateFirst,
+    .note: .patchThenInvalidate,
+    .onboardingState: .invalidateFirst,
+    .preferences: .invalidateFirst,
+    .profile: .invalidateFirst,
+    .scratchpad: .invalidateFirst,
+    .website: .patchThenInvalidate,
+    .workspace: .specialCase
+]
 
 /// Represents ChatStreamEvent.
 public struct ChatStreamEvent {
