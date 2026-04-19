@@ -5,9 +5,9 @@
 		FileText,
 		Globe,
 		Menu,
-		FolderOpen,
+		Folder,
 		CheckSquare,
-		Store
+		Command
 	} from 'lucide-svelte';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import { canShowTooltips } from '$lib/utils/tooltip';
@@ -124,7 +124,7 @@
 						class:active={activeSection === 'files'}
 						aria-label="Files"
 					>
-						<FolderOpen size={18} />
+						<Folder size={18} />
 					</button>
 				{/snippet}
 			</TooltipTrigger>
@@ -164,7 +164,7 @@
 						class="rail-btn"
 						aria-label="Open skills store"
 					>
-						<Store size={18} />
+						<Command size={18} />
 					</button>
 				{/snippet}
 			</TooltipTrigger>
@@ -202,24 +202,24 @@
 
 <style>
 	.sidebar-rail {
-		width: 56px;
+		width: 64px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		padding: 0.75rem 0.5rem;
+		padding: 0.9rem 0.625rem;
 		border-right: 1px solid var(--color-sidebar-border);
 		background-color: var(--color-sidebar);
-		gap: 0.75rem;
+		gap: 0.875rem;
 	}
 
 	.rail-toggle {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 40px;
-		height: 40px;
-		border-radius: 0.5rem;
-		border: 0px solid var(--color-sidebar-primary);
+		width: 44px;
+		height: 44px;
+		border-radius: 0.875rem;
+		border: 1px solid transparent;
 		background-color: transparent;
 		color: var(--color-sidebar-foreground);
 		cursor: pointer;
@@ -235,7 +235,7 @@
 	.rail-actions {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.4rem;
 		align-items: center;
 		flex: 1;
 		width: 100%;
@@ -245,9 +245,9 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 40px;
-		height: 40px;
-		border-radius: 0.5rem;
+		width: 44px;
+		height: 44px;
+		border-radius: 0.875rem;
 		border: 1px solid transparent;
 		background-color: transparent;
 		color: var(--color-sidebar-foreground);
@@ -263,7 +263,7 @@
 	}
 
 	.rail-btn.active {
-		background-color: var(--color-sidebar-accent);
+		background-color: var(--surface-strong);
 		border-color: var(--color-sidebar-border);
 	}
 
@@ -271,7 +271,7 @@
 		display: flex;
 		justify-content: center;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.4rem;
 	}
 
 	.rail-btn-avatar {
@@ -279,8 +279,8 @@
 	}
 
 	.rail-avatar {
-		width: 24px;
-		height: 24px;
+		width: 26px;
+		height: 26px;
 		border-radius: 50%;
 		object-fit: cover;
 	}

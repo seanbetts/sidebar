@@ -21,6 +21,7 @@
 	import { logError } from '$lib/utils/errorHandling';
 	import LoadingGlyph from '$lib/components/loading/LoadingGlyph.svelte';
 	import { LOADING_SIZES } from '$lib/components/loading/loadingSizes';
+	import BrandLockup from '$lib/components/BrandLockup.svelte';
 	import { AlertTriangle, ArrowLeftRight, CheckCircle2 } from 'lucide-svelte';
 	import {
 		handleTranscriptPollingError,
@@ -324,12 +325,9 @@
 </script>
 
 <header class="site-header">
-	<div class="brand">
-		<img src="/images/logo.svg" alt="sideBar" class="brand-logo" />
-		<span class="brand-mark" aria-hidden="true"></span>
-		<div class="brand-text">
-			<div class="title">sideBar</div>
-			<div class="subtitle">Workspace</div>
+	<div class="brand-group">
+		<div class="brand">
+			<BrandLockup size="compact" />
 		</div>
 		<div class="status-stack">
 			{#if ingestionStatus}
@@ -389,14 +387,14 @@
 				{#snippet child({ props })}
 					<Button
 						size="icon"
-						variant="outline"
+						variant="ghost"
 						{...props}
 						onclick={(event) => {
 							invokeSnippetClick(props, event);
 							handleLayoutSwap();
 						}}
 						aria-label="Swap layout"
-						class="swap-button border-border"
+						class="swap-button"
 					>
 						<ArrowLeftRight size={20} />
 					</Button>
@@ -411,58 +409,39 @@
 
 <style>
 	:global(:root) {
-		--site-header-height: 64px;
+		--site-header-height: 72px;
 	}
 
 	.site-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: 1.25rem;
 		height: var(--site-header-height);
-		padding: 0.75rem 1.5rem;
-		padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
-		padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
+		padding: 0 1.75rem;
+		padding-left: max(1.75rem, env(safe-area-inset-left, 0px));
+		padding-right: max(1.75rem, env(safe-area-inset-right, 0px));
 		border-bottom: 1px solid var(--color-border);
-		background: #fff;
+		background: var(--color-background);
 	}
 
-	:global(.dark) .site-header {
-		background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0));
+	.brand-group {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		min-width: 0;
 	}
 
 	.brand {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
+		flex: 0 0 auto;
 	}
 
 	.status-stack {
 		display: flex;
-		flex-direction: column;
+		flex-wrap: wrap;
 		align-items: flex-start;
-		gap: 0.25rem;
-	}
-
-	.brand-logo {
-		height: 2rem;
-		width: auto;
-	}
-
-	:global(.dark) .brand-logo {
-		filter: invert(1);
-	}
-
-	.brand-mark {
-		height: 2.25rem;
-		width: 0.25rem;
-		border-radius: 999px;
-		background-color: var(--color-primary);
-	}
-
-	.brand-text {
-		display: flex;
-		flex-direction: column;
+		gap: 0.5rem;
+		min-width: 0;
 	}
 
 	.transcript-status[data-status='processing'] .dot {
@@ -507,45 +486,34 @@
 		}
 	}
 
-	.title {
-		font-size: 1.125rem;
-		font-weight: 700;
-		letter-spacing: 0.01em;
-		color: var(--color-foreground);
-	}
-
-	.subtitle {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		color: var(--color-muted-foreground);
-	}
-
 	.actions {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.625rem;
+		flex: 0 0 auto;
 	}
 
 	.datetime-group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.1rem;
-		margin-right: 1.25rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.875rem;
+		margin-right: 0.75rem;
 		align-items: flex-end;
+		white-space: nowrap;
 	}
 
 	.tasks-status {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
-		padding: 0.2rem 0.5rem;
-		margin-left: 0.6rem;
+		padding: 0.3rem 0.65rem;
 		border-radius: 999px;
 		border: 1px solid var(--color-border);
 		color: var(--color-muted-foreground);
 		font-size: 0.7rem;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
+		background: var(--surface);
 	}
 
 	.tasks-status .dot {
@@ -558,7 +526,6 @@
 	.location {
 		font-size: 0.75rem;
 		letter-spacing: 0.02em;
-		text-transform: uppercase;
 		color: var(--color-muted-foreground);
 		white-space: nowrap;
 	}
@@ -568,8 +535,8 @@
 		align-items: center;
 		gap: 0.4rem;
 		color: var(--color-foreground);
-		font-size: 0.95rem;
-		font-weight: 600;
+		font-size: 0.85rem;
+		font-weight: 500;
 	}
 
 	.weather :global(svg) {
@@ -590,6 +557,11 @@
 		:global(.swap-button) {
 			display: none;
 		}
+
+		.datetime-group {
+			display: none;
+		}
+
 		.tasks-status {
 			display: none;
 		}

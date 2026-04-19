@@ -733,7 +733,7 @@
 	}
 
 	.sidebar-panel {
-		width: 280px;
+		width: 296px;
 		display: flex;
 		flex-direction: column;
 		background-color: var(--color-sidebar);

@@ -25,10 +25,12 @@ describe('login form content', () => {
 		expect(screen.getByText('Your session expired. Please sign in again.')).toBeInTheDocument();
 	});
 
-	it('uses sign in wording and shows tasks as a core feature', () => {
+	it('uses the redesigned sign in wording and footer links', () => {
 		render(LoginForm);
-		expect(screen.getByText('Sign in', { selector: '.login-wordmark' })).toBeInTheDocument();
+		expect(screen.getByText('Welcome back')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
-		expect(screen.getByText('Tasks')).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Privacy Policy' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Terms of Service' })).toBeInTheDocument();
+		expect(screen.queryByText(/Made with/i)).not.toBeInTheDocument();
 	});
 });

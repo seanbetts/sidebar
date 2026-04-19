@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { getSupabaseClient } from '$lib/supabase';
+	import BrandLockup from '$lib/components/BrandLockup.svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { MessageSquare, FileText, Globe, Brain, FolderOpen, ListTodo } from 'lucide-svelte';
+	import { Folder, FileText, Globe, CheckSquare, MessageSquare, Command } from 'lucide-svelte';
 	import { MARKETING_COPY } from '$lib/constants/marketingCopy';
+	import { getSupabaseClient } from '$lib/supabase';
 	import { logError } from '$lib/utils/errorHandling';
 
 	let email = '';
@@ -56,34 +57,23 @@
 
 <div class="login-shell">
 	<div class="login-container">
-		<div class="login-brand">
-			<img src="/images/logo.svg" alt="sideBar" class="brand-logo" />
-			<span class="brand-wordmark">sideBar</span>
-		</div>
-
 		<div class="login-grid">
-			<section class="login-hero">
-				<p class="login-tagline">{MARKETING_COPY.tagline}</p>
+			<section class="login-intro">
+				<BrandLockup size="large" />
+				<h2 class="login-tagline" aria-label={MARKETING_COPY.tagline}>
+					<span>Your work.</span>
+					<span>Your assistant.</span>
+					<span>One place.</span>
+				</h2>
 				<p class="login-description">{MARKETING_COPY.subtitle}</p>
 
-				<div class="login-features">
+				<div class="login-features" aria-label="Core sideBar features">
 					<div class="feature">
 						<MessageSquare size={18} strokeWidth={2} />
 						<div class="feature-content">
 							<span class="feature-title">Chat</span>
 							<span class="feature-desc"
-								>Ask questions, get things done, and work through problems with an AI that knows
-								your content.</span
-							>
-						</div>
-					</div>
-					<div class="feature">
-						<Brain size={18} strokeWidth={2} />
-						<div class="feature-content">
-							<span class="feature-title">Skills</span>
-							<span class="feature-desc"
-								>Extend sideBar with installable skills. Transcribe audio, save YouTube videos, and
-								more.</span
+								>Start from what is already in front of you, not a blank box.</span
 							>
 						</div>
 					</div>
@@ -91,18 +81,16 @@
 						<FileText size={18} strokeWidth={2} />
 						<div class="feature-content">
 							<span class="feature-title">Notes</span>
-							<span class="feature-desc"
-								>A full writing environment with folders, rich text, and a Scratchpad always one tap
-								away.</span
+							<span class="feature-desc">Write, organise, and keep a scratchpad close at hand.</span
 							>
 						</div>
 					</div>
 					<div class="feature">
-						<ListTodo size={18} strokeWidth={2} />
+						<CheckSquare size={18} strokeWidth={2} />
 						<div class="feature-content">
 							<span class="feature-title">Tasks</span>
 							<span class="feature-desc"
-								>Projects, due dates, and smart lists that keep Today and Upcoming always current.</span
+								>Keep projects, due dates, and lists in the same workspace.</span
 							>
 						</div>
 					</div>
@@ -111,18 +99,25 @@
 						<div class="feature-content">
 							<span class="feature-title">Websites</span>
 							<span class="feature-desc"
-								>Save web pages to read offline. sideBar indexes everything so you can ask questions
-								about it.</span
+								>Save pages, read them later, and ask questions across them.</span
 							>
 						</div>
 					</div>
 					<div class="feature">
-						<FolderOpen size={18} strokeWidth={2} />
+						<Folder size={18} strokeWidth={2} />
 						<div class="feature-content">
 							<span class="feature-title">Files</span>
 							<span class="feature-desc"
-								>Upload PDFs, documents, images, and more. Search and ask questions across all of
-								it.</span
+								>Bring documents, PDFs, and images into the same context.</span
+							>
+						</div>
+					</div>
+					<div class="feature">
+						<Command size={18} strokeWidth={2} />
+						<div class="feature-content">
+							<span class="feature-title">Skills</span>
+							<span class="feature-desc"
+								>Install useful capabilities as sideBar grows with you.</span
 							>
 						</div>
 					</div>
@@ -131,8 +126,8 @@
 
 			<section class="login-panel">
 				<div class="login-panel-header">
-					<img src="/images/logo.svg" alt="sideBar" class="panel-logo" />
-					<div class="login-wordmark">Sign in</div>
+					<p class="login-eyebrow">Sign in</p>
+					<h1 class="login-wordmark">Welcome back</h1>
 				</div>
 
 				{#if loggedOut}
@@ -160,9 +155,11 @@
 				</form>
 			</section>
 		</div>
-		<footer class="site-footer">
-			Made with <span class="heart">&hearts;</span> and
-			<a href="https://openai.com/codex/" target="_blank" rel="noopener noreferrer">Codex</a>
+
+		<footer class="login-footer" aria-label="Legal links">
+			<a href="/privacy">Privacy Policy</a>
+			<a href="/terms">Terms of Service</a>
+			<a href="mailto:support@trysidebar.ai">Contact</a>
 		</footer>
 	</div>
 </div>
@@ -170,121 +167,77 @@
 <style>
 	.login-shell {
 		min-height: 100vh;
-		display: grid;
-		place-items: center;
-		padding: 3rem 1.5rem;
-		position: relative;
-		overflow: hidden;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 3rem 1.5rem 2rem;
 		background: var(--color-background);
 	}
 
 	.login-container {
-		width: min(96vw, 1100px);
+		width: min(100%, 1120px);
 		display: flex;
 		flex-direction: column;
-		gap: 3rem;
-	}
-
-	.login-brand {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 1rem;
-	}
-
-	.brand-logo {
-		width: 64px;
-		height: 64px;
-	}
-
-	:global(.dark) .brand-logo {
-		filter: invert(1);
-	}
-
-	.brand-wordmark {
-		font-size: 2.5rem;
-		font-weight: 600;
-		letter-spacing: 0.02em;
-		color: var(--color-foreground);
+		gap: 1.5rem;
 	}
 
 	.login-grid {
 		width: 100%;
 		display: grid;
-		grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-		gap: 2.5rem;
-		align-items: stretch;
+		grid-template-columns: minmax(0, 1.1fr) minmax(22rem, 25rem);
+		gap: clamp(2rem, 4vw, 4.5rem);
+		align-items: center;
 	}
 
-	.login-wordmark {
-		font-size: 2rem;
-		font-weight: 600;
-		letter-spacing: 0.02em;
-		color: var(--color-foreground);
-	}
-
-	.login-hero {
-		padding: 2.5rem 2.75rem;
-		border-radius: 1rem;
-		border: 1px solid var(--color-border);
-		background: var(--color-card);
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		position: relative;
+	.login-intro {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+		padding-right: 1rem;
 	}
 
 	.login-tagline {
-		margin: 0 0 1rem;
-		font-size: 1.75rem;
+		margin: 0;
+		font-size: clamp(2.25rem, 4.8vw, 4.5rem);
 		font-weight: 700;
-		letter-spacing: -0.02em;
-		line-height: 1.2;
+		letter-spacing: -0.055em;
+		line-height: 0.94;
 		color: var(--color-foreground);
 	}
 
-	.login-description {
-		margin: 0 0 2rem;
-		font-size: 1rem;
-		color: var(--color-muted-foreground);
-		line-height: 1.6;
+	.login-tagline span {
+		display: block;
 	}
 
-	/* Screenshot placeholder - uncomment when you add screenshot */
-	/* .screenshot-placeholder {
-    margin: 0 0 2rem;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-    background: var(--color-muted);
-  }
-
-  .screenshot-placeholder img {
-    width: 100%;
-    height: auto;
-    display: block;
-  } */
+	.login-description {
+		margin: 0;
+		max-width: 34rem;
+		font-size: 1.05rem;
+		line-height: 1.55;
+		color: var(--color-muted-foreground);
+		text-wrap: balance;
+	}
 
 	.login-features {
 		display: grid;
-		gap: 1rem;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		column-gap: 1.5rem;
+		row-gap: 0;
+		border-top: 1px solid var(--color-border);
 	}
 
 	.feature {
 		display: flex;
 		align-items: flex-start;
 		gap: 0.75rem;
-		padding: 0.75rem;
-		border-radius: 0.5rem;
-		transition: background-color 0.15s ease;
-	}
-
-	.feature:hover {
-		background: var(--color-accent);
+		padding: 1rem 0;
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.feature :global(svg) {
 		flex-shrink: 0;
-		margin-top: 0.125rem;
-		color: var(--color-primary);
+		margin-top: 0.2rem;
+		color: var(--color-foreground);
 	}
 
 	.feature-content {
@@ -295,83 +248,100 @@
 	}
 
 	.feature-title {
-		font-size: 0.875rem;
-		font-weight: 500;
+		font-size: 0.95rem;
+		font-weight: 600;
 		color: var(--color-foreground);
 	}
 
 	.feature-desc {
-		font-size: 0.8125rem;
+		font-size: 0.875rem;
+		line-height: 1.5;
 		color: var(--color-muted-foreground);
-		line-height: 1.4;
 	}
 
 	.login-panel {
-		padding: 2.5rem 2.25rem;
-		border-radius: 1rem;
+		padding: 2rem;
+		border-radius: 1.25rem;
 		border: 1px solid var(--color-border);
-		background: var(--color-card);
+		background: var(--surface);
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		gap: 1.25rem;
 	}
 
 	.login-panel-header {
 		display: flex;
-		align-items: center;
-		gap: 0.75rem;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.5rem;
 	}
 
-	.login-success {
-		padding: 0.75rem 0.9rem;
-		border-radius: 0.6rem;
-		background: var(--color-muted);
-		border: 1px solid var(--color-border);
+	.login-eyebrow {
+		margin: 0;
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--color-muted-foreground);
+	}
+
+	.login-wordmark {
+		margin: 0;
+		font-size: 2rem;
+		font-weight: 650;
+		letter-spacing: -0.04em;
+		line-height: 0.96;
 		color: var(--color-foreground);
-		font-size: 0.9rem;
 	}
 
+	.login-success,
+	.login-info,
+	.login-error {
+		padding: 0.875rem 1rem;
+		border-radius: 0.875rem;
+		font-size: 0.875rem;
+		line-height: 1.5;
+	}
+
+	.login-success,
 	.login-info {
-		padding: 0.75rem 0.9rem;
-		border-radius: 0.6rem;
 		background: var(--color-muted);
 		border: 1px solid var(--color-border);
 		color: var(--color-foreground);
-		font-size: 0.9rem;
 	}
 
-	.panel-logo {
-		width: 44px;
-		height: 44px;
-	}
-
-	:global(.dark) .panel-logo {
-		filter: invert(1);
+	.login-error {
+		background: color-mix(in srgb, var(--color-destructive) 10%, transparent);
+		border: 1px solid color-mix(in srgb, var(--color-destructive) 45%, transparent);
+		color: var(--color-destructive);
 	}
 
 	form {
 		display: flex;
 		flex-direction: column;
-		gap: 1.15rem;
+		gap: 0.875rem;
 	}
 
 	label {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.45rem;
+	}
+
+	label span {
 		font-size: 0.875rem;
 		font-weight: 500;
 		color: var(--color-foreground);
 	}
 
 	input {
-		padding: 0.625rem 0.875rem;
+		width: 100%;
+		padding: 0.85rem 0.95rem;
 		border: 1px solid var(--color-input);
-		border-radius: 0.5rem;
+		border-radius: 0.875rem;
 		background: var(--color-background);
 		color: var(--color-foreground);
-		font-size: 0.9375rem;
+		font-size: 0.95rem;
 		transition:
 			border-color 0.15s ease,
 			box-shadow 0.15s ease;
@@ -380,67 +350,65 @@
 	input:focus {
 		outline: none;
 		border-color: var(--color-ring);
-		box-shadow: 0 0 0 3px var(--color-ring-offset);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ring) 20%, transparent);
 	}
 
-	.login-error {
-		padding: 0.75rem 0.875rem;
-		border-radius: 0.5rem;
-		background: var(--color-destructive-foreground);
-		color: var(--color-destructive);
-		font-size: 0.875rem;
-		border: 1px solid var(--color-destructive);
+	input::placeholder {
+		color: var(--color-muted-foreground);
 	}
 
 	:global(.login-panel button.w-full) {
 		margin-top: 0.25rem;
 	}
 
-	.site-footer {
+	.login-footer {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-start;
+		gap: 0.75rem 1.25rem;
 		font-size: 0.8125rem;
 		color: var(--color-muted-foreground);
-		text-align: center;
 	}
 
-	.site-footer a {
-		color: var(--color-muted-foreground);
-		text-decoration: underline;
-		text-underline-offset: 2px;
+	.login-footer a {
+		color: inherit;
+		text-decoration: none;
 	}
 
-	.heart {
+	.login-footer a:hover {
 		color: var(--color-foreground);
 	}
 
 	@media (max-width: 900px) {
-		.login-container {
-			gap: 2rem;
-		}
-
-		.brand-logo {
-			width: 52px;
-			height: 52px;
-		}
-
-		.brand-wordmark {
-			font-size: 2rem;
+		.login-shell {
+			padding: 1.5rem 1rem;
 		}
 
 		.login-grid {
 			grid-template-columns: 1fr;
+			gap: 2rem;
 		}
 
-		.login-hero,
+		.login-intro {
+			padding-right: 0;
+		}
+
+		.login-features {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 640px) {
 		.login-panel {
-			padding: 2rem 1.75rem;
+			padding: 1.5rem;
 		}
 
 		.login-tagline {
-			font-size: 1rem;
+			max-width: none;
 		}
 
-		.feature-desc {
-			display: none;
+		.login-footer {
+			justify-content: center;
 		}
 	}
 </style>

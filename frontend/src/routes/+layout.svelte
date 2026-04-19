@@ -263,6 +263,7 @@
 		height: var(--app-height, 100dvh); /* Prefer dvh when available */
 		width: 100%;
 		overflow: hidden;
+		background: var(--color-background);
 	}
 
 	.main-content {
@@ -272,6 +273,7 @@
 		height: 100%;
 		min-height: 0;
 		overflow: hidden;
+		background: var(--color-background);
 	}
 
 	.page-content {
