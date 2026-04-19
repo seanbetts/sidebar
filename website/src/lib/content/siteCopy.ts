@@ -4,8 +4,7 @@ export const siteCopy = {
   home: {
     hero: {
       headline: MARKETING_COPY.tagline,
-      subhead:
-        'An AI assistant works better when it lives beside your notes, tasks, saved pages, and files. sideBar keeps them together so help starts with context instead of a blank box.',
+      subhead: MARKETING_COPY.subtitle,
       primaryCta: 'Request Early Access',
       primaryHref: 'https://app.trysidebar.ai',
       secondaryCta: 'Read the Docs',

@@ -28,7 +28,7 @@
     margin: 0 auto;
     padding: clamp(3.5rem, 8vw, 5.5rem) var(--marketing-page-gutter, 1.5rem);
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
     gap: clamp(1.75rem, 5vw, 4rem);
     align-items: center;
     position: relative;
@@ -72,7 +72,6 @@
   .proof-media {
     display: grid;
     width: 100%;
-    min-height: 100%;
     align-items: center;
     justify-items: center;
     transition:

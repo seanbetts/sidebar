@@ -109,7 +109,7 @@
     --marketing-page-width: 78rem;
     --marketing-page-gutter: 1.5rem;
     --marketing-device-ipad-width: 40rem;
-    --marketing-device-iphone-width: 20rem;
+    --marketing-device-iphone-width: 22rem;
     --marketing-home-meta-size: 0.9375rem;
     --marketing-home-body-size: clamp(1.02rem, 1vw + 0.82rem, 1.125rem);
     --marketing-home-heading-size: clamp(2.4rem, 4vw + 1.4rem, 3.85rem);
@@ -192,6 +192,7 @@
     border-radius: 999px;
     font-size: 0.95rem;
     font-weight: 600;
+    white-space: nowrap;
     text-decoration: none;
     transition:
       background-color 0.15s ease,
@@ -226,7 +227,6 @@
   .identity-media {
     display: grid;
     width: 100%;
-    min-height: 100%;
     align-items: center;
     justify-items: center;
     justify-self: center;
@@ -269,7 +269,7 @@
     margin: 0 auto;
     padding: 0 var(--marketing-page-gutter);
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
     gap: clamp(1.75rem, 5vw, 4rem);
     align-items: center;
   }

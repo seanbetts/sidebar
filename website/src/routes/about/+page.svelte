@@ -1,19 +1,19 @@
 <script lang="ts">
   import Seo from '$lib/components/Seo.svelte';
+  import { MARKETING_COPY } from '../../../../shared/marketingCopy';
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'AboutPage',
     name: 'About sideBar',
     url: 'https://trysidebar.ai/about',
-    description:
-      'sideBar is an AI-native productivity app built around the belief that the assistant and the work environment should start together.'
+    description: MARKETING_COPY.description
   };
 </script>
 
 <Seo
   title="About"
-  description="sideBar is an AI-native productivity app built around the belief that the assistant and the work environment should start together."
+  description={MARKETING_COPY.description}
   url="https://trysidebar.ai/about"
   {jsonLd}
 />
@@ -23,16 +23,13 @@
     <header class="page-header">
       <p class="eyebrow">Founder note</p>
       <h1>About sideBar</h1>
-      <p class="lead">
-        sideBar is my attempt to make AI-native productivity feel natural: an
-        assistant and a work environment designed together from day one.
-      </p>
+      <p class="lead">{MARKETING_COPY.subtitle}</p>
     </header>
 
     <div class="hero-image">
       <img
-        src="/screenshots/overview.png"
-        alt="sideBar on iPad showing the chat panel open alongside a website summary"
+        src="/screenshots/chat-ipad.png"
+        alt="sideBar chat on iPad showing the assistant beside the surrounding workspace"
         width="1366"
         height="1024"
       />

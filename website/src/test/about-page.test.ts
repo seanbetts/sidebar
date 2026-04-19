@@ -8,7 +8,7 @@ describe('about page', () => {
 
     const images = screen.getAllByRole('img');
     expect(images).toHaveLength(1);
-    expect(images[0]).toHaveAttribute('src', '/screenshots/overview.png');
+    expect(images[0]).toHaveAttribute('src', '/screenshots/chat-ipad.png');
     expect(images[0]).toHaveAccessibleName();
   });
 
