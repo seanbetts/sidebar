@@ -57,6 +57,7 @@ final class ChatStartupStabilityTests: XCTestCase {
     ) -> ChatViewModel {
         let defaults = UserDefaults(suiteName: "ChatStartupStabilityTests") ?? .standard
         defaults.removePersistentDomain(forName: "ChatStartupStabilityTests")
+        let toastCenter = ToastCenter()
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let viewModel = ChatViewModel(
             network: ChatNetworkCoordinator(
@@ -76,6 +77,7 @@ final class ChatStartupStabilityTests: XCTestCase {
             ),
             ui: ChatUICoordinator(
                 themeManager: Self.sharedThemeManager,
+                toastCenter: toastCenter,
                 userDefaults: defaults,
                 clock: { Date(timeIntervalSince1970: 0) }
             )

@@ -67,6 +67,7 @@ final class ChatViewModelAssistantSettingsTests: XCTestCase {
         let cache = TestCacheClient()
         let defaults = UserDefaults(suiteName: "ChatViewModelAssistantSettingsTests") ?? .standard
         defaults.removePersistentDomain(forName: "ChatViewModelAssistantSettingsTests")
+        let toastCenter = ToastCenter()
         let conversationsAPI = AssistantSettingsConversationsAPI()
         let chatStore = ChatStore(conversationsAPI: conversationsAPI, cache: cache)
         return ChatViewModel(
@@ -83,6 +84,7 @@ final class ChatViewModelAssistantSettingsTests: XCTestCase {
             ),
             ui: ChatUICoordinator(
                 themeManager: ThemeManager(userDefaults: defaults),
+                toastCenter: toastCenter,
                 userDefaults: defaults,
                 clock: { Date(timeIntervalSince1970: 0) },
                 onAssistantSettingsUpdated: onAssistantSettingsUpdated

@@ -193,6 +193,7 @@ class ChatViewModelTestCase: XCTestCase {
         let themeManager = Self.sharedThemeManager
         let defaults = UserDefaults(suiteName: "ChatViewModelTests") ?? .standard
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
+        let toastCenter = ToastCenter()
         let persistence = persistence ?? PersistenceController(inMemory: true)
         let resolvedDraftStorage = draftStorage ?? DraftStorage(container: persistence.container)
         let resolvedIngestionAPI = ingestionAPI ?? IngestionAPI(client: Self.sharedAPIClient)
@@ -224,6 +225,7 @@ class ChatViewModelTestCase: XCTestCase {
             ),
             ui: ChatUICoordinator(
                 themeManager: themeManager,
+                toastCenter: toastCenter,
                 userDefaults: defaults,
                 clock: { Date(timeIntervalSince1970: 0) },
                 onOnboardingStateRefreshRequested: onOnboardingStateRefreshRequested,

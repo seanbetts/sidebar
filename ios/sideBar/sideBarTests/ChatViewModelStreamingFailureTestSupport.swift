@@ -26,6 +26,7 @@ func makeStreamingFailureViewModel(
     uiDefaults.removePersistentDomain(forName: "ChatViewModelStreamingFailure")
     let chatStore = ChatStore(conversationsAPI: api, cache: cache)
     let ingestionAPI = IngestionAPI(client: streamingFailureSharedAPIClient)
+    let resolvedToastCenter = toastCenter ?? ToastCenter()
 
     return ChatViewModel(
         network: ChatNetworkCoordinator(
@@ -41,7 +42,7 @@ func makeStreamingFailureViewModel(
         ),
         ui: ChatUICoordinator(
             themeManager: themeManager,
-            toastCenter: toastCenter,
+            toastCenter: resolvedToastCenter,
             userDefaults: uiDefaults,
             clock: { Date(timeIntervalSince1970: 0) },
             requestContextProvider: requestContextProvider,
@@ -81,6 +82,7 @@ func makeStreamingFailureViewModelWithDefaultRevealConfig(
         ),
         ui: ChatUICoordinator(
             themeManager: themeManager,
+            toastCenter: ToastCenter(),
             userDefaults: uiDefaults,
             clock: { Date(timeIntervalSince1970: 0) }
         )

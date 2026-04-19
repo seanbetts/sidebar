@@ -107,7 +107,7 @@ extension ChatViewModel {
                     updated.stage = "failed"
                     return updated
                 }
-                toastCenter?.show(message: rejectionMessage)
+                toastCenter.show(message: rejectionMessage)
                 return
             }
             let fileId = try await ingestionAPI.upload(
@@ -130,7 +130,7 @@ extension ChatViewModel {
                 updated.stage = "failed"
                 return updated
             }
-            toastCenter?.show(message: "Attachment upload failed")
+            toastCenter.show(message: "Attachment upload failed")
         }
     }
 
@@ -171,7 +171,7 @@ extension ChatViewModel {
                         updated.stage = "failed"
                         return updated
                     }
-                    self.toastCenter?.show(message: "Attachment status failed")
+                    self.toastCenter.show(message: "Attachment status failed")
                     return
                 }
             }

@@ -189,6 +189,7 @@ final class ChatViewModelTitleGenerationTests: XCTestCase {
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let streamClient = ChatViewModelTestsSupport.MockChatStreamClient()
         let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
+        let toastCenter = ToastCenter()
 
         return ChatViewModel(
             network: ChatNetworkCoordinator(
@@ -206,6 +207,7 @@ final class ChatViewModelTitleGenerationTests: XCTestCase {
             ),
             ui: ChatUICoordinator(
                 themeManager: themeManager,
+                toastCenter: toastCenter,
                 userDefaults: uiDefaults,
                 clock: { Date(timeIntervalSince1970: 0) }
             )

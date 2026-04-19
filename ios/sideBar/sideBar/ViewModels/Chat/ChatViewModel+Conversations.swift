@@ -305,7 +305,7 @@ extension ChatViewModel {
     public func retryAttachment(id: String) {
         guard let attachment = attachments.first(where: { $0.id == id }),
               let url = attachment.fileURL else {
-            toastCenter?.show(message: "Re-upload the file to retry")
+            toastCenter.show(message: "Re-upload the file to retry")
             return
         }
         updateAttachment(id: id) { item in
@@ -332,7 +332,7 @@ extension ChatViewModel {
                 do {
                     try await self?.ingestionAPI.delete(fileId: fileId)
                 } catch {
-                    self?.toastCenter?.show(message: "Failed to delete attachment")
+                    self?.toastCenter.show(message: "Failed to delete attachment")
                 }
             }
         }
@@ -352,7 +352,7 @@ extension ChatViewModel {
             do {
                 try await self?.ingestionAPI.cancel(fileId: fileId)
             } catch {
-                self?.toastCenter?.show(message: "Failed to cancel attachment")
+                self?.toastCenter.show(message: "Failed to cancel attachment")
             }
         }
     }
@@ -396,7 +396,7 @@ extension ChatViewModel {
                 titleGenerated: previousGenerated
             )
             errorMessage = ErrorMapping.message(for: error)
-            toastCenter?.show(message: "Failed to rename conversation")
+            toastCenter.show(message: "Failed to rename conversation")
         }
     }
 
@@ -431,7 +431,7 @@ extension ChatViewModel {
                 restoreRetryState(previousRetryState)
             }
             errorMessage = ErrorMapping.message(for: error)
-            toastCenter?.show(message: "Failed to delete conversation")
+            toastCenter.show(message: "Failed to delete conversation")
         }
     }
 

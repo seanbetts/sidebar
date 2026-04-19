@@ -164,7 +164,7 @@ struct ChatStorageCoordinator {
 
 struct ChatUICoordinator {
     let themeManager: ThemeManager
-    let toastCenter: ToastCenter?
+    let toastCenter: ToastCenter
     let userDefaults: UserDefaults
     let clock: () -> Date
     let onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)?
@@ -181,7 +181,7 @@ struct ChatUICoordinator {
 
     init(
         themeManager: ThemeManager,
-        toastCenter: ToastCenter? = nil,
+        toastCenter: ToastCenter,
         userDefaults: UserDefaults = .standard,
         clock: @escaping () -> Date = Date.init,
         onAssistantSettingsUpdated: ((AssistantSettingsRealtimeUpdate) -> Void)? = nil,

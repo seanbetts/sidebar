@@ -100,7 +100,7 @@ private final class ChatViewModelTeardownBag {
 ///         cache: cache,
 ///         chatStore: chatStore
 ///     ),
-///     ui: ChatUICoordinator(themeManager: themeManager)
+///     ui: ChatUICoordinator(themeManager: themeManager, toastCenter: ToastCenter())
 /// )
 /// await viewModel.loadConversations()
 /// await viewModel.selectConversation(id: conversationId)
@@ -161,7 +161,7 @@ private final class ChatViewModelTeardownBag {
     }
 
     var themeManager: ThemeManager { ui.themeManager }
-    var toastCenter: ToastCenter? { ui.toastCenter }
+    var toastCenter: ToastCenter { ui.toastCenter }
     var userDefaults: UserDefaults { ui.userDefaults }
     var clock: () -> Date { ui.clock }
     var attachmentPollingInitialDelayNanoseconds: UInt64 { ui.attachmentPollingInitialDelayNanoseconds }
