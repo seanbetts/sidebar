@@ -42,7 +42,10 @@ final class ChatInputSizingTests: XCTestCase {
     }
 
     func testChatInputChromeMetricsUseAppTextSizeHelpersInsteadOfScaledMetric() throws {
-        let uiKitSource = try chatInputSource(named: "ChatInputUIKit.swift")
+        let uiKitSource = try (
+            chatInputSource(named: "ChatInputUIKit.swift")
+                + chatInputSource(named: "ChatInputUIKit+Metrics.swift")
+        )
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let appKitSource = try chatInputSource(named: "ChatInputAppKit.swift")
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)

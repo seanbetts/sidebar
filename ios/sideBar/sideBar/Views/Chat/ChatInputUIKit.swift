@@ -306,9 +306,6 @@ struct ChatInputUIKitView: UIViewRepresentable {
                     chatTextView.shouldAutofocus = false
                     chatTextView.hasScheduledAutofocus = false
                 }
-                if textView.isFirstResponder {
-                    _ = textView.resignFirstResponder()
-                }
                 return
             }
             guard let chatTextView = textView as? ChatInputTextView else { return }
