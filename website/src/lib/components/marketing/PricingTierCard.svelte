@@ -1,17 +1,23 @@
 <script lang="ts">
   type Props = {
     name: string;
+    status?: string;
     price: string;
     summary: string;
     bullets: string[];
   };
 
-  let { name, price, summary, bullets }: Props = $props();
+  let { name, status, price, summary, bullets }: Props = $props();
 </script>
 
 <article class="tier-card">
   <header class="tier-header">
-    <h2 class="tier-name">{name}</h2>
+    <div class="tier-topline">
+      <h2 class="tier-name">{name}</h2>
+      {#if status}
+        <p class="tier-status">{status}</p>
+      {/if}
+    </div>
     <p class="tier-price">{price}</p>
   </header>
 
@@ -43,9 +49,17 @@
     gap: 0.4rem;
   }
 
+  .tier-topline {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
   .tier-name,
   .tier-price,
-  .tier-summary {
+  .tier-summary,
+  .tier-status {
     margin: 0;
   }
 
@@ -55,6 +69,15 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--color-muted-foreground);
+  }
+
+  .tier-status {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
+    white-space: nowrap;
   }
 
   .tier-price {

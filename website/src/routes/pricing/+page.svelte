@@ -1,7 +1,10 @@
 <script lang="ts">
-  import PixelDivider from '$lib/components/PixelDivider.svelte';
   import Seo from '$lib/components/Seo.svelte';
   import PricingTierCard from '$lib/components/marketing/PricingTierCard.svelte';
+
+  type BillingPeriod = 'monthly' | 'annual';
+
+  let billingPeriod = $state<BillingPeriod>('monthly');
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -12,20 +15,34 @@
       'sideBar pricing will include Free, Plus, Pro, and BYOK tiers. Final numbers are not published yet.'
   };
 
-  const tiers = [
+  const tierDefinitions = [
     {
       name: 'Free',
-      price: 'Try it free',
-      summary: 'A no-commitment way to try the assistant and work environment together.',
+      monthlyPrice: '£0',
+      annualPrice: '£0',
+      summary: 'Use the core app features without the assistant.',
       bullets: [
-        'Start with the core sideBar workflows.',
-        'See how the product fits into your day before paying.',
-        'Upgrade later if it becomes part of your routine.'
+        'Save websites, keep notes, and manage tasks in one place.',
+        'Try the app structure and workflow before paying.',
+        'Upgrade later if you want assistant access.'
+      ]
+    },
+    {
+      name: 'BYOK',
+      monthlyPrice: '£5/mo',
+      annualPrice: '£50/yr',
+      summary: 'For people who want model usage billed directly by the provider.',
+      bullets: [
+        'Use your own Anthropic, OpenAI, or Google key.',
+        'Keep subscription cost and model cost separate.',
+        'Useful if you already have model access in place.'
       ]
     },
     {
       name: 'Plus',
-      price: 'Coming later',
+      status: 'Coming soon',
+      monthlyPrice: '£8/mo',
+      annualPrice: '£80/yr',
       summary: 'For regular use once sideBar becomes part of your weekly flow.',
       bullets: [
         'Built for people who use sideBar often.',
@@ -35,25 +52,24 @@
     },
     {
       name: 'Pro',
-      price: 'Coming later',
+      status: 'Coming soon',
+      monthlyPrice: '£15/mo',
+      annualPrice: '£150/yr',
       summary: 'For people who rely on sideBar throughout the day.',
       bullets: [
         'Designed for heavier daily workflows.',
         'More capacity than Plus for active use.',
         'The strongest subscription tier when sideBar becomes essential.'
       ]
-    },
-    {
-      name: 'BYOK',
-      price: 'Bring your own key',
-      summary: 'For people who want model usage billed directly by the provider.',
-      bullets: [
-        'Use your own Anthropic, OpenAI, or Google key.',
-        'Keep subscription cost and model cost separate.',
-        'Useful if you already have model access in place.'
-      ]
     }
   ];
+
+  const tiers = $derived(
+    tierDefinitions.map((tier) => ({
+      ...tier,
+      price: billingPeriod === 'annual' ? tier.annualPrice : tier.monthlyPrice
+    }))
+  );
 </script>
 
 <Seo
@@ -69,31 +85,38 @@
       <p class="eyebrow">Plans</p>
       <h1>Pricing</h1>
       <p class="lead">
-        sideBar will have a free entry point, paid plans for heavier use, and a
-        BYOK option for people who want model costs billed separately. The plan is
-        public now, even though the final numbers are not.
+        Free gives you the core app features without the assistant. BYOK is for
+        people who want full access while model usage is billed directly by
+        Anthropic, OpenAI, or Google. Plus and Pro are the bundled subscription
+        tiers for more frequent use and higher limits.
       </p>
-    </div>
-  </section>
 
-  <section class="model-section">
-    <PixelDivider position="top" />
-    <div class="page-shell page-shell--narrow prose-block">
-      <h2 id="pricing-model-heading">How the model works</h2>
-      <p>
-        Free is for trying the core workflow. Plus and Pro are the subscription tiers
-        for more frequent use and higher limits. BYOK lets people bring their own
-        Anthropic, OpenAI, or Google key and pay model providers directly.
-      </p>
-      <p>
-        The structure is clear now so people can understand the model before the
-        final numbers are published.
-      </p>
+      <div class="billing-toggle" role="group" aria-label="Billing period">
+        <button
+          type="button"
+          class:selected={billingPeriod === 'monthly'}
+          aria-pressed={billingPeriod === 'monthly'}
+          onclick={() => {
+            billingPeriod = 'monthly';
+          }}
+        >
+          Monthly
+        </button>
+        <button
+          type="button"
+          class:selected={billingPeriod === 'annual'}
+          aria-pressed={billingPeriod === 'annual'}
+          onclick={() => {
+            billingPeriod = 'annual';
+          }}
+        >
+          Annual
+        </button>
+      </div>
     </div>
   </section>
 
   <section class="tiers-section" aria-label="Pricing tiers">
-    <PixelDivider position="top" />
     <div class="page-shell page-shell--wide">
       <ul class="tiers-grid" aria-label="Pricing tiers">
         {#each tiers as tier}
@@ -115,24 +138,21 @@
     --page-heading-size: clamp(2.35rem, 4vw + 1.2rem, 3.75rem);
     --page-display-size: clamp(3rem, 6vw, 4.8rem);
     --page-body-leading: 1.7;
-    --page-heading-leading: 0.98;
     --page-copy-max: 42rem;
     padding: clamp(2.75rem, 6vw, 5rem) 0 0;
   }
 
   .intro,
-  .model-section,
   .tiers-section {
     position: relative;
   }
 
   .intro {
-    padding-bottom: clamp(3rem, 6vw, 4.5rem);
+    padding-bottom: clamp(2rem, 4vw, 2.75rem);
   }
 
-  .model-section,
   .tiers-section {
-    padding: clamp(3.25rem, 7vw, 5rem) 0;
+    padding: 0 0 clamp(3.25rem, 7vw, 5rem);
   }
 
   .page-shell {
@@ -142,10 +162,6 @@
 
   .page-shell--wide {
     max-width: var(--page-width);
-  }
-
-  .page-shell--narrow {
-    max-width: var(--page-width-narrow);
   }
 
   .eyebrow {
@@ -158,13 +174,11 @@
   }
 
   h1,
-  h2,
   p {
     margin: 0;
   }
 
-  h1,
-  h2 {
+  h1 {
     color: var(--color-foreground);
   }
 
@@ -183,22 +197,35 @@
     color: var(--color-muted-foreground);
   }
 
-  .prose-block {
-    display: grid;
-    gap: 1rem;
+  .billing-toggle {
+    display: inline-flex;
+    gap: 0.375rem;
+    margin-top: 1.5rem;
+    padding: 0.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-card);
   }
 
-  h2 {
-    font-size: var(--page-heading-size);
-    line-height: var(--page-heading-leading);
-    letter-spacing: -0.05em;
-    text-wrap: balance;
-  }
-
-  .prose-block p {
-    font-size: var(--page-body-size);
-    line-height: var(--page-body-leading);
+  .billing-toggle button {
+    border: 0;
+    background: transparent;
     color: var(--color-muted-foreground);
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.65rem 1rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .billing-toggle button.selected {
+    background: var(--color-foreground);
+    color: var(--color-background);
   }
 
   .tiers-grid {
