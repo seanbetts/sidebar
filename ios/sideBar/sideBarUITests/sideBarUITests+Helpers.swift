@@ -75,7 +75,7 @@ extension SideBarUITests {
         XCTAssertTrue(sendButton.isEnabled, "Send message button should be enabled after typing.")
         sendButton.tap()
 
-        let sentMessageText = app.staticTexts[outboundMessage]
+        let sentMessageText = resolveChatMessage(in: app, text: outboundMessage)
         XCTAssertTrue(
             sentMessageText.waitForExistence(timeout: 20),
             "Sent user message did not appear in chat."
@@ -308,6 +308,73 @@ extension SideBarUITests {
         return hasAssistantLabelBelowMessage(sentMessage, in: app)
     }
 
+    func resolveChatMessage(
+        in app: XCUIApplication,
+        text: String
+    ) -> XCUIElement {
+        let lookupToken = chatMessageLookupToken(for: text)
+        let exactStaticText = app.staticTexts[text]
+        if exactStaticText.exists {
+            return exactStaticText
+        }
+
+        let exactLabel = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", text)
+        ).firstMatch
+        if exactLabel.exists {
+            return exactLabel
+        }
+
+        let identifierLookup = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier CONTAINS %@", lookupToken)
+        ).firstMatch
+        if identifierLookup.exists {
+            return identifierLookup
+        }
+
+        let exactChatMessageValue = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "(identifier BEGINSWITH %@ OR identifier BEGINSWITH %@) AND value == %@",
+                "chat-message-row-",
+                "chat-message-content-",
+                text
+            )
+        ).firstMatch
+        if exactChatMessageValue.exists {
+            return exactChatMessageValue
+        }
+
+        let containsChatMessageValue = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "(identifier BEGINSWITH %@ OR identifier BEGINSWITH %@) AND value CONTAINS %@",
+                "chat-message-row-",
+                "chat-message-content-",
+                text
+            )
+        ).firstMatch
+        if containsChatMessageValue.exists {
+            return containsChatMessageValue
+        }
+
+        let exactValue = app.descendants(matching: .any).matching(
+            NSPredicate(format: "value == %@", text)
+        ).firstMatch
+        if exactValue.exists {
+            return exactValue
+        }
+
+        let containsValue = app.descendants(matching: .any).matching(
+            NSPredicate(format: "value CONTAINS %@", text)
+        ).firstMatch
+        if containsValue.exists {
+            return containsValue
+        }
+
+        return app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS %@", text)
+        ).firstMatch
+    }
+
     func hasAssistantLabelBelowMessage(
         _ sentMessage: XCUIElement,
         in app: XCUIApplication
@@ -316,6 +383,21 @@ extension SideBarUITests {
             return false
         }
         let baselineY = sentMessage.frame.maxY
+        let sentIdentifier = sentMessage.identifier
+
+        let chatRows = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "chat-message-row-")
+        )
+        for index in 0..<chatRows.count {
+            let row = chatRows.element(boundBy: index)
+            if row.identifier == sentIdentifier {
+                continue
+            }
+            if row.exists, row.frame.minY >= baselineY - 1 {
+                return true
+            }
+        }
+
         let assistantLabels = app.staticTexts.matching(NSPredicate(format: "label == %@", "sideBar"))
         for index in 0..<assistantLabels.count {
             let label = assistantLabels.element(boundBy: index)
@@ -324,6 +406,15 @@ extension SideBarUITests {
             }
         }
         return false
+    }
+
+    private func chatMessageLookupToken(for text: String) -> String {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in text.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return "lookup-\(String(format: "%016llx", hash))"
     }
 
     func waitForBottomAnchorToRemainVisible(

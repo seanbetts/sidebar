@@ -101,7 +101,7 @@ final class SideBarUITests: XCTestCase {
         XCTAssertTrue(sendButton.isEnabled, "Send message button should be enabled after typing.")
         sendButton.tap()
 
-        let sentMessageText = app.staticTexts[outboundMessage]
+        let sentMessageText = resolveChatMessage(in: app, text: outboundMessage)
         XCTAssertTrue(
             sentMessageText.waitForExistence(timeout: 20),
             "Sent user message did not appear in chat."
@@ -318,6 +318,7 @@ final class SideBarUITests: XCTestCase {
         app.launchEnvironment["SUPABASE_ANON_KEY"] = config.backend.supabaseAnonKey
         app.launchEnvironment[SideBarUITestConstants.uiTestInMemoryAuthKey] = "1"
         app.launchEnvironment[SideBarUITestConstants.uiTestExposeChatScrollAnchorKey] = "1"
+        app.launchEnvironment[SideBarUITestConstants.uiTestForceCompletedOnboardingKey] = "1"
         app.launch()
         dismissSystemAlertsIfPresent(in: app, timeout: 4)
         return app
@@ -447,6 +448,7 @@ enum SideBarUITestConstants {
     static let uiTestSecretsFileKey = "SIDEBAR_UI_TEST_SECRETS_FILE"
     static let uiTestInMemoryAuthKey = "SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH"
     static let uiTestExposeChatScrollAnchorKey = "SIDEBAR_UI_TEST_EXPOSE_CHAT_SCROLL_ANCHOR"
+    static let uiTestForceCompletedOnboardingKey = "SIDEBAR_UI_TEST_FORCE_COMPLETED_ONBOARDING"
     static let uiTestChatConversationTitleKey = "SIDEBAR_UI_TEST_CHAT_CONVERSATION_TITLE"
     static let uiTestApiBaseUrlKey = "SIDEBAR_UI_TEST_API_BASE_URL"
     static let uiTestSupabaseUrlKey = "SIDEBAR_UI_TEST_SUPABASE_URL"

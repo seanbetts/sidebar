@@ -71,6 +71,76 @@ final class ChatInputSizingTests: XCTestCase {
         )
     }
 
+    func testUIKitComposerEnablesSelectableTextInteraction() throws {
+        let uiKitSource = try chatInputSource(named: "ChatInputUIKit.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(uiKitSource.contains("textView.isSelectable=true"))
+    }
+
+    func testUIKitComposerExposesStableMessageFieldIdentifier() throws {
+        let uiKitSource = try chatInputSource(named: "ChatInputUIKit.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(uiKitSource.contains("textView.accessibilityIdentifier=\"chat-message-text-view\""))
+    }
+
+    func testUIKitComposerRequestsFirstResponderWhenTappedWithoutFocus() throws {
+        let uiKitSource = try chatInputSource(named: "ChatInputUIKit.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(uiKitSource.contains("overridefunctouchesEnded(_touches:Set<UITouch>,withevent:UIEvent?){"))
+        XCTAssertTrue(uiKitSource.contains("guardisEditable,isUserInteractionEnabled,!isFirstResponderelse{return}"))
+        XCTAssertTrue(uiKitSource.contains("letdidBecomeFirstResponder=becomeFirstResponder()"))
+        XCTAssertTrue(uiKitSource.contains("recordFocusAttempt(source:\"touchesEnded\",succeeded:didBecomeFirstResponder)"))
+    }
+
+    func testUIKitComposerPublishesUITestDiagnosticsInAccessibilityValue() throws {
+        let uiKitSource = try chatInputSource(named: "ChatInputUIKit.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(uiKitSource.contains("privatestaticletuiTestDiagnosticsEnvironmentKey=\"SIDEBAR_UI_TEST_USE_IN_MEMORY_AUTH\""))
+        XCTAssertTrue(uiKitSource.contains("funcrefreshUITestAccessibilityValue(){"))
+        XCTAssertTrue(uiKitSource.contains("accessibilityValue=["))
+        XCTAssertTrue(uiKitSource.contains("\"editable=\\(isEditable?1:0)\""))
+        XCTAssertTrue(uiKitSource.contains("\"lastFocusAttemptSource=\\(lastFocusAttemptSource)\""))
+        XCTAssertTrue(uiKitSource.contains("letlastFocusAttemptSucceededValue:String"))
+        XCTAssertTrue(uiKitSource.contains("\"lastFocusAttemptSucceeded=\\(lastFocusAttemptSucceededValue)\""))
+    }
+
+    func testUIKitComposerRecordsAutofocusAndTapFocusAttemptsForUITestDiagnostics() throws {
+        let uiKitSource = try chatInputSource(named: "ChatInputUIKit.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(uiKitSource.contains("funcrecordFocusAttempt(source:String,succeeded:Bool){"))
+        XCTAssertTrue(uiKitSource.contains("textView.recordFocusAttempt(source:\"autofocus\",succeeded:didBecomeFirstResponder)"))
+        XCTAssertTrue(uiKitSource.contains("recordFocusAttempt(source:\"touchesEnded\",succeeded:didBecomeFirstResponder)"))
+    }
+
+    func testUIKitComposerSyncsFocusBeforeCollapsedStateEarlyReturn() throws {
+        let uiKitSource = try chatInputSource(named: "ChatInputUIKit.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(
+            uiKitSource.contains(
+                "ifcontext.coordinator.syncCollapsedStateIfNeeded(for:textView,text:text){"
+                    + "context.coordinator.syncFocusIfNeeded(for:textView,isEnabled:isEnabled,isFocused:isFocused)"
+            )
+        )
+    }
+
+    func testUIKitComposerReschedulesAutofocusAfterWindowAttachment() throws {
+        let uiKitSource = try chatInputSource(named: "ChatInputUIKit.swift")
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(uiKitSource.contains("textView.onDidMoveToWindow=context.coordinator.handleTextViewDidMoveToWindow"))
+        XCTAssertTrue(uiKitSource.contains("funchandleTextViewDidMoveToWindow(_textView:ChatInputTextView){textView.refreshUITestAccessibilityValue()scheduleAutofocusIfNeeded(for:textView)}"))
+        XCTAssertTrue(uiKitSource.contains("chatTextView.shouldAutofocus=isEnabled&&isFocused"))
+        XCTAssertTrue(uiKitSource.contains("guard!textView.hasScheduledAutofocuselse{return}"))
+        XCTAssertTrue(uiKitSource.contains("letdidBecomeFirstResponder=textView.becomeFirstResponder()"))
+        XCTAssertTrue(uiKitSource.contains("textView.recordFocusAttempt(source:\"autofocus\",succeeded:didBecomeFirstResponder)"))
+    }
+
     func testResolveUsesMinimumHeightWhenContentIsSmall() {
         let sizing = ChatInputSizing.resolve(contentHeight: 24, minHeight: 46, maxHeight: 140)
 

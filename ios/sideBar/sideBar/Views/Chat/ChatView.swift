@@ -109,6 +109,7 @@ private struct ChatDetailView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
     @State private var inputMeasuredHeight: CGFloat = 0
+    @State private var isComposerFocused = false
     @State private var attachmentsHeight: CGFloat = 0
     @State private var isFileImporterPresented = false
 
@@ -270,6 +271,7 @@ private struct ChatDetailView: View {
                 ChatInputBar(
                     text: draftTextBinding,
                     measuredHeight: $inputMeasuredHeight,
+                    isFocused: $isComposerFocused,
                     isEnabled: isComposerEditable,
                     isSendEnabled: canSendMessages && !viewModel.hasPendingAttachments,
                     isAttachEnabled: canAttachFiles,
@@ -316,6 +318,14 @@ private struct ChatDetailView: View {
         .onChange(of: environment.settingsViewModel.onboardingState) { _, state in
             viewModel.syncSoulCalibration(from: state)
         }
+        .onChange(of: viewModel.selectedConversationId) { oldValue, newValue in
+            syncComposerFocus(shouldRequestFocus: oldValue != newValue)
+        }
+        .onChange(of: isComposerEditable) { _, newValue in
+            if !newValue {
+                isComposerFocused = false
+            }
+        }
         .onChange(of: viewModel.draftText) { _, newValue in
             if newValue.trimmed.isEmpty, inputMeasuredHeight != .zero {
                 inputMeasuredHeight = .zero
@@ -340,6 +350,13 @@ private struct ChatDetailView: View {
             get: { viewModel.draftText },
             set: { viewModel.updateDraftText($0) }
         )
+    }
+
+    private func syncComposerFocus(shouldRequestFocus: Bool) {
+        guard shouldRequestFocus, isComposerEditable else {
+            return
+        }
+        isComposerFocused = viewModel.selectedConversationId != nil || viewModel.isBlankConversation
     }
 
     private var canAttemptServerRead: Bool {

@@ -74,6 +74,69 @@ final class SettingsViewModelOnboardingTests: XCTestCase {
         XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
     }
 
+    func testLoadOnboardingForcesCompletedPresentationDuringUITests() async {
+        let originalValue = environmentValue(for: SettingsViewModel.forceCompletedOnboardingUITestEnvironmentKey)
+        setEnvironmentValue("1", for: SettingsViewModel.forceCompletedOnboardingUITestEnvironmentKey)
+        defer {
+            setEnvironmentValue(originalValue, for: SettingsViewModel.forceCompletedOnboardingUITestEnvironmentKey)
+        }
+
+        let onboardingState = OnboardingState(
+            status: .dismissed,
+            providerReady: false,
+            currentOnboardingStep: .providerRecovery,
+            isOnboardingComplete: false,
+            intent: .chat,
+            milestones: OnboardingMilestones(
+                providerConnected: nil,
+                firstOutcomeCompleted: nil,
+                profileBasicsSet: nil,
+                communicationStyleSet: nil,
+                secondaryTourSeen: nil
+            ),
+            permissions: OnboardingPermissions(
+                location: .notAsked,
+                notifications: .denied
+            ),
+            lastPromptedAt: nil
+        )
+        let onboardingAPI = MockOnboardingAPI()
+        onboardingAPI.getResult = .success(onboardingState)
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            onboardingAPI: onboardingAPI,
+            cache: TestCacheClient()
+        )
+        viewModel.applySettingsResponse(
+            UserSettings(
+                userId: "user-1",
+                communicationStyle: nil,
+                workingRelationship: nil,
+                name: nil,
+                jobTitle: nil,
+                employer: nil,
+                dateOfBirth: nil,
+                gender: nil,
+                pronouns: nil,
+                location: nil,
+                profileImageUrl: nil,
+                aiPrimaryProvider: nil,
+                aiPrimaryProviderHasKey: false,
+                enabledSkills: []
+            )
+        )
+
+        await viewModel.loadOnboarding()
+
+        XCTAssertEqual(viewModel.onboardingState?.status, .completed)
+        XCTAssertEqual(viewModel.onboardingState?.currentOnboardingStep, .completed)
+        XCTAssertEqual(viewModel.onboardingState?.providerReady, true)
+        XCTAssertEqual(viewModel.onboardingState?.isOnboardingComplete, true)
+        XCTAssertNotNil(viewModel.onboardingState?.milestones.secondaryTourSeen)
+        XCTAssertEqual(viewModel.signedInOnboardingRecoveryState, .none)
+    }
+
     func testLoadOnboardingKeepsFeatureDiscoveryWhenBackendHasFirstOutcomeButNoDismissal() async {
         let onboardingState = OnboardingState(
             status: .inProgress,
@@ -485,5 +548,18 @@ extension SettingsViewModelOnboardingTests {
         XCTAssertNotNil(viewModel.onboardingState?.milestones.secondaryTourSeen)
 
         await task.value
+    }
+
+    private func environmentValue(for key: String) -> String? {
+        guard let cString = getenv(key) else { return nil }
+        return String(cString: cString)
+    }
+
+    private func setEnvironmentValue(_ value: String?, for key: String) {
+        if let value {
+            setenv(key, value, 1)
+        } else {
+            unsetenv(key)
+        }
     }
 }

@@ -16,6 +16,7 @@ extension SideBarUITests {
         app.launchEnvironment["SUPABASE_ANON_KEY"] = config.backend.supabaseAnonKey
         app.launchEnvironment[SideBarUITestConstants.uiTestInMemoryAuthKey] = "1"
         app.launchEnvironment[SideBarUITestConstants.uiTestExposeChatScrollAnchorKey] = "1"
+        app.launchEnvironment[SideBarUITestConstants.uiTestForceCompletedOnboardingKey] = "1"
         app.launchEnvironment[SideBarUITestConstants.uiTestAccessTokenKey] = session.accessToken
         app.launchEnvironment[SideBarUITestConstants.uiTestUserIdKey] = session.userId
         app.launch()

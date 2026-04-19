@@ -38,6 +38,7 @@ struct ChatMessageRow: View {
     @State private var thinkingDismissalTask: Task<Void, Never>?
     private let maxBubbleWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
     private let headerPillMinHeight: CGFloat = 22
+    private var lookupToken: String { Self.lookupToken(for: message.content) }
 
     var body: some View {
         bubble
@@ -102,6 +103,8 @@ struct ChatMessageRow: View {
             } else {
                 SideBarMarkdown(text: message.content, style: .chat)
                     .textSelection(.enabled)
+                    .accessibilityIdentifier("chat-message-content-\(message.id)-\(lookupToken)")
+                    .accessibilityLabel(message.content)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -126,6 +129,9 @@ struct ChatMessageRow: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.mdPlus, style: .continuous))
         .frame(maxWidth: maxBubbleWidth)
         .frame(maxWidth: .infinity, alignment: .center)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("chat-message-row-\(message.id)-\(lookupToken)")
+        .accessibilityValue(message.content)
         .onDisappear {
             resetCopyFeedbackTask?.cancel()
             resetCopyFeedbackTask = nil
@@ -344,6 +350,15 @@ struct ChatMessageRow: View {
             copyFeedback.reset()
             resetCopyFeedbackTask = nil
         }
+    }
+
+    private static func lookupToken(for text: String) -> String {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in text.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return "lookup-\(String(format: "%016llx", hash))"
     }
 }
 

@@ -125,12 +125,13 @@ public final class SettingsViewModel: LoadableViewModel {
         defer { isLoadingOnboarding = false }
 
         do {
-            onboardingState = try await onboardingAPI.getOnboarding()
+            let state = try await onboardingAPI.getOnboarding()
+            setOnboardingState(state)
         } catch {}
     }
 
     func setOnboardingState(_ state: OnboardingState?) {
-        onboardingState = state
+        onboardingState = normalizedOnboardingStateForPresentation(state)
     }
 
     public func loadShortcutsToken() async {

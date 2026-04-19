@@ -2,9 +2,12 @@ import Foundation
 
 @MainActor
 extension SettingsViewModel {
-    private static let onboardingTimestampFormatter = ISO8601DateFormatter()
+    static let onboardingTimestampFormatter = ISO8601DateFormatter()
 
     public var signedInOnboardingRecoveryState: OnboardingPresentation.SignedInRecoveryState {
+        if Self.shouldForceCompletedOnboardingForUITests() {
+            return .none
+        }
         if requiresPrimaryProviderRecovery {
             return .providerRecovery
         }

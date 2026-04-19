@@ -14,6 +14,7 @@ struct ChatInputBar: View {
 
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
+    @Binding var isFocused: Bool
     @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
     let isEnabled: Bool
     let isSendEnabled: Bool
@@ -26,6 +27,7 @@ struct ChatInputBar: View {
             PlatformChatInputView(
                 text: $text,
                 measuredHeight: $measuredHeight,
+                isFocused: $isFocused,
                 isEnabled: isEnabled,
                 isSendEnabled: isSendEnabled,
                 isAttachEnabled: isAttachEnabled,
@@ -86,6 +88,7 @@ private struct ChatInputContainer<Content: View>: View {
 private struct PlatformChatInputView: View {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
+    @Binding var isFocused: Bool
     let isEnabled: Bool
     let isSendEnabled: Bool
     let isAttachEnabled: Bool
@@ -99,6 +102,7 @@ private struct PlatformChatInputView: View {
         ChatInputUIKitView(
             text: $text,
             measuredHeight: $measuredHeight,
+            isFocused: $isFocused,
             isEnabled: isEnabled,
             isSendEnabled: isSendEnabled,
             isAttachEnabled: isAttachEnabled,
