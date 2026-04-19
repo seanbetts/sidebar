@@ -267,6 +267,16 @@ extension ChatViewModel {
         let appendedText = prefix + token
 
         guard typingRevealEnabled else {
+            ChatStreamingDebugTrace.log(
+                "token.append.immediate",
+                details: [
+                    "assistantMessage=\(ChatStreamingDebugTrace.shortID(messageId))",
+                    "token=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(token))\"",
+                    "prefix=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(prefix))\"",
+                    "contentBefore=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(currentContent, limit: 120))\"",
+                    "contentAfter=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(currentContent + appendedText, limit: 120))\""
+                ].joined(separator: " ")
+            )
             updateMessage(id: messageId, persist: false) { message in
                 let needsNewline = message.needsNewline == true ? false : message.needsNewline
                 return Message(
@@ -292,8 +302,12 @@ extension ChatViewModel {
                 "assistantMessage=\(ChatStreamingDebugTrace.shortID(messageId))",
                 "tokenChars=\(token.count)",
                 "prefixChars=\(prefix.count)",
+                "token=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(token))\"",
+                "prefix=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(prefix))\"",
+                "contentBefore=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(currentContent, limit: 120))\"",
+                "contentAfter=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(updatedTarget, limit: 120))\"",
                 "displayed=\(currentMessage.content.count)",
-                "targetBefore=\(existingTarget.count)",
+                "targetBefore=\(currentContent.count)",
                 "targetAfter=\(updatedTarget.count)",
                 "backlogAfter=\(updatedTarget.count - currentMessage.content.count)",
                 "needsNewline=\(currentMessage.needsNewline?.description ?? "nil")"

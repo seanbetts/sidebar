@@ -2,21 +2,50 @@ import Foundation
 import sideBarShared
 
 enum ChatStreamingDebugTrace {
-    private static let envKey = "SIDEBAR_CHAT_STREAM_DEBUG"
+    static let environmentVariable = "SIDEBAR_CHAT_STREAM_DEBUG"
 
     static var isEnabled: Bool {
-        ProcessInfo.processInfo.environment[envKey] == "1"
+        isEnabled(environment: ProcessInfo.processInfo.environment)
+    }
+
+    static func isEnabled(environment: [String: String]) -> Bool {
+        environment[environmentVariable] == "1"
+    }
+
+    static func render(event: String, details: [String], uptime: String) -> String {
+        let renderedDetails = details.joined(separator: " ")
+        if renderedDetails.isEmpty {
+            return "[ChatStreamDebug][+\(uptime)] \(event)"
+        }
+        return "[ChatStreamDebug][+\(uptime)] \(event) \(renderedDetails)"
+    }
+
+    static func visibleWhitespacePreview(_ text: String, limit: Int = 160) -> String {
+        let escaped = text.unicodeScalars.reduce(into: "") { rendered, scalar in
+            switch scalar {
+            case "\n":
+                rendered += "\\n"
+            case "\r":
+                rendered += "\\r"
+            case "\t":
+                rendered += "\\t"
+            default:
+                rendered.append(String(scalar))
+            }
+        }
+        guard escaped.count > limit else {
+            return escaped
+        }
+        let endIndex = escaped.index(escaped.startIndex, offsetBy: limit)
+        return "\(escaped[..<endIndex])..."
     }
 
     static func log(_ event: String, details: @autoclosure () -> String = "") {
         guard isEnabled else { return }
-        let renderedDetails = details()
         let timestamp = String(format: "%.3f", ProcessInfo.processInfo.systemUptime)
-        if renderedDetails.isEmpty {
-            print("[ChatStreamDebug][+\(timestamp)] \(event)")
-        } else {
-            print("[ChatStreamDebug][+\(timestamp)] \(event) \(renderedDetails)")
-        }
+        let renderedDetails = details()
+        let detailsParts = renderedDetails.isEmpty ? [] : [renderedDetails]
+        print(render(event: event, details: detailsParts, uptime: timestamp))
     }
 
     static func shortID(_ id: String?) -> String {
@@ -35,6 +64,7 @@ enum ChatStreamingDebugTrace {
             "role=\(message.role.rawValue)",
             "status=\(message.status.rawValue)",
             "contentChars=\(message.content.count)",
+            "content=\"\(visibleWhitespacePreview(message.content, limit: 120))\"",
             "toolCalls=\(message.toolCalls?.count ?? 0)",
             "needsNewline=\(message.needsNewline?.description ?? "nil")",
             "error=\((message.error?.trimmedOrNil) != nil)"

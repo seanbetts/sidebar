@@ -57,8 +57,22 @@ struct ChatToolStatusPayload: Decodable {
 
     private enum CodingKeys: String, CodingKey {
         case name
+        case displayName = "display_name"
         case status
         case toolCallId = "tool_call_id"
         case conversationId = "conversation_id"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let name = try container.decodeIfPresent(String.self, forKey: .name),
+           !name.isEmpty {
+            self.name = name
+        } else {
+            self.name = try container.decode(String.self, forKey: .displayName)
+        }
+        self.status = try container.decode(String.self, forKey: .status)
+        self.toolCallId = try container.decodeIfPresent(String.self, forKey: .toolCallId)
+        self.conversationId = try container.decodeIfPresent(String.self, forKey: .conversationId)
     }
 }

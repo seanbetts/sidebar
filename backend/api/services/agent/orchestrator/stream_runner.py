@@ -13,6 +13,10 @@ from api.services.agent.orchestrator.event_emitter import (
     build_onboarding_milestone_completed_event,
     iter_initial_onboarding_events,
 )
+from api.services.ai.chat_stream_debug_trace import (
+    is_chat_stream_debug_enabled,
+    visible_whitespace_preview,
+)
 from api.services.ai.chat_stream_sync_events import build_tool_status
 from api.services.ai.tool_event_mapper import (
     tool_result_content,
@@ -227,6 +231,17 @@ async def stream_with_tools(
                                         web_search_pending_end = False
                                         web_search_pending_status = None
                                     current_text += event.delta.text
+                                    if is_chat_stream_debug_enabled():
+                                        logger.info(
+                                            (
+                                                "Chat stream model token "
+                                                'chars=%s content="%s"'
+                                            ),
+                                            len(event.delta.text),
+                                            visible_whitespace_preview(
+                                                event.delta.text
+                                            ),
+                                        )
                                     yield {"type": "token", "content": event.delta.text}
                                 elif event.delta.type == "input_json_delta":
                                     if tool_uses:
@@ -240,6 +255,15 @@ async def stream_with_tools(
 
                         elif event.type == "content_block_stop":
                             if current_text:
+                                if is_chat_stream_debug_enabled():
+                                    logger.info(
+                                        (
+                                            "Chat stream model block "
+                                            'chars=%s content="%s"'
+                                        ),
+                                        len(current_text),
+                                        visible_whitespace_preview(current_text),
+                                    )
                                 content_blocks.append(
                                     {
                                         "type": "text",
