@@ -13,6 +13,7 @@ from typing import Any
 from google.genai import types
 
 from api.constants import ChatConstants
+from api.services.ai.chat_stream_custom_events import build_custom_chat_stream_event
 from api.services.ai.tool_event_mapper import (
     tool_result_content,
     tool_side_effect_events,
@@ -588,10 +589,9 @@ class ProviderToolOrchestrator:
                 skill_id = self._tool_mapper.get_tool_skill_id(tool_call.name)
             if hasattr(self._tool_mapper, "get_tool_icon_key"):
                 icon_key = self._tool_mapper.get_tool_icon_key(tool_call.name)
-            yield {
-                "type": "tool_start",
-                "data": {"name": display_name, "status": "running"},
-            }
+            yield build_custom_chat_stream_event(
+                "tool_start", {"name": display_name, "status": "running"}
+            )
             tool_call_event: dict[str, Any] = {
                 "type": "tool_call",
                 "id": tool_call.call_id,
@@ -623,10 +623,9 @@ class ProviderToolOrchestrator:
             if isinstance(icon_key, str) and icon_key:
                 tool_result_event["icon_key"] = icon_key
             yield tool_result_event
-            yield {
-                "type": "tool_end",
-                "data": {"name": display_name, "status": status},
-            }
+            yield build_custom_chat_stream_event(
+                "tool_end", {"name": display_name, "status": status}
+            )
             for event in tool_side_effect_events(display_name, result):
                 yield event
 

@@ -69,9 +69,11 @@ extension ChatViewModel {
             .noteDeleted: { [weak self] (event: ChatStreamEvent) in
                 self?.handleNoteDelete(event)
             },
+            .conversationTitleUpdated: makeEventHandler(ChatViewModel.handleConversationTitleUpdated),
             .websiteSaved: { [weak self] (event: ChatStreamEvent) in
                 self?.handleWebsiteSaved(event)
             },
+            .websiteRenamed: makeEventHandler(ChatViewModel.handleWebsiteRenamed),
             .websitePinned: { [weak self] (event: ChatStreamEvent) in
                 self?.handleWebsitePinned(event)
             },

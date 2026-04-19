@@ -82,6 +82,41 @@ final class ChatStreamParserTests: XCTestCase {
         XCTAssertEqual(payload?["name"] as? String, "Sean")
     }
 
+    func testIngestParsesConversationTitleUpdatedEvent() {
+        var parser = ChatStreamParser()
+        let chunk = """
+        event: conversation_title_updated
+        data: {"id":"conv-1","title":"Renamed","titleGenerated":false,"updatedAt":"2026-04-19T12:00:00Z"}
+
+
+        """
+
+        let events = parser.ingest(Data(chunk.utf8))
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first?.type.rawValue, "conversation_title_updated")
+        let payload = events.first?.data?.value as? [String: Any]
+        XCTAssertEqual(payload?["title"] as? String, "Renamed")
+        XCTAssertEqual(payload?["titleGenerated"] as? Bool, false)
+    }
+
+    func testIngestParsesWebsiteRenamedEvent() {
+        var parser = ChatStreamParser()
+        let chunk = """
+        event: website_renamed
+        data: {"id":"website-1","title":"Renamed website"}
+
+
+        """
+
+        let events = parser.ingest(Data(chunk.utf8))
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first?.type.rawValue, "website_renamed")
+        let payload = events.first?.data?.value as? [String: Any]
+        XCTAssertEqual(payload?["title"] as? String, "Renamed website")
+    }
+
     func testIngestParsesOtherPreferencesUpdatedEvent() {
         var parser = ChatStreamParser()
         let chunk = "event: other_preferences_updated\ndata: {\"weather_unit\":\"fahrenheit\",\"biometric_unlock_enabled\":true}\n\n"

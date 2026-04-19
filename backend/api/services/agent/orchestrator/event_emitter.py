@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Any
 
+from api.services.ai.chat_stream_custom_events import build_custom_chat_stream_event
+
 
 def _base_onboarding_payload(
     onboarding_state: dict[str, Any] | None,
@@ -28,7 +30,7 @@ def build_onboarding_provider_blocked_event(
         return None
     if payload["current_onboarding_step"] != "provider_recovery":
         return None
-    return {"type": "onboarding_provider_blocked", "data": payload}
+    return build_custom_chat_stream_event("onboarding_provider_blocked", payload)
 
 
 def build_onboarding_resume_suggested_event(
@@ -43,7 +45,7 @@ def build_onboarding_resume_suggested_event(
         "feature_discovery",
     }:
         return None
-    return {"type": "onboarding_resume_suggested", "data": payload}
+    return build_custom_chat_stream_event("onboarding_resume_suggested", payload)
 
 
 def build_onboarding_milestone_completed_event(
@@ -55,7 +57,7 @@ def build_onboarding_milestone_completed_event(
     if payload is None or not isinstance(milestone, str) or not milestone.strip():
         return None
     payload["milestone"] = milestone.strip()
-    return {"type": "onboarding_milestone_completed", "data": payload}
+    return build_custom_chat_stream_event("onboarding_milestone_completed", payload)
 
 
 def iter_initial_onboarding_events(

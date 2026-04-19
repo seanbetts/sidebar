@@ -36,6 +36,7 @@ from api.services.agent.request_budget_feedback_service import (
     RequestBudgetFeedbackService,
 )
 from api.services.agent.skills.catalog import SkillCatalogService
+from api.services.ai.chat_stream_custom_events import CUSTOM_CHAT_STREAM_EVENT_TYPES
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
 from api.services.capabilities.loader import CapabilityLoaderService
@@ -522,37 +523,7 @@ async def stream_chat(
                         tool_calls_by_id[tool_call_id] = existing
                     yield f"event: tool_result\ndata: {json.dumps(event)}\n\n"
 
-                elif event_type in {
-                    "note_created",
-                    "note_updated",
-                    "note_pinned",
-                    "note_moved",
-                    "conversation_title_updated",
-                    "website_saved",
-                    "website_renamed",
-                    "website_pinned",
-                    "website_archived",
-                    "note_deleted",
-                    "website_deleted",
-                    "ingestion_updated",
-                    "ui_theme_set",
-                    "scratchpad_updated",
-                    "scratchpad_cleared",
-                    "prompt_preview",
-                    "tool_start",
-                    "tool_end",
-                    "memory_created",
-                    "memory_updated",
-                    "memory_deleted",
-                    "assistant_identity_updated",
-                    "assistant_soul_updated",
-                    "profile_user_settings_updated",
-                    "other_preferences_updated",
-                    "onboarding_provider_blocked",
-                    "onboarding_resume_suggested",
-                    "onboarding_milestone_completed",
-                    "workspace_patch",
-                }:
+                elif event_type in CUSTOM_CHAT_STREAM_EVENT_TYPES:
                     data = json.dumps(event.get("data", {}))
                     yield f"event: {event_type}\ndata: {data}\n\n"
 

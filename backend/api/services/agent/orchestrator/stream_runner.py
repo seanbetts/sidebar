@@ -13,6 +13,11 @@ from api.services.agent.orchestrator.event_emitter import (
     build_onboarding_milestone_completed_event,
     iter_initial_onboarding_events,
 )
+from api.services.ai.chat_stream_custom_events import build_custom_chat_stream_event
+from api.services.ai.tool_event_mapper import (
+    tool_result_content,
+    tool_side_effect_events,
+)
 from api.services.web_search_builder import (
     build_web_search_location,
     serialize_web_search_result,
@@ -20,39 +25,6 @@ from api.services.web_search_builder import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _assistant_settings_stream_event(
-    display_name: str, result_data: dict[str, Any]
-) -> dict[str, Any] | None:
-    """Map assistant settings tool results to realtime stream events."""
-    if display_name in {"Update Assistant Identity", "Reset Assistant Identity"}:
-        return {
-            "type": "assistant_identity_updated",
-            "data": {
-                "assistant_identity": result_data.get("assistant_identity"),
-                "assistant_identity_meta": result_data.get("assistant_identity_meta"),
-            },
-        }
-    if display_name in {"Update Assistant Soul", "Reset Assistant Soul"}:
-        return {
-            "type": "assistant_soul_updated",
-            "data": {
-                "assistant_soul": result_data.get("assistant_soul"),
-                "assistant_soul_meta": result_data.get("assistant_soul_meta"),
-            },
-        }
-    if display_name in {
-        "Update Profile and User Settings",
-        "Upload Profile Image",
-        "Remove Profile Image",
-    }:
-        settings_payload = result_data.get("settings")
-        data = settings_payload if isinstance(settings_payload, dict) else result_data
-        return {"type": "profile_user_settings_updated", "data": data}
-    if display_name == "Set Other Preferences":
-        return {"type": "other_preferences_updated", "data": result_data}
-    return None
 
 
 def _is_connection_setup_error(error: Exception) -> bool:
@@ -185,15 +157,15 @@ async def stream_with_tools(
                                             "input_partial": "",
                                         }
                                     )
-                                    yield {
-                                        "type": "tool_start",
-                                        "data": {
+                                    yield build_custom_chat_stream_event(
+                                        "tool_start",
+                                        {
                                             "name": tool_mapper.get_tool_display_name(
                                                 event.content_block.name
                                             ),
                                             "status": "running",
                                         },
-                                    }
+                                    )
                                 elif event.content_block.type == "server_tool_use":
                                     current_server_tool = {
                                         "id": event.content_block.id,
@@ -202,13 +174,13 @@ async def stream_with_tools(
                                         "input_partial": "",
                                     }
                                     if event.content_block.name == "web_search":
-                                        yield {
-                                            "type": "tool_start",
-                                            "data": {
+                                        yield build_custom_chat_stream_event(
+                                            "tool_start",
+                                            {
                                                 "name": "Web Search",
                                                 "status": "running",
                                             },
-                                        }
+                                        )
                                         suppress_web_search_preamble = True
                                 elif (
                                     event.content_block.type == "web_search_tool_result"
@@ -232,14 +204,14 @@ async def stream_with_tools(
                                     ):
                                         continue
                                     if web_search_pending_end:
-                                        yield {
-                                            "type": "tool_end",
-                                            "data": {
+                                        yield build_custom_chat_stream_event(
+                                            "tool_end",
+                                            {
                                                 "name": "Web Search",
                                                 "status": web_search_pending_status
                                                 or "success",
                                             },
-                                        }
+                                        )
                                         web_search_pending_end = False
                                         web_search_pending_status = None
                                     current_text += event.delta.text
@@ -283,15 +255,15 @@ async def stream_with_tools(
 
                         elif event.type == "message_stop":
                             if web_search_pending_end:
-                                yield {
-                                    "type": "tool_end",
-                                    "data": {
+                                yield build_custom_chat_stream_event(
+                                    "tool_end",
+                                    {
                                         "name": "Web Search",
                                         "status": (
                                             web_search_pending_status or "success"
                                         ),
                                     },
-                                }
+                                )
                                 web_search_pending_end = False
                                 web_search_pending_status = None
                             if not tool_uses:
@@ -370,198 +342,20 @@ async def stream_with_tools(
                                 if isinstance(icon_key, str) and icon_key:
                                     tool_result_event["icon_key"] = icon_key
                                 yield tool_result_event
-                                yield {
-                                    "type": "tool_end",
-                                    "data": {
+                                yield build_custom_chat_stream_event(
+                                    "tool_end",
+                                    {
                                         "name": display_name,
                                         "status": status,
                                     },
-                                }
+                                )
 
+                                result_data = result.get("data") or {}
+                                for side_effect_event in tool_side_effect_events(
+                                    display_name, result
+                                ):
+                                    yield side_effect_event
                                 if result.get("success"):
-                                    result_data = result.get("data") or {}
-                                    if display_name == "Create Note":
-                                        yield {
-                                            "type": "note_created",
-                                            "data": {
-                                                "id": result_data.get("id"),
-                                                "title": result_data.get("title"),
-                                                "folder": result_data.get("folder"),
-                                                "path": result_data.get("path"),
-                                                "open_in_workspace": True,
-                                            },
-                                        }
-                                    elif display_name == "Edit Note":
-                                        yield {
-                                            "type": "note_updated",
-                                            "data": {
-                                                "id": result_data.get("id"),
-                                                "title": result_data.get("title"),
-                                                "name": result_data.get("name"),
-                                                "path": result_data.get("path"),
-                                                "content": result_data.get("content"),
-                                                "updated_at": result_data.get(
-                                                    "updated_at"
-                                                ),
-                                            },
-                                        }
-                                    elif display_name == "Pin Note":
-                                        yield {
-                                            "type": "note_pinned",
-                                            "data": {
-                                                "id": result_data.get("id"),
-                                                "pinned": result_data.get("pinned"),
-                                            },
-                                        }
-                                    elif display_name == "Move Note":
-                                        yield {
-                                            "type": "note_moved",
-                                            "data": {
-                                                "id": result_data.get("id"),
-                                                "folder": result_data.get("folder"),
-                                            },
-                                        }
-                                    elif display_name in {
-                                        "Transcribe Audio",
-                                        "Transcribe YouTube",
-                                    }:
-                                        note_data = result_data.get("note") or {}
-                                        if note_data.get("id"):
-                                            yield {
-                                                "type": "note_created",
-                                                "data": {
-                                                    "id": note_data.get("id"),
-                                                    "title": note_data.get("title"),
-                                                    "folder": note_data.get("folder"),
-                                                },
-                                            }
-                                    elif display_name in {
-                                        "Save Website",
-                                        "Add Website",
-                                    }:
-                                        yield {
-                                            "type": "website_saved",
-                                            "data": {
-                                                "id": result_data.get("id"),
-                                                "title": result_data.get("title"),
-                                                "url": result_data.get("url"),
-                                            },
-                                        }
-                                    elif display_name == "Rename Website":
-                                        yield {
-                                            "type": "website_renamed",
-                                            "data": {
-                                                "id": result_data.get("id"),
-                                                "title": result_data.get("title"),
-                                            },
-                                        }
-                                    elif display_name == "Pin Website":
-                                        yield {
-                                            "type": "website_pinned",
-                                            "data": {
-                                                "id": result_data.get("id"),
-                                                "pinned": result_data.get("pinned"),
-                                            },
-                                        }
-                                    elif display_name == "Archive Website":
-                                        yield {
-                                            "type": "website_archived",
-                                            "data": {
-                                                "id": result_data.get("id"),
-                                                "archived": result_data.get("archived"),
-                                            },
-                                        }
-                                    elif display_name == "Delete Note":
-                                        yield {
-                                            "type": "note_deleted",
-                                            "data": {"id": result_data.get("id")},
-                                        }
-                                    elif display_name == "Delete Website":
-                                        yield {
-                                            "type": "website_deleted",
-                                            "data": {"id": result_data.get("id")},
-                                        }
-                                    elif display_name in {
-                                        "Write File",
-                                        "Download YouTube",
-                                    }:
-                                        yield {
-                                            "type": "ingestion_updated",
-                                            "data": {
-                                                "file_id": result_data.get("file_id"),
-                                            },
-                                        }
-                                    elif display_name == "Set UI Theme":
-                                        yield {
-                                            "type": "ui_theme_set",
-                                            "data": {"theme": result_data.get("theme")},
-                                        }
-                                    elif display_name == "Update Scratchpad":
-                                        yield {
-                                            "type": "scratchpad_updated",
-                                            "data": {"id": result_data.get("id")},
-                                        }
-                                    elif display_name == "Clear Scratchpad":
-                                        yield {
-                                            "type": "scratchpad_cleared",
-                                            "data": {"id": result_data.get("id")},
-                                        }
-                                    elif display_name == "Generate Prompts":
-                                        yield {
-                                            "type": "prompt_preview",
-                                            "data": {
-                                                "system_prompt": result_data.get(
-                                                    "system_prompt"
-                                                ),
-                                                "first_message_prompt": result_data.get(
-                                                    "first_message_prompt"
-                                                ),
-                                                "system_prompt_sections": (
-                                                    result_data.get(
-                                                        "system_prompt_sections"
-                                                    )
-                                                ),
-                                                "first_message_prompt_sections": (
-                                                    result_data.get(
-                                                        "first_message_prompt_sections"
-                                                    )
-                                                ),
-                                                "prompt_report": result_data.get(
-                                                    "prompt_report"
-                                                ),
-                                                "request_budget_report": (
-                                                    result_data.get(
-                                                        "request_budget_report"
-                                                    )
-                                                ),
-                                            },
-                                        }
-                                    elif display_name == "Memory Tool":
-                                        command = result_data.get("command")
-                                        if command == "create":
-                                            event_type = "memory_created"
-                                        elif command == "delete":
-                                            event_type = "memory_deleted"
-                                        elif command in {
-                                            "str_replace",
-                                            "insert",
-                                            "rename",
-                                        }:
-                                            event_type = "memory_updated"
-                                        else:
-                                            event_type = None
-                                        if event_type:
-                                            yield {
-                                                "type": event_type,
-                                                "data": {"result": result_data},
-                                            }
-                                    assistant_settings_event = (
-                                        _assistant_settings_stream_event(
-                                            display_name, result_data
-                                        )
-                                    )
-                                    if assistant_settings_event:
-                                        yield assistant_settings_event
                                     updated_onboarding_state = result_data.get(
                                         "onboarding_state"
                                     )
@@ -576,15 +370,9 @@ async def stream_with_tools(
                                     if onboarding_milestone_event:
                                         yield onboarding_milestone_event
 
-                                content_value = json.dumps(result)
-                                if display_name == "Memory Tool":
-                                    if result.get("success"):
-                                        result_data = result.get("data") or {}
-                                        content_value = result_data.get("content") or ""
-                                    else:
-                                        content_value = (
-                                            result.get("error") or "Unknown error"
-                                        )
+                                content_value = tool_result_content(
+                                    display_name, result
+                                )
                                 tool_results.append(
                                     {
                                         "type": "tool_result",
