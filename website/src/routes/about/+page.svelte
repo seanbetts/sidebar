@@ -55,7 +55,7 @@
       <p>
         I built sideBar for myself first. It started as a read-it-later tool because
         that was the job I needed most. Then I added notes. Then tasks. Over time,
-        the things I used to spread across different tools started to come together
+        the things I used to spread across different apps started to come together
         in one place.
       </p>
       <p>
@@ -65,10 +65,16 @@
         moment you need help.
       </p>
       <p>
-        That is why sideBar keeps talking about work rather than content. The goal
-        is not to collect more stuff. It is to make it easier to do the work you
-        already care about, with an assistant that can gradually become more useful
-        because it knows the environment it is working inside.
+        That also shaped the kind of assistant I wanted to build. I did not want a
+        generic AI shell. I wanted sideBar to have a personality, a point of view,
+        and enough self-awareness to help people understand what it can actually do
+        instead of dropping them into a blank box and leaving them to figure it out.
+      </p>
+      <p>
+        Skills are a big part of that. They are how sideBar grows over time. Some
+        capabilities are built in, others can be added when they are genuinely
+        useful, so the product can expand without turning into a messy collection of
+        disconnected AI tricks.
       </p>
     </div>
   </section>

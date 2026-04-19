@@ -14,6 +14,8 @@ describe('about page', () => {
 
     expect(screen.getByText(/founder note/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /why i built sidebar/i })).toBeInTheDocument();
+    expect(screen.getByText(/personality, a point of view/i)).toBeInTheDocument();
+    expect(screen.getByText(/skills are a big part of that/i)).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /get in touch/i })).not.toBeInTheDocument();
   });
 });
