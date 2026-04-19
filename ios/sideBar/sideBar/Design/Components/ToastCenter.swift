@@ -10,6 +10,7 @@ public final class ToastCenter: ObservableObject {
         dismissTask?.cancel()
         let toast = ToastMessage(message: message, style: style)
         self.toast = toast
+        Haptics.notification(style.hapticType)
         dismissTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
             await MainActor.run {
@@ -72,6 +73,15 @@ public enum ToastStyle {
             return "checkmark.circle"
         }
     }
+
+    var hapticType: Haptics.NotificationType {
+        switch self {
+        case .error:
+            return .error
+        case .success:
+            return .success
+        }
+    }
 }
 
 public struct ToastBanner: View {
@@ -85,14 +95,13 @@ public struct ToastBanner: View {
         HStack(spacing: DesignTokens.Spacing.xsPlus) {
             iconView
             Text(toast.message)
-                .appFont(.subheadlineSemibold)
+                .appFont(.subheading)
                 .lineLimit(2)
         }
         .foregroundStyle(toast.style.foreground)
         .padding(.vertical, DesignTokens.Spacing.xsPlus)
         .padding(.horizontal, DesignTokens.Spacing.md)
-        .background(toast.style.background)
-        .clipShape(Capsule())
+        .modifier(ToastBannerChromeModifier())
         .overlay(
             Capsule()
                 .stroke(toast.style.border, lineWidth: 1)
@@ -105,5 +114,15 @@ public struct ToastBanner: View {
     private var iconView: some View {
         Image(systemName: toast.style.iconName)
             .appFont(.labelMd)
+    }
+}
+
+private struct ToastBannerChromeModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content.background(.ultraThinMaterial, in: Capsule())
+        }
     }
 }

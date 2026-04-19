@@ -15,6 +15,7 @@ enum AppFontStyle {
     case body
     case bodySemibold
     case headline
+    case subheading
     case subheadline
     case subheadlineSemibold
     case callout
@@ -131,6 +132,12 @@ private extension AppFontStyle {
                 fallbackSize: 17,
                 textStyle: .headline,
                 weight: .regular
+            )
+        case .subheading:
+            return AppFontDefinition(
+                fallbackSize: 15,
+                textStyle: .subheadline,
+                weight: .semibold
             )
         case .subheadline:
             return AppFontDefinition(
