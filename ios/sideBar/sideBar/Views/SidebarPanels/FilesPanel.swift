@@ -101,7 +101,7 @@ extension FilesPanelView {
         return base
             .fileImporter(
                 isPresented: $isFileImporterPresented,
-                allowedContentTypes: [.item],
+                allowedContentTypes: IngestionUploadPolicy.supportedContentTypes,
                 allowsMultipleSelection: true
             ) { result in
                 handleFileImport(result)

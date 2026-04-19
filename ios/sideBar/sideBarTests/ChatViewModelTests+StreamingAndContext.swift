@@ -464,6 +464,7 @@ extension ChatViewModelTests {
         XCTAssertFalse(viewModel.hasPendingAttachments)
         await fulfillment(of: [cancelCalled], timeout: 1.0)
     }
+
 }
 
 extension ChatViewModelTests {
@@ -480,5 +481,12 @@ extension ChatViewModelTests {
             }
             try? await Task.sleep(nanoseconds: pollNanoseconds)
         }
+    }
+
+    func makeTemporaryAttachmentURL(filename: String) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString)-\(filename)")
+        try Data("test".utf8).write(to: url, options: .atomic)
+        return url
     }
 }

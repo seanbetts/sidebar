@@ -426,6 +426,7 @@ def test_is_allowed_file_rejects_unsupported_types():
     assert not ingestion_worker._is_allowed_file(
         "application/octet-stream", "archive.zip"
     )
+    assert not ingestion_worker._is_allowed_file("text/xml", "settings.plist")
 
 
 def test_process_youtube_job_disables_transcript_upload(

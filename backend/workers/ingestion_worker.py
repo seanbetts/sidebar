@@ -114,6 +114,9 @@ ALLOWED_OCTET_EXTENSIONS = {
     ".xltx",
     ".xltm",
 }
+BLOCKED_FILE_EXTENSIONS = {
+    ".plist",
+}
 
 logger = logging.getLogger("ingestion.worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -1151,6 +1154,8 @@ def _normalize_mime(mime_original: str | None, filename: str) -> str:
 
 
 def _is_allowed_file(mime: str, filename: str) -> bool:
+    if Path(filename).suffix.lower() in BLOCKED_FILE_EXTENSIONS:
+        return False
     if mime.startswith(("image/", "audio/", "text/", "video/")):
         return True
     if mime in ALLOWED_MIME_EXACT:

@@ -912,6 +912,36 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.items.first(where: { $0.file.id == "local-1" })?.job.status, "uploading")
     }
 
+    func testStartUploadRejectsUnsupportedPlistBeforeQueueingLocalUpload() throws {
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .failure(MockError.forced)
+        )
+        let defaults = makeDefaults()
+        let store = IngestionStore(api: api, cache: TestCacheClient(), userDefaults: defaults)
+        let uploadManager = MockIngestionUploadManager()
+        let toastCenter = ToastCenter()
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: uploadManager,
+            toastCenter: toastCenter
+        )
+        let plistURL = try makeTemporaryFileURL(
+            filename: "0481BC53-E4E0-403F-976D-E5A11D13960B.plist"
+        )
+
+        viewModel.startUpload(url: plistURL)
+
+        XCTAssertTrue(uploadManager.startedRequests.isEmpty)
+        XCTAssertFalse(viewModel.items.contains(where: { $0.file.filenameOriginal == plistURL.lastPathComponent }))
+        XCTAssertEqual(toastCenter.toast?.message, "That file type isn't supported yet.")
+    }
+
     func testRetryAllFailedUploadsRetriesOnlyRetryableItems() async throws {
         let remoteFailed = makeListItem(id: "file-2", status: "failed", stage: "failed")
         let api = MockIngestionAPI(
@@ -1632,6 +1662,12 @@ private final class MockIngestionUploadManager: IngestionUploadManaging {
     func cancelUpload(uploadId: String) {
         canceledUploadIds.append(uploadId)
     }
+}
+
+private func makeTemporaryFileURL(filename: String) throws -> URL {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-\(filename)")
+    try Data("test".utf8).write(to: url, options: .atomic)
+    return url
 }
 
 private func waitUntilPolling(

@@ -3,11 +3,11 @@ import UniformTypeIdentifiers
 
 extension IngestionViewModel {
     func mimeTypeFor(url: URL) -> String {
-        if let type = UTType(filenameExtension: url.pathExtension),
-           let mime = type.preferredMIMEType {
-            return mime
-        }
-        return "application/octet-stream"
+        IngestionUploadPolicy.mimeType(for: url)
+    }
+
+    func uploadValidationMessage(for url: URL, mimeType: String? = nil) -> String? {
+        IngestionUploadPolicy.rejectionMessage(for: url, mimeType: mimeType)
     }
 
     func fileSizeBytes(for url: URL) -> Int {

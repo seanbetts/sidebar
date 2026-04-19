@@ -97,6 +97,19 @@ extension ChatViewModel {
         }
         do {
             let mimeType = mimeTypeFor(url: url)
+            if let rejectionMessage = IngestionUploadPolicy.rejectionMessage(
+                for: url,
+                mimeType: mimeType
+            ) {
+                updateAttachment(id: id) { item in
+                    var updated = item
+                    updated.status = .failed
+                    updated.stage = "failed"
+                    return updated
+                }
+                toastCenter?.show(message: rejectionMessage)
+                return
+            }
             let fileId = try await ingestionAPI.upload(
                 fileURL: url,
                 filename: url.lastPathComponent,
@@ -191,11 +204,7 @@ extension ChatViewModel {
     }
 
     func mimeTypeFor(url: URL) -> String {
-        if let type = UTType(filenameExtension: url.pathExtension),
-           let mime = type.preferredMIMEType {
-            return mime
-        }
-        return "application/octet-stream"
+        IngestionUploadPolicy.mimeType(for: url)
     }
 
     func syncMessagesToStore(conversationId: String?, persist: Bool = true) {

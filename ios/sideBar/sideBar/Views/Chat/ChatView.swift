@@ -289,7 +289,7 @@ private struct ChatDetailView: View {
         }
         .fileImporter(
             isPresented: $isFileImporterPresented,
-            allowedContentTypes: [.item],
+            allowedContentTypes: IngestionUploadPolicy.supportedContentTypes,
             allowsMultipleSelection: true
         ) { result in
             handleFileImport(result)
