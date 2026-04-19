@@ -45,19 +45,17 @@ final class ChatViewModelRealtimeEventTests: ChatViewModelTestCase {
         viewModel.chatStore.upsertConversation(newerConversation, persist: false)
         viewModel.chatStore.upsertConversationDetail(detail, persist: false)
 
+        let payload =
+            #"{"entity_type":"conversation","entity_id":"conv-1","change":"renamed","# +
+            #""patch":{"title":"Renamed","titleGenerated":false,"updatedAt":"2026-04-19T12:00:00Z"},"# +
+            #""invalidate":["conversations","conversation:conv-1"]}"#
         var parser = ChatStreamParser()
         let event = try XCTUnwrap(
             parser.ingest(
                 Data(
                     """
                     event: entity_changed
-                    data: {
-                      "entity_type":"conversation",
-                      "entity_id":"conv-1",
-                      "change":"renamed",
-                      "patch":{"title":"Renamed","titleGenerated":false,"updatedAt":"2026-04-19T12:00:00Z"},
-                      "invalidate":["conversations","conversation:conv-1"]
-                    }
+                    data: \(payload)
 
 
                     """.utf8
@@ -134,19 +132,16 @@ final class ChatViewModelRealtimeEventTests: ChatViewModelTestCase {
             cache: cache
         )
 
+        let payload =
+            #"{"entity_type":"website","entity_id":"website-1","change":"renamed","# +
+            #""patch":{"title":"Renamed website"},"invalidate":["websites","website:website-1"]}"#
         var parser = ChatStreamParser()
         let event = try XCTUnwrap(
             parser.ingest(
                 Data(
                     """
                     event: entity_changed
-                    data: {
-                      "entity_type":"website",
-                      "entity_id":"website-1",
-                      "change":"renamed",
-                      "patch":{"title":"Renamed website"},
-                      "invalidate":["websites","website:website-1"]
-                    }
+                    data: \(payload)
 
 
                     """.utf8
