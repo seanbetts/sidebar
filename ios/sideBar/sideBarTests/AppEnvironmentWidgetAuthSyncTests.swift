@@ -92,6 +92,19 @@ final class AppEnvironmentWidgetAuthSyncTests: XCTestCase {
         )
     }
 
+    func testSignedInStartupRepairsMissingWidgetAuthStateWhenMirrorShowsAuthenticated() {
+        appDefaults.set(true, forKey: AppStorageKeys.widgetAuthStateMirror)
+        let environment = makeEnvironment(authState: .active)
+
+        environment.refreshAuthState()
+
+        XCTAssertEqual(widgetDefaults.object(forKey: widgetAuthKey) as? Bool, true)
+        XCTAssertEqual(
+            appDefaults.object(forKey: AppStorageKeys.widgetAuthStateMirror) as? Bool,
+            true
+        )
+    }
+
     private func makeEnvironment(authState: AuthState) -> AppEnvironment {
         makeEnvironmentWithSession(authState: authState).environment
     }

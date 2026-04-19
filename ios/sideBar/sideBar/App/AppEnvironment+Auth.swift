@@ -216,12 +216,19 @@ extension AppEnvironment {
 
     func syncWidgetAuthStateIfNeeded(isAuthenticated: Bool) {
         let defaults = storage.userDefaults
-        let lastSyncedState = defaults.object(forKey: AppStorageKeys.widgetAuthStateMirror) as? Bool ?? false
-        guard lastSyncedState != isAuthenticated else {
-            defaults.set(isAuthenticated, forKey: AppStorageKeys.widgetAuthStateMirror)
-            return
+        let mirroredState = defaults.object(forKey: AppStorageKeys.widgetAuthStateMirror) as? Bool
+        let widgetState = storage.widgetDataManager.isAuthenticated()
+        let shouldSyncWidgetState: Bool
+
+        if isAuthenticated {
+            shouldSyncWidgetState = mirroredState != true || !widgetState
+        } else {
+            shouldSyncWidgetState = mirroredState == true || widgetState
         }
-        storage.widgetDataManager.updateAuthState(isAuthenticated: isAuthenticated)
+
+        if shouldSyncWidgetState {
+            storage.widgetDataManager.updateAuthState(isAuthenticated: isAuthenticated)
+        }
         defaults.set(isAuthenticated, forKey: AppStorageKeys.widgetAuthStateMirror)
     }
 
