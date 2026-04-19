@@ -27,9 +27,14 @@
     <p class="copy">
       &copy; {new Date().getFullYear()} sideBar Labs Limited. All rights reserved.
     </p>
-    <p class="registered">
-      Registered in England and Wales, company number 17137829. Registered office: 66 Paul Street, London, EC2A 4NA.
-    </p>
+    <div class="footer-meta">
+      <p class="registered">
+        Registered in England and Wales, company number 17137829.
+      </p>
+      <p class="registered">
+        Registered office: 66 Paul Street, London, EC2A 4NA.
+      </p>
+    </div>
     <nav class="footer-links" aria-label="Footer legal and support links">
       <a href="/privacy">Privacy Policy</a>
       <a href="/terms">Terms of Service</a>
@@ -106,6 +111,11 @@
     font-size: 0.8125rem;
     line-height: 1.6;
     color: var(--color-muted-foreground);
+  }
+
+  .footer-meta {
+    display: grid;
+    gap: 0.125rem;
   }
 
   .footer-links {

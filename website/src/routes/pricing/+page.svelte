@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PixelDivider from '$lib/components/PixelDivider.svelte';
   import Seo from '$lib/components/Seo.svelte';
   import PricingTierCard from '$lib/components/marketing/PricingTierCard.svelte';
 
@@ -63,8 +64,8 @@
 />
 
 <div class="page">
-  <div class="page-inner">
-    <header class="page-header">
+  <section class="intro">
+    <div class="page-shell page-shell--wide">
       <p class="eyebrow">Plans</p>
       <h1>Pricing</h1>
       <p class="lead">
@@ -72,9 +73,12 @@
         BYOK option for people who want model costs billed separately. The plan is
         public now, even though the final numbers are not.
       </p>
-    </header>
+    </div>
+  </section>
 
-    <section class="pricing-note" aria-labelledby="pricing-model-heading">
+  <section class="model-section">
+    <PixelDivider position="top" />
+    <div class="page-shell page-shell--narrow prose-block">
       <h2 id="pricing-model-heading">How the model works</h2>
       <p>
         Free is for trying the core workflow. Plus and Pro are the subscription tiers
@@ -85,9 +89,12 @@
         The structure is clear now so people can understand the model before the
         final numbers are published.
       </p>
-    </section>
+    </div>
+  </section>
 
-    <section class="tiers" aria-label="Pricing tiers">
+  <section class="tiers-section" aria-label="Pricing tiers">
+    <PixelDivider position="top" />
+    <div class="page-shell page-shell--wide">
       <ul class="tiers-grid" aria-label="Pricing tiers">
         {#each tiers as tier}
           <li>
@@ -95,37 +102,54 @@
           </li>
         {/each}
       </ul>
-    </section>
-  </div>
+    </div>
+  </section>
 </div>
 
 <style>
   .page {
-    padding: 5rem 0;
+    --page-width: 78rem;
+    --page-width-narrow: 48rem;
+    --page-gutter: 1.5rem;
+    --page-body-size: clamp(1.02rem, 1vw + 0.82rem, 1.125rem);
+    --page-heading-size: clamp(2.35rem, 4vw + 1.2rem, 3.75rem);
+    --page-display-size: clamp(3rem, 6vw, 4.8rem);
+    --page-body-leading: 1.7;
+    --page-heading-leading: 0.98;
+    --page-copy-max: 42rem;
+    padding: clamp(2.75rem, 6vw, 5rem) 0 0;
   }
 
-  .page-inner {
-    max-width: 72rem;
+  .intro,
+  .model-section,
+  .tiers-section {
+    position: relative;
+  }
+
+  .intro {
+    padding-bottom: clamp(3rem, 6vw, 4.5rem);
+  }
+
+  .model-section,
+  .tiers-section {
+    padding: clamp(3.25rem, 7vw, 5rem) 0;
+  }
+
+  .page-shell {
     margin: 0 auto;
-    padding: 0 1.5rem;
-    display: grid;
-    gap: 2.5rem;
+    padding: 0 var(--page-gutter);
   }
 
-  .page-header,
-  .pricing-note,
-  .tiers {
-    display: grid;
-    gap: 0.75rem;
-    padding: 1.5rem;
-    border: 1px solid var(--color-border);
-    border-radius: calc(var(--radius) * 1.4);
-    background: var(--card);
-    box-shadow: 0 24px 60px -36px var(--shadow-color);
+  .page-shell--wide {
+    max-width: var(--page-width);
+  }
+
+  .page-shell--narrow {
+    max-width: var(--page-width-narrow);
   }
 
   .eyebrow {
-    margin: 0;
+    margin: 0 0 0.75rem;
     font-size: 0.78rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -133,25 +157,47 @@
     color: var(--color-muted-foreground);
   }
 
-  .lead {
+  h1,
+  h2,
+  p {
     margin: 0;
-    max-width: 46rem;
-    font-size: 1.175rem;
-    line-height: 1.6;
+  }
+
+  h1,
+  h2 {
+    color: var(--color-foreground);
+  }
+
+  h1 {
+    font-size: var(--page-display-size);
+    line-height: 0.94;
+    letter-spacing: -0.06em;
+    text-wrap: balance;
+  }
+
+  .lead {
+    margin-top: 1rem;
+    max-width: var(--page-copy-max);
+    font-size: var(--page-body-size);
+    line-height: var(--page-body-leading);
     color: var(--color-muted-foreground);
   }
 
-  .pricing-note h2 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+  .prose-block {
+    display: grid;
+    gap: 1rem;
   }
 
-  .pricing-note p {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.7;
+  h2 {
+    font-size: var(--page-heading-size);
+    line-height: var(--page-heading-leading);
+    letter-spacing: -0.05em;
+    text-wrap: balance;
+  }
+
+  .prose-block p {
+    font-size: var(--page-body-size);
+    line-height: var(--page-body-leading);
     color: var(--color-muted-foreground);
   }
 
@@ -171,6 +217,12 @@
   @media (max-width: 48rem) {
     .tiers-grid {
       grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .page {
+      --page-gutter: 1rem;
     }
   }
 </style>

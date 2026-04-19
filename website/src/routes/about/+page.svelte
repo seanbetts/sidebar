@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PixelDivider from '$lib/components/PixelDivider.svelte';
   import Seo from '$lib/components/Seo.svelte';
   import { MARKETING_COPY } from '../../../../shared/marketingCopy';
 
@@ -19,23 +20,9 @@
 />
 
 <div class="page">
-  <div class="page-inner">
-    <header class="page-header">
+  <section class="story-section">
+    <div class="page-shell page-shell--narrow prose-block">
       <p class="eyebrow">Founder note</p>
-      <h1>About sideBar</h1>
-      <p class="lead">{MARKETING_COPY.subtitle}</p>
-    </header>
-
-    <div class="hero-image">
-      <img
-        src="/screenshots/chat-ipad.png"
-        alt="sideBar chat on iPad showing the assistant beside the surrounding workspace"
-        width="1366"
-        height="1024"
-      />
-    </div>
-
-    <section class="story" aria-labelledby="story-heading">
       <h2 id="story-heading">Why I built sideBar</h2>
       <p>
         Most AI products still make people move context between tools, copy and
@@ -60,67 +47,63 @@
         saved pages, and the assistant stay close together so help begins from the
         context that is already there.
       </p>
-    </section>
-
-    <section class="story" aria-labelledby="native-heading">
-      <h2 id="native-heading">AI-native productivity</h2>
       <p>
-        AI-native productivity is the category I think is emerging now. It means the
-        assistant is not bolted onto the edge of a product, it is built into the work
-        surface itself.
+        I became more and more convinced that most AI products still have the shape
+        wrong. They are existing apps with AI bolted onto the side, when the more
+        interesting opportunity is to build around an AI foundation from the start.
       </p>
       <p>
-        sideBar is heading in that direction. The product is designed so the assistant
-        can understand what you have open, what you have saved, and what you are
-        trying to finish without making you rebuild that context every time.
+        I built sideBar for myself first. It started as a read-it-later tool because
+        that was the job I needed most. Then I added notes. Then tasks. Over time,
+        the things I used to spread across different tools started to come together
+        in one place.
       </p>
       <p>
-        That is why the site keeps talking about work rather than content. The goal is
-        not to collect more stuff. It is to make it easier to do the work you already
-        care about.
+        That is the idea behind what I think of as AI-native productivity. The
+        assistant should not be a detached chat box you visit separately. It should
+        live inside the work surface itself, with access to the right context at the
+        moment you need help.
       </p>
-    </section>
-
-    <section class="contact" aria-labelledby="contact-heading">
-      <h2 id="contact-heading">Get in touch</h2>
       <p>
-        For support, feature requests, or early feedback, email
-        <a href="mailto:support@trysidebar.ai">support@trysidebar.ai</a>.
-        The full documentation lives at
-        <a href="https://docs.trysidebar.ai">docs.trysidebar.ai</a>.
+        That is why sideBar keeps talking about work rather than content. The goal
+        is not to collect more stuff. It is to make it easier to do the work you
+        already care about, with an assistant that can gradually become more useful
+        because it knows the environment it is working inside.
       </p>
-    </section>
-  </div>
+    </div>
+  </section>
 </div>
 
 <style>
   .page {
-    padding: 5rem 0;
+    --page-width-narrow: 48rem;
+    --page-gutter: 1.5rem;
+    --page-body-size: clamp(1.02rem, 1vw + 0.82rem, 1.125rem);
+    --page-heading-size: clamp(2.35rem, 4vw + 1.2rem, 3.75rem);
+    --page-body-leading: 1.7;
+    --page-heading-leading: 0.98;
+    padding: clamp(1rem, 2.5vw, 1.75rem) 0 0;
   }
 
-  .page-inner {
-    max-width: 48rem;
+  .story-section {
+    position: relative;
+  }
+
+  .story-section {
+    padding: clamp(1.75rem, 4vw, 2.5rem) 0 clamp(3.5rem, 6vw, 4.75rem);
+  }
+
+  .page-shell {
     margin: 0 auto;
-    padding: 0 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
+    padding: 0 var(--page-gutter);
   }
 
-  .page-header,
-  .story,
-  .contact {
-    display: grid;
-    gap: 0.75rem;
-    padding: 1.5rem;
-    border: 1px solid var(--color-border);
-    border-radius: calc(var(--radius) * 1.4);
-    background: var(--card);
-    box-shadow: 0 24px 60px -36px var(--shadow-color);
+  .page-shell--narrow {
+    max-width: var(--page-width-narrow);
   }
 
   .eyebrow {
-    margin: 0;
+    margin: 0 0 0.5rem;
     font-size: 0.78rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -128,50 +111,36 @@
     color: var(--color-muted-foreground);
   }
 
-  .lead {
+  h2,
+  p {
     margin: 0;
-    font-size: 1.125rem;
-    line-height: 1.65;
-    letter-spacing: -0.01em;
-    color: var(--color-muted-foreground);
   }
 
-  .hero-image {
-    max-width: 64rem;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-  }
-
-  .hero-image img {
-    display: block;
-    width: 100%;
-    height: auto;
-    border-radius: calc(var(--radius) * 1.2);
-  }
-
-  .story h2,
-  .contact h2 {
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 600;
-    letter-spacing: -0.015em;
-  }
-
-  .story p,
-  .contact p {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.72;
-    color: var(--color-muted-foreground);
-  }
-
-  .contact a {
+  h2 {
     color: var(--color-foreground);
-    text-decoration: underline;
-    text-underline-offset: 3px;
   }
 
-  .contact a:hover {
+  .prose-block {
+    display: grid;
+    gap: 0.875rem;
+  }
+
+  h2 {
+    font-size: var(--page-heading-size);
+    line-height: var(--page-heading-leading);
+    letter-spacing: -0.05em;
+    text-wrap: balance;
+  }
+
+  .prose-block p {
+    font-size: var(--page-body-size);
+    line-height: var(--page-body-leading);
     color: var(--color-muted-foreground);
+  }
+
+  @media (max-width: 640px) {
+    .page {
+      --page-gutter: 1rem;
+    }
   }
 </style>
