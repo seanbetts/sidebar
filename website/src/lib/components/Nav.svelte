@@ -23,13 +23,14 @@
   <div class="nav-inner">
     <a href="/" class="brand" aria-label="sideBar home">
       <img src="/logo.svg" alt="" width="28" height="28" />
-      <span>sideBar</span>
+      <span class="brand-name">sideBar</span>
     </a>
 
     <div class="links">
       <a href="/about">About</a>
+      <a href="/pricing">Pricing</a>
       <a href="https://docs.trysidebar.ai">Docs</a>
-      <a href="https://app.trysidebar.ai" class="cta">Open App</a>
+      <a href="https://app.trysidebar.ai" class="cta">Request Early Access</a>
       <button class="theme-toggle" onclick={toggleTheme} aria-label="Toggle dark mode">
         {#if isDark}
           <!-- Sun icon -->
@@ -53,9 +54,7 @@
     top: 0;
     z-index: 50;
     border-bottom: 1px solid var(--color-border);
-    background: color-mix(in oklch, var(--background) 85%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--surface);
   }
 
   .nav-inner {
@@ -73,8 +72,9 @@
     align-items: center;
     gap: 0.5rem;
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 1rem;
+    letter-spacing: -0.02em;
     color: var(--color-foreground);
   }
 
@@ -82,17 +82,22 @@
     display: block;
   }
 
+  .brand-name {
+    white-space: nowrap;
+  }
+
   .links {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1rem;
   }
 
   .links a:not(.cta) {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 500;
     color: var(--color-muted-foreground);
     text-decoration: none;
-    transition: color 0.15s;
+    transition: color 0.15s ease;
   }
 
   .links a:not(.cta):hover {
@@ -100,18 +105,25 @@
   }
 
   .cta {
-    padding: 0.4rem 1rem;
+    padding: 0.5rem 0.95rem;
     border-radius: 999px;
     border: 1px solid var(--color-border);
     background: var(--color-primary);
     color: var(--color-primary-foreground);
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
     text-decoration: none;
+    white-space: nowrap;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease,
+      border-color 0.15s ease;
   }
 
   .cta:hover {
-    opacity: 0.85;
+    background: var(--color-foreground);
+    border-color: var(--color-foreground);
+    color: var(--color-background);
   }
 
   .theme-toggle {
@@ -120,22 +132,47 @@
     justify-content: center;
     width: 2rem;
     height: 2rem;
-    border: none;
-    background: none;
+    border: 1px solid transparent;
+    background: transparent;
     color: var(--color-muted-foreground);
     cursor: pointer;
-    border-radius: 0.375rem;
-    transition: color 0.15s, background 0.15s;
+    border-radius: 999px;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease,
+      border-color 0.15s ease;
   }
 
   .theme-toggle:hover {
     color: var(--color-foreground);
-    background: var(--color-muted);
+    background: var(--color-secondary);
+    border-color: var(--color-border);
   }
 
   @media (max-width: 640px) {
-    .links a:not(.cta) {
+    .nav-inner {
+      padding: 0 1rem;
+      height: auto;
+      min-height: 3.5rem;
+      flex-wrap: wrap;
+      row-gap: 0.75rem;
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
+
+    .brand-name {
       display: none;
+    }
+
+    .links {
+      width: 100%;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .links a:not(.cta) {
+      font-size: 0.9rem;
     }
   }
 </style>

@@ -7,118 +7,93 @@
     name: 'About sideBar',
     url: 'https://trysidebar.ai/about',
     description:
-      'sideBar is an AI assistant for iPhone, iPad, Mac, and web, built around the belief that the assistant should be the foundation of the product, not a feature bolted onto the edge of it.'
+      'sideBar is an AI-native productivity app built around the belief that the assistant and the work environment should start together.'
   };
 </script>
 
 <Seo
   title="About"
-  description="sideBar is an AI assistant for iPhone, iPad, Mac, and web, built around the belief that the assistant should be the foundation of the product, not a feature bolted onto the edge of it."
+  description="sideBar is an AI-native productivity app built around the belief that the assistant and the work environment should start together."
   url="https://trysidebar.ai/about"
   {jsonLd}
 />
 
 <div class="page">
   <div class="page-inner">
-    <!-- Header -->
     <header class="page-header">
+      <p class="eyebrow">Founder note</p>
       <h1>About sideBar</h1>
       <p class="lead">
-        An AI assistant for iPhone, iPad, Mac, and web, built around the belief
-        that the assistant should be the foundation of the product, not a feature
-        bolted onto the edge of it.
+        sideBar is my attempt to make AI-native productivity feel natural: an
+        assistant and a work environment designed together from day one.
       </p>
     </header>
-  </div>
 
-  <!-- Hero image — wider than prose column -->
-  <div class="hero-image">
-    <img
-      src="/screenshots/overview.png"
-      alt="sideBar on iPad showing the chat panel open alongside a website summary"
-      width="1366"
-      height="1024"
-    />
-  </div>
+    <div class="hero-image">
+      <img
+        src="/screenshots/overview.png"
+        alt="sideBar on iPad showing the chat panel open alongside a website summary"
+        width="1366"
+        height="1024"
+      />
+    </div>
 
-  <div class="page-inner">
-    <!-- Founder story -->
     <section class="story" aria-labelledby="story-heading">
       <h2 id="story-heading">Why I built sideBar</h2>
       <p>
-        I got tired of copying things in and out of ChatGPT and Claude. Attaching
-        files. Explaining the same context again and again. Jumping between notes
-        apps, task managers, read-it-later tools, and AI chat windows, trying to
-        stitch everything together into something that actually felt useful.
+        Most AI products still make people move context between tools, copy and
+        paste into chat, and rebuild the same setup every time they want help. That
+        copy-paste loop is the wrong shape for something that is supposed to save
+        time.
       </p>
       <p>
-        The models kept improving. The product experience around them often still
-        felt wrong.
+        I kept running into the same friction: the model answer might be good, but I
+        had to do too much manual setup to get there. The work lived in one place,
+        the assistant lived in another, and the distance between them became the
+        product.
       </p>
       <p>
-        The thing that made it click was Claude Code. You spin it up inside a folder
-        and it can immediately work with the files around it. That sounds simple, but
-        it changes the feeling completely: the AI starts in the right environment and
-        can do something useful with what is already there. I kept thinking: why
-        doesn't personal AI work more like this?
+        Claude Code made the idea click for me. It starts in the right environment,
+        already surrounded by the files and context it needs. That changes the
+        experience completely, because the assistant is not starting from a blank
+        box. Personal AI should work more like that.
       </p>
       <p>
-        So I started building sideBar. I began with a read-it-later service, because
-        that was what I reached for most. Then I added notes, then tasks. Over time,
-        I found I was no longer opening the separate apps I had used for those
-        things. That was the moment it stopped feeling like a side project.
+        sideBar started as my answer to that problem: a place where notes, tasks,
+        saved pages, and the assistant stay close together so help begins from the
+        context that is already there.
       </p>
     </section>
 
-    <!-- What makes it different -->
-    <section class="story" aria-labelledby="different-heading">
-      <h2 id="different-heading">What makes sideBar different</h2>
+    <section class="story" aria-labelledby="native-heading">
+      <h2 id="native-heading">AI-native productivity</h2>
       <p>
-        Most AI assistants sit inside a blank chat interface and know nothing about
-        you until you tell them. sideBar is different because it was built the other
-        way around: your content lives alongside your assistant, so it has real
-        context to work with from the start.
+        AI-native productivity is the category I think is emerging now. It means the
+        assistant is not bolted onto the edge of a product, it is built into the work
+        surface itself.
       </p>
       <p>
-        sideBar also knows what it can do and how it works, which sounds obvious but
-        is rarer than it should be. It can guide you through its own capabilities,
-        rather than leaving you to figure it out.
+        sideBar is heading in that direction. The product is designed so the assistant
+        can understand what you have open, what you have saved, and what you are
+        trying to finish without making you rebuild that context every time.
       </p>
       <p>
-        And it has its own identity: a name, a tone of voice, a set of values. Not a
-        generic AI shell. An assistant that is designed to feel like it is on your
-        side.
+        That is why the site keeps talking about work rather than content. The goal is
+        not to collect more stuff. It is to make it easier to do the work you already
+        care about.
       </p>
     </section>
 
-    <!-- How it works -->
-    <section class="story" aria-labelledby="how-heading">
-      <h2 id="how-heading">How sideBar works</h2>
-      <p>
-        sideBar works with Anthropic, OpenAI, and Google. You bring your own API key
-        and pay those providers directly for the AI usage you generate. You are never
-        locked into a single model or company.
-      </p>
-      <p>
-        The <a href="https://docs.trysidebar.ai/manual/skills-store">Skills Store</a>
-        lets you extend sideBar with additional capabilities: transcribing audio and
-        video, connecting to third-party services, and more. Skills run automatically
-        during conversations when they are relevant, so you get the benefit without
-        having to think about it.
-      </p>
-    </section>
-
-    <!-- Contact -->
     <section class="contact" aria-labelledby="contact-heading">
       <h2 id="contact-heading">Get in touch</h2>
       <p>
-        For support, feature requests, or anything else, email us at
+        For support, feature requests, or early feedback, email
         <a href="mailto:support@trysidebar.ai">support@trysidebar.ai</a>.
-        The full documentation is at
+        The full documentation lives at
         <a href="https://docs.trysidebar.ai">docs.trysidebar.ai</a>.
       </p>
     </section>
-  </div> <!-- /page-inner -->
+  </div>
 </div>
 
 <style>
@@ -132,27 +107,28 @@
     padding: 0 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 3rem;
+    gap: 2rem;
   }
 
-  .hero-image {
-    max-width: 64rem;
-    margin: 3rem auto;
-    padding: 0 1.5rem;
+  .page-header,
+  .story,
+  .contact {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: calc(var(--radius) * 1.4);
+    background: var(--card);
+    box-shadow: 0 24px 60px -36px var(--shadow-color);
   }
 
-  .hero-image img {
-    display: block;
-    width: 100%;
-    height: auto;
-    border-radius: 0.75rem;
-  }
-
-  .page-header h1 {
-    margin: 0 0 1rem;
-    font-size: clamp(2rem, 4vw, 2.75rem);
-    font-weight: 700;
-    letter-spacing: -0.02em;
+  .eyebrow {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
   }
 
   .lead {
@@ -162,9 +138,22 @@
     color: var(--color-muted-foreground);
   }
 
+  .hero-image {
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .hero-image img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: calc(var(--radius) * 1.2);
+  }
+
   .story h2,
   .contact h2 {
-    margin: 0 0 1rem;
+    margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -172,26 +161,19 @@
 
   .story p,
   .contact p {
-    margin: 0 0 1rem;
+    margin: 0;
     font-size: 1rem;
     line-height: 1.7;
     color: var(--color-muted-foreground);
   }
 
-  .story p:last-child,
-  .contact p:last-child {
-    margin-bottom: 0;
-  }
-
-  .contact a,
-  .story a {
+  .contact a {
     color: var(--color-foreground);
     text-decoration: underline;
     text-underline-offset: 3px;
   }
 
-  .contact a:hover,
-  .story a:hover {
+  .contact a:hover {
     color: var(--color-muted-foreground);
   }
 </style>

@@ -1,50 +1,11 @@
 <script lang="ts">
   import Seo from '$lib/components/Seo.svelte';
+  import DeviceShowcase from '$lib/components/marketing/DeviceShowcase.svelte';
+  import ProofSection from '$lib/components/marketing/ProofSection.svelte';
   import { siteCopy } from '$lib/content/siteCopy';
   import { MARKETING_COPY } from '../../../shared/marketingCopy';
 
-  const screenshots = [
-    {
-      src: '/screenshots/overview.png',
-      alt: 'sideBar on iPad showing the chat panel open alongside a website summary',
-      label: 'Chat'
-    },
-    {
-      src: '/screenshots/notes.png',
-      alt: 'sideBar notes with folders and a product roadmap note open',
-      label: 'Notes'
-    },
-    {
-      src: '/screenshots/tasks.png',
-      alt: 'sideBar tasks showing the Today view with grouped tasks across projects',
-      label: 'Tasks'
-    },
-    {
-      src: '/screenshots/websites.png',
-      alt: 'sideBar websites showing a saved article open with the full text extracted',
-      label: 'Websites'
-    },
-    {
-      src: '/screenshots/files.png',
-      alt: 'sideBar files list showing uploaded documents, images, and other file types',
-      label: 'Files'
-    },
-    {
-      src: '/screenshots/skills-store.png',
-      alt: 'sideBar Skills Store showing installable skills including Audio Transcription, YouTube, and more',
-      label: 'Skills Store'
-    }
-  ];
-
-  let activeIndex = $state(0);
-
-  function prev() {
-    activeIndex = (activeIndex - 1 + screenshots.length) % screenshots.length;
-  }
-
-  function next() {
-    activeIndex = (activeIndex + 1) % screenshots.length;
-  }
+  const { hero, thesis, proofs, identity, close } = siteCopy.home;
 
   const organizationJsonLd = {
     '@context': 'https://schema.org',
@@ -63,8 +24,7 @@
     '@context': 'https://schema.org',
     '@type': 'MobileApplication',
     name: 'sideBar',
-    description:
-      'An AI assistant for iPhone, iPad, and Mac. Take notes, manage tasks, save websites, and work with files — all with AI that learns how you work.',
+    description: MARKETING_COPY.description,
     operatingSystem: 'iOS, iPadOS, macOS',
     applicationCategory: 'ProductivityApplication',
     offers: {
@@ -74,39 +34,6 @@
     },
     url: 'https://trysidebar.ai'
   };
-
-  const features = [
-    {
-      title: 'Chat',
-      description:
-        'Ask questions, get things done, and work through problems with an AI that knows your content and adapts to how you think.'
-    },
-    {
-      title: 'Skills',
-      description:
-        'Extend sideBar with installable skills. Transcribe audio, save YouTube videos, analyse websites, and more. Browse the Skills Store and add what you need.'
-    },
-    {
-      title: 'Notes',
-      description:
-        'A full writing environment with folders, rich text, and a Scratchpad always one tap away. sideBar can read and reference everything you write.'
-    },
-    {
-      title: 'Tasks',
-      description:
-        'Projects, due dates, and smart lists that keep Today and Upcoming always current. Ask sideBar to create or manage tasks for you.'
-    },
-    {
-      title: 'Websites',
-      description:
-        'Save web pages to read offline. sideBar extracts the full content, indexes it, and makes it available to reference in any conversation.'
-    },
-    {
-      title: 'Files',
-      description:
-        'Upload PDFs, documents, spreadsheets, images, and more. sideBar processes and indexes everything so you can search and ask questions about it all.'
-    }
-  ];
 </script>
 
 <Seo
@@ -116,359 +43,379 @@
   jsonLd={[organizationJsonLd, appJsonLd]}
 />
 
-<!-- Hero -->
-<section class="hero">
-  <div class="hero-inner">
-    <div class="hero-logo">
-      <img class="logo-light" src="/logo-animated-light.gif" alt="sideBar" width="96" height="96" />
-      <img class="logo-dark" src="/logo-animated-dark.gif" alt="" aria-hidden="true" width="96" height="96" />
-    </div>
-    <h1 class="hero-title">{siteCopy.home.hero.headline}</h1>
-    <p class="hero-subtitle">{siteCopy.home.hero.subhead}</p>
-    <a href="https://app.trysidebar.ai" class="hero-cta">{siteCopy.home.hero.primaryCta}</a>
-    <p class="hero-platforms">Available on iPhone, iPad, Mac, and web</p>
-  </div>
-</section>
+<div class="home">
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <p class="eyebrow">{hero.eyebrow}</p>
+        <h1 class="hero-title">{hero.headline}</h1>
+        <p class="hero-subhead">{hero.subhead}</p>
 
-<!-- Features -->
-<section class="features" aria-labelledby="features-heading">
-  <div class="section-inner">
-    <h2 id="features-heading" class="section-title">Everything in one place</h2>
-    <p class="section-subtitle">
-      sideBar brings together the things you already do with an AI that can help you do more.
-    </p>
-    <div class="features-grid">
-      {#each features as feature (feature.title)}
-        <article class="feature-card">
-          <h3 class="feature-title">{feature.title}</h3>
-          <p class="feature-description">{feature.description}</p>
-        </article>
-      {/each}
-    </div>
-  </div>
-</section>
+        <div class="cta-row">
+          <a class="action action-primary" href={hero.primaryHref}>{hero.primaryCta}</a>
+          <a class="action action-secondary" href={hero.secondaryHref}>{hero.secondaryCta}</a>
+        </div>
 
-<!-- Screenshots -->
-<section class="screenshots" aria-labelledby="screenshots-heading">
-  <div class="section-inner">
-    <h2 id="screenshots-heading" class="section-title">See it in action</h2>
-    <div class="carousel">
-      <!-- Main image -->
-      <div class="carousel-stage">
-        <img
-          src={screenshots[activeIndex].src}
-          alt={screenshots[activeIndex].alt}
-          width="1366"
-          height="1024"
+        <p class="hero-platforms">{hero.platforms}</p>
+      </div>
+
+      <div class="hero-poster">
+        <DeviceShowcase
+          src={hero.image}
+          alt={hero.alt}
+          width={hero.width}
+          height={hero.height}
+          loading="eager"
+          fetchpriority="high"
+          decoding="sync"
         />
-        <button class="carousel-btn carousel-prev" onclick={prev} aria-label="Previous screenshot">
-          ‹
-        </button>
-        <button class="carousel-btn carousel-next" onclick={next} aria-label="Next screenshot">
-          ›
-        </button>
-      </div>
-      <!-- Thumbnails -->
-      <div class="carousel-thumbs" role="tablist" aria-label="Screenshot thumbnails">
-        {#each screenshots as shot, i}
-          <button
-            class="thumb"
-            class:active={i === activeIndex}
-            onclick={() => (activeIndex = i)}
-            role="tab"
-            aria-selected={i === activeIndex}
-            aria-label={`View screenshot ${i + 1}`}
-          >
-              <img src={shot.src} alt={shot.alt} width="1366" height="1024" />
-            <span class="thumb-label">{shot.label}</span>
-          </button>
-        {/each}
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- Bottom CTA -->
-<section class="bottom-cta">
-  <div class="section-inner">
-    <h2>Try sideBar</h2>
-    <a href="https://app.trysidebar.ai" class="hero-cta">Request Early Access</a>
-    <p class="hero-platforms">Available on iPhone, iPad, Mac, and web</p>
-  </div>
-</section>
+  <section class="thesis" aria-labelledby="thesis-heading">
+    <div class="thesis-inner">
+      <h2 id="thesis-heading" class="thesis-heading">{thesis.heading}</h2>
+      <p class="thesis-body">{thesis.body}</p>
+    </div>
+  </section>
+
+  <section class="proofs" aria-label="Workflow proof sequence">
+    {#each proofs as proof, index (proof.heading)}
+      <ProofSection {...proof} reverse={index % 2 === 1} />
+    {/each}
+  </section>
+
+  <section class="identity" aria-labelledby="identity-heading">
+    <div class="identity-inner">
+      <div class="identity-copy">
+        <h2 id="identity-heading">{identity.heading}</h2>
+        <p>{identity.body}</p>
+
+        <ul class="identity-points" aria-label="sideBar identity proof points">
+          {#each identity.points as point}
+            <li>{point}</li>
+          {/each}
+        </ul>
+      </div>
+
+      <div class="identity-media">
+        <DeviceShowcase
+          src={identity.image}
+          alt={identity.alt}
+          width={identity.width}
+          height={identity.height}
+        />
+      </div>
+    </div>
+  </section>
+
+  <section class="campaign-close" aria-labelledby="campaign-close-heading">
+    <div class="close-inner">
+      <h2 id="campaign-close-heading">{close.headline}</h2>
+      <p>{close.body}</p>
+
+      <div class="cta-row close-actions">
+        <a class="action action-primary" href={close.primaryHref}>{close.primaryCta}</a>
+      </div>
+
+      <div class="close-media">
+        <DeviceShowcase
+          src={close.image}
+          alt={close.alt}
+          width={close.width}
+          height={close.height}
+        />
+      </div>
+    </div>
+  </section>
+</div>
 
 <style>
-  /* ---- Hero ---- */
+  .home {
+    padding-bottom: clamp(4rem, 8vw, 6rem);
+  }
+
   .hero {
-    padding: 6rem 1.5rem 5rem;
-    text-align: center;
-    background:
-      radial-gradient(circle at 15% 10%, oklch(0.7 0.1 250 / 0.1) 0, transparent 45%),
-      radial-gradient(circle at 85% 20%, oklch(0.65 0.1 280 / 0.1) 0, transparent 40%);
+    padding: clamp(2.5rem, 6vw, 5rem) 0 clamp(4rem, 7vw, 6rem);
+    border-bottom: 1px solid var(--color-border);
   }
 
   .hero-inner {
-    max-width: 52rem;
+    max-width: 78rem;
     margin: 0 auto;
-    display: flex;
-    flex-direction: column;
+    padding: 0 1.5rem;
+    display: grid;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+    gap: clamp(2rem, 5vw, 4rem);
     align-items: center;
-    gap: 1.25rem;
   }
 
-  .logo-light { display: block; }
-  .logo-dark { display: none; }
-
-  :global(.dark) .logo-light { display: none; }
-  :global(.dark) .logo-dark { display: block; }
-
-  .hero-title {
-    margin: 0;
-    font-size: clamp(2rem, 5vw, 3.25rem);
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-    color: var(--color-foreground);
+  .hero-copy {
+    display: grid;
+    gap: 1rem;
+    max-width: 30rem;
   }
 
-  .hero-subtitle {
+  .eyebrow,
+  .hero-subhead,
+  .hero-platforms,
+  .thesis-body,
+  .identity-copy p,
+  .close-inner p {
     margin: 0;
-    max-width: 38rem;
-    font-size: clamp(1rem, 2vw, 1.175rem);
-    line-height: 1.6;
     color: var(--color-muted-foreground);
   }
 
-  .hero-cta {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.75rem 1.75rem;
-    border-radius: 999px;
-    border: 1px solid oklch(1 0 0 / 0.45);
-    background: linear-gradient(180deg, oklch(1 0 0 / 0.2) 0, transparent 100%),
-      var(--color-primary);
-    color: var(--color-primary-foreground);
-    font-size: 1rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: opacity 0.15s;
+  .eyebrow {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
   }
 
-  .hero-cta:hover {
-    opacity: 0.85;
+  .hero-title,
+  .thesis-heading,
+  .identity-copy h2,
+  .close-inner h2 {
+    margin: 0;
+    color: var(--color-foreground);
+  }
+
+  .hero-title {
+    font-size: clamp(3rem, 8vw, 5.75rem);
+    line-height: 0.92;
+    letter-spacing: -0.065em;
+    text-wrap: balance;
+  }
+
+  .hero-subhead {
+    font-size: clamp(1rem, 2vw, 1.18rem);
+    line-height: 1.75;
+    max-width: 31rem;
   }
 
   .hero-platforms {
-    margin: 0;
-    font-size: 0.875rem;
-    color: var(--color-muted-foreground);
+    font-size: 0.9rem;
   }
 
-  /* ---- Shared section styles ---- */
-  .section-inner {
-    max-width: 72rem;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-  }
-
-  .section-title {
-    margin: 0 0 0.75rem;
-    font-size: clamp(1.5rem, 3vw, 2rem);
-    font-weight: 700;
-    letter-spacing: -0.015em;
-    text-align: center;
-  }
-
-  .section-subtitle {
-    margin: 0 auto 3rem;
-    max-width: 38rem;
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--color-muted-foreground);
-    text-align: center;
-  }
-
-  /* ---- Features ---- */
-  .features {
-    padding: 5rem 0;
-  }
-
-  .features-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
-  }
-
-  .feature-card {
-    padding: 1.5rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-xl, 1rem);
-    background: var(--color-card);
-  }
-
-  .feature-title {
-    margin: 0 0 0.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-card-foreground);
-  }
-
-  .feature-description {
-    margin: 0;
-    font-size: 0.875rem;
-    line-height: 1.6;
-    color: var(--color-muted-foreground);
-  }
-
-  /* ---- Screenshots ---- */
-  .screenshots {
-    padding: 5rem 0;
-  }
-
-  .carousel {
+  .cta-row {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 0.75rem;
+    align-items: center;
   }
 
-  /* Main stage */
-  .carousel-stage {
-    position: relative;
-    border-radius: 0.75rem;
-    overflow: hidden;
-  }
-
-  .carousel-stage img {
-    display: block;
-    width: 100%;
-    height: auto;
-  }
-
-  .carousel-btn {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 999px;
-    border: 1px solid var(--color-border);
-    background: color-mix(in oklch, var(--color-background) 80%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: var(--color-foreground);
-    font-size: 1.5rem;
-    line-height: 1;
-    cursor: pointer;
-    display: flex;
+  .action {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.15s;
+    min-height: 3rem;
+    padding: 0.75rem 1.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease,
+      border-color 0.15s ease,
+      transform 0.15s ease;
   }
 
-  .carousel-btn:hover {
-    background: var(--color-background);
+  .action-primary {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-primary-foreground);
   }
 
-  .carousel-prev {
-    left: 0.75rem;
-  }
-
-  .carousel-next {
-    right: 0.75rem;
-  }
-
-  /* Thumbnails */
-  .carousel-thumbs {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-    gap: 0.5rem;
-  }
-
-  .thumb {
-    padding: 0;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    border: 2px solid transparent;
-    cursor: pointer;
-    background: none;
-    transition: border-color 0.15s;
-  }
-
-  .thumb img {
-    display: block;
-    width: 100%;
-    height: auto;
-    opacity: 0.55;
-    transition: opacity 0.15s;
-  }
-
-  .thumb:hover img {
-    opacity: 0.8;
-  }
-
-  .thumb.active {
+  .action-primary:hover {
+    background: var(--color-foreground);
     border-color: var(--color-foreground);
+    color: var(--color-background);
   }
 
-  .thumb.active img {
-    opacity: 1;
-  }
-
-  .thumb-label {
-    display: block;
-    text-align: center;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--color-muted-foreground);
-    padding: 0.35rem 0 0.1rem;
-    transition: color 0.15s;
-  }
-
-  .thumb.active .thumb-label {
+  .action-secondary {
+    background: transparent;
     color: var(--color-foreground);
+  }
+
+  .action-secondary:hover {
+    background: var(--color-secondary);
+    border-color: var(--color-border);
+  }
+
+  .hero-poster,
+  .identity-media,
+  .close-media {
+    transition: transform 0.2s ease;
+  }
+
+  .hero-poster {
+    justify-self: end;
+    width: min(100%, 46rem);
+  }
+
+  .thesis {
+    padding: clamp(4rem, 8vw, 6rem) 0;
+  }
+
+  .thesis-inner {
+    max-width: 58rem;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .thesis-heading,
+  .identity-copy h2,
+  .close-inner h2 {
+    font-size: clamp(2.35rem, 6vw, 4.4rem);
+    line-height: 0.95;
+    letter-spacing: -0.06em;
+    text-wrap: balance;
+  }
+
+  .thesis-heading {
+    max-width: 13ch;
+  }
+
+  .thesis-body,
+  .identity-copy p,
+  .close-inner p {
+    max-width: 45rem;
+    font-size: clamp(1.04rem, 2vw, 1.28rem);
+    line-height: 1.8;
+  }
+
+  .identity {
+    padding: clamp(3.5rem, 8vw, 5.5rem) 0;
+    border-top: 1px solid var(--color-border);
+    background: var(--surface);
+  }
+
+  .identity-inner {
+    max-width: 78rem;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: grid;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr);
+    gap: clamp(1.75rem, 5vw, 4rem);
+    align-items: start;
+  }
+
+  .identity-copy {
+    display: grid;
+    gap: 1rem;
+    max-width: 31rem;
+  }
+
+  .identity-points {
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .identity-points li {
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-muted-foreground);
+    line-height: 1.7;
+  }
+
+  .identity-media {
+    justify-self: end;
+    width: min(100%, 24rem);
+  }
+
+  .campaign-close {
+    padding: clamp(4rem, 8vw, 6rem) 0 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .close-inner {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: grid;
+    gap: 1.25rem;
+    text-align: center;
+  }
+
+  .close-inner h2,
+  .close-inner p {
+    justify-self: center;
+  }
+
+  .close-actions {
+    justify-content: center;
+  }
+
+  .close-media {
+    width: min(100%, 22rem);
+    margin: clamp(1.25rem, 4vw, 2.25rem) auto 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .action:hover,
+    .hero-poster:hover,
+    .identity-media:hover,
+    .close-media:hover {
+      transform: translateY(-0.15rem);
+    }
+  }
+
+  @media (max-width: 900px) {
+    .hero-inner,
+    .identity-inner {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-copy,
+    .hero-poster,
+    .identity-copy,
+    .identity-media {
+      max-width: none;
+      justify-self: start;
+    }
+
+    .hero-poster {
+      width: min(100%, 38rem);
+    }
+
+    .identity-media {
+      width: min(100%, 22rem);
+    }
   }
 
   @media (max-width: 640px) {
-    .features-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .carousel-thumbs {
-      grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
-      gap: 0.25rem;
+    .hero-inner,
+    .thesis-inner,
+    .identity-inner,
+    .close-inner {
+      padding: 0 1rem;
     }
 
-    .carousel-btn {
-      width: 2rem;
-      height: 2rem;
-      font-size: 1.25rem;
+    .hero-title {
+      font-size: clamp(2.65rem, 15vw, 4.2rem);
     }
-  }
 
-  /* ---- Bottom CTA ---- */
-  .bottom-cta {
-    padding: 5rem 0;
-    text-align: center;
-  }
+    .thesis-heading,
+    .identity-copy h2,
+    .close-inner h2 {
+      font-size: clamp(2.2rem, 12vw, 3.25rem);
+    }
 
-  .bottom-cta .section-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.25rem;
-  }
+    .cta-row {
+      width: 100%;
+    }
 
-  .bottom-cta h2 {
-    margin: 0;
-    font-size: clamp(1.5rem, 3vw, 2rem);
-    font-weight: 700;
-    letter-spacing: -0.015em;
-  }
-
-  .bottom-cta .hero-cta {
-    border-color: var(--color-border);
+    .action {
+      flex: 1 1 12rem;
+    }
   }
 </style>
