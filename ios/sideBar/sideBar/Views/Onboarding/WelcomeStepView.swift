@@ -24,12 +24,21 @@ struct WelcomeStepView: View {
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)
 
-                Text(MarketingCopy.description)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                    .frame(maxWidth: 300)
+                VStack(spacing: 16) {
+                    Text(MarketingCopy.tagline)
+                        .font(.title)
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 360)
+
+                    Text(MarketingCopy.subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                        .frame(maxWidth: 300)
+                }
+                .frame(maxWidth: 360)
 
                 Spacer()
             }
