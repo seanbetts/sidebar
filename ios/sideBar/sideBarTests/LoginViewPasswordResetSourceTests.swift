@@ -1,6 +1,14 @@
 import XCTest
 
 final class LoginViewPasswordResetSourceTests: XCTestCase {
+    func testLoginViewUsesSharedMarketingTaglineInsteadOfLegacyLiteral() throws {
+        let normalized = try combinedLoginSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("Text(MarketingCopy.tagline)"))
+        XCTAssertFalse(normalized.contains("TheAIassisstantthatactuallyknowsyou"))
+    }
+
     func testLoginViewIncludesForgotPasswordActionAndConfirmationCopy() throws {
         let normalized = try combinedLoginSource()
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
