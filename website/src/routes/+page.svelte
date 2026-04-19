@@ -75,12 +75,6 @@
       <div class="identity-copy">
         <h2 id="identity-heading">{identity.heading}</h2>
         <p>{identity.body}</p>
-
-        <ul class="identity-points" aria-label="sideBar identity proof points">
-          {#each identity.points as point}
-            <li>{point}</li>
-          {/each}
-        </ul>
       </div>
 
       <div class="identity-media">
@@ -262,22 +256,6 @@
     display: grid;
     gap: 1.125rem;
     max-width: var(--marketing-home-copy-max);
-  }
-
-  .identity-points {
-    margin: 0.375rem 0 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .identity-points li {
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-border);
-    color: var(--color-muted-foreground);
-    font-size: var(--marketing-home-body-size);
-    line-height: 1.62;
   }
 
   .identity-media {

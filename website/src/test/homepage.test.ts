@@ -9,6 +9,7 @@ describe('homepage', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: /your work\. your assistant\. one place\./i })
     ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/sidebar brand/i)).not.toBeInTheDocument();
   });
 
   it('uses product screenshots and honest placeholders instead of app store assets', () => {
