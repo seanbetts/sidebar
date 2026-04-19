@@ -73,7 +73,7 @@
     min-height: 100vh;
     background: var(--color-background);
     color: var(--color-foreground);
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', sans-serif;
     line-height: 1.5;
     text-rendering: optimizeLegibility;
     -webkit-text-size-adjust: 100%;

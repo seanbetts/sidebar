@@ -133,8 +133,9 @@
 
   .lead {
     margin: 0;
-    font-size: 1.175rem;
-    line-height: 1.6;
+    font-size: 1.125rem;
+    line-height: 1.65;
+    letter-spacing: -0.01em;
     color: var(--color-muted-foreground);
   }
 
@@ -154,16 +155,16 @@
   .story h2,
   .contact h2 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
   }
 
   .story p,
   .contact p {
     margin: 0;
     font-size: 1rem;
-    line-height: 1.7;
+    line-height: 1.72;
     color: var(--color-muted-foreground);
   }
 

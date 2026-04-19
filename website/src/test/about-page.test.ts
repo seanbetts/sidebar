@@ -3,15 +3,23 @@ import { describe, expect, it } from 'vitest';
 import AboutPage from '../routes/about/+page.svelte';
 
 describe('about page', () => {
-  it('renders the positioning story and AI-native productivity direction', () => {
+  it('uses one supporting product screenshot near the top of the founder story', () => {
     render(AboutPage);
 
-    expect(screen.getByRole('heading', { name: /about sidebar/i })).toBeInTheDocument();
+    const images = screen.getAllByRole('img');
+    expect(images).toHaveLength(1);
+    expect(images[0]).toHaveAttribute('src', '/screenshots/overview.png');
+    expect(images[0].getAttribute('alt')).toMatch(
+      /sideBar on iPad showing the chat panel open alongside a website summary/i
+    );
+  });
+
+  it('keeps the founder story and AI-native productivity framing', () => {
+    render(AboutPage);
+
     expect(screen.getByRole('heading', { name: /why i built sidebar/i })).toBeInTheDocument();
     expect(screen.getByText(/copy-paste.*loop/i)).toBeInTheDocument();
     expect(screen.getByText(/right environment/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /ai-native productivity/i })).toBeInTheDocument();
-    expect(screen.getByText(/category.*emerging/i)).toBeInTheDocument();
-    expect(screen.getByText(/heading in that direction/i)).toBeInTheDocument();
   });
 });
