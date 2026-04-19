@@ -2,6 +2,11 @@ import Foundation
 import sideBarShared
 import SwiftUI
 
+enum ChatMessageCopyFeedbackForegroundStyle: Equatable {
+    case secondary
+    case primary
+}
+
 struct ChatMessageCopyFeedbackState {
     static let resetDelayNanoseconds: UInt64 = 1_500_000_000
 
@@ -16,11 +21,19 @@ struct ChatMessageCopyFeedbackState {
     }
 
     var iconName: String {
-        isCopied ? "checkmark.circle.fill" : "doc.on.doc"
+        isCopied ? "checkmark.circle" : "doc.on.doc"
     }
 
     var accessibilityLabel: String {
         isCopied ? "Copied message" : "Copy message"
+    }
+
+    var foregroundStyle: ChatMessageCopyFeedbackForegroundStyle {
+        isCopied ? .primary : .secondary
+    }
+
+    var usesContrastingBackground: Bool {
+        false
     }
 }
 
@@ -81,10 +94,9 @@ struct ChatMessageRow: View {
                     } label: {
                         Image(systemName: copyFeedback.iconName)
                             .appFont(.caption)
-                            .foregroundStyle(copyFeedback.isCopied ? copiedIconForeground : .secondary)
-                            .padding(DesignTokens.Spacing.xxs)
-                            .background(copyFeedback.isCopied ? copiedIconBackground : .clear)
-                            .clipShape(Circle())
+                            .foregroundStyle(copyFeedbackForeground)
+                            .contentTransition(.symbolEffect(.replace))
+                            .frame(width: headerPillMinHeight, height: headerPillMinHeight)
                     }
                     .buttonStyle(.plain)
                     .disabled(showsThinkingBody)
@@ -193,12 +205,13 @@ struct ChatMessageRow: View {
         return .clear
     }
 
-    private var copiedIconForeground: Color {
-        colorScheme == .dark ? Color.black : Color.white
-    }
-
-    private var copiedIconBackground: Color {
-        colorScheme == .dark ? Color.white : Color.black
+    private var copyFeedbackForeground: Color {
+        switch copyFeedback.foregroundStyle {
+        case .secondary:
+            return .secondary
+        case .primary:
+            return message.role == .assistant ? rolePillText : Color.primary
+        }
     }
 
     private var showsThinkingPlaceholder: Bool {

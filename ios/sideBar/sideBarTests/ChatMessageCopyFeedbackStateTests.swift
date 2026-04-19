@@ -8,6 +8,8 @@ final class ChatMessageCopyFeedbackStateTests: XCTestCase {
         XCTAssertFalse(state.isCopied)
         XCTAssertEqual(state.iconName, "doc.on.doc")
         XCTAssertEqual(state.accessibilityLabel, "Copy message")
+        XCTAssertEqual(state.foregroundStyle, .secondary)
+        XCTAssertFalse(state.usesContrastingBackground)
     }
 
     func testMarkCopiedSwitchesToSuccessState() {
@@ -16,8 +18,10 @@ final class ChatMessageCopyFeedbackStateTests: XCTestCase {
         state.markCopied()
 
         XCTAssertTrue(state.isCopied)
-        XCTAssertEqual(state.iconName, "checkmark.circle.fill")
+        XCTAssertEqual(state.iconName, "checkmark.circle")
         XCTAssertEqual(state.accessibilityLabel, "Copied message")
+        XCTAssertEqual(state.foregroundStyle, .primary)
+        XCTAssertFalse(state.usesContrastingBackground)
     }
 
     func testResetReturnsToDefaultState() {

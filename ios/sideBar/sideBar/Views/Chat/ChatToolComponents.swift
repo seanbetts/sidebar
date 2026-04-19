@@ -2,6 +2,41 @@ import Foundation
 import sideBarShared
 import SwiftUI
 
+struct ChatToolSummaryPresentation: Equatable {
+    let text: String
+    let iconName: String
+    let hasError: Bool
+
+    static func from(toolCalls: [ToolCall]) -> ChatToolSummaryPresentation {
+        let errorCount = toolCalls.filter { $0.status == .error }.count
+        let hasError = errorCount > 0
+
+        if toolCalls.count == 1, let toolCall = toolCalls.first {
+            return ChatToolSummaryPresentation(
+                text: hasError ? "\(toolCall.name) failed" : toolCall.name,
+                iconName: hasError
+                    ? "exclamationmark.circle"
+                    : SkillIconResolver.iconName(for: toolCall),
+                hasError: hasError
+            )
+        }
+
+        let iconName: String
+        if hasError {
+            iconName = "exclamationmark.circle"
+        } else {
+            let uniqueIcons = Set(toolCalls.map { SkillIconResolver.iconName(for: $0) })
+            iconName = uniqueIcons.count == 1 ? uniqueIcons.first ?? "square.stack.3d.up" : "square.stack.3d.up"
+        }
+
+        return ChatToolSummaryPresentation(
+            text: "\(toolCalls.count) skills used",
+            iconName: iconName,
+            hasError: hasError
+        )
+    }
+}
+
 struct ToolCallListView: View {
     let toolCalls: [ToolCall]
     let role: MessageRole
@@ -9,13 +44,16 @@ struct ToolCallListView: View {
     @State private var showPopover = false
     private let maxToolPillTextWidth: CGFloat = 120
     private let headerPillMinHeight: CGFloat = 22
+    private var summaryPresentation: ChatToolSummaryPresentation {
+        ChatToolSummaryPresentation.from(toolCalls: toolCalls)
+    }
 
     var body: some View {
         Button {
             showPopover = true
         } label: {
             ViewThatFits(in: .horizontal) {
-                toolPill(text: summaryText)
+                toolPill(text: summaryPresentation.text)
                 toolIconOnlyPill
             }
         }
@@ -29,25 +67,8 @@ struct ToolCallListView: View {
         }
     }
 
-    private var summaryText: String {
-        if toolCalls.count == 1, let toolCall = toolCalls.first {
-            return toolCall.name
-        }
-        return "\(toolCalls.count) skills used"
-    }
-
     private var summaryIconName: String {
-        guard !toolCalls.isEmpty else {
-            return "puzzlepiece.extension"
-        }
-        if toolCalls.count == 1, let toolCall = toolCalls.first {
-            return SkillIconResolver.iconName(for: toolCall)
-        }
-        let uniqueIcons = Set(toolCalls.map { SkillIconResolver.iconName(for: $0) })
-        if uniqueIcons.count == 1, let icon = uniqueIcons.first {
-            return icon
-        }
-        return "square.stack.3d.up"
+        summaryPresentation.iconName
     }
 
     @ViewBuilder
@@ -101,6 +122,9 @@ struct ToolCallListView: View {
     }
 
     private var toolPillForeground: Color {
+        if summaryPresentation.hasError {
+            return DesignTokens.Colors.error
+        }
         if colorScheme == .dark {
             return role == .assistant ? Color.white : Color.black
         }
