@@ -67,6 +67,9 @@ extension ChatViewModel {
         if handleConversationEntityChanged(payload) {
             return
         }
+        if handleNoteEntityChanged(payload) {
+            return
+        }
         if handleEntityChangedRefreshContext(payload) {
             return
         }
@@ -92,6 +95,7 @@ extension ChatViewModel {
             return true
         }
         let titleGenerated = payload.patch?["titleGenerated"]?.value as? Bool ?? false
+        let updatedAt = payload.patch?["updatedAt"]?.value as? String
         if let existingConversation = chatStore.conversations.first(where: { $0.id == payload.entityId }) {
             chatStore.upsertConversation(
                 Conversation(
@@ -99,7 +103,7 @@ extension ChatViewModel {
                     title: title,
                     titleGenerated: titleGenerated,
                     createdAt: existingConversation.createdAt,
-                    updatedAt: existingConversation.updatedAt,
+                    updatedAt: updatedAt ?? existingConversation.updatedAt,
                     messageCount: existingConversation.messageCount,
                     firstMessage: existingConversation.firstMessage,
                     isArchived: existingConversation.isArchived
@@ -113,7 +117,7 @@ extension ChatViewModel {
                     title: title,
                     titleGenerated: titleGenerated,
                     createdAt: existingDetail.createdAt,
-                    updatedAt: existingDetail.updatedAt,
+                    updatedAt: updatedAt ?? existingDetail.updatedAt,
                     messageCount: existingDetail.messageCount,
                     firstMessage: existingDetail.firstMessage,
                     isArchived: existingDetail.isArchived,
@@ -121,6 +125,23 @@ extension ChatViewModel {
                 )
             )
         }
+        if let updatedAt, let parsed = DateParsing.parseISO8601(updatedAt) {
+            conversationUpdatedAtDates[payload.entityId] = parsed
+        }
+        return true
+    }
+
+    private func handleNoteEntityChanged(_ payload: ChatEntityChangedPayload) -> Bool {
+        guard payload.entityType == ChatStreamEntityType.note.rawValue else {
+            return false
+        }
+
+        if payload.change == ChatStreamChangeType.created.rawValue,
+           payload.patch?["open_in_workspace"]?.value as? Bool == true {
+            onOpenNoteRequested?(payload.entityId)
+        }
+
+        refreshContext(for: .notes(noteId: payload.entityId))
         return true
     }
 

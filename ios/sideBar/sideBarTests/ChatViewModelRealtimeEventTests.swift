@@ -50,8 +50,8 @@ final class ChatViewModelRealtimeEventTests: ChatViewModelTestCase {
             parser.ingest(
                 Data(
                     """
-                    event: conversation_title_updated
-                    data: {"id":"conv-1","title":"Renamed","titleGenerated":false,"updatedAt":"2026-04-19T12:00:00Z"}
+                    event: entity_changed
+                    data: {"entity_type":"conversation","entity_id":"conv-1","change":"renamed","patch":{"title":"Renamed","titleGenerated":false,"updatedAt":"2026-04-19T12:00:00Z"},"invalidate":["conversations","conversation:conv-1"]}
 
 
                     """.utf8
@@ -133,8 +133,8 @@ final class ChatViewModelRealtimeEventTests: ChatViewModelTestCase {
             parser.ingest(
                 Data(
                     """
-                    event: website_renamed
-                    data: {"id":"website-1","title":"Renamed website"}
+                    event: entity_changed
+                    data: {"entity_type":"website","entity_id":"website-1","change":"renamed","patch":{"title":"Renamed website"},"invalidate":["websites","website:website-1"]}
 
 
                     """.utf8

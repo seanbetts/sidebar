@@ -129,11 +129,17 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         )
 
         viewModel.handle(event: ChatStreamEvent(
-            type: .noteCreated,
+            type: .entityChanged,
             data: AnyCodable([
-                "id": "note-1",
-                "path": "Folder/Test.md",
-                "open_in_workspace": true
+                "entity_type": "note",
+                "entity_id": "note-1",
+                "change": "created",
+                "patch": [
+                    "id": "note-1",
+                    "path": "Folder/Test.md",
+                    "open_in_workspace": true
+                ],
+                "invalidate": ["notes", "note:note-1"]
             ])
         ))
 
@@ -187,7 +193,16 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         cache.set(key: CacheKeys.notesTree, value: FileTree(children: []), ttlSeconds: 60)
         cache.set(key: CacheKeys.note(id: "note-1"), value: note, ttlSeconds: 60)
         let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)
-        let event = ChatStreamEvent(type: .noteUpdated, data: AnyCodable(["id": "note-1"]))
+        let event = ChatStreamEvent(
+            type: .entityChanged,
+            data: AnyCodable([
+                "entity_type": "note",
+                "entity_id": "note-1",
+                "change": "updated",
+                "patch": ["id": "note-1"],
+                "invalidate": ["notes", "note:note-1"]
+            ])
+        )
         viewModel.handle(event: event)
         let cachedNote: NotePayload? = cache.get(key: CacheKeys.note(id: "note-1"))
         let cachedTree: FileTree? = cache.get(key: CacheKeys.notesTree)
@@ -205,7 +220,12 @@ final class ChatViewModelTests: ChatViewModelTestCase {
             scratchpadStore: store
         )
         let initialVersion = store.version
-        let event = ChatStreamEvent(type: .scratchpadUpdated, data: nil)
+        let event = ChatStreamEvent(
+            type: .collectionInvalidated,
+            data: AnyCodable([
+                "targets": ["scratchpad"]
+            ])
+        )
         viewModel.handle(event: event)
         let cachedScratchpad: ScratchpadResponse? = cache.get(key: CacheKeys.scratchpad)
         XCTAssertNil(cachedScratchpad)
@@ -222,7 +242,12 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         )
         cache.set(key: CacheKeys.memoriesList, value: [memory], ttlSeconds: 60)
         let viewModel = makeViewModel(api: ChatViewModelTestsSupport.MockConversationsAPI(listResult: .success([])), cache: cache)
-        viewModel.handle(event: ChatStreamEvent(type: .memoryCreated, data: AnyCodable(["id": "memory-1"])))
+        viewModel.handle(event: ChatStreamEvent(
+            type: .collectionInvalidated,
+            data: AnyCodable([
+                "targets": ["memory"]
+            ])
+        ))
         let cachedMemories: [MemoryItem]? = cache.get(key: CacheKeys.memoriesList)
         XCTAssertNil(cachedMemories)
     }
@@ -236,8 +261,18 @@ final class ChatViewModelTests: ChatViewModelTestCase {
 
         XCTAssertEqual(viewModel.streamEventHandlersBuildCountForTesting, 0)
 
-        viewModel.handle(event: ChatStreamEvent(type: .scratchpadUpdated, data: nil))
-        viewModel.handle(event: ChatStreamEvent(type: .memoryCreated, data: AnyCodable(["id": "memory-1"])))
+        viewModel.handle(event: ChatStreamEvent(
+            type: .collectionInvalidated,
+            data: AnyCodable([
+                "targets": ["scratchpad"]
+            ])
+        ))
+        viewModel.handle(event: ChatStreamEvent(
+            type: .collectionInvalidated,
+            data: AnyCodable([
+                "targets": ["memory"]
+            ])
+        ))
 
         XCTAssertEqual(viewModel.streamEventHandlersBuildCountForTesting, 1)
     }
@@ -254,11 +289,9 @@ final class ChatViewModelTests: ChatViewModelTestCase {
         )
 
         viewModel.handle(event: ChatStreamEvent(
-            type: .onboardingMilestoneCompleted,
+            type: .collectionInvalidated,
             data: AnyCodable([
-                "current_onboarding_step": "completed",
-                "provider_ready": true,
-                "milestone": "secondary_tour_seen"
+                "targets": ["onboarding_state"]
             ])
         ))
 

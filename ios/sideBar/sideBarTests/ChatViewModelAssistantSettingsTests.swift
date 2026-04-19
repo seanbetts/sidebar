@@ -17,18 +17,15 @@ final class ChatViewModelAssistantSettingsTests: XCTestCase {
             receivedUpdate = update
         }
         let event = ChatStreamEvent(
-            type: .assistantIdentityUpdated,
+            type: .collectionInvalidated,
             data: AnyCodable([
-                "assistant_identity": ["name": "Navigator", "tone": "Calm"],
-                "assistant_identity_meta": ["updated_at": "2026-02-18T00:00:00Z", "version": 2]
+                "targets": ["assistant_settings"]
             ])
         )
 
         viewModel.handle(event: event)
 
-        XCTAssertEqual(receivedUpdate?.assistantIdentity?.name, "Navigator")
-        XCTAssertEqual(receivedUpdate?.assistantIdentityMeta?.version, 2)
-        XCTAssertFalse(receivedUpdate?.requiresRefresh ?? true)
+        XCTAssertTrue(receivedUpdate?.requiresRefresh ?? false)
     }
 
     func testAssistantSettingsEventWithoutPayloadRequestsRefresh() async {
@@ -37,7 +34,12 @@ final class ChatViewModelAssistantSettingsTests: XCTestCase {
             receivedUpdate = update
         }
 
-        viewModel.handle(event: ChatStreamEvent(type: .assistantSoulUpdated, data: nil))
+        viewModel.handle(event: ChatStreamEvent(
+            type: .collectionInvalidated,
+            data: AnyCodable([
+                "targets": ["assistant_settings"]
+            ])
+        ))
 
         XCTAssertTrue(receivedUpdate?.requiresRefresh ?? false)
     }
@@ -48,8 +50,10 @@ final class ChatViewModelAssistantSettingsTests: XCTestCase {
             receivedUpdate = update
         }
         let event = ChatStreamEvent(
-            type: .profileUserSettingsUpdated,
-            data: AnyCodable(["name": "Sean"])
+            type: .collectionInvalidated,
+            data: AnyCodable([
+                "targets": ["profile", "preferences"]
+            ])
         )
 
         viewModel.handle(event: event)
