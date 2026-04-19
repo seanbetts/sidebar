@@ -19,23 +19,24 @@ describe('homepage', () => {
     });
     expect(heroImage).toHaveAttribute('src', '/screenshots/overview.png');
 
-    const notesSection = screen
-      .getByRole('heading', { name: /notes with a helping hand\./i })
-      .closest('section');
-    expect(notesSection).not.toBeNull();
-    expect(within(notesSection as HTMLElement).getByRole('img')).toHaveAttribute(
-      'aria-label'
-    );
-    expect(notesSection?.querySelector('img')).toBeNull();
+    const expectPlaceholderSlot = (headingName: RegExp, keyword: RegExp) => {
+      const section = screen.getByRole('heading', { name: headingName }).closest('section');
+      expect(section).not.toBeNull();
 
-    const tasksSection = screen
-      .getByRole('heading', { name: /tasks, planned together\./i })
-      .closest('section');
-    expect(tasksSection).not.toBeNull();
-    expect(within(tasksSection as HTMLElement).getByRole('img')).toHaveAttribute(
-      'aria-label'
-    );
-    expect(tasksSection?.querySelector('img')).toBeNull();
+      const placeholder = within(section as HTMLElement).getByRole('img');
+      expect(placeholder.tagName).toBe('DIV');
+
+      const label = placeholder.getAttribute('aria-label') ?? '';
+      expect(label).toMatch(keyword);
+      expect(label).toMatch(/iphone/i);
+      expect(label).toMatch(/screenshot|placeholder/i);
+
+      expect(section?.querySelector('img')).toBeNull();
+    };
+
+    expectPlaceholderSlot(/notes with a helping hand\./i, /notes/i);
+
+    expectPlaceholderSlot(/tasks, planned together\./i, /tasks/i);
 
     const websitesImage = screen.getByRole('img', {
       name: /saved website workflow/i

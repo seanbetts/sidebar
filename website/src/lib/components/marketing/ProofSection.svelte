@@ -1,29 +1,10 @@
 <script lang="ts">
-  import DeviceShowcase from './DeviceShowcase.svelte';
-
-  type ImageMedia = {
-    kind: 'image';
-    src: string;
-    alt: string;
-    width?: number | string;
-    height?: number | string;
-    loading?: 'eager' | 'lazy';
-    decoding?: 'async' | 'auto' | 'sync';
-    fetchpriority?: 'high' | 'low' | 'auto';
-  };
-
-  type PlaceholderMedia = {
-    kind: 'placeholder';
-    label: string;
-    frame?: 'ipad' | 'iphone';
-    width?: number | string;
-    height?: number | string;
-  };
+  import DeviceShowcase, { type DeviceShowcaseMedia } from './DeviceShowcase.svelte';
 
   type Props = {
     heading: string;
     body: string;
-    media: ImageMedia | PlaceholderMedia;
+    media: DeviceShowcaseMedia;
     reverse?: boolean;
   };
 

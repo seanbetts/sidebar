@@ -1,5 +1,5 @@
 <script lang="ts">
-  type ImageMedia = {
+  export type ImageMedia = {
     kind: 'image';
     src: string;
     alt: string;
@@ -10,7 +10,7 @@
     fetchpriority?: 'high' | 'low' | 'auto';
   };
 
-  type PlaceholderMedia = {
+  export type PlaceholderMedia = {
     kind: 'placeholder';
     label: string;
     frame?: 'ipad' | 'iphone';
@@ -18,22 +18,22 @@
     height?: number | string;
   };
 
+  export type DeviceShowcaseMedia = ImageMedia | PlaceholderMedia;
+
   type Props = {
-    media: ImageMedia | PlaceholderMedia;
+    media: DeviceShowcaseMedia;
     class?: string;
-    className?: string;
   };
 
   let {
     media,
-    class: classProp = '',
-    className = ''
+    class: classProp = ''
   }: Props = $props();
 
   let frame = $derived(media.kind === 'placeholder' ? media.frame ?? 'ipad' : 'ipad');
   let width = $derived(media.width ?? (frame === 'iphone' ? 430 : 1366));
   let height = $derived(media.height ?? (frame === 'iphone' ? 932 : 1024));
-  let classes = $derived(['device-showcase', `device-showcase--${frame}`, classProp, className]
+  let classes = $derived(['device-showcase', `device-showcase--${frame}`, classProp]
     .filter(Boolean)
     .join(' '));
 </script>
@@ -91,7 +91,8 @@
     place-items: center;
     box-sizing: border-box;
     padding: clamp(1.25rem, 4vw, 2.5rem);
-    background: linear-gradient(180deg, var(--surface-strong), var(--card));
+    background: var(--surface-strong);
+    box-shadow: inset 0 0 0 1px var(--color-border);
     color: var(--color-muted-foreground);
     text-align: center;
   }
