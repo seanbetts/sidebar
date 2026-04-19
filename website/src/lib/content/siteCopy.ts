@@ -3,7 +3,6 @@ import { MARKETING_COPY } from '../../../../shared/marketingCopy';
 export const siteCopy = {
   home: {
     hero: {
-      eyebrow: 'AI-native productivity',
       headline: MARKETING_COPY.tagline,
       subhead:
         'An AI assistant works better when it lives beside your notes, tasks, saved pages, and files. sideBar keeps them together so help starts with context instead of a blank box.',
@@ -15,7 +14,7 @@ export const siteCopy = {
       media: {
         kind: 'image',
         frame: 'ipad',
-        src: '/screenshots/overview.png',
+        src: '/screenshots/welcome-ipad.png',
         alt: 'sideBar on iPad showing notes, chat, and saved work in one integrated workspace',
         width: 1366,
         height: 1024,
@@ -24,33 +23,44 @@ export const siteCopy = {
         decoding: 'sync'
       }
     },
-    thesis: {
-      heading: 'Work and assistant, together.',
-      body:
-        'Most AI products still make you ferry context between a chat box and the rest of your tools. sideBar is built so your work and your assistant share the same place, which means help can begin from what is already in front of you.'
-    },
     proofs: [
       {
-        heading: 'Notes with a helping hand.',
+        heading: 'Chat that starts from your work.',
         reverse: true,
         body:
-          'Write in the same place you ask for help. sideBar can stay close to the note on screen, so drafting and refinement do not split into separate tools.',
+          'Ask for help where your notes, tasks, and saved pages already live. sideBar can respond from the context in front of you instead of making every conversation start from zero.',
         media: {
-          kind: 'placeholder',
-          label: 'iPhone Notes screenshot coming',
+          kind: 'image',
+          src: '/screenshots/chat-iphone.png',
+          alt: 'sideBar chat on iPhone with assistant responses grounded in the surrounding workspace',
           frame: 'iphone',
           width: 430,
           height: 932
         }
       },
       {
-        heading: 'Tasks, planned together.',
+        heading: 'Notes with a helping hand.',
         reverse: false,
+        body:
+          'Write in the same place you ask for help. sideBar can stay close to the note on screen, so drafting and refinement do not split into separate tools.',
+        media: {
+          kind: 'image',
+          src: '/screenshots/notes-ipad.png',
+          alt: 'sideBar notes on iPad with writing and assistant help in the same workspace',
+          frame: 'ipad',
+          width: 1366,
+          height: 1024
+        }
+      },
+      {
+        heading: 'Tasks, planned together.',
+        reverse: true,
         body:
           'Plan with the assistant, then keep moving in the actual task list. The conversation and the plan belong to the same flow instead of two disconnected apps.',
         media: {
-          kind: 'placeholder',
-          label: 'iPhone Tasks screenshot coming',
+          kind: 'image',
+          src: '/screenshots/tasks-iphone.png',
+          alt: 'sideBar tasks on iPhone with assistant guidance alongside the task list',
           frame: 'iphone',
           width: 430,
           height: 932
@@ -58,14 +68,14 @@ export const siteCopy = {
       },
       {
         heading: 'Save a page, ask about it later.',
-        reverse: true,
+        reverse: false,
         body:
           'Bring an article or reference page into sideBar once, then come back later to ask about it. The page stays available as part of your workspace.',
         media: {
           kind: 'image',
+          src: '/screenshots/websites-ipad.png',
+          alt: 'sideBar websites on iPad with a saved page available for later questions',
           frame: 'ipad',
-          src: '/screenshots/websites.png',
-          alt: 'sideBar saved website workflow showing a page available for later questions',
           width: 1366,
           height: 1024
         }
@@ -82,11 +92,11 @@ export const siteCopy = {
         ],
       media: {
         kind: 'image',
-        frame: 'ipad',
-        src: '/screenshots/skills-store.png',
-        alt: 'sideBar skills store on iPad showing installable skills and product extensibility',
-        width: 1366,
-        height: 1024
+        src: '/screenshots/skills-store-iphone.png',
+        alt: 'sideBar skills store on iPhone showing installable skills and product extensibility',
+        frame: 'iphone',
+        width: 430,
+        height: 932
       }
     },
     close: {

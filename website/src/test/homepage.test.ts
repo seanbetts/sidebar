@@ -14,39 +14,39 @@ describe('homepage', () => {
   it('uses product screenshots and honest placeholders instead of app store assets', () => {
     render(HomePage);
 
+    expect(
+      screen.queryByRole('heading', { name: /work and assistant, together\./i })
+    ).not.toBeInTheDocument();
+
     const heroImage = screen.getByRole('img', {
       name: /sideBar on iPad showing notes, chat, and saved work in one integrated workspace/i
     });
-    expect(heroImage).toHaveAttribute('src', '/screenshots/overview.png');
+    expect(heroImage).toHaveAttribute('src', '/screenshots/welcome-ipad.png');
 
-    const expectPlaceholderSlot = (headingName: RegExp, keyword: RegExp) => {
-      const section = screen.getByRole('heading', { name: headingName }).closest('section');
-      expect(section).not.toBeNull();
+    const chatImage = screen.getByRole('img', {
+      name: /chat on iPhone/i
+    });
+    expect(chatImage).toHaveAttribute('src', '/screenshots/chat-iphone.png');
 
-      const placeholder = within(section as HTMLElement).getByRole('img');
-      expect(placeholder.tagName).toBe('DIV');
+    const notesImage = screen.getByRole('img', {
+      name: /notes on iPad/i
+    });
+    expect(notesImage).toHaveAttribute('src', '/screenshots/notes-ipad.png');
 
-      const label = placeholder.getAttribute('aria-label') ?? '';
-      expect(label).toMatch(keyword);
-      expect(label).toMatch(/iphone/i);
-      expect(label).toMatch(/screenshot|placeholder/i);
-
-      expect(section?.querySelector('img')).toBeNull();
-    };
-
-    expectPlaceholderSlot(/notes with a helping hand\./i, /notes/i);
-
-    expectPlaceholderSlot(/tasks, planned together\./i, /tasks/i);
+    const tasksImage = screen.getByRole('img', {
+      name: /tasks on iPhone/i
+    });
+    expect(tasksImage).toHaveAttribute('src', '/screenshots/tasks-iphone.png');
 
     const websitesImage = screen.getByRole('img', {
-      name: /saved website workflow/i
+      name: /websites on iPad/i
     });
-    expect(websitesImage).toHaveAttribute('src', '/screenshots/websites.png');
+    expect(websitesImage).toHaveAttribute('src', '/screenshots/websites-ipad.png');
 
     const skillsImage = screen.getByRole('img', {
-      name: /skills store/i
+      name: /skills store on iPhone/i
     });
-    expect(skillsImage).toHaveAttribute('src', '/screenshots/skills-store.png');
+    expect(skillsImage).toHaveAttribute('src', '/screenshots/skills-store-iphone.png');
 
     const closeSection = screen
       .getByRole('heading', { name: /keep sidebar open\./i })

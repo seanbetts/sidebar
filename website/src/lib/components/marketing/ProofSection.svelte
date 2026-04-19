@@ -9,10 +9,9 @@
   };
 
   let { heading, body, media, reverse = false }: Props = $props();
-  let frame = $derived(media.frame ?? 'ipad');
 </script>
 
-<section class:reverse={reverse} class:proof-section--iphone={frame === 'iphone'} class="proof-section">
+<section class:reverse={reverse} class="proof-section">
   <div class="proof-copy">
     <h2>{heading}</h2>
     <p>{body}</p>
@@ -25,21 +24,14 @@
 
 <style>
   .proof-section {
-    --proof-media-width: var(--marketing-device-ipad-width, 40rem);
     max-width: var(--marketing-page-width, 78rem);
     margin: 0 auto;
     padding: clamp(3.5rem, 8vw, 5.5rem) var(--marketing-page-gutter, 1.5rem);
     display: grid;
-    grid-template-columns:
-      minmax(0, 1fr)
-      minmax(16rem, var(--proof-media-width));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: clamp(1.75rem, 5vw, 4rem);
     align-items: center;
     position: relative;
-  }
-
-  .proof-section--iphone {
-    --proof-media-width: var(--marketing-device-iphone-width, 20rem);
   }
 
   .proof-section::before {
@@ -78,6 +70,11 @@
   }
 
   .proof-media {
+    display: grid;
+    width: 100%;
+    min-height: 100%;
+    align-items: center;
+    justify-items: center;
     transition:
       transform 0.2s ease,
       filter 0.2s ease;

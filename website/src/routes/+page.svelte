@@ -5,7 +5,7 @@
   import { siteCopy } from '$lib/content/siteCopy';
   import { MARKETING_COPY } from '../../../shared/marketingCopy';
 
-  const { hero, thesis, proofs, identity, close } = siteCopy.home;
+  const { hero, proofs, identity, close } = siteCopy.home;
 
   const organizationJsonLd = {
     '@context': 'https://schema.org',
@@ -47,7 +47,6 @@
   <section class="hero">
     <div class="hero-inner">
       <div class="hero-copy">
-        <p class="eyebrow">{hero.eyebrow}</p>
         <h1 class="hero-title">{hero.headline}</h1>
         <p class="hero-subhead">{hero.subhead}</p>
 
@@ -62,13 +61,6 @@
       <div class="hero-poster">
         <DeviceShowcase media={hero.media} chrome="bare" />
       </div>
-    </div>
-  </section>
-
-  <section class="thesis" aria-labelledby="thesis-heading">
-    <div class="thesis-inner">
-      <h2 id="thesis-heading" class="thesis-heading">{thesis.heading}</h2>
-      <p class="thesis-body">{thesis.body}</p>
     </div>
   </section>
 
@@ -92,7 +84,10 @@
       </div>
 
       <div class="identity-media">
-        <DeviceShowcase media={identity.media} chrome="bare" />
+        <DeviceShowcase
+          media={identity.media}
+          chrome={identity.media.kind === 'image' ? 'bare' : 'framed'}
+        />
       </div>
     </div>
   </section>
@@ -147,25 +142,15 @@
     max-width: var(--marketing-home-copy-max);
   }
 
-  .eyebrow,
   .hero-subhead,
   .hero-platforms,
-  .thesis-body,
   .identity-copy p,
   .close-inner p {
     margin: 0;
     color: var(--color-muted-foreground);
   }
 
-  .eyebrow {
-    font-size: var(--marketing-home-meta-size);
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
   .hero-title,
-  .thesis-heading,
   .identity-copy h2,
   .close-inner h2 {
     margin: 0;
@@ -239,16 +224,13 @@
 
   .hero-poster,
   .identity-media {
+    display: grid;
+    width: 100%;
+    min-height: 100%;
+    align-items: center;
+    justify-items: center;
+    justify-self: center;
     transition: transform 0.2s ease;
-  }
-
-  .hero-poster {
-    justify-self: end;
-  }
-
-  .thesis {
-    padding: clamp(4rem, 8vw, 6rem) 0;
-    position: relative;
   }
 
   .identity::before,
@@ -262,15 +244,6 @@
     transform: translateX(-50%);
   }
 
-  .thesis-inner {
-    max-width: 58rem;
-    margin: 0 auto;
-    padding: 0 var(--marketing-page-gutter);
-    display: grid;
-    gap: 1.25rem;
-  }
-
-  .thesis-heading,
   .identity-copy h2,
   .close-inner h2 {
     font-size: var(--marketing-home-heading-size);
@@ -279,11 +252,6 @@
     text-wrap: balance;
   }
 
-  .thesis-heading {
-    max-width: 13ch;
-  }
-
-  .thesis-body,
   .identity-copy p,
   .close-inner p {
     max-width: 45rem;
@@ -301,14 +269,13 @@
     margin: 0 auto;
     padding: 0 var(--marketing-page-gutter);
     display: grid;
-    grid-template-columns:
-      minmax(0, 1fr)
-      minmax(18rem, var(--marketing-device-ipad-width));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: clamp(1.75rem, 5vw, 4rem);
-    align-items: start;
+    align-items: center;
   }
 
   .identity-copy {
+    order: 2;
     display: grid;
     gap: 1.125rem;
     max-width: var(--marketing-home-copy-max);
@@ -331,7 +298,7 @@
   }
 
   .identity-media {
-    justify-self: end;
+    order: 1;
   }
 
   .campaign-close {
@@ -376,7 +343,11 @@
     .identity-copy,
     .identity-media {
       max-width: none;
-      justify-self: start;
+    }
+
+    .identity-copy,
+    .identity-media {
+      order: initial;
     }
 
     .hero-poster {
@@ -390,7 +361,6 @@
 
   @media (max-width: 640px) {
     .hero-inner,
-    .thesis-inner,
     .identity-inner,
     .close-inner {
       padding: 0 1rem;
@@ -400,7 +370,6 @@
       font-size: clamp(2.8rem, 14vw, 4rem);
     }
 
-    .thesis-heading,
     .identity-copy h2,
     .close-inner h2 {
       font-size: clamp(2.15rem, 10vw, 3rem);
