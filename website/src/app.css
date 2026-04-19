@@ -5,6 +5,28 @@
 :root {
   color-scheme: light;
   --radius: 0.75rem;
+  --font-sans:
+    'SF Pro Text',
+    'SF Pro Display',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Helvetica Neue',
+    Helvetica,
+    Arial,
+    sans-serif;
+  --font-display:
+    'SF Pro Display',
+    'SF Pro Text',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Helvetica Neue',
+    Helvetica,
+    Arial,
+    sans-serif;
+  --font-display-weight: 700;
+  --font-display-leading: 0.94;
+  --font-display-tracking: -0.055em;
+  --font-display-compact-tracking: -0.03em;
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(0.97 0 0);
@@ -81,17 +103,18 @@
     min-height: 100vh;
     background: var(--color-background);
     color: var(--color-foreground);
-    font-family:
-      'SF Pro Text',
-      'SF Pro Display',
-      -apple-system,
-      BlinkMacSystemFont,
-      'Helvetica Neue',
-      Helvetica,
-      Arial,
-      sans-serif;
+    font-family: var(--font-sans);
     line-height: 1.5;
     text-rendering: optimizeLegibility;
     -webkit-text-size-adjust: 100%;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
   }
 }

@@ -98,7 +98,7 @@
     --marketing-home-meta-size: 0.9375rem;
     --marketing-home-body-size: clamp(1.02rem, 1vw + 0.82rem, 1.125rem);
     --marketing-home-heading-size: clamp(2.4rem, 4vw + 1.4rem, 3.85rem);
-    --marketing-home-display-size: clamp(3.35rem, 7vw, 5.2rem);
+    --marketing-home-display-size: clamp(2.25rem, 4.8vw, 4.5rem);
     --marketing-home-body-leading: 1.68;
     --marketing-home-heading-leading: 0.98;
     --marketing-home-display-leading: 0.94;
@@ -141,8 +141,9 @@
 
   .hero-title {
     font-size: var(--marketing-home-display-size);
-    line-height: var(--marketing-home-display-leading);
-    letter-spacing: -0.06em;
+    font-weight: var(--font-display-weight);
+    line-height: var(--font-display-leading);
+    letter-spacing: var(--font-display-tracking);
     text-wrap: balance;
     max-width: 11ch;
   }
@@ -217,8 +218,9 @@
 
   .identity-copy h2 {
     font-size: var(--marketing-home-heading-size);
+    font-weight: var(--font-display-weight);
     line-height: var(--marketing-home-heading-leading);
-    letter-spacing: -0.05em;
+    letter-spacing: var(--font-display-tracking);
     text-wrap: balance;
   }
 

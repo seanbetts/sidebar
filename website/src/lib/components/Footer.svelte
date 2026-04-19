@@ -98,10 +98,11 @@
   }
 
   .footer-brand__name {
+    font-family: var(--font-display);
     font-size: 2.75rem;
-    font-weight: 650;
-    letter-spacing: -0.03em;
-    line-height: 1;
+    font-weight: var(--font-display-weight);
+    letter-spacing: var(--font-display-tracking);
+    line-height: var(--font-display-leading);
   }
 
   .copy,

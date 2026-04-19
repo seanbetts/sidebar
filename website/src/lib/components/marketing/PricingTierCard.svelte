@@ -103,17 +103,20 @@
   }
 
   .tier-price {
+    font-family: var(--font-display);
     font-size: clamp(1.75rem, 4vw, 2.5rem);
-    font-weight: 700;
-    letter-spacing: -0.04em;
+    font-weight: var(--font-display-weight);
+    line-height: var(--font-display-leading);
+    letter-spacing: var(--font-display-tracking);
     color: var(--color-foreground);
   }
 
   .tier-subtitle {
+    font-family: var(--font-display);
     font-size: 1.1rem;
-    font-weight: 650;
-    line-height: 1.3;
-    letter-spacing: -0.02em;
+    font-weight: var(--font-display-weight);
+    line-height: 1;
+    letter-spacing: var(--font-display-compact-tracking);
     color: var(--color-foreground);
     text-align: right;
   }

@@ -74,11 +74,12 @@
     align-items: center;
     gap: 0.8rem;
     text-decoration: none;
-    font-weight: 700;
+    font-family: var(--font-display);
+    font-weight: var(--font-display-weight);
     font-size: 1.375rem;
-    letter-spacing: -0.03em;
+    letter-spacing: var(--font-display-tracking);
     color: var(--color-foreground);
-    line-height: 1;
+    line-height: var(--font-display-leading);
   }
 
   .brand img {

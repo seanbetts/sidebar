@@ -18,21 +18,26 @@
   }
 
   :global(.page-inner h1) {
-    font-size: clamp(1.75rem, 3vw, 2.25rem);
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: clamp(2.25rem, 4vw, 3.5rem);
+    font-weight: var(--font-display-weight);
+    letter-spacing: var(--font-display-tracking);
+    line-height: var(--font-display-leading);
     margin: 0 0 0.25rem;
   }
 
   :global(.page-inner h2) {
     font-size: 1.125rem;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
     margin: 2rem 0 0.75rem;
   }
 
   :global(.page-inner h3) {
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
     margin: 1.5rem 0 0.5rem;
   }
 

@@ -140,7 +140,7 @@
     --page-gutter: 1.5rem;
     --page-body-size: clamp(1.02rem, 1vw + 0.82rem, 1.125rem);
     --page-heading-size: clamp(2.35rem, 4vw + 1.2rem, 3.75rem);
-    --page-display-size: clamp(3rem, 6vw, 4.8rem);
+    --page-display-size: clamp(2.25rem, 4.8vw, 4.5rem);
     --page-body-leading: 1.7;
     --page-copy-max: 42rem;
     padding: clamp(2.75rem, 6vw, 5rem) 0 0;
@@ -188,8 +188,9 @@
 
   h1 {
     font-size: var(--page-display-size);
-    line-height: 0.94;
-    letter-spacing: -0.06em;
+    font-weight: var(--font-display-weight);
+    line-height: var(--font-display-leading);
+    letter-spacing: var(--font-display-tracking);
     text-wrap: balance;
   }
 

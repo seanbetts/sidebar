@@ -49,8 +49,9 @@
 
   .proof-copy h2 {
     font-size: var(--marketing-home-heading-size, clamp(2.4rem, 4vw + 1.4rem, 3.85rem));
-    line-height: var(--marketing-home-heading-leading, 0.98);
-    letter-spacing: -0.05em;
+    font-weight: var(--font-display-weight);
+    line-height: var(--font-display-leading);
+    letter-spacing: var(--font-display-tracking);
     color: var(--color-foreground);
     text-wrap: balance;
   }
