@@ -51,7 +51,13 @@ final class ChatViewModelRealtimeEventTests: ChatViewModelTestCase {
                 Data(
                     """
                     event: entity_changed
-                    data: {"entity_type":"conversation","entity_id":"conv-1","change":"renamed","patch":{"title":"Renamed","titleGenerated":false,"updatedAt":"2026-04-19T12:00:00Z"},"invalidate":["conversations","conversation:conv-1"]}
+                    data: {
+                      "entity_type":"conversation",
+                      "entity_id":"conv-1",
+                      "change":"renamed",
+                      "patch":{"title":"Renamed","titleGenerated":false,"updatedAt":"2026-04-19T12:00:00Z"},
+                      "invalidate":["conversations","conversation:conv-1"]
+                    }
 
 
                     """.utf8
@@ -134,7 +140,13 @@ final class ChatViewModelRealtimeEventTests: ChatViewModelTestCase {
                 Data(
                     """
                     event: entity_changed
-                    data: {"entity_type":"website","entity_id":"website-1","change":"renamed","patch":{"title":"Renamed website"},"invalidate":["websites","website:website-1"]}
+                    data: {
+                      "entity_type":"website",
+                      "entity_id":"website-1",
+                      "change":"renamed",
+                      "patch":{"title":"Renamed website"},
+                      "invalidate":["websites","website:website-1"]
+                    }
 
 
                     """.utf8
