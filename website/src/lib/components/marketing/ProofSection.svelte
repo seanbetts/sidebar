@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PixelDivider from '$lib/components/PixelDivider.svelte';
   import DeviceShowcase, { type DeviceShowcaseMedia } from './DeviceShowcase.svelte';
 
   type Props = {
@@ -12,6 +13,7 @@
 </script>
 
 <section class:reverse={reverse} class="proof-section">
+  <PixelDivider position="top" />
   <div class="proof-copy">
     <h2>{heading}</h2>
     <p>{body}</p>
@@ -32,16 +34,6 @@
     gap: clamp(1.75rem, 5vw, 4rem);
     align-items: center;
     position: relative;
-  }
-
-  .proof-section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    width: 100vw;
-    border-top: 1px solid var(--color-border);
-    transform: translateX(-50%);
   }
 
   .proof-copy {

@@ -1,4 +1,9 @@
+<script lang="ts">
+  import PixelDivider from '$lib/components/PixelDivider.svelte';
+</script>
+
 <footer class="footer">
+  <PixelDivider position="top" />
   <div class="footer-inner">
     <div class="footer-brand" aria-label="sideBar brand">
       <span class="footer-brand__mark" aria-hidden="true">
@@ -36,7 +41,7 @@
 
 <style>
   .footer {
-    border-top: 1px solid var(--color-border);
+    position: relative;
     padding: 2.5rem 1.5rem;
     margin-top: 6rem;
   }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import PixelDivider from '$lib/components/PixelDivider.svelte';
 
   let isDark = $state(false);
 
@@ -20,6 +21,7 @@
 </script>
 
 <nav class="nav">
+  <PixelDivider position="bottom" />
   <div class="nav-inner">
     <a href="/" class="brand" aria-label="sideBar home">
       <img src="/logo.svg" alt="" width="36" height="36" />
@@ -53,7 +55,6 @@
     position: sticky;
     top: 0;
     z-index: 50;
-    border-bottom: 1px solid var(--color-border);
     background: var(--surface);
   }
 

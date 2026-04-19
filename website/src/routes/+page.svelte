@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PixelDivider from '$lib/components/PixelDivider.svelte';
   import Seo from '$lib/components/Seo.svelte';
   import DeviceShowcase from '$lib/components/marketing/DeviceShowcase.svelte';
   import ProofSection from '$lib/components/marketing/ProofSection.svelte';
@@ -71,6 +72,7 @@
   </section>
 
   <section class="identity" aria-labelledby="identity-heading">
+    <PixelDivider position="top" />
     <div class="identity-inner">
       <div class="identity-copy">
         <h2 id="identity-heading">{identity.heading}</h2>
@@ -104,8 +106,8 @@
   }
 
   .hero {
+    position: relative;
     padding: clamp(2.5rem, 6vw, 5rem) 0 clamp(4rem, 7vw, 6rem);
-    border-bottom: 1px solid var(--color-border);
   }
 
   .hero-inner {
@@ -211,16 +213,6 @@
     justify-items: center;
     justify-self: center;
     transition: transform 0.2s ease;
-  }
-
-  .identity::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    width: 100vw;
-    border-top: 1px solid var(--color-border);
-    transform: translateX(-50%);
   }
 
   .identity-copy h2 {
