@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from importlib import import_module
 from types import SimpleNamespace
 
@@ -40,8 +41,8 @@ def test_cleanup_failed_plist_uploads_cli_previews_all_users_by_default(
 
     monkeypatch.setattr(
         script_module,
-        "PlistUploadCleanupService",
-        SimpleNamespace(cleanup_candidates=fake_cleanup),
+        "_cleanup_service",
+        lambda: SimpleNamespace(cleanup_candidates=fake_cleanup),
     )
     monkeypatch.setattr(script_module, "setup_environment", lambda **_kwargs: None)
     monkeypatch.setattr(script_module, "_session_factory", lambda: lambda: _FakeSession())
@@ -81,8 +82,8 @@ def test_cleanup_failed_plist_uploads_cli_executes_for_specific_user(
 
     monkeypatch.setattr(
         script_module,
-        "PlistUploadCleanupService",
-        SimpleNamespace(cleanup_candidates=fake_cleanup),
+        "_cleanup_service",
+        lambda: SimpleNamespace(cleanup_candidates=fake_cleanup),
     )
     monkeypatch.setattr(script_module, "setup_environment", lambda **_kwargs: None)
     monkeypatch.setattr(script_module, "_session_factory", lambda: lambda: _FakeSession())
@@ -101,3 +102,35 @@ def test_cleanup_failed_plist_uploads_cli_executes_for_specific_user(
     assert called["user_id"] == "user-1"
     assert called["dry_run"] is False
     assert "deleted_files=6" in captured.out
+
+
+def test_cleanup_failed_plist_uploads_cli_applies_database_url_before_service_import(
+    monkeypatch,
+) -> None:
+    env_database_url = "postgresql://user:pass@example.com:5432/postgres"
+    imported_database_urls: list[str | None] = []
+
+    def fake_setup_environment(**kwargs) -> None:
+        monkeypatch.setenv("DATABASE_URL", kwargs["database_url"])
+
+    def fake_cleanup_service():
+        imported_database_urls.append(os.environ.get("DATABASE_URL"))
+        return SimpleNamespace(
+            cleanup_candidates=lambda _db, **_kwargs: SimpleNamespace(
+                dry_run=True,
+                matched_files=0,
+                deleted_files=0,
+                matched_users=0,
+            )
+        )
+
+    monkeypatch.setattr(script_module, "setup_environment", fake_setup_environment)
+    monkeypatch.setattr(script_module, "_cleanup_service", fake_cleanup_service)
+    monkeypatch.setattr(script_module, "_session_factory", lambda: lambda: _FakeSession())
+    monkeypatch.setattr(script_module, "_set_retention_worker_scope", lambda _db, enabled: None)
+    monkeypatch.setattr(script_module, "_set_session_user_id", lambda _db, _user_id: None)
+
+    exit_code = script_module.main(["--database-url", env_database_url])
+
+    assert exit_code == 0
+    assert imported_database_urls == [env_database_url]

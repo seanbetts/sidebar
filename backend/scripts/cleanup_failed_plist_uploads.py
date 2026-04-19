@@ -17,9 +17,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from .db_env import setup_environment  # noqa: E402
 
-from api.services.plist_upload_cleanup_service import PlistUploadCleanupService  # noqa: E402
-
-DEFAULT_MAX_SIZE_BYTES = PlistUploadCleanupService.DEFAULT_MAX_SIZE_BYTES
+DEFAULT_MAX_SIZE_BYTES = 4 * 1024
 
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
@@ -67,6 +65,13 @@ def _session_factory():
     return SessionLocal
 
 
+def _cleanup_service():
+    """Return the cleanup service after env configuration is loaded."""
+    from api.services.plist_upload_cleanup_service import PlistUploadCleanupService
+
+    return PlistUploadCleanupService
+
+
 def _set_session_user_id(db, user_id: str) -> None:
     """Attach the user context to the database session."""
     from api.db.session import set_session_user_id
@@ -85,13 +90,14 @@ def main(argv: Iterable[str] | None = None) -> int:
     """Run the plist upload cleanup command."""
     args = parse_args(argv)
     setup_environment(database_url=args.database_url, supabase=args.supabase)
+    cleanup_service = _cleanup_service()
     session_factory = _session_factory()
     with session_factory() as db:
         if args.user_id:
             _set_session_user_id(db, args.user_id)
         else:
             _set_retention_worker_scope(db, enabled=True)
-        summary = PlistUploadCleanupService.cleanup_candidates(
+        summary = cleanup_service.cleanup_candidates(
             db,
             user_id=args.user_id,
             dry_run=not args.yes,
