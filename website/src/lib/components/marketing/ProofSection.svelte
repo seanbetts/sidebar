@@ -1,18 +1,33 @@
 <script lang="ts">
   import DeviceShowcase from './DeviceShowcase.svelte';
 
+  type ImageMedia = {
+    kind: 'image';
+    src: string;
+    alt: string;
+    width?: number | string;
+    height?: number | string;
+    loading?: 'eager' | 'lazy';
+    decoding?: 'async' | 'auto' | 'sync';
+    fetchpriority?: 'high' | 'low' | 'auto';
+  };
+
+  type PlaceholderMedia = {
+    kind: 'placeholder';
+    label: string;
+    frame?: 'ipad' | 'iphone';
+    width?: number | string;
+    height?: number | string;
+  };
+
   type Props = {
     heading: string;
     body: string;
-    image: string;
-    alt: string;
-    width?: number;
-    height?: number;
+    media: ImageMedia | PlaceholderMedia;
     reverse?: boolean;
   };
 
-  let { heading, body, image, alt, width = 1284, height = 2778, reverse = false }: Props =
-    $props();
+  let { heading, body, media, reverse = false }: Props = $props();
 </script>
 
 <section class:reverse={reverse} class="proof-section">
@@ -22,7 +37,7 @@
   </div>
 
   <div class="proof-media">
-    <DeviceShowcase src={image} {alt} {width} {height} />
+    <DeviceShowcase {media} />
   </div>
 </section>
 

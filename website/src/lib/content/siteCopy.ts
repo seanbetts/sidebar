@@ -12,10 +12,16 @@ export const siteCopy = {
       secondaryCta: 'Read the Docs',
       secondaryHref: 'https://docs.trysidebar.ai',
       platforms: 'Available on iPhone, iPad, Mac, and web',
-      image: '/screenshots/story/ipad-screen-1.jpg',
-      alt: 'sideBar on iPad showing notes, chat, and saved work in one integrated workspace',
-      width: 2048,
-      height: 2732
+      media: {
+        kind: 'image',
+        src: '/screenshots/overview.png',
+        alt: 'sideBar on iPad showing notes, chat, and saved work in one integrated workspace',
+        width: 1366,
+        height: 1024,
+        loading: 'eager',
+        fetchpriority: 'high',
+        decoding: 'sync'
+      }
     },
     thesis: {
       heading: 'Work and assistant, together.',
@@ -27,28 +33,37 @@ export const siteCopy = {
         heading: 'Notes with a helping hand.',
         body:
           'Write in the same place you ask for help. sideBar can stay close to the note on screen, so drafting and refinement do not split into separate tools.',
-        image: '/screenshots/story/iphone-screen-3.png',
-        alt: 'sideBar notes screen showing writing with nearby AI assistance',
-        width: 1284,
-        height: 2778
+        media: {
+          kind: 'placeholder',
+          label: 'iPhone Notes screenshot coming',
+          frame: 'iphone',
+          width: 430,
+          height: 932
+        }
       },
       {
         heading: 'Tasks, planned together.',
         body:
           'Plan with the assistant, then keep moving in the actual task list. The conversation and the plan belong to the same flow instead of two disconnected apps.',
-        image: '/screenshots/story/iphone-screen-4.png',
-        alt: 'sideBar tasks screen showing collaborative planning inside the task workflow',
-        width: 1284,
-        height: 2778
+        media: {
+          kind: 'placeholder',
+          label: 'iPhone Tasks screenshot coming',
+          frame: 'iphone',
+          width: 430,
+          height: 932
+        }
       },
       {
         heading: 'Save a page, ask about it later.',
         body:
           'Bring an article or reference page into sideBar once, then come back later to ask about it. The page stays available as part of your workspace.',
-        image: '/screenshots/story/iphone-screen-5.png',
-        alt: 'sideBar saved website screen showing an article available for later questions',
-        width: 1284,
-        height: 2778
+        media: {
+          kind: 'image',
+          src: '/screenshots/websites.png',
+          alt: 'sideBar saved website workflow showing a page available for later questions',
+          width: 1366,
+          height: 1024
+        }
       }
     ],
     identity: {
@@ -59,22 +74,21 @@ export const siteCopy = {
         'Personality and onboarding that make the assistant feel like sideBar, not a generic wrapper.',
         "Self-aware guidance rooted in the product's real capabilities, so discovery starts from something concrete.",
         'Skills that extend the app with useful new behaviors as your workflow grows.'
-      ],
-      image: '/screenshots/story/iphone-screen-6.png',
-      alt: 'sideBar skills store screen showing installable skills and product personality',
-      width: 1284,
-      height: 2778
+        ],
+      media: {
+        kind: 'image',
+        src: '/screenshots/skills-store.png',
+        alt: 'sideBar skills store on iPad showing installable skills and product extensibility',
+        width: 1366,
+        height: 1024
+      }
     },
     close: {
       headline: 'Keep sideBar open.',
       body:
         'The product is strongest when the assistant stays close to the rest of your work, ready to help without a reset every time.',
       primaryCta: 'Request Early Access',
-      primaryHref: 'https://app.trysidebar.ai',
-      image: '/screenshots/story/iphone-screen-7.png',
-      alt: 'sideBar campaign close image listing Chat, Notes, Tasks, Sites, and Skills',
-      width: 1284,
-      height: 2778
+      primaryHref: 'https://app.trysidebar.ai'
     }
   }
 } as const;

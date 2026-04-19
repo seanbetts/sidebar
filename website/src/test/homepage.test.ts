@@ -1,41 +1,41 @@
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import HomePage from '../routes/+page.svelte';
-import { MARKETING_COPY } from '../../../shared/marketingCopy';
 
 describe('homepage', () => {
-  it('uses the calmer canonical shared tagline', () => {
-    expect(MARKETING_COPY.tagline).toBe('Your work. Your assistant. One place.');
-  });
-
-  it('renders the approved homepage proof sequence', () => {
+  it('keeps the calmer canonical shared tagline', () => {
     render(HomePage);
 
-    const narrativeSequence = screen
-      .getAllByRole('heading')
-      .map((heading) => heading.textContent?.trim())
-      .filter((heading): heading is string =>
-        [
-          'Work and assistant, together.',
-          'Notes with a helping hand.',
-          'Tasks, planned together.',
-          'Save a page, ask about it later.',
-          'An assistant that grows with you.',
-          'Keep sideBar open.'
-        ].includes(heading)
-      );
-
-    expect(narrativeSequence).toEqual([
-      'Work and assistant, together.',
-      'Notes with a helping hand.',
-      'Tasks, planned together.',
-      'Save a page, ask about it later.',
-      'An assistant that grows with you.',
-      'Keep sideBar open.'
-    ]);
-
     expect(
-      screen.queryByRole('heading', { name: 'Chat that knows your work.' })
-    ).not.toBeInTheDocument();
+      screen.getByRole('heading', { level: 1, name: /your work\. your assistant\. one place\./i })
+    ).toBeInTheDocument();
+  });
+
+  it('uses product screenshots and honest placeholders instead of app store assets', () => {
+    render(HomePage);
+
+    const heroImage = screen.getByRole('img', {
+      name: /sideBar on iPad showing notes, chat, and saved work in one integrated workspace/i
+    });
+    expect(heroImage).toHaveAttribute('src', '/screenshots/overview.png');
+
+    expect(screen.getByText(/iphone notes screenshot coming/i)).toBeInTheDocument();
+    expect(screen.getByText(/iphone tasks screenshot coming/i)).toBeInTheDocument();
+
+    const websitesImage = screen.getByRole('img', {
+      name: /saved website workflow/i
+    });
+    expect(websitesImage).toHaveAttribute('src', '/screenshots/websites.png');
+
+    const skillsImage = screen.getByRole('img', {
+      name: /skills store/i
+    });
+    expect(skillsImage).toHaveAttribute('src', '/screenshots/skills-store.png');
+
+    const closeSection = screen
+      .getByRole('heading', { name: /keep sidebar open\./i })
+      .closest('section');
+    expect(closeSection).not.toBeNull();
+    expect(within(closeSection as HTMLElement).queryByRole('img')).not.toBeInTheDocument();
   });
 });

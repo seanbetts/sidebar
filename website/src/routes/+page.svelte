@@ -60,15 +60,7 @@
       </div>
 
       <div class="hero-poster">
-        <DeviceShowcase
-          src={hero.image}
-          alt={hero.alt}
-          width={hero.width}
-          height={hero.height}
-          loading="eager"
-          fetchpriority="high"
-          decoding="sync"
-        />
+        <DeviceShowcase media={hero.media} />
       </div>
     </div>
   </section>
@@ -100,12 +92,7 @@
       </div>
 
       <div class="identity-media">
-        <DeviceShowcase
-          src={identity.image}
-          alt={identity.alt}
-          width={identity.width}
-          height={identity.height}
-        />
+        <DeviceShowcase media={identity.media} />
       </div>
     </div>
   </section>
@@ -117,15 +104,6 @@
 
       <div class="cta-row close-actions">
         <a class="action action-primary" href={close.primaryHref}>{close.primaryCta}</a>
-      </div>
-
-      <div class="close-media">
-        <DeviceShowcase
-          src={close.image}
-          alt={close.alt}
-          width={close.width}
-          height={close.height}
-        />
       </div>
     </div>
   </section>
@@ -247,8 +225,7 @@
   }
 
   .hero-poster,
-  .identity-media,
-  .close-media {
+  .identity-media {
     transition: transform 0.2s ease;
   }
 
@@ -355,16 +332,10 @@
     justify-content: center;
   }
 
-  .close-media {
-    width: min(100%, 22rem);
-    margin: clamp(1.25rem, 4vw, 2.25rem) auto 0;
-  }
-
   @media (prefers-reduced-motion: no-preference) {
     .action:hover,
     .hero-poster:hover,
-    .identity-media:hover,
-    .close-media:hover {
+    .identity-media:hover {
       transform: translateY(-0.15rem);
     }
   }

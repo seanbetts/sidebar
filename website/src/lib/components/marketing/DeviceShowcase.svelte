@@ -1,5 +1,6 @@
 <script lang="ts">
-  type Props = {
+  type ImageMedia = {
+    kind: 'image';
     src: string;
     alt: string;
     width?: number | string;
@@ -7,25 +8,57 @@
     loading?: 'eager' | 'lazy';
     decoding?: 'async' | 'auto' | 'sync';
     fetchpriority?: 'high' | 'low' | 'auto';
+  };
+
+  type PlaceholderMedia = {
+    kind: 'placeholder';
+    label: string;
+    frame?: 'ipad' | 'iphone';
+    width?: number | string;
+    height?: number | string;
+  };
+
+  type Props = {
+    media: ImageMedia | PlaceholderMedia;
     class?: string;
     className?: string;
   };
 
   let {
-    src,
-    alt,
-    width = 1366,
-    height = 1024,
-    loading = 'lazy',
-    decoding = 'async',
-    fetchpriority = 'auto',
+    media,
     class: classProp = '',
     className = ''
   }: Props = $props();
+
+  let frame = $derived(media.kind === 'placeholder' ? media.frame ?? 'ipad' : 'ipad');
+  let width = $derived(media.width ?? (frame === 'iphone' ? 430 : 1366));
+  let height = $derived(media.height ?? (frame === 'iphone' ? 932 : 1024));
+  let classes = $derived(['device-showcase', `device-showcase--${frame}`, classProp, className]
+    .filter(Boolean)
+    .join(' '));
 </script>
 
-<figure class={`device-showcase ${classProp} ${className}`.trim()}>
-  <img {src} {alt} {width} {height} {loading} {decoding} {fetchpriority} />
+<figure class={classes}>
+  {#if media.kind === 'image'}
+    <img
+      src={media.src}
+      alt={media.alt}
+      width={width}
+      height={height}
+      loading={media.loading ?? 'lazy'}
+      decoding={media.decoding ?? 'async'}
+      fetchpriority={media.fetchpriority ?? 'auto'}
+    />
+  {:else}
+    <div
+      class="device-placeholder"
+      role="img"
+      aria-label={media.label}
+      style={`aspect-ratio: ${width} / ${height};`}
+    >
+      <span aria-hidden="true">{media.label}</span>
+    </div>
+  {/if}
 </figure>
 
 <style>
@@ -38,10 +71,35 @@
     box-shadow: 0 24px 60px -36px var(--shadow-color);
   }
 
-  .device-showcase img {
+  .device-showcase--iphone {
+    border-radius: calc(var(--radius) * 2);
+  }
+
+  .device-showcase img,
+  .device-placeholder {
     display: block;
     width: 100%;
+  }
+
+  .device-showcase img {
     height: auto;
     background: var(--surface-strong);
+  }
+
+  .device-placeholder {
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    padding: clamp(1.25rem, 4vw, 2.5rem);
+    background: linear-gradient(180deg, var(--surface-strong), var(--card));
+    color: var(--color-muted-foreground);
+    text-align: center;
+  }
+
+  .device-placeholder span {
+    max-width: 12ch;
+    font-size: 0.98rem;
+    line-height: 1.4;
+    letter-spacing: -0.02em;
   }
 </style>
