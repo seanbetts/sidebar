@@ -49,22 +49,22 @@ describe('chat streaming flow', () => {
 		const onOtherPreferencesUpdated = vi.fn();
 
 		const stream = createStream([
-			'event: note_pinned\n',
-			'data: {"id":"note-1","pinned":true}\n\n',
-			'event: website_renamed\n',
-			'data: {"id":"website-1","title":"Renamed website"}\n\n',
-			'event: ingestion_updated\n',
-			'data: {"file_id":"file-1"}\n\n',
-			'event: conversation_title_updated\n',
-			'data: {"id":"conv-1","title":"Renamed","titleGenerated":false,"updatedAt":"2026-03-28T12:00:00Z"}\n\n',
-			'event: assistant_identity_updated\n',
-			'data: {"assistant_identity":{"name":"Updated Assistant"},"assistant_identity_meta":{"version":2}}\n\n',
-			'event: assistant_soul_updated\n',
-			'data: {"assistant_soul":{"purpose":"Updated purpose"},"assistant_soul_meta":{"version":3}}\n\n',
-			'event: profile_user_settings_updated\n',
-			'data: {"name":"Sean"}\n\n',
-			'event: other_preferences_updated\n',
-			'data: {"weather_unit":"fahrenheit","biometric_unlock_enabled":true}\n\n',
+			'event: entity_changed\n',
+			'data: {"entity_type":"note","entity_id":"note-1","change":"pinned","patch":{"id":"note-1","pinned":true},"invalidate":["notes","note:note-1"]}\n\n',
+			'event: entity_changed\n',
+			'data: {"entity_type":"website","entity_id":"website-1","change":"renamed","patch":{"id":"website-1","title":"Renamed website"},"invalidate":["websites","website:website-1"]}\n\n',
+			'event: collection_invalidated\n',
+			'data: {"targets":["ingestion"]}\n\n',
+			'event: entity_changed\n',
+			'data: {"entity_type":"conversation","entity_id":"conv-1","change":"renamed","patch":{"title":"Renamed","titleGenerated":false,"updatedAt":"2026-03-28T12:00:00Z"},"invalidate":["conversations","conversation:conv-1"]}\n\n',
+			'event: collection_invalidated\n',
+			'data: {"targets":["assistant_settings"]}\n\n',
+			'event: collection_invalidated\n',
+			'data: {"targets":["assistant_settings"]}\n\n',
+			'event: collection_invalidated\n',
+			'data: {"targets":["profile","preferences"]}\n\n',
+			'event: collection_invalidated\n',
+			'data: {"targets":["preferences"]}\n\n',
 			'event: complete\n',
 			'data: {}\n\n'
 		]);
@@ -95,25 +95,16 @@ describe('chat streaming flow', () => {
 			id: 'website-1',
 			title: 'Renamed website'
 		});
-		expect(onIngestionUpdated).toHaveBeenCalledWith({ file_id: 'file-1' });
+		expect(onIngestionUpdated).toHaveBeenCalledWith({});
 		expect(onConversationTitleUpdated).toHaveBeenCalledWith({
 			id: 'conv-1',
 			title: 'Renamed',
 			titleGenerated: false,
 			updatedAt: '2026-03-28T12:00:00Z'
 		});
-		expect(onAssistantIdentityUpdated).toHaveBeenCalledWith({
-			assistant_identity: { name: 'Updated Assistant' },
-			assistant_identity_meta: { version: 2 }
-		});
-		expect(onAssistantSoulUpdated).toHaveBeenCalledWith({
-			assistant_soul: { purpose: 'Updated purpose' },
-			assistant_soul_meta: { version: 3 }
-		});
-		expect(onProfileUserSettingsUpdated).toHaveBeenCalledWith({ name: 'Sean' });
-		expect(onOtherPreferencesUpdated).toHaveBeenCalledWith({
-			weather_unit: 'fahrenheit',
-			biometric_unlock_enabled: true
-		});
+		expect(onAssistantIdentityUpdated).toHaveBeenCalledWith({});
+		expect(onAssistantSoulUpdated).toHaveBeenCalledWith({});
+		expect(onProfileUserSettingsUpdated).toHaveBeenCalledWith({});
+		expect(onOtherPreferencesUpdated).toHaveBeenCalledWith({});
 	});
 });

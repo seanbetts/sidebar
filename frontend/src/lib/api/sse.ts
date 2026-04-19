@@ -62,6 +62,117 @@ export class SSEClient {
 	private abortController: AbortController | null = null;
 	private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
+	private handleEntityChanged(data: any, callbacks: SSECallbacks): void {
+		const entityType = data?.entity_type;
+		const entityId = data?.entity_id;
+		const change = data?.change;
+		const patch = data?.patch ?? {};
+
+		if (entityType === 'note') {
+			if (change === 'created') {
+				callbacks.onNoteCreated?.({ id: entityId, ...patch });
+				return;
+			}
+			if (change === 'updated') {
+				callbacks.onNoteUpdated?.({ id: entityId, ...patch });
+				return;
+			}
+			if (change === 'pinned' || change === 'unpinned') {
+				callbacks.onNotePinned?.({
+					id: entityId,
+					pinned: patch?.pinned ?? change === 'pinned'
+				});
+				return;
+			}
+			if (change === 'moved') {
+				callbacks.onNoteMoved?.({ id: entityId, ...patch });
+			}
+			return;
+		}
+
+		if (entityType === 'website') {
+			if (change === 'created') {
+				callbacks.onWebsiteSaved?.({ id: entityId, ...patch });
+				return;
+			}
+			if (change === 'renamed') {
+				callbacks.onWebsiteRenamed?.({ id: entityId, ...patch });
+				return;
+			}
+			if (change === 'pinned' || change === 'unpinned') {
+				callbacks.onWebsitePinned?.({
+					id: entityId,
+					pinned: patch?.pinned ?? change === 'pinned'
+				});
+				return;
+			}
+			if (change === 'archived' || change === 'unarchived') {
+				callbacks.onWebsiteArchived?.({
+					id: entityId,
+					archived: patch?.archived ?? change === 'archived'
+				});
+			}
+			return;
+		}
+
+		if (entityType === 'conversation' && change === 'renamed') {
+			callbacks.onConversationTitleUpdated?.({ id: entityId, ...patch });
+		}
+	}
+
+	private handleEntityDeleted(data: any, callbacks: SSECallbacks): void {
+		if (data?.entity_type === 'note') {
+			callbacks.onNoteDeleted?.({ id: data?.entity_id });
+			return;
+		}
+
+		if (data?.entity_type === 'website') {
+			callbacks.onWebsiteDeleted?.({ id: data?.entity_id });
+		}
+	}
+
+	private handleCollectionInvalidated(data: any, callbacks: SSECallbacks): void {
+		const targets = Array.isArray(data?.targets) ? data.targets : [];
+
+		if (targets.includes('assistant_settings')) {
+			callbacks.onAssistantIdentityUpdated?.({});
+			callbacks.onAssistantSoulUpdated?.({});
+		}
+		if (targets.includes('profile')) {
+			callbacks.onProfileUserSettingsUpdated?.({});
+		}
+		if (targets.includes('preferences')) {
+			callbacks.onOtherPreferencesUpdated?.({});
+		}
+		if (targets.includes('ingestion')) {
+			callbacks.onIngestionUpdated?.({});
+		}
+		if (targets.includes('scratchpad')) {
+			callbacks.onScratchpadUpdated?.();
+		}
+		if (targets.includes('memory')) {
+			callbacks.onMemoryUpdated?.({});
+		}
+	}
+
+	private handleToolStatus(data: any, callbacks: SSECallbacks): void {
+		const status = data?.status;
+		if (status === 'running') {
+			callbacks.onToolStart?.({
+				name: data?.display_name,
+				status
+			});
+			return;
+		}
+
+		if (status === 'completed' || status === 'failed') {
+			callbacks.onToolEnd?.({
+				name: data?.display_name,
+				status: status === 'failed' ? 'error' : status
+			});
+		}
+	}
+
 	/**
 	 * Connect to SSE endpoint and stream chat response
 	 * @param payload Request payload for the chat stream.
@@ -291,6 +402,20 @@ export class SSEClient {
 
 			case 'prompt_preview':
 				callbacks.onPromptPreview?.(data);
+				break;
+			case 'tool_status':
+				this.handleToolStatus(data, callbacks);
+				break;
+			case 'entity_changed':
+				this.handleEntityChanged(data, callbacks);
+				break;
+			case 'entity_deleted':
+				this.handleEntityDeleted(data, callbacks);
+				break;
+			case 'collection_invalidated':
+				this.handleCollectionInvalidated(data, callbacks);
+				break;
+			case 'workspace_patch':
 				break;
 			case 'tool_start':
 				callbacks.onToolStart?.(data);

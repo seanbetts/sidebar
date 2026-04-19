@@ -716,7 +716,14 @@ async def test_stream_with_tools_emits_note_pinned_event():
     ):
         output.append(event)
 
-    assert any(item["type"] == "note_pinned" for item in output)
+    assert any(
+        item["type"] == "entity_changed"
+        and item["data"]["entity_type"] == "note"
+        and item["data"]["entity_id"] == "note-1"
+        and item["data"]["change"] == "pinned"
+        and item["data"]["patch"] == {"id": "note-1", "pinned": True}
+        for item in output
+    )
 
 
 @pytest.mark.asyncio
@@ -764,13 +771,19 @@ async def test_stream_with_tools_emits_note_created_workspace_open_event():
         output.append(event)
 
     assert {
-        "type": "note_created",
+        "type": "entity_changed",
         "data": {
-            "id": "note-1",
-            "title": "Created from chat",
-            "folder": "",
-            "path": "note-1",
-            "open_in_workspace": True,
+            "entity_type": "note",
+            "entity_id": "note-1",
+            "change": "created",
+            "patch": {
+                "id": "note-1",
+                "title": "Created from chat",
+                "folder": "",
+                "path": "note-1",
+                "open_in_workspace": True,
+            },
+            "invalidate": ["notes", "note:note-1"],
         },
     } in output
 

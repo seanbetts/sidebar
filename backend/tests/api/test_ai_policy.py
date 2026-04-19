@@ -352,7 +352,12 @@ async def test_gateway_stream_chat_openai_executes_tools_via_responses_api(
     ]
     assert any(event["type"] == "tool_call" for event in events)
     assert any(event["type"] == "tool_result" for event in events)
-    assert any(event["type"] == "note_created" for event in events)
+    assert any(
+        event["type"] == "entity_changed"
+        and event["data"]["entity_type"] == "note"
+        and event["data"]["change"] == "created"
+        for event in events
+    )
     assert any(event["type"] == "token" and event["content"] == "Done" for event in events)
     tool_call = next(event for event in events if event["type"] == "tool_call")
     tool_result = next(event for event in events if event["type"] == "tool_result")
@@ -575,7 +580,12 @@ async def test_gateway_stream_chat_openai_web_search_can_execute_custom_tools(
 
     assert any(event["type"] == "tool_call" for event in events)
     assert any(event["type"] == "tool_result" for event in events)
-    assert any(event["type"] == "note_created" for event in events)
+    assert any(
+        event["type"] == "entity_changed"
+        and event["data"]["entity_type"] == "note"
+        and event["data"]["change"] == "created"
+        for event in events
+    )
     assert any(
         event["type"] == "token" and event["content"] == "Done" for event in events
     )
@@ -702,7 +712,12 @@ async def test_gateway_stream_chat_google_executes_tools(monkeypatch) -> None:
     ]
     assert any(event["type"] == "tool_call" for event in events)
     assert any(event["type"] == "tool_result" for event in events)
-    assert any(event["type"] == "note_created" for event in events)
+    assert any(
+        event["type"] == "entity_changed"
+        and event["data"]["entity_type"] == "note"
+        and event["data"]["change"] == "created"
+        for event in events
+    )
     assert any(
         event["type"] == "token" and event["content"] == "Completed" for event in events
     )
@@ -789,7 +804,12 @@ async def test_gateway_stream_chat_google_web_search_combines_builtin_and_custom
 
     assert any(event["type"] == "tool_call" for event in events)
     assert any(event["type"] == "tool_result" for event in events)
-    assert any(event["type"] == "note_created" for event in events)
+    assert any(
+        event["type"] == "entity_changed"
+        and event["data"]["entity_type"] == "note"
+        and event["data"]["change"] == "created"
+        for event in events
+    )
     assert any(
         event["type"] == "token" and event["content"] == "Completed" for event in events
     )
@@ -882,7 +902,12 @@ async def test_gateway_stream_chat_google_executes_tools_from_candidate_parts(
     ]
     assert any(event["type"] == "tool_call" for event in events)
     assert any(event["type"] == "tool_result" for event in events)
-    assert any(event["type"] == "note_created" for event in events)
+    assert any(
+        event["type"] == "entity_changed"
+        and event["data"]["entity_type"] == "note"
+        and event["data"]["change"] == "created"
+        for event in events
+    )
     assert any(
         event["type"] == "token" and event["content"] == "Completed" for event in events
     )
@@ -974,7 +999,12 @@ async def test_gateway_stream_chat_google_executes_tools_from_candidate_part_dic
     ]
     assert any(event["type"] == "tool_call" for event in events)
     assert any(event["type"] == "tool_result" for event in events)
-    assert any(event["type"] == "note_created" for event in events)
+    assert any(
+        event["type"] == "entity_changed"
+        and event["data"]["entity_type"] == "note"
+        and event["data"]["change"] == "created"
+        for event in events
+    )
     assert any(
         event["type"] == "token" and event["content"] == "Completed" for event in events
     )
