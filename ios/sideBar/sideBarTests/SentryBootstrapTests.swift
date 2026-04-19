@@ -179,7 +179,7 @@ final class SentryBootstrapTests: XCTestCase {
         XCTAssertTrue(recorder.breadcrumbs.isEmpty)
     }
 
-    func testCaptureSanitizesContextBeforeSendingToRecorder() {
+    func testCaptureSanitizesContextBeforeSendingToRecorder() throws {
         let recorder = RecordingAppSentryRecorder()
 
         AppSentry.capture(
@@ -196,7 +196,7 @@ final class SentryBootstrapTests: XCTestCase {
             isEnabled: true
         )
 
-        let record = try! XCTUnwrap(recorder.messages.first)
+        let record = try XCTUnwrap(recorder.messages.first)
         XCTAssertEqual(record.message, "Widget refresh failed")
         XCTAssertEqual(record.context["operation"], "widget.files.refresh")
         XCTAssertEqual(record.context["request_kind"], "foregroundRead")

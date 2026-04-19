@@ -134,7 +134,11 @@ final class ChatInputSizingTests: XCTestCase {
             .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
 
         XCTAssertTrue(uiKitSource.contains("textView.onDidMoveToWindow=context.coordinator.handleTextViewDidMoveToWindow"))
-        XCTAssertTrue(uiKitSource.contains("funchandleTextViewDidMoveToWindow(_textView:ChatInputTextView){textView.refreshUITestAccessibilityValue()scheduleAutofocusIfNeeded(for:textView)}"))
+        let didMoveToWindowHandler =
+            "funchandleTextViewDidMoveToWindow(_textView:ChatInputTextView){" +
+            "textView.refreshUITestAccessibilityValue()" +
+            "scheduleAutofocusIfNeeded(for:textView)}"
+        XCTAssertTrue(uiKitSource.contains(didMoveToWindowHandler))
         XCTAssertTrue(uiKitSource.contains("chatTextView.shouldAutofocus=isEnabled&&isFocused"))
         XCTAssertTrue(uiKitSource.contains("guard!textView.hasScheduledAutofocuselse{return}"))
         XCTAssertTrue(uiKitSource.contains("letdidBecomeFirstResponder=textView.becomeFirstResponder()"))

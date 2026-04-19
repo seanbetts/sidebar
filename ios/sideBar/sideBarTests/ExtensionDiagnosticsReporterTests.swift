@@ -70,7 +70,7 @@ final class ExtensionDiagnosticsReporterTests: XCTestCase {
         XCTAssertEqual(store.records.count, 0)
     }
 
-    func testFailureSanitizesUnsafeMetadataAndNormalizesKeys() {
+    func testFailureSanitizesUnsafeMetadataAndNormalizesKeys() throws {
         let logger = RecordingExtensionDiagnosticsLogger()
         let store = RecordingExternalSurfaceDiagnosticsStore()
         let reporter = ExtensionDiagnosticsReporter(
@@ -92,7 +92,7 @@ final class ExtensionDiagnosticsReporterTests: XCTestCase {
             ]
         )
 
-        let metadata = try! XCTUnwrap(store.records.first?.metadata)
+        let metadata = try XCTUnwrap(store.records.first?.metadata)
         XCTAssertEqual(metadata["category"], "offline")
         XCTAssertEqual(metadata["request_kind"], "foregroundRead")
         XCTAssertEqual(metadata["status_code"], "503")
