@@ -27,7 +27,7 @@ export const siteCopy = {
         heading: 'Chat that starts from your work.',
         reverse: true,
         body:
-          'Ask for help where your notes, tasks, and saved pages already live. sideBar can respond from the context in front of you instead of making every conversation start from zero.',
+          'Ask for help where your notes, tasks, and saved pages already live.',
         media: {
           kind: 'image',
           src: '/screenshots/chat-iphone.png',
@@ -41,7 +41,7 @@ export const siteCopy = {
         heading: 'Notes with a helping hand.',
         reverse: false,
         body:
-          'Write in the same place you ask for help. sideBar can stay close to the note on screen, so drafting and refinement do not split into separate tools.',
+          'Write in the same place you ask for assisstance.',
         media: {
           kind: 'image',
           src: '/screenshots/notes-ipad.png',
@@ -55,7 +55,7 @@ export const siteCopy = {
         heading: 'Tasks, planned together.',
         reverse: true,
         body:
-          'Plan with the assistant, then keep moving in the actual task list. The conversation and the plan belong to the same flow instead of two disconnected apps.',
+          'Plan with the assistant, then keep moving through your task list.',
         media: {
           kind: 'image',
           src: '/screenshots/tasks-iphone.png',
@@ -69,7 +69,7 @@ export const siteCopy = {
         heading: 'Save a page, ask about it later.',
         reverse: false,
         body:
-          'Bring an article or reference page into sideBar once, then come back later to ask about it. The page stays available as part of your workspace.',
+          'Bring an article or reference page into sideBar once, then come back later to ask about it.',
         media: {
           kind: 'image',
           src: '/screenshots/websites-ipad.png',
@@ -83,12 +83,7 @@ export const siteCopy = {
     identity: {
       heading: 'An assistant that grows with you.',
       body:
-        'Once the practical proof is there, sideBar becomes more distinct. It has a point of view, can help you discover what it can actually do, and expands over time through installable skills.',
-      points: [
-        'Personality and onboarding that make the assistant feel like sideBar, not a generic wrapper.',
-        "Self-aware guidance rooted in the product's real capabilities, so discovery starts from something concrete.",
-        'Skills that extend the app with useful new behaviors as your workflow grows.'
-        ],
+        'Get to know sideBar faster. It can introduce itself properly, show you what is available, and grow with you through installable skills.',
       media: {
         kind: 'image',
         src: '/screenshots/skills-store-iphone.png',
@@ -97,13 +92,6 @@ export const siteCopy = {
         width: 430,
         height: 932
       }
-    },
-    close: {
-      headline: 'Keep sideBar open.',
-      body:
-        'The product is strongest when the assistant stays close to the rest of your work, ready to help without a reset every time.',
-      primaryCta: 'Request Early Access',
-      primaryHref: 'https://app.trysidebar.ai'
     }
   }
 } as const;

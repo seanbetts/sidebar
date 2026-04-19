@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/svelte';
+import { render, screen } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import HomePage from '../routes/+page.svelte';
 
@@ -48,10 +48,6 @@ describe('homepage', () => {
     });
     expect(skillsImage).toHaveAttribute('src', '/screenshots/skills-store-iphone.png');
 
-    const closeSection = screen
-      .getByRole('heading', { name: /keep sidebar open\./i })
-      .closest('section');
-    expect(closeSection).not.toBeNull();
-    expect(within(closeSection as HTMLElement).queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /keep sidebar open\./i })).not.toBeInTheDocument();
   });
 });

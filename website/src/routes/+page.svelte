@@ -5,7 +5,7 @@
   import { siteCopy } from '$lib/content/siteCopy';
   import { MARKETING_COPY } from '../../../shared/marketingCopy';
 
-  const { hero, proofs, identity, close } = siteCopy.home;
+  const { hero, proofs, identity } = siteCopy.home;
 
   const organizationJsonLd = {
     '@context': 'https://schema.org',
@@ -91,17 +91,6 @@
       </div>
     </div>
   </section>
-
-  <section class="campaign-close" aria-labelledby="campaign-close-heading">
-    <div class="close-inner">
-      <h2 id="campaign-close-heading">{close.headline}</h2>
-      <p>{close.body}</p>
-
-      <div class="cta-row close-actions">
-        <a class="action action-primary" href={close.primaryHref}>{close.primaryCta}</a>
-      </div>
-    </div>
-  </section>
 </div>
 
 <style>
@@ -118,7 +107,6 @@
     --marketing-home-heading-leading: 0.98;
     --marketing-home-display-leading: 0.94;
     --marketing-home-copy-max: 31rem;
-    padding-bottom: clamp(4rem, 8vw, 6rem);
   }
 
   .hero {
@@ -144,15 +132,13 @@
 
   .hero-subhead,
   .hero-platforms,
-  .identity-copy p,
-  .close-inner p {
+  .identity-copy p {
     margin: 0;
     color: var(--color-muted-foreground);
   }
 
   .hero-title,
-  .identity-copy h2,
-  .close-inner h2 {
+  .identity-copy h2 {
     margin: 0;
     color: var(--color-foreground);
   }
@@ -233,8 +219,7 @@
     transition: transform 0.2s ease;
   }
 
-  .identity::before,
-  .campaign-close::before {
+  .identity::before {
     content: '';
     position: absolute;
     top: 0;
@@ -244,16 +229,14 @@
     transform: translateX(-50%);
   }
 
-  .identity-copy h2,
-  .close-inner h2 {
+  .identity-copy h2 {
     font-size: var(--marketing-home-heading-size);
     line-height: var(--marketing-home-heading-leading);
     letter-spacing: -0.05em;
     text-wrap: balance;
   }
 
-  .identity-copy p,
-  .close-inner p {
+  .identity-copy p {
     max-width: 45rem;
     font-size: var(--marketing-home-body-size);
     line-height: var(--marketing-home-body-leading);
@@ -300,30 +283,6 @@
   .identity-media {
     order: 1;
   }
-
-  .campaign-close {
-    padding: clamp(4rem, 8vw, 6rem) 0 0;
-    position: relative;
-  }
-
-  .close-inner {
-    max-width: 60rem;
-    margin: 0 auto;
-    padding: 0 var(--marketing-page-gutter);
-    display: grid;
-    gap: 1.25rem;
-    text-align: center;
-  }
-
-  .close-inner h2,
-  .close-inner p {
-    justify-self: center;
-  }
-
-  .close-actions {
-    justify-content: center;
-  }
-
   @media (prefers-reduced-motion: no-preference) {
     .action:hover,
     .hero-poster:hover,
@@ -361,8 +320,7 @@
 
   @media (max-width: 640px) {
     .hero-inner,
-    .identity-inner,
-    .close-inner {
+    .identity-inner {
       padding: 0 1rem;
     }
 
@@ -370,8 +328,7 @@
       font-size: clamp(2.8rem, 14vw, 4rem);
     }
 
-    .identity-copy h2,
-    .close-inner h2 {
+    .identity-copy h2 {
       font-size: clamp(2.15rem, 10vw, 3rem);
     }
 
