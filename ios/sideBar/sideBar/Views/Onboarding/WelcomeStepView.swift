@@ -1,4 +1,5 @@
 import SwiftUI
+import sideBarShared
 
 /// Step 1 of onboarding with logo, product framing, and auth routing.
 struct WelcomeStepView: View {
@@ -23,7 +24,7 @@ struct WelcomeStepView: View {
                     .foregroundStyle(.primary)
                     .padding(.bottom, layoutMode.iconBottomSpacing)
 
-                Text("The AI assistant that actually knows you. Everything you need in one place, endlessly extensible with skills.")
+                Text(MarketingCopy.description)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

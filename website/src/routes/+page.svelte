@@ -1,5 +1,6 @@
 <script lang="ts">
   import Seo from '$lib/components/Seo.svelte';
+  import { MARKETING_COPY } from '../../../shared/marketingCopy';
 
   const screenshots = [
     {
@@ -109,7 +110,7 @@
 
 <Seo
   title="sideBar"
-  description="The AI assistant that actually knows you. Everything you need in one place, endlessly extensible with skills."
+  description={MARKETING_COPY.description}
   url="https://trysidebar.ai"
   jsonLd={[organizationJsonLd, appJsonLd]}
 />
@@ -121,8 +122,8 @@
       <img class="logo-light" src="/logo-animated-light.gif" alt="sideBar" width="96" height="96" />
       <img class="logo-dark" src="/logo-animated-dark.gif" alt="" aria-hidden="true" width="96" height="96" />
     </div>
-    <h1 class="hero-title">The AI assistant that actually knows you.</h1>
-    <p class="hero-subtitle">Everything you need in one place, endlessly extensible with skills.</p>
+    <h1 class="hero-title">{MARKETING_COPY.tagline}</h1>
+    <p class="hero-subtitle">{MARKETING_COPY.subtitle}</p>
     <a href="https://app.trysidebar.ai" class="hero-cta">Request Early Access</a>
     <p class="hero-platforms">Available on iPhone, iPad, Mac, and web</p>
   </div>
