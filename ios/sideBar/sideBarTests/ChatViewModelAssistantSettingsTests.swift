@@ -42,6 +42,21 @@ final class ChatViewModelAssistantSettingsTests: XCTestCase {
         XCTAssertTrue(receivedUpdate?.requiresRefresh ?? false)
     }
 
+    func testProfileUserSettingsUpdateEventRequestsRefresh() async {
+        var receivedUpdate: AssistantSettingsRealtimeUpdate?
+        let viewModel = makeViewModel { update in
+            receivedUpdate = update
+        }
+        let event = ChatStreamEvent(
+            type: .profileUserSettingsUpdated,
+            data: AnyCodable(["name": "Sean"])
+        )
+
+        viewModel.handle(event: event)
+
+        XCTAssertTrue(receivedUpdate?.requiresRefresh ?? false)
+    }
+
     private func makeViewModel(
         onAssistantSettingsUpdated: @escaping (AssistantSettingsRealtimeUpdate) -> Void
     ) -> ChatViewModel {

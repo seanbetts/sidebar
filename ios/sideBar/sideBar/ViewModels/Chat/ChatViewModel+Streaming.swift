@@ -97,6 +97,7 @@ extension ChatViewModel {
             .memoryDeleted: makeVoidEventHandler(ChatViewModel.refreshMemories),
             .assistantIdentityUpdated: makeEventHandler(ChatViewModel.handleAssistantIdentityUpdated),
             .assistantSoulUpdated: makeEventHandler(ChatViewModel.handleAssistantSoulUpdated),
+            .profileUserSettingsUpdated: makeEventHandler(ChatViewModel.handleProfileUserSettingsUpdated),
             .otherPreferencesUpdated: makeEventHandler(ChatViewModel.handleOtherPreferencesUpdated),
             .workspacePatch: makeEventHandler(ChatViewModel.handleWorkspacePatch)
         ]

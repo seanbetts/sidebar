@@ -70,6 +70,18 @@ final class ChatStreamParserTests: XCTestCase {
         XCTAssertEqual(identity?["name"] as? String, "Navigator")
     }
 
+    func testIngestParsesProfileUserSettingsUpdatedEvent() {
+        var parser = ChatStreamParser()
+        let chunk = "event: profile_user_settings_updated\ndata: {\"name\":\"Sean\"}\n\n"
+
+        let events = parser.ingest(Data(chunk.utf8))
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first?.type.rawValue, "profile_user_settings_updated")
+        let payload = events.first?.data?.value as? [String: Any]
+        XCTAssertEqual(payload?["name"] as? String, "Sean")
+    }
+
     func testIngestParsesOtherPreferencesUpdatedEvent() {
         var parser = ChatStreamParser()
         let chunk = "event: other_preferences_updated\ndata: {\"weather_unit\":\"fahrenheit\",\"biometric_unlock_enabled\":true}\n\n"
