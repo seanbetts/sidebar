@@ -9,7 +9,7 @@ struct ChatInputUIKitView: UIViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     @Binding var isFocused: Bool
-    @AppStorage(AppStorageKeys.appTextSize) private var appTextSizeRaw = AppTextSizeOption.system.rawValue
+    @AppStorage(AppStorageKeys.appTextSize) var appTextSizeRaw = AppTextSizeOption.system.rawValue
     private var sideButtonSize: CGFloat = HeaderActionControlMetrics.iconFrameHeight
     let isEnabled: Bool
     let isSendEnabled: Bool

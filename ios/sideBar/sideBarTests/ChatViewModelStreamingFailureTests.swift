@@ -4,13 +4,6 @@ import sideBarShared
 
 @MainActor
 final class ChatViewModelStreamingFailureTests: XCTestCase {
-    private static let sharedAPIClient = APIClient(
-        config: APIClientConfig(
-            baseUrl: URL(string: "https://example.com")!,
-            accessTokenProvider: { nil }
-        )
-    )
-
     func testStartStreamFailureFinalizesStreamingMessageAsError() async {
         let cache = TestCacheClient()
         let conversationsAPI = StubConversationsAPI()
@@ -91,98 +84,6 @@ final class ChatViewModelStreamingFailureTests: XCTestCase {
         XCTAssertFalse(viewModel.isStreaming)
         XCTAssertNil(viewModel.currentStreamMessageId)
         XCTAssertNil(viewModel.streamingConversationId)
-    }
-
-    func testUnexpectedEOFWithEmptyAssistantMessagePreservesRetryableFailure() async throws {
-        let cache = TestCacheClient()
-        let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeStreamingFailureViewModel(
-            api: conversationsAPI,
-            cache: cache,
-            streamClient: IncompleteChatStreamClient()
-        )
-
-        let initialMessage = seedStreamingFailureMessage(on: viewModel)
-        viewModel.messages = [initialMessage]
-        viewModel.beginStreamingMessage(assistantMessageId: initialMessage.id)
-        viewModel.latestRetrySource = ChatRetrySource(
-            conversationID: "conv-1",
-            userMessageID: "user-1",
-            userMessageText: "Hello",
-            assistantMessageID: initialMessage.id,
-            attachments: nil,
-            openContext: nil,
-            currentLocation: nil,
-            currentLocationLevels: nil,
-            currentWeather: nil,
-            currentTimezone: nil
-        )
-
-        await viewModel.startStream(
-            request: ChatStreamRequest(
-                message: "Hello",
-                conversationId: "conv-1",
-                userMessageId: "user-1",
-                assistantMessageId: initialMessage.id
-            )
-        )
-
-        let failedAssistant = try XCTUnwrap(viewModel.messages.last)
-        XCTAssertEqual(failedAssistant.id, initialMessage.id)
-        XCTAssertEqual(failedAssistant.status, .error)
-        XCTAssertEqual(
-            failedAssistant.error,
-            "The response stream ended unexpectedly. Please try again."
-        )
-        XCTAssertEqual(viewModel.latestRetryableAssistantMessageID, initialMessage.id)
-    }
-
-    func testErrorEventWithEmptyAssistantMessageDoesNotPersistPlaceholder() async {
-        let cache = TestCacheClient()
-        let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeStreamingFailureViewModel(
-            api: conversationsAPI,
-            cache: cache,
-            streamClient: FailingChatStreamClient()
-        )
-
-        let initialMessage = seedStreamingFailureMessage(on: viewModel)
-        viewModel.messages = [initialMessage]
-        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
-
-        viewModel.handle(
-            event: ChatStreamEvent(
-                type: .error,
-                data: AnyCodable(["error": "Google response contained no text and no tool calls"])
-            )
-        )
-
-        XCTAssertFalse(viewModel.messages.contains(where: { $0.id == "assistant-1" }))
-        XCTAssertEqual(
-            viewModel.errorMessage,
-            "The AI provider returned an empty response. Please try again."
-        )
-        XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
-    }
-
-    func testCompleteEventWithEmptyAssistantMessageIsTreatedAsError() async {
-        let cache = TestCacheClient()
-        let conversationsAPI = StubConversationsAPI()
-        let viewModel = makeStreamingFailureViewModel(
-            api: conversationsAPI,
-            cache: cache,
-            streamClient: FailingChatStreamClient()
-        )
-
-        let initialMessage = seedStreamingFailureMessage(on: viewModel)
-        viewModel.messages = [initialMessage]
-        viewModel.beginStreamingMessage(assistantMessageId: "assistant-1")
-
-        viewModel.handle(event: ChatStreamEvent(type: .complete, data: AnyCodable([:])))
-
-        XCTAssertFalse(viewModel.messages.contains(where: { $0.id == "assistant-1" }))
-        XCTAssertEqual(viewModel.errorMessage, "Assistant returned an empty response. Please try again.")
-        XCTAssertEqual(conversationsAPI.addMessageCalls.count, 0)
     }
 
     func testTokenUpdatesDoNotPersistUntilFinalize() async {

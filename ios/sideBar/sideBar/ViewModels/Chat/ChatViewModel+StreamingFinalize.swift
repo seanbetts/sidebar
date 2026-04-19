@@ -154,9 +154,7 @@ extension ChatViewModel {
             return .discard
         }
         guard shouldPreserveEmptyAssistantFailure(
-            presentation: presentation,
-            status: status,
-            messageId: messageId
+            status: status
         ) else {
             return .discard
         }
@@ -206,21 +204,9 @@ extension ChatViewModel {
     }
 
     private func shouldPreserveEmptyAssistantFailure(
-        presentation: ChatStreamErrorPresentation,
-        status: MessageStatus,
-        messageId: String
+        status: MessageStatus
     ) -> Bool {
-        if status == .complete || presentation.category == .emptyResponse {
-            return isRetryReplayFinalization(for: messageId)
-        }
-        return status == .error
-    }
-
-    private func isRetryReplayFinalization(for messageId: String) -> Bool {
-        guard retryStateBeforeReplay != nil else {
-            return false
-        }
-        return latestRetrySource?.assistantMessageID == messageId
+        status == .error || status == .complete
     }
 
     private func updateRetryStateAfterFinalize(

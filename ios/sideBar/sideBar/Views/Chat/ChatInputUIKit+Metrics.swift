@@ -3,43 +3,43 @@ import SwiftUI
 import UIKit
 
 extension ChatInputUIKitView {
-    private var resolvedTextSizeOption: AppTextSizeOption {
+    var resolvedTextSizeOption: AppTextSizeOption {
         AppTextSizeOption.resolved(from: appTextSizeRaw)
     }
 
-    private var textInsetTop: CGFloat {
+    var textInsetTop: CGFloat {
         AppFontStyle.scaledMetric(12, for: resolvedTextSizeOption)
     }
 
-    private var textInsetBottom: CGFloat {
+    var textInsetBottom: CGFloat {
         AppFontStyle.scaledMetric(10, for: resolvedTextSizeOption)
     }
 
-    private var textInsetLeading: CGFloat {
+    var textInsetLeading: CGFloat {
         AppFontStyle.scaledMetric(44, for: resolvedTextSizeOption)
     }
 
-    private var textInsetTrailing: CGFloat {
+    var textInsetTrailing: CGFloat {
         AppFontStyle.scaledMetric(48, for: resolvedTextSizeOption)
     }
 
-    private var sideButtonSymbolSize: CGFloat {
+    var sideButtonSymbolSize: CGFloat {
         AppFontStyle.scaledMetric(DesignTokens.Icon.md, for: resolvedTextSizeOption)
     }
 
-    private var sideButtonHorizontalInset: CGFloat {
+    var sideButtonHorizontalInset: CGFloat {
         AppFontStyle.scaledMetric(10, for: resolvedTextSizeOption)
     }
 
-    private var placeholderTopInset: CGFloat {
+    var placeholderTopInset: CGFloat {
         AppFontStyle.scaledMetric(8, for: resolvedTextSizeOption)
     }
 
-    private var usesSystemTextSizeOption: Bool {
+    var usesSystemTextSizeOption: Bool {
         resolvedTextSizeOption == .system
     }
 
-    private func textFont() -> UIFont {
+    func textFont() -> UIFont {
         let option = resolvedTextSizeOption
         switch option {
         case .system:
