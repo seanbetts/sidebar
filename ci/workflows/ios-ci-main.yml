@@ -15,6 +15,8 @@ jobs:
   ios_test_full:
     runs-on: [self-hosted, macOS]
     timeout-minutes: 45
+    env:
+      IOS_SIMULATOR_DEVICE: iPhone 17 Pro
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -40,9 +42,14 @@ jobs:
         run: |
           xcodebuild -project ios/sideBar/sideBar.xcodeproj \
             -scheme sideBarUI \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -destination "platform=iOS Simulator,name=$IOS_SIMULATOR_DEVICE" \
             -resolvePackageDependencies \
             -onlyUsePackageVersionsFromResolvedFile
+      - name: Boot simulator for UI smoke tests
+        run: |
+          xcrun simctl shutdown all || true
+          xcrun simctl boot "$IOS_SIMULATOR_DEVICE" || true
+          xcrun simctl bootstatus "$IOS_SIMULATOR_DEVICE" -b
       - name: Run UI smoke tests
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
@@ -55,16 +62,21 @@ jobs:
             -project ios/sideBar/sideBar.xcodeproj \
             -scheme sideBarUI \
             -testPlan AppleUI \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -destination "platform=iOS Simulator,name=$IOS_SIMULATOR_DEVICE" \
             -parallel-testing-enabled NO \
             -resultBundlePath "${{ runner.temp }}/ios-test-results/main-ui.xcresult"
+      - name: Reset simulator for extension tests
+        run: |
+          xcrun simctl shutdown all || true
+          xcrun simctl boot "$IOS_SIMULATOR_DEVICE" || true
+          xcrun simctl bootstatus "$IOS_SIMULATOR_DEVICE" -b
       - name: Run extension tests
         run: |
           xcodebuild test \
             -project ios/sideBar/sideBar.xcodeproj \
             -scheme sideBarExtensions \
             -testPlan AppleExtensions \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -destination "platform=iOS Simulator,name=$IOS_SIMULATOR_DEVICE" \
             -parallel-testing-enabled NO \
             -resultBundlePath "${{ runner.temp }}/ios-test-results/main-extensions.xcresult"
       - name: Cleanup
