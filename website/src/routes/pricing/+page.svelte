@@ -20,6 +20,7 @@
       name: 'Free',
       monthlyPrice: '£0',
       annualPrice: '£0',
+      subtitle: 'Try it free',
       summary: 'Use the core app features without the assistant.',
       bullets: [
         'Save websites, keep notes, and manage tasks in one place.',
@@ -31,6 +32,7 @@
       name: 'BYOK',
       monthlyPrice: '£5/mo',
       annualPrice: '£50/yr',
+      subtitle: 'Bring your own key',
       summary: 'For people who want model usage billed directly by the provider.',
       bullets: [
         'Use your own Anthropic, OpenAI, or Google key.',
@@ -43,6 +45,7 @@
       status: 'Coming soon',
       monthlyPrice: '£8/mo',
       annualPrice: '£80/yr',
+      subtitle: 'Everyday use',
       summary: 'For regular use once sideBar becomes part of your weekly flow.',
       bullets: [
         'Built for people who use sideBar often.',
@@ -55,6 +58,7 @@
       status: 'Coming soon',
       monthlyPrice: '£15/mo',
       annualPrice: '£150/yr',
+      subtitle: 'Pro use',
       summary: 'For people who rely on sideBar throughout the day.',
       bullets: [
         'Designed for heavier daily workflows.',

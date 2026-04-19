@@ -14,6 +14,10 @@ describe('pricing page', () => {
     expect(screen.getByText('£0')).toBeInTheDocument();
     expect(screen.getByText('£5/mo')).toBeInTheDocument();
     expect(screen.getByText('£15/mo')).toBeInTheDocument();
+    expect(screen.getByText(/^Try it free$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Bring your own key$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Everyday use$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Pro use$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/coming soon/i)).toHaveLength(2);
     expect(screen.getByText(/^Use the core app features without the assistant\.$/i)).toBeInTheDocument();
     expect(screen.queryByText(/the plan is public now/i)).not.toBeInTheDocument();

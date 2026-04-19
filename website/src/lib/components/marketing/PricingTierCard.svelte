@@ -3,11 +3,12 @@
     name: string;
     status?: string;
     price: string;
+    subtitle?: string;
     summary: string;
     bullets: string[];
   };
 
-  let { name, status, price, summary, bullets }: Props = $props();
+  let { name, status, price, subtitle, summary, bullets }: Props = $props();
 </script>
 
 <article class="tier-card">
@@ -18,7 +19,12 @@
         <p class="tier-status">{status}</p>
       {/if}
     </div>
-    <p class="tier-price">{price}</p>
+    <div class="tier-pricing">
+      <p class="tier-price">{price}</p>
+      {#if subtitle}
+        <p class="tier-subtitle">{subtitle}</p>
+      {/if}
+    </div>
   </header>
 
   <p class="tier-summary">{summary}</p>
@@ -46,7 +52,7 @@
 
   .tier-header {
     display: grid;
-    gap: 0.4rem;
+    gap: 0.5rem;
   }
 
   .tier-topline {
@@ -58,9 +64,17 @@
 
   .tier-name,
   .tier-price,
+  .tier-subtitle,
   .tier-summary,
   .tier-status {
     margin: 0;
+  }
+
+  .tier-pricing {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
   }
 
   .tier-name {
@@ -72,6 +86,14 @@
   }
 
   .tier-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 1.6rem;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-secondary);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.12em;
@@ -85,6 +107,15 @@
     font-weight: 700;
     letter-spacing: -0.04em;
     color: var(--color-foreground);
+  }
+
+  .tier-subtitle {
+    font-size: 1.1rem;
+    font-weight: 650;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    color: var(--color-foreground);
+    text-align: right;
   }
 
   .tier-summary {
