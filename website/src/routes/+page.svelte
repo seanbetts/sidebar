@@ -60,7 +60,7 @@
       </div>
 
       <div class="hero-poster">
-        <DeviceShowcase media={hero.media} />
+        <DeviceShowcase media={hero.media} chrome="bare" />
       </div>
     </div>
   </section>
@@ -92,7 +92,7 @@
       </div>
 
       <div class="identity-media">
-        <DeviceShowcase media={identity.media} />
+        <DeviceShowcase media={identity.media} chrome="bare" />
       </div>
     </div>
   </section>
@@ -111,6 +111,8 @@
 
 <style>
   .home {
+    --marketing-device-ipad-width: 40rem;
+    --marketing-device-iphone-width: 20rem;
     padding-bottom: clamp(4rem, 8vw, 6rem);
   }
 
@@ -231,7 +233,6 @@
 
   .hero-poster {
     justify-self: end;
-    width: min(100%, 46rem);
   }
 
   .thesis {
@@ -278,7 +279,9 @@
     margin: 0 auto;
     padding: 0 1.5rem;
     display: grid;
-    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr);
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(18rem, var(--marketing-device-ipad-width));
     gap: clamp(1.75rem, 5vw, 4rem);
     align-items: start;
   }
@@ -306,7 +309,6 @@
 
   .identity-media {
     justify-self: end;
-    width: min(100%, 24rem);
   }
 
   .campaign-close {
@@ -355,11 +357,11 @@
     }
 
     .hero-poster {
-      width: min(100%, 38rem);
+      width: 100%;
     }
 
     .identity-media {
-      width: min(100%, 22rem);
+      width: 100%;
     }
   }
 

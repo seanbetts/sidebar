@@ -18,7 +18,7 @@
   </div>
 
   <div class="proof-media">
-    <DeviceShowcase {media} />
+    <DeviceShowcase {media} chrome={media.kind === 'image' ? 'bare' : 'framed'} />
   </div>
 </section>
 
@@ -29,7 +29,9 @@
     padding: clamp(3.5rem, 8vw, 5.5rem) 1.5rem;
     border-top: 1px solid var(--color-border);
     display: grid;
-    grid-template-columns: minmax(0, 0.78fr) minmax(0, 1fr);
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(18rem, var(--marketing-device-ipad-width, 40rem));
     gap: clamp(1.75rem, 5vw, 4rem);
     align-items: center;
   }

@@ -14,6 +14,7 @@ export const siteCopy = {
       platforms: 'Available on iPhone, iPad, Mac, and web',
       media: {
         kind: 'image',
+        frame: 'ipad',
         src: '/screenshots/overview.png',
         alt: 'sideBar on iPad showing notes, chat, and saved work in one integrated workspace',
         width: 1366,
@@ -59,6 +60,7 @@ export const siteCopy = {
           'Bring an article or reference page into sideBar once, then come back later to ask about it. The page stays available as part of your workspace.',
         media: {
           kind: 'image',
+          frame: 'ipad',
           src: '/screenshots/websites.png',
           alt: 'sideBar saved website workflow showing a page available for later questions',
           width: 1366,
@@ -77,6 +79,7 @@ export const siteCopy = {
         ],
       media: {
         kind: 'image',
+        frame: 'ipad',
         src: '/screenshots/skills-store.png',
         alt: 'sideBar skills store on iPad showing installable skills and product extensibility',
         width: 1366,
