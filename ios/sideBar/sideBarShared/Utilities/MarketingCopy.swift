@@ -6,7 +6,8 @@ import Foundation
 /// Shared product marketing copy used across Apple surfaces.
 public enum MarketingCopy {
     public static let tagline = "Your work. Your assistant. One place."
-    public static let subtitle = "sideBar brings your notes, tasks, saved websites, files, and assistant together in one calm place."
+    public static let subtitle =
+        "sideBar keeps your notes, tasks, saved articles, and files together so it starts with context instead of a blank chat box."
     public static let description =
         "An AI-native productivity app where your notes, tasks, saved websites, files, and assistant live together."
 }

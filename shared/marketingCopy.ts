@@ -3,6 +3,6 @@
 
 export const MARKETING_COPY = {
 	tagline: 'Your work. Your assistant. One place.',
-	subtitle: 'sideBar brings your notes, tasks, saved websites, files, and assistant together in one calm place.',
+	subtitle: 'sideBar keeps your notes, tasks, saved articles, and files together so it starts with context instead of a blank chat box.',
 	description: 'An AI-native productivity app where your notes, tasks, saved websites, files, and assistant live together.'
 } as const;
