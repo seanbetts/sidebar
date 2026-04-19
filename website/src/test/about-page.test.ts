@@ -8,5 +8,6 @@ describe('about page', () => {
     expect(screen.getByRole('heading', { name: /about sidebar/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /why i built sidebar/i })).toBeInTheDocument();
     expect(screen.getByText(/copy-paste loop/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /ai-native productivity/i })).toBeInTheDocument();
   });
 });

@@ -1,12 +1,14 @@
 import { render, screen } from '@testing-library/svelte';
-import Nav from '../lib/components/Nav.svelte';
+import PricingPage from '../routes/pricing/+page.svelte';
 
-describe('pricing surface', () => {
-  it('keeps the navigation ready for the planned pricing route', () => {
-    render(Nav);
+describe('pricing page', () => {
+  it('keeps the planned pricing tiers contract visible for later implementation', () => {
+    render(PricingPage);
 
-    expect(screen.getByRole('link', { name: /about/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /docs/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /pricing/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /pricing/i })).toBeInTheDocument();
+    expect(screen.getByText(/^free$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^plus$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^pro$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^byok$/i)).toBeInTheDocument();
   });
 });
