@@ -32,6 +32,7 @@ export const siteCopy = {
     proofs: [
       {
         heading: 'Notes with a helping hand.',
+        reverse: true,
         body:
           'Write in the same place you ask for help. sideBar can stay close to the note on screen, so drafting and refinement do not split into separate tools.',
         media: {
@@ -44,6 +45,7 @@ export const siteCopy = {
       },
       {
         heading: 'Tasks, planned together.',
+        reverse: false,
         body:
           'Plan with the assistant, then keep moving in the actual task list. The conversation and the plan belong to the same flow instead of two disconnected apps.',
         media: {
@@ -56,6 +58,7 @@ export const siteCopy = {
       },
       {
         heading: 'Save a page, ask about it later.',
+        reverse: true,
         body:
           'Bring an article or reference page into sideBar once, then come back later to ask about it. The page stays available as part of your workspace.',
         media: {

@@ -6,10 +6,7 @@
     <p class="registered">
       Registered in England and Wales, company number 17137829. Registered office: 66 Paul Street, London, EC2A 4NA.
     </p>
-    <nav class="footer-links" aria-label="Footer navigation">
-      <a href="/about">About</a>
-      <a href="/pricing">Pricing</a>
-      <a href="https://docs.trysidebar.ai">Docs</a>
+    <nav class="footer-links" aria-label="Footer legal and support links">
       <a href="/privacy">Privacy Policy</a>
       <a href="/terms">Terms of Service</a>
       <a href="/eula">EULA</a>
@@ -21,7 +18,6 @@
 <style>
   .footer {
     border-top: 1px solid var(--color-border);
-    background: var(--surface);
     padding: 2.5rem 1.5rem;
     margin-top: 6rem;
   }

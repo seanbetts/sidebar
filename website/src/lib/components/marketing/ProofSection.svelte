@@ -9,9 +9,10 @@
   };
 
   let { heading, body, media, reverse = false }: Props = $props();
+  let frame = $derived(media.frame ?? 'ipad');
 </script>
 
-<section class:reverse={reverse} class="proof-section">
+<section class:reverse={reverse} class:proof-section--iphone={frame === 'iphone'} class="proof-section">
   <div class="proof-copy">
     <h2>{heading}</h2>
     <p>{body}</p>
@@ -24,22 +25,37 @@
 
 <style>
   .proof-section {
-    max-width: 78rem;
+    --proof-media-width: var(--marketing-device-ipad-width, 40rem);
+    max-width: var(--marketing-page-width, 78rem);
     margin: 0 auto;
-    padding: clamp(3.5rem, 8vw, 5.5rem) 1.5rem;
-    border-top: 1px solid var(--color-border);
+    padding: clamp(3.5rem, 8vw, 5.5rem) var(--marketing-page-gutter, 1.5rem);
     display: grid;
     grid-template-columns:
       minmax(0, 1fr)
-      minmax(18rem, var(--marketing-device-ipad-width, 40rem));
+      minmax(16rem, var(--proof-media-width));
     gap: clamp(1.75rem, 5vw, 4rem);
     align-items: center;
+    position: relative;
+  }
+
+  .proof-section--iphone {
+    --proof-media-width: var(--marketing-device-iphone-width, 20rem);
+  }
+
+  .proof-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 100vw;
+    border-top: 1px solid var(--color-border);
+    transform: translateX(-50%);
   }
 
   .proof-copy {
     display: grid;
-    gap: 1rem;
-    max-width: 28rem;
+    gap: 1.125rem;
+    max-width: var(--marketing-home-copy-max, 31rem);
   }
 
   .proof-copy h2,
@@ -48,15 +64,16 @@
   }
 
   .proof-copy h2 {
-    font-size: clamp(2.25rem, 5vw, 4rem);
-    line-height: 0.96;
-    letter-spacing: -0.055em;
+    font-size: var(--marketing-home-heading-size, clamp(2.4rem, 4vw + 1.4rem, 3.85rem));
+    line-height: var(--marketing-home-heading-leading, 0.98);
+    letter-spacing: -0.05em;
     color: var(--color-foreground);
+    text-wrap: balance;
   }
 
   .proof-copy p {
-    font-size: 1rem;
-    line-height: 1.75;
+    font-size: var(--marketing-home-body-size, clamp(1.02rem, 1vw + 0.82rem, 1.125rem));
+    line-height: var(--marketing-home-body-leading, 1.68);
     color: var(--color-muted-foreground);
   }
 

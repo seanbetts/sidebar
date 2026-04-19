@@ -73,8 +73,8 @@
   </section>
 
   <section class="proofs" aria-label="Workflow proof sequence">
-    {#each proofs as proof, index (proof.heading)}
-      <ProofSection {...proof} reverse={index % 2 === 1} />
+    {#each proofs as proof (proof.heading)}
+      <ProofSection {...proof} />
     {/each}
   </section>
 
@@ -111,8 +111,18 @@
 
 <style>
   .home {
+    --marketing-page-width: 78rem;
+    --marketing-page-gutter: 1.5rem;
     --marketing-device-ipad-width: 40rem;
     --marketing-device-iphone-width: 20rem;
+    --marketing-home-meta-size: 0.9375rem;
+    --marketing-home-body-size: clamp(1.02rem, 1vw + 0.82rem, 1.125rem);
+    --marketing-home-heading-size: clamp(2.4rem, 4vw + 1.4rem, 3.85rem);
+    --marketing-home-display-size: clamp(3.35rem, 7vw, 5.2rem);
+    --marketing-home-body-leading: 1.68;
+    --marketing-home-heading-leading: 0.98;
+    --marketing-home-display-leading: 0.94;
+    --marketing-home-copy-max: 31rem;
     padding-bottom: clamp(4rem, 8vw, 6rem);
   }
 
@@ -122,9 +132,9 @@
   }
 
   .hero-inner {
-    max-width: 78rem;
+    max-width: var(--marketing-page-width);
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 0 var(--marketing-page-gutter);
     display: grid;
     grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
     gap: clamp(2rem, 5vw, 4rem);
@@ -133,8 +143,8 @@
 
   .hero-copy {
     display: grid;
-    gap: 1rem;
-    max-width: 30rem;
+    gap: 1.125rem;
+    max-width: var(--marketing-home-copy-max);
   }
 
   .eyebrow,
@@ -148,9 +158,9 @@
   }
 
   .eyebrow {
-    font-size: 0.78rem;
+    font-size: var(--marketing-home-meta-size);
     font-weight: 600;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
   }
 
@@ -163,20 +173,21 @@
   }
 
   .hero-title {
-    font-size: clamp(3rem, 8vw, 5.75rem);
-    line-height: 0.92;
-    letter-spacing: -0.065em;
+    font-size: var(--marketing-home-display-size);
+    line-height: var(--marketing-home-display-leading);
+    letter-spacing: -0.06em;
     text-wrap: balance;
+    max-width: 11ch;
   }
 
   .hero-subhead {
-    font-size: clamp(1rem, 2vw, 1.18rem);
-    line-height: 1.75;
-    max-width: 31rem;
+    font-size: var(--marketing-home-body-size);
+    line-height: var(--marketing-home-body-leading);
+    max-width: var(--marketing-home-copy-max);
   }
 
   .hero-platforms {
-    font-size: 0.9rem;
+    font-size: var(--marketing-home-meta-size);
   }
 
   .cta-row {
@@ -237,22 +248,34 @@
 
   .thesis {
     padding: clamp(4rem, 8vw, 6rem) 0;
+    position: relative;
+  }
+
+  .identity::before,
+  .campaign-close::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 100vw;
+    border-top: 1px solid var(--color-border);
+    transform: translateX(-50%);
   }
 
   .thesis-inner {
     max-width: 58rem;
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 0 var(--marketing-page-gutter);
     display: grid;
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
 
   .thesis-heading,
   .identity-copy h2,
   .close-inner h2 {
-    font-size: clamp(2.35rem, 6vw, 4.4rem);
-    line-height: 0.95;
-    letter-spacing: -0.06em;
+    font-size: var(--marketing-home-heading-size);
+    line-height: var(--marketing-home-heading-leading);
+    letter-spacing: -0.05em;
     text-wrap: balance;
   }
 
@@ -264,20 +287,19 @@
   .identity-copy p,
   .close-inner p {
     max-width: 45rem;
-    font-size: clamp(1.04rem, 2vw, 1.28rem);
-    line-height: 1.8;
+    font-size: var(--marketing-home-body-size);
+    line-height: var(--marketing-home-body-leading);
   }
 
   .identity {
     padding: clamp(3.5rem, 8vw, 5.5rem) 0;
-    border-top: 1px solid var(--color-border);
-    background: var(--surface);
+    position: relative;
   }
 
   .identity-inner {
-    max-width: 78rem;
+    max-width: var(--marketing-page-width);
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 0 var(--marketing-page-gutter);
     display: grid;
     grid-template-columns:
       minmax(0, 1fr)
@@ -288,23 +310,24 @@
 
   .identity-copy {
     display: grid;
-    gap: 1rem;
-    max-width: 31rem;
+    gap: 1.125rem;
+    max-width: var(--marketing-home-copy-max);
   }
 
   .identity-points {
-    margin: 0.5rem 0 0;
+    margin: 0.375rem 0 0;
     padding: 0;
     list-style: none;
     display: grid;
-    gap: 0.85rem;
+    gap: 0.75rem;
   }
 
   .identity-points li {
-    padding-top: 0.85rem;
+    padding-top: 0.75rem;
     border-top: 1px solid var(--color-border);
     color: var(--color-muted-foreground);
-    line-height: 1.7;
+    font-size: var(--marketing-home-body-size);
+    line-height: 1.62;
   }
 
   .identity-media {
@@ -313,13 +336,13 @@
 
   .campaign-close {
     padding: clamp(4rem, 8vw, 6rem) 0 0;
-    border-top: 1px solid var(--color-border);
+    position: relative;
   }
 
   .close-inner {
     max-width: 60rem;
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 0 var(--marketing-page-gutter);
     display: grid;
     gap: 1.25rem;
     text-align: center;
@@ -374,13 +397,13 @@
     }
 
     .hero-title {
-      font-size: clamp(2.65rem, 15vw, 4.2rem);
+      font-size: clamp(2.8rem, 14vw, 4rem);
     }
 
     .thesis-heading,
     .identity-copy h2,
     .close-inner h2 {
-      font-size: clamp(2.2rem, 12vw, 3.25rem);
+      font-size: clamp(2.15rem, 10vw, 3rem);
     }
 
     .cta-row {

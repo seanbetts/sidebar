@@ -12,7 +12,7 @@ describe('website typography', () => {
   it('keeps the site on a San Francisco-compatible system stack without hosted fonts', () => {
     const css = readFileSync(`${import.meta.dirname}/../app.css`, 'utf8');
 
-    expect(css).toMatch(/font-family:\s*-apple-system,\s*BlinkMacSystemFont,\s*system-ui/i);
+    expect(css).toMatch(/font-family:\s*'SF Pro Text',\s*'SF Pro Display',\s*-apple-system/i);
     expect(css).not.toMatch(/@font-face/i);
   });
 });
