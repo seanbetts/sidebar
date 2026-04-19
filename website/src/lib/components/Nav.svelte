@@ -29,6 +29,7 @@
     </a>
 
     <div class="links">
+      <a href="/">Home</a>
       <a href="/about">About</a>
       <a href="/pricing">Pricing</a>
       <a href="https://docs.trysidebar.ai">Docs</a>
@@ -93,7 +94,7 @@
   .links {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
   }
 
   .links a:not(.cta) {

@@ -4,9 +4,10 @@ import Nav from '../lib/components/Nav.svelte';
 import Footer from '../lib/components/Footer.svelte';
 
 describe('marketing shell', () => {
-  it('shows about, pricing, docs, and the primary CTA in nav', () => {
+  it('shows home, about, pricing, docs, and the primary CTA in nav', () => {
     render(Nav);
 
+    expect(screen.getByRole('link', { name: /^home$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /about/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /pricing/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /docs/i })).toBeInTheDocument();
@@ -16,17 +17,11 @@ describe('marketing shell', () => {
   it('shows the final footer information architecture', () => {
     render(Footer);
 
-    expect(screen.getByRole('link', { name: /about/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /pricing/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /docs/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /privacy policy/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /terms of service/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^eula$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /contact/i })).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /Registered in England and Wales, company number 17137829\. Registered office: 66 Paul Street, London, EC2A 4NA\./i
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Registered in England and Wales, company number 17137829\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Registered office: 66 Paul Street, London, EC2A 4NA\./i)).toBeInTheDocument();
   });
 });
