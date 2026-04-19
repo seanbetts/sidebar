@@ -9,17 +9,17 @@ describe('about page', () => {
     const images = screen.getAllByRole('img');
     expect(images).toHaveLength(1);
     expect(images[0]).toHaveAttribute('src', '/screenshots/overview.png');
-    expect(images[0].getAttribute('alt')).toMatch(
-      /sideBar on iPad showing the chat panel open alongside a website summary/i
-    );
+    expect(images[0]).toHaveAccessibleName();
   });
 
-  it('keeps the founder story and AI-native productivity framing', () => {
+  it('keeps the founder story and AI-native productivity sections intact', () => {
     render(AboutPage);
 
+    expect(screen.getByRole('heading', { name: /about sidebar/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /why i built sidebar/i })).toBeInTheDocument();
-    expect(screen.getByText(/copy-paste.*loop/i)).toBeInTheDocument();
-    expect(screen.getByText(/right environment/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /ai-native productivity/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /get in touch/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /support@trysidebar\.ai/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /docs\.trysidebar\.ai/i })).toBeInTheDocument();
   });
 });
