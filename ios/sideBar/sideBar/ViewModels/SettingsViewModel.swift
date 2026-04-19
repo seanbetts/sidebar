@@ -29,8 +29,11 @@ public final class SettingsViewModel: LoadableViewModel {
     @Published public private(set) var primaryProviderError: String?
     @Published public private(set) var onboardingState: OnboardingState?
     @Published public private(set) var isLoadingOnboarding: Bool = false
+    @Published public private(set) var isInternalDiagnosticsLocallyUnlocked: Bool
     var isRefreshingProviderRecoveryState = false
     var inFlightProfileImageLoad: Task<Data?, Never>?
+    var internalDiagnosticsRevealTapCount: Int = 0
+    var lastInternalDiagnosticsUserId: String?
 
     let settingsAPI: any SettingsProviding
     let skillsAPI: any SkillsProviding
@@ -41,6 +44,7 @@ public final class SettingsViewModel: LoadableViewModel {
     let currentAuthUserIdProvider: () -> String?
     let currentAuthorizedUserIdProvider: (() -> String?)?
     let refreshAuthorizedSession: (() async -> Void)?
+    let userDefaults: UserDefaults
 
     public init(
         settingsAPI: any SettingsProviding,
@@ -51,7 +55,8 @@ public final class SettingsViewModel: LoadableViewModel {
         cache: CacheClient,
         currentAuthUserIdProvider: @escaping () -> String? = { nil },
         currentAuthorizedUserIdProvider: (() -> String?)? = nil,
-        refreshAuthorizedSession: (() async -> Void)? = nil
+        refreshAuthorizedSession: (() async -> Void)? = nil,
+        userDefaults: UserDefaults = .standard
     ) {
         self.settingsAPI = settingsAPI
         self.skillsAPI = skillsAPI
@@ -62,6 +67,10 @@ public final class SettingsViewModel: LoadableViewModel {
         self.currentAuthUserIdProvider = currentAuthUserIdProvider
         self.currentAuthorizedUserIdProvider = currentAuthorizedUserIdProvider
         self.refreshAuthorizedSession = refreshAuthorizedSession
+        self.userDefaults = userDefaults
+        self.isInternalDiagnosticsLocallyUnlocked = userDefaults.bool(
+            forKey: AppStorageKeys.internalDiagnosticsUnlocked
+        )
         super.init()
     }
 
@@ -80,9 +89,9 @@ public final class SettingsViewModel: LoadableViewModel {
         }
         do {
             let (response, _) = try await loader.load(force: force, onRefresh: { [weak self] fresh in
-                self?.settings = fresh
+                self?.applySettingsResponse(fresh)
             })
-            settings = response
+            applySettingsResponse(response)
         } catch {
             setError(error)
         }
@@ -232,12 +241,7 @@ public final class SettingsViewModel: LoadableViewModel {
                     includeDateOfBirth: didChangeDateOfBirth
                 )
             )
-            settings = response
-            cache.set(
-                key: userSettingsCacheKey,
-                value: response,
-                ttlSeconds: CachePolicy.userSettings
-            )
+            applySettingsResponse(response)
             settingsSaveCompletionCount += 1
         } catch {
             profileSaveError = recordSettingsSaveFailure(
@@ -280,12 +284,7 @@ public final class SettingsViewModel: LoadableViewModel {
                     workingRelationship: workingRelationshipUpdate
                 )
             )
-            settings = response
-            cache.set(
-                key: userSettingsCacheKey,
-                value: response,
-                ttlSeconds: CachePolicy.userSettings
-            )
+            applySettingsResponse(response)
             settingsSaveCompletionCount += 1
         } catch {
             systemSaveError = recordSettingsSaveFailure(
@@ -364,7 +363,7 @@ public final class SettingsViewModel: LoadableViewModel {
                 changedFields: ["enabled_skills"]
             )
             let response = try await settingsAPI.updateSettings(update)
-            settings = response
+            applySettingsResponse(response)
             settingsSaveCompletionCount += 1
             await invalidateAndRefreshSkillsState()
         } catch {
@@ -411,9 +410,11 @@ public final class SettingsViewModel: LoadableViewModel {
         primaryProviderError = nil
         onboardingState = nil
         isLoadingOnboarding = false
+        internalDiagnosticsRevealTapCount = 0
     }
 
     func applySettingsResponse(_ response: UserSettings) {
+        synchronizeInternalDiagnosticsSessionScope(with: response)
         settings = response
         cache.set(
             key: userSettingsCacheKey,
@@ -485,7 +486,6 @@ extension SettingsViewModel {
             return false
         }
     }
-
     func settingsErrorMessage(
         for error: Error,
         operation: String,

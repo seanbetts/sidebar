@@ -229,6 +229,24 @@ final class SettingsSectionsTests: XCTestCase {
         XCTAssertFalse(GeneralSettingsView.shouldShowMorningDigestControls)
     }
 
+    func testGeneralSettingsSourceIncludesInternalDiagnosticsRevealAndEntryPoint() throws {
+        let normalized = try generalSettingsSource()
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("handleInternalDiagnosticsRevealGesture()"))
+        XCTAssertTrue(normalized.contains("\"Version\""))
+        XCTAssertTrue(normalized.contains("\"Build\""))
+        XCTAssertTrue(normalized.contains("\"NotificationDiagnostics\""))
+        XCTAssertTrue(normalized.contains("InternalNotificationDiagnosticsView("))
+    }
+
+    func testAppStorageKeysIncludesInternalDiagnosticsUnlockKey() throws {
+        let source = try String(contentsOfFile: "/Users/sean/Coding/sideBar/ios/sideBar/sideBar/Utilities/AppStorageKeys.swift")
+        let normalized = source.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        XCTAssertTrue(normalized.contains("internalDiagnosticsUnlocked=\"sidebar.internalDiagnosticsUnlocked\""))
+    }
+
     func testGeneralNotificationDraftStaysCleanWhenStoredReminderTimeIsUnset() {
         let isDirty = GeneralSettingsView.isTaskReminderDraftDirty(
             taskRemindersEnabled: true,

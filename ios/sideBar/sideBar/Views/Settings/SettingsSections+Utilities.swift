@@ -1,6 +1,29 @@
 import SwiftUI
 import sideBarShared
 
+enum SettingsDiagnosticsAppInfo {
+    static var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+    }
+
+    static var build: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
+    }
+}
+
+enum SettingsDiagnosticsClipboard {
+    static func copy(_ text: String) {
+        #if os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        #else
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = text
+        #endif
+    }
+}
+
 struct MemoriesSettingsView: View {
     @ObservedObject var viewModel: MemoriesViewModel
 

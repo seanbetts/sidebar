@@ -1,8 +1,14 @@
 import Foundation
 import sideBarShared
 
+/// Contract for the internal notification diagnostics API client used by Apple diagnostics flows.
+public protocol InternalDiagnosticsProviding {
+    func getSnapshot() async throws -> InternalNotificationDiagnosticsSnapshot
+    func sendTestPush(installationId: String) async throws -> InternalNotificationTestPushResponse
+}
+
 /// Internal-only client for notification diagnostics endpoints.
-public struct InternalDiagnosticsAPI {
+public struct InternalDiagnosticsAPI: InternalDiagnosticsProviding {
     private let client: APIClient
 
     public init(client: APIClient) {

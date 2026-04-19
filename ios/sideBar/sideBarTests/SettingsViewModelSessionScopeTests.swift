@@ -418,6 +418,58 @@ final class SettingsViewModelSessionScopeTests: XCTestCase {
         XCTAssertNil(viewModel.skillsError)
         XCTAssertNil(viewModel.primaryProviderError)
     }
+
+    func testInternalDiagnosticsRevealResetsWhenAuthenticatedUserChanges() async {
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(result: .failure(SettingsViewModelMockError.forced)),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: TestCacheClient(),
+            userDefaults: defaults
+        )
+        let firstUser = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: [],
+            canAccessInternalDiagnostics: true
+        )
+        let secondUser = UserSettings(
+            userId: "user-2",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: nil,
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: [],
+            canAccessInternalDiagnostics: true
+        )
+
+        viewModel.applySettingsResponse(firstUser)
+        for _ in 0..<SettingsViewModel.internalDiagnosticsRevealTapThreshold {
+            viewModel.handleInternalDiagnosticsRevealGesture()
+        }
+        XCTAssertTrue(viewModel.isInternalDiagnosticsLocallyUnlocked)
+
+        viewModel.applySettingsResponse(secondUser)
+
+        XCTAssertFalse(viewModel.isInternalDiagnosticsLocallyUnlocked)
+        XCTAssertFalse(defaults.bool(forKey: AppStorageKeys.internalDiagnosticsUnlocked))
+    }
 }
 
 @MainActor

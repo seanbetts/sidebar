@@ -104,6 +104,8 @@ struct GeneralSettingsView: View {
                     .appFont(.body)
                     .pickerStyle(settingsMacWeatherPickerStyle())
                 }
+
+                aboutMacSection
             }
             .padding(DesignTokens.Spacing.lg)
         }
@@ -169,6 +171,18 @@ struct GeneralSettingsView: View {
                 }
                 .appFont(.body)
                 .pickerStyle(.segmented)
+            }
+            Section("About") {
+                aboutValueRow(title: "Version", value: SettingsDiagnosticsAppInfo.version)
+                aboutValueRow(title: "Build", value: SettingsDiagnosticsAppInfo.build)
+
+                if environment.settingsViewModel.shouldShowInternalDiagnosticsEntry {
+                    NavigationLink("Notification Diagnostics") {
+                        InternalNotificationDiagnosticsView(
+                            viewModel: makeInternalDiagnosticsViewModel()
+                        )
+                    }
+                }
             }
         }
         .onAppear {
@@ -293,5 +307,52 @@ struct GeneralSettingsView: View {
         guard let url = URL(string: "x-apple.systempreferences:") else { return }
         NSWorkspace.shared.open(url)
         #endif
+    }
+
+    @ViewBuilder
+    private var aboutMacSection: some View {
+        SettingsMacPanelCard {
+            SettingsMacSectionIntro(
+                title: "About",
+                message: "Version details and internal notification diagnostics access."
+            )
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                aboutValueRow(title: "Version", value: SettingsDiagnosticsAppInfo.version)
+                aboutValueRow(title: "Build", value: SettingsDiagnosticsAppInfo.build)
+
+                if environment.settingsViewModel.shouldShowInternalDiagnosticsEntry {
+                    NavigationLink("Notification Diagnostics") {
+                        InternalNotificationDiagnosticsView(
+                            viewModel: makeInternalDiagnosticsViewModel()
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func aboutValueRow(title: String, value: String) -> some View {
+        Button {
+            environment.settingsViewModel.handleInternalDiagnosticsRevealGesture()
+        } label: {
+            LabeledContent(title, value: value)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func makeInternalDiagnosticsViewModel() -> InternalNotificationDiagnosticsViewModel {
+        InternalNotificationDiagnosticsViewModel(
+            diagnosticsAPI: environment.container.internalDiagnosticsAPI,
+            localStateProvider: { [weak environment] in
+                environment?.pushDiagnosticsState ?? PushLifecycleDiagnosticsState()
+            },
+            reregisterCurrentDevice: { [weak environment] in
+                await MainActor.run {
+                    environment?.registerDeviceTokenIfNeeded()
+                }
+            }
+        )
     }
 }

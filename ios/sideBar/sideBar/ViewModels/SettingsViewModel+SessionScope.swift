@@ -42,6 +42,22 @@ extension SettingsViewModel {
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    func synchronizeInternalDiagnosticsSessionScope(with response: UserSettings) {
+        let nextUserId = normalizeUserId(response.userId)
+        defer { lastInternalDiagnosticsUserId = nextUserId }
+
+        guard let lastInternalDiagnosticsUserId else {
+            return
+        }
+
+        guard lastInternalDiagnosticsUserId != nextUserId else {
+            return
+        }
+
+        internalDiagnosticsRevealTapCount = 0
+        setInternalDiagnosticsLocallyUnlocked(false)
+    }
+
     func isBound(settings: UserSettings, to expectedUserId: String?) -> Bool {
         guard let expectedUserId else {
             // Allow non-auth-scoped callers (tests/previews) that do not inject a user id provider.
