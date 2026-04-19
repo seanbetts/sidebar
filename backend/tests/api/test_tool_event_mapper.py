@@ -17,13 +17,19 @@ def test_tool_side_effect_events_maps_create_note_with_workspace_opening() -> No
 
     assert events == [
         {
-            "type": "note_created",
+            "type": "entity_changed",
             "data": {
-                "id": "note-1",
-                "title": "Test",
-                "folder": "",
-                "path": "note-1",
-                "open_in_workspace": True,
+                "entity_type": "note",
+                "entity_id": "note-1",
+                "change": "created",
+                "patch": {
+                    "id": "note-1",
+                    "title": "Test",
+                    "folder": "",
+                    "path": "note-1",
+                    "open_in_workspace": True,
+                },
+                "invalidate": ["notes", "note:note-1"],
             },
         }
     ]
@@ -59,7 +65,10 @@ def test_tool_side_effect_events_emits_workspace_patch_events_from_array() -> No
             "data": {
                 "workspace_patches": [
                     {"version": 1, "operations": [{"op": "swap_panes"}]},
-                    {"version": 1, "operations": [{"op": "close_pane", "pane": "secondary"}]},
+                    {
+                        "version": 1,
+                        "operations": [{"op": "close_pane", "pane": "secondary"}],
+                    },
                 ]
             },
         },
@@ -141,7 +150,33 @@ def test_tool_side_effect_events_maps_prompt_preview_workspace_actions() -> None
     ]
 
 
-def test_tool_side_effect_events_maps_conversation_title_updated() -> None:
+def test_tool_side_effect_events_maps_rename_website() -> None:
+    events = tool_side_effect_events(
+        "Rename Website",
+        {
+            "success": True,
+            "data": {
+                "id": "website-1",
+                "title": "Renamed website",
+            },
+        },
+    )
+
+    assert events == [
+        {
+            "type": "entity_changed",
+            "data": {
+                "entity_type": "website",
+                "entity_id": "website-1",
+                "change": "renamed",
+                "patch": {"title": "Renamed website"},
+                "invalidate": ["websites", "website:website-1"],
+            },
+        }
+    ]
+
+
+def test_tool_side_effect_events_maps_rename_conversation() -> None:
     events = tool_side_effect_events(
         "Rename Conversation",
         {
@@ -157,66 +192,67 @@ def test_tool_side_effect_events_maps_conversation_title_updated() -> None:
 
     assert events == [
         {
-            "type": "conversation_title_updated",
+            "type": "entity_changed",
             "data": {
-                "id": "conv-1",
-                "title": "Renamed",
-                "titleGenerated": False,
-                "updatedAt": "2026-03-28T12:00:00Z",
+                "entity_type": "conversation",
+                "entity_id": "conv-1",
+                "change": "renamed",
+                "patch": {
+                    "title": "Renamed",
+                    "titleGenerated": False,
+                    "updatedAt": "2026-03-28T12:00:00Z",
+                },
+                "invalidate": ["conversations", "conversation:conv-1"],
             },
         }
     ]
 
 
-def test_tool_side_effect_events_maps_edit_note_snapshot() -> None:
+def test_tool_side_effect_events_maps_profile_settings_update() -> None:
     events = tool_side_effect_events(
-        "Edit Note",
+        "Update Profile and User Settings",
         {
             "success": True,
             "data": {
-                "id": "note-1",
-                "title": "Renamed",
-                "name": "Renamed",
-                "path": "note-1",
-                "content": "Renamed\nBody",
-                "updated_at": "2026-03-30T15:10:00Z",
+                "settings": {
+                    "name": "Sean",
+                    "job_title": "Engineer",
+                    "location": "Austin, TX",
+                }
             },
         },
     )
 
     assert events == [
         {
-            "type": "note_updated",
+            "type": "collection_invalidated",
             "data": {
-                "id": "note-1",
-                "title": "Renamed",
-                "name": "Renamed",
-                "path": "note-1",
-                "content": "Renamed\nBody",
-                "updated_at": "2026-03-30T15:10:00Z",
+                "targets": ["profile", "preferences"],
             },
         }
     ]
 
 
-def test_tool_side_effect_events_maps_rename_website() -> None:
+def test_tool_side_effect_events_maps_assistant_identity_update() -> None:
     events = tool_side_effect_events(
-        "Rename Website",
+        "Update Assistant Identity",
         {
             "success": True,
             "data": {
-                "id": "website-1",
-                "title": "Renamed website",
+                "assistant_identity": {"name": "Navigator"},
+                "assistant_identity_meta": {
+                    "updated_at": "2026-02-18T00:00:00Z",
+                    "version": 2,
+                },
             },
         },
     )
 
     assert events == [
         {
-            "type": "website_renamed",
+            "type": "collection_invalidated",
             "data": {
-                "id": "website-1",
-                "title": "Renamed website",
+                "targets": ["assistant_settings"],
             },
         }
     ]

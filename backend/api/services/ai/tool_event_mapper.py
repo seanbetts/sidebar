@@ -5,7 +5,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from api.services.ai.chat_stream_custom_events import build_custom_chat_stream_event
+from api.services.ai.chat_stream_sync_events import (
+    build_collection_invalidated,
+    build_entity_changed,
+    build_entity_deleted,
+    build_prompt_preview,
+    build_workspace_patch,
+)
+from api.services.ai.tool_result_normalizer import normalize_tool_result
 
 
 def workspace_patch_stream_events(result_data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -23,45 +30,47 @@ def workspace_patch_stream_events(result_data: dict[str, Any]) -> list[dict[str,
     for candidate in candidates:
         if not isinstance(candidate, dict):
             continue
-        version = candidate.get("version")
-        if not isinstance(version, int) or isinstance(version, bool):
+        try:
+            events.append(build_workspace_patch(candidate))
+        except ValueError:
             continue
-        if not isinstance(candidate.get("operations"), list):
-            continue
-        events.append(build_custom_chat_stream_event("workspace_patch", candidate))
     return events
 
 
 def assistant_settings_stream_event(
     display_name: str, result_data: dict[str, Any]
 ) -> dict[str, Any] | None:
-    """Map assistant settings tool results to realtime stream events."""
+    """Map assistant/settings tools to collection invalidation events."""
     if display_name in {"Update Assistant Identity", "Reset Assistant Identity"}:
-        return build_custom_chat_stream_event(
-            "assistant_identity_updated",
-            {
-                "assistant_identity": result_data.get("assistant_identity"),
-                "assistant_identity_meta": result_data.get("assistant_identity_meta"),
-            },
-        )
+        return build_collection_invalidated(targets=["assistant_settings"])
     if display_name in {"Update Assistant Soul", "Reset Assistant Soul"}:
-        return build_custom_chat_stream_event(
-            "assistant_soul_updated",
-            {
-                "assistant_soul": result_data.get("assistant_soul"),
-                "assistant_soul_meta": result_data.get("assistant_soul_meta"),
-            },
-        )
+        return build_collection_invalidated(targets=["assistant_settings"])
     if display_name in {
         "Update Profile and User Settings",
         "Upload Profile Image",
         "Remove Profile Image",
     }:
-        settings_payload = result_data.get("settings")
-        data = settings_payload if isinstance(settings_payload, dict) else result_data
-        return build_custom_chat_stream_event("profile_user_settings_updated", data)
+        return build_collection_invalidated(targets=["profile", "preferences"])
     if display_name == "Set Other Preferences":
-        return build_custom_chat_stream_event("other_preferences_updated", result_data)
+        return build_collection_invalidated(targets=["preferences"])
+    if display_name == "Set UI Theme":
+        return build_collection_invalidated(targets=["preferences"])
+    if display_name == "Memory Tool":
+        command = str(result_data.get("command") or "").strip()
+        if command in {"create", "delete", "str_replace", "insert", "rename"}:
+            return build_collection_invalidated(targets=["memory"])
+        return None
+    if display_name in {"Update Scratchpad", "Clear Scratchpad"}:
+        return build_collection_invalidated(targets=["scratchpad"])
+    if display_name in {"Write File", "Download YouTube"}:
+        return build_collection_invalidated(targets=["ingestion"])
+    if display_name in {
+        "Create Note Folder",
+        "Rename Note Folder",
+        "Move Note Folder",
+        "Delete Note Folder",
+    }:
+        return build_collection_invalidated(targets=["notes"])
     return None
 
 
@@ -77,157 +86,212 @@ def tool_result_content(display_name: str, result: dict[str, Any]) -> str:
     return content_value
 
 
+def _note_entity_changed(
+    display_name: str, result_data: dict[str, Any]
+) -> dict[str, Any] | None:
+    entity_id = str(result_data.get("id") or result_data.get("note_id") or "").strip()
+    if not entity_id:
+        return None
+    invalidate = ["notes", f"note:{entity_id}"]
+    if display_name == "Create Note":
+        patch = {
+            "id": entity_id,
+            "title": result_data.get("title"),
+            "folder": result_data.get("folder"),
+            "path": result_data.get("path"),
+            "open_in_workspace": True,
+        }
+        return build_entity_changed(
+            entity_type="note",
+            entity_id=entity_id,
+            change="created",
+            patch=patch,
+            invalidate=invalidate,
+        )
+    if display_name == "Edit Note":
+        patch = {
+            "id": entity_id,
+            "title": result_data.get("title"),
+            "name": result_data.get("name"),
+            "path": result_data.get("path"),
+            "content": result_data.get("content"),
+            "updated_at": result_data.get("updated_at"),
+        }
+        return build_entity_changed(
+            entity_type="note",
+            entity_id=entity_id,
+            change="updated",
+            patch=patch,
+            invalidate=invalidate,
+        )
+    if display_name == "Pin Note":
+        pinned = bool(result_data.get("pinned"))
+        return build_entity_changed(
+            entity_type="note",
+            entity_id=entity_id,
+            change="pinned" if pinned else "unpinned",
+            patch={"id": entity_id, "pinned": pinned},
+            invalidate=invalidate,
+        )
+    if display_name == "Move Note":
+        return build_entity_changed(
+            entity_type="note",
+            entity_id=entity_id,
+            change="moved",
+            patch={"id": entity_id, "folder": result_data.get("folder")},
+            invalidate=invalidate,
+        )
+    if display_name == "Archive Note":
+        archived = bool(result_data.get("archived"))
+        return build_entity_changed(
+            entity_type="note",
+            entity_id=entity_id,
+            change="archived" if archived else "unarchived",
+            patch={"id": entity_id, "archived": archived},
+            invalidate=invalidate,
+        )
+    return None
+
+
+def _website_entity_changed(
+    display_name: str, result_data: dict[str, Any]
+) -> dict[str, Any] | None:
+    entity_id = str(
+        result_data.get("id") or result_data.get("website_id") or ""
+    ).strip()
+    if not entity_id:
+        return None
+    invalidate = ["websites", f"website:{entity_id}"]
+    if display_name in {"Save Website", "Add Website"}:
+        return build_entity_changed(
+            entity_type="website",
+            entity_id=entity_id,
+            change="created",
+            patch={
+                "id": entity_id,
+                "title": result_data.get("title"),
+                "url": result_data.get("url"),
+            },
+            invalidate=invalidate,
+        )
+    if display_name == "Rename Website":
+        return build_entity_changed(
+            entity_type="website",
+            entity_id=entity_id,
+            change="renamed",
+            patch={"title": result_data.get("title")},
+            invalidate=invalidate,
+        )
+    if display_name == "Pin Website":
+        pinned = bool(result_data.get("pinned"))
+        return build_entity_changed(
+            entity_type="website",
+            entity_id=entity_id,
+            change="pinned" if pinned else "unpinned",
+            patch={"id": entity_id, "pinned": pinned},
+            invalidate=invalidate,
+        )
+    if display_name == "Archive Website":
+        archived = bool(result_data.get("archived"))
+        return build_entity_changed(
+            entity_type="website",
+            entity_id=entity_id,
+            change="archived" if archived else "unarchived",
+            patch={"id": entity_id, "archived": archived},
+            invalidate=invalidate,
+        )
+    return None
+
+
+def _conversation_entity_changed(
+    display_name: str, result_data: dict[str, Any]
+) -> dict[str, Any] | None:
+    if display_name != "Rename Conversation":
+        return None
+    entity_id = str(
+        result_data.get("id") or result_data.get("conversation_id") or ""
+    ).strip()
+    if not entity_id:
+        return None
+    return build_entity_changed(
+        entity_type="conversation",
+        entity_id=entity_id,
+        change="renamed",
+        patch={
+            "title": result_data.get("title"),
+            "titleGenerated": result_data.get("titleGenerated"),
+            "updatedAt": result_data.get("updatedAt"),
+        },
+        invalidate=["conversations", f"conversation:{entity_id}"],
+    )
+
+
+def _note_delete_event(
+    display_name: str, result_data: dict[str, Any]
+) -> dict[str, Any] | None:
+    if display_name != "Delete Note":
+        return None
+    entity_id = str(result_data.get("id") or result_data.get("note_id") or "").strip()
+    if not entity_id:
+        return None
+    return build_entity_deleted(
+        entity_type="note",
+        entity_id=entity_id,
+        invalidate=["notes", f"note:{entity_id}"],
+    )
+
+
+def _website_delete_event(
+    display_name: str, result_data: dict[str, Any]
+) -> dict[str, Any] | None:
+    if display_name != "Delete Website":
+        return None
+    entity_id = str(
+        result_data.get("id") or result_data.get("website_id") or ""
+    ).strip()
+    if not entity_id:
+        return None
+    return build_entity_deleted(
+        entity_type="website",
+        entity_id=entity_id,
+        invalidate=["websites", f"website:{entity_id}"],
+    )
+
+
 def tool_side_effect_events(
     display_name: str, result: dict[str, Any]
 ) -> list[dict[str, Any]]:
     """Build side-effect stream events derived from successful tool results."""
-    if not result.get("success"):
+    normalized = normalize_tool_result(display_name, result)
+    if not normalized.get("success"):
         return []
 
-    result_data = result.get("data") or {}
+    result_data = normalized.get("data") or {}
     events: list[dict[str, Any]] = []
 
-    if display_name == "Create Note":
+    note_delete_event = _note_delete_event(display_name, result_data)
+    if note_delete_event is not None:
+        events.append(note_delete_event)
+    else:
+        note_event = _note_entity_changed(display_name, result_data)
+        if note_event is not None:
+            events.append(note_event)
+
+    website_delete_event = _website_delete_event(display_name, result_data)
+    if website_delete_event is not None:
+        events.append(website_delete_event)
+    else:
+        website_event = _website_entity_changed(display_name, result_data)
+        if website_event is not None:
+            events.append(website_event)
+
+    conversation_event = _conversation_entity_changed(display_name, result_data)
+    if conversation_event is not None:
+        events.append(conversation_event)
+
+    if display_name == "Generate Prompts":
         events.append(
-            build_custom_chat_stream_event(
-                "note_created",
-                {
-                    "id": result_data.get("id"),
-                    "title": result_data.get("title"),
-                    "folder": result_data.get("folder"),
-                    "path": result_data.get("path"),
-                    "open_in_workspace": True,
-                },
-            )
-        )
-    elif display_name == "Edit Note":
-        events.append(
-            build_custom_chat_stream_event(
-                "note_updated",
-                {
-                    "id": result_data.get("id"),
-                    "title": result_data.get("title"),
-                    "name": result_data.get("name"),
-                    "path": result_data.get("path"),
-                    "content": result_data.get("content"),
-                    "updated_at": result_data.get("updated_at"),
-                },
-            )
-        )
-    elif display_name == "Pin Note":
-        events.append(
-            build_custom_chat_stream_event(
-                "note_pinned",
-                {
-                    "id": result_data.get("id"),
-                    "pinned": result_data.get("pinned"),
-                },
-            )
-        )
-    elif display_name == "Move Note":
-        events.append(
-            build_custom_chat_stream_event(
-                "note_moved",
-                {
-                    "id": result_data.get("id"),
-                    "folder": result_data.get("folder"),
-                },
-            )
-        )
-    elif display_name in {"Transcribe Audio", "Transcribe YouTube"}:
-        note_data = result_data.get("note") or {}
-        if note_data.get("id"):
-            events.append(
-                build_custom_chat_stream_event(
-                    "note_created",
-                    {
-                        "id": note_data.get("id"),
-                        "title": note_data.get("title"),
-                        "folder": note_data.get("folder"),
-                    },
-                )
-            )
-    elif display_name in {"Save Website", "Add Website"}:
-        events.append(
-            build_custom_chat_stream_event(
-                "website_saved",
-                {
-                    "id": result_data.get("id"),
-                    "title": result_data.get("title"),
-                    "url": result_data.get("url"),
-                },
-            )
-        )
-    elif display_name == "Rename Website":
-        events.append(
-            build_custom_chat_stream_event(
-                "website_renamed",
-                {
-                    "id": result_data.get("id"),
-                    "title": result_data.get("title"),
-                },
-            )
-        )
-    elif display_name == "Pin Website":
-        events.append(
-            build_custom_chat_stream_event(
-                "website_pinned",
-                {
-                    "id": result_data.get("id"),
-                    "pinned": result_data.get("pinned"),
-                },
-            )
-        )
-    elif display_name == "Archive Website":
-        events.append(
-            build_custom_chat_stream_event(
-                "website_archived",
-                {
-                    "id": result_data.get("id"),
-                    "archived": result_data.get("archived"),
-                },
-            )
-        )
-    elif display_name == "Delete Note":
-        events.append(
-            build_custom_chat_stream_event(
-                "note_deleted", {"id": result_data.get("id")}
-            )
-        )
-    elif display_name == "Delete Website":
-        events.append(
-            build_custom_chat_stream_event(
-                "website_deleted", {"id": result_data.get("id")}
-            )
-        )
-    elif display_name in {"Write File", "Download YouTube"}:
-        events.append(
-            build_custom_chat_stream_event(
-                "ingestion_updated", {"file_id": result_data.get("file_id")}
-            )
-        )
-    elif display_name == "Set UI Theme":
-        events.append(
-            build_custom_chat_stream_event(
-                "ui_theme_set", {"theme": result_data.get("theme")}
-            )
-        )
-    elif display_name == "Update Scratchpad":
-        events.append(
-            build_custom_chat_stream_event(
-                "scratchpad_updated", {"id": result_data.get("id")}
-            )
-        )
-    elif display_name == "Clear Scratchpad":
-        events.append(
-            build_custom_chat_stream_event(
-                "scratchpad_cleared", {"id": result_data.get("id")}
-            )
-        )
-    elif display_name == "Generate Prompts":
-        events.append(
-            build_custom_chat_stream_event(
-                "prompt_preview",
+            build_prompt_preview(
                 {
                     "system_prompt": result_data.get("system_prompt"),
                     "first_message_prompt": result_data.get("first_message_prompt"),
@@ -240,39 +304,21 @@ def tool_side_effect_events(
                     "workspace_context_menu_actions": result_data.get(
                         "workspace_context_menu_actions"
                     ),
-                },
+                }
             )
         )
-    elif display_name == "Rename Conversation":
-        events.append(
-            build_custom_chat_stream_event(
-                "conversation_title_updated",
-                {
-                    "id": result_data.get("id"),
-                    "title": result_data.get("title"),
-                    "titleGenerated": result_data.get("titleGenerated"),
-                    "updatedAt": result_data.get("updatedAt"),
-                },
-            )
-        )
-    elif display_name == "Memory Tool":
-        command = result_data.get("command")
-        if command == "create":
-            event_type = "memory_created"
-        elif command == "delete":
-            event_type = "memory_deleted"
-        elif command in {"str_replace", "insert", "rename"}:
-            event_type = "memory_updated"
-        else:
-            event_type = None
-        if event_type:
-            events.append(
-                build_custom_chat_stream_event(event_type, {"result": result_data})
-            )
 
     events.extend(workspace_patch_stream_events(result_data))
 
     assistant_event = assistant_settings_stream_event(display_name, result_data)
-    if assistant_event:
+    if assistant_event is not None:
         events.append(assistant_event)
     return events
+
+
+__all__ = [
+    "assistant_settings_stream_event",
+    "tool_result_content",
+    "tool_side_effect_events",
+    "workspace_patch_stream_events",
+]

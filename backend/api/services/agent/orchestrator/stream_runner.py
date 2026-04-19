@@ -13,11 +13,12 @@ from api.services.agent.orchestrator.event_emitter import (
     build_onboarding_milestone_completed_event,
     iter_initial_onboarding_events,
 )
-from api.services.ai.chat_stream_custom_events import build_custom_chat_stream_event
+from api.services.ai.chat_stream_sync_events import build_tool_status
 from api.services.ai.tool_event_mapper import (
     tool_result_content,
     tool_side_effect_events,
 )
+from api.services.ai.tool_result_normalizer import normalize_tool_result
 from api.services.web_search_builder import (
     build_web_search_location,
     serialize_web_search_result,
@@ -137,6 +138,7 @@ async def stream_with_tools(
                     tool_uses = []
                     current_text = ""
                     current_server_tool = None
+                    web_search_tool_call_id = None
                     web_search_pending_end = False
                     web_search_pending_status = None
                     web_search_result_seen = False
@@ -157,14 +159,13 @@ async def stream_with_tools(
                                             "input_partial": "",
                                         }
                                     )
-                                    yield build_custom_chat_stream_event(
-                                        "tool_start",
-                                        {
-                                            "name": tool_mapper.get_tool_display_name(
-                                                event.content_block.name
-                                            ),
-                                            "status": "running",
-                                        },
+                                    display_name = tool_mapper.get_tool_display_name(
+                                        event.content_block.name
+                                    )
+                                    yield build_tool_status(
+                                        tool_call_id=event.content_block.id,
+                                        status="running",
+                                        display_name=display_name,
                                     )
                                 elif event.content_block.type == "server_tool_use":
                                     current_server_tool = {
@@ -174,17 +175,20 @@ async def stream_with_tools(
                                         "input_partial": "",
                                     }
                                     if event.content_block.name == "web_search":
-                                        yield build_custom_chat_stream_event(
-                                            "tool_start",
-                                            {
-                                                "name": "Web Search",
-                                                "status": "running",
-                                            },
+                                        web_search_tool_call_id = event.content_block.id
+                                        yield build_tool_status(
+                                            tool_call_id=event.content_block.id,
+                                            status="running",
+                                            display_name="Web Search",
                                         )
                                         suppress_web_search_preamble = True
                                 elif (
                                     event.content_block.type == "web_search_tool_result"
                                 ):
+                                    web_search_tool_call_id = (
+                                        getattr(event.content_block, "id", None)
+                                        or web_search_tool_call_id
+                                    )
                                     web_search_pending_end = True
                                     web_search_pending_status = web_search_status(
                                         event.content_block
@@ -204,13 +208,21 @@ async def stream_with_tools(
                                     ):
                                         continue
                                     if web_search_pending_end:
-                                        yield build_custom_chat_stream_event(
-                                            "tool_end",
-                                            {
-                                                "name": "Web Search",
-                                                "status": web_search_pending_status
-                                                or "success",
-                                            },
+                                        tool_call_id = (
+                                            web_search_tool_call_id or "web_search"
+                                        )
+                                        yield build_tool_status(
+                                            tool_call_id=tool_call_id,
+                                            status=(
+                                                "completed"
+                                                if (
+                                                    web_search_pending_status
+                                                    or "success"
+                                                )
+                                                == "success"
+                                                else "failed"
+                                            ),
+                                            display_name="Web Search",
                                         )
                                         web_search_pending_end = False
                                         web_search_pending_status = None
@@ -255,14 +267,16 @@ async def stream_with_tools(
 
                         elif event.type == "message_stop":
                             if web_search_pending_end:
-                                yield build_custom_chat_stream_event(
-                                    "tool_end",
-                                    {
-                                        "name": "Web Search",
-                                        "status": (
-                                            web_search_pending_status or "success"
-                                        ),
-                                    },
+                                tool_call_id = web_search_tool_call_id or "web_search"
+                                yield build_tool_status(
+                                    tool_call_id=tool_call_id,
+                                    status=(
+                                        "completed"
+                                        if (web_search_pending_status or "success")
+                                        == "success"
+                                        else "failed"
+                                    ),
+                                    display_name="Web Search",
                                 )
                                 web_search_pending_end = False
                                 web_search_pending_status = None
@@ -330,11 +344,14 @@ async def stream_with_tools(
                                 )
 
                                 status = "success" if result.get("success") else "error"
+                                normalized_result = normalize_tool_result(
+                                    display_name, result
+                                )
                                 tool_result_event: dict[str, Any] = {
                                     "type": "tool_result",
                                     "id": tool_use["id"],
                                     "name": display_name,
-                                    "result": result,
+                                    "result": normalized_result,
                                     "status": status,
                                 }
                                 if isinstance(skill_id, str) and skill_id:
@@ -342,20 +359,23 @@ async def stream_with_tools(
                                 if isinstance(icon_key, str) and icon_key:
                                     tool_result_event["icon_key"] = icon_key
                                 yield tool_result_event
-                                yield build_custom_chat_stream_event(
-                                    "tool_end",
-                                    {
-                                        "name": display_name,
-                                        "status": status,
-                                    },
+                                yield build_tool_status(
+                                    tool_call_id=tool_use["id"],
+                                    status="completed"
+                                    if status == "success"
+                                    else "failed",
+                                    display_name=display_name,
+                                    summary=normalized_result.get("summary")
+                                    if isinstance(normalized_result.get("summary"), str)
+                                    else None,
                                 )
 
-                                result_data = result.get("data") or {}
+                                result_data = normalized_result.get("data") or {}
                                 for side_effect_event in tool_side_effect_events(
-                                    display_name, result
+                                    display_name, normalized_result
                                 ):
                                     yield side_effect_event
-                                if result.get("success"):
+                                if normalized_result.get("success"):
                                     updated_onboarding_state = result_data.get(
                                         "onboarding_state"
                                     )
@@ -371,7 +391,7 @@ async def stream_with_tools(
                                         yield onboarding_milestone_event
 
                                 content_value = tool_result_content(
-                                    display_name, result
+                                    display_name, normalized_result
                                 )
                                 tool_results.append(
                                     {

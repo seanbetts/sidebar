@@ -13,11 +13,12 @@ from typing import Any
 from google.genai import types
 
 from api.constants import ChatConstants
-from api.services.ai.chat_stream_custom_events import build_custom_chat_stream_event
+from api.services.ai.chat_stream_sync_events import build_tool_status
 from api.services.ai.tool_event_mapper import (
     tool_result_content,
     tool_side_effect_events,
 )
+from api.services.ai.tool_result_normalizer import normalize_tool_result
 from api.services.web_search_builder import (
     build_google_web_search_tool,
     build_openai_web_search_tool,
@@ -589,9 +590,6 @@ class ProviderToolOrchestrator:
                 skill_id = self._tool_mapper.get_tool_skill_id(tool_call.name)
             if hasattr(self._tool_mapper, "get_tool_icon_key"):
                 icon_key = self._tool_mapper.get_tool_icon_key(tool_call.name)
-            yield build_custom_chat_stream_event(
-                "tool_start", {"name": display_name, "status": "running"}
-            )
             tool_call_event: dict[str, Any] = {
                 "type": "tool_call",
                 "id": tool_call.call_id,
@@ -604,6 +602,11 @@ class ProviderToolOrchestrator:
             if isinstance(icon_key, str) and icon_key:
                 tool_call_event["icon_key"] = icon_key
             yield tool_call_event
+            yield build_tool_status(
+                tool_call_id=tool_call.call_id,
+                status="running",
+                display_name=display_name,
+            )
             result = await self._tool_mapper.execute_tool(
                 tool_call.name,
                 tool_call.arguments,
@@ -611,11 +614,12 @@ class ProviderToolOrchestrator:
                 context=self._tool_context,
             )
             status = "success" if result.get("success") else "error"
+            normalized_result = normalize_tool_result(display_name, result)
             tool_result_event: dict[str, Any] = {
                 "type": "tool_result",
                 "id": tool_call.call_id,
                 "name": display_name,
-                "result": result,
+                "result": normalized_result,
                 "status": status,
             }
             if isinstance(skill_id, str) and skill_id:
@@ -623,13 +627,18 @@ class ProviderToolOrchestrator:
             if isinstance(icon_key, str) and icon_key:
                 tool_result_event["icon_key"] = icon_key
             yield tool_result_event
-            yield build_custom_chat_stream_event(
-                "tool_end", {"name": display_name, "status": status}
+            yield build_tool_status(
+                tool_call_id=tool_call.call_id,
+                status="completed" if status == "success" else "failed",
+                display_name=display_name,
+                summary=normalized_result.get("summary")
+                if isinstance(normalized_result.get("summary"), str)
+                else None,
             )
-            for event in tool_side_effect_events(display_name, result):
+            for event in tool_side_effect_events(display_name, normalized_result):
                 yield event
 
-            content_value = tool_result_content(display_name, result)
+            content_value = tool_result_content(display_name, normalized_result)
             yield {
                 "_openai_tool_message": True,
                 "payload": {

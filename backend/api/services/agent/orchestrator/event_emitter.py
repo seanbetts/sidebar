@@ -7,6 +7,14 @@ from typing import Any
 
 from api.services.ai.chat_stream_custom_events import build_custom_chat_stream_event
 
+ONBOARDING_STREAM_EVENT_TYPES = frozenset(
+    {
+        "onboarding_provider_blocked",
+        "onboarding_resume_suggested",
+        "onboarding_milestone_completed",
+    }
+)
+
 
 def _base_onboarding_payload(
     onboarding_state: dict[str, Any] | None,
@@ -78,5 +86,6 @@ __all__ = [
     "build_onboarding_milestone_completed_event",
     "build_onboarding_provider_blocked_event",
     "build_onboarding_resume_suggested_event",
+    "ONBOARDING_STREAM_EVENT_TYPES",
     "iter_initial_onboarding_events",
 ]

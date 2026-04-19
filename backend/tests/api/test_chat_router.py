@@ -329,10 +329,10 @@ def test_stream_chat_rate_limit_is_user_scoped(test_client, monkeypatch):
     assert third.status_code == 200
 
 
-def test_stream_chat_forwards_memory_events(test_client, monkeypatch):
+def test_stream_chat_forwards_memory_invalidated_events(test_client, monkeypatch):
     _patch_stream_gateway(
         monkeypatch,
-        [{"type": "memory_created", "data": {"id": "memory-1"}}],
+        [{"type": "collection_invalidated", "data": {"targets": ["memory"]}}],
     )
     monkeypatch.setattr(
         chat_router.UserSettingsService,
@@ -348,24 +348,20 @@ def test_stream_chat_forwards_memory_events(test_client, monkeypatch):
     assert response.status_code == 200
 
     body = response.text
-    assert "event: memory_created" in body
-    assert 'data: {"id": "memory-1"}' in body
+    assert "event: collection_invalidated" in body
+    assert '"targets": ["memory"]' in body
     assert "event: complete" in body
 
 
-def test_stream_chat_forwards_assistant_identity_events(test_client, monkeypatch):
+def test_stream_chat_forwards_assistant_settings_invalidated_events(
+    test_client, monkeypatch
+):
     _patch_stream_gateway(
         monkeypatch,
         [
             {
-                "type": "assistant_identity_updated",
-                "data": {
-                    "assistant_identity": {"name": "Navigator"},
-                    "assistant_identity_meta": {
-                        "updated_at": "2026-02-18T00:00:00Z",
-                        "version": 2,
-                    },
-                },
+                "type": "collection_invalidated",
+                "data": {"targets": ["assistant_settings"]},
             }
         ],
     )
@@ -383,8 +379,8 @@ def test_stream_chat_forwards_assistant_identity_events(test_client, monkeypatch
     assert response.status_code == 200
 
     body = response.text
-    assert "event: assistant_identity_updated" in body
-    assert '"assistant_identity": {"name": "Navigator"}' in body
+    assert "event: collection_invalidated" in body
+    assert '"targets": ["assistant_settings"]' in body
     assert "event: complete" in body
 
 
@@ -706,16 +702,13 @@ def test_stream_chat_allows_provider_ready_users_after_soul_calibration(
     assert "event: token" in response.text
 
 
-def test_stream_chat_forwards_other_preferences_events(test_client, monkeypatch):
+def test_stream_chat_forwards_preferences_invalidated_events(test_client, monkeypatch):
     _patch_stream_gateway(
         monkeypatch,
         [
             {
-                "type": "other_preferences_updated",
-                "data": {
-                    "weather_unit": "fahrenheit",
-                    "biometric_unlock_enabled": True,
-                },
+                "type": "collection_invalidated",
+                "data": {"targets": ["preferences"]},
             }
         ],
     )
@@ -733,9 +726,8 @@ def test_stream_chat_forwards_other_preferences_events(test_client, monkeypatch)
     assert response.status_code == 200
 
     body = response.text
-    assert "event: other_preferences_updated" in body
-    assert '"weather_unit": "fahrenheit"' in body
-    assert '"biometric_unlock_enabled": true' in body
+    assert "event: collection_invalidated" in body
+    assert '"targets": ["preferences"]' in body
     assert "event: complete" in body
 
 
@@ -820,19 +812,24 @@ def test_stream_chat_forwards_onboarding_stream_events(test_client, monkeypatch)
     assert '"milestone": "provider_connected"' in body
 
 
-def test_stream_chat_forwards_conversation_title_updated_events(
+def test_stream_chat_forwards_conversation_entity_changed_events(
     test_client, monkeypatch
 ):
     _patch_stream_gateway(
         monkeypatch,
         [
             {
-                "type": "conversation_title_updated",
+                "type": "entity_changed",
                 "data": {
-                    "id": "conv-1",
-                    "title": "Renamed",
-                    "titleGenerated": False,
-                    "updatedAt": "2026-03-28T12:00:00Z",
+                    "entity_type": "conversation",
+                    "entity_id": "conv-1",
+                    "change": "renamed",
+                    "patch": {
+                        "title": "Renamed",
+                        "titleGenerated": False,
+                        "updatedAt": "2026-03-28T12:00:00Z",
+                    },
+                    "invalidate": ["conversations", "conversation:conv-1"],
                 },
             }
         ],
@@ -851,10 +848,46 @@ def test_stream_chat_forwards_conversation_title_updated_events(
     assert response.status_code == 200
 
     body = response.text
-    assert "event: conversation_title_updated" in body
+    assert "event: entity_changed" in body
+    assert '"entity_type": "conversation"' in body
     assert '"title": "Renamed"' in body
-    assert '"titleGenerated": false' in body
-    assert '"updatedAt": "2026-03-28T12:00:00Z"' in body
+    assert '"invalidate": ["conversations", "conversation:conv-1"]' in body
+    assert '"change": "renamed"' in body
+    assert "event: complete" in body
+
+
+def test_stream_chat_forwards_tool_status_events(test_client, monkeypatch):
+    _patch_stream_gateway(
+        monkeypatch,
+        [
+            {
+                "type": "tool_status",
+                "data": {
+                    "tool_call_id": "tool-1",
+                    "status": "completed",
+                    "display_name": "Rename Website",
+                    "summary": "Renamed website to New Name",
+                },
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        chat_router.UserSettingsService,
+        "get_settings",
+        staticmethod(lambda *_args, **_kwargs: _provider_settings()),
+    )
+
+    response = test_client.post(
+        "/api/chat/stream",
+        headers=_auth_headers(),
+        json={"message": "Hi"},
+    )
+    assert response.status_code == 200
+
+    body = response.text
+    assert "event: tool_status" in body
+    assert '"tool_call_id": "tool-1"' in body
+    assert '"status": "completed"' in body
     assert "event: complete" in body
 
 

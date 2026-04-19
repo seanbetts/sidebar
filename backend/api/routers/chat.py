@@ -30,13 +30,16 @@ from api.schemas.tool_context import ToolExecutionContext
 from api.services.agent.conversation_compaction_service import (
     ConversationCompactionService,
 )
+from api.services.agent.orchestrator.event_emitter import (
+    ONBOARDING_STREAM_EVENT_TYPES,
+)
 from api.services.agent.prompt.composer import PromptContextService
 from api.services.agent.request_assembly_service import RequestAssemblyService
 from api.services.agent.request_budget_feedback_service import (
     RequestBudgetFeedbackService,
 )
 from api.services.agent.skills.catalog import SkillCatalogService
-from api.services.ai.chat_stream_custom_events import CUSTOM_CHAT_STREAM_EVENT_TYPES
+from api.services.ai.chat_stream_sync_protocol import CUSTOM_CHAT_STREAM_EVENT_TYPES
 from api.services.ai.gateway import AIProviderGateway
 from api.services.ai.registry import VALID_AI_PROVIDERS, AIProvider
 from api.services.capabilities.loader import CapabilityLoaderService
@@ -523,7 +526,9 @@ async def stream_chat(
                         tool_calls_by_id[tool_call_id] = existing
                     yield f"event: tool_result\ndata: {json.dumps(event)}\n\n"
 
-                elif event_type in CUSTOM_CHAT_STREAM_EVENT_TYPES:
+                elif event_type in CUSTOM_CHAT_STREAM_EVENT_TYPES or (
+                    event_type in ONBOARDING_STREAM_EVENT_TYPES
+                ):
                     data = json.dumps(event.get("data", {}))
                     yield f"event: {event_type}\ndata: {data}\n\n"
 

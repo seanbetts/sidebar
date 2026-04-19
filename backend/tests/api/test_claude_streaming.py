@@ -258,7 +258,11 @@ async def test_stream_with_tools_emits_memory_event():
     ):
         output.append(event)
 
-    assert any(item["type"] == "memory_created" for item in output)
+    assert any(
+        item["type"] == "collection_invalidated"
+        and item["data"]["targets"] == ["memory"]
+        for item in output
+    )
 
 
 @pytest.mark.asyncio
@@ -307,13 +311,9 @@ async def test_stream_with_tools_emits_assistant_identity_event():
         output.append(event)
 
     assert {
-        "type": "assistant_identity_updated",
+        "type": "collection_invalidated",
         "data": {
-            "assistant_identity": {"name": "Navigator"},
-            "assistant_identity_meta": {
-                "updated_at": "2026-02-18T00:00:00Z",
-                "version": 3,
-            },
+            "targets": ["assistant_settings"],
         },
     } in output
 
@@ -364,13 +364,9 @@ async def test_stream_with_tools_emits_assistant_soul_event():
         output.append(event)
 
     assert {
-        "type": "assistant_soul_updated",
+        "type": "collection_invalidated",
         "data": {
-            "assistant_soul": {"purpose": "Help"},
-            "assistant_soul_meta": {
-                "updated_at": "2026-02-18T00:00:00Z",
-                "version": 4,
-            },
+            "targets": ["assistant_settings"],
         },
     } in output
 
@@ -421,11 +417,9 @@ async def test_stream_with_tools_emits_profile_user_settings_event():
         output.append(event)
 
     assert {
-        "type": "profile_user_settings_updated",
+        "type": "collection_invalidated",
         "data": {
-            "name": "Sean",
-            "job_title": "Engineer",
-            "location": "Austin, TX",
+            "targets": ["profile", "preferences"],
         },
     } in output
 
@@ -473,10 +467,9 @@ async def test_stream_with_tools_emits_other_preferences_event():
         output.append(event)
 
     assert {
-        "type": "other_preferences_updated",
+        "type": "collection_invalidated",
         "data": {
-            "weather_unit": "fahrenheit",
-            "biometric_unlock_enabled": True,
+            "targets": ["preferences"],
         },
     } in output
 
@@ -818,7 +811,11 @@ async def test_stream_with_tools_emits_ingestion_updated_event():
     ):
         output.append(event)
 
-    assert any(item["type"] == "ingestion_updated" for item in output)
+    assert any(
+        item["type"] == "collection_invalidated"
+        and item["data"]["targets"] == ["ingestion"]
+        for item in output
+    )
 
 
 @pytest.mark.asyncio
