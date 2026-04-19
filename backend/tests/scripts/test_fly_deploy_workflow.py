@@ -151,3 +151,28 @@ def test_fly_deploy_workflow_builds_before_registry_push() -> None:
     assert build_step["with"]["load"] == "true"
     assert build_step["with"]["tags"] == "${{ steps.image.outputs.ref }}"
     assert push_step["run"] == 'docker push "${{ steps.image.outputs.ref }}"'
+
+
+def test_fly_deploy_workflow_opts_into_node24_for_javascript_actions() -> None:
+    """Fly deploy should opt into Node 24 before GitHub flips the default."""
+    workflow = _workflow()
+
+    assert workflow["env"]["FORCE_JAVASCRIPT_ACTIONS_TO_NODE24"] == "true"
+
+
+def test_fly_deploy_workflow_collects_fly_diagnostics_after_failed_deploy() -> None:
+    """Fly deploy should print machine state and logs when the deploy step fails."""
+    workflow = _workflow()
+    deploy_steps = workflow["jobs"]["deploy"]["steps"]
+
+    diagnostics_step = next(
+        step
+        for step in deploy_steps
+        if step.get("name") == "Collect Fly diagnostics on deploy failure"
+    )
+
+    assert diagnostics_step["if"] == "failure()"
+    run_script = diagnostics_step["run"]
+    assert 'flyctl -c fly.toml status --json || true' in run_script
+    assert 'flyctl -c fly.toml machine list --json || true' in run_script
+    assert 'flyctl -c fly.toml logs --json --no-tail --region lhr || true' in run_script

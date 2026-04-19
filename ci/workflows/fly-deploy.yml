@@ -13,6 +13,9 @@ on:
       - ".github/workflows/fly-deploy.yml"
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 concurrency:
   group: fly-deploy-${{ github.ref }}
   cancel-in-progress: true
@@ -166,6 +169,16 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: flyctl -c fly.toml deploy --image "${{ steps.image.outputs.ref }}" --deploy-retries 3
+
+      - name: Collect Fly diagnostics on deploy failure
+        if: failure()
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl -c fly.toml status --json || true
+          flyctl -c fly.toml machine list --json || true
+          flyctl -c fly.toml logs --json --no-tail --region lhr || true
 
       - name: Ensure ingestion worker machine is running
         working-directory: backend
