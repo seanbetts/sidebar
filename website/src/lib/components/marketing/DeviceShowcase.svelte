@@ -3,7 +3,6 @@
     kind: 'image';
     src: string;
     alt: string;
-    frame?: 'ipad' | 'iphone';
     width?: number | string;
     height?: number | string;
     loading?: 'eager' | 'lazy';
@@ -24,23 +23,19 @@
   type Props = {
     media: DeviceShowcaseMedia;
     class?: string;
-    chrome?: 'framed' | 'bare';
   };
 
   let {
     media,
-    class: classProp = '',
-    chrome = 'framed'
+    class: classProp = ''
   }: Props = $props();
 
-  let frame = $derived(media.frame ?? 'ipad');
+  let frame = $derived(media.kind === 'placeholder' ? media.frame ?? 'ipad' : 'ipad');
   let width = $derived(media.width ?? (frame === 'iphone' ? 430 : 1366));
   let height = $derived(media.height ?? (frame === 'iphone' ? 932 : 1024));
-  let classes = $derived(
-    ['device-showcase', `device-showcase--${frame}`, `device-showcase--${chrome}`, classProp]
-      .filter(Boolean)
-      .join(' ')
-  );
+  let classes = $derived(['device-showcase', `device-showcase--${frame}`, classProp]
+    .filter(Boolean)
+    .join(' '));
 </script>
 
 <figure class={classes}>
@@ -68,9 +63,7 @@
 
 <style>
   .device-showcase {
-    --device-showcase-max-width: var(--marketing-device-ipad-width, 40rem);
     margin: 0;
-    inline-size: min(100%, var(--device-showcase-max-width));
     border: 1px solid var(--color-border);
     border-radius: calc(var(--radius) * 1.6);
     background: var(--card);
@@ -78,21 +71,8 @@
     box-shadow: 0 24px 60px -36px var(--shadow-color);
   }
 
-  .device-showcase--ipad {
-    --device-showcase-max-width: var(--marketing-device-ipad-width, 40rem);
-  }
-
   .device-showcase--iphone {
-    --device-showcase-max-width: var(--marketing-device-iphone-width, 20rem);
     border-radius: calc(var(--radius) * 2);
-  }
-
-  .device-showcase--bare {
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    overflow: visible;
   }
 
   .device-showcase img,
@@ -104,10 +84,6 @@
   .device-showcase img {
     height: auto;
     background: var(--surface-strong);
-  }
-
-  .device-showcase--bare img {
-    background: transparent;
   }
 
   .device-placeholder {

@@ -66,14 +66,14 @@ final class ChatStreamParserTests: XCTestCase {
     func testIngestParsesToolStatusEvent() {
         var parser = ChatStreamParser()
         let chunk = "event: tool_status\n" +
-            "data: {\"display_name\":\"Rename Website\",\"status\":\"running\",\"tool_call_id\":\"tool-1\"}\n\n"
+            "data: {\"name\":\"Rename Website\",\"status\":\"running\",\"tool_call_id\":\"tool-1\"}\n\n"
 
         let events = parser.ingest(Data(chunk.utf8))
 
         XCTAssertEqual(events.count, 1)
         XCTAssertEqual(events.first?.type, .toolStatus)
         let payload = events.first?.data?.value as? [String: Any]
-        XCTAssertEqual(payload?["display_name"] as? String, "Rename Website")
+        XCTAssertEqual(payload?["name"] as? String, "Rename Website")
         XCTAssertEqual(payload?["status"] as? String, "running")
         XCTAssertEqual(payload?["tool_call_id"] as? String, "tool-1")
     }

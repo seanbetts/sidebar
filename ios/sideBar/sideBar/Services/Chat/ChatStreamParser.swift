@@ -71,17 +71,6 @@ public struct ChatStreamParser {
             return nil
         }
         let decoded = decodeAny(json: event.data)
-        if type == .token,
-           let payload = decoded?.value as? [String: Any],
-           let content = (payload["content"] as? String) ?? (payload["text"] as? String) {
-            ChatStreamingDebugTrace.log(
-                "parser.token",
-                details: [
-                    "chars=\(content.count)",
-                    "content=\"\(ChatStreamingDebugTrace.visibleWhitespacePreview(content))\""
-                ].joined(separator: " ")
-            )
-        }
         return ChatStreamEvent(type: type, data: decoded)
     }
 
