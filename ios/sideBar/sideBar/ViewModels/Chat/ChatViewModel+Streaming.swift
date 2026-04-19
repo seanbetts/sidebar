@@ -258,7 +258,12 @@ extension ChatViewModel {
         guard let currentMessage = messages.first(where: { $0.id == messageId }) else {
             return
         }
-        let prefix = prefixForToken(message: currentMessage, token: token)
+        let currentContent = typingRevealTargetsByMessageId[messageId] ?? currentMessage.content
+        let prefix = prefixForToken(
+            message: currentMessage,
+            token: token,
+            currentContent: currentContent
+        )
         let appendedText = prefix + token
 
         guard typingRevealEnabled else {

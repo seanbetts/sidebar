@@ -482,10 +482,11 @@ extension ChatViewModel {
         }
     }
 
-    func prefixForToken(message: Message, token: String) -> String {
+    func prefixForToken(message: Message, token: String, currentContent: String? = nil) -> String {
+        let resolvedContent = currentContent ?? message.content
         guard message.needsNewline == true,
-              !message.content.isEmpty,
-              !message.content.hasSuffix("\n"),
+              !resolvedContent.isEmpty,
+              !resolvedContent.hasSuffix("\n"),
               !token.hasPrefix("\n") else {
             return ""
         }
