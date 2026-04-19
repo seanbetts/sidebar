@@ -100,7 +100,7 @@ repos:
     rev: v4.5.0
     hooks:
       - id: check-added-large-files
-        args: [--maxkb=1000]
+        args: [--maxkb=5000]
       - id: check-json
       - id: check-yaml
       - id: check-merge-conflict

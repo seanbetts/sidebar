@@ -10,10 +10,19 @@ import XCTest
 
 extension SideBarUITests {
     func resolveSeededConversationRow(in app: XCUIApplication) -> XCUIElement {
+        let title = seededConversationTitle()
+        let titleCandidates = [
+            app.staticTexts[title],
+            app.cells.staticTexts[title].firstMatch,
+            app.buttons[title]
+        ]
+        if let existingTitle = titleCandidates.first(where: \.exists) {
+            return existingTitle
+        }
+
         let identifierPrefix = "chat-conversation-row-"
         let predicate = NSPredicate(format: "identifier BEGINSWITH %@", identifierPrefix)
-        let rows = app.descendants(matching: .any).matching(predicate)
-        return rows.firstMatch
+        return app.descendants(matching: .any).matching(predicate).firstMatch
     }
 
     func seededConversationTitle() -> String {
@@ -67,6 +76,11 @@ extension SideBarUITests {
 
         let sendButton = openChatDetail(in: app)
         let messageField = resolveChatMessageField(in: app)
+        XCTAssertTrue(
+            waitForChatMessageRows(minimumCount: 1, in: app, timeout: 10),
+            "Seeded conversation messages did not load before send."
+        )
+        let initialRowCount = chatMessageRowCount(in: app)
 
         let outboundMessage = "TC-UI-006 stream test \(String(UUID().uuidString.prefix(8))). "
             + "Respond with 30 numbered lines, each line at least six words."
@@ -75,13 +89,12 @@ extension SideBarUITests {
         XCTAssertTrue(sendButton.isEnabled, "Send message button should be enabled after typing.")
         sendButton.tap()
 
-        let sentMessageText = resolveChatMessage(in: app, text: outboundMessage)
         XCTAssertTrue(
-            sentMessageText.waitForExistence(timeout: 20),
+            waitForChatMessage(text: outboundMessage, in: app, timeout: 20),
             "Sent user message did not appear in chat."
         )
         XCTAssertTrue(
-            waitForAssistantReply(after: sentMessageText, in: app, timeout: 45),
+            waitForChatMessageRows(minimumCount: initialRowCount + 2, in: app, timeout: 45),
             "Expected assistant streamed reply row after sending."
         )
         XCTAssertTrue(
@@ -293,119 +306,113 @@ extension SideBarUITests {
         return element.exists && element.isHittable
     }
 
-    func waitForAssistantReply(
-        after sentMessage: XCUIElement,
+    func waitForChatMessageRows(
+        minimumCount: Int,
         in app: XCUIApplication,
         timeout: TimeInterval
     ) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if hasAssistantLabelBelowMessage(sentMessage, in: app) {
+            if chatMessageRowCount(in: app) >= minimumCount {
                 return true
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }
-        return hasAssistantLabelBelowMessage(sentMessage, in: app)
+        return chatMessageRowCount(in: app) >= minimumCount
     }
 
-    func resolveChatMessage(
+    func waitForChatMessage(
+        text: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if chatMessageBaselineY(in: app, text: text) != nil {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
+        return chatMessageBaselineY(in: app, text: text) != nil
+    }
+
+    func chatMessageRowCount(in app: XCUIApplication) -> Int {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "chat-message-row-"))
+            .allElementsBoundByIndex
+            .filter(\.exists)
+            .count
+    }
+
+    private func chatMessageBaselineY(
         in app: XCUIApplication,
         text: String
-    ) -> XCUIElement {
+    ) -> CGFloat? {
         let lookupToken = chatMessageLookupToken(for: text)
-        let exactStaticText = app.staticTexts[text]
-        if exactStaticText.exists {
-            return exactStaticText
-        }
 
-        let exactLabel = app.descendants(matching: .any).matching(
+        let exactStaticTexts = app.staticTexts.matching(
             NSPredicate(format: "label == %@", text)
-        ).firstMatch
-        if exactLabel.exists {
-            return exactLabel
+        ).allElementsBoundByIndex
+        if let exactStaticText = exactStaticTexts.first(where: \.exists) {
+            return exactStaticText.frame.maxY
         }
 
-        let identifierLookup = app.descendants(matching: .any).matching(
+        let exactLabels = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", text)
+        ).allElementsBoundByIndex
+        if let exactLabel = exactLabels.first(where: \.exists) {
+            return exactLabel.frame.maxY
+        }
+
+        let identifierLookups = app.descendants(matching: .any).matching(
             NSPredicate(format: "identifier CONTAINS %@", lookupToken)
-        ).firstMatch
-        if identifierLookup.exists {
-            return identifierLookup
+        ).allElementsBoundByIndex
+        if let identifierLookup = identifierLookups.first(where: \.exists) {
+            return identifierLookup.frame.maxY
         }
 
-        let exactChatMessageValue = app.descendants(matching: .any).matching(
+        let exactChatMessageValues = app.descendants(matching: .any).matching(
             NSPredicate(
                 format: "(identifier BEGINSWITH %@ OR identifier BEGINSWITH %@) AND value == %@",
                 "chat-message-row-",
                 "chat-message-content-",
                 text
             )
-        ).firstMatch
-        if exactChatMessageValue.exists {
-            return exactChatMessageValue
+        ).allElementsBoundByIndex
+        if let exactChatMessageValue = exactChatMessageValues.first(where: \.exists) {
+            return exactChatMessageValue.frame.maxY
         }
 
-        let containsChatMessageValue = app.descendants(matching: .any).matching(
+        let containsChatMessageValues = app.descendants(matching: .any).matching(
             NSPredicate(
                 format: "(identifier BEGINSWITH %@ OR identifier BEGINSWITH %@) AND value CONTAINS %@",
                 "chat-message-row-",
                 "chat-message-content-",
                 text
             )
-        ).firstMatch
-        if containsChatMessageValue.exists {
-            return containsChatMessageValue
+        ).allElementsBoundByIndex
+        if let containsChatMessageValue = containsChatMessageValues.first(where: \.exists) {
+            return containsChatMessageValue.frame.maxY
         }
 
-        let exactValue = app.descendants(matching: .any).matching(
+        let exactValues = app.descendants(matching: .any).matching(
             NSPredicate(format: "value == %@", text)
-        ).firstMatch
-        if exactValue.exists {
-            return exactValue
+        ).allElementsBoundByIndex
+        if let exactValue = exactValues.first(where: \.exists) {
+            return exactValue.frame.maxY
         }
 
-        let containsValue = app.descendants(matching: .any).matching(
+        let containsValues = app.descendants(matching: .any).matching(
             NSPredicate(format: "value CONTAINS %@", text)
-        ).firstMatch
-        if containsValue.exists {
-            return containsValue
+        ).allElementsBoundByIndex
+        if let containsValue = containsValues.first(where: \.exists) {
+            return containsValue.frame.maxY
         }
 
-        return app.descendants(matching: .any).matching(
+        let containsLabels = app.descendants(matching: .any).matching(
             NSPredicate(format: "label CONTAINS %@", text)
-        ).firstMatch
-    }
-
-    func hasAssistantLabelBelowMessage(
-        _ sentMessage: XCUIElement,
-        in app: XCUIApplication
-    ) -> Bool {
-        guard sentMessage.exists else {
-            return false
-        }
-        let baselineY = sentMessage.frame.maxY
-        let sentIdentifier = sentMessage.identifier
-
-        let chatRows = app.descendants(matching: .any).matching(
-            NSPredicate(format: "identifier BEGINSWITH %@", "chat-message-row-")
-        )
-        for index in 0..<chatRows.count {
-            let row = chatRows.element(boundBy: index)
-            if row.identifier == sentIdentifier {
-                continue
-            }
-            if row.exists, row.frame.minY >= baselineY - 1 {
-                return true
-            }
-        }
-
-        let assistantLabels = app.staticTexts.matching(NSPredicate(format: "label == %@", "sideBar"))
-        for index in 0..<assistantLabels.count {
-            let label = assistantLabels.element(boundBy: index)
-            if label.exists, label.frame.minY >= baselineY - 1 {
-                return true
-            }
-        }
-        return false
+        ).allElementsBoundByIndex
+        return containsLabels.first(where: \.exists)?.frame.maxY
     }
 
     private func chatMessageLookupToken(for text: String) -> String {

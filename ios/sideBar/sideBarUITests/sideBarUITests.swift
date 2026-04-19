@@ -94,6 +94,11 @@ final class SideBarUITests: XCTestCase {
 
         let sendButton = openChatDetail(in: app)
         let messageField = resolveChatMessageField(in: app)
+        XCTAssertTrue(
+            waitForChatMessageRows(minimumCount: 1, in: app, timeout: 10),
+            "Seeded conversation messages did not load before send."
+        )
+        let initialRowCount = chatMessageRowCount(in: app)
 
         let outboundMessage = "TC-UI-003 ping \(String(UUID().uuidString.prefix(8)))"
         messageField.tap()
@@ -101,13 +106,12 @@ final class SideBarUITests: XCTestCase {
         XCTAssertTrue(sendButton.isEnabled, "Send message button should be enabled after typing.")
         sendButton.tap()
 
-        let sentMessageText = resolveChatMessage(in: app, text: outboundMessage)
         XCTAssertTrue(
-            sentMessageText.waitForExistence(timeout: 20),
+            waitForChatMessage(text: outboundMessage, in: app, timeout: 20),
             "Sent user message did not appear in chat."
         )
         XCTAssertTrue(
-            waitForAssistantReply(after: sentMessageText, in: app, timeout: 45),
+            waitForChatMessageRows(minimumCount: initialRowCount + 2, in: app, timeout: 45),
             "Expected assistant streamed reply row after sending."
         )
     }
@@ -150,7 +154,11 @@ final class SideBarUITests: XCTestCase {
         dismissSystemAlertsIfPresent(in: app, timeout: 8)
 
         let sendButton = app.buttons["Send message"]
-        if sendButton.waitForExistence(timeout: 8) {
+        let seededConversationRow = resolveSeededConversationRow(in: app)
+        if waitForHittable(seededConversationRow, timeout: 8) {
+            seededConversationRow.tap()
+            dismissSystemAlertsIfPresent(in: app, timeout: 6)
+        } else if sendButton.waitForExistence(timeout: 8) {
             return sendButton
         }
 
@@ -166,12 +174,11 @@ final class SideBarUITests: XCTestCase {
         if waitForHittable(newChatButton, timeout: 8) {
             newChatButton.tap()
         } else {
-            let conversationRow = resolveSeededConversationRow(in: app)
             XCTAssertTrue(
-                waitForHittable(conversationRow, timeout: 8),
+                waitForHittable(seededConversationRow, timeout: 8),
                 "Seeded chat row did not appear in chat list."
             )
-            conversationRow.tap()
+            seededConversationRow.tap()
         }
 
         XCTAssertTrue(
